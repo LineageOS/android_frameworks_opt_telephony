@@ -40,6 +40,7 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.Global;
 import android.provider.Settings.SettingNotFoundException;
+import android.service.carrier.CarrierIdentifier;
 import android.service.carrier.CarrierService;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
@@ -728,6 +729,11 @@ public class SubscriptionInfoUpdater extends Handler {
             values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
             values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
             values.put(SubscriptionManager.PROFILE_CLASS, embeddedProfile.getProfileClass());
+            CarrierIdentifier cid = embeddedProfile.getCarrierIdentifier();
+            if (cid != null) {
+                values.put(SubscriptionManager.CARRIER_ID,
+                        CarrierResolver.getCarrierIdFromIdentifier(mContext, cid));
+            }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
                     SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.getIccid() + "\"", null);
