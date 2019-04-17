@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony.euicc;
 
-import static android.telephony.euicc.EuiccManager.EUICC_OTA_STATUS_UNAVAILABLE;
-
 import android.Manifest;
 import android.Manifest.permission;
 import android.annotation.Nullable;
@@ -173,10 +171,9 @@ public class EuiccController extends IEuiccController.Stub {
         long token = Binder.clearCallingIdentity();
         try {
             if (!callerCanReadPhoneStatePrivileged
-                    && !canManageActiveSubscriptionOnTargetSim(cardId, callingPackage)) {
+                    && !canManageSubscriptionOnTargetSim(cardId, callingPackage)) {
                 throw new SecurityException(
-                        "Must have carrier privileges on active subscription to read EID for "
-                                + "cardId="
+                        "Must have carrier privileges on subscription to read EID for cardId="
                                 + cardId);
             }
 
@@ -1128,7 +1125,7 @@ public class EuiccController extends IEuiccController.Stub {
     private @OtaStatus int blockingGetOtaStatusFromEuiccService(int cardId) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Integer> statusRef =
-                new AtomicReference<>(EUICC_OTA_STATUS_UNAVAILABLE);
+                new AtomicReference<>(EuiccManager.EUICC_OTA_STATUS_UNAVAILABLE);
         mConnector.getOtaStatus(cardId, new EuiccConnector.GetOtaStatusCommandCallback() {
             @Override
             public void onGetOtaStatusComplete(@OtaStatus int status) {
@@ -1212,7 +1209,7 @@ public class EuiccController extends IEuiccController.Stub {
     // given cardId.
     private boolean canManageActiveSubscriptionOnTargetSim(int cardId, String callingPackage) {
         List<SubscriptionInfo> subInfoList = mSubscriptionManager
-                .getActiveSubscriptionInfoList(/* userVisibleonly */false);
+                .getActiveSubscriptionInfoList(/* userVisibleOnly */false);
         if (subInfoList == null || subInfoList.size() == 0) {
             // No active subscription on any SIM.
             return false;
@@ -1240,7 +1237,7 @@ public class EuiccController extends IEuiccController.Stub {
     // embedded subscription.
     private boolean canManageSubscriptionOnTargetSim(int cardId, String callingPackage) {
         List<SubscriptionInfo> subInfoList = mSubscriptionManager
-                .getActiveSubscriptionInfoList(/* userVisibleonly */false);
+                .getActiveSubscriptionInfoList(false /* userVisibleonly */);
         // No active subscription on any SIM.
         if (subInfoList == null || subInfoList.size() == 0) {
             return false;
@@ -1263,6 +1260,7 @@ public class EuiccController extends IEuiccController.Stub {
                 }
             }
             if (!isEuicc) {
+                Log.i(TAG, "The target SIM is not an eUICC.");
                 return false;
             }
 
@@ -1271,20 +1269,15 @@ public class EuiccController extends IEuiccController.Stub {
             // return true directly.
             for (SubscriptionInfo subInfo : subInfoList) {
                 // subInfo.isEmbedded() can only be true for the target SIM.
-                if (subInfo.getCardId() == cardId) {
+                if (subInfo.isEmbedded() && subInfo.getCardId() == cardId) {
                     return mSubscriptionManager.canManageSubscription(subInfo, callingPackage);
                 }
             }
 
             // There is no active subscription on the target SIM, checks whether the caller can
             // manage any active subscription on any other SIM.
-            for (SubscriptionInfo subInfo : subInfoList) {
-                if (subInfo.getCardId() != cardId
-                        && mSubscriptionManager.canManageSubscription(subInfo, callingPackage)) {
-                    return true;
-                }
-            }
-            return false;
+            return mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(callingPackage)
+                    == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
         } else {
             for (SubscriptionInfo subInfo : subInfoList) {
                 if (subInfo.isEmbedded()
