@@ -73,6 +73,8 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + SubscriptionManager.MNC + " INTEGER DEFAULT 0,"
                     + SubscriptionManager.MCC_STRING + " TEXT,"
                     + SubscriptionManager.MNC_STRING + " TEXT,"
+                    + SubscriptionManager.EHPLMNS + " TEXT,"
+                    + SubscriptionManager.HPLMNS + " TEXT,"
                     + SubscriptionManager.SIM_PROVISIONING_STATUS
                     + " INTEGER DEFAULT " + SubscriptionManager.SIM_PROVISIONED + ","
                     + SubscriptionManager.IS_EMBEDDED + " INTEGER DEFAULT 0,"
