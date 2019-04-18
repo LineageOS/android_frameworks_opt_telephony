@@ -356,9 +356,6 @@ public class UiccProfile extends IccCard {
         }
 
         if (!TextUtils.isEmpty(newCarrierName)) {
-            if (mIccRecords != null) {
-                mIccRecords.setServiceProviderName(newCarrierName);
-            }
             mTelephonyManager.setSimOperatorNameForPhone(mPhoneId, newCarrierName);
             mOperatorBrandOverrideRegistrants.notifyRegistrants();
         }

@@ -441,7 +441,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 }
 
                 String[] ehplmns = records.getEhplmns();
-                String[] hplmns = records.getHplmns();
+                String[] hplmns = records.getPlmnsFromHplmnActRecord();
                 if (ehplmns != null || hplmns != null) {
                     SubscriptionController.getInstance().setAssociatedPlmns(ehplmns, hplmns, subId);
                 }
