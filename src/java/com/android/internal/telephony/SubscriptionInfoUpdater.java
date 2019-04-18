@@ -792,7 +792,7 @@ public class SubscriptionInfoUpdater extends Handler {
         i.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
         SubscriptionManager.putPhoneIdAndSubIdExtra(i, slotId);
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
-             " for mCardIndex: " + slotId);
+                " for phone: " + slotId);
         IntentBroadcaster.getInstance().broadcastStickyIntent(i, slotId);
     }
 
@@ -804,8 +804,12 @@ public class SubscriptionInfoUpdater extends Handler {
             i.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
+            // TODO(b/130664115) we manually populate this intent with the slotId. In the future we
+            // should do a review of whether to make this public
+            int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
+            i.putExtra(PhoneConstants.SLOT_KEY, slotId);
             logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
-                    + " for phone: " + phoneId);
+                    + " for phone: " + phoneId + " slot: " + slotId);
             mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
@@ -824,8 +828,12 @@ public class SubscriptionInfoUpdater extends Handler {
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
+            // TODO(b/130664115) we populate this intent with the actual slotId. In the future we
+            // should do a review of whether to make this public
+            int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
+            i.putExtra(PhoneConstants.SLOT_KEY, slotId);
             logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
-                    + " for phone: " + phoneId);
+                    + " for phone: " + phoneId + " slot: " + slotId);
             mContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
