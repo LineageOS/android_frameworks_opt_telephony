@@ -268,17 +268,26 @@ public class CallQualityMetrics {
         // TODO(b/130302396) this also may be possible when we put a call on hold and continue with
         // another call
         summary.totalDurationWithQualityInformationInSeconds = mLastCallQuality.getCallDuration();
-        summary.snapshotOfWorstSsWithGoodQuality =
-                toCallQualityProto(mWorstSsWithGoodDlQuality.first);
-        summary.snapshotOfBestSsWithGoodQuality =
-                toCallQualityProto(mBestSsWithGoodDlQuality.first);
-        summary.snapshotOfWorstSsWithBadQuality =
-                toCallQualityProto(mWorstSsWithBadDlQuality.first);
-        summary.snapshotOfBestSsWithBadQuality = toCallQualityProto(mBestSsWithBadDlQuality.first);
-        summary.worstSsWithGoodQuality = toProto(mWorstSsWithGoodDlQuality.second);
-        summary.bestSsWithGoodQuality = toProto(mBestSsWithGoodDlQuality.second);
-        summary.worstSsWithBadQuality = toProto(mWorstSsWithBadDlQuality.second);
-        summary.bestSsWithBadQuality = toProto(mBestSsWithBadDlQuality.second);
+        if (mWorstSsWithGoodDlQuality != null) {
+            summary.snapshotOfWorstSsWithGoodQuality =
+                    toCallQualityProto(mWorstSsWithGoodDlQuality.first);
+            summary.worstSsWithGoodQuality = toProto(mWorstSsWithGoodDlQuality.second);
+        }
+        if (mBestSsWithGoodDlQuality != null) {
+            summary.snapshotOfBestSsWithGoodQuality =
+                    toCallQualityProto(mBestSsWithGoodDlQuality.first);
+            summary.bestSsWithGoodQuality = toProto(mBestSsWithGoodDlQuality.second);
+        }
+        if (mWorstSsWithBadDlQuality != null) {
+            summary.snapshotOfWorstSsWithBadQuality =
+                    toCallQualityProto(mWorstSsWithBadDlQuality.first);
+            summary.worstSsWithBadQuality = toProto(mWorstSsWithBadDlQuality.second);
+        }
+        if (mBestSsWithBadDlQuality != null) {
+            summary.snapshotOfBestSsWithBadQuality =
+                    toCallQualityProto(mBestSsWithBadDlQuality.first);
+            summary.bestSsWithBadQuality = toProto(mBestSsWithBadDlQuality.second);
+        }
         summary.snapshotOfEnd = toCallQualityProto(mLastCallQuality);
         return summary;
     }
@@ -296,17 +305,26 @@ public class CallQualityMetrics {
         // TODO(b/130302396) this also may be possible when we put a call on hold and continue with
         // another call
         summary.totalDurationWithQualityInformationInSeconds = mLastCallQuality.getCallDuration();
-        summary.snapshotOfWorstSsWithGoodQuality =
-                toCallQualityProto(mWorstSsWithGoodUlQuality.first);
-        summary.snapshotOfBestSsWithGoodQuality =
-                toCallQualityProto(mBestSsWithGoodUlQuality.first);
-        summary.snapshotOfWorstSsWithBadQuality =
-                toCallQualityProto(mWorstSsWithBadUlQuality.first);
-        summary.snapshotOfBestSsWithBadQuality = toCallQualityProto(mBestSsWithBadUlQuality.first);
-        summary.worstSsWithGoodQuality = toProto(mWorstSsWithGoodUlQuality.second);
-        summary.bestSsWithGoodQuality = toProto(mBestSsWithGoodUlQuality.second);
-        summary.worstSsWithBadQuality = toProto(mWorstSsWithBadUlQuality.second);
-        summary.bestSsWithBadQuality = toProto(mBestSsWithBadUlQuality.second);
+        if (mWorstSsWithGoodUlQuality != null) {
+            summary.snapshotOfWorstSsWithGoodQuality =
+                    toCallQualityProto(mWorstSsWithGoodUlQuality.first);
+            summary.worstSsWithGoodQuality = toProto(mWorstSsWithGoodUlQuality.second);
+        }
+        if (mBestSsWithGoodUlQuality != null) {
+            summary.snapshotOfBestSsWithGoodQuality =
+                    toCallQualityProto(mBestSsWithGoodUlQuality.first);
+            summary.bestSsWithGoodQuality = toProto(mBestSsWithGoodUlQuality.second);
+        }
+        if (mWorstSsWithBadUlQuality != null) {
+            summary.snapshotOfWorstSsWithBadQuality =
+                    toCallQualityProto(mWorstSsWithBadUlQuality.first);
+            summary.worstSsWithBadQuality = toProto(mWorstSsWithBadUlQuality.second);
+        }
+        if (mBestSsWithBadUlQuality != null) {
+            summary.snapshotOfBestSsWithBadQuality =
+                    toCallQualityProto(mBestSsWithBadUlQuality.first);
+            summary.bestSsWithBadQuality = toProto(mBestSsWithBadUlQuality.second);
+        }
         summary.snapshotOfEnd = toCallQualityProto(mLastCallQuality);
         return summary;
     }
