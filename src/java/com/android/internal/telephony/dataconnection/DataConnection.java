@@ -19,6 +19,8 @@ package com.android.internal.telephony.dataconnection;
 import static android.net.NetworkPolicyManager.OVERRIDE_CONGESTED;
 import static android.net.NetworkPolicyManager.OVERRIDE_UNMETERED;
 
+import android.annotation.IntDef;
+import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
@@ -81,6 +83,8 @@ import com.android.internal.util.StateMachine;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -111,6 +115,32 @@ public class DataConnection extends StateMachine {
 
     private static final String RAT_NAME_5G = "nr";
     private static final String RAT_NAME_EVDO = "evdo";
+
+    /**
+     * The data connection is not being or been handovered. Note this is the state for the source
+     * data connection, not destination data connection
+     */
+    private static final int HANDOVER_STATE_IDLE = 1;
+
+    /**
+     * The data connection is being handovered. Note this is the state for the source
+     * data connection, not destination data connection.
+     */
+    private static final int HANDOVER_STATE_BEING_TRANSFERRED = 2;
+
+    /**
+     * The data connection is already handovered. Note this is the state for the source
+     * data connection, not destination data connection.
+     */
+    private static final int HANDOVER_STATE_COMPLETED = 3;
+
+    /** @hide */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"HANDOVER_STATE_"}, value = {
+            HANDOVER_STATE_IDLE,
+            HANDOVER_STATE_BEING_TRANSFERRED,
+            HANDOVER_STATE_COMPLETED})
+    public @interface HandoverState {}
 
     // The data connection providing default Internet connection will have a higher score of 50.
     // Other connections will have a slightly lower score of 45. The intention is other connections
@@ -223,16 +253,23 @@ public class DataConnection extends StateMachine {
     private int mRilRat = Integer.MAX_VALUE;
     private int mDataRegState = Integer.MAX_VALUE;
     private NetworkInfo mNetworkInfo;
+
+    /** The corresponding network agent for this data connection. */
     private DcNetworkAgent mNetworkAgent;
+
+    /**
+     * The network agent from handover source data connection. This is the potential network agent
+     * that will be transferred here after handover completed.
+     */
+    private DcNetworkAgent mHandoverSourceNetworkAgent;
+
     private int mDisabledApnTypeBitMask = 0;
 
     int mTag;
     public int mCid;
-    /**
-     * Indicate this data connection has been transferred to the other transport type during
-     * IWLAN and WWAN handover.
-     */
-    private boolean mHasTransferred;
+
+    @HandoverState
+    private int mHandoverState;
     private final Map<ApnContext, ConnectionParams> mApnContexts = new ConcurrentHashMap<>();
     PendingIntent mReconnectIntent = null;
 
@@ -367,7 +404,7 @@ public class DataConnection extends StateMachine {
     }
 
     boolean hasBeenTransferred() {
-        return mHasTransferred;
+        return mHandoverState == HANDOVER_STATE_COMPLETED;
     }
 
     int getCid() {
@@ -636,6 +673,11 @@ public class DataConnection extends StateMachine {
             }
 
             linkProperties = dc.getLinkProperties();
+            // Preserve the potential network agent from the source data connection. The ownership
+            // is not transferred at this moment.
+            mHandoverSourceNetworkAgent = dc.getNetworkAgent();
+            log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
+            dc.setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
             if (linkProperties == null) {
                 loge("connect: Can't find link properties of handover data connection. dc="
                         + dc);
@@ -1613,6 +1655,9 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
+            if (mHandoverState == HANDOVER_STATE_BEING_TRANSFERRED) {
+                mHandoverState = HANDOVER_STATE_COMPLETED;
+            }
 
             if (mConnectionParams != null) {
                 if (DBG) {
@@ -1710,7 +1755,7 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
-            mHasTransferred = false;
+            setHandoverState(HANDOVER_STATE_IDLE);
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -1875,23 +1920,25 @@ public class DataConnection extends StateMachine {
                 DcTracker dcTracker = mPhone.getDcTracker(getHandoverSourceTransport());
                 DataConnection dc = dcTracker.getDataConnectionByApnType(
                         mConnectionParams.mApnContext.getApnType());
-                if (dc == null) {
-                    loge("Cannot find the data connection for handover.");
-                    return;
+                // It's possible that the source data connection has been disconnected by the modem
+                // already. If not, set its handover state to completed.
+                if (dc != null) {
+                    // Transfer network agent from the original data connection as soon as the
+                    // new handover data connection is connected.
+                    dc.setHandoverState(HANDOVER_STATE_COMPLETED);
                 }
 
-                // Transfer network agent from the original data connection as soon as the
-                // new handover data connection is connected.
-                mNetworkAgent = dc.transferNetworkAgent(DataConnection.this, mTransportType);
-                if (mNetworkAgent != null) {
-                    log("Transfer the network agent from " + dc.getName()
-                            + " successfully.");
+                if (mHandoverSourceNetworkAgent != null) {
+                    log("Transfer network agent successfully.");
+                    mNetworkAgent = mHandoverSourceNetworkAgent;
+                    mNetworkAgent.acquireOwnership(DataConnection.this, mTransportType);
                     mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                             DataConnection.this);
                     mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
+                    mHandoverSourceNetworkAgent = null;
                 } else {
-                    loge("Failed to get network agent from original data connection. dc="
-                            + dc.getName());
+                    loge("Failed to get network agent from original data connection");
+                    return;
                 }
             } else {
                 mScore = calculateScore();
@@ -1927,8 +1974,12 @@ public class DataConnection extends StateMachine {
             mPhone.getCallTracker().unregisterForVoiceCallStarted(getHandler());
             mPhone.getCallTracker().unregisterForVoiceCallEnded(getHandler());
 
-            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
-                    reason, mNetworkInfo.getExtraInfo());
+            // If the data connection is being handover to other transport, we should not notify
+            // disconnected to connectivity service.
+            if (mHandoverState != HANDOVER_STATE_BEING_TRANSFERRED) {
+                mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
+                        reason, mNetworkInfo.getExtraInfo());
+            }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.unregisterForNattKeepaliveStatus(getHandler());
@@ -2490,20 +2541,14 @@ public class DataConnection extends StateMachine {
         return new ArrayList<>(mApnContexts.keySet());
     }
 
-    /**
-     * Transfer the network agent to the other data connection. This is only used for IWLAN
-     * data handover.
-     *
-     * @param dataConnection The new data connection on the other transport after handover.
-     * @param transportType The transport after handover.
-     *
-     * @return Network agent
-     */
-    public DcNetworkAgent transferNetworkAgent(DataConnection dataConnection,
-                                               @TransportType int transportType) {
-        mNetworkAgent.acquireOwnership(dataConnection, transportType);
-        this.mHasTransferred = true;
+    /** Get the network agent of the data connection */
+    @Nullable
+    DcNetworkAgent getNetworkAgent() {
         return mNetworkAgent;
+    }
+
+    void setHandoverState(@HandoverState int state) {
+        mHandoverState = state;
     }
 
     /**
@@ -2727,6 +2772,7 @@ public class DataConnection extends StateMachine {
         pw.println("mLinkProperties=" + mLinkProperties);
         pw.flush();
         pw.println("mDataRegState=" + mDataRegState);
+        pw.println("mHandoverState=" + mHandoverState);
         pw.println("mRilRat=" + mRilRat);
         pw.println("mNetworkCapabilities=" + getNetworkCapabilities());
         pw.println("mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
