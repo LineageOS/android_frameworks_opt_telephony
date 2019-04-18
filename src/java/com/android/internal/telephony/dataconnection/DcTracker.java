@@ -4418,12 +4418,9 @@ public class DcTracker extends Handler {
                 if (VDBG_STALL) log("skip back to back data stall recovery");
                 return false;
             }
-            // Data is not allowed in current environment
-            if (!isDataAllowed(null, null)) {
-                log("skipped data stall recovery due to data is not allowd");
-                return false;
-            }
-            return true;
+
+            // Allow recovery if data is expected to work
+            return mAttached.get() && isDataAllowed(null);
         }
 
         private void triggerRecovery() {
