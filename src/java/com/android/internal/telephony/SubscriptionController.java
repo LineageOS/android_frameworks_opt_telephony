@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.telephony.data.ApnSetting.TYPE_MMS;
 
 import android.Manifest;
 import android.annotation.Nullable;
@@ -39,6 +40,7 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -47,6 +49,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccSlotInfo;
+import android.telephony.data.ApnSetting;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.text.format.Time;
@@ -1725,6 +1728,17 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+
+    public void syncGroupedSetting(int refSubId) {
+        // Currently it only syncs allow MMS. Sync other settings as well if needed.
+        int apnWhiteList = Integer.valueOf(getSubscriptionProperty(
+                refSubId, SubscriptionManager.WHITE_LISTED_APN_DATA, mContext.getOpPackageName()));
+
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.WHITE_LISTED_APN_DATA, apnWhiteList);
+        databaseUpdateHelper(value, refSubId, true);
+    }
+
     private int databaseUpdateHelper(ContentValues value, int subId, boolean updateEntireGroup) {
         List<SubscriptionInfo> infoList = getSubscriptionsInGroup(getGroupUuid(subId),
                 mContext.getOpPackageName());
@@ -2578,6 +2592,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                         case SubscriptionManager.IS_OPPORTUNISTIC:
                         case SubscriptionManager.GROUP_UUID:
+                        case SubscriptionManager.WHITE_LISTED_APN_DATA:
                             resultValue = cursor.getInt(0) + "";
                             break;
                         default:
@@ -2701,6 +2716,9 @@ public class SubscriptionController extends ISub.Stub {
     private void migrateImsSettingHelper(String settingGlobal, String subscriptionProperty) {
         ContentResolver resolver = mContext.getContentResolver();
         int defaultSubId = getDefaultVoiceSubId();
+        if (defaultSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            return;
+        }
         try {
             int prevSetting = Settings.Global.getInt(resolver, settingGlobal);
 
@@ -3514,5 +3532,55 @@ public class SubscriptionController extends ISub.Stub {
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                     PendingIntent.getService(mContext, 0, new Intent(), 0));
         }
+    }
+
+    @Override
+    public boolean setAlwaysAllowMmsData(int subId, boolean alwaysAllow) {
+        if (DBG) logd("[setAlwaysAllowMmsData]+ alwaysAllow:" + alwaysAllow + " subId:" + subId);
+
+        enforceModifyPhoneState("setAlwaysAllowMmsData");
+
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+
+            ContentValues value = new ContentValues(1);
+            int apnWhiteList = Integer.valueOf(getSubscriptionProperty(subId,
+                    SubscriptionManager.WHITE_LISTED_APN_DATA, mContext.getOpPackageName()));
+            apnWhiteList = alwaysAllow ? (apnWhiteList | TYPE_MMS) : (apnWhiteList & ~TYPE_MMS);
+            value.put(SubscriptionManager.WHITE_LISTED_APN_DATA, apnWhiteList);
+            if (DBG) logd("[setAlwaysAllowMmsData]- alwaysAllow:" + alwaysAllow + " set");
+
+            boolean result = databaseUpdateHelper(value, subId, true) > 0;
+
+            if (result) {
+                // Refresh the Cache of Active Subscription Info List
+                refreshCachedActiveSubscriptionInfoList();
+                notifySubscriptionInfoChanged();
+                Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+                if (phone != null) {
+                    phone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                            .notifyApnWhiteListChange(TYPE_MMS, alwaysAllow);
+                }
+            }
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     *  whether apnType is whitelisted. Being white listed means data connection is allowed
+     *  even if user data is turned off.
+     */
+    public boolean isApnWhiteListed(int subId, String callingPackage, int apnType) {
+        return (getWhiteListedApnDataTypes(subId, callingPackage) & apnType) == apnType;
+    }
+
+    private @ApnSetting.ApnType int getWhiteListedApnDataTypes(int subId, String callingPackage) {
+        return Integer.valueOf(getSubscriptionProperty(subId,
+                SubscriptionManager.WHITE_LISTED_APN_DATA, callingPackage));
     }
 }

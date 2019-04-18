@@ -223,6 +223,8 @@ public abstract class TelephonyTest {
     protected PhoneConfigurationManager mPhoneConfigurationManager;
     @Mock
     protected CellularNetworkValidator mCellularNetworkValidator;
+    @Mock
+    protected UiccCard mUiccCard;
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
@@ -347,6 +349,9 @@ public abstract class TelephonyTest {
                 BlockedNumberContract.AUTHORITY, mFakeBlockedNumberContentProvider);
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
+        doReturn(mUiccCard).when(mPhone).getUiccCard();
+        doReturn(mUiccProfile).when(mUiccCard).getUiccProfile();
+
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mSubscriptionManager = (SubscriptionManager) mContext.getSystemService(
                 Context.TELEPHONY_SUBSCRIPTION_SERVICE);
@@ -500,6 +505,7 @@ public abstract class TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mTransportManager)
                 .getCurrentTransport(anyInt());
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
+        doReturn(true).when(mDataEnabledSettings).isDataEnabled(anyInt());
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());

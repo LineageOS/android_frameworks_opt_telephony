@@ -311,6 +311,15 @@ public class DataEnabledSettings {
         return (info != null) && info.isOpportunistic() && info.getGroupUuid() == null;
     }
 
+    public synchronized boolean isDataEnabled(int apnType) {
+        boolean userDataEnabled = isUserDataEnabled();
+        boolean isApnWhiteListed = SubscriptionController.getInstance().isApnWhiteListed(
+                mPhone.getSubId(), mPhone.getContext().getOpPackageName(), apnType);
+
+        return (mInternalDataEnabled && mPolicyDataEnabled && mCarrierDataEnabled
+                && (userDataEnabled || isApnWhiteListed));
+    }
+
     private void log(String s) {
         Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "]" + s);
     }

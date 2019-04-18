@@ -376,6 +376,58 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 mCallingPackage));
     }
 
+    @Test
+    @SmallTest
+    public void testSkipMigrateImsSettings() throws Exception {
+
+        // Set default invalid subId.
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                -1);
+
+        int enhanced4gModeEnabled = 1;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.ENHANCED_4G_MODE_ENABLED,
+                enhanced4gModeEnabled);
+
+        int vtImsEnabled = 0;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.VT_IMS_ENABLED,
+                vtImsEnabled);
+
+        int wfcImsEnabled = 1;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_ENABLED,
+                wfcImsEnabled);
+
+        int wfcImsMode = 2;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_MODE,
+                wfcImsMode);
+
+        int wfcImsRoamingMode = 3;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.WFC_IMS_ROAMING_MODE,
+                wfcImsRoamingMode);
+
+        mSubscriptionControllerUT.migrateImsSettings();
+
+        // Migration should be skipped because subId was invalid
+        assertEquals(enhanced4gModeEnabled, Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.ENHANCED_4G_MODE_ENABLED));
+
+        assertEquals(vtImsEnabled, Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.VT_IMS_ENABLED));
+
+        assertEquals(wfcImsEnabled, Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.WFC_IMS_ENABLED));
+
+        assertEquals(wfcImsMode, Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.WFC_IMS_MODE));
+
+        assertEquals(wfcImsRoamingMode, Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.WFC_IMS_ROAMING_MODE));
+    }
 
     @Test
     @SmallTest
