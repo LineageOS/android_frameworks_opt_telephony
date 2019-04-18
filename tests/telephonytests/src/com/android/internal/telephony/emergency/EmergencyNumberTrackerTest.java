@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -39,6 +40,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
     private EmergencyNumberTracker mEmergencyNumberTrackerMock;
     private List<EmergencyNumber> mEmergencyNumberListTestSample = new ArrayList<>();
+    private String[] mEmergencyNumberPrefixTestSample = {"123", "456"};
     private static final long TIMEOUT_MS = 500;
 
     private class EmergencyNumberTrackerTestHandler extends HandlerThread {
@@ -91,10 +93,41 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
     }
 
+    private void sendEmergencyNumberPrefix() {
+        mEmergencyNumberTrackerMock.obtainMessage(
+        	4 /* EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX */,
+                mEmergencyNumberPrefixTestSample).sendToTarget();
+        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
+    }
+
     @Test
     public void testEmergencyNumberListFromRadio() throws Exception {
         sendEmergencyNumberListFromRadio();
         assertEquals(mEmergencyNumberListTestSample,
                 mEmergencyNumberTrackerMock.getRadioEmergencyNumberList());
+    }
+
+    @Test
+    public void testEmergencyNumberListPrefix() throws Exception {
+        sendEmergencyNumberListFromRadio();
+        sendEmergencyNumberPrefix();
+        List<EmergencyNumber> resultToVerify = mEmergencyNumberListTestSample;
+        resultToVerify.add(new EmergencyNumber("123119", "jp", "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN));
+        resultToVerify.add(new EmergencyNumber("456119", "jp", "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN));
+        Collections.sort(resultToVerify);
+
+        List<EmergencyNumber> resultFromRadio = mEmergencyNumberTrackerMock
+                .getRadioEmergencyNumberList();
+        Collections.sort(resultFromRadio);
+
+        assertEquals(resultToVerify, resultFromRadio);
     }
 }
