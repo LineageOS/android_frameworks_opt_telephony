@@ -1538,9 +1538,7 @@ public class ServiceStateTracker extends Handler {
                     boolean hasChanged =
                             updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
                     hasChanged |= updateNrStateFromPhysicalChannelConfigs(
-                            list,
-                            mSS.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
-                                    AccessNetworkType.EUTRAN));
+                            list, mSS);
 
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged
@@ -1961,9 +1959,10 @@ public class ServiceStateTracker extends Handler {
     }
 
     private boolean updateNrStateFromPhysicalChannelConfigs(
-            List<PhysicalChannelConfig> configs, NetworkRegistrationInfo regState) {
-
-        if (regState == null || configs == null) return false;
+            List<PhysicalChannelConfig> configs, ServiceState ss) {
+        NetworkRegistrationInfo regInfo = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        if (regInfo == null || configs == null) return false;
 
         boolean hasNrSecondaryServingCell = false;
         for (PhysicalChannelConfig config : configs) {
@@ -1974,19 +1973,20 @@ public class ServiceStateTracker extends Handler {
             }
         }
 
-        int newNrState = regState.getNrState();
+        int newNrState = regInfo.getNrState();
         if (hasNrSecondaryServingCell) {
-            if (regState.getNrState() == NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED) {
+            if (regInfo.getNrState() == NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED) {
                 newNrState = NetworkRegistrationInfo.NR_STATE_CONNECTED;
             }
         } else {
-            if (regState.getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
+            if (regInfo.getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
                 newNrState = NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED;
             }
         }
 
-        boolean hasChanged = newNrState != regState.getNrState();
-        regState.setNrState(newNrState);
+        boolean hasChanged = newNrState != regInfo.getNrState();
+        regInfo.setNrState(newNrState);
+        ss.addNetworkRegistrationInfo(regInfo);
         return hasChanged;
     }
 
@@ -2018,8 +2018,6 @@ public class ServiceStateTracker extends Handler {
             // If the device is not camped on IWLAN, then we use cellular PS registration state
             // to compute reg state and rat.
             int regState = wwanPsRegState.getRegistrationState();
-            int dataRat = ServiceState.networkTypeToRilRadioTechnology(
-                    wwanPsRegState.getAccessNetworkTechnology());
             serviceState.setDataRegState(regCodeToServiceState(regState));
         }
         if (DBG) {
@@ -2101,8 +2099,7 @@ public class ServiceStateTracker extends Handler {
                 mNewCellIdentity = networkRegState.getCellIdentity();
 
                 if (DBG) {
-                    log("handlPollVoiceRegResultMessage: regState=" + registrationState
-                            + " radioTechnology=" + newVoiceRat);
+                    log("handlePollStateResultMessage: CS cellular. " + networkRegState);
                 }
                 break;
             }
@@ -2112,7 +2109,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
 
                 if (DBG) {
-                    log("handlPollStateResultMessage: PS IWLAN. " + networkRegState);
+                    log("handlePollStateResultMessage: PS IWLAN. " + networkRegState);
                 }
                 break;
             }
@@ -2128,7 +2125,7 @@ public class ServiceStateTracker extends Handler {
                         networkRegState.getAccessNetworkTechnology());
 
                 if (DBG) {
-                    log("handlPollStateResultMessage: PS cellular. " + networkRegState);
+                    log("handlePollStateResultMessage: PS cellular. " + networkRegState);
                 }
 
                 // When we receive OOS reset the PhyChanConfig list so that non-return-to-idle
@@ -2138,8 +2135,7 @@ public class ServiceStateTracker extends Handler {
                     mLastPhysicalChannelConfigList = null;
                     updateNrFrequencyRangeFromPhysicalChannelConfigs(null, mNewSS);
                 }
-                updateNrStateFromPhysicalChannelConfigs(
-                        mLastPhysicalChannelConfigList, networkRegState);
+                updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 if (mPhone.isPhoneTypeGsm()) {
