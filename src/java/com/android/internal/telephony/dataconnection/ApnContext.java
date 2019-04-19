@@ -153,10 +153,7 @@ public class ApnContext {
      * @param dc data connection
      */
     public synchronized void setDataConnection(DataConnection dc) {
-        if (DBG) {
-            log("setDataConnectionAc: old dc=" + mDataConnection + ",new dc=" + dc
-                    + " this=" + this);
-        }
+        log("setDataConnectionAc: old=" + mDataConnection + ",new=" + dc + " this=" + this);
         mDataConnection = dc;
     }
 
@@ -193,7 +190,7 @@ public class ApnContext {
      * @return APN setting
      */
     public synchronized ApnSetting getApnSetting() {
-        if (DBG) log("getApnSetting: apnSetting=" + mApnSetting);
+        log("getApnSetting: apnSetting=" + mApnSetting);
         return mApnSetting;
     }
 
@@ -202,7 +199,7 @@ public class ApnContext {
      * @param apnSetting APN setting
      */
     public synchronized void setApnSetting(ApnSetting apnSetting) {
-        if (DBG) log("setApnSetting: apnSetting=" + apnSetting);
+        log("setApnSetting: apnSetting=" + apnSetting);
         mApnSetting = apnSetting;
     }
 
@@ -279,9 +276,7 @@ public class ApnContext {
      * @param s Current data call state
      */
     public synchronized void setState(DctConstants.State s) {
-        if (DBG) {
-            log("setState: " + s + ", previous state:" + mState);
-        }
+        log("setState: " + s + ", previous state:" + mState);
 
         if (mState != s) {
             mStateLocalLog.log("State changed from " + mState + " to " + s);
@@ -290,7 +285,8 @@ public class ApnContext {
 
         if (mState == DctConstants.State.FAILED) {
             if (mRetryManager.getWaitingApns() != null) {
-                mRetryManager.getWaitingApns().clear(); // when teardown the connection and set to IDLE
+                // when teardown the connection and set to IDLE
+                mRetryManager.getWaitingApns().clear();
             }
         }
     }
@@ -318,9 +314,7 @@ public class ApnContext {
      * @param reason Reason for data call connection
      */
     public synchronized void setReason(String reason) {
-        if (DBG) {
-            log("set reason as " + reason + ",current state " + mState);
-        }
+        log("set reason as " + reason + ",current state " + mState);
         mReason = reason;
     }
 
@@ -373,9 +367,7 @@ public class ApnContext {
      * @param enabled True if data call is enabled
      */
     public void setEnabled(boolean enabled) {
-        if (DBG) {
-            log("set enabled as " + enabled + ", current state is " + mDataEnabled.get());
-        }
+        log("set enabled as " + enabled + ", current state is " + mDataEnabled.get());
         mDataEnabled.set(enabled);
     }
 
@@ -402,23 +394,22 @@ public class ApnContext {
         }
     }
 
-    private final ArrayList<LocalLog> mLocalLogs = new ArrayList<>();
+    private final LocalLog mLocalLog = new LocalLog(150);
     private final ArrayList<NetworkRequest> mNetworkRequests = new ArrayList<>();
     private final LocalLog mStateLocalLog = new LocalLog(50);
 
     public void requestLog(String str) {
-        synchronized (mRefCountLock) {
-            for (LocalLog l : mLocalLogs) {
-                l.log(str);
-            }
+        synchronized (mLocalLog) {
+            mLocalLog.log(str);
         }
     }
 
     public void requestNetwork(NetworkRequest networkRequest, @RequestNetworkType int type,
-                               Message onCompleteMsg, LocalLog log) {
+                               Message onCompleteMsg) {
         synchronized (mRefCountLock) {
-            mLocalLogs.add(log);
             mNetworkRequests.add(networkRequest);
+            logl("requestNetwork for " + networkRequest + ", type="
+                    + DcTracker.requestTypeToString(type));
             mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type,
                     onCompleteMsg);
             if (mDataConnection != null) {
@@ -429,17 +420,10 @@ public class ApnContext {
         }
     }
 
-    public void releaseNetwork(NetworkRequest networkRequest, @ReleaseNetworkType int type,
-                               LocalLog log) {
+    public void releaseNetwork(NetworkRequest networkRequest, @ReleaseNetworkType int type) {
         synchronized (mRefCountLock) {
-            if (mLocalLogs.contains(log) == false) {
-                log.log("ApnContext.releaseNetwork can't find this log");
-            } else {
-                mLocalLogs.remove(log);
-            }
             if (mNetworkRequests.contains(networkRequest) == false) {
-                log.log("ApnContext.releaseNetwork can't find this request ("
-                        + networkRequest + ")");
+                logl("releaseNetwork can't find this request (" + networkRequest + ")");
             } else {
                 mNetworkRequests.remove(networkRequest);
                 if (mDataConnection != null) {
@@ -447,8 +431,8 @@ public class ApnContext {
                     // the data connection. For example, the score may change.
                     mDataConnection.reevaluateDataConnectionProperties();
                 }
-                log.log("ApnContext.releaseNetwork left with " + mNetworkRequests.size() +
-                        " requests.");
+                logl("releaseNetwork left with " + mNetworkRequests.size()
+                        + " requests.");
                 if (mNetworkRequests.size() == 0
                         || type == DcTracker.RELEASE_TYPE_DETACH
                         || type == DcTracker.RELEASE_TYPE_HANDOVER) {
@@ -482,8 +466,7 @@ public class ApnContext {
     private final SparseIntArray mRetriesLeftPerErrorCode = new SparseIntArray();
 
     public void resetErrorCodeRetries() {
-        requestLog("ApnContext.resetErrorCodeRetries");
-        if (DBG) log("ApnContext.resetErrorCodeRetries");
+        logl("ApnContext.resetErrorCodeRetries");
 
         String[] config = mPhone.getContext().getResources().getStringArray(
                 com.android.internal.R.array.config_cell_retries_per_error_code);
@@ -533,10 +516,8 @@ public class ApnContext {
                 }
             }
         }
-        String str = "ApnContext.restartOnError(" + errorCode + ") found " + retriesLeft +
-                " and returned " + result;
-        if (DBG) log(str);
-        requestLog(str);
+        logl("ApnContext.restartOnError(" + errorCode + ") found " + retriesLeft
+                + " and returned " + result);
         return result;
     }
 
@@ -658,7 +639,14 @@ public class ApnContext {
     }
 
     private void log(String s) {
-        Rlog.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
+        if (DBG) {
+            Rlog.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
+        }
+    }
+
+    private void logl(String s) {
+        log(s);
+        mLocalLog.log(s);
     }
 
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
@@ -674,10 +662,10 @@ public class ApnContext {
                 pw.decreaseIndent();
             }
             pw.increaseIndent();
-            for (LocalLog l : mLocalLogs) {
-                l.dump(fd, pw, args);
-                pw.println("-----");
-            }
+            pw.println("-----");
+            pw.println("Local log:");
+            mLocalLog.dump(fd, pw, args);
+            pw.println("-----");
             pw.decreaseIndent();
             pw.println("Historical APN state:");
             pw.increaseIndent();

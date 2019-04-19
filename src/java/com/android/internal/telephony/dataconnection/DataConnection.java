@@ -606,12 +606,10 @@ public class DataConnection extends StateMachine {
      * @return Fail cause if failed to setup data connection. {@link DataFailCause#NONE} if success.
      */
     private @DataFailCause.FailCause int connect(ConnectionParams cp) {
-        if (DBG) {
-            log("connect: carrier='" + mApnSetting.getEntryName()
-                    + "' APN='" + mApnSetting.getApnName()
-                    + "' proxy='" + mApnSetting.getProxyAddressAsString()
-                    + "' port='" + mApnSetting.getProxyPort() + "'");
-        }
+        log("connect: carrier='" + mApnSetting.getEntryName()
+                + "' APN='" + mApnSetting.getApnName()
+                + "' proxy='" + mApnSetting.getProxyAddressAsString()
+                + "' port='" + mApnSetting.getProxyPort() + "'");
         if (cp.mApnContext != null) cp.mApnContext.requestLog("DataConnection.connect");
 
         // Check if we should fake an error.
