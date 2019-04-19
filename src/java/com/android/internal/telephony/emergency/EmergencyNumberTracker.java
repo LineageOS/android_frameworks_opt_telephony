@@ -122,6 +122,14 @@ public class EmergencyNumberTracker extends Handler {
                             TelephonyManager.EXTRA_NETWORK_COUNTRY);
                     logd("ACTION_NETWORK_COUNTRY_CHANGED: PhoneId: " + phoneId + " CountryIso: "
                             + countryIso);
+                    // Sometimes the country is updated as an empty string when the network signal
+                    // is lost; though we may not call emergency when there is no signal, we want
+                    // to keep the old country iso to provide country-related emergency numbers,
+                    // because they think they are still in that country. So we do need to update
+                    // country change in this case.
+                    if (TextUtils.isEmpty(countryIso)) {
+                        return;
+                    }
                     updateEmergencyNumberDatabaseCountryChange(countryIso);
                 }
                 return;
