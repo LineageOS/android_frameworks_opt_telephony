@@ -541,7 +541,7 @@ public class SubscriptionInfoUpdater extends Handler {
         updateSubscriptionInfoByIccId(slotId);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
         broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_ABSENT);
-        broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
+        broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_UNKNOWN);
         updateSubscriptionCarrierId(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
