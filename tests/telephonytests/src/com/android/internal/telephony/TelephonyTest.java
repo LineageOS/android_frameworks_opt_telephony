@@ -505,6 +505,7 @@ public abstract class TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mTransportManager)
                 .getCurrentTransport(anyInt());
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
+        doReturn(true).when(mDataEnabledSettings).isDataEnabled(anyInt());
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
