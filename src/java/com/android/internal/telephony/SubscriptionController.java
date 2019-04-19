@@ -2844,7 +2844,6 @@ public class SubscriptionController extends ISub.Stub {
      * @throws SecurityException if the caller doesn't meet the requirements
      *             outlined above.
      * @throws IllegalArgumentException if the some subscriptions in the list doesn't exist.
-     * @throws IllegalStateException if Telephony service is in bad state.
      *
      * @param subIdList list of subId that will be in the same group
      * @return groupUUID a UUID assigned to the subscription group. It returns
@@ -3028,7 +3027,6 @@ public class SubscriptionController extends ISub.Stub {
      *  the access rules we keep in our database for currently inactive eSIMs.
      *
      * @throws IllegalArgumentException if the some subId is invalid or doesn't exist.
-     * @throws IllegalStateException if Telephony is in bad state.
      *
      *  @return true if checking passes on all subId, false otherwise.
      */
@@ -3055,10 +3053,6 @@ public class SubscriptionController extends ISub.Stub {
         long identity = Binder.clearCallingIdentity();
 
         try {
-            if (!isSubInfoReady()) {
-                throw new IllegalStateException("Sub Controller not ready");
-            }
-
             // Check access rules for each sub info.
             SubscriptionManager subscriptionManager = (SubscriptionManager)
                     mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
