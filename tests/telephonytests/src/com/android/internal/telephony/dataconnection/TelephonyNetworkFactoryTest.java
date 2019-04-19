@@ -118,12 +118,12 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         doAnswer(invocation -> {
             mNetworkRequestList.add((NetworkRequest) invocation.getArguments()[0]);
             return null;
-        }).when(mDcTracker).requestNetwork(any(), anyInt(), any(), any());
+        }).when(mDcTracker).requestNetwork(any(), anyInt(), any());
 
         doAnswer(invocation -> {
             mNetworkRequestList.remove((NetworkRequest) invocation.getArguments()[0]);
             return null;
-        }).when(mDcTracker).releaseNetwork(any(), anyInt(), any());
+        }).when(mDcTracker).releaseNetwork(any(), anyInt());
 
         doAnswer(invocation -> {
             mConnectivityServiceMock.registerNetworkFactory(

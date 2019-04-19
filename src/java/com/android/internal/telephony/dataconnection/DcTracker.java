@@ -897,24 +897,19 @@ public class DcTracker extends Handler {
     }
 
     public void requestNetwork(NetworkRequest networkRequest, @RequestNetworkType int type,
-                               Message onCompleteMsg, LocalLog log) {
+                               Message onCompleteMsg) {
         final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsByType.get(apnType);
-        log.log("DcTracker.requestNetwork for " + networkRequest + " found " + apnContext
-                + ", type=" + requestTypeToString(type));
         if (apnContext != null) {
-            apnContext.requestNetwork(networkRequest, type, onCompleteMsg, log);
+            apnContext.requestNetwork(networkRequest, type, onCompleteMsg);
         }
     }
 
-    public void releaseNetwork(NetworkRequest networkRequest, @ReleaseNetworkType int type,
-                               LocalLog log) {
+    public void releaseNetwork(NetworkRequest networkRequest, @ReleaseNetworkType int type) {
         final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsByType.get(apnType);
-        log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext
-                + ", type=" + releaseTypeToString(type));
         if (apnContext != null) {
-            apnContext.releaseNetwork(networkRequest, type, log);
+            apnContext.releaseNetwork(networkRequest, type);
         }
     }
 
@@ -1710,7 +1705,6 @@ public class DcTracker extends Handler {
         str = "cleanUpConnectionInternal: X detach=" + detach + " reason="
                 + apnContext.getReason();
         if (DBG) log(str + " apnContext=" + apnContext + " dc=" + apnContext.getDataConnection());
-        apnContext.requestLog(str);
     }
 
     /**
