@@ -214,13 +214,14 @@ public class NetworkRegistrationManager extends Handler {
     private class NetworkRegStateCallback extends INetworkServiceCallback.Stub {
         @Override
         public void onRequestNetworkRegistrationInfoComplete(
-                int result, NetworkRegistrationInfo state) {
-            logd("onRequestNetworkRegistrationInfoComplete result "
-                    + result + " state " + state);
+                int result, NetworkRegistrationInfo info) {
+            logd("onRequestNetworkRegistrationInfoComplete result: "
+                    + result + ", info: " + info);
             Message onCompleteMessage = mCallbackTable.remove(this);
             if (onCompleteMessage != null) {
                 onCompleteMessage.arg1 = result;
-                onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj, state, null);
+                onCompleteMessage.obj = new AsyncResult(onCompleteMessage.obj,
+                        new NetworkRegistrationInfo(info), null);
                 onCompleteMessage.sendToTarget();
             } else {
                 loge("onCompleteMessage is null");

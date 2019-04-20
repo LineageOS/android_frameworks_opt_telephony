@@ -1471,6 +1471,7 @@ public class DcTracker extends Handler {
                 apnContext.setState(DctConstants.State.IDLE);
             }
             int radioTech = getDataRat();
+            log("service state=" + mPhone.getServiceState());
             apnContext.setConcurrentVoiceAndDataAllowed(mPhone.getServiceStateTracker()
                     .isConcurrentVoiceAndDataAllowed());
             if (apnContext.getState() == DctConstants.State.IDLE) {
@@ -2207,8 +2208,11 @@ public class DcTracker extends Handler {
 
     private void onRecordsLoadedOrSubIdChanged() {
         if (DBG) log("onRecordsLoadedOrSubIdChanged: createAllApnList");
-        mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
-                .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
+        if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+            // Auto attach is for cellular only.
+            mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
+                    .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
+        }
 
         createAllApnList();
         setDataProfilesAsNeeded();
@@ -2815,8 +2819,7 @@ public class DcTracker extends Handler {
                     setRadio(false);
                 }
                 if (DBG) {
-                    log("onDataSetupComplete: SETUP complete type=" + apnContext.getApnType()
-                        + ", reason:" + apnContext.getReason());
+                    log("onDataSetupComplete: SETUP complete type=" + apnContext.getApnType());
                 }
                 if (Build.IS_DEBUGGABLE) {
                     // adb shell setprop persist.radio.test.pco [pco_val]
@@ -2887,7 +2890,7 @@ public class DcTracker extends Handler {
 
         // Check if we need to retry or not.
         // TODO: We should support handover retry in the future.
-        if (delay >= 0 && requestType != REQUEST_TYPE_HANDOVER) {
+        if (delay >= 0) {
             if (DBG) log("onDataSetupCompleteError: Try next APN. delay = " + delay);
             apnContext.setState(DctConstants.State.RETRYING);
             // Wait a bit before trying the next APN, so that
@@ -3298,16 +3301,17 @@ public class DcTracker extends Handler {
             if (apn.canHandleType(requestedApnTypeBitmask)) {
                 if (ServiceState.bitmaskHasTech(apn.getNetworkTypeBitmask(),
                         ServiceState.rilRadioTechnologyToNetworkType(radioTech))) {
-                    if (DBG) log("buildWaitingApns: adding apn=" + apn);
+                    if (VDBG) log("buildWaitingApns: adding apn=" + apn);
                     apnList.add(apn);
                 } else {
                     if (DBG) {
                         log("buildWaitingApns: networkTypeBitmask:"
                                 + apn.getNetworkTypeBitmask()
-                                + " does not include radioTech:" + radioTech);
+                                + " does not include radioTech:"
+                                + ServiceState.rilRadioTechnologyToString(radioTech));
                     }
                 }
-            } else if (DBG) {
+            } else if (VDBG) {
                 log("buildWaitingApns: couldn't handle requested ApnType="
                         + requestedApnType);
             }
@@ -3398,17 +3402,21 @@ public class DcTracker extends Handler {
         } else {
             mCanSetPreferApn = false;
         }
-        log("getPreferredApn: mRequestedApnType=" + mRequestedApnType + " cursor=" + cursor
-                + " cursor.count=" + ((cursor != null) ? cursor.getCount() : 0));
+
+        if (VDBG) {
+            log("getPreferredApn: mRequestedApnType=" + mRequestedApnType + " cursor=" + cursor
+                    + " cursor.count=" + ((cursor != null) ? cursor.getCount() : 0));
+        }
 
         if (mCanSetPreferApn && cursor.getCount() > 0) {
             int pos;
             cursor.moveToFirst();
             pos = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID));
             for(ApnSetting p : mAllApnSettings) {
-                log("getPreferredApn: apnSetting=" + p);
                 if (p.getId() == pos && p.canHandleType(mRequestedApnType)) {
-                    log("getPreferredApn: X found apnSetting" + p);
+                    log("getPreferredApn: For APN type "
+                            + ApnSetting.getApnTypeString(mRequestedApnType) + " found apnSetting "
+                            + p);
                     cursor.close();
                     return p;
                 }
@@ -4470,12 +4478,9 @@ public class DcTracker extends Handler {
                 if (VDBG_STALL) log("skip back to back data stall recovery");
                 return false;
             }
-            // Data is not allowed in current environment
-            if (!isDataAllowed(null, null)) {
-                log("skipped data stall recovery due to data is not allowd");
-                return false;
-            }
-            return true;
+
+            // Allow recovery if data is expected to work
+            return mAttached.get() && isDataAllowed(null);
         }
 
         private void triggerRecovery() {
