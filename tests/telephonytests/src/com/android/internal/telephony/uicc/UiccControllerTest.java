@@ -337,7 +337,44 @@ public class UiccControllerTest extends TelephonyTest {
                 false,     // isEuicc
                 0,         // cardId
                 null,      // eid
-                ics.iccid, // iccid is unknown
+                ics.iccid, // iccid
+                0,         // slotIndex
+                true);     // isRemovable
+        assertEquals(uiccCardInfo, mUiccControllerUT.getAllUiccCardInfos().get(0));
+    }
+
+    @Test
+    public void testIccidWithTrailingF() {
+        // Give UiccController a real context so it can use shared preferences
+        mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
+
+        // Mock out UiccSlots
+        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        doReturn(false).when(mMockSlot).isEuicc();
+        doReturn(mMockCard).when(mMockSlot).getUiccCard();
+        doReturn("ASDF1234").when(mMockCard).getCardId();
+        doReturn(true).when(mMockSlot).isRemovable();
+        doReturn("A1B2C3D4").when(mMockCard).getCardId();
+        doReturn("123451234567890F").when(mMockCard).getIccId();
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mMockCard).getCardState();
+
+        // simulate card status loaded so that the UiccController sets the card ID
+        IccCardStatus ics = new IccCardStatus();
+        ics.setCardState(1 /* present */);
+        ics.setUniversalPinState(3 /* disabled */);
+        ics.atr = "abcdef0123456789abcdef";
+        ics.iccid = "123451234567890F";
+        ics.physicalSlotIndex = 0;
+        AsyncResult ar = new AsyncResult(null, ics, null);
+        Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
+        mUiccControllerUT.handleMessage(msg);
+
+        // assert that the default cardId is the slot with the lowest slot index, even if inactive
+        UiccCardInfo uiccCardInfo = new UiccCardInfo(
+                false,     // isEuicc
+                0,         // cardId
+                null,      // eid
+                IccUtils.stripTrailingFs(ics.iccid), //iccid without ending F
                 0,         // slotIndex
                 true);     // isRemovable
         assertEquals(uiccCardInfo, mUiccControllerUT.getAllUiccCardInfos().get(0));
@@ -352,6 +389,8 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.mUiccSlots[0] = mMockSlot;
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(null).when(mMockSlot).getUiccCard();
+        doReturn("123451234567890").when(mMockSlot).getIccId();
+        doReturn(false).when(mMockSlot).isRemovable();
 
         // simulate card status loaded so that the UiccController sets the card ID
         IccCardStatus ics = new IccCardStatus();
@@ -364,8 +403,15 @@ public class UiccControllerTest extends TelephonyTest {
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
 
-        // assert that the getAllUiccCardInfos returns an empty list without crashing
-        assertEquals(0, mUiccControllerUT.getAllUiccCardInfos().size());
+        // assert that the getAllUiccCardInfos uses info from the UiccSlot when the card is null
+        UiccCardInfo uiccCardInfo = new UiccCardInfo(
+                true,                                   // isEuicc
+                TelephonyManager.UNINITIALIZED_CARD_ID, // cardId
+                null,                                   // eid
+                ics.iccid,                              // iccid
+                0,                                      // slotIndex
+                false);                                 // isRemovable
+        assertEquals(uiccCardInfo, mUiccControllerUT.getAllUiccCardInfos().get(0));
     }
 
     @Test
