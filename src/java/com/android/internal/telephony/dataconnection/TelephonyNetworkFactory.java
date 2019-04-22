@@ -204,7 +204,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                                         int transport, Message onCompleteMsg) {
         if (mPhone.getDcTracker(transport) != null) {
             mPhone.getDcTracker(transport).requestNetwork(networkRequest, requestType,
-                    onCompleteMsg, mLocalLog);
+                    onCompleteMsg);
         }
     }
 
@@ -212,8 +212,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                                         @ReleaseNetworkType int releaseType,
                                         int transport) {
         if (mPhone.getDcTracker(transport) != null) {
-            mPhone.getDcTracker(transport).releaseNetwork(networkRequest, releaseType,
-                    mLocalLog);
+            mPhone.getDcTracker(transport).releaseNetwork(networkRequest, releaseType);
         }
     }
 
