@@ -77,7 +77,6 @@ import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
-import android.util.LocalLog;
 import android.util.Pair;
 
 import androidx.test.filters.FlakyTest;
@@ -946,8 +945,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         NetworkRequest nr = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build();
-        LocalLog l = new LocalLog(100);
-        mDct.requestNetwork(nr, DcTracker.REQUEST_TYPE_NORMAL, null, l);
+        mDct.requestNetwork(nr, DcTracker.REQUEST_TYPE_NORMAL, null);
         waitForMs(200);
 
         verifyDataConnected(FAKE_APN1);
