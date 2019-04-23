@@ -89,9 +89,6 @@ public class SIMRecords extends IccRecords {
     byte[] mEfPl = null;
 
     @UnsupportedAppUsage
-    int mCarrierNameDisplayCondition;
-
-    @UnsupportedAppUsage
     UsimServiceTable mUsimServiceTable;
 
     @Override
