@@ -248,8 +248,16 @@ public class UiccController extends Handler {
         return -1;
     }
 
-    private int getSlotIdFromPhoneId(int phoneId) {
-        return mPhoneIdToSlotId[phoneId];
+    /**
+     * Return the physical slot id associated with the given phoneId, or INVALID_SLOT_ID.
+     * @param phoneId the phoneId to check
+     */
+    public int getSlotIdFromPhoneId(int phoneId) {
+        try {
+            return mPhoneIdToSlotId[phoneId];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return INVALID_SLOT_ID;
+        }
     }
 
     @UnsupportedAppUsage
