@@ -459,6 +459,10 @@ public class PhoneSwitcher extends Handler {
         for (Phone p : mPhones) {
             if (p == null) continue;
             if (p.isInEcm() || p.isInEmergencyCall()) return true;
+            Phone imsPhone = p.getImsPhone();
+            if (imsPhone != null && (imsPhone.isInEcm() || imsPhone.isInEmergencyCall())) {
+                return true;
+            }
         }
         return false;
     }
