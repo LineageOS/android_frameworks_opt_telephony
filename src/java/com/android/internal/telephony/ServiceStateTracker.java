@@ -118,6 +118,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
@@ -339,6 +341,8 @@ public class ServiceStateTracker extends Handler {
     private final LocalLog mRatLog = new LocalLog(20);
     private final LocalLog mRadioPowerLog = new LocalLog(20);
     private final LocalLog mMdnLog = new LocalLog(20);
+
+    private Pattern mOperatorNameStringPattern;
 
     private class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
         public final AtomicInteger mPreviousSubId =
@@ -1094,6 +1098,7 @@ public class ServiceStateTracker extends Handler {
                         loge("Invalid CellInfo result");
                     } else {
                         cellInfo = (List<CellInfo>) ar.result;
+                        updateOperatorNameForCellInfo(cellInfo);
                         mLastCellInfoList = cellInfo;
                         mPhone.notifyCellInfo(cellInfo);
                         if (VDBG) {
@@ -1206,6 +1211,7 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     CellIdentity cellIdentity = ((NetworkRegistrationInfo) ar.result)
                             .getCellIdentity();
+                    updateOperatorNameForCellIdentity(cellIdentity);
                     mCellIdentity = cellIdentity;
                     mPhone.notifyLocationChanged(getCellLocation());
                 }
@@ -1792,6 +1798,7 @@ public class ServiceStateTracker extends Handler {
         if (mPollingContext[0] == 0) {
             mNewSS.setEmergencyOnly(mEmergencyOnly);
             combinePsRegistrationStates(mNewSS);
+            updateOperatorNameForServiceState(mNewSS);
             if (mPhone.isPhoneTypeGsm()) {
                 updateRoamingState();
             } else {
@@ -2172,6 +2179,8 @@ public class ServiceStateTracker extends Handler {
                     String opNames[] = (String[]) ar.result;
 
                     if (opNames != null && opNames.length >= 3) {
+                        mNewSS.setOperatorAlphaLongRaw(opNames[0]);
+                        mNewSS.setOperatorAlphaShortRaw(opNames[1]);
                         // FIXME: Giving brandOverride higher precedence, is this desired?
                         String brandOverride = mUiccController.getUiccCard(getPhoneId()) != null
                                 ? mUiccController.getUiccCard(getPhoneId())
@@ -4580,6 +4589,7 @@ public class ServiceStateTracker extends Handler {
         if (config != null) {
             updateLteEarfcnLists(config);
             updateReportingCriteria(config);
+            updateOperatorNamePattern(config);
         }
 
         // Sometimes the network registration information comes before carrier config is ready.
@@ -5303,5 +5313,84 @@ public class ServiceStateTracker extends Handler {
 
     String getCdmaEriText(int roamInd, int defRoamInd) {
         return mEriManager.getCdmaEriText(roamInd, defRoamInd);
+    }
+
+    private void updateOperatorNamePattern(PersistableBundle config) {
+        String operatorNamePattern = config.getString(
+                CarrierConfigManager.KEY_OPERATOR_NAME_FILTER_PATTERN_STRING);
+        if (!TextUtils.isEmpty(operatorNamePattern)) {
+            mOperatorNameStringPattern = Pattern.compile(operatorNamePattern);
+            if (DBG) {
+                log("mOperatorNameStringPattern: " + mOperatorNameStringPattern.toString());
+            }
+        }
+    }
+
+    private void updateOperatorNameForServiceState(ServiceState servicestate) {
+        if (servicestate == null) {
+            return;
+        }
+
+        servicestate.setOperatorName(
+                filterOperatorNameByPattern(servicestate.getOperatorAlphaLong()),
+                filterOperatorNameByPattern(servicestate.getOperatorAlphaShort()),
+                servicestate.getOperatorNumeric());
+
+        List<NetworkRegistrationInfo> networkRegistrationInfos =
+                servicestate.getNetworkRegistrationInfoList();
+
+        for (int i = 0; i < networkRegistrationInfos.size(); i++) {
+            if (networkRegistrationInfos.get(i) != null) {
+                updateOperatorNameForCellIdentity(
+                        networkRegistrationInfos.get(i).getCellIdentity());
+            }
+        }
+    }
+
+    private void updateOperatorNameForCellIdentity(CellIdentity cellIdentity) {
+        if (cellIdentity == null) {
+            return;
+        }
+        cellIdentity.setOperatorAlphaLong(
+                filterOperatorNameByPattern((String) cellIdentity.getOperatorAlphaLong()));
+        cellIdentity.setOperatorAlphaShort(
+                filterOperatorNameByPattern((String) cellIdentity.getOperatorAlphaShort()));
+    }
+
+    /**
+     * To modify the operator name of CellInfo by pattern.
+     *
+     * @param cellInfos List of CellInfo{@link CellInfo}.
+     */
+    public void updateOperatorNameForCellInfo(List<CellInfo> cellInfos) {
+        if (cellInfos == null || cellInfos.isEmpty()) {
+            return;
+        }
+        for (CellInfo cellInfo : cellInfos) {
+            if (cellInfo.isRegistered()) {
+                updateOperatorNameForCellIdentity(cellInfo.getCellIdentity());
+            }
+        }
+    }
+
+    /**
+     * To modify the operator name by pattern.
+     *
+     * @param operatorName Registered operator name
+     * @return An operator name.
+     */
+    public String filterOperatorNameByPattern(String operatorName) {
+        if (mOperatorNameStringPattern == null || TextUtils.isEmpty(operatorName)) {
+            return operatorName;
+        }
+        Matcher matcher = mOperatorNameStringPattern.matcher(operatorName);
+        if (matcher.find()) {
+            if (matcher.groupCount() > 0) {
+                operatorName = matcher.group(1);
+            } else {
+                log("filterOperatorNameByPattern: pattern no group");
+            }
+        }
+        return operatorName;
     }
 }
