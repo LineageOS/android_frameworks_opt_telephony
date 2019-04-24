@@ -162,6 +162,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // Reference: 3GPP TS 31.102 Section 4.2.66
     protected String[] mSpdi;
 
+
+    // Carrier name display condition bitmask
+    // Reference: 3GPP TS 131.102 section 4.2.12 EF_SPN Display Condition
+    protected int mCarrierNameDisplayCondition;
+
     protected String[] mEhplmns;
     protected String[] mFplmns;
 
@@ -193,10 +198,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN = 1;
     public static final int CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN = 2;
 
-    // Display both SPN & PLMN regardless the roaming state.
-    public static final int DEFAULT_CARRIER_NAME_DISPLAY_CONDITION =
-            CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN
-                    | CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN;
+    // Display SPN only and only if registered to Home PLMNs.
+    // Display PLMN only and only if registered to Non-Home PLMNs.
+    public static final int DEFAULT_CARRIER_NAME_DISPLAY_CONDITION = 0;
 
     // ***** Event Constants
     public static final int EVENT_MWI = 0; // Message Waiting indication
@@ -909,7 +913,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return a bitmask represent the carrier name display condition.
      */
     @CarrierNameDisplayConditionBitmask
-    public abstract int getCarrierNameDisplayCondition();
+    public int getCarrierNameDisplayCondition() {
+        return mCarrierNameDisplayCondition;
+    }
 
     /**
      * Retrieves the service provider display information. This is a list of PLMNs in which the
@@ -1185,5 +1191,56 @@ public abstract class IccRecords extends Handler implements IccConstants {
             pw.println(" mFakeSpn=" + mCarrierTestOverride.getFakeSpn());
         }
         pw.flush();
+    }
+
+    /**
+     * Operator PLMN information. This contains the location area information or tracking area
+     * that are used to associate a specific name contained in EF_PNN.
+     *
+     * Reference: 3GPP TS 31.102 section 4.2.59 EF_OPL
+     */
+    public static final class OperatorPlmnInfo {
+        // PLMN numeric that may contains wildcard character ".".
+        // For example, the pattern "123..." could match all PLMN which mcc is 123.
+        public final String plmnNumericPattern;
+
+        public final int lacTacStart;
+        public final int lacTacEnd;
+
+        public final int plmnNetworkNameIndex;
+        public OperatorPlmnInfo(String plmnNumericPattern, int lacTacStart, int lacTacEnd,
+                                int plmnNetworkNameIndex) {
+            this.plmnNumericPattern = plmnNumericPattern;
+            this.lacTacStart = lacTacStart;
+            this.lacTacEnd = lacTacEnd;
+            this.plmnNetworkNameIndex = plmnNetworkNameIndex;
+        }
+
+        @Override
+        public String toString() {
+            return "{ plmnNumericPattern = " + plmnNumericPattern
+                    + "lacTacStart = " + lacTacStart
+                    + "lacTacEnd = " + lacTacEnd
+                    + "plmnNetworkNameIndex = " + plmnNetworkNameIndex
+                    + " }";
+        }
+    }
+
+    /**
+     * Full and short version of PLMN network name.
+     */
+    public static final class PlmnNetworkName {
+        public final String fullName;
+        public final String shortName;
+
+        public PlmnNetworkName(String fullName, String shortName) {
+            this.fullName = fullName;
+            this.shortName = shortName;
+        }
+
+        @Override
+        public String toString() {
+            return "{ fullName = " + fullName + " shortName = " + shortName + " }";
+        }
     }
 }

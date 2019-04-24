@@ -423,6 +423,7 @@ public class UiccSlot extends Handler {
         pw.println(" mCi=" + mCi);
         pw.println(" mActive=" + mActive);
         pw.println(" mIsEuicc=" + mIsEuicc);
+        pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mIccId=" + mIccId);
         pw.println(" mCardState=" + mCardState);
