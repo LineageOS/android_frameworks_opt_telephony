@@ -3574,7 +3574,15 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private @ApnSetting.ApnType int getWhiteListedApnDataTypes(int subId, String callingPackage) {
-        return Integer.valueOf(getSubscriptionProperty(subId,
-                SubscriptionManager.WHITE_LISTED_APN_DATA, callingPackage));
+        String whiteListedApnData = getSubscriptionProperty(subId,
+                SubscriptionManager.WHITE_LISTED_APN_DATA, callingPackage);
+
+        try {
+            return Integer.valueOf(whiteListedApnData);
+        } catch (NumberFormatException e) {
+            loge("[getWhiteListedApnDataTypes] couldn't parse apn data:" + whiteListedApnData);
+        }
+
+        return ApnSetting.TYPE_NONE;
     }
 }
