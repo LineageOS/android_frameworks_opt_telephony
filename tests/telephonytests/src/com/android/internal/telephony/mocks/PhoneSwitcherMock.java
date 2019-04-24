@@ -23,20 +23,30 @@ import android.os.RegistrantList;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.PhoneSwitcher;
+import com.android.internal.telephony.SubscriptionController;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PhoneSwitcherMock extends PhoneSwitcher {
     private final RegistrantList mActivePhoneRegistrants;
     private final AtomicBoolean mIsActive[];
 
-    public PhoneSwitcherMock(int numPhones, Looper looper) {
+    public PhoneSwitcherMock(int numPhones, Looper looper, SubscriptionController subController)
+            throws Exception {
         super(numPhones, looper);
 
         mActivePhoneRegistrants = new RegistrantList();
         mIsActive = new AtomicBoolean[numPhones];
         for(int i = 0; i < numPhones; i++) {
             mIsActive[i] = new AtomicBoolean(false);
+        }
+
+        if (subController != null) {
+            Field subControllerField =
+                this.getClass().getSuperclass().getDeclaredField("mSubscriptionController");
+            subControllerField.setAccessible(true);
+            subControllerField.set(this, subController);
         }
     }
 
