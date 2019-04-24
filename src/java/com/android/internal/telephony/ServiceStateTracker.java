@@ -3501,7 +3501,7 @@ public class ServiceStateTracker extends Handler {
                 isRoaming = ss.getRoaming();
             } else {
                 String[] hplmns = mIccRecords != null ? mIccRecords.getHomePlmns() : null;
-                isRoaming = ArrayUtils.contains(hplmns, ss.getOperatorNumeric());
+                isRoaming = !ArrayUtils.contains(hplmns, ss.getOperatorNumeric());
             }
             int rule;
             if (isRoaming) {
