@@ -152,13 +152,11 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE,
                 new ConnectivityManager(mContext, mIConnectivityManager));
         mTelephonyRegistryMock = new TelephonyRegistryMock();
-        mPhoneSwitcherMock = new PhoneSwitcherMock(numberOfPhones, mLooper);
         mSubscriptionControllerMock = new SubscriptionControllerMock(mContext,
                 mTelephonyRegistryMock, numberOfPhones);
         mSubscriptionMonitorMock = new SubscriptionMonitorMock(numberOfPhones);
-        mPhoneSwitcherMock = new PhoneSwitcherMock(numberOfPhones, mLooper);
-        mSubscriptionControllerMock = new SubscriptionControllerMock(mContext,
-                mTelephonyRegistryMock, numberOfPhones);
+        mPhoneSwitcherMock = new PhoneSwitcherMock(
+                numberOfPhones, mLooper, mSubscriptionControllerMock);
         mSubscriptionMonitorMock = new SubscriptionMonitorMock(numberOfPhones);
 
         replaceInstance(SubscriptionController.class, "sInstance", null,
