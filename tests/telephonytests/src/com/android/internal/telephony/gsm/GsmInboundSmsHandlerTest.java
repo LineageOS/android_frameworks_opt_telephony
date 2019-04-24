@@ -57,6 +57,7 @@ import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
+import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
@@ -157,6 +158,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(mMessageBody).when(mMockInboundSmsTracker).getMessageBody();
         doReturn(mSmsPdu).when(mMockInboundSmsTracker).getPdu();
         doReturn(mInboundSmsTrackerCV.get("date")).when(mMockInboundSmsTracker).getTimestamp();
+        doReturn(SmsConstants.FORMAT_3GPP).when(mMockInboundSmsTracker).getFormat();
         doReturn(mInboundSmsTrackerCV).when(mMockInboundSmsTracker).getContentValues();
 
         doReturn(mMockInboundSmsTracker).when(mTelephonyComponentFactory)
