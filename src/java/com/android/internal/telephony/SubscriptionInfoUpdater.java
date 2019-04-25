@@ -614,8 +614,13 @@ public class SubscriptionInfoUpdater extends Handler {
         // TODO investigate if we can update for each slot separately.
         if (isAllIccIdQueryDone()) {
             // Ensure the modems are mapped correctly
-            mSubscriptionManager.setDefaultDataSubId(
-                    mSubscriptionManager.getDefaultDataSubscriptionId());
+            if (mSubscriptionManager.isActiveSubId(
+                    mSubscriptionManager.getDefaultDataSubscriptionId())) {
+                mSubscriptionManager.setDefaultDataSubId(
+                        mSubscriptionManager.getDefaultDataSubscriptionId());
+            } else {
+                logd("bypass reset default data sub if inactive");
+            }
             UiccController uiccController = UiccController.getInstance();
             UiccSlot[] uiccSlots = uiccController.getUiccSlots();
             if (uiccSlots != null) {
