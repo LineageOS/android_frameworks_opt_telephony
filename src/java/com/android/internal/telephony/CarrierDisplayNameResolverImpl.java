@@ -20,12 +20,15 @@ import android.annotation.NonNull;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
+import android.util.LocalLog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccRecords.CarrierNameDisplayConditionBitmask;
 import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
 import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
+import com.android.internal.util.ArrayUtils;
+import com.android.internal.util.IndentingPrintWriter;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,8 +55,17 @@ public class CarrierDisplayNameResolverImpl implements CarrierDisplayNameResolve
     private final SparseArray<List<PlmnNetworkName>> mPlmnNetworkNames = new SparseArray<>();
     private final SparseArray<List<OperatorPlmnInfo>> mOperatorPlmns = new SparseArray<>();
     private final SparseArray<List<String>> mEhplmns = new SparseArray<>();
+    private final LocalLog mLocalLog;
 
     private ServiceState mServiceState;
+    private boolean mShouldShowServiceProviderName;
+    private boolean mShouldShowPlmnNetworkName;
+    private String mServiceProviderName;
+    private String mPlmnNetworkName;
+    private String mHomePlmn;
+
+    /** {@code True} if any item is changed after the previous carrier name resolved. */
+    private boolean mItemChanged;
 
     /**
      * The priority of ef source. Lower index means higher priority.
@@ -65,6 +77,7 @@ public class CarrierDisplayNameResolverImpl implements CarrierDisplayNameResolve
             Arrays.asList(
                     EF_SOURCE_CARRIER_API,
                     EF_SOURCE_CARRIER_CONFIG,
+                    EF_SOURCE_ERI,
                     EF_SOURCE_USIM,
                     EF_SOURCE_SIM,
                     EF_SOURCE_CSIM,
@@ -74,95 +87,100 @@ public class CarrierDisplayNameResolverImpl implements CarrierDisplayNameResolve
                     EF_SOURCE_MODEM_CONFIG,
                     EF_SOURCE_DEFAULT);
 
-    public CarrierDisplayNameResolverImpl() {
-        int defaultSourcePriority = getSourcePriority(EF_SOURCE_DEFAULT);
-        mServiceProviderNames.put(defaultSourcePriority, "");
-        mSpdi.put(defaultSourcePriority, Collections.EMPTY_LIST);
-        mCarrierNameDisplayConditionRules.put(defaultSourcePriority,
+    public CarrierDisplayNameResolverImpl(LocalLog localLog) {
+        mLocalLog = localLog;
+        int key = getSourcePriority(EF_SOURCE_DEFAULT);
+        mServiceProviderNames.put(key, "");
+        mSpdi.put(key, Collections.EMPTY_LIST);
+        mCarrierNameDisplayConditionRules.put(key,
                 new CarrierDisplayNameConditionRule(
                         DEFAULT_CARRIER_NAME_DISPLAY_CONDITION_BITMASK));
-        mPlmnNetworkNames.put(defaultSourcePriority, Collections.EMPTY_LIST);
-        mOperatorPlmns.put(defaultSourcePriority, Collections.EMPTY_LIST);
-        mEhplmns.put(defaultSourcePriority, Collections.EMPTY_LIST);
+        mPlmnNetworkNames.put(key, Collections.EMPTY_LIST);
+        mOperatorPlmns.put(key, Collections.EMPTY_LIST);
+        mEhplmns.put(key, Collections.EMPTY_LIST);
     }
 
     @Override
-    public void updateServiceProviderName(@EFSource int source, @NonNull String spn) {
+    public void updateServiceProviderName(@EFSource int source, String spn) {
+        if (TextUtils.isEmpty(spn)) return;
         mServiceProviderNames.put(getSourcePriority(source), spn);
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
     public void updateServiceProviderDisplayInformation(
             @EFSource int source, @NonNull List<String> spdi) {
+        if (ArrayUtils.isEmpty(spdi)) return;
         mSpdi.put(getSourcePriority(source), spdi);
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
     public void updateServiceProviderNameDisplayCondition(
-            @EFSource int source, int condition) {
+            @EFSource int source, @CarrierNameDisplayConditionBitmask int condition) {
+        if (condition == IccRecords.INVALID_CARRIER_NAME_DISPLAY_CONDITION_BITMASK) return;
         mCarrierNameDisplayConditionRules.put(getSourcePriority(source),
                 new CarrierDisplayNameConditionRule(condition));
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
     public void updatePlmnNetworkNameList(
             @EFSource int source, @NonNull List<PlmnNetworkName> pnnList) {
+        if (ArrayUtils.isEmpty(pnnList)) return;
         mPlmnNetworkNames.put(getSourcePriority(source), pnnList);
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
-    public void updateEhplmnList(@EFSource int source, List<String> ehplmns) {
+    public void updateEhplmnList(@EFSource int source, @NonNull List<String> ehplmns) {
+        if (ArrayUtils.isEmpty(ehplmns)) return;
         mEhplmns.put(getSourcePriority(source), ehplmns);
+        mItemChanged = true;
     }
 
     @Override
-    public void updateServiceState(ServiceState serviceState) {
+    public void updateServiceState(@NonNull ServiceState serviceState) {
         mServiceState = serviceState;
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
-    public void updateOperatorPlmnList(
-            @EFSource int source, @NonNull List<OperatorPlmnInfo> opl) {
+    public void updateOperatorPlmnList(@EFSource int source, @NonNull List<OperatorPlmnInfo> opl) {
+        if (ArrayUtils.isEmpty(opl)) return;
         mOperatorPlmns.put(getSourcePriority(source), opl);
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
     public void updateHomePlmnNumeric(@NonNull String homePlmnNumeric) {
         mHomePlmn = homePlmnNumeric;
-        resolveCarrierDisplayName();
+        mItemChanged = true;
     }
 
     @Override
     public boolean shouldShowPlmnNetworkName() {
+        if (mItemChanged) resolveCarrierDisplayName();
         return mShouldShowPlmnNetworkName;
     }
 
     @Override
     public boolean shouldShowServiceProviderName() {
+        if (mItemChanged) resolveCarrierDisplayName();
         return mShouldShowServiceProviderName;
     }
 
     @Override
     public String getPlmnNetworkName() {
+        if (mItemChanged) resolveCarrierDisplayName();
         return mPlmnNetworkName;
     }
 
     @Override
     public String getServiceProviderName() {
+        if (mItemChanged) resolveCarrierDisplayName();
         return mServiceProviderName;
     }
-
-    private boolean mShouldShowServiceProviderName;
-    private boolean mShouldShowPlmnNetworkName;
-    private String mServiceProviderName;
-    private String mPlmnNetworkName;
-    private String mHomePlmn;
 
     private void resolveCarrierDisplayName() {
         if (mServiceState == null) return;
@@ -176,6 +194,7 @@ public class CarrierDisplayNameResolverImpl implements CarrierDisplayNameResolve
         // Currently use the roaming state from ServiceState.
         // EF_SPDI is only used when determine the service provider name and PLMN network name
         // display condition rule.
+        // All the PLMNs will be considered HOME PLMNs if there is a brand override.
         boolean isRoaming = mServiceState.getRoaming() && !efSpdi.contains(registeredPlmnNumeric);
         mShouldShowServiceProviderName = displayRule.shouldShowSpn(isRoaming);
         mShouldShowPlmnNetworkName = displayRule.shouldShowPnn(isRoaming);
@@ -202,18 +221,49 @@ public class CarrierDisplayNameResolverImpl implements CarrierDisplayNameResolve
             mPlmnNetworkName = registeredPlmnNumeric;
         }
 
-        if (DBG) {
-            Rlog.d(TAG, "spnDisplayCondition = " + displayRule
-                    + " ,isRoaming = " + isRoaming
-                    + " ,registeredPLMN = " + registeredPlmnNumeric
-                    + " ,homePLMN = " + mHomePlmn
-                    + " ,spnList = " + mServiceProviderNames
-                    + " ,spnCondition " + mCarrierNameDisplayConditionRules
-                    + " ,spdiList = " + mSpdi
-                    + " ,pnnList = " + mPlmnNetworkNames
-                    + " ,oplList = " + mOperatorPlmns
-                    + " ,ehplmn = " + mEhplmns);
-        }
+        String logInfo = "isRoaming = " + isRoaming
+                + " ,registeredPLMN = " + registeredPlmnNumeric
+                + " ,displayRule = " + displayRule
+                + " ,shouldShowPlmn = " + mShouldShowPlmnNetworkName
+                + " ,plmn = " + mPlmnNetworkName
+                + " ,shouldShowSpn = " + mShouldShowServiceProviderName
+                + " ,spn = " + mServiceProviderName;
+        if (DBG) Rlog.d(TAG, logInfo);
+        mLocalLog.log(logInfo);
+
+        mItemChanged = false;
+    }
+
+    @Override
+    public String toString() {
+        Boolean roamingFromSS = mServiceState != null ? mServiceState.getRoaming() : null;
+        String registeredPLMN = mServiceState != null ? mServiceState.getOperatorNumeric() : null;
+        return " { spnDisplayCondition = " + mCarrierNameDisplayConditionRules
+                + " ,roamingFromSS = " + roamingFromSS
+                + " ,registeredPLMN = " + registeredPLMN
+                + " ,homePLMN = " + mHomePlmn
+                + " ,spnList = " + mServiceProviderNames
+                + " ,spnCondition " + mCarrierNameDisplayConditionRules
+                + " ,spdiList = " + mSpdi
+                + " ,pnnList = " + mPlmnNetworkNames
+                + " ,oplList = " + mOperatorPlmns
+                + " ,ehplmn = " + mEhplmns
+                + " }";
+    }
+
+    /**
+     * Dumps information for carrier display name resolver.
+     * @param pw information printer.
+     */
+    public void dump(IndentingPrintWriter pw) {
+        pw.println("CDNRImpl");
+        pw.increaseIndent();
+        pw.println("fields = " + toString());
+        pw.println("shouldShowPlmn = " + mShouldShowPlmnNetworkName);
+        pw.println("plmn= " + mPlmnNetworkName);
+        pw.println("showShowSpn = " + mShouldShowServiceProviderName);
+        pw.println("spn = " + mServiceProviderName);
+        pw.decreaseIndent();
     }
 
     /**

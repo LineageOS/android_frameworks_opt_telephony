@@ -96,6 +96,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccRecords;
 
 import org.junit.After;
 import org.junit.Before;
@@ -141,6 +142,29 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private static final int EVENT_VOICE_ROAMING_ON = 10;
     private static final int EVENT_VOICE_ROAMING_OFF = 11;
     private static final int EVENT_VOICE_RAT_CHANGED = 12;
+
+    private static final int PHONE_ID = 0;
+
+    private static final String CARRIER_NAME_DISPLAY_NO_SERVICE = "no service";
+    private static final String CARRIER_NAME_DISPLAY_EMERGENCY_CALL = "emergency call";
+    private static final String WIFI_CALLING_VOICE_FORMAT = "%s wifi calling";
+    private static final String WIFI_CALLING_DATA_FORMAT = "%s wifi data";
+    private static final String WIFI_CALLING_FLIGHT_MODE_FORMAT = "%s flight mode";
+
+    private static final String[] WIFI_CALLING_FORMATTERS = {
+            WIFI_CALLING_VOICE_FORMAT,
+            WIFI_CALLING_DATA_FORMAT,
+            WIFI_CALLING_FLIGHT_MODE_FORMAT };
+
+    private static final String HOME_PLMN = "310260";
+    private static final String PLMN1 = "480123";
+    private static final String PLMN2 = "586111";
+    private static final String HOME_PNN = "home pnn";
+    private static final String[] CARRIER_CONFIG_SPDI = new String[] {HOME_PLMN, PLMN2};
+    private static final String[] CARRIER_CONFIG_EHPLMN = new String[] {HOME_PLMN, PLMN1};
+    private static final String[] CARRIER_CONFIG_PNN = new String[] {
+            String.format("%s,%s", HOME_PNN, "short"), "f2,s2"
+    };
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -218,6 +242,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSimulatedCommands.setDataRegState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         mSimulatedCommands.setDataRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA);
 
+        doReturn(PHONE_ID).when(mPhone).getPhoneId();
+
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
         doReturn(true).when(mPhone).areAllDataDisconnected();
@@ -231,6 +257,44 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
         mContext.sendBroadcast(intent);
         waitForMs(100);
+
+        // Override SPN related resource
+        mContextFixture.putResource(
+                com.android.internal.R.string.lockscreen_carrier_default,
+                CARRIER_NAME_DISPLAY_NO_SERVICE);
+        mContextFixture.putResource(
+                com.android.internal.R.string.emergency_calls_only,
+                CARRIER_NAME_DISPLAY_EMERGENCY_CALL);
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.wfcSpnFormats,
+                WIFI_CALLING_FORMATTERS);
+
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
+        mBundle.putInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT, 0);
+        mBundle.putInt(CarrierConfigManager.KEY_WFC_DATA_SPN_FORMAT_IDX_INT, 1);
+        mBundle.putInt(CarrierConfigManager.KEY_WFC_FLIGHT_MODE_SPN_FORMAT_IDX_INT, 2);
+
+        // Show SPN is required when roaming
+        // Show PLMN is required when non-roaming.
+        doReturn(IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN
+                | IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN)
+                .when(mSimRecords).getCarrierNameDisplayCondition();
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, "SPN from carrier config");
+        mBundle.putInt(CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT,
+                IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN
+                        | IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN);
+        mBundle.putStringArray(CarrierConfigManager.KEY_SPDI_OVERRIDE_STRING_ARRAY,
+                CARRIER_CONFIG_SPDI);
+        mBundle.putStringArray(CarrierConfigManager.KEY_EHPLMN_OVERRIDE_STRING_ARRAY,
+                CARRIER_CONFIG_EHPLMN);
+        mBundle.putStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY,
+                CARRIER_CONFIG_PNN);
+
+        // Do not force display "No service" when sim is not ready
+        mContextFixture.putBooleanResource(
+                com.android.internal.R.bool.config_display_no_service_when_sim_unready, false);
 
         logd("ServiceStateTrackerTest -Setup!");
     }
@@ -562,6 +626,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         when(mockConfigManager.getConfigForSubId(anyInt())).thenReturn(mBundle);
 
         Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, PHONE_ID);
         mContext.sendBroadcast(intent);
         waitForMs(300);
     }
@@ -1334,7 +1399,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test1", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.PS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.PS_NOTIFICATION);
     }
 
     @Test
@@ -1362,7 +1427,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test2", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
     }
 
     @Test
@@ -1389,7 +1454,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test3", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
     }
 
     @Test
@@ -1417,7 +1482,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals("test4", getNotificationTitle(postedNotification));
 
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
-        verify(nm).cancel(anyString(), anyInt());
+        verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
         sst.setNotification(ServiceStateTracker.CS_REJECT_CAUSE_ENABLED);
     }
 
@@ -1859,72 +1924,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetCarrierNameDisplayBitmaskWithBrandOverride() {
+    public void testGetCarrierNameDisplayConditionWithBrandOverride() {
         String brandOverride = "spn from brand override";
         doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
 
         // Only show spn because all PLMNs will be considered HOME PLMNs.
         assertThat(sst.getCarrierNameDisplayBitmask(new ServiceState())).isEqualTo(
                 ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
-    }
-
-    @Test
-    public void testGetCarrierNameDisplayBitmask_useRoamingFromServiceState() {
-        // No brandOverride
-        String brandOverride = "";
-        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
-
-        // Use roaming from ServiceState
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL,
-                true);
-
-        // Only display SPN when non-roaming, PLMN when roaming
-        doReturn(0).when(mSimRecords).getCarrierNameDisplayCondition();
-
-        ServiceState ss = new ServiceState();
-        ss.setRoaming(true);
-        int bitmask = sst.getCarrierNameDisplayBitmask(ss);
-        // Only show PLMN when roaming
-        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
-
-        ss.setRoaming(false);
-        // Only show SPN when non-roaming
-        bitmask = sst.getCarrierNameDisplayBitmask(ss);
-        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
-    }
-
-    @Test
-    public void testGetCarrierNameDisplayBitmask_NotUseRoamingFromServiceState() {
-        // No brandOverride
-        String brandOverride = "";
-        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
-
-        // Do not use roaming from ServiceState
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL,
-                false);
-
-        // Only display SPN when non-roaming, PLMN when roaming
-        doReturn(0).when(mSimRecords).getCarrierNameDisplayCondition();
-
-        ServiceState ss = new ServiceState();
-        String registeredPLMN = "123456";
-        ss.setOperatorName("long", "short", registeredPLMN);
-
-        // Registered PLMN is HPLMN
-        doReturn(new String[] {registeredPLMN}).when(mSimRecords).getHomePlmns();
-
-        int bitmask = sst.getCarrierNameDisplayBitmask(ss);
-
-        // Only show SPN when registered PLMN is HPLMN
-        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
-
-        doReturn(new String[] {"567890"}).when(mSimRecords).getHomePlmns();
-
-        bitmask = sst.getCarrierNameDisplayBitmask(ss);
-        // Only show PLMN when registered PLMN is non-HPLMN
-        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
     }
 
     @Test
@@ -2035,5 +2041,198 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.obtainMessage(GsmCdmaPhone.EVENT_CARRIER_CONFIG_CHANGED, null).sendToTarget();
         waitForMs(100);
         verify(mEriManager, times(1)).loadEriFile();
+    }
+
+    private void enableCdnr() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_noService_displayEmergencyCallOnly() {
+        enableCdnr();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // Emergency call only
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_EMERGENCY_ONLY);
+        ss.setDataRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        sst.mSS = ss;
+
+        // Emergency call only
+        NetworkRegistrationInfo voiceRegInfo =
+                new NetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        ss.getVoiceRegState(), TelephonyManager.NETWORK_TYPE_LTE, 0,
+                        true /* emergency call only */,
+                        null, null, false, 0, 0, 0);
+
+        sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceRegInfo, null /* exception */))
+                .sendToTarget();
+        waitForMs(200);
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Only plmn should be shown, and the string is "Emergency call only"
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+                .isEqualTo(CARRIER_NAME_DISPLAY_EMERGENCY_CALL);
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isFalse();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_noServiceAndEmergencyCallNotAvailable_displayOOS() {
+        enableCdnr();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // Completely out of service
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        sst.mSS = ss;
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Only plmn should be shown, and the string is "No service"
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+                .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isFalse();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_flightMode_displayOOS() {
+        enableCdnr();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // Flight mode
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_POWER_OFF);
+        ss.setDataRegState(ServiceState.STATE_POWER_OFF);
+        sst.mSS = ss;
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Only plmn should be shown, and the string is "No service"
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+                .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isFalse();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_spnNotEmptyAndWifiCallingEnabled_showSpnOnly() {
+        enableCdnr();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // In Service
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        // wifi-calling is enabled
+        doReturn(true).when(mPhone).isWifiCallingEnabled();
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Only spn should be shown
+        String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_SPN))
+                .isEqualTo(String.format(WIFI_CALLING_VOICE_FORMAT, spn));
+        assertThat(b.getString(TelephonyIntents.EXTRA_DATA_SPN))
+                .isEqualTo(String.format(WIFI_CALLING_DATA_FORMAT, spn));
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isFalse();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_spnEmptyAndWifiCallingEnabled_showPlmnOnly() {
+        // set empty service provider name
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, "");
+
+        enableCdnr();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // In Service
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        // wifi-calling is enabled
+        doReturn(true).when(mPhone).isWifiCallingEnabled();
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Only plmn should be shown
+        String plmn = mBundle.getStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY)[0];
+        plmn = plmn.split("\\s*,\\s*")[0];
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+                .isEqualTo(String.format(WIFI_CALLING_VOICE_FORMAT, plmn));
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isFalse();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_inServiceNoWifiCalling_showSpnAndPlmn() {
+        enableCdnr();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        // wifi-calling is disable
+        doReturn(false).when(mPhone).isWifiCallingEnabled();
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Show both spn & plmn
+        String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        String plmn = mBundle.getStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY)[0];
+        plmn = plmn.split("\\s*,\\s*")[0];
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_SPN)).isEqualTo(spn);
+        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN)).isEqualTo(plmn);
+    }
+
+    private Bundle getExtrasFromLastSpnUpdateIntent() {
+        // Verify the spn update notification was sent
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContextFixture.getTestDouble(), atLeast(1))
+                .sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
+
+        List<Intent> intents = intentArgumentCaptor.getAllValues();
+        return intents.get(intents.size() - 1).getExtras();
     }
 }
