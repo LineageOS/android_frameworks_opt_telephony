@@ -757,24 +757,35 @@ public class DeviceStateMonitor extends Handler {
     /**
      * Downlink reporting thresholds in kbps
      *
-     * <p>Threshold values taken from FCC Speed Guide
+     * <p>Threshold values taken from FCC Speed Guide when available
      * (https://www.fcc.gov/reports-research/guides/broadband-speed-guide) and Android WiFi speed
      * labels (https://support.google.com/pixelphone/answer/2819519#strength_speed).
+     *
      */
     private static final int[] LINK_CAPACITY_DOWNLINK_THRESHOLDS = new int[] {
-            500,   // Web browsing
-            1000,  // SD video streaming
-            5000,  // HD video streaming
-            10000, // file downloading
-            20000, // 4K video streaming
+            100,    // VoIP
+            500,    // Web browsing
+            1000,   // SD video streaming
+            5000,   // HD video streaming
+            10000,  // file downloading
+            20000,  // 4K video streaming
+            50000,  // LTE-Advanced speeds
+            100000,
+            200000, // 5G speeds
+            500000,
+            1000000
     };
 
     /** Uplink reporting thresholds in kbps */
     private static final int[] LINK_CAPACITY_UPLINK_THRESHOLDS = new int[] {
-            100,   // VoIP calls
+            100,    // VoIP calls
             500,
-            1000,
-            5000,
-            10000,
+            1000,   // SD video calling
+            5000,   // HD video calling
+            10000,  // file uploading
+            20000,  // 4K video calling
+            50000,
+            100000,
+            200000
     };
 }
