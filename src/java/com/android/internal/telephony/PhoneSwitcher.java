@@ -85,6 +85,10 @@ public class PhoneSwitcher extends Handler {
     private static final int DEFAULT_NETWORK_CHANGE_TIMEOUT_MS = 5000;
     private static final int MODEM_COMMAND_RETRY_PERIOD_MS     = 5000;
 
+    // If there are no subscriptions in a device, then the phone to be used for emergency should
+    // always be the "first" phone.
+    private static final int DEFAULT_EMERGENCY_PHONE_ID = 0;
+
     private final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
     private final RegistrantList mActivePhoneRegistrants;
     private final SubscriptionController mSubscriptionController;
@@ -455,6 +459,10 @@ public class PhoneSwitcher extends Handler {
         for (Phone p : mPhones) {
             if (p == null) continue;
             if (p.isInEcm() || p.isInEmergencyCall()) return true;
+            Phone imsPhone = p.getImsPhone();
+            if (imsPhone != null && (imsPhone.isInEcm() || imsPhone.isInEmergencyCall())) {
+                return true;
+            }
         }
         return false;
     }
@@ -578,9 +586,15 @@ public class PhoneSwitcher extends Handler {
             mPrimaryDataSubId = primaryDataSubId;
         }
 
+        // Check to see if there is any active subscription on any phone
+        boolean hasAnyActiveSubscription = false;
+
         // Check if phoneId to subId mapping is changed.
         for (int i = 0; i < mNumPhones; i++) {
             int sub = mSubscriptionController.getSubIdUsingPhoneId(i);
+
+            if (SubscriptionManager.isValidSubscriptionId(sub)) hasAnyActiveSubscription = true;
+
             if (sub != mPhoneSubscriptions[i]) {
                 sb.append(" phone[").append(i).append("] ").append(mPhoneSubscriptions[i]);
                 sb.append("->").append(sub);
@@ -589,9 +603,22 @@ public class PhoneSwitcher extends Handler {
             }
         }
 
+        if (!hasAnyActiveSubscription) {
+            transitionToEmergencyPhone();
+        } else {
+            if (VDBG) log("Found an active subscription");
+        }
+
         // Check if phoneId for preferred data is changed.
         int oldPreferredDataPhoneId = mPreferredDataPhoneId;
-        updatePreferredDataPhoneId();
+
+        // When there are no subscriptions, the preferred data phone ID is invalid, but we want
+        // to keep a valid phoneId for Emergency, so skip logic that updates for preferred data
+        // phone ID. Ideally there should be a single set of checks that evaluate the correct
+        // phoneId on a service-by-service basis (EIMS being one), but for now... just bypass
+        // this logic in the no-SIM case.
+        if (hasAnyActiveSubscription) updatePreferredDataPhoneId();
+
         if (oldPreferredDataPhoneId != mPreferredDataPhoneId) {
             sb.append(" preferred phoneId ").append(oldPreferredDataPhoneId)
                     .append("->").append(mPreferredDataPhoneId);
@@ -738,8 +765,7 @@ public class PhoneSwitcher extends Handler {
         // if Internet PDN is established on the non-preferred phone, it will interrupt
         // Internet connection on the preferred phone. So we only accept Internet request with
         // preferred data subscription or no specified subscription.
-        if (netRequest.networkCapabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        if (netRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 && subId != preferredDataSubId && subId != mValidator.getSubIdInValidation()) {
             // Returning INVALID_PHONE_INDEX will result in netRequest not being handled.
             return INVALID_PHONE_INDEX;
@@ -816,6 +842,18 @@ public class PhoneSwitcher extends Handler {
         mPreferredDataSubId = mSubscriptionController.getSubIdUsingPhoneId(mPreferredDataPhoneId);
     }
 
+    private void transitionToEmergencyPhone() {
+        if (mPreferredDataPhoneId != DEFAULT_EMERGENCY_PHONE_ID) {
+            log("No active subscriptions: resetting preferred phone to 0 for emergency");
+            mPreferredDataPhoneId = DEFAULT_EMERGENCY_PHONE_ID;
+        }
+
+        if (mPreferredDataSubId != INVALID_SUBSCRIPTION_ID) {
+            mPreferredDataSubId = INVALID_SUBSCRIPTION_ID;
+            notifyPreferredDataSubIdChanged();
+        }
+    }
+
     private Phone findPhoneById(final int phoneId) {
         if (phoneId < 0 || phoneId >= mNumPhones) {
             return null;
@@ -827,11 +865,19 @@ public class PhoneSwitcher extends Handler {
         validatePhoneId(phoneId);
 
         // In any case, if phone state is inactive, don't apply the network request.
-        if (!isPhoneActive(phoneId)) return false;
+        if (!isPhoneActive(phoneId) || (
+                mSubscriptionController.getSubIdUsingPhoneId(phoneId) == INVALID_SUBSCRIPTION_ID
+                && !isEmergencyNetworkRequest(networkRequest))) {
+            return false;
+        }
 
         int phoneIdToHandle = phoneIdForRequest(networkRequest);
 
         return phoneId == phoneIdToHandle;
+    }
+
+    boolean isEmergencyNetworkRequest(NetworkRequest networkRequest) {
+        return networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
     }
 
     @VisibleForTesting
