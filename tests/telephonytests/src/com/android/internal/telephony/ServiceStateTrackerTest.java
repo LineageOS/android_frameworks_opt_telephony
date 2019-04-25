@@ -1859,13 +1859,72 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetCarrierNameDisplayConditionWithBrandOverride() {
+    public void testGetCarrierNameDisplayBitmaskWithBrandOverride() {
         String brandOverride = "spn from brand override";
         doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
 
         // Only show spn because all PLMNs will be considered HOME PLMNs.
         assertThat(sst.getCarrierNameDisplayBitmask(new ServiceState())).isEqualTo(
                 ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
+    }
+
+    @Test
+    public void testGetCarrierNameDisplayBitmask_useRoamingFromServiceState() {
+        // No brandOverride
+        String brandOverride = "";
+        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
+
+        // Use roaming from ServiceState
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL,
+                true);
+
+        // Only display SPN when non-roaming, PLMN when roaming
+        doReturn(0).when(mSimRecords).getCarrierNameDisplayCondition();
+
+        ServiceState ss = new ServiceState();
+        ss.setRoaming(true);
+        int bitmask = sst.getCarrierNameDisplayBitmask(ss);
+        // Only show PLMN when roaming
+        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
+
+        ss.setRoaming(false);
+        // Only show SPN when non-roaming
+        bitmask = sst.getCarrierNameDisplayBitmask(ss);
+        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
+    }
+
+    @Test
+    public void testGetCarrierNameDisplayBitmask_NotUseRoamingFromServiceState() {
+        // No brandOverride
+        String brandOverride = "";
+        doReturn(brandOverride).when(mUiccProfile).getOperatorBrandOverride();
+
+        // Do not use roaming from ServiceState
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL,
+                false);
+
+        // Only display SPN when non-roaming, PLMN when roaming
+        doReturn(0).when(mSimRecords).getCarrierNameDisplayCondition();
+
+        ServiceState ss = new ServiceState();
+        String registeredPLMN = "123456";
+        ss.setOperatorName("long", "short", registeredPLMN);
+
+        // Registered PLMN is HPLMN
+        doReturn(new String[] {registeredPLMN}).when(mSimRecords).getHomePlmns();
+
+        int bitmask = sst.getCarrierNameDisplayBitmask(ss);
+
+        // Only show SPN when registered PLMN is HPLMN
+        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
+
+        doReturn(new String[] {"567890"}).when(mSimRecords).getHomePlmns();
+
+        bitmask = sst.getCarrierNameDisplayBitmask(ss);
+        // Only show PLMN when registered PLMN is non-HPLMN
+        assertThat(bitmask).isEqualTo(ServiceStateTracker.CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
     }
 
     @Test
