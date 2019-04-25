@@ -740,6 +740,7 @@ public class DcTracker extends Handler {
         }
 
         initEmergencyApnSetting();
+        addEmergencyApnSetting();
 
         mProvisionActionName = "com.android.internal.telephony.PROVISION" + phone.getPhoneId();
 
@@ -3968,6 +3969,7 @@ public class DcTracker extends Handler {
         pw.println(" mDataStallTxRxSum=" + mDataStallTxRxSum);
         pw.println(" mDataStallAlarmTag=" + mDataStallAlarmTag);
         pw.println(" mDataStallNoRxEnabled=" + mDataStallNoRxEnabled);
+        pw.println(" mEmergencyApn=" + mEmergencyApn);
         pw.println(" mSentSinceLastRecv=" + mSentSinceLastRecv);
         pw.println(" mNoRecvPollCount=" + mNoRecvPollCount);
         pw.println(" mResolver=" + mResolver);
@@ -4091,7 +4093,7 @@ public class DcTracker extends Handler {
 
     /**
      * Read APN configuration from Telephony.db for Emergency APN
-     * All opertors recognize the connection request for EPDN based on APN type
+     * All operators recognize the connection request for EPDN based on APN type
      * PLMN name,APN name are not mandatory parameters
      */
     private void initEmergencyApnSetting() {
@@ -4112,6 +4114,15 @@ public class DcTracker extends Handler {
             }
             cursor.close();
         }
+        if (mEmergencyApn != null) return;
+
+        // If no emergency APN setting has been found, make one using reasonable defaults
+        mEmergencyApn = new ApnSetting.Builder()
+                .setEntryName("Emergency")
+                .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                .setApnName("sos")
+                .setApnTypeBitmask(ApnSetting.TYPE_EMERGENCY)
+                .build();
     }
 
     /**
@@ -4131,6 +4142,7 @@ public class DcTracker extends Handler {
             if (!mAllApnSettings.contains(mEmergencyApn)) {
                 mAllApnSettings.add(mEmergencyApn);
                 log("Adding emergency APN : " + mEmergencyApn);
+                return;
             }
         }
     }
