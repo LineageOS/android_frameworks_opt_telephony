@@ -1698,32 +1698,8 @@ public class SIMRecords extends IccRecords {
 
                     // Reference: 3GPP TS 31.102 section 4.2.12 EF_SPN
                     // The first byte is display condition.
-                    //
-                    // b1 is the last bit of the display condition which is used to determine
-                    // whether display of PLMN network name is required when registered PLMN is
-                    // **either** HPLMN or a PLMN in the service provider PLMN list.
-                    //
-                    // b2 is the second last bit of the display condtion which is used to determine
-                    // whether display of Service Provider Name is required when registered PLMN is
-                    // **neither** HPLMN nor PLMN in the service provider PLMN list.
-                    int displayCondition = data[0] & 0xff;
-                    mCarrierNameDisplayCondition = 0;
-
-                    // b1 = 0: display of registered PLMN name not required when registered PLMN is
-                    // either HPLMN or a PLMN in the service provider PLMN list.
-                    // b1 = 1: display of registered PLMN name required when registered PLMN is
-                    // either HPLMN or a PLMN in the service provider PLMN list.
-                    if ((displayCondition & 0x1) == 0x1) {
-                        mCarrierNameDisplayCondition |= CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN;
-                    }
-
-                    // b2 = 0: display of the service provider name is **required** when registered
-                    // PLMN is neither HPLMN nor a PLMN in the service provider PLMN list.
-                    // b2 = 1: display of the servier provider name is **not required** when
-                    // registered PLMN is neither HPLMN nor PLMN in the service provider PLMN list.
-                    if ((displayCondition & 0x2) == 0) {
-                        mCarrierNameDisplayCondition |= CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN;
-                    }
+                    mCarrierNameDisplayCondition =
+                            convertSpnDisplayConditionToBitmask(data[0] & 0xff);
 
                     setServiceProviderName(IccUtils.adnStringFieldToString(
                                 data, 1, data.length - 1));
