@@ -564,6 +564,13 @@ public class UiccController extends Handler {
 
     static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
             int phoneId) {
+        updateInternalIccState(context, state, reason, phoneId, false);
+    }
+
+    // absentAndInactive is a special case when we need to update subscriptions but don't want to
+    // broadcast a state change
+    static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
+            int phoneId, boolean absentAndInactive) {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
                 Context.TELEPHONY_SERVICE);
         telephonyManager.setSimStateForPhone(phoneId, state.toString());
@@ -571,7 +578,7 @@ public class UiccController extends Handler {
         SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
         if (subInfoUpdator != null) {
             subInfoUpdator.updateInternalIccState(getIccStateIntentString(state),
-                    reason, phoneId);
+                    reason, phoneId, absentAndInactive);
         } else {
             Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
