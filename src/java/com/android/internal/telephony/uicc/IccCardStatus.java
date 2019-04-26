@@ -37,7 +37,7 @@ public class IccCardStatus {
         CARDSTATE_RESTRICTED;
 
         @UnsupportedAppUsage
-        boolean isCardPresent() {
+        public boolean isCardPresent() {
             return this == CARDSTATE_PRESENT ||
                 this == CARDSTATE_RESTRICTED;
         }
