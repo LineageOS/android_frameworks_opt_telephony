@@ -300,6 +300,11 @@ public class MultiSimSettingController {
 
     private void disableDataForNonDefaultNonOpportunisticSubscriptions() {
         int defaultDataSub = mSubController.getDefaultDataSubId();
+        // Only disable data for non-default subscription if default sub is active.
+        if (!mSubController.isActiveSubId(defaultDataSub)) {
+            log("default data sub is inactive, skip disabling data for non-default subs");
+            return;
+        }
 
         for (Phone phone : mPhones) {
             if (phone.getSubId() != defaultDataSub
