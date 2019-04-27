@@ -24,7 +24,6 @@ import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
 import android.content.Context;
 import android.hardware.radio.V1_0.RadioError;
 import android.os.AsyncResult;
-import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -243,15 +242,15 @@ public final class NetworkScanRequestTracker {
         private boolean mIsBinderDead;
 
         NetworkScanRequestInfo(NetworkScanRequest r, Messenger m, IBinder b, int id, Phone phone,
-                String callingPackage) {
+                int callingUid, int callingPid, String callingPackage) {
             super();
             mRequest = r;
             mMessenger = m;
             mBinder = b;
             mScanId = id;
             mPhone = phone;
-            mUid = Binder.getCallingUid();
-            mPid = Binder.getCallingPid();
+            mUid = callingUid;
+            mPid = callingPid;
             mCallingPackage = callingPackage;
             mIsBinderDead = false;
 
@@ -437,6 +436,11 @@ public final class NetworkScanRequestTracker {
                         ? TelephonyScanManager.CALLBACK_SCAN_RESULTS
                         : TelephonyScanManager.CALLBACK_RESTRICTED_SCAN_RESULTS;
                 if (nsr.scanError == NetworkScan.SUCCESS) {
+                    if (nsri.mPhone.getServiceStateTracker() != null) {
+                        nsri.mPhone.getServiceStateTracker().updateOperatorNameForCellInfo(
+                                nsr.networkInfos);
+                    }
+
                     notifyMessenger(nsri, notifyMsg,
                             rilErrorToScanError(nsr.scanError), nsr.networkInfos);
                     if (nsr.scanStatus == NetworkScanResult.SCAN_STATUS_COMPLETE) {
@@ -597,11 +601,11 @@ public final class NetworkScanRequestTracker {
      */
     public int startNetworkScan(
             NetworkScanRequest request, Messenger messenger, IBinder binder, Phone phone,
-            String callingPackage) {
+            int callingUid, int callingPid, String callingPackage) {
         int scanId = mNextNetworkScanRequestId.getAndIncrement();
         NetworkScanRequestInfo nsri =
                 new NetworkScanRequestInfo(request, messenger, binder, scanId, phone,
-                        callingPackage);
+                        callingUid, callingPid, callingPackage);
         // nsri will be stored as Message.obj
         mHandler.obtainMessage(CMD_START_NETWORK_SCAN, nsri).sendToTarget();
         return scanId;
@@ -613,14 +617,14 @@ public final class NetworkScanRequestTracker {
      * The ongoing scan will be stopped only when the input scanId and caller's uid matches the
      * corresponding information associated with it.
      */
-    public void stopNetworkScan(int scanId) {
+    public void stopNetworkScan(int scanId, int callingUid) {
         synchronized (mScheduler) {
             if ((mScheduler.mLiveRequestInfo != null
                     && scanId == mScheduler.mLiveRequestInfo.mScanId
-                    && Binder.getCallingUid() == mScheduler.mLiveRequestInfo.mUid)
+                    && callingUid == mScheduler.mLiveRequestInfo.mUid)
                     || (mScheduler.mPendingRequestInfo != null
                     && scanId == mScheduler.mPendingRequestInfo.mScanId
-                    && Binder.getCallingUid() == mScheduler.mPendingRequestInfo.mUid)) {
+                    && callingUid == mScheduler.mPendingRequestInfo.mUid)) {
                 // scanId will be stored at Message.arg1
                 mHandler.obtainMessage(CMD_STOP_NETWORK_SCAN, scanId, 0).sendToTarget();
             } else {

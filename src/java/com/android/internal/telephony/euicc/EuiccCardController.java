@@ -69,6 +69,11 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (TelephonyManager.ACTION_SIM_SLOT_STATUS_CHANGED.equals(intent.getAction())) {
+                // We want to keep listening if card is not present yet since the first state might
+                // be an error state
+                if (!isEmbeddedCardPresent()) {
+                    return;
+                }
                 if (isEmbeddedSlotActivated()) {
                     mEuiccController.startOtaUpdatingIfNecessary();
                 }
@@ -154,6 +159,24 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         for (int i = 0; i < slots.length; ++i) {
             UiccSlot slotInfo = slots[i];
             if (!slotInfo.isRemovable() && slotInfo.isActive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether embedded card is present or not */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public boolean isEmbeddedCardPresent() {
+        UiccSlot[] slots = mUiccController.getUiccSlots();
+        if (slots == null) {
+            return false;
+        }
+        for (UiccSlot slotInfo : slots) {
+            if (slotInfo != null
+                    && !slotInfo.isRemovable()
+                    && slotInfo.getCardState() != null
+                    && slotInfo.getCardState().isCardPresent()) {
                 return true;
             }
         }

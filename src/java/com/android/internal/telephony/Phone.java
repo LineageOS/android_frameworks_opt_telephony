@@ -179,7 +179,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_GET_CALL_FORWARD_DONE       = 13;
     protected static final int EVENT_CALL_RING                   = 14;
     private static final int EVENT_CALL_RING_CONTINUE            = 15;
-    private static final int EVENT_ALL_DATA_DISCONNECTED         = 16;
 
     // Used to intercept the carrier selection calls so that
     // we can save the values.
@@ -223,8 +222,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_SET_CARRIER_DATA_ENABLED       = 48;
     protected static final int EVENT_DEVICE_PROVISIONED_CHANGE      = 49;
     protected static final int EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE = 50;
+    protected static final int EVENT_GET_AVAILABLE_NETWORKS_DONE    = 51;
 
-    protected static final int EVENT_LAST = EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE;
+    private static final int EVENT_ALL_DATA_DISCONNECTED         = 52;
+
+    protected static final int EVENT_LAST = EVENT_ALL_DATA_DISCONNECTED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";

@@ -3510,7 +3510,7 @@ public class ServiceStateTracker extends Handler {
                 isRoaming = ss.getRoaming();
             } else {
                 String[] hplmns = mIccRecords != null ? mIccRecords.getHomePlmns() : null;
-                isRoaming = ArrayUtils.contains(hplmns, ss.getOperatorNumeric());
+                isRoaming = !ArrayUtils.contains(hplmns, ss.getOperatorNumeric());
             }
             int rule;
             if (isRoaming) {
@@ -4589,11 +4589,7 @@ public class ServiceStateTracker extends Handler {
         if (config != null) {
             updateLteEarfcnLists(config);
             updateReportingCriteria(config);
-            String operatorNamePattern = config.getString(
-                    CarrierConfigManager.KEY_OPERATOR_NAME_FILTER_PATTERN_STRING);
-            if (!TextUtils.isEmpty(operatorNamePattern)) {
-                mOperatorNameStringPattern = Pattern.compile(operatorNamePattern);
-            }
+            updateOperatorNamePattern(config);
         }
 
         // Sometimes the network registration information comes before carrier config is ready.
@@ -5319,6 +5315,17 @@ public class ServiceStateTracker extends Handler {
         return mEriManager.getCdmaEriText(roamInd, defRoamInd);
     }
 
+    private void updateOperatorNamePattern(PersistableBundle config) {
+        String operatorNamePattern = config.getString(
+                CarrierConfigManager.KEY_OPERATOR_NAME_FILTER_PATTERN_STRING);
+        if (!TextUtils.isEmpty(operatorNamePattern)) {
+            mOperatorNameStringPattern = Pattern.compile(operatorNamePattern);
+            if (DBG) {
+                log("mOperatorNameStringPattern: " + mOperatorNameStringPattern.toString());
+            }
+        }
+    }
+
     private void updateOperatorNameForServiceState(ServiceState servicestate) {
         if (servicestate == null) {
             return;
@@ -5350,16 +5357,29 @@ public class ServiceStateTracker extends Handler {
                 filterOperatorNameByPattern((String) cellIdentity.getOperatorAlphaShort()));
     }
 
-    private void updateOperatorNameForCellInfo(List<CellInfo> cellInfos) {
+    /**
+     * To modify the operator name of CellInfo by pattern.
+     *
+     * @param cellInfos List of CellInfo{@link CellInfo}.
+     */
+    public void updateOperatorNameForCellInfo(List<CellInfo> cellInfos) {
         if (cellInfos == null || cellInfos.isEmpty()) {
             return;
         }
-        for (int i = 0; i < cellInfos.size(); i++) {
-            updateOperatorNameForCellIdentity(cellInfos.get(i).getCellIdentity());
+        for (CellInfo cellInfo : cellInfos) {
+            if (cellInfo.isRegistered()) {
+                updateOperatorNameForCellIdentity(cellInfo.getCellIdentity());
+            }
         }
     }
 
-    private String filterOperatorNameByPattern(String operatorName) {
+    /**
+     * To modify the operator name by pattern.
+     *
+     * @param operatorName Registered operator name
+     * @return An operator name.
+     */
+    public String filterOperatorNameByPattern(String operatorName) {
         if (mOperatorNameStringPattern == null || TextUtils.isEmpty(operatorName)) {
             return operatorName;
         }
