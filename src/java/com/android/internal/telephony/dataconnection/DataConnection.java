@@ -1127,7 +1127,8 @@ public class DataConnection extends StateMachine {
         // unmetered.
         for (ApnContext apnContext : mApnContexts.keySet()) {
             DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
-            boolean isDataAllowed = mDct.isDataAllowed(apnContext, dataConnectionReasons);
+            boolean isDataAllowed = mDct.isDataAllowed(apnContext, DcTracker.REQUEST_TYPE_NORMAL,
+                    dataConnectionReasons);
             if (!isDataAllowed || !dataConnectionReasons.contains(
                     DataConnectionReasons.DataAllowedReasonType.UNMETERED_APN)) {
                 return false;
