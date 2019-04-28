@@ -1220,7 +1220,7 @@ public class DcTracker extends Handler {
      * @return True if data connection is allowed, otherwise false.
      */
     public boolean isDataAllowed(DataConnectionReasons dataConnectionReasons) {
-        return isDataAllowed(null, dataConnectionReasons);
+        return isDataAllowed(null, REQUEST_TYPE_NORMAL, dataConnectionReasons);
     }
 
     /**
@@ -1228,12 +1228,13 @@ public class DcTracker extends Handler {
      *
      * @param apnContext APN context. If passing null, then will only check general but not APN
      *                   specific conditions (e.g. APN state, metered/unmetered APN).
+     * @param requestType Setup data request type.
      * @param dataConnectionReasons Data connection allowed or disallowed reasons as the output
      *                              param. It's okay to pass null here and no reasons will be
      *                              provided.
      * @return True if data connection is allowed, otherwise false.
      */
-    public boolean isDataAllowed(ApnContext apnContext,
+    public boolean isDataAllowed(ApnContext apnContext, @RequestNetworkType int requestType,
                                  DataConnectionReasons dataConnectionReasons) {
         // Step 1: Get all environment conditions.
         // Step 2: Special handling for emergency APN.
@@ -1304,7 +1305,7 @@ public class DcTracker extends Handler {
             reasons.add(DataDisallowedReasonType.IN_ECBM);
         }
 
-        if (!(attachedState || mAutoAttachEnabled.get())) {
+        if (!attachedState && !mAutoAttachEnabled.get() && requestType != REQUEST_TYPE_HANDOVER) {
             reasons.add(DataDisallowedReasonType.NOT_ATTACHED);
         }
         if (!recordsLoaded) {
@@ -1452,7 +1453,7 @@ public class DcTracker extends Handler {
         }
 
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
-        boolean isDataAllowed = isDataAllowed(apnContext, dataConnectionReasons);
+        boolean isDataAllowed = isDataAllowed(apnContext, requestType, dataConnectionReasons);
         String logStr = "trySetupData for APN type " + apnContext.getApnType() + ", reason: "
                 + apnContext.getReason() + ", requestType=" + requestTypeToString(requestType)
                 + ". " + dataConnectionReasons.toString();
@@ -4285,7 +4286,7 @@ public class DcTracker extends Handler {
         final ApnContext apnContext = mApnContextsByType.get(apnType);
         if (apnContext == null) return;
 
-        if (isDataAllowed(apnContext, null)) {
+        if (isDataAllowed(apnContext, REQUEST_TYPE_NORMAL, null)) {
             if (apnContext.getDataConnection() != null) {
                 apnContext.getDataConnection().reevaluateRestrictedState();
             }
