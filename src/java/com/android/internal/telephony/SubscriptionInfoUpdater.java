@@ -446,22 +446,6 @@ public class SubscriptionInfoUpdater extends Handler {
                     SubscriptionController.getInstance().setAssociatedPlmns(ehplmns, hplmns, subId);
                 }
 
-                SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
-                String nameToSet;
-                String simCarrierName = tm.getSimOperatorName(subId);
-
-                if (subInfo != null && subInfo.getNameSource() !=
-                        SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                    if (!TextUtils.isEmpty(simCarrierName)) {
-                        nameToSet = simCarrierName;
-                    } else {
-                        nameToSet = "CARD " + Integer.toString(slotId + 1);
-                    }
-                    logd("sim name = " + nameToSet);
-                    SubscriptionController.getInstance().setDisplayNameUsingSrc(nameToSet, subId,
-                            SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE);
-                }
-
                 /* Update preferred network type and network selection mode on SIM change.
                  * Storing last subId in SharedPreference for now to detect SIM change.
                  */
