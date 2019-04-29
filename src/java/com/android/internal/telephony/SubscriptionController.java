@@ -999,7 +999,7 @@ public class SubscriptionController extends ISub.Stub {
             int subscriptionType) {
         String fullIccId;
         Phone phone = PhoneFactory.getPhone(slotIndex);
-        UiccCard uiccCard = UiccController.getInstance().getUiccCardForSlot(slotIndex);
+        UiccCard uiccCard = UiccController.getInstance().getUiccCardForPhone(slotIndex);
         if (phone != null && uiccCard != null) {
             fullIccId = phone.getFullIccSerialNumber();
             if (TextUtils.isEmpty(fullIccId)) {
