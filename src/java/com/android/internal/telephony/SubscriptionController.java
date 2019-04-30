@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.telephony.UiccSlotInfo.CARD_STATE_INFO_PRESENT;
 import static android.telephony.data.ApnSetting.TYPE_MMS;
 
 import android.Manifest;
@@ -3176,13 +3177,14 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             SubscriptionInfo info = SubscriptionController.getInstance()
-                    .getAvailableSubscriptionInfoList(mContext.getOpPackageName())
+                    .getAllSubInfoList(mContext.getOpPackageName())
                     .stream()
                     .filter(subInfo -> subInfo.getSubscriptionId() == subId)
                     .findFirst()
                     .get();
 
             if (info == null) {
+                logd("setSubscriptionEnabled subId " + subId + " doesn't exist.");
                 return false;
             }
 
@@ -3206,7 +3208,8 @@ public class SubscriptionController extends ISub.Stub {
         //    to turn on DSDS, or whether to switch from current active eSIM profile to it, or
         //    to simply show a progress dialog.
         // 3) In future, similar operations on triple SIM devices.
-        enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable);
+        enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable,
+                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
         // returning false to indicate state is not changed. If changed, a subscriptionInfo
         // change will be filed separately.
         return false;
@@ -3216,13 +3219,35 @@ public class SubscriptionController extends ISub.Stub {
         // updateEnabledSubscriptionGlobalSetting(subId, physicalSlotIndex);
     }
 
+    private static boolean isInactiveInsertedPSim(UiccSlotInfo slotInfo, String cardId) {
+        return !slotInfo.getIsEuicc() && !slotInfo.getIsActive()
+                && slotInfo.getCardStateInfo() == CARD_STATE_INFO_PRESENT
+                && TextUtils.equals(slotInfo.getCardId(), cardId);
+    }
+
     private boolean enablePhysicalSubscription(SubscriptionInfo info, boolean enable) {
         if (enable && info.getSimSlotIndex() == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
-            // We need to send intents to Euicc if we are turning on an inactive pSIM.
-            // Euicc will decide whether to ask user to switch to DSDS, or change SIM slot mapping.
-            enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable);
-            // returning false to indicate state is not changed. If changed, a subscriptionInfo
-            // change will be filed separately.
+            UiccSlotInfo[] slotsInfo = mTelephonyManager.getUiccSlotsInfo();
+            if (slotsInfo == null) return false;
+            boolean foundMatch = false;
+            for (int i = 0; i < slotsInfo.length; i++) {
+                UiccSlotInfo slotInfo = slotsInfo[i];
+                if (isInactiveInsertedPSim(slotInfo, info.getCardString())) {
+                    // We need to send intents to Euicc if we are turning on an inactive pSIM.
+                    // Euicc will decide whether to ask user to switch to DSDS, or change SIM
+                    // slot mapping.
+                    enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable, i);
+                    foundMatch = true;
+                    break;
+                }
+            }
+
+            if (!foundMatch) {
+                logdl("enablePhysicalSubscription subId " + info.getSubscriptionId()
+                        + " is not inserted.");
+            }
+            // returning false to indicate state is not changed yet. If intent is sent to LPA and
+            // user consents switching, caller needs to listen to subscription info change.
             return false;
         } else {
             return mTelephonyManager.enableModemForSlot(info.getSimSlotIndex(), enable);
@@ -3236,11 +3261,17 @@ public class SubscriptionController extends ISub.Stub {
         // refreshCachedActiveSubscriptionInfoList();
     }
 
-    private void enableSubscriptionOverEuiccManager(int subId, boolean enable) {
+    private void enableSubscriptionOverEuiccManager(int subId, boolean enable,
+            int physicalSlotIndex) {
+        logdl("enableSubscriptionOverEuiccManager" + (enable ? " enable " : " disable ")
+                + "subId " + subId + " on slotIndex " + physicalSlotIndex);
         Intent intent = new Intent(EuiccManager.ACTION_TOGGLE_SUBSCRIPTION_PRIVILEGED);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(EuiccManager.EXTRA_SUBSCRIPTION_ID, subId);
         intent.putExtra(EuiccManager.EXTRA_ENABLE_SUBSCRIPTION, enable);
+        if (physicalSlotIndex != SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+            intent.putExtra(EuiccManager.EXTRA_PHYSICAL_SLOT_ID, physicalSlotIndex);
+        }
         mContext.startActivity(intent);
     }
 
