@@ -1713,7 +1713,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // do nothing if the user had not unlocked the device yet
                 UserManager userManager =
                         (UserManager) context.getSystemService(Context.USER_SERVICE);
-                if (!userManager.isUserUnlocked()) {
+                if (userManager.isUserUnlocked()) {
                     context.startActivity(context.getPackageManager().getLaunchIntentForPackage(
                             Telephony.Sms.getDefaultSmsPackage(context)));
                 }
