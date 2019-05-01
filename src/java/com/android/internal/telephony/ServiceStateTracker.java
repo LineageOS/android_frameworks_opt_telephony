@@ -5201,7 +5201,7 @@ public class ServiceStateTracker extends Handler {
         // mode, the WWAN registration will correctly report the actual cellular registration info
         // when the device camps on IWLAN.
         if (mTransportManager.isInLegacyMode()) {
-            NetworkRegistrationInfo wwanNri = mSS.getNetworkRegistrationInfo(
+            NetworkRegistrationInfo wwanNri = mNewSS.getNetworkRegistrationInfo(
                     NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
             if (wwanNri != null && wwanNri.getAccessNetworkTechnology()
                     == TelephonyManager.NETWORK_TYPE_IWLAN) {
@@ -5214,7 +5214,7 @@ public class ServiceStateTracker extends Handler {
                         .setEmergencyOnly(wwanNri.isEmergencyEnabled())
                         .setAvailableServices(wwanNri.getAvailableServices())
                         .build();
-                mSS.addNetworkRegistrationInfo(wlanNri);
+                mNewSS.addNetworkRegistrationInfo(wlanNri);
             }
         }
     }
