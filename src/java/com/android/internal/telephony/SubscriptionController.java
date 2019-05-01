@@ -3339,9 +3339,9 @@ public class SubscriptionController extends ISub.Stub {
                                 + logicalSlotIndex);
             }
 
-            // Getting physicalSlotIndex
+            // Getting and validating the physicalSlotIndex.
             int physicalSlotIndex = getPhysicalSlotIndexFromLogicalSlotIndex(logicalSlotIndex);
-            if (!SubscriptionManager.isValidSlotIndex(physicalSlotIndex)) {
+            if (physicalSlotIndex == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
                 return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
             }
 
