@@ -1545,7 +1545,7 @@ public class DcTracker extends Handler {
      *                   were already all disconnected.
      */
     private boolean cleanUpAllConnectionsInternal(boolean detach, String reason) {
-        if (DBG) log("cleanUpAllConnections: detach=" + detach + " reason=" + reason);
+        if (DBG) log("cleanUpAllConnectionsInternal: detach=" + detach + " reason=" + reason);
         boolean didDisconnect = false;
         boolean disableMeteredOnly = false;
 
@@ -1553,8 +1553,7 @@ public class DcTracker extends Handler {
         if (!TextUtils.isEmpty(reason)) {
             disableMeteredOnly = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED) ||
                     reason.equals(Phone.REASON_ROAMING_ON) ||
-                    reason.equals(Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN) ||
-                    reason.equals(Phone.REASON_PDP_RESET);
+                    reason.equals(Phone.REASON_CARRIER_ACTION_DISABLE_METERED_APN);
         }
 
         for (ApnContext apnContext : mApnContexts.values()) {
@@ -1569,6 +1568,9 @@ public class DcTracker extends Handler {
                 if (apnContext.isDisconnected() == false) didDisconnect = true;
                 apnContext.setReason(reason);
                 cleanUpConnectionInternal(detach, RELEASE_TYPE_DETACH, apnContext);
+            } else if (DBG) {
+                log("cleanUpAllConnectionsInternal: APN type " + apnContext.getApnType()
+                        + " shouldn't be cleaned up.");
             }
         }
 
@@ -1578,7 +1580,8 @@ public class DcTracker extends Handler {
         // TODO: Do we need mRequestedApnType?
         mRequestedApnType = ApnSetting.TYPE_DEFAULT;
 
-        log("cleanUpConnectionInternal: mDisconnectPendingCount = " + mDisconnectPendingCount);
+        log("cleanUpAllConnectionsInternal: mDisconnectPendingCount = "
+                + mDisconnectPendingCount);
         if (detach && mDisconnectPendingCount == 0) {
             notifyAllDataDisconnected();
         }
@@ -1596,13 +1599,13 @@ public class DcTracker extends Handler {
         ApnSetting apnSetting = apnContext.getApnSetting();
         if (apnSetting == null || !ApnSettingUtils.isMetered(apnSetting, mPhone)) return false;
 
-        // Depending on it's roaming or not, return whether data is enabled or roaming data
-        // is enabled.
-        if (mPhone.getServiceState().getDataRoaming()) {
-            return !getDataRoamingEnabled();
-        } else {
-            return mDataEnabledSettings.isDataEnabled(apnSetting.getApnTypeBitmask());
-        }
+        boolean isRoaming = mPhone.getServiceState().getDataRoaming();
+        boolean isDataRoamingDisabled = !getDataRoamingEnabled();
+        boolean isDataDisabled = !mDataEnabledSettings.isDataEnabled(
+                apnSetting.getApnTypeBitmask());
+
+        // Should clean up if its data is disabled, or data roaming is disabled while roaming.
+        return isDataDisabled || (isRoaming && isDataRoamingDisabled);
     }
 
     /**
@@ -4511,7 +4514,8 @@ public class DcTracker extends Handler {
                         EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP,
                             mSentSinceLastRecv);
                         if (DBG) log("doRecovery() cleanup all connections");
-                        cleanUpAllConnections(Phone.REASON_PDP_RESET);
+                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeString(
+                                ApnSetting.TYPE_DEFAULT)));
                         putRecoveryAction(RECOVERY_ACTION_REREGISTER);
                         break;
                     case RECOVERY_ACTION_REREGISTER:
