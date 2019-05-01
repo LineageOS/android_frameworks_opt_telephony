@@ -40,7 +40,9 @@ public interface CarrierDisplayNameResolver {
             EF_SOURCE_RUIM,
             EF_SOURCE_VOICE_OPERATOR_SIGNALLING,
             EF_SOURCE_DATA_OPERATOR_SIGNALLING,
-            EF_SOURCE_MODEM_CONFIG})
+            EF_SOURCE_MODEM_CONFIG,
+            EF_SOURCE_ERI
+    })
     @interface EFSource {}
 
     int EF_SOURCE_DEFAULT = 0;
@@ -53,6 +55,7 @@ public interface CarrierDisplayNameResolver {
     int EF_SOURCE_VOICE_OPERATOR_SIGNALLING = 7;
     int EF_SOURCE_DATA_OPERATOR_SIGNALLING = 8;
     int EF_SOURCE_MODEM_CONFIG = 9;
+    int EF_SOURCE_ERI = 10;
 
     /**
      * Update the service provider name for the registered PLMN.
@@ -171,4 +174,3 @@ public interface CarrierDisplayNameResolver {
     @NonNull
     String getServiceProviderName();
 }
-
