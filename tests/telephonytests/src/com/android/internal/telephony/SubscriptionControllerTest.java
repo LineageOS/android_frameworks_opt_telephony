@@ -30,6 +30,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.Manifest;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.os.Bundle;
@@ -38,10 +39,14 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.UiccSlotInfo;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
+
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,6 +67,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private SubscriptionController mSubscriptionControllerUT;
     private MockContentResolver mMockContentResolver;
     private FakeTelephonyProvider mFakeTelephonyProvider;
+    @Mock
+    private UiccSlot mUiccSlot;
     @Mock
     private ITelephonyRegistry.Stub mTelephonyRegisteryMock;
     @Mock
@@ -882,5 +889,59 @@ public class SubscriptionControllerTest extends TelephonyTest {
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         // Make sure the return sub ids are sorted by slot index
         assertTrue("active sub ids = " + subIds, Arrays.equals(subIds, new int[]{2, 1}));
+    }
+
+    @Test
+    public void testGetEnabledSubscriptionIdSingleSIM() {
+        // A single SIM device may have logical slot 0 mapped to physical slot 1
+        // (i.e. logical slot -1 mapped to physical slot 0)
+        UiccSlotInfo slot0 = getFakeUiccSlotInfo(false, -1);
+        UiccSlotInfo slot1 = getFakeUiccSlotInfo(true, 0);
+        UiccSlotInfo [] uiccSlotInfos = {slot0, slot1};
+        UiccSlot [] uiccSlots = {mUiccSlot, mUiccSlot};
+
+        doReturn(uiccSlotInfos).when(mTelephonyManager).getUiccSlotsInfo();
+        doReturn(uiccSlots).when(mUiccController).getUiccSlots();
+        assertEquals(2, UiccController.getInstance().getUiccSlots().length);
+
+        ContentResolver resolver = mContext.getContentResolver();
+        // logical 0 should find physical 1, has settings enabled subscription 0
+        Settings.Global.putInt(resolver, Settings.Global.ENABLED_SUBSCRIPTION_FOR_SLOT + 1, 0);
+
+        int enabledSubscription = mSubscriptionControllerUT.getEnabledSubscriptionId(0);
+        assertEquals(0, enabledSubscription);
+    }
+
+    @Test
+    public void testGetEnabledSubscriptionIdDualSIM() {
+        doReturn(SINGLE_SIM).when(mTelephonyManager).getSimCount();
+        doReturn(SINGLE_SIM).when(mTelephonyManager).getPhoneCount();
+        // A dual SIM device may have logical slot 0 mapped to physical slot 0
+        // (i.e. logical slot 1 mapped to physical slot 1)
+        UiccSlotInfo slot0 = getFakeUiccSlotInfo(true, 0);
+        UiccSlotInfo slot1 = getFakeUiccSlotInfo(true, 1);
+        UiccSlotInfo [] uiccSlotInfos = {slot0, slot1};
+        UiccSlot [] uiccSlots = {mUiccSlot, mUiccSlot};
+
+        doReturn(2).when(mTelephonyManager).getPhoneCount();
+        doReturn(uiccSlotInfos).when(mTelephonyManager).getUiccSlotsInfo();
+        doReturn(uiccSlots).when(mUiccController).getUiccSlots();
+        assertEquals(2, UiccController.getInstance().getUiccSlots().length);
+
+        ContentResolver resolver = mContext.getContentResolver();
+        // logical 0 should find physical 0, has settings enabled subscription 0
+        Settings.Global.putInt(resolver, Settings.Global.ENABLED_SUBSCRIPTION_FOR_SLOT + 0, 0);
+        Settings.Global.putInt(resolver, Settings.Global.ENABLED_SUBSCRIPTION_FOR_SLOT + 1, 1);
+
+        int enabledSubscription = mSubscriptionControllerUT.getEnabledSubscriptionId(0);
+        int secondEabledSubscription = mSubscriptionControllerUT.getEnabledSubscriptionId(1);
+        assertEquals(0, enabledSubscription);
+        assertEquals(1, secondEabledSubscription);
+    }
+
+
+    private UiccSlotInfo getFakeUiccSlotInfo(boolean active, int logicalSlotIndex) {
+        return new UiccSlotInfo(active, false, "fake card Id",
+                UiccSlotInfo.CARD_STATE_INFO_PRESENT, logicalSlotIndex, true, true);
     }
 }
