@@ -109,15 +109,20 @@ public class CarrierServicesSmsFilter {
             throw new RuntimeException(errMsg);
         }
 
-        mFilterAggregator = new FilterAggregator(smsFilterPackages.size());
-        //start the timer
-        mCallbackTimeoutHandler.sendMessageDelayed(mCallbackTimeoutHandler
-                .obtainMessage(EVENT_ON_FILTER_COMPLETE_NOT_CALLED), FILTER_COMPLETE_TIMEOUT_MS);
-        for (String smsFilterPackage : smsFilterPackages) {
-            filterWithPackage(smsFilterPackage, mFilterAggregator);
+        int numPackages = smsFilterPackages.size();
+        if (numPackages > 0) {
+            mFilterAggregator = new FilterAggregator(numPackages);
+            //start the timer
+            mCallbackTimeoutHandler.sendMessageDelayed(mCallbackTimeoutHandler
+                            .obtainMessage(EVENT_ON_FILTER_COMPLETE_NOT_CALLED),
+                    FILTER_COMPLETE_TIMEOUT_MS);
+            for (String smsFilterPackage : smsFilterPackages) {
+                filterWithPackage(smsFilterPackage, mFilterAggregator);
+            }
+            return true;
+        } else {
+            return false;
         }
-        boolean handled = smsFilterPackages.size() > 0;
-        return handled;
     }
 
     private Optional<String> getCarrierAppPackageForFiltering() {
