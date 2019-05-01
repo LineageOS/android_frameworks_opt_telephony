@@ -198,6 +198,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN = 1;
     public static final int CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN = 2;
 
+
+    // See {@link CarrierConfigManager#KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT}.
+    public static final int INVALID_CARRIER_NAME_DISPLAY_CONDITION_BITMASK = -1;
+
     // Display SPN only and only if registered to Home PLMNs.
     // Display PLMN only and only if registered to Non-Home PLMNs.
     public static final int DEFAULT_CARRIER_NAME_DISPLAY_CONDITION = 0;
@@ -1119,6 +1123,44 @@ public abstract class IccRecords extends Handler implements IccConstants {
         if (DBG) log("getIccSimChallengeResponse: return auth_rsp");
 
         return android.util.Base64.encodeToString(auth_rsp.payload, android.util.Base64.NO_WRAP);
+    }
+
+    /**
+     * Convert the spn display condition to a bitmask
+     * {@link com.android.internal.telephony.uicc.IccRecords.CarrierNameDisplayConditionBitmask}.
+     *
+     * b1 is the last bit of the display condition which is used to determine whether display of
+     * PLMN network name is required when registered PLMN is **either** HPLMN or a PLMN in the
+     * service provider PLMN list.
+     *
+     * b2 is the second last bit of the display condtion which is used to determine
+     * whether display of Service Provider Name is required when registered PLMN is
+     * **neither** HPLMN nor PLMN in the service provider PLMN list.
+     *
+     * Reference: 3GPP TS 31.102 section 4.2.12 EF_SPN
+     *
+     * @return a carrier name display condtion bitmask.
+     */
+    @CarrierNameDisplayConditionBitmask
+    public static int convertSpnDisplayConditionToBitmask(int condition) {
+        int carrierNameDisplayCondition = 0;
+        // b1 = 0: display of registered PLMN name not required when registered PLMN is
+        // either HPLMN or a PLMN in the service provider PLMN list.
+        // b1 = 1: display of registered PLMN name required when registered PLMN is
+        // either HPLMN or a PLMN in the service provider PLMN list.
+        if ((condition & 0x1) == 0x1) {
+            carrierNameDisplayCondition |= CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN;
+        }
+
+        // b2 = 0: display of the service provider name is **required** when registered
+        // PLMN is neither HPLMN nor a PLMN in the service provider PLMN list.
+        // b2 = 1: display of the servier provider name is **not required** when
+        // registered PLMN is neither HPLMN nor PLMN in the service provider PLMN list.
+        if ((condition & 0x2) == 0) {
+            carrierNameDisplayCondition |= CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN;
+        }
+
+        return carrierNameDisplayCondition;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
