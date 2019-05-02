@@ -996,7 +996,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 }
             } else if (mSc != null && mSc.equals(SC_WAIT)) {
                 // sia = basic service group
-                int serviceClass = siToServiceClass(mSib);
+                int serviceClass = siToServiceClass(mSia);
 
                 if (isActivate() || isDeactivate()) {
                     mPhone.setCallWaiting(isActivate(), serviceClass,
