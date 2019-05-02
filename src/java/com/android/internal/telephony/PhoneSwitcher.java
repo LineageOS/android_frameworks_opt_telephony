@@ -169,7 +169,7 @@ public class PhoneSwitcher extends Handler {
                     EVENT_NETWORK_VALIDATION_DONE, subId, validated ? 1 : 0).sendToTarget();
     @UnsupportedAppUsage
     protected int mMaxActivePhones;
-    private static PhoneSwitcher sPhoneSwitcher = null;
+    protected static PhoneSwitcher sPhoneSwitcher = null;
 
     // Which primary (non-opportunistic) subscription is set as data subscription among all primary
     // subscriptions. This value usually comes from user setting, and it's the subscription used for
