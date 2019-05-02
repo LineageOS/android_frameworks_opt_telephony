@@ -225,7 +225,7 @@ public class CallQualityMetrics {
 
     // Returns the LTE signal to noise ratio, or 0 if unavailable
     private Integer getLteSnr() {
-        ServiceStateTracker sst = mPhone.getServiceStateTracker();
+        ServiceStateTracker sst = mPhone.getDefaultPhone().getServiceStateTracker();
         if (sst == null) {
             Rlog.e(TAG, "getLteSnr: unable to get SST for phone " + mPhone.getPhoneId());
             return CellInfo.UNAVAILABLE;
@@ -336,15 +336,19 @@ public class CallQualityMetrics {
         sb.append(mPhone.getPhoneId());
         sb.append(" mUlSnapshots: {");
         for (Pair<CallQuality, Integer> snapshot : mUlSnapshots) {
-            sb.append(" {");
+            sb.append(" {cq=");
             sb.append(snapshot.first);
+            sb.append(" ss=");
+            sb.append(snapshot.second);
             sb.append("}");
         }
         sb.append("}");
         sb.append(" mDlSnapshots:{");
         for (Pair<CallQuality, Integer> snapshot : mDlSnapshots) {
-            sb.append(" {");
+            sb.append(" {cq=");
             sb.append(snapshot.first);
+            sb.append(" ss=");
+            sb.append(snapshot.second);
             sb.append("}");
         }
         sb.append("}");
