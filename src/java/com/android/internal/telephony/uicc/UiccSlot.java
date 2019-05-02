@@ -152,8 +152,10 @@ public class UiccSlot extends Handler {
                 if (mActive) {
                     mActive = false;
                     mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
+                    UiccController.updateInternalIccState(
+                            mContext, IccCardConstants.State.ABSENT, null, mPhoneId,
+                            true /* special notification for absent card in an inactive slot */);
                     mPhoneId = INVALID_PHONE_ID;
-                    if (mUiccCard != null) mUiccCard.dispose();
                     nullifyUiccCard(true /* sim state is unknown */);
                 }
             } else {
@@ -188,9 +190,6 @@ public class UiccSlot extends Handler {
                 mContext, IccCardConstants.State.ABSENT, null, mPhoneId);
 
         // no card present in the slot now; dispose card and make mUiccCard null
-        if (mUiccCard != null) {
-            mUiccCard.dispose();
-        }
         nullifyUiccCard(false /* sim state is not unknown */);
         mLastRadioState = radioState;
     }
@@ -199,6 +198,9 @@ public class UiccSlot extends Handler {
     // unknown states. To mitigate this, we will us mStateIsUnknown to keep track. The sim is only
     // unknown if we haven't heard from the radio or if the radio has become unavailable.
     private void nullifyUiccCard(boolean stateUnknown) {
+        if (mUiccCard != null) {
+            mUiccCard.dispose();
+        }
         mStateIsUnknown = stateUnknown;
         mUiccCard = null;
     }
@@ -393,9 +395,6 @@ public class UiccSlot extends Handler {
      * Processes radio state unavailable event
      */
     public void onRadioStateUnavailable() {
-        if (mUiccCard != null) {
-            mUiccCard.dispose();
-        }
         nullifyUiccCard(true /* sim state is unknown */);
 
         if (mPhoneId != INVALID_PHONE_ID) {

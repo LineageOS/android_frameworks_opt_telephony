@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.telephony.UiccSlotInfo.CARD_STATE_INFO_PRESENT;
 import static android.telephony.data.ApnSetting.TYPE_MMS;
 
 import android.Manifest;
@@ -52,7 +53,7 @@ import android.telephony.UiccSlotInfo;
 import android.telephony.data.ApnSetting;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
-import android.text.format.Time;
+import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -69,8 +70,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -98,15 +97,14 @@ import java.util.stream.Collectors;
  *
  */
 public class SubscriptionController extends ISub.Stub {
-    static final String LOG_TAG = "SubscriptionController";
-    static final boolean DBG = true;
-    static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
-    static final boolean DBG_CACHE = false;
-    static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
+    private static final String LOG_TAG = "SubscriptionController";
+    private static final boolean DBG = true;
+    private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
+    private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
     private static final ParcelUuid INVALID_GROUP_UUID =
             ParcelUuid.fromString(CarrierConfigManager.REMOVE_GROUP_UUID_STRING);
-    private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
+    private final LocalLog mLocalLog = new LocalLog(200);
 
     // Lock that both mCacheActiveSubInfoList and mCacheOpportunisticSubInfoList use.
     private Object mSubInfoListLock = new Object();
@@ -116,44 +114,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /* Similar to mCacheActiveSubInfoList but only caching opportunistic subscriptions. */
     private List<SubscriptionInfo> mCacheOpportunisticSubInfoList = new ArrayList<>();
-
-    /**
-     * Copied from android.util.LocalLog with flush() adding flush and line number
-     * TODO: Update LocalLog
-     */
-    static class ScLocalLog {
-
-        private LinkedList<String> mLog;
-        private int mMaxLines;
-        private Time mNow;
-
-        public ScLocalLog(int maxLines) {
-            mLog = new LinkedList<String>();
-            mMaxLines = maxLines;
-            mNow = new Time();
-        }
-
-        public synchronized void log(String msg) {
-            if (mMaxLines > 0) {
-                int pid = android.os.Process.myPid();
-                int tid = android.os.Process.myTid();
-                mNow.setToNow();
-                mLog.add(mNow.format("%m-%d %H:%M:%S") + " pid=" + pid + " tid=" + tid + " " + msg);
-                while (mLog.size() > mMaxLines) mLog.remove();
-            }
-        }
-
-        public synchronized void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-            final int LOOPS_PER_FLUSH = 10; // Flush every N loops.
-            Iterator<String> itr = mLog.listIterator(0);
-            int i = 0;
-            while (itr.hasNext()) {
-                pw.println(Integer.toString(i++) + ": " + itr.next());
-                // Flush periodically so we don't drop lines
-                if ((i % LOOPS_PER_FLUSH) == 0) pw.flush();
-            }
-        }
-    }
 
     private static final Comparator<SubscriptionInfo> SUBSCRIPTION_INFO_COMPARATOR =
             (arg0, arg1) -> {
@@ -552,7 +512,7 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
             if (DBG) {
-                logd("[getActiveSubInfoForSubscriber]- subId=" + subId
+                logd("[getActiveSubscriptionInfo]- subId=" + subId
                         + " subList=" + subList + " subInfo=null");
             }
         } finally {
@@ -748,15 +708,25 @@ public class SubscriptionController extends ISub.Stub {
         boolean opptSubListChanged;
 
         synchronized (mSubInfoListLock) {
-            mCacheActiveSubInfoList.clear();
             List<SubscriptionInfo> activeSubscriptionInfoList = getSubInfo(
                     SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
                     + SubscriptionManager.SUBSCRIPTION_TYPE + "="
                     + SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM,
                     null);
+
             if (activeSubscriptionInfoList != null) {
+                // Log when active sub info changes.
+                if (mCacheActiveSubInfoList.size() != activeSubscriptionInfoList.size()
+                        || !mCacheActiveSubInfoList.containsAll(activeSubscriptionInfoList)) {
+                    logdl("Active subscription info list changed. " + activeSubscriptionInfoList);
+                }
+
+                mCacheActiveSubInfoList.clear();
                 activeSubscriptionInfoList.sort(SUBSCRIPTION_INFO_COMPARATOR);
                 mCacheActiveSubInfoList.addAll(activeSubscriptionInfoList);
+            } else {
+                logd("activeSubscriptionInfoList is null.");
+                mCacheActiveSubInfoList.clear();
             }
 
             // Refresh cached opportunistic sub list and detect whether it's changed.
@@ -1940,7 +1910,7 @@ public class SubscriptionController extends ISub.Stub {
 
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             subId = getDefaultSubId();
-            if (DBG) logdl("[getPhoneId] asked for default subId=" + subId);
+            if (DBG) logd("[getPhoneId] asked for default subId=" + subId);
         }
 
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -1954,7 +1924,7 @@ public class SubscriptionController extends ISub.Stub {
         int size = sSlotIndexToSubIds.size();
         if (size == 0) {
             phoneId = mDefaultPhoneId;
-            if (DBG) logdl("[getPhoneId]- no sims, returning default phoneId=" + phoneId);
+            if (VDBG) logdl("[getPhoneId]- no sims, returning default phoneId=" + phoneId);
             return phoneId;
         }
 
@@ -1970,8 +1940,8 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         phoneId = mDefaultPhoneId;
-        if (DBG) {
-            logdl("[getPhoneId]- subId=" + subId + " not found return default phoneId=" + phoneId);
+        if (VDBG) {
+            logd("[getPhoneId]- subId=" + subId + " not found return default phoneId=" + phoneId);
         }
         return phoneId;
 
@@ -2222,9 +2192,9 @@ public class SubscriptionController extends ISub.Stub {
     private void updateAllDataConnectionTrackers() {
         // Tell Phone Proxies to update data connection tracker
         int len = sPhones.length;
-        if (DBG) logdl("[updateAllDataConnectionTrackers] sPhones.length=" + len);
+        if (DBG) logd("[updateAllDataConnectionTrackers] sPhones.length=" + len);
         for (int phoneId = 0; phoneId < len; phoneId++) {
-            if (DBG) logdl("[updateAllDataConnectionTrackers] phoneId=" + phoneId);
+            if (DBG) logd("[updateAllDataConnectionTrackers] phoneId=" + phoneId);
             sPhones[phoneId].updateDataConnectionTracker();
         }
     }
@@ -3176,13 +3146,14 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             SubscriptionInfo info = SubscriptionController.getInstance()
-                    .getAvailableSubscriptionInfoList(mContext.getOpPackageName())
+                    .getAllSubInfoList(mContext.getOpPackageName())
                     .stream()
                     .filter(subInfo -> subInfo.getSubscriptionId() == subId)
                     .findFirst()
                     .get();
 
             if (info == null) {
+                logd("setSubscriptionEnabled subId " + subId + " doesn't exist.");
                 return false;
             }
 
@@ -3206,7 +3177,8 @@ public class SubscriptionController extends ISub.Stub {
         //    to turn on DSDS, or whether to switch from current active eSIM profile to it, or
         //    to simply show a progress dialog.
         // 3) In future, similar operations on triple SIM devices.
-        enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable);
+        enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable,
+                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
         // returning false to indicate state is not changed. If changed, a subscriptionInfo
         // change will be filed separately.
         return false;
@@ -3216,13 +3188,35 @@ public class SubscriptionController extends ISub.Stub {
         // updateEnabledSubscriptionGlobalSetting(subId, physicalSlotIndex);
     }
 
+    private static boolean isInactiveInsertedPSim(UiccSlotInfo slotInfo, String cardId) {
+        return !slotInfo.getIsEuicc() && !slotInfo.getIsActive()
+                && slotInfo.getCardStateInfo() == CARD_STATE_INFO_PRESENT
+                && TextUtils.equals(slotInfo.getCardId(), cardId);
+    }
+
     private boolean enablePhysicalSubscription(SubscriptionInfo info, boolean enable) {
         if (enable && info.getSimSlotIndex() == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
-            // We need to send intents to Euicc if we are turning on an inactive pSIM.
-            // Euicc will decide whether to ask user to switch to DSDS, or change SIM slot mapping.
-            enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable);
-            // returning false to indicate state is not changed. If changed, a subscriptionInfo
-            // change will be filed separately.
+            UiccSlotInfo[] slotsInfo = mTelephonyManager.getUiccSlotsInfo();
+            if (slotsInfo == null) return false;
+            boolean foundMatch = false;
+            for (int i = 0; i < slotsInfo.length; i++) {
+                UiccSlotInfo slotInfo = slotsInfo[i];
+                if (isInactiveInsertedPSim(slotInfo, info.getCardString())) {
+                    // We need to send intents to Euicc if we are turning on an inactive pSIM.
+                    // Euicc will decide whether to ask user to switch to DSDS, or change SIM
+                    // slot mapping.
+                    enableSubscriptionOverEuiccManager(info.getSubscriptionId(), enable, i);
+                    foundMatch = true;
+                    break;
+                }
+            }
+
+            if (!foundMatch) {
+                logdl("enablePhysicalSubscription subId " + info.getSubscriptionId()
+                        + " is not inserted.");
+            }
+            // returning false to indicate state is not changed yet. If intent is sent to LPA and
+            // user consents switching, caller needs to listen to subscription info change.
             return false;
         } else {
             return mTelephonyManager.enableModemForSlot(info.getSimSlotIndex(), enable);
@@ -3236,11 +3230,17 @@ public class SubscriptionController extends ISub.Stub {
         // refreshCachedActiveSubscriptionInfoList();
     }
 
-    private void enableSubscriptionOverEuiccManager(int subId, boolean enable) {
+    private void enableSubscriptionOverEuiccManager(int subId, boolean enable,
+            int physicalSlotIndex) {
+        logdl("enableSubscriptionOverEuiccManager" + (enable ? " enable " : " disable ")
+                + "subId " + subId + " on slotIndex " + physicalSlotIndex);
         Intent intent = new Intent(EuiccManager.ACTION_TOGGLE_SUBSCRIPTION_PRIVILEGED);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(EuiccManager.EXTRA_SUBSCRIPTION_ID, subId);
         intent.putExtra(EuiccManager.EXTRA_ENABLE_SUBSCRIPTION, enable);
+        if (physicalSlotIndex != SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+            intent.putExtra(EuiccManager.EXTRA_PHYSICAL_SLOT_ID, physicalSlotIndex);
+        }
         mContext.startActivity(intent);
     }
 
@@ -3373,7 +3373,7 @@ public class SubscriptionController extends ISub.Stub {
     private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
             String callingPackage, List<SubscriptionInfo> cacheSubList) {
         if (!isSubInfoReady()) {
-            if (DBG) logdl("[getSubscriptionInfoList] Sub Controller not ready");
+            if (DBG) logd("[getSubscriptionInfoList] Sub Controller not ready");
             return null;
         }
 

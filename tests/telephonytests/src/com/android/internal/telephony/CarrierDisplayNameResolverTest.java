@@ -21,6 +21,7 @@ import androidx.test.runner.AndroidJUnit4;
 import static com.google.common.truth.Truth.assertThat;
 
 import android.telephony.ServiceState;
+import android.util.LocalLog;
 
 import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
 import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
@@ -30,7 +31,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 @RunWith(AndroidJUnit4.class)
@@ -60,7 +60,8 @@ public class CarrierDisplayNameResolverTest {
                     new OperatorPlmnInfo(PLMN_2, 300, 400, 1),
                     new OperatorPlmnInfo(PLMN_3, 400, 500, 2));
 
-    private final CarrierDisplayNameResolver mCDNR = new CarrierDisplayNameResolverImpl();
+    private final CarrierDisplayNameResolver mCDNR =
+            new CarrierDisplayNameResolverImpl(new LocalLog(20));
     private final ServiceState mServiceState = new ServiceState();
 
     @Before
@@ -132,10 +133,6 @@ public class CarrierDisplayNameResolverTest {
 
     @Test
     public void testGetPLMNNetworkName_oplNotPresent_returnTheFirstEntryOfPNNList() {
-        // carrier config source > sim record source
-        mCDNR.updateOperatorPlmnList(CarrierDisplayNameResolver.EF_SOURCE_CARRIER_CONFIG,
-                Collections.EMPTY_LIST);
-
         // Set the roaming state to on roaming, we should show the plmn network name based on the
         // default settings.
         mServiceState.setRoaming(ON_ROAMING);
@@ -150,10 +147,7 @@ public class CarrierDisplayNameResolverTest {
         mCDNR.updateServiceState(mServiceState);
 
         mCDNR.updateHomePlmnNumeric(HOME_PLMN_NUMERIC);
-        mCDNR.updateOperatorPlmnList(
-                CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_OPERATOR_PLMN_INFO_LIST);
-        mCDNR.updatePlmnNetworkNameList(
-                CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_PNN_LIST);
+        mCDNR.updatePlmnNetworkNameList(CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_PNN_LIST);
         mCDNR.updateServiceProviderName(
                 CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_SERVICE_PROVIDER_NAME);
         mCDNR.updateServiceProviderNameDisplayCondition(
