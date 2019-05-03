@@ -392,8 +392,14 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         int originTransport = (targetTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
                 : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
-        releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_HANDOVER,
-                originTransport);
+        int releaseType = success
+                ? DcTracker.RELEASE_TYPE_HANDOVER
+                // If handover fails, we need to tear down the existing connection, so the
+                // new data connection can be re-established on the new transport. If we leave
+                // the existing data connection in current transport, then DCT and qualified
+                // network service will be out of sync.
+                : DcTracker.RELEASE_TYPE_NORMAL;
+        releaseNetworkInternal(networkRequest, releaseType, originTransport);
         mNetworkRequests.put(networkRequest, targetTransport);
 
         handoverParams.callback.onCompleted(success);
