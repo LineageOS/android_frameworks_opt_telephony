@@ -30,6 +30,7 @@ import android.util.Log;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
  * This class manages phone's configuration which defines the potential capability (static) of the
@@ -156,7 +157,7 @@ public class PhoneConfigurationManager {
                         int phoneId = msg.arg1;
                         boolean enabled = (boolean) ar.result;
                         //update the cache each time getModemStatus is requested
-                        mPhoneStatusMap.put(phoneId, enabled);
+                        addToPhoneStatusCache(phoneId, enabled);
                     } else {
                         log(msg.what + " failure. Not updating modem status." + ar.exception);
                     }
@@ -186,11 +187,12 @@ public class PhoneConfigurationManager {
             return;
         }
         phone.mCi.enableModem(enable, result);
-        updatePhoneStatus(phone);
     }
 
     /**
      * Get phone status (enabled/disabled)
+     * first query cache, if the status is not in cache,
+     * add it to cache and return a default value true (non-blocking).
      *
      * @param phone which phone to operate on
      */
@@ -203,14 +205,44 @@ public class PhoneConfigurationManager {
         int phoneId = phone.getPhoneId();
 
         //use cache if the status has already been updated/queried
+        try {
+            return getPhoneStatusFromCache(phoneId);
+        } catch (NoSuchElementException ex) {
+            updatePhoneStatus(phone);
+            // Return true if modem status cannot be retrieved. For most cases, modem status
+            // is on. And for older version modems, GET_MODEM_STATUS and disable modem are not
+            // supported. Modem is always on.
+            //TODO: this should be fixed in R to support a third status UNKNOWN b/131631629
+            return true;
+        }
+    }
+
+    /**
+     * Get phone status (enabled/disabled) directly from modem, and use a result Message object
+     * Note: the caller of this method is reponsible to call this in a blocking fashion as well
+     * as read the results and handle the error case.
+     * (In order to be consistent, in error case, we should return default value of true; refer
+     *  to #getPhoneStatus method)
+     *
+     * @param phone which phone to operate on
+     * @param result message that will be updated with result
+     */
+    public void getPhoneStatusFromModem(Phone phone, Message result) {
+        if (phone == null) {
+            log("getPhoneStatus failed phone is null");
+        }
+        phone.mCi.getModemStatus(result);
+    }
+
+    /**
+     * return modem status from cache, NoSuchElementException if phoneId not in cache
+     * @param phoneId
+     */
+    public boolean getPhoneStatusFromCache(int phoneId) throws NoSuchElementException {
         if (mPhoneStatusMap.containsKey(phoneId)) {
             return mPhoneStatusMap.get(phoneId);
         } else {
-            updatePhoneStatus(phone);
-            // Return true if modem status is not in cache. For most of case, modem status
-            // is on. And for older version modems, GET_MODEM_STATUS and disable modem are not
-            // supported. Modem is always on.
-            return true;
+            throw new NoSuchElementException("phoneId not found: " + phoneId);
         }
     }
 
@@ -218,9 +250,9 @@ public class PhoneConfigurationManager {
      * method to call RIL getModemStatus
      */
     private void updatePhoneStatus(Phone phone) {
-        Message callback = Message.obtain(
+        Message result = Message.obtain(
                 mHandler, EVENT_GET_MODEM_STATUS_DONE, phone.getPhoneId(), 0 /**dummy arg*/);
-        phone.mCi.getModemStatus(callback);
+        phone.mCi.getModemStatus(result);
     }
 
     /**
