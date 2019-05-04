@@ -526,6 +526,7 @@ public abstract class TelephonyTest {
         // CellularNetworkValidator
         doReturn(SubscriptionManager.INVALID_PHONE_INDEX)
                 .when(mCellularNetworkValidator).getSubIdInValidation();
+        doReturn(true).when(mCellularNetworkValidator).isValidationFeatureSupported();
 
         //Use reflection to mock singletons
         replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
