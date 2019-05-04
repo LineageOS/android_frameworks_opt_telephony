@@ -104,7 +104,8 @@ public class PhoneSwitcher extends Handler {
     @VisibleForTesting
     public final PhoneStateListener mPhoneStateListener;
     private final CellularNetworkValidator mValidator;
-    private final CellularNetworkValidator.ValidationCallback mValidationCallback =
+    @VisibleForTesting
+    public final CellularNetworkValidator.ValidationCallback mValidationCallback =
             (validated, subId) -> Message.obtain(PhoneSwitcher.this,
                     EVENT_NETWORK_VALIDATION_DONE, subId, validated ? 1 : 0).sendToTarget();
     @UnsupportedAppUsage
@@ -405,11 +406,7 @@ public class PhoneSwitcher extends Handler {
                 boolean needValidation = (msg.arg2 == 1);
                 ISetOpportunisticDataCallback callback =
                         (ISetOpportunisticDataCallback) msg.obj;
-                if (SubscriptionManager.isUsableSubscriptionId(subId)) {
-                    setOpportunisticDataSubscription(subId, needValidation, callback);
-                } else {
-                    unsetOpportunisticDataSubscription(callback);
-                }
+                setOpportunisticDataSubscription(subId, needValidation, callback);
                 break;
             }
             case EVENT_RADIO_AVAILABLE: {
@@ -909,18 +906,31 @@ public class PhoneSwitcher extends Handler {
     /**
      * Set opportunistic data subscription. It's an indication to switch Internet data to this
      * subscription. It has to be an active subscription, and PhoneSwitcher will try to validate
-     * it first if needed.
+     * it first if needed. If subId is DEFAULT_SUBSCRIPTION_ID, it means we are un-setting
+     * opportunistic data sub and switch data back to primary sub.
+     *
+     * @param subId the opportunistic data subscription to switch to. pass DEFAULT_SUBSCRIPTION_ID
+     *              if un-setting it.
+     * @param needValidation whether Telephony will wait until the network is validated by
+     *              connectivity service before switching data to it. More details see
+     *              {@link NetworkCapabilities#NET_CAPABILITY_VALIDATED}.
+     * @param callback Callback will be triggered once it succeeds or failed.
+     *                 Pass null if don't care about the result.
      */
     private void setOpportunisticDataSubscription(int subId, boolean needValidation,
             ISetOpportunisticDataCallback callback) {
-        if (!mSubscriptionController.isActiveSubId(subId)) {
+        if (!mSubscriptionController.isActiveSubId(subId)
+                && subId != SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             log("Can't switch data to inactive subId " + subId);
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION);
             return;
         }
 
+        int subIdToValidate = (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
+                ? mPrimaryDataSubId : subId;
+
         if (mValidator.isValidating()
-                && (!needValidation || subId != mValidator.getSubIdInValidation())) {
+                && (!needValidation || subIdToValidate != mValidator.getSubIdInValidation())) {
             mValidator.stopValidation();
         }
 
@@ -931,31 +941,16 @@ public class PhoneSwitcher extends Handler {
 
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
-        if (CellularNetworkValidator.isValidationFeatureSupported() && needValidation) {
+        if (mValidator.isValidationFeatureSupported() && needValidation) {
             logDataSwitchEvent(subId, TelephonyEvent.EventState.EVENT_STATE_START,
                     DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
             mSetOpptSubCallback = callback;
-            mValidator.validate(subId, DEFAULT_VALIDATION_EXPIRATION_TIME,
+            mValidator.validate(subIdToValidate, DEFAULT_VALIDATION_EXPIRATION_TIME,
                     false, mValidationCallback);
         } else {
             setOpportunisticSubscriptionInternal(subId);
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
         }
-    }
-
-    /**
-     * Unset opportunistic data subscription. It's an indication to switch Internet data back
-     * from opportunistic subscription to primary subscription.
-     */
-    private void unsetOpportunisticDataSubscription(ISetOpportunisticDataCallback callback) {
-        if (mValidator.isValidating()) {
-            mValidator.stopValidation();
-        }
-
-        // Set mOpptDataSubId back to DEFAULT_SUBSCRIPTION_ID. This will trigger
-        // data switch to mPrimaryDataSubId.
-        setOpportunisticSubscriptionInternal(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
-        sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
     }
 
     private void sendSetOpptCallbackHelper(ISetOpportunisticDataCallback callback, int result) {
@@ -983,18 +978,45 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onValidationDone(int subId, boolean passed) {
-        log("Network validation " + (passed ? "passed" : "failed")
+        log("onValidationDone: " + (passed ? "passed" : "failed")
                 + " on subId " + subId);
-        if (passed) setOpportunisticSubscriptionInternal(subId);
+        int resultForCallBack;
+
+        if (!mSubscriptionController.isActiveSubId(subId)) {
+            log("onValidationDone: subId " + subId + " is no longer active");
+            resultForCallBack = SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
+        } else if (!passed) {
+            resultForCallBack = SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+        } else {
+            if (mSubscriptionController.isOpportunistic(subId)) {
+                setOpportunisticSubscriptionInternal(subId);
+            } else {
+                // Switching data back to primary subscription.
+                setOpportunisticSubscriptionInternal(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+            }
+            resultForCallBack = SET_OPPORTUNISTIC_SUB_SUCCESS;
+        }
 
         // Trigger callback if needed
-        sendSetOpptCallbackHelper(mSetOpptSubCallback, passed ? SET_OPPORTUNISTIC_SUB_SUCCESS
-                : SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+        sendSetOpptCallbackHelper(mSetOpptSubCallback, resultForCallBack);
         mSetOpptSubCallback = null;
     }
 
     /**
      * Notify PhoneSwitcher to try to switch data to an opportunistic subscription.
+     *
+     * Set opportunistic data subscription. It's an indication to switch Internet data to this
+     * subscription. It has to be an active subscription, and PhoneSwitcher will try to validate
+     * it first if needed. If subId is DEFAULT_SUBSCRIPTION_ID, it means we are un-setting
+     * opportunistic data sub and switch data back to primary sub.
+     *
+     * @param subId the opportunistic data subscription to switch to. pass DEFAULT_SUBSCRIPTION_ID
+     *              if un-setting it.
+     * @param needValidation whether Telephony will wait until the network is validated by
+     *              connectivity service before switching data to it. More details see
+     *              {@link NetworkCapabilities#NET_CAPABILITY_VALIDATED}.
+     * @param callback Callback will be triggered once it succeeds or failed.
+     *                 Pass null if don't care about the result.
      */
     public void trySetOpportunisticDataSubscription(int subId, boolean needValidation,
             ISetOpportunisticDataCallback callback) {
