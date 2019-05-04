@@ -3315,6 +3315,10 @@ public class ServiceStateTracker extends Handler {
                 mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
                         && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
 
+        boolean hasAirplaneModeOnChanged =
+                mSS.getVoiceRegState() != ServiceState.STATE_POWER_OFF
+                        && mNewSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF;
+
         SparseBooleanArray hasDataAttached = new SparseBooleanArray(
                 mTransportManager.getAvailableTransports().length);
         SparseBooleanArray hasDataDetached = new SparseBooleanArray(
@@ -3331,7 +3335,12 @@ public class ServiceStateTracker extends Handler {
             NetworkRegistrationInfo newNrs = mNewSS.getNetworkRegistrationInfo(
                     NetworkRegistrationInfo.DOMAIN_PS, transport);
 
-            boolean changed = (oldNrs == null || !oldNrs.isInService())
+            // If the previously it was not in service, and now it's in service, trigger the
+            // attached event. Also if airplane mode was just turned on, and data is already in
+            // service, we need to trigger the attached event again so that DcTracker can setup
+            // data on all connectable APNs again (because we've already torn down all data
+            // connections just before airplane mode turned on)
+            boolean changed = (oldNrs == null || !oldNrs.isInService() || hasAirplaneModeOnChanged)
                     && (newNrs != null && newNrs.isInService());
             hasDataAttached.put(transport, changed);
 
@@ -3448,7 +3457,8 @@ public class ServiceStateTracker extends Handler {
                     + " hasLostMultiApnSupport = " + hasLostMultiApnSupport
                     + " hasCssIndicatorChanged = " + hasCssIndicatorChanged
                     + " hasNrFrequencyRangeChanged = " + hasNrFrequencyRangeChanged
-                    + " hasNrStateChanged = " + hasNrStateChanged);
+                    + " hasNrStateChanged = " + hasNrStateChanged
+                    + " hasAirplaneModeOnlChanged = " + hasAirplaneModeOnChanged);
         }
 
         // Add an event log when connection state changes
@@ -3620,11 +3630,15 @@ public class ServiceStateTracker extends Handler {
 
             if (hasDataAttached.get(transport)) {
                 shouldLogAttachedChange = true;
-                mAttachedRegistrants.get(transport).notifyRegistrants();
+                if (mAttachedRegistrants.get(transport) != null) {
+                    mAttachedRegistrants.get(transport).notifyRegistrants();
+                }
             }
             if (hasDataDetached.get(transport)) {
                 shouldLogAttachedChange = true;
-                mDetachedRegistrants.get(transport).notifyRegistrants();
+                if (mDetachedRegistrants.get(transport) != null) {
+                    mDetachedRegistrants.get(transport).notifyRegistrants();
+                }
             }
         }
 
