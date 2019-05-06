@@ -57,7 +57,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.telephony.ims.RcsFileTransferCreationParams;
 import android.telephony.ims.RcsMessageCreationParams;
-import android.telephony.ims.RcsMessageQueryResult;
+import android.telephony.ims.RcsMessageQueryResultParcelable;
 import android.telephony.ims.RcsQueryContinuationToken;
 
 import com.android.ims.RcsTypeIdPair;
@@ -77,7 +77,7 @@ class RcsMessageQueryHelper {
         mContentResolver = contentResolver;
     }
 
-    RcsMessageQueryResult performMessageQuery(Bundle bundle) throws RemoteException {
+    RcsMessageQueryResultParcelable performMessageQuery(Bundle bundle) throws RemoteException {
         RcsQueryContinuationToken continuationToken = null;
         List<RcsTypeIdPair> messageTypeIdPairs = new ArrayList<>();
 
@@ -104,7 +104,7 @@ class RcsMessageQueryHelper {
             }
         }
 
-        return new RcsMessageQueryResult(continuationToken, messageTypeIdPairs);
+        return new RcsMessageQueryResultParcelable(continuationToken, messageTypeIdPairs);
     }
 
     void createContentValuesForGenericMessage(ContentValues contentValues, int threadId,
