@@ -29,7 +29,6 @@ import static org.mockito.Mockito.doReturn;
 import android.content.ContentValues;
 import android.database.MatrixCursor;
 import android.net.Uri;
-import android.os.RemoteException;
 import android.provider.Telephony;
 import android.provider.Telephony.RcsColumns.RcsParticipantColumns;
 import android.telephony.ims.RcsParticipant;
@@ -65,7 +64,7 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
         mContentResolver = (MockContentResolver) mContext.getContentResolver();
         mContentResolver.addProvider("rcs", mFakeRcsProvider);
 
-        mRcsMessageStoreController = new RcsMessageStoreController(mContentResolver);
+        mRcsMessageStoreController = new RcsMessageStoreController(mContext);
     }
 
     @After
@@ -85,14 +84,14 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
                 Uri.parse("content://rcs/thread"), null, null, null, null, null));
 
         try {
-            mRcsMessageStoreController.getRcsThreads(queryParameters);
-        } catch (RemoteException e) {
+            mRcsMessageStoreController.getRcsThreads(queryParameters, getPackageName());
+        } catch (RuntimeException e) {
             // eat the exception as there is no provider - we care about the expected update assert
         }
     }
 
     @Test
-    public void testCreateRcsParticipant() throws RemoteException {
+    public void testCreateRcsParticipant() {
         String canonicalAddress = "+5551234567";
 
         // verify the first query to canonical addresses
@@ -118,7 +117,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
                 Uri.parse("content://rcs/participant/1001")));
 
         int participantId =
-                mRcsMessageStoreController.createRcsParticipant(canonicalAddress, "alias");
+                mRcsMessageStoreController.createRcsParticipant(canonicalAddress, "alias",
+                        getPackageName());
 
         assertThat(participantId).isEqualTo(1001);
     }
@@ -131,8 +131,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
                 Uri.parse("content://rcs/participant/551"), null, null, contentValues, 0));
 
         try {
-            mRcsMessageStoreController.setRcsParticipantAlias(551, "New Alias");
-        } catch (RemoteException e) {
+            mRcsMessageStoreController.setRcsParticipantAlias(551, "New Alias", getPackageName());
+        } catch (RuntimeException e) {
             // eat the exception as there is no provider - we care about the expected update assert
         }
     }
@@ -144,8 +144,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
         mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
                 Uri.parse("content://rcs/p2p_thread/123"), null, null, contentValues, 0));
         try {
-            mRcsMessageStoreController.set1To1ThreadFallbackThreadId(123, 456L);
-        } catch (RemoteException e) {
+            mRcsMessageStoreController.set1To1ThreadFallbackThreadId(123, 456L, getPackageName());
+        } catch (RuntimeException e) {
             // eat the exception as there is no provider - we care about the expected update assert
         }
     }
@@ -158,8 +158,8 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
                 Uri.parse("content://rcs/group_thread/345"), null, null, contentValues, 0));
 
         try {
-            mRcsMessageStoreController.setGroupThreadName(345, "new name");
-        } catch (RemoteException e) {
+            mRcsMessageStoreController.setGroupThreadName(345, "new name", getPackageName());
+        } catch (RuntimeException e) {
             // eat the exception as there is no provider - we care about the expected update assert
         }
     }
@@ -172,8 +172,9 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
                 Uri.parse("content://rcs/group_thread/345"), null, null, contentValues, 0));
 
         try {
-            mRcsMessageStoreController.setGroupThreadIcon(345, Uri.parse("newIcon"));
-        } catch (RemoteException e) {
+            mRcsMessageStoreController.setGroupThreadIcon(345, Uri.parse("newIcon"),
+                    getPackageName());
+        } catch (RuntimeException e) {
             // eat the exception as there is no provider - we care about the expected update assert
         }
     }
@@ -185,12 +186,14 @@ public class RcsMessageStoreControllerTest extends TelephonyTest {
         mFakeRcsProvider.addExpectedOperation(new ExpectedUpdate(
                 Uri.parse("content://rcs/group_thread/454"), null, null, contentValues, 0));
 
-        RcsParticipant participant = new RcsParticipant(9);
-
         try {
-            mRcsMessageStoreController.setGroupThreadOwner(454, participant.getId());
-        } catch (RemoteException e) {
+            mRcsMessageStoreController.setGroupThreadOwner(454, 9, getPackageName());
+        } catch (RuntimeException e) {
             // eat the exception as there is no provider - we care about the expected update assert
         }
+    }
+
+    private String getPackageName() {
+        return mContext.getOpPackageName();
     }
 }
