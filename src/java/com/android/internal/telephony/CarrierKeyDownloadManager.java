@@ -31,6 +31,8 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
@@ -65,7 +67,7 @@ import java.util.zip.GZIPInputStream;
  * This class contains logic to get Certificates and keep them current.
  * The class will be instantiated by various Phone implementations.
  */
-public class CarrierKeyDownloadManager {
+public class CarrierKeyDownloadManager extends Handler {
     private static final String LOG_TAG = "CarrierKeyDownloadManager";
 
     private static final String MCC_MNC_PREF_TAG = "CARRIER_KEY_DM_MCC_MNC";
@@ -103,6 +105,9 @@ public class CarrierKeyDownloadManager {
     private static final String JSON_TYPE_VALUE_WLAN = "WLAN";
     private static final String JSON_TYPE_VALUE_EPDG = "EPDG";
 
+    private static final int EVENT_ALARM_OR_CONFIG_CHANGE = 0;
+    private static final int EVENT_DOWNLOAD_COMPLETE = 1;
+
 
     private static final int[] CARRIER_KEY_TYPES = {TelephonyManager.KEY_TYPE_EPDG,
             TelephonyManager.KEY_TYPE_WLAN};
@@ -133,31 +138,43 @@ public class CarrierKeyDownloadManager {
             int slotId = mPhone.getPhoneId();
             if (action.equals(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId)) {
                 Log.d(LOG_TAG, "Handling key renewal alarm: " + action);
-                handleAlarmOrConfigChange();
+                sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
             } else if (action.equals(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD)) {
                 if (slotId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
                     Log.d(LOG_TAG, "Handling reset intent: " + action);
-                    handleAlarmOrConfigChange();
+                    sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
                 }
             } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
                 if (slotId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
                     Log.d(LOG_TAG, "Carrier Config changed: " + action);
-                    handleAlarmOrConfigChange();
+                    sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
                 }
             } else if (action.equals(DownloadManager.ACTION_DOWNLOAD_COMPLETE)) {
                 Log.d(LOG_TAG, "Download Complete");
-                long carrierKeyDownloadIdentifier =
-                        intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, 0);
+                sendMessage(obtainMessage(EVENT_DOWNLOAD_COMPLETE,
+                        intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, 0)));
+            }
+        }
+    };
+
+    @Override
+    public void handleMessage (Message msg) {
+        switch (msg.what) {
+            case EVENT_ALARM_OR_CONFIG_CHANGE:
+                handleAlarmOrConfigChange();
+                break;
+            case EVENT_DOWNLOAD_COMPLETE:
+                long carrierKeyDownloadIdentifier = (long) msg.obj;
                 String mccMnc = getMccMncSetFromPref();
                 if (isValidDownload(mccMnc)) {
                     onDownloadComplete(carrierKeyDownloadIdentifier, mccMnc);
                     onPostDownloadProcessing(carrierKeyDownloadIdentifier);
                 }
-            }
+                break;
         }
-    };
+    }
 
     private void onPostDownloadProcessing(long carrierKeyDownloadIdentifier) {
         resetRenewalAlarm();
