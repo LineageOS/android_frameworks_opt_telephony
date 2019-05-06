@@ -46,6 +46,7 @@ import java.util.GregorianCalendar;
 
 import static android.preference.PreferenceManager.getDefaultSharedPreferences;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -274,6 +275,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         Intent mIntent = new Intent(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         mContext.sendBroadcast(mIntent);
+        waitForMs(200);
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
         assertTrue(dt.format(expirationDate).equals(dateExpected));
     }
@@ -296,6 +298,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         Intent mIntent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
         mContext.sendBroadcast(mIntent);
+        waitForMs(200);
         SharedPreferences preferences = getDefaultSharedPreferences(mContext);
         String mccMnc = preferences.getString("CARRIER_KEY_DM_MCC_MNC" + slotId, null);
         assertTrue(mccMnc.equals("310:260"));
@@ -319,6 +322,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         Intent mIntent = new Intent("com.android.internal.telephony.carrier_key_download_alarm"
                 + slotId);
         mContext.sendBroadcast(mIntent);
+        waitForMs(200);
         SharedPreferences preferences = getDefaultSharedPreferences(mContext);
         String mccMnc = preferences.getString("CARRIER_KEY_DM_MCC_MNC" + slotId, null);
         assertTrue(mccMnc.equals("310:260"));
