@@ -500,5 +500,99 @@ public class EmergencyNumberTest extends TestCase {
         outputNumberList.add(num);
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(inputNumberList);
         assertEquals(outputNumberList, inputNumberList);
+
+        // Corner case 3: multiple element not ordered
+        inputNumberList = new ArrayList<>();
+        outputNumberList = new ArrayList<>();
+
+        EmergencyNumber num1 = new EmergencyNumber(
+                "911",
+                "us",
+                "",
+                0b111,
+                new ArrayList<String>(),
+                0b10000,
+                0);
+
+        EmergencyNumber num12 = new EmergencyNumber(
+                "911",
+                "us",
+                "",
+                0b111,
+                new ArrayList<String>(),
+                0b10000,
+                0);
+
+        EmergencyNumber num3 = new EmergencyNumber(
+                "112",
+                "",
+                "",
+                0,
+                new ArrayList<String>(),
+                0,
+                0);
+
+        EmergencyNumber num4 = new EmergencyNumber(
+                "*911",
+                "",
+                "",
+                0,
+                new ArrayList<String>(),
+                0,
+                0);
+
+        EmergencyNumber num13 = new EmergencyNumber(
+                "911",
+                "us",
+                "",
+                0b111,
+                new ArrayList<String>(),
+                0b10000,
+                0);
+
+        EmergencyNumber num6 = new EmergencyNumber(
+                "#911",
+                "",
+                "",
+                0,
+                new ArrayList<String>(),
+                0,
+                0);
+
+        EmergencyNumber num31 = new EmergencyNumber(
+                "112",
+                "",
+                "",
+                0,
+                new ArrayList<String>(),
+                0,
+                0);
+
+        EmergencyNumber num14 = new EmergencyNumber(
+                "911",
+                "us",
+                "",
+                0b111,
+                new ArrayList<String>(),
+                0b10000,
+                0);
+
+        inputNumberList.add(num1);
+        inputNumberList.add(num12);
+        inputNumberList.add(num3);
+        inputNumberList.add(num4);
+        inputNumberList.add(num13);
+        inputNumberList.add(num6);
+        inputNumberList.add(num31);
+        inputNumberList.add(num14);
+        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(inputNumberList);
+
+        outputNumberList.add(num1);
+        outputNumberList.add(num3);
+        outputNumberList.add(num4);
+        outputNumberList.add(num6);
+        Collections.sort(outputNumberList);
+
+        assertEquals(outputNumberList, inputNumberList);
     }
 }
