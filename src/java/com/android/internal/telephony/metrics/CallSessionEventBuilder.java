@@ -130,4 +130,10 @@ public class CallSessionEventBuilder {
         mEvent.calls = rilCalls;
         return this;
     }
+
+    /** Set the audio codec. */
+    public CallSessionEventBuilder setAudioCodec(int audioCodec) {
+        mEvent.audioCodec = audioCodec;
+        return this;
+    }
 }
