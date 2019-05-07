@@ -2784,8 +2784,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Check if TETHER_DUN_APN setting or config_tether_apndata includes APN that matches
-     * current operator.
+     * Check if there are matching tethering (i.e DUN) for the carrier.
      * @return true if there is a matching DUN APN.
      */
     public boolean hasMatchedTetherApnSetting() {
@@ -2853,6 +2852,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void carrierActionReportDefaultNetworkStatus(boolean report) {
         mCarrierActionAgent.carrierActionReportDefaultNetworkStatus(report);
+    }
+
+    /**
+     * Action set from carrier signalling broadcast receivers to reset all carrier actions
+     */
+    public void carrierActionResetAll() {
+        mCarrierActionAgent.carrierActionReset();
     }
 
     /**

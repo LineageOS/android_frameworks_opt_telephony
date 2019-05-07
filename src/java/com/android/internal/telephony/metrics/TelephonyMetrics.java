@@ -41,18 +41,24 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
+import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsSmsImplBase;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
+import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
@@ -297,6 +303,8 @@ public class TelephonyMetrics {
                 return "PHONE_STATE_CHANGED";
             case TelephonyCallSession.Event.Type.NITZ_TIME:
                 return "NITZ_TIME";
+            case TelephonyCallSession.Event.Type.AUDIO_CODEC:
+                return "AUDIO_CODEC";
             default:
                 return Integer.toString(event);
         }
@@ -386,6 +394,9 @@ public class TelephonyMetrics {
                                 + " isMultiparty = " + call.isMultiparty);
                     }
                     pw.decreaseIndent();
+                } else if (event.type == TelephonyCallSession.Event.Type.AUDIO_CODEC) {
+                    pw.println(callSessionEventToString(event.type)
+                            + "(" + event.audioCodec + ")");
                 } else {
                     pw.println(callSessionEventToString(event.type));
                 }
@@ -412,6 +423,19 @@ public class TelephonyMetrics {
                 pw.print(event.delay);
                 pw.print(" T=");
                 pw.println(smsSessionEventToString(event.type));
+                // Only show more info for tx/rx sms
+                if (event.type == SmsSession.Event.Type.SMS_SEND
+                        || event.type == SmsSession.Event.Type.SMS_RECEIVED
+                        || event.type == SmsSession.Event.Type.SMS_SEND_RESULT) {
+                    pw.print(" ReqId=");
+                    pw.println(event.rilRequestId);
+                    pw.print(" E=");
+                    pw.println(event.errorCode);
+                    pw.print(" RilE=");
+                    pw.println(event.error);
+                    pw.print(" ImsE=");
+                    pw.println(event.imsError);
+                }
             }
             pw.decreaseIndent();
         }
@@ -1456,6 +1480,31 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write SMS related solicited response event
+     *
+     * @param phoneId Phone id
+     * @param errorReason Defined in {@link SmsManager} RESULT_XXX.
+     */
+    public synchronized void writeOnImsServiceSmsSolicitedResponse(int phoneId,
+            @ImsSmsImplBase.SendStatusResult int resultCode, int errorReason) {
+
+        InProgressSmsSession smsSession = mInProgressSmsSessions.get(phoneId);
+        if (smsSession == null) {
+            Rlog.e(TAG, "SMS session is missing");
+        } else {
+
+            smsSession.addEvent(new SmsSessionEventBuilder(
+                    SmsSession.Event.Type.SMS_SEND_RESULT)
+                    .setImsServiceErrno(resultCode)
+                    .setErrorCode(errorReason)
+            );
+
+            smsSession.decreaseExpectedResponse();
+            finishSmsSessionIfNeeded(smsSession);
+        }
+    }
+
+    /**
      * Write deactivate data call response event
      *
      * @param phoneId Phone id
@@ -1740,6 +1789,39 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write Send SMS event using ImsService. Expecting response from
+     * {@link #writeOnSmsSolicitedResponse}.
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
+     * @param resultCode The result of sending the new SMS to the vendor layer to be sent to the
+     *         carrier network.
+     */
+    public synchronized void writeImsServiceSendSms(int phoneId, String format,
+            @ImsSmsImplBase.SendStatusResult int resultCode) {
+        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
+        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
+        switch (format) {
+            case SmsMessage.FORMAT_3GPP : {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
+                break;
+            }
+            case SmsMessage.FORMAT_3GPP2: {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
+                break;
+            }
+        }
+        smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
+                .setTech(SmsSession.Event.Tech.SMS_IMS)
+                .setImsServiceErrno(resultCode)
+                .setFormat(formatCode)
+        );
+
+        smsSession.increaseExpectedResponse();
+    }
+
+    /**
      * Write incoming SMS event
      *
      * @param phoneId Phone id
@@ -1752,6 +1834,58 @@ public class TelephonyMetrics {
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
                 .setTech(tech)
                 .setFormat(format)
+        );
+
+        finishSmsSessionIfNeeded(smsSession);
+    }
+
+    /**
+     * Write incoming SMS event
+     *
+     * @param phoneId Phone id
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     * {@link SmsMessage#FORMAT_3GPP2}.
+     * @param result The result of processing the the newly received SMS message.
+     */
+    public synchronized void writeImsServiceNewSms(int phoneId, String format,
+            @ImsSmsImplBase.DeliverStatusResult int result) {
+        InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
+        int formatCode = SmsSession.Event.Format.SMS_FORMAT_UNKNOWN;
+        switch (format) {
+            case SmsMessage.FORMAT_3GPP : {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP;
+                break;
+            }
+            case SmsMessage.FORMAT_3GPP2: {
+                formatCode = SmsSession.Event.Format.SMS_FORMAT_3GPP2;
+                break;
+            }
+        }
+        int smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+        switch (result) {
+            case ImsSmsImplBase.DELIVER_STATUS_OK: {
+                smsError = SmsManager.RESULT_ERROR_NONE;
+                break;
+            }
+            case ImsSmsImplBase.DELIVER_STATUS_ERROR_NO_MEMORY: {
+                smsError = SmsManager.RESULT_NO_MEMORY;
+                break;
+            }
+            case ImsSmsImplBase.DELIVER_STATUS_ERROR_REQUEST_NOT_SUPPORTED: {
+                smsError = SmsManager.RESULT_REQUEST_NOT_SUPPORTED;
+                break;
+            }
+            case ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC: {
+                smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+                break;
+            }
+        }
+        smsSession.addEvent(new SmsSessionEventBuilder(
+                SmsSession.Event.Type.SMS_RECEIVED)
+                .setTech(SmsSession.Event.Tech.SMS_IMS)
+                .setFormat(formatCode)
+                .setErrorCode(smsError)
+                .setImsServiceErrno(TelephonyProto.ImsServiceErrno.IMS_E_SUCCESS)
         );
 
         finishSmsSessionIfNeeded(smsSession);
@@ -1865,6 +1999,136 @@ public class TelephonyMetrics {
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setCarrierIdMatching(
                 carrierIdMatching).build();
         addTelephonyEvent(event);
+    }
+
+    /**
+     * Convert IMS audio codec into proto defined value
+     *
+     * @param c IMS codec value
+     * @return Codec value defined in call session proto
+     */
+    private int convertImsCodec(int c) {
+        switch (c) {
+            case ImsStreamMediaProfile.AUDIO_QUALITY_AMR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_AMR;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_AMR_WB;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_QCELP13K:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_QCELP13K;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVRC:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_B:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC_B;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC_WB;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_NW:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC_NW;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_GSM_EFR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_GSM_EFR;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_GSM_FR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_GSM_FR;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_GSM_HR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_GSM_HR;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_G711U:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_G711U;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_G723:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_G723;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_G711A:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_G711A;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_G722:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_G722;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_G711AB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_G711AB;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_G729:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_G729;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVS_NB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVS_NB;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVS_WB;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVS_SWB;
+            case ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVS_FB;
+            default:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_UNKNOWN;
+        }
+    }
+
+    /**
+     * Convert GSM/CDMA audio codec into proto defined value
+     *
+     * @param c GSM/CDMA codec value
+     * @return Codec value defined in call session proto
+     */
+    private int convertGsmCdmaCodec(int c) {
+        switch (c) {
+            case DriverCall.AUDIO_QUALITY_AMR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_AMR;
+            case DriverCall.AUDIO_QUALITY_AMR_WB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_AMR_WB;
+            case DriverCall.AUDIO_QUALITY_GSM_EFR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_GSM_EFR;
+            case DriverCall.AUDIO_QUALITY_GSM_FR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_GSM_FR;
+            case DriverCall.AUDIO_QUALITY_GSM_HR:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_GSM_HR;
+            case DriverCall.AUDIO_QUALITY_EVRC:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC;
+            case DriverCall.AUDIO_QUALITY_EVRC_B:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC_B;
+            case DriverCall.AUDIO_QUALITY_EVRC_WB:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC_WB;
+            case DriverCall.AUDIO_QUALITY_EVRC_NW:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_EVRC_NW;
+            default:
+                return TelephonyCallSession.Event.AudioCodec.AUDIO_CODEC_UNKNOWN;
+        }
+    }
+
+    /**
+     * Write audio codec event
+     *
+     * @param phoneId Phone id
+     * @param session IMS call session
+     */
+    public void writeAudioCodecIms(int phoneId, ImsCallSession session) {
+        InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
+        if (callSession == null) {
+            Rlog.e(TAG, "Call session is missing");
+            return;
+        }
+
+        ImsCallProfile localCallProfile = session.getLocalCallProfile();
+        if (localCallProfile != null) {
+            int codec = convertImsCodec(localCallProfile.mMediaProfile.mAudioQuality);
+            callSession.addEvent(new CallSessionEventBuilder(
+                    TelephonyCallSession.Event.Type.AUDIO_CODEC)
+                    .setCallIndex(getCallId(session))
+                    .setAudioCodec(codec));
+
+            if (VDBG) Rlog.v(TAG, "Logged Audio Codec event. Value: " + codec);
+        }
+    }
+
+    /**
+     * Write audio codec event
+     *
+     * @param phoneId Phone id
+     * @param audioQuality Audio quality value
+     */
+    public void writeAudioCodecGsmCdma(int phoneId, int audioQuality) {
+        InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
+        if (callSession == null) {
+            Rlog.e(TAG, "Call session is missing");
+            return;
+        }
+
+        int codec = convertGsmCdmaCodec(audioQuality);
+        callSession.addEvent(new CallSessionEventBuilder(
+                TelephonyCallSession.Event.Type.AUDIO_CODEC)
+                .setAudioCodec(codec));
+
+        if (VDBG) Rlog.v(TAG, "Logged Audio Codec event. Value: " + codec);
     }
 
     //TODO: Expand the proto in the future
