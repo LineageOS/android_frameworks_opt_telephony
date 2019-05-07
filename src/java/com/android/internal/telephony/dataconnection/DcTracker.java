@@ -76,7 +76,6 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.view.WindowManager;
 
-import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CarrierActionAgent;
 import com.android.internal.telephony.DctConstants;
@@ -248,6 +247,7 @@ public class DcTracker extends Handler {
                 if (DBG) log("Provisioning apn alarm");
                 onActionIntentProvisioningApnAlarm(intent);
             } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                if (DBG) log("received carrier config change");
                 if (mIccRecords.get() != null && mIccRecords.get().getRecordsLoaded()) {
                     setDefaultDataRoamingEnabled();
                 }
@@ -863,6 +863,14 @@ public class DcTracker extends Handler {
             onTrySetupData(Phone.REASON_DATA_ENABLED);
         } else {
             onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
+        }
+        // Update sharedPreference to false when exits new device provisioning, indicating no users
+        // modifications on the settings for new devices. Thus carrier specific
+        // default roaming settings can be applied for new devices till user modification.
+        final SharedPreferences sp = PreferenceManager
+                .getDefaultSharedPreferences(mPhone.getContext());
+        if (!sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)) {
+            sp.edit().putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, false).commit();
         }
     }
 
@@ -1736,27 +1744,11 @@ public class DcTracker extends Handler {
         ArrayList<ApnSetting> retDunSettings = new ArrayList<ApnSetting>();
 
         // Places to look for tether APN in order: TETHER_DUN_APN setting (to be deprecated soon),
-        // APN database, and config_tether_apndata resource (to be deprecated soon).
+        // APN database
         String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
         if (!TextUtils.isEmpty(apnData)) {
             dunCandidates.addAll(ApnSetting.arrayFromString(apnData));
             if (VDBG) log("fetchDunApns: dunCandidates from Setting: " + dunCandidates);
-        }
-
-        // todo: remove this and config_tether_apndata after APNs are moved from overlay to apns xml
-        // If TETHER_DUN_APN isn't set or APN database doesn't have dun APN,
-        // try the resource as last resort.
-        if (dunCandidates.isEmpty()) {
-            String[] apnArrayData = mPhone.getContext().getResources()
-                .getStringArray(R.array.config_tether_apndata);
-            if (!ArrayUtils.isEmpty(apnArrayData)) {
-                for (String apnString : apnArrayData) {
-                    ApnSetting apn = ApnSetting.fromString(apnString);
-                    // apn may be null if apnString isn't valid or has error parsing
-                    if (apn != null) dunCandidates.add(apn);
-                }
-                if (VDBG) log("fetchDunApns: dunCandidates from resource: " + dunCandidates);
-            }
         }
 
         if (dunCandidates.isEmpty()) {
@@ -2714,6 +2706,8 @@ public class DcTracker extends Handler {
             // for single sim device, update to carrier default if user action is not set
             useCarrierSpecificDefault = true;
         }
+        log("setDefaultDataRoamingEnabled: useCarrierSpecificDefault "
+                + useCarrierSpecificDefault);
         if (useCarrierSpecificDefault) {
             boolean defaultVal = getDefaultDataRoamingEnabled();
             log("setDefaultDataRoamingEnabled: " + setting + "default value: " + defaultVal);
