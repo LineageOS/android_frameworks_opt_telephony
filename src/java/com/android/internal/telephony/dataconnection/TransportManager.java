@@ -47,6 +47,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -114,6 +115,8 @@ public class TransportManager extends Handler {
 
     private static final int EVENT_QUALIFIED_NETWORKS_CHANGED = 1;
 
+    private static final int EVENT_UPDATE_AVAILABLE_NETWORKS = 2;
+
     public static final String SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE =
             "ro.telephony.iwlan_operation_mode";
 
@@ -155,10 +158,15 @@ public class TransportManager extends Handler {
     private AccessNetworksManager mAccessNetworksManager;
 
     /**
-     * Available networks. The key is the APN type, and the value is the available network list in
-     * the preferred order.
+     * Current available networks. The key is the APN type, and the value is the available network
+     * list in the preferred order.
      */
     private final SparseArray<int[]> mCurrentAvailableNetworks;
+
+    /**
+     * The queued available networks list.
+     */
+    private final LinkedList<List<QualifiedNetworks>> mAvailableNetworksList;
 
     /**
      * The current transport of the APN type. The key is the APN type, and the value is the
@@ -211,6 +219,7 @@ public class TransportManager extends Handler {
         mCurrentTransports = new ConcurrentHashMap<>();
         mPendingHandoverApns = new SparseIntArray();
         mHandoverNeededEventRegistrants = new RegistrantList();
+        mAvailableNetworksList = new LinkedList<>();
 
         if (isInLegacyMode()) {
             log("operates in legacy mode.");
@@ -233,7 +242,11 @@ public class TransportManager extends Handler {
             case EVENT_QUALIFIED_NETWORKS_CHANGED:
                 AsyncResult ar = (AsyncResult) msg.obj;
                 List<QualifiedNetworks> networks = (List<QualifiedNetworks>) ar.result;
-                updateAvailableNetworks(networks);
+                mAvailableNetworksList.add(networks);
+                sendEmptyMessage(EVENT_UPDATE_AVAILABLE_NETWORKS);
+                break;
+            case EVENT_UPDATE_AVAILABLE_NETWORKS:
+                updateAvailableNetworks();
                 break;
             default:
                 loge("Unexpected event " + msg.what);
@@ -297,13 +310,28 @@ public class TransportManager extends Handler {
      * @param apnType The APN type
      * @param transport The transport. Must be WWAN or WLAN.
      */
-    private void setCurrentTransport(@ApnType int apnType, int transport) {
+    private synchronized void setCurrentTransport(@ApnType int apnType, int transport) {
         mCurrentTransports.put(apnType, transport);
         logl("setCurrentTransport: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
     }
 
-    private synchronized void updateAvailableNetworks(List<QualifiedNetworks> networksList) {
+    private boolean isHandoverPending() {
+        return mPendingHandoverApns.size() > 0;
+    }
+
+    private void updateAvailableNetworks() {
+        if (isHandoverPending()) {
+            log("There's ongoing handover. Will update networks once handover completed.");
+            return;
+        }
+
+        if (mAvailableNetworksList.size() == 0) {
+            log("Nothing in the available network list queue.");
+            return;
+        }
+
+        List<QualifiedNetworks> networksList = mAvailableNetworksList.remove();
         logl("updateAvailableNetworks: " + networksList);
         for (QualifiedNetworks networks : networksList) {
             if (areNetworksValid(networks)) {
@@ -334,12 +362,23 @@ public class TransportManager extends Handler {
                                 // to the new one. If failed, there will be retry afterwards anyway.
                                 setCurrentTransport(networks.apnType, targetTransport);
                                 mPendingHandoverApns.delete(networks.apnType);
+
+                                // If there are still pending available network changes, we need to
+                                // process the rest.
+                                if (mAvailableNetworksList.size() > 0) {
+                                    sendEmptyMessage(EVENT_UPDATE_AVAILABLE_NETWORKS);
+                                }
                             }));
                 }
                 mCurrentAvailableNetworks.put(networks.apnType, networks.qualifiedNetworks);
             } else {
                 loge("Invalid networks received: " + networks);
             }
+        }
+
+        // If there are still pending available network changes, we need to process the rest.
+        if (mAvailableNetworksList.size() > 0) {
+            sendEmptyMessage(EVENT_UPDATE_AVAILABLE_NETWORKS);
         }
     }
 
@@ -420,6 +459,8 @@ public class TransportManager extends Handler {
                 .mapToObj(type -> AccessNetworkConstants.transportTypeToString(type))
                 .collect(Collectors.joining(",")) + "]");
         pw.println("mCurrentAvailableNetworks=" + mCurrentAvailableNetworks);
+        pw.println("mAvailableNetworksList=" + mAvailableNetworksList);
+        pw.println("mPendingHandoverApns=" + mPendingHandoverApns);
         pw.println("mCurrentTransports=" + mCurrentTransports);
         pw.println("isInLegacy=" + isInLegacyMode());
         pw.println("IWLAN operation mode="
