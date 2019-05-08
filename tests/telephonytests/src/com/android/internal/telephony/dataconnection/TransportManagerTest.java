@@ -44,8 +44,10 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 public class TransportManagerTest extends TelephonyTest {
@@ -187,5 +189,84 @@ public class TransportManagerTest extends TelephonyTest {
         waitForMs(100);
         // Verify handover needed event was not sent
         verify(mTestHandler, never()).sendMessageAtTime(any(Message.class), anyLong());
+    }
+
+    private LinkedList<List<QualifiedNetworks>> getAvailableNetworksList() throws Exception {
+        Field f = TransportManager.class.getDeclaredField("mAvailableNetworksList");
+        f.setAccessible(true);
+        return (LinkedList<List<QualifiedNetworks>>) f.get(mTransportManager);
+    }
+
+    @Test
+    @SmallTest
+    public void testBackToBackHandoverNeeded() throws Exception {
+        mTransportManager.registerForHandoverNeededEvent(mTestHandler, EVENT_HANDOVER_NEEDED);
+
+        // Initial qualified networks
+        List<QualifiedNetworks> networkList = new ArrayList<>(Arrays.asList(
+                new QualifiedNetworks(ApnSetting.TYPE_IMS,
+                        new int[]{AccessNetworkType.EUTRAN, AccessNetworkType.UTRAN,
+                                AccessNetworkType.IWLAN})));
+        mTransportManager.obtainMessage(1 /* EVENT_QUALIFIED_NETWORKS_CHANGED */,
+                new AsyncResult(null, networkList, null)).sendToTarget();
+        waitForMs(100);
+        // Verify handover needed event was not sent
+        verify(mTestHandler, never()).sendMessageAtTime(any(Message.class), anyLong());
+
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
+
+        // Now change the order of qualified networks by putting IWLAN first
+        networkList = new ArrayList<>(Arrays.asList(
+                new QualifiedNetworks(ApnSetting.TYPE_IMS,
+                        new int[]{AccessNetworkType.IWLAN, AccessNetworkType.UTRAN,
+                                AccessNetworkType.EUTRAN})));
+        mTransportManager.obtainMessage(1 /* EVENT_QUALIFIED_NETWORKS_CHANGED */,
+                new AsyncResult(null, networkList, null)).sendToTarget();
+        waitForMs(100);
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+
+        // Verify handover needed event was sent and the the target transport is WLAN.
+        verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        Message message = messageArgumentCaptor.getValue();
+        assertEquals(EVENT_HANDOVER_NEEDED, message.what);
+        AsyncResult ar = (AsyncResult) message.obj;
+        HandoverParams params = (HandoverParams) ar.result;
+        assertEquals(ApnSetting.TYPE_IMS, params.apnType);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, params.targetTransport);
+
+        // Before handover is completed, update the available networks again.
+        // This time change the order of qualified networks by putting EUTRAN first
+        networkList = new ArrayList<>(Arrays.asList(
+                new QualifiedNetworks(ApnSetting.TYPE_IMS,
+                        new int[]{AccessNetworkType.EUTRAN, AccessNetworkType.UTRAN,
+                                AccessNetworkType.IWLAN})));
+        mTransportManager.obtainMessage(1 /* EVENT_QUALIFIED_NETWORKS_CHANGED */,
+                new AsyncResult(null, networkList, null)).sendToTarget();
+        waitForMs(100);
+
+        // Verify handover needed event was sent only once (for the previous change)
+        verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+
+        LinkedList<List<QualifiedNetworks>> listQueue = getAvailableNetworksList();
+        // Verify the list has been queued.
+        assertEquals(1, listQueue.size());
+
+        // Notify handover succeeded.
+        params.callback.onCompleted(true);
+        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
+        waitForMs(100);
+
+        listQueue = getAvailableNetworksList();
+        // Verify the queue is empty.
+        assertEquals(0, listQueue.size());
+
+        // Verify handover 2nd needed event was sent
+        verify(mTestHandler, times(2)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
     }
 }
