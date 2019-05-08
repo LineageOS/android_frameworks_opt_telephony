@@ -94,6 +94,10 @@ public class ImsManagerTest extends TelephonyTest {
 
         doReturn(mSubscriptionController).when(mBinder).queryLocalInterface(anyString());
         mServiceManagerMockedServices.put("isub", mBinder);
+        // Stick to the CarrierConfig defaults unless explicitly overwritten.
+        doReturn("-1").when(mSubscriptionController)
+                .getSubscriptionProperty(anyInt(), anyString(), anyString());
+
 
         doReturn(true).when(mMmTelFeatureConnection).isBinderAlive();
         mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
@@ -133,15 +137,18 @@ public class ImsManagerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testGetDefaultValues() {
-        doReturn("-1").when(mSubscriptionController)
-                .getSubscriptionProperty(anyInt(), anyString(), anyString());
-
         ImsManager imsManager = getImsManagerAndInitProvisionedValues();
 
         assertEquals(WFC_IMS_ENABLE_DEFAULT_VAL, imsManager.isWfcEnabledByUser());
         verify(mSubscriptionController, times(1)).getSubscriptionProperty(
                 anyInt(),
                 eq(SubscriptionManager.WFC_IMS_ENABLED),
+                anyString());
+
+        assertEquals(WFC_IMS_ROAMING_ENABLE_DEFAULT_VAL, imsManager.isWfcRoamingEnabledByUser());
+        verify(mSubscriptionController, times(1)).getSubscriptionProperty(
+                anyInt(),
+                eq(SubscriptionManager.WFC_IMS_ROAMING_ENABLED),
                 anyString());
 
         assertEquals(ENHANCED_4G_MODE_DEFAULT_VAL,
@@ -294,7 +301,7 @@ public class ImsManagerTest extends TelephonyTest {
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
                 eq(ImsConfig.WfcModeFeatureValueConstants.CELLULAR_PREFERRED));
-        // Roaming is enabled
+        // WFC is enabled, so we should set user roaming setting
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
                 eq(ProvisioningManager.PROVISIONING_VALUE_ENABLED));
@@ -307,24 +314,24 @@ public class ImsManagerTest extends TelephonyTest {
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_MODE),
                 eq(ImsConfig.WfcModeFeatureValueConstants.WIFI_PREFERRED));
-        // Roaming is disabled, so we should see disabled
-        verify(mImsConfigImplBaseMock).setConfig(
+        // WFC is enabled, so we should set user roaming setting
+        verify(mImsConfigImplBaseMock, times(2)).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+                eq(ProvisioningManager.PROVISIONING_VALUE_ENABLED));
 
 
         // Turn off WFC and ensure that roaming setting is disabled.
         doReturn(false).when(mTelephonyManager).isNetworkRoaming(eq(mSubId[0]));
         imsManager.setWfcSetting(false);
-        verify(mImsConfigImplBaseMock, times(2)).setConfig(
+        verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
                 eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
     }
 
 
     /**
-     * Tests that when user changed WFC setting while NOT roaming, that setting is ignored and false
-     * is sent to the ImsService correctly when changing the roaming mode.
+     * Tests that when user changed WFC setting while NOT roaming, the home WFC mode is sent to the
+     * modem and the roaming enabled configuration is pushed.
      *
      * Preconditions:
      *  - CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL = true
@@ -352,10 +359,9 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED));
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                // Should be disabled, even if the user enabled the "WFC while roaming" setting.
-                // This is because we are on the home network, so the vendor ImsService expects this
-                // value to be disabled until we move into a roaming network.
-                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+                // Should be enabled because the user enabled the "WFC while roaming" setting
+                // independent of whether or not we are roaming.
+                eq(ProvisioningManager.PROVISIONING_VALUE_ENABLED));
     }
 
     /**
@@ -424,12 +430,10 @@ public class ImsManagerTest extends TelephonyTest {
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_MODE_OVERRIDE),
                 eq(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED));
-        verify(mImsConfigImplBaseMock).setConfig(
+        // WiFi Roaming enabled setting is not related to WFC mode
+        verify(mImsConfigImplBaseMock, never()).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                // Should be set to disabled, even if the user enabled the "WFC while roaming"
-                // setting. This is because we are on the home network, so the vendor ImsService
-                // expects this value to be disabled until we move into a roaming network.
-                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+                anyInt());
     }
 
     /**
@@ -473,10 +477,10 @@ public class ImsManagerTest extends TelephonyTest {
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_MODE_OVERRIDE),
                 eq(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED));
-        verify(mImsConfigImplBaseMock).setConfig(
+        // WiFi Roaming enabled setting is not related to WFC mode
+        verify(mImsConfigImplBaseMock, never()).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                // Should be set to the user setting for WFC roaming (default true for test)
-                eq(ProvisioningManager.PROVISIONING_VALUE_ENABLED));
+                anyInt());
     }
 
     /**
@@ -508,15 +512,16 @@ public class ImsManagerTest extends TelephonyTest {
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_MODE_OVERRIDE),
                 eq(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED));
-        verify(mImsConfigImplBaseMock).setConfig(
+        // WiFi Roaming enabled setting is not related to WFC mode
+        verify(mImsConfigImplBaseMock, never()).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                // WFC roaming is disabled because WFC is disabled.
-                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+                anyInt());
     }
 
     /**
-     * Tests that when user changed WFC mode while not roaming, that setting is ignored and false is
-     * sent to the ImsService correctly when changing the roaming mode.
+     * Tests that when user changed WFC mode while not roaming, the new mode is sent to the modem
+     * and roaming enabled indication is sent to the ImsService correctly when changing the roaming
+     * mode.
      *
      * Preconditions:
      *  - CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL = true
@@ -524,8 +529,13 @@ public class ImsManagerTest extends TelephonyTest {
      */
     @Test @SmallTest
     public void testSetWfcMode_shouldSetWfcModeRoamingDisabledUserEnabled() throws Exception {
-        // The user has enabled the "WFC while roaming" setting in the UI previously while WFC was
-        // enabled
+        // The user has enabled the WFC setting in the UI.
+        doReturn(String.valueOf(1 /*true*/))
+                .when(mSubscriptionController).getSubscriptionProperty(
+                anyInt(),
+                eq(SubscriptionManager.WFC_IMS_ENABLED),
+                anyString());
+        // The user has enabled the "WFC while roaming" setting in the UI while WFC was enabled
         doReturn(String.valueOf(1 /*true*/))
                 .when(mSubscriptionController).getSubscriptionProperty(
                 anyInt(),
@@ -543,12 +553,10 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_MODE_OVERRIDE),
                 // ensure that the correct cellular preferred config change is sent
                 eq(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED));
-        verify(mImsConfigImplBaseMock).setConfig(
+        // WiFi Roaming enabled setting is not related to WFC mode
+        verify(mImsConfigImplBaseMock, never()).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                // Should be set to disabled, even if the user enabled the "WFC while roaming"
-                // setting. This is because we are on the home network, so the vendor ImsService
-                // expects this value to be disabled until we move into a roaming network.
-                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+                anyInt());
     }
 
     /**
@@ -579,11 +587,10 @@ public class ImsManagerTest extends TelephonyTest {
         verify(mImsConfigImplBaseMock).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_MODE_OVERRIDE),
                 eq(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED));
-        verify(mImsConfigImplBaseMock).setConfig(
+        // WiFi Roaming enabled setting is not related to WFC mode
+        verify(mImsConfigImplBaseMock, never()).setConfig(
                 eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
-                // Should be set to the user's setting for WFC roaming (user previously set to false
-                // in the UI above).
-                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+                anyInt());
     }
 
     /**
@@ -754,6 +761,34 @@ public class ImsManagerTest extends TelephonyTest {
                 anyInt(),
                 eq(SubscriptionManager.WFC_IMS_MODE),
                 anyString());
+    }
+
+    /**
+     * Tests the operation of setWfcRoamingSetting and ensures that the user setting for WFC roaming
+     * and the ImsConfig setting are both called properly.
+     */
+    @Test @SmallTest
+    public void setWfcRoamingSettingTest() {
+        ImsManager imsManager = getImsManagerAndInitProvisionedValues();
+
+        imsManager.setWfcRoamingSetting(true);
+        verify(mSubscriptionController, times(1)).setSubscriptionProperty(
+                anyInt(),
+                eq(SubscriptionManager.WFC_IMS_ROAMING_ENABLED),
+                eq("1"));
+        verify(mImsConfigImplBaseMock).setConfig(
+                eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
+                eq(ProvisioningManager.PROVISIONING_VALUE_ENABLED));
+
+        imsManager.setWfcRoamingSetting(false);
+        verify(mSubscriptionController, times(1)).setSubscriptionProperty(
+                anyInt(),
+                eq(SubscriptionManager.WFC_IMS_ROAMING_ENABLED),
+                eq("0"));
+        verify(mImsConfigImplBaseMock).setConfig(
+                eq(ProvisioningManager.KEY_VOICE_OVER_WIFI_ROAMING_ENABLED_OVERRIDE),
+                eq(ProvisioningManager.PROVISIONING_VALUE_DISABLED));
+
     }
 
     private ImsManager getImsManagerAndInitProvisionedValues() {
