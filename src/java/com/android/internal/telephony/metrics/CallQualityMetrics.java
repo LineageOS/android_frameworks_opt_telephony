@@ -267,7 +267,8 @@ public class CallQualityMetrics {
         // handover from IMS->CS->IMS, but this is currently not possible
         // TODO(b/130302396) this also may be possible when we put a call on hold and continue with
         // another call
-        summary.totalDurationWithQualityInformationInSeconds = mLastCallQuality.getCallDuration();
+        summary.totalDurationWithQualityInformationInSeconds =
+                mLastCallQuality.getCallDuration() / 1000;
         if (mWorstSsWithGoodDlQuality != null) {
             summary.snapshotOfWorstSsWithGoodQuality =
                     toCallQualityProto(mWorstSsWithGoodDlQuality.first);
@@ -304,7 +305,8 @@ public class CallQualityMetrics {
         // handover from IMS->CS->IMS, but this is currently not possible
         // TODO(b/130302396) this also may be possible when we put a call on hold and continue with
         // another call
-        summary.totalDurationWithQualityInformationInSeconds = mLastCallQuality.getCallDuration();
+        summary.totalDurationWithQualityInformationInSeconds =
+                mLastCallQuality.getCallDuration() / 1000;
         if (mWorstSsWithGoodUlQuality != null) {
             summary.snapshotOfWorstSsWithGoodQuality =
                     toCallQualityProto(mWorstSsWithGoodUlQuality.first);
