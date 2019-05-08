@@ -735,7 +735,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null) {
                     byte[] data = (byte[])ar.result;
-                    mNotifier.notifyOemHookRawEventForSubscriber(getSubId(), data);
+                    mNotifier.notifyOemHookRawEventForSubscriber(this, data);
                 } else {
                     Rlog.e(LOG_TAG, "OEM hook raw exception: " + ar.exception);
                 }
@@ -2389,7 +2389,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /** Notify the {@link EmergencyNumber} changes. */
     public void notifyEmergencyNumberList() {
-        mNotifier.notifyEmergencyNumberList();
+        mNotifier.notifyEmergencyNumberList(this);
     }
 
     /**
