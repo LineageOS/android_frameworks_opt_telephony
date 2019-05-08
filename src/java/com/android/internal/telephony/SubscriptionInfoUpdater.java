@@ -208,8 +208,15 @@ public class SubscriptionInfoUpdater extends Handler {
     @UnsupportedAppUsage
     private boolean isAllIccIdQueryDone() {
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            if (mIccId[i] == null) {
-                logd("Wait for SIM" + (i + 1) + " IccId");
+            UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
+            int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
+            if  (mIccId[i] == null || slot == null || !slot.isActive()) {
+                if (mIccId[i] == null) {
+                    logd("Wait for SIM " + i + " Iccid");
+                } else {
+                    logd(String.format("Wait for slot corresponding to phone %d to be active, "
+                            + "slotId is %d", i, slotId));
+                }
                 return false;
             }
         }
@@ -617,7 +624,7 @@ public class SubscriptionInfoUpdater extends Handler {
             UiccSlot[] uiccSlots = uiccController.getUiccSlots();
             if (uiccSlots != null) {
                 Arrays.stream(uiccSlots)
-                        .filter(uiccSlot -> uiccSlot.getUiccCard() != null)
+                        .filter(uiccSlot -> uiccSlot != null && uiccSlot.getUiccCard() != null)
                         .map(uiccSlot -> uiccController.convertToPublicCardId(
                                 uiccSlot.getUiccCard().getCardId()))
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
