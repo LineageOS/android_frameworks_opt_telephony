@@ -689,7 +689,8 @@ public class GsmCdmaPhone extends Phone {
     public void notifyDisconnect(Connection cn) {
         mDisconnectRegistrants.notifyResult(cn);
 
-        mNotifier.notifyDisconnectCause(cn.getDisconnectCause(), cn.getPreciseDisconnectCause());
+        mNotifier.notifyDisconnectCause(this, cn.getDisconnectCause(),
+                cn.getPreciseDisconnectCause());
     }
 
     public void notifyUnknownConnection(Connection cn) {
@@ -2376,7 +2377,7 @@ public class GsmCdmaPhone extends Phone {
 
     private void handleRadioPowerStateChange() {
         Rlog.d(LOG_TAG, "handleRadioPowerStateChange, state= " + mCi.getRadioState());
-        mNotifier.notifyRadioPowerStateChanged(mCi.getRadioState());
+        mNotifier.notifyRadioPowerStateChanged(this, mCi.getRadioState());
     }
 
     @Override
