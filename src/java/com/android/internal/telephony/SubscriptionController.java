@@ -1569,9 +1569,18 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(SubscriptionManager.NAME_SOURCE, nameSource);
             }
             if (DBG) logd("[setDisplayName]- mDisplayName:" + nameToSet + " set");
-            // TODO(b/33075886): If this is an embedded subscription, we must also save the new name
-            // to the eSIM itself. Currently it will be blown away the next time the subscription
-            // list is updated.
+
+            // Update the nickname on the eUICC chip if it's an embedded subscription.
+            SubscriptionInfo sub = getSubscriptionInfo(subId);
+            if (sub != null && sub.isEmbedded()) {
+                // Ignore the result.
+                if (DBG) logd("Updating embedded sub nickname.");
+                EuiccManager euiccManager = (EuiccManager)
+                        mContext.getSystemService(Context.EUICC_SERVICE);
+                euiccManager.updateSubscriptionNickname(subId, displayName,
+                        PendingIntent.getService(
+                            mContext, 0 /* requestCode */, new Intent(), 0 /* flags */));
+            }
 
             int result = mContext.getContentResolver().update(
                     SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
