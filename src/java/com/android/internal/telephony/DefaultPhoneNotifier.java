@@ -167,6 +167,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     private void doNotifyDataConnection(Phone sender, String apnType,
                                         PhoneConstants.DataState state) {
         int subId = sender.getSubId();
+        int phoneId = sender.getPhoneId();
         long dds = SubscriptionManager.getDefaultDataSubscriptionId();
         if (DBG) log("subId = " + subId + ", DDS = " + dds);
 
@@ -187,7 +188,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
         try {
             if (mRegistry != null) {
-                mRegistry.notifyDataConnectionForSubscriber(subId,
+                mRegistry.notifyDataConnectionForSubscriber(phoneId, subId,
                     PhoneConstantConversions.convertDataState(state),
                         sender.isDataAllowed(ApnSetting.getApnTypesBitmaskFromString(apnType)),
                         sender.getActiveApnHost(apnType),
@@ -204,10 +205,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyDataConnectionFailed(Phone sender, String apnType) {
-        int subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyDataConnectionFailedForSubscriber(subId, apnType);
+                mRegistry.notifyDataConnectionFailedForSubscriber(sender.getPhoneId(),
+                        sender.getSubId(), apnType);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -255,10 +256,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyOtaspChanged(Phone sender, int otaspMode) {
-        // FIXME: subId?
+        int subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyOtaspChanged(otaspMode);
+                mRegistry.notifyOtaspChanged(subId, otaspMode);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -266,27 +267,25 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     public void notifyPreciseCallState(Phone sender) {
-        // FIXME: subId?
         Call ringingCall = sender.getRingingCall();
         Call foregroundCall = sender.getForegroundCall();
         Call backgroundCall = sender.getBackgroundCall();
         if (ringingCall != null && foregroundCall != null && backgroundCall != null) {
             try {
-                mRegistry.notifyPreciseCallState(
+                mRegistry.notifyPreciseCallState(sender.getPhoneId(), sender.getSubId(),
                         convertPreciseCallState(ringingCall.getState()),
                         convertPreciseCallState(foregroundCall.getState()),
-                        convertPreciseCallState(backgroundCall.getState()),
-                        sender.getPhoneId());
+                        convertPreciseCallState(backgroundCall.getState()));
             } catch (RemoteException ex) {
                 // system process is dead
             }
         }
     }
 
-    public void notifyDisconnectCause(int cause, int preciseCause) {
-        // FIXME: subId?
+    public void notifyDisconnectCause(Phone sender, int cause, int preciseCause) {
         try {
-            mRegistry.notifyDisconnectCause(cause, preciseCause);
+            mRegistry.notifyDisconnectCause(sender.getPhoneId(), sender.getSubId(), cause,
+                    preciseCause);
         } catch (RemoteException ex) {
             // system process is dead
         }
@@ -303,9 +302,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     public void notifyPreciseDataConnectionFailed(Phone sender, String apnType,
             String apn, @DataFailCause.FailCause int failCause) {
-        // FIXME: subId?
         try {
-            mRegistry.notifyPreciseDataConnectionFailed(apnType, apn, failCause);
+            mRegistry.notifyPreciseDataConnectionFailed(sender.getPhoneId(), sender.getSubId(),
+                    apnType, apn, failCause);
         } catch (RemoteException ex) {
             // system process is dead
         }
@@ -351,9 +350,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData) {
+    public void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData) {
         try {
-            mRegistry.notifyOemHookRawEventForSubscriber(subId, rawData);
+            mRegistry.notifyOemHookRawEventForSubscriber(sender.getPhoneId(),
+                    sender.getSubId(), rawData);
         } catch (RemoteException ex) {
             // system process is dead
         }
@@ -369,19 +369,20 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyRadioPowerStateChanged(@TelephonyManager.RadioPowerState int state) {
+    public void notifyRadioPowerStateChanged(Phone sender,
+                                             @TelephonyManager.RadioPowerState int state) {
         try {
-            mRegistry.notifyRadioPowerStateChanged(state);
+            mRegistry.notifyRadioPowerStateChanged(sender.getPhoneId(), sender.getSubId(), state);
         } catch (RemoteException ex) {
             // system process is dead
         }
     }
 
     @Override
-    public void notifyEmergencyNumberList() {
+    public void notifyEmergencyNumberList(Phone sender) {
         try {
             if (mRegistry != null) {
-                mRegistry.notifyEmergencyNumberList();
+                mRegistry.notifyEmergencyNumberList(sender.getPhoneId(), sender.getSubId());
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -394,7 +395,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         try {
             if (mRegistry != null) {
                 mRegistry.notifyCallQualityChanged(callQuality, sender.getPhoneId(),
-                        callNetworkType);
+                        sender.getSubId(), callNetworkType);
             }
         } catch (RemoteException ex) {
             // system process is dead
