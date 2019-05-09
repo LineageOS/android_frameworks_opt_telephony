@@ -32,8 +32,8 @@ import android.os.HandlerThread;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 
 import org.junit.After;
 import org.junit.Before;
@@ -47,9 +47,10 @@ import java.util.concurrent.TimeUnit;
 public class ApduSenderTest {
     private static final long WAIT_TIMEOUT_MLLIS = 5000;
 
-    private static class ResponseCaptor extends AsyncResultCallback<byte[]> {
+    private static class ResponseCaptor extends ApduSenderResultCallback {
         public byte[] response;
         public Throwable exception;
+        public int stopApduIndex = -1;
 
         private final CountDownLatch mLatch = new CountDownLatch(1);
 
@@ -61,6 +62,18 @@ public class ApduSenderTest {
             } catch (InterruptedException e) {
                 fail("Execution interrupted: " + e);
             }
+        }
+
+        @Override
+        public boolean shouldContinueOnIntermediateResult(IccIoResult result) {
+            if (stopApduIndex < 0) {
+                return true;
+            }
+            if (stopApduIndex == 0) {
+                return false;
+            }
+            stopApduIndex--;
+            return true;
         }
 
         @Override
@@ -183,6 +196,34 @@ public class ApduSenderTest {
                 eq(3), eq(0), eq(""), any());
         verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(0x81), eq(0xE2), eq(0x91),
                 eq(0), eq(2), eq("abcd"), any());
+    }
+
+    @Test
+    public void testSendMultiApdusStopEarly() throws InterruptedException {
+        String aid = "B2C3D4";
+        ApduSender sender = new ApduSender(mMockCi, aid, false /* supportExtendedApdu */);
+
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi, "9000");
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, "A19000", "A29000",
+                "A39000", "A49000");
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel);
+        mResponseCaptor.stopApduIndex = 2;
+
+        sender.send((selectResponse, requestBuilder) -> {
+            requestBuilder.addApdu(10, 1, 2, 3, 0, "a");
+            requestBuilder.addApdu(10, 1, 2, 3, "ab");
+            requestBuilder.addApdu(10, 1, 2, 3);
+            requestBuilder.addStoreData("abcd");
+        }, mResponseCaptor, mHandler);
+        mResponseCaptor.await();
+
+        assertEquals("A3", IccUtils.bytesToHexString(mResponseCaptor.response));
+        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
+                eq(3), eq(0), eq("a"), any());
+        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
+                eq(3), eq(1), eq("ab"), any());
+        verify(mMockCi).iccTransmitApduLogicalChannel(eq(channel), eq(channel | 10), eq(1), eq(2),
+                eq(3), eq(0), eq(""), any());
     }
 
     @Test
