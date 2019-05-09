@@ -1601,9 +1601,10 @@ public class SubscriptionController extends ISub.Stub {
             SubscriptionInfo sub = getSubscriptionInfo(subId);
             if (sub != null && sub.isEmbedded()) {
                 // Ignore the result.
-                if (DBG) logd("Updating embedded sub nickname.");
-                EuiccManager euiccManager = (EuiccManager)
-                        mContext.getSystemService(Context.EUICC_SERVICE);
+                int cardId = sub.getCardId();
+                if (DBG) logd("Updating embedded sub nickname on cardId: " + cardId);
+                EuiccManager euiccManager = ((EuiccManager)
+                        mContext.getSystemService(Context.EUICC_SERVICE)).createForCardId(cardId);
                 euiccManager.updateSubscriptionNickname(subId, displayName,
                         PendingIntent.getService(
                             mContext, 0 /* requestCode */, new Intent(), 0 /* flags */));
