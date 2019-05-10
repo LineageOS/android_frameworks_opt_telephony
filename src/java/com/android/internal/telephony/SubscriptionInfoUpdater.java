@@ -623,7 +623,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
             }
             // update default subId
-            MultiSimSettingController.getInstance().onAllSubscriptionsLoaded();
+            MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
@@ -870,7 +870,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
             sc.refreshCachedActiveSubscriptionInfoList();
             sc.notifySubscriptionInfoChanged();
-            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupId);
+            MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupId);
         }
     }
 
