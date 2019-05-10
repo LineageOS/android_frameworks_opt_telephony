@@ -63,7 +63,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getDeviceIdForPhone(int phoneId, String callingPackage) {
-        return callPhoneMethodForPhoneIdWithReadDeviceIdentifierCheck(phoneId, callingPackage,
+        return callPhoneMethodForPhoneIdWithReadDeviceIdentifiersCheck(phoneId, callingPackage,
                 "getDeviceId", (phone)-> phone.getDeviceId());
     }
 
@@ -73,8 +73,8 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getImeiForSubscriber(int subId, String callingPackage) {
-        return callPhoneMethodForSubIdWithReadCheck(subId, callingPackage, "getImei",
-                (phone)-> phone.getImei());
+        return callPhoneMethodForSubIdWithReadDeviceIdentifiersCheck(subId, callingPackage,
+                "getImei", (phone)-> phone.getImei());
     }
 
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int subId, int keyType,
@@ -397,6 +397,14 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                                 aContext, aSubId, aCallingPackage, aMessage));
     }
 
+    private <T> T callPhoneMethodForSubIdWithReadDeviceIdentifiersCheck(int subId,
+            String callingPackage, String message, CallPhoneMethodHelper<T> callMethodHelper) {
+        return callPhoneMethodWithPermissionCheck(subId, callingPackage, message, callMethodHelper,
+                (aContext, aSubId, aCallingPackage, aMessage)->
+                        TelephonyPermissions.checkCallingOrSelfReadDeviceIdentifiers(
+                                aContext, aSubId, aCallingPackage, aMessage));
+    }
+
     private <T> T callPhoneMethodForSubIdWithReadSubscriberIdentifiersCheck(int subId,
             String callingPackage, String message, CallPhoneMethodHelper<T> callMethodHelper) {
         return callPhoneMethodWithPermissionCheck(subId, callingPackage, message, callMethodHelper,
@@ -432,7 +440,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                                 aContext, aSubId, aCallingPackage, aMessage));
     }
 
-    private <T> T callPhoneMethodForPhoneIdWithReadDeviceIdentifierCheck(int phoneId,
+    private <T> T callPhoneMethodForPhoneIdWithReadDeviceIdentifiersCheck(int phoneId,
             String callingPackage, String message, CallPhoneMethodHelper<T> callMethodHelper) {
         // Getting subId before doing permission check.
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {

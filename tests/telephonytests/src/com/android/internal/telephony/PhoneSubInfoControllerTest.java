@@ -34,7 +34,6 @@ import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 
@@ -63,6 +62,14 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext,
                 new Phone[]{mPhone, mSecondPhone});
+
+        setupMocksForTelephonyPermissions();
+        // TelephonyPermissions will query the READ_DEVICE_IDENTIFIERS op from AppOpManager to
+        // determine if the calling package should be granted access to device identifiers. To
+        // ensure this appop does not interfere with any of the tests always return its default
+        // value.
+        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
+                eq(AppOpsManager.OPSTR_READ_DEVICE_IDENTIFIERS), anyInt(), eq(TAG));
     }
 
     @After
@@ -82,8 +89,6 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    @Ignore("Temporarily ignoring until original device identifier access behavior is restored "
-            + "under b/117781266")
     public void testGetDeviceIdWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission or passing a device / profile owner access
         // check is required to access device identifiers. Since neither of those are true for this
@@ -189,7 +194,6 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
-
         assertNull(mPhoneSubInfoControllerUT.getNaiForSubscriber(0, TAG));
         assertNull(mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG));
 
@@ -214,6 +218,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetImeiWithOutPermission() {
+        // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
+        // profile owner access check is required to access device identifiers. Since none of
+        // those are true for this test each case will result in a SecurityException being thrown.
         doReturn("990000862471854").when(mPhone).getImei();
         doReturn("990000862471855").when(mSecondPhone).getImei();
 
@@ -239,16 +246,41 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
+        try {
+            mPhoneSubInfoControllerUT.getImeiForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getImei"));
+        }
 
-        assertNull(mPhoneSubInfoControllerUT.getImeiForSubscriber(0, TAG));
-        assertNull(mPhoneSubInfoControllerUT.getImeiForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getImeiForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getImei"));
+        }
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OP_READ_PHONE_STATE), anyInt(), eq(TAG));
-        assertEquals("990000862471854", mPhoneSubInfoControllerUT.getImeiForSubscriber(0, TAG));
-        assertEquals("990000862471855", mPhoneSubInfoControllerUT.getImeiForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getImeiForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getImei"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getImeiForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getImei"));
+        }
     }
 
     @Test
@@ -316,8 +348,6 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    @Ignore("Temporarily ignoring until original device identifier access behavior is restored "
-            + "under b/117781266")
     public void testGetSubscriberIdWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
@@ -400,8 +430,6 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    @Ignore("Temporarily ignoring until original device identifier access behavior is restored "
-            + "under b/117781266")
     public void testGetIccSerialNumberWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
