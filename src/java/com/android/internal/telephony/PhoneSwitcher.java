@@ -158,7 +158,7 @@ public class PhoneSwitcher extends Handler {
     @UnsupportedAppUsage
     protected final int mNumPhones;
     @UnsupportedAppUsage
-    private final Phone[] mPhones;
+    protected final Phone[] mPhones;
     private final LocalLog mLocalLog;
     @VisibleForTesting
     public final PhoneStateListener mPhoneStateListener;
@@ -1255,6 +1255,10 @@ public class PhoneSwitcher extends Handler {
         return (phone.getForegroundCall().getState() == Call.State.ACTIVE
                 || phone.getForegroundCall().getState() == Call.State.ALERTING
                 || phone.getBackgroundCall().getState() == Call.State.HOLDING);
+    }
+
+    protected boolean isCallActive(int phoneId) {
+        return false;
     }
 
     private void updateHalCommandToUse() {
