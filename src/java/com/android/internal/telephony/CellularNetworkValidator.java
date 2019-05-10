@@ -94,7 +94,7 @@ public class CellularNetworkValidator {
     /**
      * Check whether this feature is supported or not.
      */
-    public static boolean isValidationFeatureSupported() {
+    public boolean isValidationFeatureSupported() {
         return PhoneConfigurationManager.getInstance().getCurrentPhoneCapability()
                 .validationBeforeSwitchSupported;
     }
