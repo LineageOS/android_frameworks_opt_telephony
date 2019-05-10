@@ -3588,6 +3588,10 @@ public class ServiceStateTracker extends Handler {
             // If the operator has been overridden, all PLMNs will be considered HOME PLMNs, only
             // show SPN.
             return CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN;
+        } else if (TextUtils.isEmpty(getServiceProviderName())) {
+            // If SPN is null or empty, we should show plmn.
+            // This is a hack from IccRecords#getServiceProviderName().
+            return CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN;
         } else {
             boolean useRoamingFromServiceState = config.getBoolean(
                     CarrierConfigManager.KEY_SPN_DISPLAY_RULE_USE_ROAMING_FROM_SERVICE_STATE_BOOL);
