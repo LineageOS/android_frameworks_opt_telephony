@@ -1972,6 +1972,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(false).when(mRuimRecords).isProvisioned();
         String mockMdn = "mockMdn";
         doReturn(mockMdn).when(mRuimRecords).getMdn();
+
+        // trigger RUIM_RECORDS_LOADED
+        Message msg1 = Message.obtain();
+        msg1.what = integerArgumentCaptor.getValue();
+        msg1.obj = new AsyncResult(null, null, null);
+        sst.sendMessage(msg1);
+
+        // wait for RUIM_RECORDS_LOADED to be handled
+        waitForHandlerAction(sst, 5000);
+
         assertEquals(mockMdn, sst.getMdnNumber());
     }
 
