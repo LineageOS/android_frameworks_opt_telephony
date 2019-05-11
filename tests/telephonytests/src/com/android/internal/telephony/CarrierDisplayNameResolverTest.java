@@ -16,150 +16,161 @@
 
 package com.android.internal.telephony;
 
-import androidx.test.runner.AndroidJUnit4;
-
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doReturn;
+
+import android.content.Context;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
-import android.util.LocalLog;
 
-import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
-import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
+import com.android.internal.telephony.cdnr.CarrierDisplayNameData;
+import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 
-import java.util.Arrays;
-import java.util.List;
-
-@RunWith(AndroidJUnit4.class)
-public class CarrierDisplayNameResolverTest {
+public class CarrierDisplayNameResolverTest extends TelephonyTest {
 
     private static final String PLMN_1 = "310260";
     private static final String PLMN_2 = "480123";
     private static final String PLMN_3 = "586111";
     private static final String HOME_PLMN_NUMERIC = PLMN_1;
     private static final String NON_HOME_PLMN_NUMERIC = "123456";
-    private static final String SIM_SERVICE_PROVIDER_NAME = "spn";
 
-    // Display SPN in home network, PLMN in roaming network.
-    private static final int SIM_SPN_DISPLAY_CONDITION = 0;
+    private static final String SPN_FROM_CC = "spn from carrier config";
 
-    private static final boolean ON_ROAMING = true;
-    private static final boolean OFF_ROAMING = false;
-    private static final List<String> SIM_SPDI = Arrays.asList(PLMN_1, PLMN_2);
-    private static final List<PlmnNetworkName> SIM_PNN_LIST =
-            Arrays.asList(
-                    new PlmnNetworkName("fullname1", "shortname1"),
-                    new PlmnNetworkName("fullname2", "shortname2"),
-                    new PlmnNetworkName("fullname3", "shortname3"));
-    private static final List<OperatorPlmnInfo> SIM_OPERATOR_PLMN_INFO_LIST =
-            Arrays.asList(
-                    new OperatorPlmnInfo(PLMN_1, 100, 200, 0),
-                    new OperatorPlmnInfo(PLMN_2, 300, 400, 1),
-                    new OperatorPlmnInfo(PLMN_3, 400, 500, 2));
+    /** No PLMN in home, not SPN in roaming. */
+    private static final int SPN_DISPLAY_CONDITION_FROM_USIM = 0;
+    private static final String SPN_FROM_USIM = "spn from usim";
+    private static final String PNN_HOME_NAME_FROM_USIM = "pnnHomeName";
+    private static final String[] SPDI_FROM_USIM = new String[] { PLMN_1, PLMN_2 };
+    private static final String[] EHPLMNS_FROM_USIM = new String[] {
+            PLMN_1, PLMN_2, PLMN_3
+    };
 
-    private final CarrierDisplayNameResolver mCDNR =
-            new CarrierDisplayNameResolverImpl(new LocalLog(20));
-    private final ServiceState mServiceState = new ServiceState();
+    private static final boolean ROAMING = true;
+    private static final boolean NON_ROAMING = false;
+
+    private PersistableBundle mConfig;
+
+    private CarrierDisplayNameResolver mCdnr;
+
+    private final ServiceState mSS = new ServiceState();
 
     @Before
-    public void setUp() {
-        setDefaultValueAndState();
+    public void setUp() throws Exception {
+        super.setUp("CDNRTest");
+
+        mCdnr = new CarrierDisplayNameResolver(mPhone);
+
+        UiccCardApplication uiccApp = Mockito.mock(UiccCardApplication.class);
+        doReturn(uiccApp).when(mPhone).getUiccCardApplication();
+        doReturn(AppState.APPSTATE_READY).when(uiccApp).getState();
+        doReturn(mSS).when(mSST).getServiceState();
+
+        doReturn(false).when(mPhone).isWifiCallingEnabled();
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        mConfig = mContextFixture.getCarrierConfigBundle();
+        CarrierConfigManager mockConfigManager = Mockito.mock(CarrierConfigManager.class);
+        doReturn(mockConfigManager).when(mContext).getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        doReturn(mConfig).when(mockConfigManager).getConfigForSubId(anyInt());
+
+        mSS.setEmergencyOnly(false /* emergencyCallOnly" */);
+        mSS.setOperatorName("long name", "short name", HOME_PLMN_NUMERIC);
+        mSS.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        mSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
+
+        SIMRecords usim = Mockito.mock(SIMRecords.class);
+        doReturn(SPN_FROM_USIM).when(usim).getServiceProviderName();
+        doReturn(PNN_HOME_NAME_FROM_USIM).when(usim).getPnnHomeName();
+        doReturn(EHPLMNS_FROM_USIM).when(usim).getEhplmns();
+        doReturn(SPDI_FROM_USIM).when(usim).getServiceProviderDisplayInformation();
+        doReturn(SPN_DISPLAY_CONDITION_FROM_USIM).when(usim).getCarrierNameDisplayCondition();
+
+        mCdnr.updateEfFromUsim(usim);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
     }
 
     @Test
     public void testUpdateSPNFromHigherPrioritySource_shouldOverrideRecord() {
-        // carrier config source > sim record source
-        final String spnFromCarrierConfig = "spn from carrier config";
-        mCDNR.updateServiceProviderName(
-                CarrierDisplayNameResolver.EF_SOURCE_CARRIER_CONFIG, spnFromCarrierConfig);
+        // Carrier config source > sim record source
+        mConfig.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, SPN_FROM_CC);
 
-        assertThat(mCDNR.getServiceProviderName()).isEqualTo(spnFromCarrierConfig);
+        // Update ef records from carrier config
+        mCdnr.updateEfFromCarrierConfig(mConfig);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.getSpn()).isEqualTo(SPN_FROM_CC);
+        assertThat(data.shouldShowSpn()).isTrue();
     }
 
     @Test
     public void testUpdateSPNFromLowerPrioritySource_shouldNotOverrideRecord() {
-        // CSIM source < sim record source
-        final String spnFromCSIM = "spn from CSIM";
-        mCDNR.updateServiceProviderName(CarrierDisplayNameResolver.EF_SOURCE_CSIM, spnFromCSIM);
+        // Ruim's priority < Usim's priority
+        RuimRecords ruim = Mockito.mock(RuimRecords.class);
+        doReturn("spn from ruim").when(ruim).getServiceProviderName();
 
-        assertThat(mCDNR.getServiceProviderName()).isEqualTo(SIM_SERVICE_PROVIDER_NAME);
+        // Update ef records from Ruim
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.getSpn()).isEqualTo(SPN_FROM_USIM);
     }
 
     @Test
-    public void testShouldShowSPN_offRoaming_showSPN() {
-        mServiceState.setRoaming(OFF_ROAMING);
-        mCDNR.updateServiceState(mServiceState);
+    public void testShouldShowSPN_nonRoaming_showSPN() {
+        mSS.setRoaming(NON_ROAMING);
 
-        assertThat(mCDNR.shouldShowServiceProviderName()).isTrue();
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowSpn()).isTrue();
     }
 
     @Test
     public void testShouldShowSPN_plmnNotInProvidedList_notShowSPN() {
-        mServiceState.setRoaming(ON_ROAMING);
-        mServiceState.setOperatorName("long name", "short name", NON_HOME_PLMN_NUMERIC);
-        mCDNR.updateServiceState(mServiceState);
+        mSS.setOperatorName("long", "short", NON_HOME_PLMN_NUMERIC);
+        mSS.setRoaming(ROAMING);
 
-        assertThat(mCDNR.shouldShowServiceProviderName()).isFalse();
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowSpn()).isFalse();
     }
 
     @Test
     public void testShouldShowSPN_plmnInProvidedList_showSPN() {
-        mServiceState.setOperatorName("long name", "short name", SIM_SPDI.get(0));
-        mCDNR.updateServiceState(mServiceState);
+        mSS.setOperatorName("long", "short", SPDI_FROM_USIM[0]);
+        mSS.setRoaming(ROAMING);
 
-        assertThat(mCDNR.shouldShowServiceProviderName()).isTrue();
-    }
-
-    @Test
-    public void testShouldShowPLMNNetworkName_onRoaming_showPLMNNetworkName() {
-        mServiceState.setRoaming(ON_ROAMING);
-        mServiceState.setOperatorName("long name", "short name", NON_HOME_PLMN_NUMERIC);
-        mCDNR.updateServiceState(mServiceState);
-
-        assertThat(mCDNR.shouldShowPlmnNetworkName()).isTrue();
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowSpn()).isTrue();
     }
 
     @Test
     public void testShouldShowPLMNNetworkName_plmnNotInProvidedList_showPLMNNetworkName() {
-        mServiceState.setRoaming(ON_ROAMING);
-        mServiceState.setOperatorName("long name", "short name", NON_HOME_PLMN_NUMERIC);
-        mCDNR.updateServiceState(mServiceState);
+        mSS.setOperatorName("long", "short", NON_HOME_PLMN_NUMERIC);
+        mSS.setRoaming(ROAMING);
 
-        assertThat(mCDNR.shouldShowPlmnNetworkName()).isTrue();
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowPlmn()).isTrue();
     }
 
     @Test
     public void testGetPLMNNetworkName_oplNotPresent_returnTheFirstEntryOfPNNList() {
         // Set the roaming state to on roaming, we should show the plmn network name based on the
         // default settings.
-        mServiceState.setRoaming(ON_ROAMING);
-        mCDNR.updateServiceState(mServiceState);
+        mSS.setRoaming(ROAMING);
 
-        assertThat(mCDNR.getPlmnNetworkName()).isEqualTo(SIM_PNN_LIST.get(0).fullName);
-    }
-
-    private void setDefaultValueAndState() {
-        mServiceState.setRoaming(false);
-        mServiceState.setOperatorName("long name", "short name", HOME_PLMN_NUMERIC);
-        mCDNR.updateServiceState(mServiceState);
-
-        mCDNR.updateHomePlmnNumeric(HOME_PLMN_NUMERIC);
-        mCDNR.updatePlmnNetworkNameList(CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_PNN_LIST);
-        mCDNR.updateServiceProviderName(
-                CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_SERVICE_PROVIDER_NAME);
-        mCDNR.updateServiceProviderNameDisplayCondition(
-                CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_SPN_DISPLAY_CONDITION);
-        mCDNR.updateServiceProviderDisplayInformation(
-                CarrierDisplayNameResolver.EF_SOURCE_USIM, SIM_SPDI);
-        mCDNR.updateServiceState(serviceStateWithRegisteredPLMN(HOME_PLMN_NUMERIC));
-    }
-
-    private static ServiceState serviceStateWithRegisteredPLMN(String plmnNumeric) {
-        ServiceState ss = new ServiceState();
-        ss.setOperatorName("long name", "short name", plmnNumeric);
-        return ss;
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.getPlmn()).isEqualTo(PNN_HOME_NAME_FROM_USIM);
     }
 }
