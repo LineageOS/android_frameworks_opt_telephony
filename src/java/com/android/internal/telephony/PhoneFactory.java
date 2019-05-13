@@ -461,6 +461,18 @@ public class PhoneFactory {
     }
 
     /**
+     * Get a the SmsController.
+     */
+    public static SmsController getSmsController() {
+        synchronized (sLockProxyPhones) {
+            if (!sMadeDefaults) {
+                throw new IllegalStateException("Default phones haven't been made yet!");
+            }
+            return sProxyController.getSmsController();
+        }
+    }
+
+    /**
      * Adds a local log category.
      *
      * Only used within the telephony process.  Use localLog to add log entries.
