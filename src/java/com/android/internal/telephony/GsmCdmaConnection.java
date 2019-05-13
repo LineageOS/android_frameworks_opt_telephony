@@ -33,6 +33,7 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 
@@ -74,6 +75,11 @@ public class GsmCdmaConnection extends Connection {
 
     // The cached delay to be used between DTMF tones fetched from carrier config.
     private int mDtmfToneDelay = 0;
+
+    // Store the current audio codec
+    private int mAudioCodec = DriverCall.AUDIO_QUALITY_UNSPECIFIED;
+
+    private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
     //***** Event Constants
     static final int EVENT_DTMF_DONE = 1;
@@ -652,6 +658,12 @@ public class GsmCdmaConnection extends Connection {
             }
             setAudioQuality(newAudioQuality);
             changed = true;
+        }
+
+        // Metrics for audio codec
+        if (dc.audioQuality != mAudioCodec) {
+            mAudioCodec = dc.audioQuality;
+            mMetrics.writeAudioCodecGsmCdma(mOwner.getPhone().getPhoneId(), dc.audioQuality);
         }
 
         // A null cnapName should be the same as ""
