@@ -26,6 +26,8 @@ import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Message;
 import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -49,12 +51,17 @@ import java.util.stream.Collectors;
  *    become the new default.
  * 3) For primary subscriptions, only default data subscription will have MOBILE_DATA on.
  */
-public class MultiSimSettingController {
+public class MultiSimSettingController extends Handler {
     private static final String LOG_TAG = "MultiSimSettingController";
     private static final boolean DBG = true;
+    private static final int EVENT_USER_DATA_ENABLED                 = 1;
+    private static final int EVENT_ROAMING_DATA_ENABLED              = 2;
+    private static final int EVENT_ALL_SUBSCRIPTIONS_LOADED          = 3;
+    private static final int EVENT_SUBSCRIPTION_INFO_CHANGED         = 4;
+    private static final int EVENT_SUBSCRIPTION_GROUP_CHANGED        = 5;
+    private static final int EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED = 6;
 
     private final Context mContext;
-    private final Phone[] mPhones;
     private final SubscriptionController mSubController;
     private boolean mIsAllSubscriptionsLoaded;
     private List<SubscriptionInfo> mPrimarySubList;
@@ -68,17 +75,104 @@ public class MultiSimSettingController {
     public static MultiSimSettingController getInstance() {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
-                sInstance = new MultiSimSettingController();
+                Log.wtf(LOG_TAG, "getInstance null");
+            }
+
+            return sInstance;
+        }
+    }
+
+    /**
+     * Init instance of MultiSimSettingController.
+     */
+    public static MultiSimSettingController init(Context context, SubscriptionController sc) {
+        synchronized (SubscriptionController.class) {
+            if (sInstance == null) {
+                sInstance = new MultiSimSettingController(context, sc);
+            } else {
+                Log.wtf(LOG_TAG, "init() called multiple times!  sInstance = " + sInstance);
             }
             return sInstance;
         }
     }
 
     @VisibleForTesting
-    public MultiSimSettingController() {
-        mContext = PhoneFactory.getDefaultPhone().getContext();
-        mPhones = PhoneFactory.getPhones();
-        mSubController = SubscriptionController.getInstance();
+    public MultiSimSettingController(Context context, SubscriptionController sc) {
+        mContext = context;
+        mSubController = sc;
+    }
+
+    /**
+     * Notify MOBILE_DATA of a subscription is changed.
+     */
+    public void notifyUserDataEnabled(int subId, boolean enable) {
+        obtainMessage(EVENT_USER_DATA_ENABLED, subId, enable ? 1 : 0).sendToTarget();
+    }
+
+    /**
+     * Notify DATA_ROAMING of a subscription is changed.
+     */
+    public void notifyRoamingDataEnabled(int subId, boolean enable) {
+        obtainMessage(EVENT_ROAMING_DATA_ENABLED, subId, enable ? 1 : 0).sendToTarget();
+    }
+
+    /**
+     * Notify that, for the first time after boot, SIMs are all loaded
+     */
+    public void notifyAllSubscriptionLoaded() {
+        obtainMessage(EVENT_ALL_SUBSCRIPTIONS_LOADED).sendToTarget();
+    }
+
+    /**
+     * Notify subscription info change.
+     */
+    public void notifySubscriptionInfoChanged() {
+        obtainMessage(EVENT_SUBSCRIPTION_INFO_CHANGED).sendToTarget();
+    }
+
+    /**
+     * Notify subscription group information change.
+     */
+    public void notifySubscriptionGroupChanged(ParcelUuid groupUuid) {
+        obtainMessage(EVENT_SUBSCRIPTION_GROUP_CHANGED, groupUuid).sendToTarget();
+    }
+
+    /**
+     * Notify default data subscription change.
+     */
+    public void notifyDefaultDataSubChanged() {
+        obtainMessage(EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED).sendToTarget();
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_USER_DATA_ENABLED: {
+                int subId = msg.arg1;
+                boolean enable = msg.arg2 != 0;
+                onUserDataEnabled(subId, enable);
+                break;
+            }
+            case EVENT_ROAMING_DATA_ENABLED: {
+                int subId = msg.arg1;
+                boolean enable = msg.arg2 != 0;
+                onRoamingDataEnabled(subId, enable);
+                break;
+            }
+            case EVENT_ALL_SUBSCRIPTIONS_LOADED:
+                onAllSubscriptionsLoaded();
+                break;
+            case EVENT_SUBSCRIPTION_INFO_CHANGED:
+                onSubscriptionsChanged();
+                break;
+            case EVENT_SUBSCRIPTION_GROUP_CHANGED:
+                ParcelUuid groupUuid = (ParcelUuid) msg.obj;
+                onSubscriptionGroupChanged(groupUuid);
+                break;
+            case EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED:
+                onDefaultDataSettingChanged();
+                break;
+        }
     }
 
     /**
@@ -87,7 +181,8 @@ public class MultiSimSettingController {
      * If user is enabling a non-default non-opportunistic subscription, make it default
      * data subscription.
      */
-    public synchronized void onUserDataEnabled(int subId, boolean enable) {
+    @VisibleForTesting
+    public void onUserDataEnabled(int subId, boolean enable) {
         if (DBG) log("onUserDataEnabled");
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
@@ -102,7 +197,8 @@ public class MultiSimSettingController {
     /**
      * Make sure DATA_ROAMING of subscriptions in same group are synced.
      */
-    public synchronized void onRoamingDataEnabled(int subId, boolean enable) {
+    @VisibleForTesting
+    public void onRoamingDataEnabled(int subId, boolean enable) {
         if (DBG) log("onRoamingDataEnabled");
         setRoamingDataEnabledForGroup(subId, enable);
 
@@ -113,7 +209,8 @@ public class MultiSimSettingController {
     /**
      * Mark mIsAllSubscriptionsLoaded and update defaults and mobile data enabling.
      */
-    public synchronized void onAllSubscriptionsLoaded() {
+    @VisibleForTesting
+    public void onAllSubscriptionsLoaded() {
         if (DBG) log("onAllSubscriptionsLoaded");
         mIsAllSubscriptionsLoaded = true;
         updateDefaults();
@@ -125,7 +222,8 @@ public class MultiSimSettingController {
      *
      * Make sure non-default non-opportunistic subscriptions has data off.
      */
-    public synchronized void onSubscriptionsChanged() {
+    @VisibleForTesting
+    public void onSubscriptionsChanged() {
         if (DBG) log("onSubscriptionsChanged");
         if (!mIsAllSubscriptionsLoaded) return;
         updateDefaults();
@@ -135,7 +233,8 @@ public class MultiSimSettingController {
     /**
      * Make sure non-default non-opportunistic subscriptions has data disabled.
      */
-    public synchronized void onDefaultDataSettingChanged() {
+    @VisibleForTesting
+    public void onDefaultDataSettingChanged() {
         if (DBG) log("onDefaultDataSettingChanged");
         disableDataForNonDefaultNonOpportunisticSubscriptions();
     }
@@ -146,7 +245,8 @@ public class MultiSimSettingController {
      * TODO: b/130258159 have a separate database table for grouped subscriptions so we don't
      * manually sync each setting.
      */
-    public synchronized void onSubscriptionGroupChanged(ParcelUuid groupUuid) {
+    @VisibleForTesting
+    public void onSubscriptionGroupChanged(ParcelUuid groupUuid) {
         if (DBG) log("onSubscriptionGroupChanged");
 
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
@@ -207,7 +307,7 @@ public class MultiSimSettingController {
      * 4) If non above is met, clear the default value to INVALID.
      */
     @VisibleForTesting
-    public synchronized void updateDefaults() {
+    public void updateDefaults() {
         if (DBG) log("updateDefaults");
 
         if (!mIsAllSubscriptionsLoaded) return;
@@ -306,7 +406,7 @@ public class MultiSimSettingController {
             return;
         }
 
-        for (Phone phone : mPhones) {
+        for (Phone phone : PhoneFactory.getPhones()) {
             if (phone.getSubId() != defaultDataSub
                     && SubscriptionManager.isValidSubscriptionId(phone.getSubId())
                     && !mSubController.isOpportunistic(phone.getSubId())
@@ -321,7 +421,7 @@ public class MultiSimSettingController {
      * Make sure MOBILE_DATA of subscriptions in the same group with the subId
      * are synced.
      */
-    private synchronized void setUserDataEnabledForGroup(int subId, boolean enable) {
+    private void setUserDataEnabledForGroup(int subId, boolean enable) {
         log("setUserDataEnabledForGroup subId " + subId + " enable " + enable);
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName());
@@ -360,7 +460,7 @@ public class MultiSimSettingController {
      * Make sure DATA_ROAMING of subscriptions in the same group with the subId
      * are synced.
      */
-    private synchronized void setRoamingDataEnabledForGroup(int subId, boolean enable) {
+    private void setRoamingDataEnabledForGroup(int subId, boolean enable) {
         SubscriptionController subController = SubscriptionController.getInstance();
         List<SubscriptionInfo> infoList = subController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName());
