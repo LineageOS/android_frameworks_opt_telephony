@@ -193,7 +193,7 @@ public class CarrierServicesSmsFilter {
     }
 
     private void logv(String message) {
-        Rlog.e(mLogTag, message);
+        Rlog.v(mLogTag, message);
     }
 
     /**
