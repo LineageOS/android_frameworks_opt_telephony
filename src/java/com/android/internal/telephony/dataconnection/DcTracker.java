@@ -1655,19 +1655,14 @@ public class DcTracker extends Handler {
                 if (dataConnection != null) {
                     if (apnContext.getState() != DctConstants.State.DISCONNECTING) {
                         boolean disconnectAll = false;
-                        if (PhoneConstants.APN_TYPE_DUN.equals(apnContext.getApnType())) {
-                            // CAF_MSIM is this below condition required.
-                            // if (PhoneConstants.APN_TYPE_DUN.equals(PhoneConstants.APN_TYPE_DEFAULT)) {
-                            if (teardownForDun()) {
-                                if (DBG) {
-                                    log("cleanUpConnectionInternal: disconnectAll DUN connection");
-                                }
-                                // we need to tear it down - we brought it up just for dun and
-                                // other people are camped on it and now dun is done.  We need
-                                // to stop using it and let the normal apn list get used to find
-                                // connections for the remaining desired connections
-                                disconnectAll = true;
+                        if (PhoneConstants.APN_TYPE_DUN.equals(apnContext.getApnType())
+                                && ServiceState.isCdma(getDataRat())) {
+                            if (DBG) {
+                                log("cleanUpConnectionInternal: disconnectAll DUN connection");
                             }
+                            // For CDMA DUN, we need to tear it down immediately. A new data
+                            // connection will be reestablished with correct profile id.
+                            disconnectAll = true;
                         }
                         final int generation = apnContext.getConnectionGeneration();
                         str = "cleanUpConnectionInternal: tearing down"
@@ -1806,18 +1801,6 @@ public class DcTracker extends Handler {
             return apnContext.getDataConnection();
         }
         return null;
-    }
-
-    /**
-     * Determine if DUN connection is special and we need to teardown on start/stop
-     */
-    private boolean teardownForDun() {
-        // CDMA always needs to do this the profile id is correct
-        final int rilRat = getDataRat();
-        if (ServiceState.isCdma(rilRat)) return true;
-
-        ArrayList<ApnSetting> apns = fetchDunApns();
-        return apns.size() > 0;
     }
 
     /**
@@ -2439,13 +2422,10 @@ public class DcTracker extends Handler {
                 // it up, but do not tear it down - ConnectivityService will do that
                 // directly by talking with the DataConnection.
                 //
-                // This doesn't apply to DUN, however.  Those connections have special
-                // requirements from carriers and we need stop using them when the dun
-                // request goes away.  This applies to both CDMA and GSM because they both
-                // can declare the DUN APN sharable by default traffic, thus still satisfying
-                // those requests and not torn down organically.
-                if ((PhoneConstants.APN_TYPE_DUN.equals(apnContext.getApnType())
-                        && teardownForDun())
+                // This doesn't apply to DUN. When the user disable tethering, we would like to
+                // detach the APN context from the data connection so the data connection can be
+                // torn down if no other APN context attached to it.
+                if (PhoneConstants.APN_TYPE_DUN.equals(apnContext.getApnType())
                         || apnContext.getState() != DctConstants.State.CONNECTED) {
                     str = "Clean up the connection. Apn type = " + apnContext.getApnType()
                             + ", state = " + apnContext.getState();
