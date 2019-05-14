@@ -486,4 +486,34 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         verify(mContext).sendBroadcast(intentCapture.capture());
         return intentCapture.getValue();
     }
+
+    @Test
+    @SmallTest
+    public void testGroupedPrimarySubscriptions() throws Exception {
+        doReturn(1).when(mSubControllerMock).getDefaultDataSubId();
+        doReturn(true).when(mPhoneMock1).isUserDataEnabled();
+        doReturn(false).when(mPhoneMock2).isUserDataEnabled();
+        GlobalSettingsHelper.setBoolean(mContext, Settings.Global.MOBILE_DATA, 1, true);
+        GlobalSettingsHelper.setBoolean(mContext, Settings.Global.DATA_ROAMING, 1, false);
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        waitABit();
+
+        // Create subscription grouping.
+        replaceInstance(SubscriptionInfo.class, "mGroupUUID", mSubInfo1, mGroupUuid1);
+        doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
+                .getSubscriptionsInGroup(any(), anyString());
+        mMultiSimSettingControllerUT.notifySubscriptionGroupChanged(mGroupUuid1);
+        waitABit();
+        // This should result in setting sync.
+        verify(mDataEnabledSettingsMock2).setUserDataEnabled(true);
+        assertFalse(GlobalSettingsHelper.getBoolean(
+                mContext, Settings.Global.DATA_ROAMING, 2, true));
+        verify(mSubControllerMock).setDataRoaming(/*enable*/0, /*subId*/1);
+
+        // Turning off user data on sub 1.
+        doReturn(false).when(mPhoneMock1).isUserDataEnabled();
+        mMultiSimSettingControllerUT.notifyUserDataEnabled(1, false);
+        waitABit();
+        verify(mDataEnabledSettingsMock2).setUserDataEnabled(false);
+    }
 }

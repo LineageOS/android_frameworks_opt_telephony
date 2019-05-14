@@ -484,7 +484,8 @@ public class MultiSimSettingController extends Handler {
             if (phone.getSubId() != defaultDataSub
                     && SubscriptionManager.isValidSubscriptionId(phone.getSubId())
                     && !mSubController.isOpportunistic(phone.getSubId())
-                    && phone.isUserDataEnabled()) {
+                    && phone.isUserDataEnabled()
+                    && !areSubscriptionsInSameGroup(defaultDataSub, phone.getSubId())) {
                 log("setting data to false on " + phone.getSubId());
                 phone.getDataEnabledSettings().setUserDataEnabled(false);
             }
@@ -516,15 +517,6 @@ public class MultiSimSettingController extends Handler {
             int currentSubId = info.getSubscriptionId();
             // TODO: simplify when setUserDataEnabled becomes singleton
             if (mSubController.isActiveSubId(currentSubId)) {
-                // If we end up enabling two active primary subscriptions, don't enable the
-                // non-default data sub. This will only happen if two primary subscriptions
-                // in a group are both active. This is not a valid use-case now, but we are
-                // handling it just in case.
-                if (enable && !mSubController.isOpportunistic(currentSubId)
-                        && currentSubId != mSubController.getDefaultSubId()) {
-                    loge("Can not enable two active primary subscriptions.");
-                    continue;
-                }
                 // For active subscription, call setUserDataEnabled through DataEnabledSettings.
                 Phone phone = PhoneFactory.getPhone(mSubController.getPhoneId(currentSubId));
                 // If enable is true and it's not opportunistic subscription, we don't enable it,
