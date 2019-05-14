@@ -1149,7 +1149,8 @@ public class DataConnection extends StateMachine {
                 mApnSetting.getApnTypeBitmask() & ~mDisabledApnTypeBitMask).split(",");
             for (String type : types) {
                 if (!mRestrictedNetworkOverride && mUnmeteredUseOnly
-                        && ApnSettingUtils.isMeteredApnType(type, mPhone)) {
+                        && ApnSettingUtils.isMeteredApnType(
+                                ApnSetting.getApnTypesBitmaskFromString(type), mPhone)) {
                     log("Dropped the metered " + type + " for the unmetered data call.");
                     continue;
                 }
