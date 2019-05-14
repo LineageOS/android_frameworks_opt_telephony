@@ -624,6 +624,9 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             // update default subId
             MultiSimSettingController.getInstance().onAllSubscriptionsLoaded();
+            // broadcast default subId
+            SubscriptionController.getInstance().sendDefaultChangedBroadcast(
+                    SubscriptionManager.getDefaultSubscriptionId());
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
