@@ -2088,6 +2088,7 @@ public class SubscriptionController extends ISub.Stub {
         int previousSetting = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
                 SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+        int previousDefaultSub = getDefaultSubId();
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
@@ -2108,6 +2109,10 @@ public class SubscriptionController extends ISub.Stub {
             } else {
                 logd("[setDefaultVoiceSubId] default phone account not changed");
             }
+        }
+
+        if (previousDefaultSub != getDefaultSubId()) {
+            sendDefaultChangedBroadcast(getDefaultSubId());
         }
     }
 
@@ -2192,10 +2197,14 @@ public class SubscriptionController extends ISub.Stub {
             // FIXME is this still needed?
             updateAllDataConnectionTrackers();
 
+            int previousDefaultSub = getDefaultSubId();
             Settings.Global.putInt(mContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
             MultiSimSettingController.getInstance().notifyDefaultDataSubChanged();
             broadcastDefaultDataSubIdChanged(subId);
+            if (previousDefaultSub != getDefaultSubId()) {
+                sendDefaultChangedBroadcast(getDefaultSubId());
+            }
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2237,6 +2246,7 @@ public class SubscriptionController extends ISub.Stub {
             logdl("[setDefaultFallbackSubId] subId=" + subId + ", subscriptionType="
                     + subscriptionType);
         }
+        int previousDefaultSub = getDefaultSubId();
         if (isSubscriptionForRemoteSim(subscriptionType)) {
             mDefaultFallbackSubId = subId;
             return;
@@ -2250,7 +2260,6 @@ public class SubscriptionController extends ISub.Stub {
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
                 MccTable.updateMccMncConfiguration(mContext, defaultMccMnc);
-                sendDefaultChangedBroadcast(phoneId, subId);
             } else {
                 if (DBG) {
                     logdl("[setDefaultFallbackSubId] not set invalid phoneId=" + phoneId
@@ -2258,10 +2267,14 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
+        if (previousDefaultSub != getDefaultSubId()) {
+            sendDefaultChangedBroadcast(getDefaultSubId());
+        }
     }
 
-    private void sendDefaultChangedBroadcast(int phoneId, int subId) {
+    public void sendDefaultChangedBroadcast(int subId) {
         // Broadcast an Intent for default sub change
+        int phoneId = SubscriptionManager.getPhoneId(subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
