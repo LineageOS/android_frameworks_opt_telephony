@@ -63,7 +63,7 @@ public interface PhoneNotifier {
 
     void notifyPreciseCallState(Phone sender);
 
-    void notifyDisconnectCause(int cause, int preciseCause);
+    void notifyDisconnectCause(Phone sender, int cause, int preciseCause);
 
     void notifyImsDisconnectCause(Phone sender, ImsReasonInfo imsReasonInfo);
 
@@ -79,14 +79,14 @@ public interface PhoneNotifier {
 
     public void notifyUserMobileDataStateChanged(Phone sender, boolean state);
 
-    public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData);
+    public void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData);
 
     public void notifyPhoneCapabilityChanged(PhoneCapability capability);
 
-    void notifyRadioPowerStateChanged(@TelephonyManager.RadioPowerState int state);
+    void notifyRadioPowerStateChanged(Phone sender, @TelephonyManager.RadioPowerState int state);
 
     /** Notify of change to EmergencyNumberList. */
-    void notifyEmergencyNumberList();
+    void notifyEmergencyNumberList(Phone sender);
 
     /** Notify of a change to the call quality of an active foreground call. */
     void notifyCallQualityChanged(Phone sender, CallQuality callQuality, int callNetworkType);
