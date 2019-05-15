@@ -20,13 +20,11 @@ import android.content.Context;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
-import android.telephony.ServiceState;
 import android.telephony.data.ApnSetting;
-import android.text.TextUtils;
+import android.telephony.data.ApnSetting.ApnType;
 import android.util.Log;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.Arrays;
@@ -114,34 +112,29 @@ public class ApnSettingUtils {
     /**
      * Check if this APN type is metered.
      *
-     * @param type the APN type
+     * @param apnType the APN type
      * @param phone the phone object
      * @return {@code true} if the APN type is metered, {@code false} otherwise.
      */
-    public static boolean isMeteredApnType(String type, Phone phone) {
-        if (phone == null || TextUtils.isEmpty(type)) {
+    public static boolean isMeteredApnType(@ApnType int apnType, Phone phone) {
+        if (phone == null) {
             return true;
         }
 
         boolean isRoaming = phone.getServiceState().getDataRoaming();
-        boolean isIwlan = phone.getServiceState().getRilDataRadioTechnology()
-                == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
         int subId = phone.getSubId();
 
         String carrierConfig;
-        // First check if the device is in IWLAN mode. If yes, use the IWLAN metered APN list. Then
-        // check if the device is roaming. If yes, use the roaming metered APN list. Otherwise, use
-        // the normal metered APN list.
-        if (isIwlan) {
-            carrierConfig = CarrierConfigManager.KEY_CARRIER_METERED_IWLAN_APN_TYPES_STRINGS;
-        } else if (isRoaming) {
+        // First check if the device is roaming. If yes, use the roaming metered APN list.
+        // Otherwise use the normal metered APN list.
+        if (isRoaming) {
             carrierConfig = CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS;
         } else {
             carrierConfig = CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS;
         }
 
         if (DBG) {
-            Rlog.d(LOG_TAG, "isMeteredApnType: isRoaming=" + isRoaming + ", isIwlan=" + isIwlan);
+            Rlog.d(LOG_TAG, "isMeteredApnType: isRoaming=" + isRoaming);
         }
 
         CarrierConfigManager configManager = (CarrierConfigManager)
@@ -169,16 +162,10 @@ public class ApnSettingUtils {
                     + Arrays.toString(meteredApnSet.toArray()));
         }
 
-        // If all types of APN are metered, then this APN setting must be metered.
-        if (meteredApnSet.contains(PhoneConstants.APN_TYPE_ALL)) {
-            if (DBG) Rlog.d(LOG_TAG, "All APN types are metered.");
+        if (meteredApnSet.contains(ApnSetting.getApnTypeString(apnType))) {
+            if (DBG) Rlog.d(LOG_TAG, ApnSetting.getApnTypeString(apnType) + " is metered.");
             return true;
-        }
-
-        if (meteredApnSet.contains(type)) {
-            if (DBG) Rlog.d(LOG_TAG, type + " is metered.");
-            return true;
-        } else if (type.equals(PhoneConstants.APN_TYPE_ALL)) {
+        } else if (apnType == ApnSetting.TYPE_ALL) {
             // Assuming no configuration error, if at least one APN type is
             // metered, then this APN setting is metered.
             if (meteredApnSet.size() > 0) {
@@ -187,7 +174,7 @@ public class ApnSettingUtils {
             }
         }
 
-        if (DBG) Rlog.d(LOG_TAG, type + " is not metered.");
+        if (DBG) Rlog.d(LOG_TAG, ApnSetting.getApnTypeString(apnType) + " is not metered.");
         return false;
     }
 
@@ -203,12 +190,9 @@ public class ApnSettingUtils {
             return true;
         }
 
-        String[] types = ApnSetting.getApnTypesStringFromBitmask(
-                apn.getApnTypeBitmask()).split(",");
-
-        for (String type : types) {
+        for (int apnType : apn.getApnTypes()) {
             // If one of the APN type is metered, then this APN setting is metered.
-            if (isMeteredApnType(type, phone)) {
+            if (isMeteredApnType(apnType, phone)) {
                 return true;
             }
         }

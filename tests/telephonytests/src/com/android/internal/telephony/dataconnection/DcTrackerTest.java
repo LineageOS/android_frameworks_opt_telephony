@@ -1212,6 +1212,7 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testTrySetupDefaultOnIWLAN() throws Exception {
+        doReturn(true).when(mTransportManager).isInLegacyMode();
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
         mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)

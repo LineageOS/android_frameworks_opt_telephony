@@ -1250,8 +1250,8 @@ public class DcTracker extends Handler {
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         boolean radioStateFromCarrier = mPhone.getServiceStateTracker().getPowerStateFromCarrier();
         // TODO: Remove this hack added by ag/641832.
-        int radioTech = getDataRat();
-        if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
+        int dataRat = getDataRat();
+        if (dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
             desiredPowerState = true;
             radioStateFromCarrier = true;
         }
@@ -1262,7 +1262,8 @@ public class DcTracker extends Handler {
                 SubscriptionManager.getDefaultDataSubscriptionId());
 
         boolean isMeteredApnType = apnContext == null
-                || ApnSettingUtils.isMeteredApnType(apnContext.getApnType(), mPhone);
+                || ApnSettingUtils.isMeteredApnType(ApnSetting.getApnTypesBitmaskFromString(
+                        apnContext.getApnType()) , mPhone);
 
         PhoneConstants.State phoneState = PhoneConstants.State.IDLE;
         // Note this is explicitly not using mPhone.getState.  See b/19090488.
@@ -1294,11 +1295,12 @@ public class DcTracker extends Handler {
             reasons.add(DataDisallowedReasonType.APN_NOT_CONNECTABLE);
         }
 
-        // If RAT is IWLAN then don't allow default/IA PDP at all.
+        // In legacy mode, if RAT is IWLAN then don't allow default/IA PDP at all.
         // Rest of APN types can be evaluated for remaining conditions.
         if ((apnContext != null && (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)
                 || apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IA)))
-                && (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)) {
+                && mPhone.getTransportManager().isInLegacyMode()
+                && dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
             reasons.add(DataDisallowedReasonType.ON_IWLAN);
         }
 
@@ -1355,24 +1357,30 @@ public class DcTracker extends Handler {
 
         // At this point, if data is not allowed, it must be because of the soft reasons. We
         // should start to check some special conditions that data will be allowed.
+        if (!reasons.allowed()) {
+            // If the device is on IWLAN, then all data should be unmetered. Check if the transport
+            // is WLAN (for AP-assisted mode devices), or RAT equals IWLAN (for legacy mode devices)
+            if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
+                    || (mPhone.getTransportManager().isInLegacyMode()
+                    && dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)) {
+                reasons.add(DataAllowedReasonType.UNMETERED_APN);
+            // Or if the data is on cellular, and the APN type is determined unmetered by the
+            // configuration.
+            } else if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                    && !isMeteredApnType) {
+                reasons.add(DataAllowedReasonType.UNMETERED_APN);
+            }
 
-        // If the request APN type is unmetered and there are soft disallowed reasons (e.g. data
-        // disabled, data roaming disabled) existing, we should allow the data because the user
-        // won't be charged anyway.
-        if (!isMeteredApnType && !reasons.allowed()) {
-            reasons.add(DataAllowedReasonType.UNMETERED_APN);
-        }
-
-        // If the request is restricted and there are only soft disallowed reasons (e.g. data
-        // disabled, data roaming disabled) existing, we should allow the data.
-        if (apnContext != null
-                && apnContext.hasRestrictedRequests(true)
-                && !reasons.allowed()) {
-            reasons.add(DataAllowedReasonType.RESTRICTED_REQUEST);
-        }
-
-        // If at this point, we still haven't built any disallowed reasons, we should allow data.
-        if (reasons.allowed()) {
+            // If the request is restricted and there are only soft disallowed reasons (e.g. data
+            // disabled, data roaming disabled) existing, we should allow the data.
+            if (apnContext != null
+                    && apnContext.hasRestrictedRequests(true)
+                    && !reasons.allowed()) {
+                reasons.add(DataAllowedReasonType.RESTRICTED_REQUEST);
+            }
+        } else {
+            // If there is no disallowed reasons, then we should allow the data request with
+            // normal reason.
             reasons.add(DataAllowedReasonType.NORMAL);
         }
 
