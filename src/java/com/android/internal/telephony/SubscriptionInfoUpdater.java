@@ -709,11 +709,13 @@ public class SubscriptionInfoUpdater extends Handler {
         for (EuiccProfileInfo embeddedProfile : embeddedProfiles) {
             int index =
                     findSubscriptionInfoForIccid(existingSubscriptions, embeddedProfile.getIccid());
+            int nameSource = SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE;
             if (index < 0) {
                 // No existing entry for this ICCID; create an empty one.
                 SubscriptionController.getInstance().insertEmptySubInfoRecord(
                         embeddedProfile.getIccid(), SubscriptionManager.SIM_NOT_INSERTED);
             } else {
+                nameSource = existingSubscriptions.get(index).getNameSource();
                 existingSubscriptions.remove(index);
             }
 
@@ -733,8 +735,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     isRuleListEmpty ? null : UiccAccessRule.encodeRules(
                             ruleList.toArray(new UiccAccessRule[ruleList.size()])));
             values.put(SubscriptionManager.IS_REMOVABLE, isRemovable);
-            values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
-            values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
+            // override DISPLAY_NAME if the priority of existing nameSource is <= carrier
+            if (SubscriptionController.getNameSourcePriority(nameSource)
+                    <= SubscriptionController.getNameSourcePriority(
+                            SubscriptionManager.NAME_SOURCE_CARRIER)) {
+                values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
+                values.put(SubscriptionManager.NAME_SOURCE,
+                        SubscriptionManager.NAME_SOURCE_CARRIER);
+            }
             values.put(SubscriptionManager.PROFILE_CLASS, embeddedProfile.getProfileClass());
             CarrierIdentifier cid = embeddedProfile.getCarrierIdentifier();
             if (cid != null) {
