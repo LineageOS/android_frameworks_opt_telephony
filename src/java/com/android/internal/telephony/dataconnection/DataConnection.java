@@ -2718,7 +2718,7 @@ public class DataConnection extends StateMachine {
     private void updateScore() {
         int oldScore = mScore;
         mScore = calculateScore();
-        if (oldScore != mScore) {
+        if (oldScore != mScore && mNetworkAgent != null) {
             log("Updating score from " + oldScore + " to " + mScore);
             mNetworkAgent.sendNetworkScore(mScore, this);
         }
