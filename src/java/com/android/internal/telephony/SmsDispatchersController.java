@@ -569,16 +569,16 @@ public class SmsDispatchersController extends Handler {
      *  raw pdu of the status report is in the extended data ("pdu").
      */
     protected void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
-                            byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+            byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent, boolean isForVvm) {
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendData(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
-                    deliveryIntent);
+                    deliveryIntent, isForVvm);
         } else if (isCdmaMo()) {
             mCdmaDispatcher.sendData(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
-                    deliveryIntent);
+                    deliveryIntent, isForVvm);
         } else {
             mGsmDispatcher.sendData(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
-                    deliveryIntent);
+                    deliveryIntent, isForVvm);
         }
     }
 
@@ -626,23 +626,22 @@ public class SmsDispatchersController extends Handler {
      *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
      *  Any Other values included Negative considered as Invalid Validity Period of the message.
      */
-    public void sendText(String destAddr, String scAddr, String text,
-                            PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
-                            String callingPkg, boolean persistMessage, int priority,
-                            boolean expectMore, int validityPeriod) {
+    public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, Uri messageUri, String callingPkg, boolean persistMessage,
+            int priority, boolean expectMore, int validityPeriod, boolean isForVvm) {
         if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
             mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                     messageUri, callingPkg, persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED, isForVvm);
         } else {
             if (isCdmaMo()) {
                 mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                         messageUri, callingPkg, persistMessage, priority, expectMore,
-                        validityPeriod);
+                        validityPeriod, isForVvm);
             } else {
                 mGsmDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                         messageUri, callingPkg, persistMessage, priority, expectMore,
-                        validityPeriod);
+                        validityPeriod, isForVvm);
             }
         }
     }
