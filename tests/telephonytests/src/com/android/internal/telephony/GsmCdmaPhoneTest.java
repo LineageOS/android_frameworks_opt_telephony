@@ -975,4 +975,30 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         ss.addNetworkRegistrationInfo(nri);
         assertEquals(mPhoneUT.getCsCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
     }
+
+    @Test
+    @SmallTest
+    public void testGetLine1NumberForGsmPhone() {
+        final String msisdn = "+1234567890";
+        doReturn(msisdn).when(mSimRecords).getMsisdnNumber();
+
+        switchToGsm();
+        assertEquals(msisdn, mPhoneUT.getLine1Number());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetLine1NumberForCdmaPhone() {
+        final String mdn = "1234567890";
+        final String msisdn = "+1234567890";
+        doReturn(mdn).when(mSST).getMdnNumber();
+        doReturn(msisdn).when(mSimRecords).getMsisdnNumber();
+
+        switchToCdma();
+        assertEquals(mdn, mPhoneUT.getLine1Number());
+
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_USE_USIM_BOOL, true);
+        assertEquals(msisdn, mPhoneUT.getLine1Number());
+    }
 }
