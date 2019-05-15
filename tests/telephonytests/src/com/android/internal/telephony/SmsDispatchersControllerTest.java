@@ -40,7 +40,6 @@ import android.util.Singleton;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -106,7 +105,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     public void testSendImsGmsTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
         mSmsDispatchersController.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false, -1, false, -1, false);
         verify(mSimulatedCommandsVerifier).sendImsGsmSms(eq("038122F2"),
                 eq("0100038111F100001CD3F69C989EC3C3F431BA2C9F0FDF6EBAFCCD6697E5D4F29C0E"), eq(0), eq(0),
                 any(Message.class));
@@ -116,7 +115,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     public void testSendImsGmsTestWithOutDesAddr() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
         mSmsDispatchersController.sendText(null, "222" /*scAddr*/, TAG,
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false, -1, false, -1, false);
         verify(mSimulatedCommandsVerifier, times(0)).sendImsGsmSms(anyString(), anyString(),
                 anyInt(), anyInt(), any(Message.class));
     }
@@ -125,7 +124,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     public void testSendImsCdmaTest() throws Exception {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
         mSmsDispatchersController.sendText("111"/* desAddr*/, "222" /*scAddr*/, TAG,
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false, -1, false, -1, false);
         verify(mSimulatedCommandsVerifier).sendImsCdmaSms((byte[])any(), eq(0), eq(0),
                 any(Message.class));
     }
