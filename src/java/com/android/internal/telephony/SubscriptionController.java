@@ -62,6 +62,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -388,6 +389,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.PROFILE_CLASS));
         int subType = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.SUBSCRIPTION_TYPE));
+        String groupOwner = getOptionalStringFromCursor(cursor, SubscriptionManager.GROUP_OWNER,
+                /*defaultVal*/ null);
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -411,9 +414,16 @@ public class SubscriptionController extends ISub.Stub {
         SubscriptionInfo info = new SubscriptionInfo(id, iccId, simSlotIndex, displayName,
                 carrierName, nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc,
                 countryIso, isEmbedded, accessRules, cardId, publicCardId, isOpportunistic,
-                groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType);
+                groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType,
+                groupOwner);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
+    }
+
+    private String getOptionalStringFromCursor(Cursor cursor, String column, String defaultVal) {
+        // Return defaultVal if the column doesn't exist.
+        int columnIndex = cursor.getColumnIndex(column);
+        return (columnIndex == -1) ? defaultVal : cursor.getString(columnIndex);
     }
 
     /**
@@ -2088,6 +2098,7 @@ public class SubscriptionController extends ISub.Stub {
         int previousSetting = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
                 SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
+        int previousDefaultSub = getDefaultSubId();
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
@@ -2108,6 +2119,10 @@ public class SubscriptionController extends ISub.Stub {
             } else {
                 logd("[setDefaultVoiceSubId] default phone account not changed");
             }
+        }
+
+        if (previousDefaultSub != getDefaultSubId()) {
+            sendDefaultChangedBroadcast(getDefaultSubId());
         }
     }
 
@@ -2192,10 +2207,14 @@ public class SubscriptionController extends ISub.Stub {
             // FIXME is this still needed?
             updateAllDataConnectionTrackers();
 
+            int previousDefaultSub = getDefaultSubId();
             Settings.Global.putInt(mContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
             MultiSimSettingController.getInstance().notifyDefaultDataSubChanged();
             broadcastDefaultDataSubIdChanged(subId);
+            if (previousDefaultSub != getDefaultSubId()) {
+                sendDefaultChangedBroadcast(getDefaultSubId());
+            }
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2237,6 +2256,7 @@ public class SubscriptionController extends ISub.Stub {
             logdl("[setDefaultFallbackSubId] subId=" + subId + ", subscriptionType="
                     + subscriptionType);
         }
+        int previousDefaultSub = getDefaultSubId();
         if (isSubscriptionForRemoteSim(subscriptionType)) {
             mDefaultFallbackSubId = subId;
             return;
@@ -2250,7 +2270,6 @@ public class SubscriptionController extends ISub.Stub {
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
                 MccTable.updateMccMncConfiguration(mContext, defaultMccMnc);
-                sendDefaultChangedBroadcast(phoneId, subId);
             } else {
                 if (DBG) {
                     logdl("[setDefaultFallbackSubId] not set invalid phoneId=" + phoneId
@@ -2258,10 +2277,14 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
+        if (previousDefaultSub != getDefaultSubId()) {
+            sendDefaultChangedBroadcast(getDefaultSubId());
+        }
     }
 
-    private void sendDefaultChangedBroadcast(int phoneId, int subId) {
+    public void sendDefaultChangedBroadcast(int subId) {
         // Broadcast an Intent for default sub change
+        int phoneId = SubscriptionManager.getPhoneId(subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
@@ -2855,6 +2878,7 @@ public class SubscriptionController extends ISub.Stub {
 
             ContentValues value = new ContentValues();
             value.put(SubscriptionManager.GROUP_UUID, groupUUID.toString());
+            value.put(SubscriptionManager.GROUP_OWNER, callingPackage);
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, getSelectionForSubIdList(subIdList), null);
 
@@ -2872,12 +2896,29 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    // TODO: when having a group owner or packageName for subscription, use that to check.
-    // Currently for this method to return false, all subscriptions in the group needs to have
-    // carrier privilege rules loaded, which means active or available.
-    private boolean canPackageManageGroup(ParcelUuid groupUuid, String callingPackage) {
+    private String getOwnerPackageOfSubGroup(ParcelUuid groupUuid) {
+        if (groupUuid == null) return null;
+
+        List<SubscriptionInfo> infoList = getSubInfo(SubscriptionManager.GROUP_UUID
+                + "=\'" + groupUuid.toString() + "\'", null);
+
+        return ArrayUtils.isEmpty(infoList) ? null : infoList.get(0).getGroupOwner();
+    }
+
+    /**
+     *
+     * @param groupUuid a UUID assigned to the subscription group.
+     * @param callingPackage the package making the IPC.
+     * @return if callingPackage has carrier privilege on sublist.
+     *
+     */
+    public boolean canPackageManageGroup(ParcelUuid groupUuid, String callingPackage) {
         if (groupUuid == null) {
             throw new IllegalArgumentException("Invalid groupUuid");
+        }
+
+        if (TextUtils.isEmpty(callingPackage)) {
+            throw new IllegalArgumentException("Empty callingPackage");
         }
 
         List<SubscriptionInfo> infoList;
@@ -2891,13 +2932,36 @@ public class SubscriptionController extends ISub.Stub {
             Binder.restoreCallingIdentity(identity);
         }
 
-        if (infoList == null || infoList.isEmpty()) {
+        if (ArrayUtils.isEmpty(infoList)) {
             throw new IllegalArgumentException("No subscription in group " + groupUuid);
         }
 
+        // If the calling package is the group owner, skip carrier permission check and return
+        // true as it was done before.
+        if (callingPackage.equals(infoList.get(0).getGroupOwner())) return true;
+
         // Check carrier privilege for all subscriptions in the group.
-        int[] subIdArray = infoList.stream().mapToInt(info -> info.getSubscriptionId()).toArray();
-        return checkCarrierPrivilegeOnSubList(subIdArray, callingPackage);
+        int[] subIdArray = infoList.stream().mapToInt(info -> info.getSubscriptionId())
+                .toArray();
+        return (checkCarrierPrivilegeOnSubList(subIdArray, callingPackage));
+    }
+
+    private int updateGroupOwner(ParcelUuid groupUuid, String groupOwner) {
+        // If the existing group owner is different from current caller, make caller the new
+        // owner of all subscriptions in group.
+        // This is for use-case of:
+        // 1) Both package1 and package2 has permission (MODIFY_PHONE_STATE or carrier
+        // privilege permission) of all related subscriptions.
+        // 2) Package 1 created a group.
+        // 3) Package 2 wants to add a subscription into it.
+        // Step 3 should be granted as all operations are permission based. Which means as
+        // long as the package passes the permission check, it can modify the subscription
+        // and the group. And package 2 becomes the new group owner as it's the last to pass
+        // permission checks on all members.
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.GROUP_OWNER, groupOwner);
+        return mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, SubscriptionManager.GROUP_UUID + "=\"" + groupUuid + "\"", null);
     }
 
     @Override
@@ -2911,6 +2975,8 @@ public class SubscriptionController extends ISub.Stub {
             throw new IllegalArgumentException("Invalid groupUuid");
         }
 
+        // Makes sure calling package matches caller UID.
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
         // a SecurityException will be thrown.
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
@@ -2936,11 +3002,11 @@ public class SubscriptionController extends ISub.Stub {
             if (DBG) logdl("addSubscriptionsIntoGroup update DB result: " + result);
 
             if (result > 0) {
+                updateGroupOwner(groupUuid, callingPackage);
                 refreshCachedActiveSubscriptionInfoList();
                 notifySubscriptionInfoChanged();
                 MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUuid);
             }
-
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2968,12 +3034,15 @@ public class SubscriptionController extends ISub.Stub {
         if (subIdList == null || subIdList.length == 0) {
             return;
         }
+
+        // Makes sure calling package matches caller UID.
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
         // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
         // it will return null.
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
-                != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
-                subIdList, callingPackage)) {
+                != PERMISSION_GRANTED && !(checkCarrierPrivilegeOnSubList(subIdList, callingPackage)
+                && canPackageManageGroup(groupUuid, callingPackage))) {
             throw new SecurityException("removeSubscriptionsFromGroup needs MODIFY_PHONE_STATE or"
                     + " carrier privilege permission on all specified subscriptions");
         }
@@ -2991,14 +3060,17 @@ public class SubscriptionController extends ISub.Stub {
             }
             ContentValues value = new ContentValues();
             value.put(SubscriptionManager.GROUP_UUID, (String) null);
+            value.put(SubscriptionManager.GROUP_OWNER, (String) null);
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, getSelectionForSubIdList(subIdList), null);
 
             if (DBG) logdl("removeSubscriptionsFromGroup update DB result: " + result);
 
-            refreshCachedActiveSubscriptionInfoList();
-
-            notifySubscriptionInfoChanged();
+            if (result > 0) {
+                updateGroupOwner(groupUuid, callingPackage);
+                refreshCachedActiveSubscriptionInfoList();
+                notifySubscriptionInfoChanged();
+            }
         } finally {
             Binder.restoreCallingIdentity(identity);
         }

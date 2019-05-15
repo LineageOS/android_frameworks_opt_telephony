@@ -631,6 +631,9 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             // update default subId
             MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
+            // broadcast default subId
+            SubscriptionController.getInstance().sendDefaultChangedBroadcast(
+                    SubscriptionManager.getDefaultSubscriptionId());
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
@@ -855,19 +858,23 @@ public class SubscriptionInfoUpdater extends Handler {
 
         String groupUuidString =
                 config.getString(CarrierConfigManager.KEY_SUBSCRIPTION_GROUP_UUID_STRING, "");
-        ParcelUuid groupId = null;
+        ParcelUuid groupUuid = null;
         if (!TextUtils.isEmpty(groupUuidString)) {
             try {
                 // Update via a UUID Structure to ensure consistent formatting
-                ParcelUuid groupUuid = ParcelUuid.fromString(groupUuidString);
+                groupUuid = ParcelUuid.fromString(groupUuidString);
                 if (groupUuid.equals(REMOVE_GROUP_UUID)
                             && currentSubInfo.getGroupUuid() != null) {
                     cv.put(SubscriptionManager.GROUP_UUID, (String) null);
                     if (DBG) logd("Group Removed for" + currentSubId);
-                } else {
-                    // TODO: validate and update group owner information once feasible.
+                } else if (SubscriptionController.getInstance().canPackageManageGroup(groupUuid,
+                        configPackageName)) {
                     cv.put(SubscriptionManager.GROUP_UUID, groupUuid.toString());
+                    cv.put(SubscriptionManager.GROUP_OWNER, configPackageName);
                     if (DBG) logd("Group Added for" + currentSubId);
+                } else {
+                    loge("configPackageName " + configPackageName + " doesn't own grouUuid "
+                            + groupUuid);
                 }
             } catch (IllegalArgumentException e) {
                 loge("Invalid Group UUID=" + groupUuidString);
@@ -877,7 +884,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
             sc.refreshCachedActiveSubscriptionInfoList();
             sc.notifySubscriptionInfoChanged();
-            MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupId);
+            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUuid);
         }
     }
 

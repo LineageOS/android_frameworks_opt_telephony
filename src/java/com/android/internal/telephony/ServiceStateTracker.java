@@ -23,7 +23,6 @@ import static com.android.internal.telephony.CarrierActionAgent.CARRIER_ACTION_S
 import static com.android.internal.telephony.uicc.IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN;
 import static com.android.internal.telephony.uicc.IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN;
 
-import android.Manifest.permission;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.UnsupportedAppUsage;
@@ -216,10 +215,6 @@ public class ServiceStateTracker extends Handler {
     private boolean mPendingRadioPowerOffAfterDataOff = false;
     private int mPendingRadioPowerOffAfterDataOffTag = 0;
 
-    // This is a flag for debug purposes only. It it set once the RUIM_RECORDS_LOADED event is
-    // received and RUIM is provisioned while the phone type is CDMA-LTE.
-    private boolean mRuimProvisionedRecordsLoaded = false;
-
     /** Signal strength poll rate. */
     private static final int POLL_PERIOD_MILLIS = 20 * 1000;
 
@@ -345,7 +340,6 @@ public class ServiceStateTracker extends Handler {
     private final LocalLog mPhoneTypeLog = new LocalLog(10);
     private final LocalLog mRatLog = new LocalLog(20);
     private final LocalLog mRadioPowerLog = new LocalLog(20);
-    private final LocalLog mMdnLog = new LocalLog(20);
 
     private Pattern mOperatorNameStringPattern;
 
@@ -704,14 +698,12 @@ public class ServiceStateTracker extends Handler {
         mStartedGprsRegCheck = false;
         mReportedGprsNoReg = false;
         mMdn = null;
-        logMdnChange("updatePhoneType: setting mMdn to null");
         mMin = null;
         mPrlVersion = null;
         mIsMinInfoReady = false;
         mNitzState.handleNetworkCountryCodeUnavailable();
         mCellIdentity = null;
         mNewCellIdentity = null;
-        mRuimProvisionedRecordsLoaded = false;
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
@@ -1082,8 +1074,6 @@ public class ServiceStateTracker extends Handler {
                     cancelAllNotifications();
                     // clear cached values on SIM removal
                     mMdn = null;
-                    mRuimProvisionedRecordsLoaded = false;
-                    logMdnChange("EVENT_ICC_CHANGED: setting mMdn to null");
                     mMin = null;
                     mIsMinInfoReady = false;
 
@@ -1440,8 +1430,6 @@ public class ServiceStateTracker extends Handler {
                         String cdmaSubscription[] = (String[]) ar.result;
                         if (cdmaSubscription != null && cdmaSubscription.length >= 5) {
                             mMdn = cdmaSubscription[0];
-                            logMdnChange("EVENT_POLL_STATE_CDMA_SUBSCRIPTION: setting mMdn to "
-                                    + mMdn);
                             parseSidNid(cdmaSubscription[1], cdmaSubscription[2]);
 
                             mMin = cdmaSubscription[3];
@@ -1485,24 +1473,21 @@ public class ServiceStateTracker extends Handler {
                     } else {
                         RuimRecords ruim = (RuimRecords) mIccRecords;
                         if (ruim != null) {
+                            // Do not wait for RUIM to be provisioned before using mdn. Line1Number
+                            // can be queried before that and mdn may still be available.
+                            // Also note that any special casing is not done in getMdnNumber() as it
+                            // may be called on another thread, so simply doing a read operation
+                            // there.
+                            mMdn = ruim.getMdn();
                             if (ruim.isProvisioned()) {
-                                mRuimProvisionedRecordsLoaded = true;
-                                mMdn = ruim.getMdn();
-                                logMdnChange("EVENT_RUIM_RECORDS_LOADED: setting mMdn to " + mMdn);
                                 mMin = ruim.getMin();
                                 parseSidNid(ruim.getSid(), ruim.getNid());
                                 mPrlVersion = ruim.getPrlVersion();
                                 mIsMinInfoReady = true;
-                            } else {
-                                logMdnChange("EVENT_RUIM_RECORDS_LOADED: ruim not provisioned; "
-                                        + "not updating mMdn " + mMdn);
                             }
                             updateOtaspState();
                             // Notify apps subscription info is ready
                             notifyCdmaSubscriptionInfoReady();
-                        } else {
-                            logMdnChange("EVENT_RUIM_RECORDS_LOADED: ruim is null; "
-                                    + "not updating mMdn " + mMdn);
                         }
                         // SID/NID/PRL is loaded. Poll service state
                         // again to update to the roaming state with
@@ -1644,29 +1629,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     public String getMdnNumber() {
-        String mdn = mMdn;
-        // if for CDMA-LTE phone MDN is null, return the value from RuimRecords
-        if (mMdn == null && mPhone.isPhoneTypeCdmaLte()) {
-            RuimRecords ruim = (RuimRecords) mIccRecords;
-            if (ruim != null && ruim.getMdn() != null) {
-                logeMdnChange("getMdnNumber: mMdn is null when RuimRecords.getMdn() is not");
-                mdn = ruim.getMdn();
-
-                // if mRuimProvisionedRecordsLoaded is true, then mMdn should not have been null and
-                // we should not have reached here. Update mMdn and catch the error scenario.
-                if (mRuimProvisionedRecordsLoaded) {
-                    // broadcast intent to indicate an error related to Line1Number has been
-                    // detected
-                    Intent intent = new Intent(TelephonyIntents.ACTION_LINE1_NUMBER_ERROR_DETECTED);
-                    intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
-                    mPhone.getContext().sendBroadcast(intent,
-                            permission.READ_PRIVILEGED_PHONE_STATE);
-
-                    mMdn = mdn;
-                }
-            }
-        }
-        return mdn;
+        return mMdn;
     }
 
     public String getCdmaMin() {
@@ -2718,42 +2681,6 @@ public class ServiceStateTracker extends Handler {
                 spn = null;
                 showSpn = false;
             }
-
-            int subId = mPhone.getSubId();
-
-            // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
-            if (mSubId != subId ||
-                    showPlmn != mCurShowPlmn
-                    || showSpn != mCurShowSpn
-                    || !TextUtils.equals(spn, mCurSpn)
-                    || !TextUtils.equals(dataSpn, mCurDataSpn)
-                    || !TextUtils.equals(plmn, mCurPlmn)) {
-                if (DBG) {
-                    log(String.format("updateSpnDisplay: changed sending intent rule=" + rule +
-                            " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' " +
-                            "subId='%d'", showPlmn, plmn, showSpn, spn, dataSpn, subId));
-                }
-                Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-                intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
-                intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
-                intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
-                intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
-                intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
-                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-                mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-
-                if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                        showPlmn, plmn, showSpn, spn)) {
-                    mSpnUpdatePending = true;
-                }
-            }
-
-            mSubId = subId;
-            mCurShowSpn = showSpn;
-            mCurShowPlmn = showPlmn;
-            mCurSpn = spn;
-            mCurDataSpn = dataSpn;
-            mCurPlmn = plmn;
         } else {
             String eriText = getOperatorNameFromEri();
             if (eriText != null) mSS.setOperatorAlphaLong(eriText);
@@ -2910,16 +2837,6 @@ public class ServiceStateTracker extends Handler {
 
     private void logRatChange() {
         mRatLog.log(mSS.toString());
-    }
-
-    private void logMdnChange(String msg) {
-        mMdnLog.log(msg);
-        log(msg);
-    }
-
-    private void logeMdnChange(String msg) {
-        mMdnLog.log(msg);
-        loge(msg);
     }
 
     @UnsupportedAppUsage
@@ -5057,11 +4974,6 @@ public class ServiceStateTracker extends Handler {
         ipw.println(" Radio power Log:");
         ipw.increaseIndent();
         mRadioPowerLog.dump(fd, ipw, args);
-        ipw.decreaseIndent();
-
-        ipw.println(" mMdn Log:");
-        ipw.increaseIndent();
-        mMdnLog.dump(fd, ipw, args);
         ipw.decreaseIndent();
 
         mNitzState.dumpLogs(fd, ipw, args);
