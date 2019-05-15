@@ -1546,11 +1546,31 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * This is only for internal use and the returned priority is arbitrary. The idea is to give a
+     * higher value to name source that has higher priority to override other name sources.
+     * @param nameSource Source of display name
+     * @return int representing the priority. Higher value means higher priority.
+     */
+    public static int getNameSourcePriority(int nameSource) {
+        switch (nameSource) {
+            case SubscriptionManager.NAME_SOURCE_USER_INPUT:
+                return 3;
+            case SubscriptionManager.NAME_SOURCE_CARRIER:
+                return 2;
+            case SubscriptionManager.NAME_SOURCE_SIM_SOURCE:
+                return 1;
+            case SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE:
+            default:
+                return 0;
+        }
+    }
+
+    /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
      * @param nameSource 0: NAME_SOURCE_DEFAULT_SOURCE, 1: NAME_SOURCE_SIM_SOURCE,
-     *                   2: NAME_SOURCE_USER_INPUT
+     *                   2: NAME_SOURCE_USER_INPUT, 3: NAME_SOURCE_CARRIER
      * @return the number of records updated
      */
     @Override
@@ -1566,6 +1586,13 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
+            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId
+                        && getNameSourcePriority(subInfo.getNameSource())
+                                > getNameSourcePriority(nameSource)) {
+                    return 0;
+                }
+            }
             String nameToSet;
             if (displayName == null) {
                 nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
