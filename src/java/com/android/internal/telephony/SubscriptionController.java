@@ -149,7 +149,6 @@ public class SubscriptionController extends ISub.Stub {
     @UnsupportedAppUsage
     private int[] colorArr;
     private long mLastISubServiceRegTime;
-    private int mPreferredDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -206,10 +205,7 @@ public class SubscriptionController extends ISub.Stub {
             mLastISubServiceRegTime = System.currentTimeMillis();
         }
 
-        /**
-         * Switching between DSDS and single sim mode needs to clear the slot index of
-         * subscription info.
-         */
+        // clear SLOT_INDEX for all subs
         clearSlotIndexForSubInfoRecords();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
@@ -239,22 +235,22 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Switching between DSDS and single sim mode needs to update the slot index of subscription
-     * info into invalid if the slot index is not active.
+     * This function marks SIM_SLOT_INDEX as INVALID for all subscriptions in the database. This
+     * should be done as part of initialization.
+     *
+     * TODO: SIM_SLOT_INDEX is based on current state and should not even be persisted in the
+     * database.
      */
     private void clearSlotIndexForSubInfoRecords() {
-        if (mTelephonyManager == null || mContext == null) {
+        if (mContext == null) {
             logel("[clearSlotIndexForSubInfoRecords] TelephonyManager or mContext is null");
             return;
         }
-        int phoneCount = mTelephonyManager.getPhoneCount();
 
-        // Update simInfo db with invalid slot index
-        ContentResolver resolver = mContext.getContentResolver();
+        // Update all subscriptions in simInfo db with invalid slot index
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                value, SubscriptionManager.SIM_SLOT_INDEX + ">=" + phoneCount, null);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value, null, null);
     }
 
     private SubscriptionController(Phone phone) {
@@ -267,10 +263,7 @@ public class SubscriptionController extends ISub.Stub {
 
         migrateImsSettings();
 
-        /**
-         * Switching between DSDS and single sim mode needs to clear the slot index of
-         * subscription info.
-         */
+        // clear SLOT_INDEX for all subs
         clearSlotIndexForSubInfoRecords();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
@@ -1546,11 +1539,31 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * This is only for internal use and the returned priority is arbitrary. The idea is to give a
+     * higher value to name source that has higher priority to override other name sources.
+     * @param nameSource Source of display name
+     * @return int representing the priority. Higher value means higher priority.
+     */
+    public static int getNameSourcePriority(int nameSource) {
+        switch (nameSource) {
+            case SubscriptionManager.NAME_SOURCE_USER_INPUT:
+                return 3;
+            case SubscriptionManager.NAME_SOURCE_CARRIER:
+                return 2;
+            case SubscriptionManager.NAME_SOURCE_SIM_SOURCE:
+                return 1;
+            case SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE:
+            default:
+                return 0;
+        }
+    }
+
+    /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
      * @param nameSource 0: NAME_SOURCE_DEFAULT_SOURCE, 1: NAME_SOURCE_SIM_SOURCE,
-     *                   2: NAME_SOURCE_USER_INPUT
+     *                   2: NAME_SOURCE_USER_INPUT, 3: NAME_SOURCE_CARRIER
      * @return the number of records updated
      */
     @Override
@@ -1566,6 +1579,13 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
+            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId
+                        && getNameSourcePriority(subInfo.getNameSource())
+                                > getNameSourcePriority(nameSource)) {
+                    return 0;
+                }
+            }
             String nameToSet;
             if (displayName == null) {
                 nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);

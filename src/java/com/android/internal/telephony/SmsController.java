@@ -43,6 +43,7 @@ import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -137,11 +138,17 @@ public class SmsController extends ISmsImplBase {
     public void sendDataForSubscriberWithSelfPermissions(int subId, String callingPackage,
             String destAddr, String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
+        sendDataForSubscriberWithSelfPermissionsInternal(subId, callingPackage, destAddr, scAddr,
+                destPort, data, sentIntent, deliveryIntent, false /* isForVvm */);
+    }
+
+    private void sendDataForSubscriberWithSelfPermissionsInternal(int subId, String callingPackage,
+            String destAddr, String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, boolean isForVvm) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendDataWithSelfPermissions(callingPackage, destAddr, scAddr, destPort,
-                    data,
-                    sentIntent, deliveryIntent);
+                    data, sentIntent, deliveryIntent, isForVvm);
         } else {
             Rlog.e(LOG_TAG, "sendText iccSmsIntMgr is null for"
                     + " Subscription: " + subId);
@@ -203,10 +210,17 @@ public class SmsController extends ISmsImplBase {
     public void sendTextForSubscriberWithSelfPermissions(int subId, String callingPackage,
             String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, boolean persistMessage) {
+        sendTextForSubscriberWithSelfPermissionsInternal(subId, callingPackage, destAddr, scAddr,
+                text, sentIntent, deliveryIntent, persistMessage, false /* isForVvm */);
+    }
+
+    private void sendTextForSubscriberWithSelfPermissionsInternal(int subId, String callingPackage,
+            String destAddr, String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, boolean persistMessage, boolean isForVvm) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendTextWithSelfPermissions(callingPackage, destAddr, scAddr, text,
-                    sentIntent, deliveryIntent, persistMessage);
+                    sentIntent, deliveryIntent, persistMessage, isForVvm);
         } else {
             Rlog.e(LOG_TAG, "sendText iccSmsIntMgr is null for"
                     + " Subscription: " + subId);
@@ -518,6 +532,22 @@ public class SmsController extends ISmsImplBase {
             return getPhone(subId).mSmsUsageMonitor.checkDestination(destAddress, countryIso);
         } finally {
             Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     * Internal API to send visual voicemail related SMS. This is not exposed outside the phone
+     * process, and should be called only after verifying that the caller is the default VVM app.
+     */
+    public void sendVisualVoicemailSmsForSubscriber(String callingPackage, int subId,
+            String number, int port, String text, PendingIntent sentIntent) {
+        if (port == 0) {
+            sendTextForSubscriberWithSelfPermissionsInternal(subId, callingPackage, number,
+                    null, text, sentIntent, null, false, true /* isForVvm */);
+        } else {
+            byte[] data = text.getBytes(StandardCharsets.UTF_8);
+            sendDataForSubscriberWithSelfPermissionsInternal(subId, callingPackage, number,
+                    null, (short) port, data, sentIntent, null, true /* isForVvm */);
         }
     }
 
