@@ -225,6 +225,8 @@ public abstract class TelephonyTest {
     protected CellularNetworkValidator mCellularNetworkValidator;
     @Mock
     protected UiccCard mUiccCard;
+    @Mock
+    protected MultiSimSettingController mMultiSimSettingController;
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
@@ -559,6 +561,8 @@ public abstract class TelephonyTest {
                 mPhoneConfigurationManager);
         replaceInstance(CellularNetworkValidator.class, "sInstance", null,
                 mCellularNetworkValidator);
+        replaceInstance(MultiSimSettingController.class, "sInstance", null,
+                mMultiSimSettingController);
 
         assertNotNull("Failed to set up SubscriptionController singleton",
                 SubscriptionController.getInstance());

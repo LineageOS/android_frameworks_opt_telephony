@@ -123,7 +123,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
 
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
-        mMultiSimSettingControllerUT = new MultiSimSettingController();
+        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext, mSubControllerMock);
     }
 
     @After

@@ -307,7 +307,7 @@ public class SubscriptionController extends ISub.Stub {
         // FIXME: Remove if listener technique accepted.
         broadcastSimInfoContentChanged();
 
-        MultiSimSettingController.getInstance().onSubscriptionsChanged();
+        MultiSimSettingController.getInstance().notifySubscriptionInfoChanged();
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();
         List<SubscriptionInfo> subInfos;
         synchronized (mSubInfoListLock) {
@@ -2210,7 +2210,7 @@ public class SubscriptionController extends ISub.Stub {
             int previousDefaultSub = getDefaultSubId();
             Settings.Global.putInt(mContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-            MultiSimSettingController.getInstance().onDefaultDataSettingChanged();
+            MultiSimSettingController.getInstance().notifyDefaultDataSubChanged();
             broadcastDefaultDataSubIdChanged(subId);
             if (previousDefaultSub != getDefaultSubId()) {
                 sendDefaultChangedBroadcast(getDefaultSubId());
@@ -2887,7 +2887,7 @@ public class SubscriptionController extends ISub.Stub {
 
             notifySubscriptionInfoChanged();
 
-            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUUID);
+            MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUUID);
 
             return groupUUID;
         } finally {
@@ -2961,7 +2961,7 @@ public class SubscriptionController extends ISub.Stub {
             if (result > 0) {
                 refreshCachedActiveSubscriptionInfoList();
                 notifySubscriptionInfoChanged();
-                MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUuid);
+                MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUuid);
             }
 
         } finally {

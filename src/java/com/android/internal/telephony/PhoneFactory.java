@@ -173,6 +173,7 @@ public class PhoneFactory {
 
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
                 SubscriptionController.init(context, sCommandsInterfaces);
+                MultiSimSettingController.init(context, SubscriptionController.getInstance());
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
