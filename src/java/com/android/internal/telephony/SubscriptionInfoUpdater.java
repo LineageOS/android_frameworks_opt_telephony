@@ -709,11 +709,13 @@ public class SubscriptionInfoUpdater extends Handler {
         for (EuiccProfileInfo embeddedProfile : embeddedProfiles) {
             int index =
                     findSubscriptionInfoForIccid(existingSubscriptions, embeddedProfile.getIccid());
+            int nameSource = SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE;
             if (index < 0) {
                 // No existing entry for this ICCID; create an empty one.
                 SubscriptionController.getInstance().insertEmptySubInfoRecord(
                         embeddedProfile.getIccid(), SubscriptionManager.SIM_NOT_INSERTED);
             } else {
+                nameSource = existingSubscriptions.get(index).getNameSource();
                 existingSubscriptions.remove(index);
             }
 
@@ -733,8 +735,14 @@ public class SubscriptionInfoUpdater extends Handler {
                     isRuleListEmpty ? null : UiccAccessRule.encodeRules(
                             ruleList.toArray(new UiccAccessRule[ruleList.size()])));
             values.put(SubscriptionManager.IS_REMOVABLE, isRemovable);
-            values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
-            values.put(SubscriptionManager.NAME_SOURCE, SubscriptionManager.NAME_SOURCE_USER_INPUT);
+            // override DISPLAY_NAME if the priority of existing nameSource is <= carrier
+            if (SubscriptionController.getNameSourcePriority(nameSource)
+                    <= SubscriptionController.getNameSourcePriority(
+                            SubscriptionManager.NAME_SOURCE_CARRIER)) {
+                values.put(SubscriptionManager.DISPLAY_NAME, embeddedProfile.getNickname());
+                values.put(SubscriptionManager.NAME_SOURCE,
+                        SubscriptionManager.NAME_SOURCE_CARRIER);
+            }
             values.put(SubscriptionManager.PROFILE_CLASS, embeddedProfile.getProfileClass());
             CarrierIdentifier cid = embeddedProfile.getCarrierIdentifier();
             if (cid != null) {
@@ -858,19 +866,23 @@ public class SubscriptionInfoUpdater extends Handler {
 
         String groupUuidString =
                 config.getString(CarrierConfigManager.KEY_SUBSCRIPTION_GROUP_UUID_STRING, "");
-        ParcelUuid groupId = null;
+        ParcelUuid groupUuid = null;
         if (!TextUtils.isEmpty(groupUuidString)) {
             try {
                 // Update via a UUID Structure to ensure consistent formatting
-                ParcelUuid groupUuid = ParcelUuid.fromString(groupUuidString);
+                groupUuid = ParcelUuid.fromString(groupUuidString);
                 if (groupUuid.equals(REMOVE_GROUP_UUID)
                             && currentSubInfo.getGroupUuid() != null) {
                     cv.put(SubscriptionManager.GROUP_UUID, (String) null);
                     if (DBG) logd("Group Removed for" + currentSubId);
-                } else {
-                    // TODO: validate and update group owner information once feasible.
+                } else if (SubscriptionController.getInstance().canPackageManageGroup(groupUuid,
+                        configPackageName)) {
                     cv.put(SubscriptionManager.GROUP_UUID, groupUuid.toString());
+                    cv.put(SubscriptionManager.GROUP_OWNER, configPackageName);
                     if (DBG) logd("Group Added for" + currentSubId);
+                } else {
+                    loge("configPackageName " + configPackageName + " doesn't own grouUuid "
+                            + groupUuid);
                 }
             } catch (IllegalArgumentException e) {
                 loge("Invalid Group UUID=" + groupUuidString);
@@ -880,7 +892,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
             sc.refreshCachedActiveSubscriptionInfoList();
             sc.notifySubscriptionInfoChanged();
-            MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupId);
+            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUuid);
         }
     }
 
