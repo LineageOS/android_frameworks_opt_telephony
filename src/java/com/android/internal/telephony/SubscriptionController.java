@@ -211,27 +211,17 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
+    /**
+     * Should only be triggered once.
+     */
+    public void notifySubInfoReady() {
+        // broadcast default subId.
+        sendDefaultChangedBroadcast(SubscriptionManager.getDefaultSubscriptionId());
+    }
+
     @UnsupportedAppUsage
     private boolean isSubInfoReady() {
-        if (VDBG) {
-            // make sure sSlotIndexToSubIds is consistent with cached subinfo list
-            int count = 0;
-            for (Integer i : sSlotIndexToSubIds.keySet()) {
-                count += sSlotIndexToSubIds.get(i).size();
-            }
-            if (count != mCacheActiveSubInfoList.size()) {
-                logdl("mismatch between map and list. list size = " + mCacheActiveSubInfoList.size()
-                        + ", map size = " + count);
-                for (Integer i : sSlotIndexToSubIds.keySet()) {
-                    logdl("From the Map, subs in map at slot index: " + i + " are: "
-                            + sSlotIndexToSubIds.get(i));
-                }
-                for (SubscriptionInfo info : mCacheActiveSubInfoList) {
-                    logdl("From the Cached list, subinfo is: " + info);
-                }
-            }
-        }
-        return sSlotIndexToSubIds.size() > 0;
+        return SubscriptionInfoUpdater.isSubInfoInitialized();
     }
 
     /**
@@ -703,14 +693,6 @@ public class SubscriptionController extends ISub.Stub {
      */
     @VisibleForTesting  // For mockito to mock this method
     public void refreshCachedActiveSubscriptionInfoList() {
-        if (!isSubInfoReady()) {
-            if (DBG_CACHE) {
-                logdl("[refreshCachedActiveSubscriptionInfoList] "
-                        + "Sub Controller not ready ");
-            }
-            return;
-        }
-
         boolean opptSubListChanged;
 
         synchronized (mSubInfoListLock) {
@@ -1365,8 +1347,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[clearSubInfoRecord]+ iccId:" + " slotIndex:" + slotIndex);
 
         // update simInfo db with invalid slot index
-        List<SubscriptionInfo> oldSubInfo = getSubInfoUsingSlotIndexPrivileged(slotIndex,
-                false);
+        List<SubscriptionInfo> oldSubInfo = getSubInfoUsingSlotIndexPrivileged(slotIndex);
         ContentResolver resolver = mContext.getContentResolver();
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.SIM_SLOT_INDEX,
@@ -2337,19 +2318,13 @@ public class SubscriptionController extends ISub.Stub {
 
     /** Must be public for access from instrumentation tests. */
     @VisibleForTesting
-    public List<SubscriptionInfo> getSubInfoUsingSlotIndexPrivileged(int slotIndex,
-            boolean needCheck) {
+    public List<SubscriptionInfo> getSubInfoUsingSlotIndexPrivileged(int slotIndex) {
         if (DBG) logd("[getSubInfoUsingSlotIndexPrivileged]+ slotIndex:" + slotIndex);
         if (slotIndex == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
             slotIndex = getSlotIndex(getDefaultSubId());
         }
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
             if (DBG) logd("[getSubInfoUsingSlotIndexPrivileged]- invalid slotIndex");
-            return null;
-        }
-
-        if (needCheck && !isSubInfoReady()) {
-            if (DBG) logd("[getSubInfoUsingSlotIndexPrivileged]- not ready");
             return null;
         }
 
@@ -3477,11 +3452,6 @@ public class SubscriptionController extends ISub.Stub {
     // They are doing similar things except operating on different cache.
     private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
             String callingPackage, List<SubscriptionInfo> cacheSubList) {
-        if (!isSubInfoReady()) {
-            if (DBG) logd("[getSubscriptionInfoList] Sub Controller not ready");
-            return null;
-        }
-
         boolean canReadAllPhoneState;
         try {
             canReadAllPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
@@ -3590,7 +3560,11 @@ public class SubscriptionController extends ISub.Stub {
             for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
                 if (shouldDisableSubGroup(info.getGroupUuid())) {
                     info.setGroupDisabled(true);
-                    if (isActiveSubId(info.getSubscriptionId())) {
+                    // TODO: move it to ONS.
+                    if (isActiveSubId(info.getSubscriptionId()) && isSubInfoReady()) {
+                        logd("[refreshCachedOpportunisticSubscriptionInfoList] "
+                                + "Deactivating grouped opportunistic subscription "
+                                + info.getSubscriptionId());
                         deactivateSubscription(info);
                     }
                 }
@@ -3626,6 +3600,7 @@ public class SubscriptionController extends ISub.Stub {
     private void deactivateSubscription(SubscriptionInfo info) {
         // TODO: b/120439488 deactivate pSIM.
         if (info.isEmbedded()) {
+            logd("[deactivateSubscription] eSIM profile " + info.getSubscriptionId());
             EuiccManager euiccManager = (EuiccManager)
                     mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,

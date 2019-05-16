@@ -568,6 +568,7 @@ public abstract class TelephonyTest {
                 mCellularNetworkValidator);
         replaceInstance(MultiSimSettingController.class, "sInstance", null,
                 mMultiSimSettingController);
+        replaceInstance(SubscriptionInfoUpdater.class, "sIsSubInfoInitialized", null, true);
 
         assertNotNull("Failed to set up SubscriptionController singleton",
                 SubscriptionController.getInstance());
