@@ -2681,42 +2681,6 @@ public class ServiceStateTracker extends Handler {
                 spn = null;
                 showSpn = false;
             }
-
-            int subId = mPhone.getSubId();
-
-            // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
-            if (mSubId != subId ||
-                    showPlmn != mCurShowPlmn
-                    || showSpn != mCurShowSpn
-                    || !TextUtils.equals(spn, mCurSpn)
-                    || !TextUtils.equals(dataSpn, mCurDataSpn)
-                    || !TextUtils.equals(plmn, mCurPlmn)) {
-                if (DBG) {
-                    log(String.format("updateSpnDisplay: changed sending intent rule=" + rule +
-                            " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' " +
-                            "subId='%d'", showPlmn, plmn, showSpn, spn, dataSpn, subId));
-                }
-                Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-                intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
-                intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
-                intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
-                intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
-                intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
-                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-                mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-
-                if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                        showPlmn, plmn, showSpn, spn)) {
-                    mSpnUpdatePending = true;
-                }
-            }
-
-            mSubId = subId;
-            mCurShowSpn = showSpn;
-            mCurShowPlmn = showPlmn;
-            mCurSpn = spn;
-            mCurDataSpn = dataSpn;
-            mCurPlmn = plmn;
         } else {
             String eriText = getOperatorNameFromEri();
             if (eriText != null) mSS.setOperatorAlphaLong(eriText);
