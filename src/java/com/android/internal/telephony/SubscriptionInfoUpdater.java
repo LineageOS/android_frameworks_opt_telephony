@@ -762,6 +762,12 @@ public class SubscriptionInfoUpdater extends Handler {
             if (cid != null) {
                 values.put(SubscriptionManager.CARRIER_ID,
                         CarrierResolver.getCarrierIdFromIdentifier(mContext, cid));
+                String mcc = cid.getMcc();
+                String mnc = cid.getMnc();
+                values.put(SubscriptionManager.MCC_STRING, mcc);
+                values.put(SubscriptionManager.MCC, mcc);
+                values.put(SubscriptionManager.MNC_STRING, mnc);
+                values.put(SubscriptionManager.MNC, mnc);
             }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
