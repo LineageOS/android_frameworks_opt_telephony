@@ -170,12 +170,6 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_EHPLMN_DONE = 40 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_FPLMN_DONE = 41 + SIM_RECORD_EVENT_BASE;
 
-    // TODO: Possibly move these to IccRecords.java
-    private static final int SYSTEM_EVENT_BASE = 0x100;
-    private static final int EVENT_APP_LOCKED = 2 + SYSTEM_EVENT_BASE;
-    private static final int EVENT_APP_NETWORK_LOCKED = 3 + SYSTEM_EVENT_BASE;
-
-
     // ***** Constructor
 
     public SIMRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
@@ -195,9 +189,6 @@ public class SIMRecords extends IccRecords {
 
         // Start off by setting empty state
         resetRecords();
-        mParentApp.registerForReady(this, EVENT_APP_READY, null);
-        mParentApp.registerForLocked(this, EVENT_APP_LOCKED, null);
-        mParentApp.registerForNetworkLocked(this, EVENT_APP_NETWORK_LOCKED, null);
         if (DBG) log("SIMRecords X ctor this=" + this);
     }
 
@@ -206,9 +197,6 @@ public class SIMRecords extends IccRecords {
         if (DBG) log("Disposing SIMRecords this=" + this);
         //Unregister for all events
         mCi.unSetOnSmsOnSim(this);
-        mParentApp.unregisterForReady(this);
-        mParentApp.unregisterForLocked(this);
-        mParentApp.unregisterForNetworkLocked(this);
         resetRecords();
         super.dispose();
     }
@@ -627,15 +615,6 @@ public class SIMRecords extends IccRecords {
 
         try {
             switch (msg.what) {
-                case EVENT_APP_READY:
-                    onReady();
-                    break;
-
-                case EVENT_APP_LOCKED:
-                case EVENT_APP_NETWORK_LOCKED:
-                    onLocked(msg.what);
-                    break;
-
                 /* IO events */
                 case EVENT_GET_IMSI_DONE:
                     isRecordLoadResponse = true;
@@ -1488,10 +1467,10 @@ public class SIMRecords extends IccRecords {
         fetchSimRecords();
     }
 
-    private void onLocked(int msg) {
+    @Override
+    protected void onLocked() {
         if (DBG) log("only fetch EF_LI, EF_PL and EF_ICCID in locked state");
-        mLockedRecordsReqReason = msg == EVENT_APP_LOCKED ? LOCKED_RECORDS_REQ_REASON_LOCKED :
-                LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED;
+        super.onLocked();
 
         loadEfLiAndEfPl();
 
