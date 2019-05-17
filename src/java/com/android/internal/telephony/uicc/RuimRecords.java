@@ -119,20 +119,12 @@ public class RuimRecords extends IccRecords {
 
         // Start off by setting empty state
         resetRecords();
-
-        mParentApp.registerForReady(this, EVENT_APP_READY, null);
-        mParentApp.registerForLocked(this, EVENT_APP_LOCKED, null);
-        mParentApp.registerForNetworkLocked(this, EVENT_APP_NETWORK_LOCKED, null);
         if (DBG) log("RuimRecords X ctor this=" + this);
     }
 
     @Override
     public void dispose() {
         if (DBG) log("Disposing RuimRecords " + this);
-        //Unregister for all events
-        mParentApp.unregisterForReady(this);
-        mParentApp.unregisterForLocked(this);
-        mParentApp.unregisterForNetworkLocked(this);
         resetRecords();
         super.dispose();
     }
@@ -613,15 +605,6 @@ public class RuimRecords extends IccRecords {
 
         try {
             switch (msg.what) {
-            case EVENT_APP_READY:
-                onReady();
-                break;
-
-                case EVENT_APP_LOCKED:
-                case EVENT_APP_NETWORK_LOCKED:
-                    onLocked(msg.what);
-                    break;
-
             case EVENT_GET_DEVICE_IDENTITY_DONE:
                 log("Event EVENT_GET_DEVICE_IDENTITY_DONE Received");
             break;
@@ -837,10 +820,10 @@ public class RuimRecords extends IccRecords {
         mCi.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_DONE));
     }
 
-    private void onLocked(int msg) {
+    @Override
+    protected void onLocked() {
         if (DBG) log("only fetch EF_ICCID in locked state");
-        mLockedRecordsReqReason = msg == EVENT_APP_LOCKED ? LOCKED_RECORDS_REQ_REASON_LOCKED :
-                LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED;
+        super.onLocked();
 
         mFh.loadEFTransparent(EF_ICCID, obtainMessage(EVENT_GET_ICCID_DONE));
         mRecordsToLoad++;

@@ -213,8 +213,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
     public static final int EVENT_REFRESH = 31; // ICC refresh occurred
-    protected static final int EVENT_APP_READY = 1;
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
+
+    protected static final int SYSTEM_EVENT_BASE = 0x100;
+    protected static final int EVENT_APP_READY = 1 + SYSTEM_EVENT_BASE;
+    protected static final int EVENT_APP_LOCKED = 2 + SYSTEM_EVENT_BASE;
+    protected static final int EVENT_APP_NETWORK_LOCKED = 3 + SYSTEM_EVENT_BASE;
 
     public static final int CALL_FORWARDING_STATUS_DISABLED = 0;
     public static final int CALL_FORWARDING_STATUS_ENABLED = 1;
@@ -282,6 +286,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         mCarrierTestOverride = new CarrierTestOverride();
         mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
+
+        mParentApp.registerForReady(this, EVENT_APP_READY, null);
+        mParentApp.registerForLocked(this, EVENT_APP_LOCKED, null);
+        mParentApp.registerForNetworkLocked(this, EVENT_APP_NETWORK_LOCKED, null);
     }
 
     // Override IccRecords for testing
@@ -307,6 +315,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
         }
 
         mCi.unregisterForIccRefresh(this);
+        mParentApp.unregisterForReady(this);
+        mParentApp.unregisterForLocked(this);
+        mParentApp.unregisterForNetworkLocked(this);
+
         mParentApp = null;
         mFh = null;
         mCi = null;
@@ -317,7 +329,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mLoaded.set(false);
     }
 
-    public abstract void onReady();
+    protected abstract void onReady();
+
+    protected void onLocked() {
+        // The LOADED state should not be indicated while the lock is effective.
+        mRecordsRequested = false;
+        mLoaded.set(false);
+    }
 
     //***** Public Methods
     public AdnRecordCache getAdnCache() {
@@ -774,6 +792,21 @@ public abstract class IccRecords extends Handler implements IccConstants {
         AsyncResult ar;
 
         switch (msg.what) {
+            case EVENT_APP_READY:
+                mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
+                onReady();
+                break;
+
+            case EVENT_APP_LOCKED:
+                mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_LOCKED;
+                onLocked();
+                break;
+
+            case EVENT_APP_NETWORK_LOCKED:
+                mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NETWORK_LOCKED;
+                onLocked();
+                break;
+
             case EVENT_GET_ICC_RECORD_DONE:
                 try {
                     ar = (AsyncResult) msg.obj;
