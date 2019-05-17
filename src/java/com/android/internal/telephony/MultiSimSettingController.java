@@ -63,7 +63,6 @@ public class MultiSimSettingController extends Handler {
 
     private final Context mContext;
     private final SubscriptionController mSubController;
-    private boolean mIsAllSubscriptionsLoaded;
     private List<SubscriptionInfo> mPrimarySubList;
 
     /** The singleton instance. */
@@ -117,7 +116,8 @@ public class MultiSimSettingController extends Handler {
     }
 
     /**
-     * Notify that, for the first time after boot, SIMs are all loaded
+     * Notify that, for the first time after boot, SIMs are initialized.
+     * Should only be triggered once.
      */
     public void notifyAllSubscriptionLoaded() {
         obtainMessage(EVENT_ALL_SUBSCRIPTIONS_LOADED).sendToTarget();
@@ -207,12 +207,12 @@ public class MultiSimSettingController extends Handler {
     }
 
     /**
-     * Mark mIsAllSubscriptionsLoaded and update defaults and mobile data enabling.
+     * Upon initialization, update defaults and mobile data enabling.
+     * Should only be triggered once.
      */
     @VisibleForTesting
     public void onAllSubscriptionsLoaded() {
         if (DBG) log("onAllSubscriptionsLoaded");
-        mIsAllSubscriptionsLoaded = true;
         updateDefaults();
         disableDataForNonDefaultNonOpportunisticSubscriptions();
     }
@@ -225,7 +225,7 @@ public class MultiSimSettingController extends Handler {
     @VisibleForTesting
     public void onSubscriptionsChanged() {
         if (DBG) log("onSubscriptionsChanged");
-        if (!mIsAllSubscriptionsLoaded) return;
+        if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
         updateDefaults();
         disableDataForNonDefaultNonOpportunisticSubscriptions();
     }
@@ -310,7 +310,7 @@ public class MultiSimSettingController extends Handler {
     public void updateDefaults() {
         if (DBG) log("updateDefaults");
 
-        if (!mIsAllSubscriptionsLoaded) return;
+        if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
 
         List<SubscriptionInfo> activeSubInfos = mSubController
                 .getActiveSubscriptionInfoList(mContext.getOpPackageName());
@@ -399,6 +399,8 @@ public class MultiSimSettingController extends Handler {
     }
 
     private void disableDataForNonDefaultNonOpportunisticSubscriptions() {
+        if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
+
         int defaultDataSub = mSubController.getDefaultDataSubId();
         // Only disable data for non-default subscription if default sub is active.
         if (!mSubController.isActiveSubId(defaultDataSub)) {
