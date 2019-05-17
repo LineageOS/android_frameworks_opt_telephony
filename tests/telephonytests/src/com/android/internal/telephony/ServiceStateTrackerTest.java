@@ -225,6 +225,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         doReturn(true).when(mDcTracker).isDisconnected();
 
+        doReturn(new ServiceState()).when(mPhone).getServiceState();
+
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
         mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putStringArray(
