@@ -181,8 +181,7 @@ public class MultiSimSettingController extends Handler {
      * If user is enabling a non-default non-opportunistic subscription, make it default
      * data subscription.
      */
-    @VisibleForTesting
-    public void onUserDataEnabled(int subId, boolean enable) {
+    private void onUserDataEnabled(int subId, boolean enable) {
         if (DBG) log("onUserDataEnabled");
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
@@ -197,8 +196,7 @@ public class MultiSimSettingController extends Handler {
     /**
      * Make sure DATA_ROAMING of subscriptions in same group are synced.
      */
-    @VisibleForTesting
-    public void onRoamingDataEnabled(int subId, boolean enable) {
+    private void onRoamingDataEnabled(int subId, boolean enable) {
         if (DBG) log("onRoamingDataEnabled");
         setRoamingDataEnabledForGroup(subId, enable);
 
@@ -210,8 +208,7 @@ public class MultiSimSettingController extends Handler {
      * Upon initialization, update defaults and mobile data enabling.
      * Should only be triggered once.
      */
-    @VisibleForTesting
-    public void onAllSubscriptionsLoaded() {
+    private void onAllSubscriptionsLoaded() {
         if (DBG) log("onAllSubscriptionsLoaded");
         updateDefaults();
         disableDataForNonDefaultNonOpportunisticSubscriptions();
@@ -222,8 +219,7 @@ public class MultiSimSettingController extends Handler {
      *
      * Make sure non-default non-opportunistic subscriptions has data off.
      */
-    @VisibleForTesting
-    public void onSubscriptionsChanged() {
+    private void onSubscriptionsChanged() {
         if (DBG) log("onSubscriptionsChanged");
         if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
         updateDefaults();
@@ -233,8 +229,7 @@ public class MultiSimSettingController extends Handler {
     /**
      * Make sure non-default non-opportunistic subscriptions has data disabled.
      */
-    @VisibleForTesting
-    public void onDefaultDataSettingChanged() {
+    private void onDefaultDataSettingChanged() {
         if (DBG) log("onDefaultDataSettingChanged");
         disableDataForNonDefaultNonOpportunisticSubscriptions();
     }
@@ -245,8 +240,7 @@ public class MultiSimSettingController extends Handler {
      * TODO: b/130258159 have a separate database table for grouped subscriptions so we don't
      * manually sync each setting.
      */
-    @VisibleForTesting
-    public void onSubscriptionGroupChanged(ParcelUuid groupUuid) {
+    private void onSubscriptionGroupChanged(ParcelUuid groupUuid) {
         if (DBG) log("onSubscriptionGroupChanged");
 
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
@@ -306,8 +300,7 @@ public class MultiSimSettingController extends Handler {
      *    not a user settable value anymore.
      * 4) If non above is met, clear the default value to INVALID.
      */
-    @VisibleForTesting
-    public void updateDefaults() {
+    private void updateDefaults() {
         if (DBG) log("updateDefaults");
 
         if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
