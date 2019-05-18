@@ -62,6 +62,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -148,7 +149,6 @@ public class SubscriptionController extends ISub.Stub {
     @UnsupportedAppUsage
     private int[] colorArr;
     private long mLastISubServiceRegTime;
-    private int mPreferredDataSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -205,55 +205,42 @@ public class SubscriptionController extends ISub.Stub {
             mLastISubServiceRegTime = System.currentTimeMillis();
         }
 
-        /**
-         * Switching between DSDS and single sim mode needs to clear the slot index of
-         * subscription info.
-         */
+        // clear SLOT_INDEX for all subs
         clearSlotIndexForSubInfoRecords();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
+    /**
+     * Should only be triggered once.
+     */
+    public void notifySubInfoReady() {
+        // broadcast default subId.
+        sendDefaultChangedBroadcast(SubscriptionManager.getDefaultSubscriptionId());
+    }
+
     @UnsupportedAppUsage
     private boolean isSubInfoReady() {
-        if (VDBG) {
-            // make sure sSlotIndexToSubIds is consistent with cached subinfo list
-            int count = 0;
-            for (Integer i : sSlotIndexToSubIds.keySet()) {
-                count += sSlotIndexToSubIds.get(i).size();
-            }
-            if (count != mCacheActiveSubInfoList.size()) {
-                logdl("mismatch between map and list. list size = " + mCacheActiveSubInfoList.size()
-                        + ", map size = " + count);
-                for (Integer i : sSlotIndexToSubIds.keySet()) {
-                    logdl("From the Map, subs in map at slot index: " + i + " are: "
-                            + sSlotIndexToSubIds.get(i));
-                }
-                for (SubscriptionInfo info : mCacheActiveSubInfoList) {
-                    logdl("From the Cached list, subinfo is: " + info);
-                }
-            }
-        }
-        return sSlotIndexToSubIds.size() > 0;
+        return SubscriptionInfoUpdater.isSubInfoInitialized();
     }
 
     /**
-     * Switching between DSDS and single sim mode needs to update the slot index of subscription
-     * info into invalid if the slot index is not active.
+     * This function marks SIM_SLOT_INDEX as INVALID for all subscriptions in the database. This
+     * should be done as part of initialization.
+     *
+     * TODO: SIM_SLOT_INDEX is based on current state and should not even be persisted in the
+     * database.
      */
     private void clearSlotIndexForSubInfoRecords() {
-        if (mTelephonyManager == null || mContext == null) {
+        if (mContext == null) {
             logel("[clearSlotIndexForSubInfoRecords] TelephonyManager or mContext is null");
             return;
         }
-        int phoneCount = mTelephonyManager.getPhoneCount();
 
-        // Update simInfo db with invalid slot index
-        ContentResolver resolver = mContext.getContentResolver();
+        // Update all subscriptions in simInfo db with invalid slot index
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                value, SubscriptionManager.SIM_SLOT_INDEX + ">=" + phoneCount, null);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value, null, null);
     }
 
     private SubscriptionController(Phone phone) {
@@ -266,10 +253,7 @@ public class SubscriptionController extends ISub.Stub {
 
         migrateImsSettings();
 
-        /**
-         * Switching between DSDS and single sim mode needs to clear the slot index of
-         * subscription info.
-         */
+        // clear SLOT_INDEX for all subs
         clearSlotIndexForSubInfoRecords();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
@@ -388,6 +372,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.PROFILE_CLASS));
         int subType = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.SUBSCRIPTION_TYPE));
+        String groupOwner = getOptionalStringFromCursor(cursor, SubscriptionManager.GROUP_OWNER,
+                /*defaultVal*/ null);
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -411,9 +397,16 @@ public class SubscriptionController extends ISub.Stub {
         SubscriptionInfo info = new SubscriptionInfo(id, iccId, simSlotIndex, displayName,
                 carrierName, nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc,
                 countryIso, isEmbedded, accessRules, cardId, publicCardId, isOpportunistic,
-                groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType);
+                groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType,
+                groupOwner);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
+    }
+
+    private String getOptionalStringFromCursor(Cursor cursor, String column, String defaultVal) {
+        // Return defaultVal if the column doesn't exist.
+        int columnIndex = cursor.getColumnIndex(column);
+        return (columnIndex == -1) ? defaultVal : cursor.getString(columnIndex);
     }
 
     /**
@@ -700,14 +693,6 @@ public class SubscriptionController extends ISub.Stub {
      */
     @VisibleForTesting  // For mockito to mock this method
     public void refreshCachedActiveSubscriptionInfoList() {
-        if (!isSubInfoReady()) {
-            if (DBG_CACHE) {
-                logdl("[refreshCachedActiveSubscriptionInfoList] "
-                        + "Sub Controller not ready ");
-            }
-            return;
-        }
-
         boolean opptSubListChanged;
 
         synchronized (mSubInfoListLock) {
@@ -1362,8 +1347,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[clearSubInfoRecord]+ iccId:" + " slotIndex:" + slotIndex);
 
         // update simInfo db with invalid slot index
-        List<SubscriptionInfo> oldSubInfo = getSubInfoUsingSlotIndexPrivileged(slotIndex,
-                false);
+        List<SubscriptionInfo> oldSubInfo = getSubInfoUsingSlotIndexPrivileged(slotIndex);
         ContentResolver resolver = mContext.getContentResolver();
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.SIM_SLOT_INDEX,
@@ -1536,11 +1520,31 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * This is only for internal use and the returned priority is arbitrary. The idea is to give a
+     * higher value to name source that has higher priority to override other name sources.
+     * @param nameSource Source of display name
+     * @return int representing the priority. Higher value means higher priority.
+     */
+    public static int getNameSourcePriority(int nameSource) {
+        switch (nameSource) {
+            case SubscriptionManager.NAME_SOURCE_USER_INPUT:
+                return 3;
+            case SubscriptionManager.NAME_SOURCE_CARRIER:
+                return 2;
+            case SubscriptionManager.NAME_SOURCE_SIM_SOURCE:
+                return 1;
+            case SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE:
+            default:
+                return 0;
+        }
+    }
+
+    /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
      * @param nameSource 0: NAME_SOURCE_DEFAULT_SOURCE, 1: NAME_SOURCE_SIM_SOURCE,
-     *                   2: NAME_SOURCE_USER_INPUT
+     *                   2: NAME_SOURCE_USER_INPUT, 3: NAME_SOURCE_CARRIER
      * @return the number of records updated
      */
     @Override
@@ -1556,6 +1560,13 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
+            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId
+                        && getNameSourcePriority(subInfo.getNameSource())
+                                > getNameSourcePriority(nameSource)) {
+                    return 0;
+                }
+            }
             String nameToSet;
             if (displayName == null) {
                 nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
@@ -2307,19 +2318,13 @@ public class SubscriptionController extends ISub.Stub {
 
     /** Must be public for access from instrumentation tests. */
     @VisibleForTesting
-    public List<SubscriptionInfo> getSubInfoUsingSlotIndexPrivileged(int slotIndex,
-            boolean needCheck) {
+    public List<SubscriptionInfo> getSubInfoUsingSlotIndexPrivileged(int slotIndex) {
         if (DBG) logd("[getSubInfoUsingSlotIndexPrivileged]+ slotIndex:" + slotIndex);
         if (slotIndex == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
             slotIndex = getSlotIndex(getDefaultSubId());
         }
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
             if (DBG) logd("[getSubInfoUsingSlotIndexPrivileged]- invalid slotIndex");
-            return null;
-        }
-
-        if (needCheck && !isSubInfoReady()) {
-            if (DBG) logd("[getSubInfoUsingSlotIndexPrivileged]- not ready");
             return null;
         }
 
@@ -2868,6 +2873,7 @@ public class SubscriptionController extends ISub.Stub {
 
             ContentValues value = new ContentValues();
             value.put(SubscriptionManager.GROUP_UUID, groupUUID.toString());
+            value.put(SubscriptionManager.GROUP_OWNER, callingPackage);
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, getSelectionForSubIdList(subIdList), null);
 
@@ -2885,12 +2891,29 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    // TODO: when having a group owner or packageName for subscription, use that to check.
-    // Currently for this method to return false, all subscriptions in the group needs to have
-    // carrier privilege rules loaded, which means active or available.
-    private boolean canPackageManageGroup(ParcelUuid groupUuid, String callingPackage) {
+    private String getOwnerPackageOfSubGroup(ParcelUuid groupUuid) {
+        if (groupUuid == null) return null;
+
+        List<SubscriptionInfo> infoList = getSubInfo(SubscriptionManager.GROUP_UUID
+                + "=\'" + groupUuid.toString() + "\'", null);
+
+        return ArrayUtils.isEmpty(infoList) ? null : infoList.get(0).getGroupOwner();
+    }
+
+    /**
+     *
+     * @param groupUuid a UUID assigned to the subscription group.
+     * @param callingPackage the package making the IPC.
+     * @return if callingPackage has carrier privilege on sublist.
+     *
+     */
+    public boolean canPackageManageGroup(ParcelUuid groupUuid, String callingPackage) {
         if (groupUuid == null) {
             throw new IllegalArgumentException("Invalid groupUuid");
+        }
+
+        if (TextUtils.isEmpty(callingPackage)) {
+            throw new IllegalArgumentException("Empty callingPackage");
         }
 
         List<SubscriptionInfo> infoList;
@@ -2904,13 +2927,36 @@ public class SubscriptionController extends ISub.Stub {
             Binder.restoreCallingIdentity(identity);
         }
 
-        if (infoList == null || infoList.isEmpty()) {
+        if (ArrayUtils.isEmpty(infoList)) {
             throw new IllegalArgumentException("No subscription in group " + groupUuid);
         }
 
+        // If the calling package is the group owner, skip carrier permission check and return
+        // true as it was done before.
+        if (callingPackage.equals(infoList.get(0).getGroupOwner())) return true;
+
         // Check carrier privilege for all subscriptions in the group.
-        int[] subIdArray = infoList.stream().mapToInt(info -> info.getSubscriptionId()).toArray();
-        return checkCarrierPrivilegeOnSubList(subIdArray, callingPackage);
+        int[] subIdArray = infoList.stream().mapToInt(info -> info.getSubscriptionId())
+                .toArray();
+        return (checkCarrierPrivilegeOnSubList(subIdArray, callingPackage));
+    }
+
+    private int updateGroupOwner(ParcelUuid groupUuid, String groupOwner) {
+        // If the existing group owner is different from current caller, make caller the new
+        // owner of all subscriptions in group.
+        // This is for use-case of:
+        // 1) Both package1 and package2 has permission (MODIFY_PHONE_STATE or carrier
+        // privilege permission) of all related subscriptions.
+        // 2) Package 1 created a group.
+        // 3) Package 2 wants to add a subscription into it.
+        // Step 3 should be granted as all operations are permission based. Which means as
+        // long as the package passes the permission check, it can modify the subscription
+        // and the group. And package 2 becomes the new group owner as it's the last to pass
+        // permission checks on all members.
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.GROUP_OWNER, groupOwner);
+        return mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, SubscriptionManager.GROUP_UUID + "=\"" + groupUuid + "\"", null);
     }
 
     @Override
@@ -2924,6 +2970,8 @@ public class SubscriptionController extends ISub.Stub {
             throw new IllegalArgumentException("Invalid groupUuid");
         }
 
+        // Makes sure calling package matches caller UID.
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
         // a SecurityException will be thrown.
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
@@ -2949,11 +2997,11 @@ public class SubscriptionController extends ISub.Stub {
             if (DBG) logdl("addSubscriptionsIntoGroup update DB result: " + result);
 
             if (result > 0) {
+                updateGroupOwner(groupUuid, callingPackage);
                 refreshCachedActiveSubscriptionInfoList();
                 notifySubscriptionInfoChanged();
                 MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUuid);
             }
-
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2981,12 +3029,15 @@ public class SubscriptionController extends ISub.Stub {
         if (subIdList == null || subIdList.length == 0) {
             return;
         }
+
+        // Makes sure calling package matches caller UID.
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
         // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
         // it will return null.
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
-                != PERMISSION_GRANTED && !checkCarrierPrivilegeOnSubList(
-                subIdList, callingPackage)) {
+                != PERMISSION_GRANTED && !(checkCarrierPrivilegeOnSubList(subIdList, callingPackage)
+                && canPackageManageGroup(groupUuid, callingPackage))) {
             throw new SecurityException("removeSubscriptionsFromGroup needs MODIFY_PHONE_STATE or"
                     + " carrier privilege permission on all specified subscriptions");
         }
@@ -3004,14 +3055,17 @@ public class SubscriptionController extends ISub.Stub {
             }
             ContentValues value = new ContentValues();
             value.put(SubscriptionManager.GROUP_UUID, (String) null);
+            value.put(SubscriptionManager.GROUP_OWNER, (String) null);
             int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, getSelectionForSubIdList(subIdList), null);
 
             if (DBG) logdl("removeSubscriptionsFromGroup update DB result: " + result);
 
-            refreshCachedActiveSubscriptionInfoList();
-
-            notifySubscriptionInfoChanged();
+            if (result > 0) {
+                updateGroupOwner(groupUuid, callingPackage);
+                refreshCachedActiveSubscriptionInfoList();
+                notifySubscriptionInfoChanged();
+            }
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -3398,11 +3452,6 @@ public class SubscriptionController extends ISub.Stub {
     // They are doing similar things except operating on different cache.
     private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
             String callingPackage, List<SubscriptionInfo> cacheSubList) {
-        if (!isSubInfoReady()) {
-            if (DBG) logd("[getSubscriptionInfoList] Sub Controller not ready");
-            return null;
-        }
-
         boolean canReadAllPhoneState;
         try {
             canReadAllPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
@@ -3511,7 +3560,11 @@ public class SubscriptionController extends ISub.Stub {
             for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
                 if (shouldDisableSubGroup(info.getGroupUuid())) {
                     info.setGroupDisabled(true);
-                    if (isActiveSubId(info.getSubscriptionId())) {
+                    // TODO: move it to ONS.
+                    if (isActiveSubId(info.getSubscriptionId()) && isSubInfoReady()) {
+                        logd("[refreshCachedOpportunisticSubscriptionInfoList] "
+                                + "Deactivating grouped opportunistic subscription "
+                                + info.getSubscriptionId());
                         deactivateSubscription(info);
                     }
                 }
@@ -3547,6 +3600,7 @@ public class SubscriptionController extends ISub.Stub {
     private void deactivateSubscription(SubscriptionInfo info) {
         // TODO: b/120439488 deactivate pSIM.
         if (info.isEmbedded()) {
+            logd("[deactivateSubscription] eSIM profile " + info.getSubscriptionId());
             EuiccManager euiccManager = (EuiccManager)
                     mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,

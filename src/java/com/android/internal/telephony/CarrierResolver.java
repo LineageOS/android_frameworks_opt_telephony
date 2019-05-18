@@ -36,6 +36,7 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
@@ -362,6 +363,23 @@ public class CarrierResolver extends Handler {
         return null;
     }
 
+    private boolean isPreferApnUserEdited(@NonNull String preferApn) {
+        try (Cursor cursor = mContext.getContentResolver().query(
+                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI,
+                        "preferapn/subId/" + mPhone.getSubId()),
+                /* projection */ new String[]{Telephony.Carriers.EDITED_STATUS},
+                /* selection */ Telephony.Carriers.APN + "=?",
+                /* selectionArgs */ new String[]{preferApn}, /* sortOrder */ null) ) {
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getInt(cursor.getColumnIndexOrThrow(
+                        Telephony.Carriers.EDITED_STATUS)) == Telephony.Carriers.USER_EDITED;
+            }
+        } catch (Exception ex) {
+            loge("[isPreferApnUserEdited]- exception: " + ex);
+        }
+        return false;
+    }
+
     public void setTestOverrideApn(String apn) {
         logd("[setTestOverrideApn]: " + apn);
         mTestOverrideApn = apn;
@@ -472,7 +490,7 @@ public class CarrierResolver extends Handler {
     /**
      * carrier matching attributes with corresponding cid
      */
-    private static class CarrierMatchingRule {
+    public static class CarrierMatchingRule {
         /**
          * These scores provide the hierarchical relationship between the attributes, intended to
          * resolve conflicts in a deterministic way. The scores are constructed such that a match
@@ -495,16 +513,16 @@ public class CarrierResolver extends Handler {
         private static final int SCORE_INVALID                  = -1;
 
         // carrier matching attributes
-        private final String mMccMnc;
-        private final String mImsiPrefixPattern;
-        private final String mIccidPrefix;
-        private final String mGid1;
-        private final String mGid2;
-        private final String mPlmn;
-        private final String mSpn;
-        private final String mApn;
+        public final String mccMnc;
+        public final String imsiPrefixPattern;
+        public final String iccidPrefix;
+        public final String gid1;
+        public final String gid2;
+        public final String plmn;
+        public final String spn;
+        public final String apn;
         // there can be multiple certs configured in the UICC
-        private final List<String> mPrivilegeAccessRule;
+        public final List<String> privilegeAccessRule;
 
         // user-facing carrier name
         private String mName;
@@ -515,33 +533,34 @@ public class CarrierResolver extends Handler {
 
         private int mScore = 0;
 
-        private CarrierMatchingRule(String mccmnc, String imsiPrefixPattern, String iccidPrefix,
+        @VisibleForTesting
+        public CarrierMatchingRule(String mccmnc, String imsiPrefixPattern, String iccidPrefix,
                 String gid1, String gid2, String plmn, String spn, String apn,
                 List<String> privilegeAccessRule, int cid, String name, int parentCid) {
-            mMccMnc = mccmnc;
-            mImsiPrefixPattern = imsiPrefixPattern;
-            mIccidPrefix = iccidPrefix;
-            mGid1 = gid1;
-            mGid2 = gid2;
-            mPlmn = plmn;
-            mSpn = spn;
-            mApn = apn;
-            mPrivilegeAccessRule = privilegeAccessRule;
+            mccMnc = mccmnc;
+            this.imsiPrefixPattern = imsiPrefixPattern;
+            this.iccidPrefix = iccidPrefix;
+            this.gid1 = gid1;
+            this.gid2 = gid2;
+            this.plmn = plmn;
+            this.spn = spn;
+            this.apn = apn;
+            this.privilegeAccessRule = privilegeAccessRule;
             mCid = cid;
             mName = name;
             mParentCid = parentCid;
         }
 
         private CarrierMatchingRule(CarrierMatchingRule rule) {
-            mMccMnc = rule.mMccMnc;
-            mImsiPrefixPattern = rule.mImsiPrefixPattern;
-            mIccidPrefix = rule.mIccidPrefix;
-            mGid1 = rule.mGid1;
-            mGid2 = rule.mGid2;
-            mPlmn = rule.mPlmn;
-            mSpn = rule.mSpn;
-            mApn = rule.mApn;
-            mPrivilegeAccessRule = rule.mPrivilegeAccessRule;
+            mccMnc = rule.mccMnc;
+            imsiPrefixPattern = rule.imsiPrefixPattern;
+            iccidPrefix = rule.iccidPrefix;
+            gid1 = rule.gid1;
+            gid2 = rule.gid2;
+            plmn = rule.plmn;
+            spn = rule.spn;
+            apn = rule.apn;
+            privilegeAccessRule = rule.privilegeAccessRule;
             mCid = rule.mCid;
             mName = rule.mName;
             mParentCid = rule.mParentCid;
@@ -554,67 +573,67 @@ public class CarrierResolver extends Handler {
         // matches at the same tier, the match with highest score will be used.
         public void match(CarrierMatchingRule subscriptionRule) {
             mScore = 0;
-            if (mMccMnc != null) {
-                if (!CarrierResolver.equals(subscriptionRule.mMccMnc, mMccMnc, false)) {
+            if (mccMnc != null) {
+                if (!CarrierResolver.equals(subscriptionRule.mccMnc, mccMnc, false)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_MCCMNC;
             }
-            if (mImsiPrefixPattern != null) {
-                if (!imsiPrefixMatch(subscriptionRule.mImsiPrefixPattern, mImsiPrefixPattern)) {
+            if (imsiPrefixPattern != null) {
+                if (!imsiPrefixMatch(subscriptionRule.imsiPrefixPattern, imsiPrefixPattern)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_IMSI_PREFIX;
             }
-            if (mIccidPrefix != null) {
-                if (!iccidPrefixMatch(subscriptionRule.mIccidPrefix, mIccidPrefix)) {
+            if (iccidPrefix != null) {
+                if (!iccidPrefixMatch(subscriptionRule.iccidPrefix, iccidPrefix)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_ICCID_PREFIX;
             }
-            if (mGid1 != null) {
-                if (!gidMatch(subscriptionRule.mGid1, mGid1)) {
+            if (gid1 != null) {
+                if (!gidMatch(subscriptionRule.gid1, gid1)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_GID1;
             }
-            if (mGid2 != null) {
-                if (!gidMatch(subscriptionRule.mGid2, mGid2)) {
+            if (gid2 != null) {
+                if (!gidMatch(subscriptionRule.gid2, gid2)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_GID2;
             }
-            if (mPlmn != null) {
-                if (!CarrierResolver.equals(subscriptionRule.mPlmn, mPlmn, true)) {
+            if (plmn != null) {
+                if (!CarrierResolver.equals(subscriptionRule.plmn, plmn, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_PLMN;
             }
-            if (mSpn != null) {
-                if (!CarrierResolver.equals(subscriptionRule.mSpn, mSpn, true)) {
+            if (spn != null) {
+                if (!CarrierResolver.equals(subscriptionRule.spn, spn, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_SPN;
             }
 
-            if (mPrivilegeAccessRule != null && !mPrivilegeAccessRule.isEmpty()) {
-                if (!carrierPrivilegeRulesMatch(subscriptionRule.mPrivilegeAccessRule,
-                        mPrivilegeAccessRule)) {
+            if (privilegeAccessRule != null && !privilegeAccessRule.isEmpty()) {
+                if (!carrierPrivilegeRulesMatch(subscriptionRule.privilegeAccessRule,
+                        privilegeAccessRule)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
                 mScore += SCORE_PRIVILEGE_ACCESS_RULE;
             }
 
-            if (mApn != null) {
-                if (!CarrierResolver.equals(subscriptionRule.mApn, mApn, true)) {
+            if (apn != null) {
+                if (!CarrierResolver.equals(subscriptionRule.apn, apn, true)) {
                     mScore = SCORE_INVALID;
                     return;
                 }
@@ -669,15 +688,15 @@ public class CarrierResolver extends Handler {
 
         public String toString() {
             return "[CarrierMatchingRule] -"
-                    + " mccmnc: " + mMccMnc
-                    + " gid1: " + mGid1
-                    + " gid2: " + mGid2
-                    + " plmn: " + mPlmn
-                    + " imsi_prefix: " + mImsiPrefixPattern
-                    + " iccid_prefix" + mIccidPrefix
-                    + " spn: " + mSpn
-                    + " privilege_access_rule: " + mPrivilegeAccessRule
-                    + " apn: " + mApn
+                    + " mccmnc: " + mccMnc
+                    + " gid1: " + gid1
+                    + " gid2: " + gid2
+                    + " plmn: " + plmn
+                    + " imsi_prefix: " + imsiPrefixPattern
+                    + " iccid_prefix" + iccidPrefix
+                    + " spn: " + spn
+                    + " privilege_access_rule: " + privilegeAccessRule
+                    + " apn: " + apn
                     + " name: " + mName
                     + " cid: " + mCid
                     + " score: " + mScore;
@@ -698,7 +717,8 @@ public class CarrierResolver extends Handler {
         if (!TextUtils.isEmpty(mTestOverrideCarrierPriviledgeRule)) {
             accessRules = new ArrayList<>(Arrays.asList(mTestOverrideCarrierPriviledgeRule));
         } else {
-            accessRules = mTelephonyMgr.getCertsFromCarrierPrivilegeAccessRules();
+            accessRules = mTelephonyMgr.createForSubscriptionId(mPhone.getSubId())
+                    .getCertsFromCarrierPrivilegeAccessRules();
         }
 
         if (VDBG) {
@@ -793,13 +813,41 @@ public class CarrierResolver extends Handler {
          * 4) use carrier list version to compare the unknown carrier ratio between each version.
          */
         String unknownGid1ToLog = ((maxScore & CarrierMatchingRule.SCORE_GID1) == 0
-                && !TextUtils.isEmpty(subscriptionRule.mGid1)) ? subscriptionRule.mGid1 : null;
+                && !TextUtils.isEmpty(subscriptionRule.gid1)) ? subscriptionRule.gid1 : null;
         String unknownMccmncToLog = ((maxScore == CarrierMatchingRule.SCORE_INVALID
                 || (maxScore & CarrierMatchingRule.SCORE_GID1) == 0)
-                && !TextUtils.isEmpty(subscriptionRule.mMccMnc)) ? subscriptionRule.mMccMnc : null;
+                && !TextUtils.isEmpty(subscriptionRule.mccMnc)) ? subscriptionRule.mccMnc : null;
+
+        // pass subscription rule to metrics. scrub all possible PII before uploading.
+        // only log apn if not user edited.
+        String apn = (subscriptionRule.apn != null
+                && !isPreferApnUserEdited(subscriptionRule.apn))
+                ? subscriptionRule.apn : null;
+        // only log first 7 bits of iccid
+        String iccidPrefix = (subscriptionRule.iccidPrefix != null)
+                && (subscriptionRule.iccidPrefix.length() >= 7)
+                ? subscriptionRule.iccidPrefix.substring(0, 7) : subscriptionRule.iccidPrefix;
+        // only log first 8 bits of imsi
+        String imsiPrefix = (subscriptionRule.imsiPrefixPattern != null)
+                && (subscriptionRule.imsiPrefixPattern.length() >= 8)
+                ? subscriptionRule.imsiPrefixPattern.substring(0, 8)
+                : subscriptionRule.imsiPrefixPattern;
+
+        CarrierMatchingRule simInfo = new CarrierMatchingRule(
+                subscriptionRule.mccMnc,
+                imsiPrefix,
+                iccidPrefix,
+                subscriptionRule.gid1,
+                subscriptionRule.gid2,
+                subscriptionRule.plmn,
+                subscriptionRule.spn,
+                apn,
+                subscriptionRule.privilegeAccessRule,
+                -1, null, -1);
+
         TelephonyMetrics.getInstance().writeCarrierIdMatchingEvent(
                 mPhone.getPhoneId(), getCarrierListVersion(), mCarrierId,
-                unknownMccmncToLog, unknownGid1ToLog);
+                unknownMccmncToLog, unknownGid1ToLog, simInfo);
     }
 
     public int getCarrierListVersion() {
@@ -874,7 +922,7 @@ public class CarrierResolver extends Handler {
         int carrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
         int maxScore = CarrierMatchingRule.SCORE_INVALID;
         List<CarrierMatchingRule> rules = getCarrierMatchingRulesFromMccMnc(
-                context, targetRule.mMccMnc);
+                context, targetRule.mccMnc);
         for (CarrierMatchingRule rule : rules) {
             rule.match(targetRule);
             if (rule.mScore > maxScore) {

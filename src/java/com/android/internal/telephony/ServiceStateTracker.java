@@ -340,6 +340,7 @@ public class ServiceStateTracker extends Handler {
     private final LocalLog mPhoneTypeLog = new LocalLog(10);
     private final LocalLog mRatLog = new LocalLog(20);
     private final LocalLog mRadioPowerLog = new LocalLog(20);
+    private final LocalLog mCdnrLogs = new LocalLog(64);
 
     private Pattern mOperatorNameStringPattern;
 
@@ -2475,17 +2476,20 @@ public class ServiceStateTracker extends Handler {
                 || !TextUtils.equals(data.getSpn(), mCurSpn)
                 || !TextUtils.equals(data.getDataSpn(), mCurDataSpn)
                 || !TextUtils.equals(data.getPlmn(), mCurPlmn)) {
-            if (DBG) {
-                log(String.format("updateSpnDisplay: changed sending intent, "
-                                + "showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' "
-                                + "subId='%d'",
-                        data.shouldShowPlmn(),
-                        data.getPlmn(),
-                        data.shouldShowSpn(),
-                        data.getSpn(),
-                        data.getDataSpn(),
-                        subId));
-            }
+
+            final String log = String.format("updateSpnDisplay: changed sending intent, "
+                            + "rule=%d, showPlmn='%b', plmn='%s', showSpn='%b', spn='%s', "
+                            + "dataSpn='%s', subId='%d'",
+                    getCarrierNameDisplayBitmask(mSS),
+                    data.shouldShowPlmn(),
+                    data.getPlmn(),
+                    data.shouldShowSpn(),
+                    data.getSpn(),
+                    data.getDataSpn(),
+                    subId);
+            mCdnrLogs.log(log);
+            if (DBG) log("updateSpnDisplay: " + log);
+
             Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, data.shouldShowSpn());
             intent.putExtra(TelephonyIntents.EXTRA_SPN, data.getSpn());
@@ -2636,6 +2640,7 @@ public class ServiceStateTracker extends Handler {
                 showPlmn = !TextUtils.isEmpty(plmn) &&
                         ((rule & CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN)
                                 == CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
+                if (DBG) log("updateSpnDisplay: rawPlmn = " + plmn);
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
                 showPlmn = true;
@@ -2654,6 +2659,7 @@ public class ServiceStateTracker extends Handler {
             showSpn = !noService && !TextUtils.isEmpty(spn)
                     && ((rule & CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN)
                     == CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
+            if (DBG) log("updateSpnDisplay: rawSpn = " + spn);
 
             if (!TextUtils.isEmpty(spn) && !TextUtils.isEmpty(wfcVoiceSpnFormat) &&
                     !TextUtils.isEmpty(wfcDataSpnFormat)) {
@@ -2672,7 +2678,6 @@ public class ServiceStateTracker extends Handler {
                 showPlmn = false;
             } else if (!TextUtils.isEmpty(plmn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)) {
                 // Show PLMN + Wi-Fi Calling if there is no valid SPN in the above case
-
                 String originalPlmn = plmn.trim();
                 plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
             } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
@@ -2681,42 +2686,6 @@ public class ServiceStateTracker extends Handler {
                 spn = null;
                 showSpn = false;
             }
-
-            int subId = mPhone.getSubId();
-
-            // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
-            if (mSubId != subId ||
-                    showPlmn != mCurShowPlmn
-                    || showSpn != mCurShowSpn
-                    || !TextUtils.equals(spn, mCurSpn)
-                    || !TextUtils.equals(dataSpn, mCurDataSpn)
-                    || !TextUtils.equals(plmn, mCurPlmn)) {
-                if (DBG) {
-                    log(String.format("updateSpnDisplay: changed sending intent rule=" + rule +
-                            " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' " +
-                            "subId='%d'", showPlmn, plmn, showSpn, spn, dataSpn, subId));
-                }
-                Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-                intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
-                intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
-                intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
-                intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
-                intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
-                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-                mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-
-                if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                        showPlmn, plmn, showSpn, spn)) {
-                    mSpnUpdatePending = true;
-                }
-            }
-
-            mSubId = subId;
-            mCurShowSpn = showSpn;
-            mCurShowPlmn = showPlmn;
-            mCurSpn = spn;
-            mCurDataSpn = dataSpn;
-            mCurPlmn = plmn;
         } else {
             String eriText = getOperatorNameFromEri();
             if (eriText != null) mSS.setOperatorAlphaLong(eriText);
@@ -2726,12 +2695,12 @@ public class ServiceStateTracker extends Handler {
 
             // mOperatorAlpha contains the ERI text
             plmn = mSS.getOperatorAlpha();
+            if (DBG) log("updateSpnDisplay: cdma rawPlmn = " + plmn);
 
             showPlmn = plmn != null;
 
             if (!TextUtils.isEmpty(plmn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)) {
                 // In Wi-Fi Calling mode show SPN+WiFi
-
                 String originalPlmn = plmn.trim();
                 plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
             } else if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
@@ -4987,7 +4956,12 @@ public class ServiceStateTracker extends Handler {
 
         mCdnr.dump(ipw);
 
-        pw.println(" Roaming Log:");
+        ipw.println(" Carrier Display Name update records:");
+        ipw.increaseIndent();
+        mCdnrLogs.dump(fd, ipw, args);
+        ipw.decreaseIndent();
+
+        ipw.println(" Roaming Log:");
         ipw.increaseIndent();
         mRoamingLog.dump(fd, ipw, args);
         ipw.decreaseIndent();
