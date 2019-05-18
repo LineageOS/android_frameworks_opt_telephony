@@ -108,6 +108,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static String mIccId[] = new String[PROJECT_SIM_NUM];
     private static int[] sSimCardState = new int[PROJECT_SIM_NUM];
     private static int[] sSimApplicationState = new int[PROJECT_SIM_NUM];
+    private static boolean sIsSubInfoInitialized = false;
     private SubscriptionManager mSubscriptionManager = null;
     private EuiccManager mEuiccManager;
     @UnsupportedAppUsage
@@ -420,7 +421,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
         updateSubscriptionInfoByIccId(slotId);
         List<SubscriptionInfo> subscriptionInfos = SubscriptionController.getInstance()
-                .getSubInfoUsingSlotIndexPrivileged(slotId, false);
+                .getSubInfoUsingSlotIndexPrivileged(slotId);
         if (subscriptionInfos == null || subscriptionInfos.isEmpty()) {
             loge("empty subinfo for slotId: " + slotId + "could not update ContentResolver");
         } else {
@@ -587,7 +588,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         List<SubscriptionInfo> subInfos = SubscriptionController.getInstance()
-                .getSubInfoUsingSlotIndexPrivileged(slotIndex, false);
+                .getSubInfoUsingSlotIndexPrivileged(slotIndex);
         if (subInfos != null) {
             boolean changed = false;
             for (int i = 0; i < subInfos.size(); i++) {
@@ -629,15 +630,28 @@ public class SubscriptionInfoUpdater extends Handler {
                                 uiccSlot.getUiccCard().getCardId()))
                         .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
             }
-            // update default subId
-            MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
-            // broadcast default subId
-            SubscriptionController.getInstance().sendDefaultChangedBroadcast(
-                    SubscriptionManager.getDefaultSubscriptionId());
+            setSubInfoInitialized();
         }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SubscriptionInfo update complete");
+    }
+
+    private static void setSubInfoInitialized() {
+        // Should only be triggered once.
+        if (!sIsSubInfoInitialized) {
+            if (DBG) logd("SubInfo Initialized");
+            sIsSubInfoInitialized = true;
+            SubscriptionController.getInstance().notifySubInfoReady();
+            MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
+        }
+    }
+
+    /**
+     * Whether subscriptions of all SIMs are initialized.
+     */
+    public static boolean isSubInfoInitialized() {
+        return sIsSubInfoInitialized;
     }
 
     /**
@@ -748,6 +762,12 @@ public class SubscriptionInfoUpdater extends Handler {
             if (cid != null) {
                 values.put(SubscriptionManager.CARRIER_ID,
                         CarrierResolver.getCarrierIdFromIdentifier(mContext, cid));
+                String mcc = cid.getMcc();
+                String mnc = cid.getMnc();
+                values.put(SubscriptionManager.MCC_STRING, mcc);
+                values.put(SubscriptionManager.MCC, mcc);
+                values.put(SubscriptionManager.MNC_STRING, mnc);
+                values.put(SubscriptionManager.MNC, mnc);
             }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
@@ -892,7 +912,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
             sc.refreshCachedActiveSubscriptionInfoList();
             sc.notifySubscriptionInfoChanged();
-            MultiSimSettingController.getInstance().onSubscriptionGroupChanged(groupUuid);
+            MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUuid);
         }
     }
 
@@ -1014,11 +1034,11 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     @UnsupportedAppUsage
-    private void logd(String message) {
+    private static void logd(String message) {
         Rlog.d(LOG_TAG, message);
     }
 
-    private void loge(String message) {
+    private static void loge(String message) {
         Rlog.e(LOG_TAG, message);
     }
 

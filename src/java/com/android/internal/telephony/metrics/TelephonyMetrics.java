@@ -63,6 +63,7 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
+import com.android.internal.telephony.CarrierResolver;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
@@ -2397,27 +2398,44 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param version Carrier table version
      * @param cid Unique Carrier Id
-     * @param mccmnc MCC and MNC that map to this carrier
-     * @param gid1 Group id level 1
+     * @param unknownMcmnc MCC and MNC that map to this carrier
+     * @param unknownGid1 Group id level 1
+     * @param simInfo Subscription info
      */
     public void writeCarrierIdMatchingEvent(int phoneId, int version, int cid,
-                                            String mccmnc, String gid1) {
+                                            String unknownMcmnc, String unknownGid1,
+                                            CarrierResolver.CarrierMatchingRule simInfo) {
         final CarrierIdMatching carrierIdMatching = new CarrierIdMatching();
         final CarrierIdMatchingResult carrierIdMatchingResult = new CarrierIdMatchingResult();
 
+        // fill in information for unknown mccmnc and gid1 for unidentified carriers.
         if (cid != TelephonyManager.UNKNOWN_CARRIER_ID) {
             // Successful matching event if result only has carrierId
             carrierIdMatchingResult.carrierId = cid;
             // Unknown Gid1 event if result only has carrierId, gid1 and mccmnc
-            if (gid1 != null) {
-                carrierIdMatchingResult.mccmnc = mccmnc;
-                carrierIdMatchingResult.gid1 = gid1;
+            if (unknownGid1 != null) {
+                carrierIdMatchingResult.unknownMccmnc = unknownMcmnc;
+                carrierIdMatchingResult.unknownGid1 = unknownGid1;
             }
         } else {
             // Unknown mccmnc event if result only has mccmnc
-            if (mccmnc != null) {
-                carrierIdMatchingResult.mccmnc = mccmnc;
+            if (unknownMcmnc != null) {
+                carrierIdMatchingResult.unknownMccmnc = unknownMcmnc;
             }
+        }
+
+        // fill in complete matching information from the SIM.
+        carrierIdMatchingResult.mccmnc = simInfo.mccMnc;
+        carrierIdMatchingResult.spn = simInfo.spn;
+        carrierIdMatchingResult.pnn = simInfo.plmn;
+        carrierIdMatchingResult.gid1 = simInfo.gid1;
+        carrierIdMatchingResult.gid2 = simInfo.gid2;
+        carrierIdMatchingResult.imsiPrefix = simInfo.imsiPrefixPattern;
+        carrierIdMatchingResult.iccidPrefix = simInfo.iccidPrefix;
+        carrierIdMatchingResult.preferApn = simInfo.apn;
+        if (simInfo.privilegeAccessRule != null) {
+            carrierIdMatchingResult.privilegeAccessRule =
+                    simInfo.privilegeAccessRule.stream().toArray(String[]::new);
         }
 
         carrierIdMatching.cidTableVersion = version;
