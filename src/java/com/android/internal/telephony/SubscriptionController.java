@@ -2856,6 +2856,9 @@ public class SubscriptionController extends ISub.Stub {
         if (subIdList == null || subIdList.length == 0) {
             throw new IllegalArgumentException("Invalid subIdList " + subIdList);
         }
+
+        // Makes sure calling package matches caller UID.
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
         // a SecurityException will be thrown.
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
@@ -3081,7 +3084,6 @@ public class SubscriptionController extends ISub.Stub {
      *  @return true if checking passes on all subId, false otherwise.
      */
     private boolean checkCarrierPrivilegeOnSubList(int[] subIdList, String callingPackage) {
-        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // Check carrier privilege permission on active subscriptions first.
         // If it fails, they could be inactive. So keep them in a HashSet and later check
         // access rules in our database.
