@@ -722,6 +722,7 @@ public class UiccController extends Handler {
         ArrayList<UiccCardInfo> infos = new ArrayList<>();
         for (int slotIndex = 0; slotIndex < mUiccSlots.length; slotIndex++) {
             final UiccSlot slot = mUiccSlots[slotIndex];
+            if (slot == null) continue;
             boolean isEuicc = slot.isEuicc();
             String eid = null;
             UiccCard card = slot.getUiccCard();
