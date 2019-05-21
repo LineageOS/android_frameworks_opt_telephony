@@ -132,8 +132,13 @@ public class CarrierResolver extends Handler {
      *  /ACTION_SIM_APPLICATION_STATE_CHANGED
      *  3. ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED
      *
-     *  For SIM refresh either reset or file update, SubscriptionInfoUpdater will re-trigger
-     *  carrier identification with sim loaded state.
+     *  For SIM refresh either reset or init refresh type, SubscriptionInfoUpdater will re-trigger
+     *  carrier identification with sim loaded state. Framework today silently handle single file
+     *  refresh type.
+     *  TODO: check fileId from single file refresh, if the refresh file is IMSI, gid1 or other
+     *  records which might change carrier id, framework should trigger sim loaded state just like
+     *  other refresh events: INIT or RESET and which will ultimately trigger carrier
+     *  re-identification.
      */
     public void resolveSubscriptionCarrierId(String simState) {
         logd("[resolveSubscriptionCarrierId] simState: " + simState);
@@ -224,13 +229,11 @@ public class CarrierResolver extends Handler {
                 if (mIccRecords != newIccRecords) {
                     if (mIccRecords != null) {
                         logd("Removing stale icc objects.");
-                        mIccRecords.unregisterForRecordsLoaded(this);
                         mIccRecords.unregisterForRecordsOverride(this);
                         mIccRecords = null;
                     }
                     if (newIccRecords != null) {
                         logd("new Icc object");
-                        newIccRecords.registerForRecordsLoaded(this, SIM_LOAD_EVENT, null);
                         newIccRecords.registerForRecordsOverride(this, SIM_LOAD_EVENT, null);
                         mIccRecords = newIccRecords;
                     }
