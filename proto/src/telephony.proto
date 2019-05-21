@@ -642,6 +642,38 @@ message RilDataCall {
   }
 }
 
+message EmergencyNumberInfo {
+  // Dialing address
+  optional string address = 1 /* [
+    (datapol.semantic_type) = ST_PHONE_NUMBER,
+    (datapol.qualifier) = {is_public: true}
+  ] */;
+
+  // Country code string (lowercase character) in ISO 3166 format
+  optional string country_iso = 2 /* [(datapol.semantic_type) = ST_LOCATION] */;
+
+  // Mobile Network Code
+  optional string mnc = 3 /* [(datapol.semantic_type) = ST_LOCATION] */;
+
+  // Bitmask of emergency service categories
+  optional int32 service_categories_bitmask = 4;
+
+  // Emergency Uniform Resources Names (URN)
+  // Reference: https://tools.ietf.org/html/rfc5031
+  repeated string urns = 5;
+
+  // Bitmask of the sources
+  optional int32 number_sources_bitmask = 6;
+
+  // Emergency call routing information.
+  // Emergency call routing is a flag to tell how modem handles the calling with
+  // emergency numbers. For example, 110 in India, modem needs to handle/route
+  // it like a normal call. There are only two possible options for emergency
+  // call routing: emergency call routing vs normal call routing. It is usually
+  // a country or carrier requirement.
+  optional int32 routing = 7;
+}
+
 message TelephonyEvent {
 
   enum Type {
@@ -710,6 +742,9 @@ message TelephonyEvent {
 
     // Enabled modem change event.
     ENABLED_MODEM_CHANGED = 20;
+
+    // Emergency Number update event (Device HAL >= 1.4).
+    EMERGENCY_NUMBER_REPORT = 21;
   }
 
   enum ApnType {
@@ -1681,6 +1716,9 @@ message TelephonyEvent {
   // The modem state represent by a bitmap, the i-th bit(LSB) indicates the i-th modem
   // state (0 - disabled, 1 - enabled).
   optional int32 enabled_modem_bitmap = 24;
+
+  // Updated Emergency Call info.
+  optional EmergencyNumberInfo updated_emergency_number = 25;
 }
 
 message ActiveSubscriptionInfo {
@@ -1984,6 +2022,12 @@ message TelephonyCallSession {
       // Detailed cause code for CS Call failures
       // frameworks/base/telephony/java/android/telephony/PreciseDisconnectCause.java
       optional int32 precise_disconnect_cause = 6;
+
+      // Indicate if the call is an emergency call
+      optional bool is_emergency_call = 7;
+
+      // Indicate the emergency call information dialed from the CS call
+      optional EmergencyNumberInfo emergency_number_info = 8;
     }
 
     // Single Radio Voice Call Continuity(SRVCC) progress state
@@ -2205,6 +2249,11 @@ message TelephonyCallSession {
     // Uplink call quality summary at the end of a call
     optional CallQualitySummary call_quality_summary_ul = 25;
 
+    // Indicate if it is IMS emergency call
+    optional bool is_ims_emergency_call = 26;
+
+    // Emergency call info
+    optional EmergencyNumberInfo ims_emergency_number_info = 27;
   }
 
   // Time when call has started, in minutes since epoch,
