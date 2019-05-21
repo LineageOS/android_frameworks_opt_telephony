@@ -156,7 +156,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 .thenReturn(new Country("US", Country.COUNTRY_SOURCE_SIM));
 
         mGsmSmsDispatcher.sendText("6501002000", "121" /*scAddr*/, "test sms",
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false, -1, false, -1, false);
 
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(), any(Message.class));
         // Blocked number provider is notified about the emergency contact asynchronously.
@@ -176,7 +176,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         mGsmSmsDispatcher.sendText(
                 getEmergencyNumberFromSystemPropertiesOrDefault(), "121" /*scAddr*/, "test sms",
-                null, null, null, null, false, -1, false, -1);
+                null, null, null, null, false, -1, false, -1, false);
 
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(), any(Message.class));
         // Blocked number provider is notified about the emergency contact asynchronously.
@@ -219,7 +219,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         // send invalid dest address: +
         mReceivedTestIntent = false;
         mGsmSmsDispatcher.sendText("+", "222" /*scAddr*/, TAG,
-                pendingIntent, null, null, null, false, -1, false, -1);
+                pendingIntent, null, null, null, false, -1, false, -1, false);
         waitForMs(500);
         verify(mSimulatedCommandsVerifier, times(0)).sendSMS(anyString(), anyString(),
                 any(Message.class));
