@@ -246,6 +246,14 @@ public class ProxyController {
         return doSetRadioCapabilities(rafs);
     }
 
+    /**
+     * Get the SmsController.
+     * @return the SmsController object.
+     */
+    public SmsController getSmsController() {
+        return mSmsController;
+    }
+
     private boolean doSetRadioCapabilities(RadioAccessFamily[] rafs) {
         // A new sessionId for this transaction
         mRadioCapabilitySessionId = mUniqueIdGenerator.getAndIncrement();
