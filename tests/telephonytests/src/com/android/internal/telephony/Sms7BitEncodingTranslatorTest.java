@@ -54,7 +54,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testNoTranslate() {
-        assertEquals("123", Sms7BitEncodingTranslator.translate("123"));
+        assertEquals("123", Sms7BitEncodingTranslator.translate("123", false));
     }
 
     @Ignore
@@ -68,7 +68,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         } catch (UnsupportedEncodingException e) {
             fail(e.toString());
         }
-        assertEquals("OIA", Sms7BitEncodingTranslator.translate(s));
+        assertEquals("OIA", Sms7BitEncodingTranslator.translate(s, false));
     }
 
     @Ignore
@@ -82,16 +82,13 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         } catch (UnsupportedEncodingException e) {
             fail(e.toString());
         }
-        assertEquals("??Ç", Sms7BitEncodingTranslator.translate(s));
+        assertEquals("??Ç", Sms7BitEncodingTranslator.translate(s, false));
     }
 
     @Ignore
     @Test
     @SmallTest
     public void testCdmaTranslate() {
-
-        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mTelephonyManager).getCurrentPhoneType();
-
         String s = null;
         try {
             s = new String(new byte[]{(byte)0x00, (byte)0xD2,
@@ -99,6 +96,6 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         } catch (UnsupportedEncodingException e) {
             fail(e.toString());
         }
-        assertEquals("OUc", Sms7BitEncodingTranslator.translate(s));
+        assertEquals("OUc", Sms7BitEncodingTranslator.translate(s, true));
     }
 }
