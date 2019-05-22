@@ -1995,11 +1995,16 @@ public class ServiceStateTracker extends Handler {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
         NetworkRegistrationInfo wwanPsRegState = serviceState.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        // Check if any APN is preferred on IWLAN.
+        boolean isIwlanPreferred = mTransportManager.isAnyApnPreferredOnIwlan();
+        serviceState.setIwlanPreferred(isIwlanPreferred);
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
                 == TelephonyManager.NETWORK_TYPE_IWLAN
                 && wlanPsRegState.getRegistrationState()
-                == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
+                == NetworkRegistrationInfo.REGISTRATION_STATE_HOME
+                && isIwlanPreferred) {
             serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
         } else if (wwanPsRegState != null) {
             // If the device is not camped on IWLAN, then we use cellular PS registration state
