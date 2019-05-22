@@ -43,9 +43,12 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
 import com.android.phone.ecc.nano.ProtobufEccData.EccInfo;
+
+import libcore.io.IoUtils;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -57,8 +60,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
-
-import libcore.io.IoUtils;
 
 /**
  * Emergency Number Tracker that handles update of emergency number list from RIL and emergency
@@ -358,6 +359,7 @@ public class EmergencyNumberTracker extends Handler {
         if (!emergencyNumberListRadio.equals(mEmergencyNumberListFromRadio)) {
             try {
                 EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberListRadio);
+                writeUpdatedEmergencyNumberListMetrics(emergencyNumberListRadio);
                 mEmergencyNumberListFromRadio = emergencyNumberListRadio;
                 if (!DBG) {
                     mEmergencyNumberListRadioLocalLog.log("updateRadioEmergencyNumberList:"
@@ -382,6 +384,7 @@ public class EmergencyNumberTracker extends Handler {
 
         mCountryIso = countryIso.toLowerCase();
         cacheEmergencyDatabaseByCountry(countryIso);
+        writeUpdatedEmergencyNumberListMetrics(mEmergencyNumberListFromDatabase);
         if (!DBG) {
             mEmergencyNumberListDatabaseLocalLog.log(
                     "updateEmergencyNumberListDatabaseAndNotify:"
@@ -833,6 +836,17 @@ public class EmergencyNumberTracker extends Handler {
 
     private static void loge(String str) {
         Rlog.e(TAG, str);
+    }
+
+    private void writeUpdatedEmergencyNumberListMetrics(
+            List<EmergencyNumber> updatedEmergencyNumberList) {
+        if (updatedEmergencyNumberList == null) {
+            return;
+        }
+        for (EmergencyNumber num : updatedEmergencyNumberList) {
+            TelephonyMetrics.getInstance().writeEmergencyNumberUpdateEvent(
+                    mPhone.getPhoneId(), num);
+        }
     }
 
     /**

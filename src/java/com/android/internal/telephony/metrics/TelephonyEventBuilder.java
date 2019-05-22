@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.metrics;
 
+import static com.android.internal.telephony.nano.TelephonyProto.EmergencyNumberInfo;
 import static com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import static com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import static com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
@@ -140,6 +141,16 @@ public class TelephonyEventBuilder {
     public TelephonyEventBuilder setCarrierIdMatching(CarrierIdMatching carrierIdMatching) {
         mEvent.type = TelephonyEvent.Type.CARRIER_ID_MATCHING;
         mEvent.carrierIdMatching = carrierIdMatching;
+        return this;
+    }
+
+    /**
+     * Set and build EMERGENCY_NUMBER_REPORT event
+     */
+    public TelephonyEventBuilder setUpdatedEmergencyNumber(
+            EmergencyNumberInfo emergencyNumberInfo) {
+        mEvent.type = TelephonyEvent.Type.EMERGENCY_NUMBER_REPORT;
+        mEvent.updatedEmergencyNumber = emergencyNumberInfo;
         return this;
     }
 
