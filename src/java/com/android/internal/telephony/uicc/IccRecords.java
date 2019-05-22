@@ -696,8 +696,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected void setServiceProviderName(String spn) {
         if (!TextUtils.equals(mSpn, spn)) {
+            mSpn = spn != null ? spn.trim() : null;
             mSpnUpdatedRegistrants.notifyRegistrants();
-            mSpn = spn;
         }
     }
 
