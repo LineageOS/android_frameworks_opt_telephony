@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.metrics;
 
+import com.android.internal.telephony.nano.TelephonyProto.EmergencyNumberInfo;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.ImsReasonInfo;
@@ -154,6 +155,19 @@ public class CallSessionEventBuilder {
     /** Set the uplink call quality summary. */
     public CallSessionEventBuilder setCallQualitySummaryUl(CallQualitySummary callQualitySummary) {
         mEvent.callQualitySummaryUl = callQualitySummary;
+        return this;
+    }
+
+    /** Set if the Ims call is emergency. */
+    public CallSessionEventBuilder setIsImsEmergencyCall(boolean isImsEmergencyCall) {
+        mEvent.isImsEmergencyCall = isImsEmergencyCall;
+        return this;
+    }
+
+    /** Set the Ims emergency call information. */
+    public CallSessionEventBuilder setImsEmergencyNumberInfo(
+            EmergencyNumberInfo imsEmergencyNumberInfo) {
+        mEvent.imsEmergencyNumberInfo = imsEmergencyNumberInfo;
         return this;
     }
 }
