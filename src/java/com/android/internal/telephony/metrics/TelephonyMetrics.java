@@ -2465,14 +2465,14 @@ public class TelephonyMetrics {
         }
 
         // fill in complete matching information from the SIM.
-        carrierIdMatchingResult.mccmnc = simInfo.mccMnc;
-        carrierIdMatchingResult.spn = simInfo.spn;
-        carrierIdMatchingResult.pnn = simInfo.plmn;
-        carrierIdMatchingResult.gid1 = simInfo.gid1;
-        carrierIdMatchingResult.gid2 = simInfo.gid2;
-        carrierIdMatchingResult.imsiPrefix = simInfo.imsiPrefixPattern;
-        carrierIdMatchingResult.iccidPrefix = simInfo.iccidPrefix;
-        carrierIdMatchingResult.preferApn = simInfo.apn;
+        carrierIdMatchingResult.mccmnc = TextUtils.emptyIfNull(simInfo.mccMnc);
+        carrierIdMatchingResult.spn = TextUtils.emptyIfNull(simInfo.spn);
+        carrierIdMatchingResult.pnn = TextUtils.emptyIfNull(simInfo.plmn);
+        carrierIdMatchingResult.gid1 = TextUtils.emptyIfNull(simInfo.gid1);
+        carrierIdMatchingResult.gid2 = TextUtils.emptyIfNull(simInfo.gid2);
+        carrierIdMatchingResult.imsiPrefix = TextUtils.emptyIfNull(simInfo.imsiPrefixPattern);
+        carrierIdMatchingResult.iccidPrefix = TextUtils.emptyIfNull(simInfo.iccidPrefix);
+        carrierIdMatchingResult.preferApn = TextUtils.emptyIfNull(simInfo.apn);
         if (simInfo.privilegeAccessRule != null) {
             carrierIdMatchingResult.privilegeAccessRule =
                     simInfo.privilegeAccessRule.stream().toArray(String[]::new);
