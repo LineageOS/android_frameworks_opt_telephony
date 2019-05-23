@@ -71,6 +71,7 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
@@ -4007,16 +4008,24 @@ public class ServiceStateTracker extends Handler {
             loge("cannot setNotification on invalid subid mSubId=" + mSubId);
             return;
         }
+        Context context = mPhone.getContext();
+
+        SubscriptionInfo info = mSubscriptionController
+                .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName());
+
+        //if subscription is part of a group and non-primary, suppress all notifications
+        if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
+            log("cannot setNotification on invisible subid mSubId=" + mSubId);
+            return;
+        }
 
         // Needed because sprout RIL sends these when they shouldn't?
-        boolean isSetNotification = mPhone.getContext().getResources().getBoolean(
+        boolean isSetNotification = context.getResources().getBoolean(
                 com.android.internal.R.bool.config_user_notification_of_restrictied_mobile_access);
         if (!isSetNotification) {
             if (DBG) log("Ignore all the notifications");
             return;
         }
-
-        Context context = mPhone.getContext();
 
         boolean autoCancelCsRejectNotification = false;
 
