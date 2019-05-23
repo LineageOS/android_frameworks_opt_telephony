@@ -54,6 +54,7 @@ import android.telephony.PreciseCallState;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -818,7 +819,8 @@ public class PhoneSwitcher extends Handler {
     // requests.
     private void updatePreferredDataPhoneId() {
         Phone voicePhone = findPhoneById(mPhoneIdInVoiceCall);
-        if (voicePhone != null && voicePhone.isUserDataEnabled()) {
+        if (voicePhone != null && voicePhone.getDataEnabledSettings().isDataEnabled(
+                ApnSetting.TYPE_DEFAULT)) {
             // If a phone is in call and user enabled its mobile data, we
             // should switch internet connection to it. Because the other modem
             // will lose data connection anyway.

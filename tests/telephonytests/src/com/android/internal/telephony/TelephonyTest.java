@@ -63,6 +63,7 @@ import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
+import com.android.internal.telephony.dataconnection.DataEnabledOverride;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
@@ -228,6 +229,8 @@ public abstract class TelephonyTest {
     protected RestrictedState mRestrictedState;
     @Mock
     protected DataEnabledSettings mDataEnabledSettings;
+    @Mock
+    protected DataEnabledOverride mDataEnabledOverride;
     @Mock
     protected PhoneConfigurationManager mPhoneConfigurationManager;
     @Mock
