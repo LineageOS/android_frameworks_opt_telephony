@@ -156,8 +156,7 @@ public interface PhoneInternalInterface {
             "carrierActionDisableMeteredApn";
     static final String REASON_CSS_INDICATOR_CHANGED = "cssIndicatorChanged";
     static final String REASON_RELEASED_BY_CONNECTIVITY_SERVICE = "releasedByConnectivityService";
-    static final String REASON_APN_ADDED_TO_WHITELIST = "apnAddedToWhiteList";
-    static final String REASON_APN_REMOVED_FROM_WHITELIST = "apnRemovedFromWhiteList";
+    static final String REASON_DATA_ENABLED_OVERRIDE = "dataEnabledOverride";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = RILConstants.BAND_MODE_UNSPECIFIED; // automatic

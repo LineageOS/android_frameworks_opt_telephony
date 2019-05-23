@@ -18,9 +18,9 @@ package com.android.internal.telephony;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.telephony.UiccSlotInfo.CARD_STATE_INFO_PRESENT;
-import static android.telephony.data.ApnSetting.TYPE_MMS;
 
 import android.Manifest;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.AppOpsManager;
@@ -41,7 +41,6 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
-import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -50,7 +49,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccSlotInfo;
-import android.telephony.data.ApnSetting;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -58,6 +56,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
+import com.android.internal.telephony.dataconnection.DataEnabledOverride;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -1729,11 +1728,11 @@ public class SubscriptionController extends ISub.Stub {
 
     public void syncGroupedSetting(int refSubId) {
         // Currently it only syncs allow MMS. Sync other settings as well if needed.
-        int apnWhiteList = Integer.valueOf(getSubscriptionProperty(
-                refSubId, SubscriptionManager.WHITE_LISTED_APN_DATA, mContext.getOpPackageName()));
+        String dataEnabledOverrideRules = getSubscriptionProperty(
+                refSubId, SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES);
 
         ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.WHITE_LISTED_APN_DATA, apnWhiteList);
+        value.put(SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES, dataEnabledOverrideRules);
         databaseUpdateHelper(value, refSubId, true);
     }
 
@@ -2554,11 +2553,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Store properties associated with SubscriptionInfo in database
+     * Get properties associated with SubscriptionInfo from database
+     *
      * @param subId Subscription Id of Subscription
      * @param propKey Column name in SubscriptionInfo database
      * @return Value associated with subId and propKey column in database
-     * @hide
      */
     @Override
     public String getSubscriptionProperty(int subId, String propKey, String callingPackage) {
@@ -2566,14 +2565,29 @@ public class SubscriptionController extends ISub.Stub {
                 mContext, subId, callingPackage, "getSubscriptionProperty")) {
             return null;
         }
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            return getSubscriptionProperty(subId, propKey);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     * Get properties associated with SubscriptionInfo from database. Note this is the version
+     * without permission check for telephony internal use only.
+     *
+     * @param subId Subscription Id of Subscription
+     * @param propKey Column name in SubscriptionInfo database
+     * @return Value associated with subId and propKey column in database
+     */
+    public String getSubscriptionProperty(int subId, String propKey) {
         String resultValue = null;
-        ContentResolver resolver = mContext.getContentResolver();
-        Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
+        try (Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
                 new String[]{propKey},
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=?",
-                new String[]{subId + ""}, null);
-
-        try {
+                new String[]{subId + ""}, null)) {
             if (cursor != null) {
                 if (cursor.moveToFirst()) {
                     switch (propKey) {
@@ -2600,6 +2614,9 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WHITE_LISTED_APN_DATA:
                             resultValue = cursor.getInt(0) + "";
                             break;
+                        case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
+                            resultValue = cursor.getString(0);
+                            break;
                         default:
                             if(DBG) logd("Invalid column name");
                             break;
@@ -2610,11 +2627,8 @@ public class SubscriptionController extends ISub.Stub {
             } else {
                 if(DBG) logd("Query failed");
             }
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
         }
+
         if (DBG) logd("getSubscriptionProperty Query value = " + resultValue);
         return resultValue;
     }
@@ -3632,51 +3646,51 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
+            DataEnabledOverride dataEnabledOverride =
+                    new DataEnabledOverride(getDataEnabledOverrideRules(subId));
+            dataEnabledOverride.setAlwaysAllowMms(alwaysAllow);
 
-            ContentValues value = new ContentValues(1);
-            int apnWhiteList = Integer.valueOf(getSubscriptionProperty(subId,
-                    SubscriptionManager.WHITE_LISTED_APN_DATA, mContext.getOpPackageName()));
-            apnWhiteList = alwaysAllow ? (apnWhiteList | TYPE_MMS) : (apnWhiteList & ~TYPE_MMS);
-            value.put(SubscriptionManager.WHITE_LISTED_APN_DATA, apnWhiteList);
-            if (DBG) logd("[setAlwaysAllowMmsData]- alwaysAllow:" + alwaysAllow + " set");
-
-            boolean result = databaseUpdateHelper(value, subId, true) > 0;
-
-            if (result) {
-                // Refresh the Cache of Active Subscription Info List
-                refreshCachedActiveSubscriptionInfoList();
-                notifySubscriptionInfoChanged();
-                Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
-                if (phone != null) {
-                    phone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                            .notifyApnWhiteListChange(TYPE_MMS, alwaysAllow);
-                }
-            }
-
-            return result;
+            return setDataEnabledOverrideRules(subId, dataEnabledOverride.getRules());
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
     }
 
     /**
-     *  whether apnType is whitelisted. Being white listed means data connection is allowed
-     *  even if user data is turned off.
+     * Set allowing mobile data during voice call.
+     *
+     * @param subId Subscription index
+     * @param rules Data enabled override rules in string format. See {@link DataEnabledOverride}
+     * for details.
+     * @return {@code true} if settings changed, otherwise {@code false}.
      */
-    public boolean isApnWhiteListed(int subId, String callingPackage, int apnType) {
-        return (getWhiteListedApnDataTypes(subId, callingPackage) & apnType) == apnType;
-    }
+    public boolean setDataEnabledOverrideRules(int subId, @NonNull String rules) {
+        if (DBG) logd("[setDataEnabledOverrideRules]+ rules:" + rules + " subId:" + subId);
 
-    private @ApnSetting.ApnType int getWhiteListedApnDataTypes(int subId, String callingPackage) {
-        String whiteListedApnData = getSubscriptionProperty(subId,
-                SubscriptionManager.WHITE_LISTED_APN_DATA, callingPackage);
+        validateSubId(subId);
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES, rules);
 
-        try {
-            return Integer.valueOf(whiteListedApnData);
-        } catch (NumberFormatException e) {
-            loge("[getWhiteListedApnDataTypes] couldn't parse apn data:" + whiteListedApnData);
+        boolean result = databaseUpdateHelper(value, subId, true) > 0;
+
+        if (result) {
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
+            notifySubscriptionInfoChanged();
         }
 
-        return ApnSetting.TYPE_NONE;
+        return result;
+    }
+
+    /**
+     * Get data enabled override rules.
+     *
+     * @param subId Subscription index
+     * @return Data enabled override rules in string
+     */
+    @NonNull
+    public String getDataEnabledOverrideRules(int subId) {
+        return TextUtils.emptyIfNull(getSubscriptionProperty(subId,
+                SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES));
     }
 }
