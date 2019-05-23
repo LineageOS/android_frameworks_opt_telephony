@@ -42,6 +42,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CallQuality;
+import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
@@ -52,6 +53,7 @@ import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
@@ -74,6 +76,7 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
+import com.android.internal.telephony.nano.TelephonyProto.EmergencyNumberInfo;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
@@ -111,6 +114,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Telephony metrics holds all metrics events and convert it into telephony proto buf.
@@ -307,6 +311,8 @@ public class TelephonyMetrics {
                 return "CARRIER_ID_MATCHING";
             case TelephonyEvent.Type.NITZ_TIME:
                 return "NITZ_TIME";
+            case TelephonyEvent.Type.EMERGENCY_NUMBER_REPORT:
+                return "EMERGENCY_NUMBER_REPORT";
             default:
                 return Integer.toString(event);
         }
@@ -1418,13 +1424,14 @@ public class TelephonyMetrics {
      * @param phoneId    Phone id
      * @param connections Array of GsmCdmaConnection objects
      */
-    public void writeRilCallList(int phoneId, ArrayList<GsmCdmaConnection> connections) {
+    public void writeRilCallList(int phoneId, ArrayList<GsmCdmaConnection> connections,
+                                 String countryIso) {
         logv("Logging CallList Changed Connections Size = " + connections.size());
         InProgressCallSession callSession = startNewCallSessionIfNeeded(phoneId);
         if (callSession == null) {
             Rlog.e(TAG, "writeRilCallList: Call session is missing");
         } else {
-            RilCall[] calls = convertConnectionsToRilCalls(connections);
+            RilCall[] calls = convertConnectionsToRilCalls(connections, countryIso);
             callSession.addEvent(
                     new CallSessionEventBuilder(
                             TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED)
@@ -1444,17 +1451,31 @@ public class TelephonyMetrics {
         return true;
     }
 
-    private RilCall[] convertConnectionsToRilCalls(ArrayList<GsmCdmaConnection> mConnections) {
+    private RilCall[] convertConnectionsToRilCalls(ArrayList<GsmCdmaConnection> mConnections,
+                                                   String countryIso) {
         RilCall[] calls = new RilCall[mConnections.size()];
         for (int i = 0; i < mConnections.size(); i++) {
             calls[i] = new RilCall();
             calls[i].index = i;
-            convertConnectionToRilCall(mConnections.get(i), calls[i]);
+            convertConnectionToRilCall(mConnections.get(i), calls[i], countryIso);
         }
         return calls;
     }
 
-    private void convertConnectionToRilCall(GsmCdmaConnection conn, RilCall call) {
+    private EmergencyNumberInfo convertEmergencyNumberToEmergencyNumberInfo(EmergencyNumber num) {
+        EmergencyNumberInfo emergencyNumberInfo = new EmergencyNumberInfo();
+        emergencyNumberInfo.address = num.getNumber();
+        emergencyNumberInfo.countryIso = num.getCountryIso();
+        emergencyNumberInfo.mnc = num.getMnc();
+        emergencyNumberInfo.serviceCategoriesBitmask = num.getEmergencyServiceCategoryBitmask();
+        emergencyNumberInfo.urns = num.getEmergencyUrns().stream().toArray(String[]::new);
+        emergencyNumberInfo.numberSourcesBitmask = num.getEmergencyNumberSourceBitmask();
+        emergencyNumberInfo.routing = num.getEmergencyCallRouting();
+        return emergencyNumberInfo;
+    }
+
+    private void convertConnectionToRilCall(GsmCdmaConnection conn, RilCall call,
+                                            String countryIso) {
         if (conn.isIncoming()) {
             call.type = Type.MT;
         } else {
@@ -1495,6 +1516,18 @@ public class TelephonyMetrics {
         call.callEndReason = conn.getDisconnectCause();
         call.isMultiparty = conn.isMultiparty();
         call.preciseDisconnectCause = conn.getPreciseDisconnectCause();
+
+        // Emergency call metrics when call ends
+        if (conn.getDisconnectCause() != DisconnectCause.NOT_DISCONNECTED
+                && conn.isEmergencyCall() && conn.getEmergencyNumberInfo() != null) {
+            /** Only collect this emergency number information per sample percentage */
+            if (ThreadLocalRandom.current().nextDouble(0, 100)
+                    < getSamplePercentageForEmergencyCall(countryIso)) {
+                call.isEmergencyCall = conn.isEmergencyCall();
+                call.emergencyNumberInfo = convertEmergencyNumberToEmergencyNumberInfo(
+                        conn.getEmergencyNumberInfo());
+            }
+        }
     }
 
     /**
@@ -1515,7 +1548,7 @@ public class TelephonyMetrics {
             RilCall[] calls = new RilCall[1];
             calls[0] = new RilCall();
             calls[0].index = -1;
-            convertConnectionToRilCall(conn, calls[0]);
+            convertConnectionToRilCall(conn, calls[0], "");
             callSession.addEvent(callSession.startElapsedTimeMs,
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
                             .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_DIAL)
@@ -1544,7 +1577,8 @@ public class TelephonyMetrics {
      * @param conn Connection object associated with the call that is being hung-up
      * @param callId Call id
      */
-    public void writeRilHangup(int phoneId, GsmCdmaConnection conn, int callId) {
+    public void writeRilHangup(int phoneId, GsmCdmaConnection conn, int callId,
+                               String countryIso) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
             Rlog.e(TAG, "writeRilHangup: Call session is missing");
@@ -1552,7 +1586,7 @@ public class TelephonyMetrics {
             RilCall[] calls = new RilCall[1];
             calls[0] = new RilCall();
             calls[0].index = callId;
-            convertConnectionToRilCall(conn, calls[0]);
+            convertConnectionToRilCall(conn, calls[0], countryIso);
             callSession.addEvent(
                     new CallSessionEventBuilder(TelephonyCallSession.Event.Type.RIL_REQUEST)
                             .setRilRequest(TelephonyCallSession.Event.RilRequest.RIL_REQUEST_HANGUP)
@@ -2045,26 +2079,32 @@ public class TelephonyMetrics {
      * @param reasonInfo Call end reason
      */
     public void writeOnImsCallTerminated(int phoneId, ImsCallSession session,
-                                         ImsReasonInfo reasonInfo, CallQualityMetrics cqm) {
+                                         ImsReasonInfo reasonInfo, CallQualityMetrics cqm,
+                                         EmergencyNumber emergencyNumber, String countryIso) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
             Rlog.e(TAG, "Call session is missing");
         } else {
+            CallSessionEventBuilder callSessionEvent = new CallSessionEventBuilder(
+                    TelephonyCallSession.Event.Type.IMS_CALL_TERMINATED);
+            callSessionEvent.setCallIndex(getCallId(session));
+            callSessionEvent.setImsReasonInfo(toImsReasonInfoProto(reasonInfo));
+
             if (cqm != null) {
-                callSession.addEvent(
-                        new CallSessionEventBuilder(
-                                TelephonyCallSession.Event.Type.IMS_CALL_TERMINATED)
-                        .setCallIndex(getCallId(session))
-                        .setImsReasonInfo(toImsReasonInfoProto(reasonInfo))
-                        .setCallQualitySummaryDl(cqm.getCallQualitySummaryDl())
-                        .setCallQualitySummaryUl(cqm.getCallQualitySummaryUl()));
-            } else {
-                callSession.addEvent(
-                        new CallSessionEventBuilder(
-                                TelephonyCallSession.Event.Type.IMS_CALL_TERMINATED)
-                        .setCallIndex(getCallId(session))
-                        .setImsReasonInfo(toImsReasonInfoProto(reasonInfo)));
+                callSessionEvent.setCallQualitySummaryDl(cqm.getCallQualitySummaryDl())
+                        .setCallQualitySummaryUl(cqm.getCallQualitySummaryUl());
             }
+
+            if (emergencyNumber != null) {
+                /** Only collect this emergency number information per sample percentage */
+                if (ThreadLocalRandom.current().nextDouble(0, 100)
+                        < getSamplePercentageForEmergencyCall(countryIso)) {
+                    callSessionEvent.setIsImsEmergencyCall(true);
+                    callSessionEvent.setImsEmergencyNumberInfo(
+                            convertEmergencyNumberToEmergencyNumberInfo(emergencyNumber));
+                }
+            }
+            callSession.addEvent(callSessionEvent);
         }
     }
 
@@ -2448,6 +2488,23 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write emergency number update event
+     *
+     * @param emergencyNumber Updated emergency number
+     */
+    public void writeEmergencyNumberUpdateEvent(int phoneId, EmergencyNumber emergencyNumber) {
+        if (emergencyNumber == null) {
+            return;
+        }
+        final EmergencyNumberInfo emergencyNumberInfo =
+                convertEmergencyNumberToEmergencyNumberInfo(emergencyNumber);
+
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId).setUpdatedEmergencyNumber(
+                emergencyNumberInfo).build();
+        addTelephonyEvent(event);
+    }
+
+    /**
      * Convert SMS format
      */
     private int convertSmsFormat(String format) {
@@ -2609,6 +2666,38 @@ public class TelephonyMetrics {
     public void writeOnImsCallResumeFailed(int phoneId, ImsCallSession session,
                                            ImsReasonInfo reasonInfo) {}
     public void writeOnRilTimeoutResponse(int phoneId, int rilSerial, int rilRequest) {}
+
+    /**
+     * Get the sample percentage of collecting metrics based on countries' population.
+     *
+     * The larger population the country has, the lower percentage we use to collect this
+     * metrics. Since the exact population changes frequently, buckets of the population are used
+     * instead of its exact number. Seven different levels of sampling percentage are assigned
+     * based on the scale of population for countries.
+     */
+    private double getSamplePercentageForEmergencyCall(String countryIso) {
+        String countriesFor1Percentage = "cn,in";
+        String countriesFor5Percentage = "us,id,br,pk,ng,bd,ru,mx,jp,et,ph,eg,vn,cd,tr,ir,de";
+        String countriesFor15Percentage = "th,gb,fr,tz,it,za,mm,ke,kr,co,es,ug,ar,ua,dz,sd,iq";
+        String countriesFor25Percentage = "pl,ca,af,ma,sa,pe,uz,ve,my,ao,mz,gh,np,ye,mg,kp,cm";
+        String countriesFor35Percentage = "au,tw,ne,lk,bf,mw,ml,ro,kz,sy,cl,zm,gt,zw,nl,ec,sn";
+        String countriesFor45Percentage = "kh,td,so,gn,ss,rw,bj,tn,bi,be,cu,bo,ht,gr,do,cz,pt";
+        if (countriesFor1Percentage.contains(countryIso)) {
+            return 1;
+        } else if (countriesFor5Percentage.contains(countryIso)) {
+            return 5;
+        } else if (countriesFor15Percentage.contains(countryIso)) {
+            return 15;
+        } else if (countriesFor25Percentage.contains(countryIso)) {
+            return 25;
+        } else if (countriesFor35Percentage.contains(countryIso)) {
+            return 35;
+        } else if (countriesFor45Percentage.contains(countryIso)) {
+            return 45;
+        } else {
+            return 50;
+        }
+    }
 
     private static int mapSimStateToProto(int simState) {
         switch (simState) {
