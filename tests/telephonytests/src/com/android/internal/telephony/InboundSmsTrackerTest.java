@@ -16,16 +16,19 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import android.database.MatrixCursor;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.util.HexDump;
 
-import java.util.Arrays;
-
-import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Arrays;
 
 public class InboundSmsTrackerTest {
     InboundSmsTracker mInboundSmsTracker;
@@ -44,7 +47,7 @@ public class InboundSmsTrackerTest {
     public void setUp() throws Exception {
         mInboundSmsTracker = new InboundSmsTracker(FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
                 FAKE_ADDRESS, FAKE_DISPLAY_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER,
-                FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY);
+                FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */);
     }
 
     public static MatrixCursor createFakeCursor() {
@@ -78,6 +81,7 @@ public class InboundSmsTrackerTest {
         assertEquals(SmsConstants.FORMAT_3GPP, mInboundSmsTracker.getFormat());
         assertEquals(FAKE_MESSAGE_BODY, mInboundSmsTracker.getMessageBody());
         assertEquals(FAKE_DISPLAY_ADDRESS, mInboundSmsTracker.getDisplayAddress());
+        assertEquals(false, mInboundSmsTracker.isClass0());
 
         String[] args = new String[]{"123"};
         mInboundSmsTracker.setDeleteWhere(InboundSmsHandler.SELECT_BY_ID, args);
