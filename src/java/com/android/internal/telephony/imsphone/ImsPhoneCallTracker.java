@@ -3220,10 +3220,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mSrvccState = state;
 
         if (mSrvccState == Call.SrvccState.COMPLETED) {
+            resetState();
             transferHandoverConnections(mForegroundCall);
             transferHandoverConnections(mBackgroundCall);
             transferHandoverConnections(mRingingCall);
         }
+    }
+
+    private void resetState() {
+        mIsInEmergencyCall = false;
     }
 
     //****** Overridden from Handler
