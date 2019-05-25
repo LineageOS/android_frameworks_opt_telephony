@@ -598,8 +598,24 @@ public class TelephonyMetrics {
         mStartSystemTimeMs = System.currentTimeMillis();
         mStartElapsedTimeMs = SystemClock.elapsedRealtime();
 
-        // Insert the last known service state, ims capabilities, and ims connection states as the
-        // base.
+        // Insert the last known sim state, enabled modem bitmap, active subscription info,
+        // service state, ims capabilities, ims connection states, carrier id and Data call
+        // events as the base.
+        // Sim state, modem bitmap and active subscription info events are logged before
+        // other events.
+        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
+                .setSimStateChange(mLastSimState).build());
+
+        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
+                .setEnabledModemBitmap(mLastEnabledModemBitmap).build());
+
+        for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
+          final int key = mLastActiveSubscriptionInfos.keyAt(i);
+          TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                  .setActiveSubscriptionInfoChange(mLastActiveSubscriptionInfos.get(key)).build();
+          addTelephonyEvent(event);
+        }
+
         for (int i = 0; i < mLastServiceState.size(); i++) {
             final int key = mLastServiceState.keyAt(i);
 
@@ -631,13 +647,6 @@ public class TelephonyMetrics {
             addTelephonyEvent(event);
         }
 
-        for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
-            final int key = mLastActiveSubscriptionInfos.keyAt(i);
-            TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
-                    .setActiveSubscriptionInfoChange(mLastActiveSubscriptionInfos.get(key)).build();
-            addTelephonyEvent(event);
-        }
-
         for (int i = 0; i < mLastRilDataCallEvents.size(); i++) {
             final int key = mLastRilDataCallEvents.keyAt(i);
             for (int j = 0; j < mLastRilDataCallEvents.get(key).size(); j++) {
@@ -648,11 +657,6 @@ public class TelephonyMetrics {
                         .setDataCalls(dataCalls).build());
             }
         }
-        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
-                .setSimStateChange(mLastSimState).build());
-
-        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
-                .setEnabledModemBitmap(mLastEnabledModemBitmap).build());
     }
 
     /**
