@@ -598,8 +598,24 @@ public class TelephonyMetrics {
         mStartSystemTimeMs = System.currentTimeMillis();
         mStartElapsedTimeMs = SystemClock.elapsedRealtime();
 
-        // Insert the last known service state, ims capabilities, and ims connection states as the
-        // base.
+        // Insert the last known sim state, enabled modem bitmap, active subscription info,
+        // service state, ims capabilities, ims connection states, carrier id and Data call
+        // events as the base.
+        // Sim state, modem bitmap and active subscription info events are logged before
+        // other events.
+        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
+                .setSimStateChange(mLastSimState).build());
+
+        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
+                .setEnabledModemBitmap(mLastEnabledModemBitmap).build());
+
+        for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
+          final int key = mLastActiveSubscriptionInfos.keyAt(i);
+          TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                  .setActiveSubscriptionInfoChange(mLastActiveSubscriptionInfos.get(key)).build();
+          addTelephonyEvent(event);
+        }
+
         for (int i = 0; i < mLastServiceState.size(); i++) {
             final int key = mLastServiceState.keyAt(i);
 
@@ -631,13 +647,6 @@ public class TelephonyMetrics {
             addTelephonyEvent(event);
         }
 
-        for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
-            final int key = mLastActiveSubscriptionInfos.keyAt(i);
-            TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
-                    .setActiveSubscriptionInfoChange(mLastActiveSubscriptionInfos.get(key)).build();
-            addTelephonyEvent(event);
-        }
-
         for (int i = 0; i < mLastRilDataCallEvents.size(); i++) {
             final int key = mLastRilDataCallEvents.keyAt(i);
             for (int j = 0; j < mLastRilDataCallEvents.get(key).size(); j++) {
@@ -648,11 +657,6 @@ public class TelephonyMetrics {
                         .setDataCalls(dataCalls).build());
             }
         }
-        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
-                .setSimStateChange(mLastSimState).build());
-
-        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
-                .setEnabledModemBitmap(mLastEnabledModemBitmap).build());
     }
 
     /**
@@ -2465,14 +2469,14 @@ public class TelephonyMetrics {
         }
 
         // fill in complete matching information from the SIM.
-        carrierIdMatchingResult.mccmnc = simInfo.mccMnc;
-        carrierIdMatchingResult.spn = simInfo.spn;
-        carrierIdMatchingResult.pnn = simInfo.plmn;
-        carrierIdMatchingResult.gid1 = simInfo.gid1;
-        carrierIdMatchingResult.gid2 = simInfo.gid2;
-        carrierIdMatchingResult.imsiPrefix = simInfo.imsiPrefixPattern;
-        carrierIdMatchingResult.iccidPrefix = simInfo.iccidPrefix;
-        carrierIdMatchingResult.preferApn = simInfo.apn;
+        carrierIdMatchingResult.mccmnc = TextUtils.emptyIfNull(simInfo.mccMnc);
+        carrierIdMatchingResult.spn = TextUtils.emptyIfNull(simInfo.spn);
+        carrierIdMatchingResult.pnn = TextUtils.emptyIfNull(simInfo.plmn);
+        carrierIdMatchingResult.gid1 = TextUtils.emptyIfNull(simInfo.gid1);
+        carrierIdMatchingResult.gid2 = TextUtils.emptyIfNull(simInfo.gid2);
+        carrierIdMatchingResult.imsiPrefix = TextUtils.emptyIfNull(simInfo.imsiPrefixPattern);
+        carrierIdMatchingResult.iccidPrefix = TextUtils.emptyIfNull(simInfo.iccidPrefix);
+        carrierIdMatchingResult.preferApn = TextUtils.emptyIfNull(simInfo.apn);
         if (simInfo.privilegeAccessRule != null) {
             carrierIdMatchingResult.privilegeAccessRule =
                     simInfo.privilegeAccessRule.stream().toArray(String[]::new);
