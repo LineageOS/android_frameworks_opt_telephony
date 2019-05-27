@@ -29,6 +29,7 @@ import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED;
 
 import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PERIOD_NOT_SPECIFIED;
 import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
+import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
@@ -318,7 +319,7 @@ public abstract class SMSDispatcher extends Handler {
             Rlog.d(TAG, "SMSDispatcher: EVENT_SENDING_NOT_ALLOWED - "
                     + "sending SHORT_CODE_NEVER_ALLOWED error code.");
             handleSmsTrackersFailure(
-                    trackers, RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, 0 /*errorCode*/);
+                    trackers, RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, NO_ERROR_CODE);
             break;
         }
 
@@ -345,7 +346,7 @@ public abstract class SMSDispatcher extends Handler {
                 Rlog.e(TAG, "SMSDispatcher: EVENT_STOP_SENDING - unexpected cases.");
             }
 
-            handleSmsTrackersFailure(trackers, error, 0 /*errorCode*/);
+            handleSmsTrackersFailure(trackers, error, NO_ERROR_CODE);
             mPendingTrackerCount--;
             break;
         }
@@ -511,8 +512,7 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        SmsResponse smsResponse = new SmsResponse(
-                messageRef, null /* ackPdu */, -1 /* unknown error code */);
+        SmsResponse smsResponse = new SmsResponse(messageRef, null /* ackPdu */, NO_ERROR_CODE);
 
         switch (result) {
         case CarrierMessagingService.SEND_STATUS_OK:
@@ -650,7 +650,7 @@ public abstract class SMSDispatcher extends Handler {
     private void sendSubmitPdu(SmsTracker[] trackers) {
         if (shouldBlockSmsForEcbm()) {
             Rlog.d(TAG, "Block SMS in Emergency Callback mode");
-            handleSmsTrackersFailure(trackers, RESULT_ERROR_NO_SERVICE, 0 /*errorCode*/);
+            handleSmsTrackersFailure(trackers, RESULT_ERROR_NO_SERVICE, NO_ERROR_CODE);
         } else {
             sendRawPdu(trackers);
         }
@@ -710,7 +710,7 @@ public abstract class SMSDispatcher extends Handler {
 
             // if sms over IMS is not supported on data and voice is not available...
             if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-                tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
+                tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
             } else if ((((CommandException)(ar.exception)).getCommandError()
                     == CommandException.Error.SMS_FAIL_RETRY) &&
                    tracker.mRetryCount < MAX_SEND_RETRIES) {
@@ -726,7 +726,7 @@ public abstract class SMSDispatcher extends Handler {
                 Message retryMsg = obtainMessage(EVENT_SEND_RETRY, tracker);
                 sendMessageDelayed(retryMsg, SEND_RETRY_DELAY);
             } else {
-                int errorCode = 0;
+                int errorCode = NO_ERROR_CODE;
                 if (ar.result != null) {
                     errorCode = ((SmsResponse)ar.result).mErrorCode;
                 }
@@ -1194,7 +1194,7 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         if (error != RESULT_ERROR_NONE) {
-            handleSmsTrackersFailure(trackers, error, 0 /*errorCode*/);
+            handleSmsTrackersFailure(trackers, error, NO_ERROR_CODE);
             return;
         }
 
@@ -1326,7 +1326,7 @@ public abstract class SMSDispatcher extends Handler {
         if (mPendingTrackerCount >= MO_MSG_QUEUE_LIMIT) {
             // Deny sending message when the queue limit is reached.
             Rlog.e(TAG, "Denied because queue limit reached");
-            handleSmsTrackersFailure(trackers, RESULT_ERROR_LIMIT_EXCEEDED, 0 /*errorCode*/);
+            handleSmsTrackersFailure(trackers, RESULT_ERROR_LIMIT_EXCEEDED, NO_ERROR_CODE);
             return true;
         }
         mPendingTrackerCount++;
@@ -1649,7 +1649,7 @@ public abstract class SMSDispatcher extends Handler {
             if (mDeliveryIntent != null) {
                 values.put(Sms.STATUS, Telephony.Sms.STATUS_PENDING);
             }
-            if (errorCode != 0) {
+            if (errorCode != NO_ERROR_CODE) {
                 values.put(Sms.ERROR_CODE, errorCode);
             }
             final long identity = Binder.clearCallingIdentity();
@@ -1718,7 +1718,7 @@ public abstract class SMSDispatcher extends Handler {
                         // Pass this to SMS apps so that they know where it is stored
                         fillIn.putExtra("uri", mMessageUri.toString());
                     }
-                    if (errorCode != 0) {
+                    if (errorCode != NO_ERROR_CODE) {
                         fillIn.putExtra("errorCode", errorCode);
                     }
                     if (mUnsentPartCount != null && isSinglePartOrLastPart) {
@@ -1749,7 +1749,7 @@ public abstract class SMSDispatcher extends Handler {
                 if (mAnyPartFailed != null && mAnyPartFailed.get()) {
                     messageType = Sms.MESSAGE_TYPE_FAILED;
                 }
-                persistOrUpdateMessage(context, messageType, 0/*errorCode*/);
+                persistOrUpdateMessage(context, messageType, NO_ERROR_CODE);
             }
             if (mSentIntent != null) {
                 try {

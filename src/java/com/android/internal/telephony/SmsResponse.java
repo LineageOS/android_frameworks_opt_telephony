@@ -24,6 +24,8 @@ import android.annotation.UnsupportedAppUsage;
  *
  */
 public class SmsResponse {
+    public static final int NO_ERROR_CODE = -1;
+
     /** Message reference of the just-sent SMS. */
     @UnsupportedAppUsage
     int mMessageRef;

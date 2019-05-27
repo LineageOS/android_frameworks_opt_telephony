@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.cdma;
 
+import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
+
 import android.annotation.UnsupportedAppUsage;
 import android.os.Message;
 import android.telephony.Rlog;
@@ -128,7 +130,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         int ss = mPhone.getServiceState().getState();
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-            tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
+            tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
             return;
         }
 
