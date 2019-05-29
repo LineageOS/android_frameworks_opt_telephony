@@ -574,6 +574,35 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mHandlerThread.quit();
     }
 
+
+    @Test
+    @SmallTest
+    public void testNetworkRequestOnNonDefaultData() throws Exception {
+        final int numPhones = 2;
+        final int maxActivePhones = 1;
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize(numPhones, maxActivePhones);
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        waitABit();
+        NetworkRequest internetRequest = addInternetNetworkRequest(2, 50);
+        waitABit();
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+
+        // Restricted network request will should be applied.
+        internetRequest = addInternetNetworkRequest(2, 50, true);
+        waitABit();
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+
+        mHandlerThread.quit();
+    }
+
     /* Private utility methods start here */
 
     private void sendDefaultDataSubChanged() {
@@ -728,10 +757,18 @@ public class PhoneSwitcherTest extends TelephonyTest {
      * Create an internet PDN network request and send it to PhoneSwitcher.
      */
     private NetworkRequest addInternetNetworkRequest(Integer subId, int score) throws Exception {
+        return addInternetNetworkRequest(subId, score, false);
+    }
+
+    private NetworkRequest addInternetNetworkRequest(Integer subId, int score, boolean restricted)
+            throws Exception {
         NetworkCapabilities netCap = (new NetworkCapabilities())
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        if (restricted) {
+            netCap.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+
         if (subId != null) {
             netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
         }

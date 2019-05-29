@@ -758,11 +758,15 @@ public class PhoneSwitcher extends Handler {
 
         int preferredDataSubId = SubscriptionManager.isValidPhoneId(mPreferredDataPhoneId)
                 ? mPhoneSubscriptions[mPreferredDataPhoneId] : INVALID_SUBSCRIPTION_ID;
+
         // Currently we assume multi-SIM devices will only support one Internet PDN connection. So
         // if Internet PDN is established on the non-preferred phone, it will interrupt
         // Internet connection on the preferred phone. So we only accept Internet request with
         // preferred data subscription or no specified subscription.
+        // One exception is, if it's restricted request (doesn't have NET_CAPABILITY_NOT_RESTRICTED)
+        // it will be accepted, which is used temporary data usage from system.
         if (netRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && netRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
                 && subId != preferredDataSubId && subId != mValidator.getSubIdInValidation()) {
             // Returning INVALID_PHONE_INDEX will result in netRequest not being handled.
             return INVALID_PHONE_INDEX;
