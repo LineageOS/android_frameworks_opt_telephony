@@ -766,6 +766,12 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
     }
 
+    @Test
+    public void testNonNullTrackersInImsPhone() throws Exception {
+        assertNotNull(mImsPhoneUT.getEmergencyNumberTracker());
+        assertNotNull(mImsPhoneUT.getServiceStateTracker());
+    }
+
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {
         ServiceState ss = new ServiceState();
         ss.setStateOutOfService();
