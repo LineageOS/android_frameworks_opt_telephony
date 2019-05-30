@@ -1560,10 +1560,14 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
-            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+            List<SubscriptionInfo> allSubInfo = getSubInfo(null, null);
+            // if there is no sub in the db, return 0 since subId does not exist in db
+            if (allSubInfo == null || allSubInfo.isEmpty()) return 0;
+            for (SubscriptionInfo subInfo : allSubInfo) {
                 if (subInfo.getSubscriptionId() == subId
-                        && getNameSourcePriority(subInfo.getNameSource())
-                                > getNameSourcePriority(nameSource)) {
+                        && (getNameSourcePriority(subInfo.getNameSource())
+                                > getNameSourcePriority(nameSource)
+                        || (displayName != null && displayName.equals(subInfo.getDisplayName())))) {
                     return 0;
                 }
             }
@@ -2930,8 +2934,10 @@ public class SubscriptionController extends ISub.Stub {
             Binder.restoreCallingIdentity(identity);
         }
 
+        // If the group does not exist, then by default the UUID is up for grabs so no need to
+        // restrict management of a group (that someone may be attempting to create).
         if (ArrayUtils.isEmpty(infoList)) {
-            throw new IllegalArgumentException("No subscription in group " + groupUuid);
+            return true;
         }
 
         // If the calling package is the group owner, skip carrier permission check and return
@@ -2971,6 +2977,12 @@ public class SubscriptionController extends ISub.Stub {
 
         if (groupUuid == null || groupUuid.equals(INVALID_GROUP_UUID)) {
             throw new IllegalArgumentException("Invalid groupUuid");
+        }
+
+        // TODO: Revisit whether we need this restriction in R. There's no technical need for it,
+        // but we don't want to change the API behavior at this time.
+        if (getSubscriptionsInGroup(groupUuid, callingPackage).isEmpty()) {
+            throw new IllegalArgumentException("Cannot add subscriptions to a non-existent group!");
         }
 
         // Makes sure calling package matches caller UID.

@@ -32,6 +32,7 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -81,6 +82,7 @@ import android.telephony.NetworkService;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
@@ -125,6 +127,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private NetworkService mIwlanNetworkService;
     @Mock
     private INetworkService.Stub mIwlanNetworkServiceStub;
+
+    @Mock
+    private SubscriptionInfo mSubInfo;
 
     private ServiceStateTracker sst;
     private ServiceStateTrackerTestHandler mSSTTestHandler;
@@ -1380,7 +1385,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetPsNotifications() {
-        sst.mSubId = 1;
+        int subId = 1;
+        sst.mSubId = subId;
+        doReturn(subId).when(mSubInfo).getSubscriptionId();
+
+        doReturn(mSubInfo).when(mSubscriptionController).getActiveSubscriptionInfo(
+                anyInt(), anyString());
+
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
@@ -1407,7 +1418,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetCsNotifications() {
-        sst.mSubId = 1;
+        int subId = 1;
+        sst.mSubId = subId;
+        doReturn(subId).when(mSubInfo).getSubscriptionId();
+        doReturn(mSubInfo).when(mSubscriptionController)
+                .getActiveSubscriptionInfo(anyInt(), anyString());
+
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
@@ -1435,7 +1451,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetCsNormalNotifications() {
-        sst.mSubId = 1;
+        int subId = 1;
+        sst.mSubId = subId;
+        doReturn(subId).when(mSubInfo).getSubscriptionId();
+        doReturn(mSubInfo).when(mSubscriptionController)
+                .getActiveSubscriptionInfo(anyInt(), anyString());
+
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
@@ -1462,7 +1483,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetCsEmergencyNotifications() {
-        sst.mSubId = 1;
+        int subId = 1;
+        sst.mSubId = subId;
+        doReturn(subId).when(mSubInfo).getSubscriptionId();
+        doReturn(mSubInfo).when(mSubscriptionController)
+                .getActiveSubscriptionInfo(anyInt(), anyString());
+
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
@@ -1486,6 +1512,36 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.setNotification(ServiceStateTracker.CS_DISABLED);
         verify(nm).cancel(Integer.toString(sst.mSubId), ServiceStateTracker.CS_NOTIFICATION);
         sst.setNotification(ServiceStateTracker.CS_REJECT_CAUSE_ENABLED);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetNotificationsForGroupedSubs() {
+        //if subscription is grouped, no notification should be set whatsoever
+        int subId = 1;
+        int otherSubId = 2;
+        sst.mSubId = otherSubId;
+        doReturn(subId).when(mSubInfo).getSubscriptionId();
+
+        final NotificationManager nm = (NotificationManager)
+                mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mContextFixture.putBooleanResource(
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+        doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
+        Drawable mockDrawable = mock(Drawable.class);
+        Resources mockResources = mContext.getResources();
+        when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
+
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnDataTitle, "test1");
+
+        sst.setNotification(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED);
+        ArgumentCaptor<Notification> notificationArgumentCaptor =
+                ArgumentCaptor.forClass(Notification.class);
+        verify(nm, never()).notify(anyString(), anyInt(), notificationArgumentCaptor.capture());
+
+        sst.setNotification(ServiceStateTracker.PS_DISABLED);
+        verify(nm, never()).cancel(Integer.toString(sst.mSubId),
+                ServiceStateTracker.PS_NOTIFICATION);
     }
 
     @Test
