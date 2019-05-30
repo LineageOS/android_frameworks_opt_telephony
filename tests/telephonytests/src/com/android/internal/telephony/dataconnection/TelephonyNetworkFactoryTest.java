@@ -296,9 +296,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
         mSubscriptionMonitorMock.notifySubscriptionChanged(phoneId);
         waitForMs(250);
-        // Although specified a subId, Internet request is only handled by
-        // preferred data phone.
-        assertEquals(1, mNetworkRequestList.size());
 
         mSubscriptionControllerMock.setDefaultDataSubId(subId);
         mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);
