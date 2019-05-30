@@ -348,6 +348,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testGetSubscriberIdWithInactiveSubId() {
+        //IMSI
+        assertNull(mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(2, TAG));
+    }
+
+    @Test
+    @SmallTest
     public void testGetSubscriberIdWithOutPermission() {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
