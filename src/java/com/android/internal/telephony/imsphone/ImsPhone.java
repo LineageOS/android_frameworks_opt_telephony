@@ -2093,10 +2093,18 @@ public class ImsPhone extends ImsPhoneBase {
         Rlog.d(LOG_TAG, "RTT: checkIfModifyRequestOrResponse data =  " + data);
         switch (data) {
             case QtiImsUtils.RTT_UPGRADE_INITIATE:
+                if (!QtiImsUtils.isRttUpgradeSupported(mPhoneId, mContext)) {
+                    Rlog.d(LOG_TAG, "RTT: upgrade not supported");
+                    return;
+                }
                 // Rtt Upgrade means enable Rtt
                 packRttModifyRequestToProfile(ImsStreamMediaProfile.RTT_MODE_FULL);
                 break;
             case QtiImsUtils.RTT_DOWNGRADE_INITIATE:
+                if (!QtiImsUtils.isRttDowngradeSupported(mPhoneId, mContext)) {
+                    Rlog.d(LOG_TAG, "RTT: downgrade not supported");
+                    return;
+                }
                 // Rtt downrade means disable Rtt
                 packRttModifyRequestToProfile(ImsStreamMediaProfile.RTT_MODE_DISABLED);
                 break;
