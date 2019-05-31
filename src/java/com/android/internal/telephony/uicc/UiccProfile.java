@@ -141,18 +141,26 @@ public class UiccProfile extends IccCard {
             new ContentObserver(new Handler()) {
                 @Override
                 public void onChange(boolean selfChange) {
-                    mContext.getContentResolver().unregisterContentObserver(this);
-                    showCarrierAppNotificationsIfPossible();
+                    synchronized (mLock) {
+                        mContext.getContentResolver().unregisterContentObserver(this);
+                        mProvisionCompleteContentObserverRegistered = false;
+                        showCarrierAppNotificationsIfPossible();
+                    }
                 }
             };
+    private boolean mProvisionCompleteContentObserverRegistered;
 
     private final BroadcastReceiver mUserUnlockReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            mContext.unregisterReceiver(this);
-            showCarrierAppNotificationsIfPossible();
+            synchronized (mLock) {
+                mContext.unregisterReceiver(this);
+                mUserUnlockReceiverRegistered = false;
+                showCarrierAppNotificationsIfPossible();
+            }
         }
     };
+    private boolean mUserUnlockReceiverRegistered;
 
     private final BroadcastReceiver mCarrierConfigChangedReceiver = new BroadcastReceiver() {
         @Override
@@ -276,6 +284,17 @@ public class UiccProfile extends IccCard {
         synchronized (mLock) {
             unregisterAllAppEvents();
             unregisterCurrAppEvents();
+
+            if (mProvisionCompleteContentObserverRegistered) {
+                mContext.getContentResolver()
+                        .unregisterContentObserver(mProvisionCompleteContentObserver);
+                mProvisionCompleteContentObserverRegistered = false;
+            }
+
+            if (mUserUnlockReceiverRegistered) {
+                mContext.unregisterReceiver(mUserUnlockReceiver);
+                mUserUnlockReceiverRegistered = false;
+            }
 
             InstallCarrierAppUtils.hideAllNotifications(mContext);
             InstallCarrierAppUtils.unregisterPackageInstallReceiver(mContext);
@@ -1212,10 +1231,12 @@ public class UiccProfile extends IccCard {
                             uri,
                             false,
                             mProvisionCompleteContentObserver);
+                    mProvisionCompleteContentObserverRegistered = true;
                 }
                 if (!isUnlocked) {
                     mContext.registerReceiver(
                             mUserUnlockReceiver, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
+                    mUserUnlockReceiverRegistered = true;
                 }
             }
         }
