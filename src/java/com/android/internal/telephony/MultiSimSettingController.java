@@ -22,6 +22,10 @@ import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELE
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
+import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_NAMES;
+import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE;
+import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE_DUAL_CDMA;
+import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE_NONE;
 import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
 
 import android.annotation.IntDef;
@@ -36,6 +40,7 @@ import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -392,7 +397,7 @@ public class MultiSimSettingController extends Handler {
                 mSubController.getDefaultSmsSubId(),
                 (newValue -> mSubController.setDefaultSmsSubId(newValue)));
 
-        showSimSelectDialogIfNeeded(change, dataSelected, voiceSelected, smsSelected);
+        sendSubChangeNotificationIfNeeded(change, dataSelected, voiceSelected, smsSelected);
     }
 
     @PrimarySubChangeType
@@ -440,11 +445,41 @@ public class MultiSimSettingController extends Handler {
         }
     }
 
-    private void showSimSelectDialogIfNeeded(int change, boolean dataSelected,
+    private void sendSubChangeNotificationIfNeeded(int change, boolean dataSelected,
             boolean voiceSelected, boolean smsSelected) {
         @TelephonyManager.DefaultSubscriptionSelectType
+        int simSelectDialogType = getSimSelectDialogType(
+                change, dataSelected, voiceSelected, smsSelected);
+        SimCombinationWarningParams simCombinationParams = getSimCombinationWarningParams(change);
+
+        if (simSelectDialogType != EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE
+                || simCombinationParams.mWarningType != EXTRA_SIM_COMBINATION_WARNING_TYPE_NONE) {
+            log("[sendSubChangeNotificationIfNeeded] showing dialog type "
+                    + simSelectDialogType);
+            log("[sendSubChangeNotificationIfNeeded] showing sim warning "
+                    + simCombinationParams.mWarningType);
+            Intent intent = new Intent();
+            intent.setAction(ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED);
+            intent.setClassName("com.android.settings",
+                    "com.android.settings.sim.SimSelectNotification");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            intent.putExtra(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE, simSelectDialogType);
+            if (simSelectDialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL) {
+                intent.putExtra(EXTRA_SUBSCRIPTION_ID, mPrimarySubList.get(0));
+            }
+
+            intent.putExtra(EXTRA_SIM_COMBINATION_WARNING_TYPE, simCombinationParams.mWarningType);
+            if (simCombinationParams.mWarningType == EXTRA_SIM_COMBINATION_WARNING_TYPE_DUAL_CDMA) {
+                intent.putExtra(EXTRA_SIM_COMBINATION_NAMES, simCombinationParams.mSimNames);
+            }
+            mContext.sendBroadcast(intent);
+        }
+    }
+
+    private int getSimSelectDialogType(int change, boolean dataSelected,
+            boolean voiceSelected, boolean smsSelected) {
         int dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
-        int preferredSubId = INVALID_SUBSCRIPTION_ID;
 
         // If a primary subscription is removed and only one is left active, ask user
         // for preferred sub selection if any default setting is not set.
@@ -453,26 +488,56 @@ public class MultiSimSettingController extends Handler {
         if (mPrimarySubList.size() == 1 && change == PRIMARY_SUB_REMOVED
                 && (!dataSelected || !smsSelected || !voiceSelected)) {
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
-            preferredSubId = mPrimarySubList.get(0);
-        } else if (mPrimarySubList.size() > 1 && (change == PRIMARY_SUB_REMOVED
-                || change == PRIMARY_SUB_ADDED || change == PRIMARY_SUB_SWAPPED)) {
+        } else if (mPrimarySubList.size() > 1 && isUserVisibleChange(change)) {
             // If change is SWAPPED_IN_GROUP or MARKED_OPPT orINITIALIZED, don't ask user again.
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
         }
 
-        if (dialogType != EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE) {
-            log("[showSimSelectDialogIfNeeded] showing dialog type " + dialogType);
-            Intent intent = new Intent();
-            intent.setAction(ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED);
-            intent.setClassName("com.android.settings",
-                    "com.android.settings.sim.SimSelectNotification");
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.putExtra(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE, dialogType);
-            if (dialogType == EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL) {
-                intent.putExtra(EXTRA_SUBSCRIPTION_ID, preferredSubId);
+        return dialogType;
+    }
+
+    private class SimCombinationWarningParams {
+        @TelephonyManager.SimCombinationWarningType
+        int mWarningType = EXTRA_SIM_COMBINATION_WARNING_TYPE_NONE;
+        String mSimNames;
+    }
+
+    private SimCombinationWarningParams getSimCombinationWarningParams(int change) {
+        SimCombinationWarningParams params = new SimCombinationWarningParams();
+        // If it's single SIM active, no SIM combination warning is needed.
+        if (mPrimarySubList.size() <= 1) return params;
+        // If it's no primary SIM change or it's not user visible change
+        // (initialized or swapped in a group), no SIM combination warning is needed.
+        if (!isUserVisibleChange(change)) return params;
+
+        List<String> simNames = new ArrayList<>();
+        int cdmaPhoneCount = 0;
+        for (int subId : mPrimarySubList) {
+            Phone phone = PhoneFactory.getPhone(SubscriptionManager.getPhoneId(subId));
+            // If a dual CDMA SIM combination warning is needed.
+            if (phone != null && phone.isCdmaSubscriptionAppPresent()) {
+                cdmaPhoneCount++;
+                String simName = mSubController.getActiveSubscriptionInfo(
+                        subId, mContext.getOpPackageName()).getDisplayName().toString();
+                if (TextUtils.isEmpty(simName)) {
+                    // Fall back to carrier name.
+                    simName = phone.getCarrierName();
+                }
+                simNames.add(simName);
             }
-            mContext.sendBroadcast(intent);
         }
+
+        if (cdmaPhoneCount > 1) {
+            params.mWarningType = EXTRA_SIM_COMBINATION_WARNING_TYPE_DUAL_CDMA;
+            params.mSimNames = String.join(" & ", simNames);
+        }
+
+        return params;
+    }
+
+    private boolean isUserVisibleChange(int change) {
+        return (change == PRIMARY_SUB_ADDED || change == PRIMARY_SUB_REMOVED
+                || change == PRIMARY_SUB_SWAPPED);
     }
 
     private void disableDataForNonDefaultNonOpportunisticSubscriptions() {
