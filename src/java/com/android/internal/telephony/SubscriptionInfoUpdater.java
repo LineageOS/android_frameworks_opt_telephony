@@ -322,12 +322,13 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
                 cardIds.add(msg.arg1);
+                Runnable r = (Runnable) msg.obj;
                 updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
                     if (hasChanges) {
                         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
                     }
-                    if (msg.obj != null) {
-                        ((Runnable) msg.obj).run();
+                    if (r != null) {
+                        r.run();
                     }
                 });
                 break;
