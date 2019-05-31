@@ -110,6 +110,7 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + SubscriptionManager.WHITE_LISTED_APN_DATA + " INTEGER DEFAULT 0,"
                     + SubscriptionManager.GROUP_OWNER + " TEXT,"
                     + SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES + " TEXT"
+                    + SubscriptionManager.IMSI + " TEXT"
                     + ");";
         }
 
