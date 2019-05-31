@@ -108,6 +108,18 @@ public class QtiImsUtils {
     public static final String KEY_SHOW_RTT_VISIBILITY_SETTING =
             "show_rtt_visibility_setting_bool";
 
+    /* Config to determine if Carrier supports RTT Upgrade Operation
+     * true - if upgrade is supported else false
+     */
+    public static final String KEY_CARRIER_RTT_UPGRADE_SUPPORTED =
+            "carrier_rtt_upgrade_supported";
+
+    /* Config to determine if Carrier supports RTT Dowgrade Operation
+     * true - if downgrade is supported else false
+     */
+    public static final String KEY_CARRIER_RTT_DOWNGRADE_SUPPORTED =
+            "carrier_rtt_downgrade_supported";
+
     // RTT Operation Type can be one of the following
     // To request upgrade of regular call to RTT call
     public static final int RTT_UPGRADE_INITIATE = 1;
@@ -141,6 +153,26 @@ public class QtiImsUtils {
             isRttSupportedOnVtCall = b.getBoolean(KEY_CARRIER_RTT_SUPPORTED_ON_VTCALLS);
         }
         return isRttSupportedOnVtCall;
+    }
+
+    // Returns true if Carrier supports RTT upgrade
+    public static boolean isRttUpgradeSupported(int phoneId, Context context) {
+        boolean isRttUpgradeSupported = false;
+        PersistableBundle b = getConfigForPhoneId(context, phoneId);
+        if (b != null) {
+            isRttUpgradeSupported = b.getBoolean(KEY_CARRIER_RTT_UPGRADE_SUPPORTED);
+        }
+        return isRttUpgradeSupported;
+    }
+
+    // Returns true if Carrier supports RTT downgrade
+    public static boolean isRttDowngradeSupported(int phoneId, Context context) {
+        boolean isRttDowngradeSupported = false;
+        PersistableBundle b = getConfigForPhoneId(context, phoneId);
+        if (b != null) {
+            isRttDowngradeSupported = b.getBoolean(KEY_CARRIER_RTT_DOWNGRADE_SUPPORTED);
+        }
+        return isRttDowngradeSupported;
     }
 
     // Returns true if Carrier supports RTT Visibility Setting
