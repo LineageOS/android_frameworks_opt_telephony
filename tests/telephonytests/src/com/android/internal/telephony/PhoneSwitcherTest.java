@@ -646,6 +646,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(0).when(mPhone).getPhoneId();
         doReturn(1).when(mPhone2).getPhoneId();
         doReturn(true).when(mPhone2).isUserDataEnabled();
+        doReturn(mDataEnabledSettings).when(mPhone2).getDataEnabledSettings();
         for (int i = 0; i < numPhones; i++) {
             mSlotIndexToSubId[i] = new int[1];
             mSlotIndexToSubId[i][0] = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
