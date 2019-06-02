@@ -424,6 +424,21 @@ public class TransportManager extends Handler {
     }
 
     /**
+     * Check if there is any APN type of network preferred on IWLAN.
+     *
+     * @return {@code true} if there is any APN preferred on IWLAN, otherwise {@code false}.
+     */
+    public boolean isAnyApnPreferredOnIwlan() {
+        for (int i = 0; i < mCurrentAvailableNetworks.size(); i++) {
+            int[] networkList = mCurrentAvailableNetworks.valueAt(i);
+            if (networkList.length > 0 && networkList[0] == AccessNetworkType.IWLAN) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Register for data handover needed event
      *
      * @param h The handler of the event
