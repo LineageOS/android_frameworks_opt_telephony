@@ -799,6 +799,11 @@ public abstract class Connection {
         mPostDialString = c.mPostDialString;
         mNextPostDialChar = c.mNextPostDialChar;
         mPostDialState = c.mPostDialState;
+
+        // Migrate Emergency call parameters
+        mIsEmergencyCall = c.isEmergencyCall();
+        mEmergencyNumberInfo = c.getEmergencyNumberInfo();
+        mHasKnownUserIntentEmergency = c.hasKnownUserIntentEmergency();
     }
 
     /**
