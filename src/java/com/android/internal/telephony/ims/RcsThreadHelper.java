@@ -48,13 +48,13 @@ import java.util.List;
  * A helper class focused on querying RCS threads from the
  * {@link com.android.providers.telephony.RcsProvider}
  */
-class RcsThreadQueryHelper {
+class RcsThreadHelper {
     private static final int THREAD_ID_INDEX_IN_INSERTION_URI = 1;
 
     private final ContentResolver mContentResolver;
     private final RcsParticipantQueryHelper mParticipantQueryHelper;
 
-    RcsThreadQueryHelper(ContentResolver contentResolver,
+    RcsThreadHelper(ContentResolver contentResolver,
             RcsParticipantQueryHelper participantQueryHelper) {
         mContentResolver = contentResolver;
         mParticipantQueryHelper = participantQueryHelper;
@@ -128,6 +128,14 @@ class RcsThreadQueryHelper {
         int threadId = Integer.parseInt(threadIdAsString);
 
         return threadId;
+    }
+
+    void addParticipantToGroupThread(int rcsThreadId, int participantId) {
+        ContentValues contentValues = new ContentValues(2);
+        contentValues.put(RCS_THREAD_ID_COLUMN, rcsThreadId);
+        contentValues.put(RCS_PARTICIPANT_ID_COLUMN, participantId);
+
+        mContentResolver.insert(getAllParticipantsInThreadUri(rcsThreadId), contentValues);
     }
 
     static Uri get1To1ThreadUri(int rcsThreadId) {
