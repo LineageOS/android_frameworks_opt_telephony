@@ -74,16 +74,16 @@ import static android.telephony.ims.RcsThreadQueryParams.THREAD_QUERY_PARAMETERS
 
 import static com.android.internal.telephony.ims.RcsMessageStoreUtil.getMessageTableUri;
 import static com.android.internal.telephony.ims.RcsParticipantQueryHelper.getUriForParticipant;
-import static com.android.internal.telephony.ims.RcsThreadQueryHelper.get1To1ThreadUri;
-import static com.android.internal.telephony.ims.RcsThreadQueryHelper.getAllParticipantsInThreadUri;
-import static com.android.internal.telephony.ims.RcsThreadQueryHelper.getGroupThreadUri;
-import static com.android.internal.telephony.ims.RcsThreadQueryHelper.getParticipantInThreadUri;
+import static com.android.internal.telephony.ims.RcsThreadHelper.get1To1ThreadUri;
+import static com.android.internal.telephony.ims.RcsThreadHelper.getGroupThreadUri;
+import static com.android.internal.telephony.ims.RcsThreadHelper.getParticipantInThreadUri;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -106,6 +106,8 @@ import android.telephony.ims.RcsThreadQueryResultParcelable;
 import android.telephony.ims.aidl.IRcs;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.util.FunctionalUtils.ThrowingRunnable;
+import com.android.internal.util.FunctionalUtils.ThrowingSupplier;
 
 /**
  * Backing implementation of {@link RcsMessageStore}.
@@ -122,7 +124,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     private final RcsParticipantQueryHelper mParticipantQueryHelper;
     private final RcsMessageQueryHelper mMessageQueryHelper;
     private final RcsEventQueryHelper mEventQueryHelper;
-    private final RcsThreadQueryHelper mThreadQueryHelper;
+    private final RcsThreadHelper mThreadHelper;
     private final RcsMessageStoreUtil mMessageStoreUtil;
 
     /**
@@ -142,42 +144,36 @@ public class RcsMessageStoreController extends IRcs.Stub {
         return sInstance;
     }
 
-    interface ThrowingSupplier<T> {
-        T get() throws RemoteException;
-    }
-
-    interface ThrowingRunnable {
-        void run() throws RemoteException;
-    }
-
+    /**
+     * This call cannot be nested with either {@link #performWriteOperation} or {@link
+     * #performReadOperation} as the permission check will then fail since we have cleared the
+     * calling identity.
+     */
     private void performWriteOperation(String callingPackage, ThrowingRunnable fn) {
-        RcsPermissions.checkWritePermissions(mContext, callingPackage);
-
-        try {
+        performWriteOperation(callingPackage, () -> {
             fn.run();
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        }
+            return null;
+        });
     }
 
-    private <T> T performCreateOperation(String callingPackage, ThrowingSupplier<T> fn) {
+    /**
+     * This call cannot be nested with either {@link #performWriteOperation} or {@link
+     * #performReadOperation} as the permission check will then fail since we have cleared the
+     * calling identity.
+     */
+    private <T> T performWriteOperation(String callingPackage, ThrowingSupplier<T> fn) {
         RcsPermissions.checkWritePermissions(mContext, callingPackage);
-
-        try {
-            return fn.get();
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        }
+        return Binder.withCleanCallingIdentity(fn);
     }
 
+    /**
+     * This call cannot be nested with either {@link #performWriteOperation} or {@link
+     * #performReadOperation} as the permission check will then fail since we have cleared the
+     * calling identity.
+     */
     private <T> T performReadOperation(String callingPackage, ThrowingSupplier<T> fn) {
         RcsPermissions.checkReadPermissions(mContext, callingPackage);
-
-        try {
-            return fn.get();
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        }
+        return Binder.withCleanCallingIdentity(fn);
     }
 
     @VisibleForTesting
@@ -186,14 +182,14 @@ public class RcsMessageStoreController extends IRcs.Stub {
         mContentResolver = context.getContentResolver();
         mParticipantQueryHelper = new RcsParticipantQueryHelper(mContentResolver);
         mMessageQueryHelper = new RcsMessageQueryHelper(mContentResolver);
-        mThreadQueryHelper = new RcsThreadQueryHelper(mContentResolver, mParticipantQueryHelper);
+        mThreadHelper = new RcsThreadHelper(mContentResolver, mParticipantQueryHelper);
         mEventQueryHelper = new RcsEventQueryHelper(mContentResolver);
         mMessageStoreUtil = new RcsMessageStoreUtil(mContentResolver);
     }
 
     @Override
     public boolean deleteThread(int threadId, int threadType, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             int deletionCount = mContentResolver.delete(
                     threadType == THREAD_TYPE_GROUP ? RCS_GROUP_THREAD_URI : RCS_1_TO_1_THREAD_URI,
                     RCS_THREAD_ID_COLUMN + "=?",
@@ -217,7 +213,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
         return performReadOperation(callingPackage, () -> {
             Bundle bundle = new Bundle();
             bundle.putParcelable(THREAD_QUERY_PARAMETERS_KEY, queryParameters);
-            return mThreadQueryHelper.performThreadQuery(bundle);
+            return mThreadHelper.performThreadQuery(bundle);
         });
     }
 
@@ -227,7 +223,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
         return performReadOperation(callingPackage, () -> {
             Bundle bundle = new Bundle();
             bundle.putParcelable(QUERY_CONTINUATION_TOKEN, continuationToken);
-            return mThreadQueryHelper.performThreadQuery(bundle);
+            return mThreadHelper.performThreadQuery(bundle);
         });
     }
 
@@ -293,15 +289,15 @@ public class RcsMessageStoreController extends IRcs.Stub {
 
     @Override
     public int createRcs1To1Thread(int recipientId, String callingPackage) {
-        return performCreateOperation(callingPackage,
-                () -> mThreadQueryHelper.create1To1Thread(recipientId));
+        return performWriteOperation(callingPackage,
+                () -> mThreadHelper.create1To1Thread(recipientId));
     }
 
     @Override
     public int createGroupThread(int[] participantIds, String groupName, Uri groupIcon,
             String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
-            int groupThreadId = mThreadQueryHelper.createGroupThread(groupName, groupIcon);
+        return performWriteOperation(callingPackage, () -> {
+            int groupThreadId = mThreadHelper.createGroupThread(groupName, groupIcon);
             if (groupThreadId <= 0) {
                 throw new RemoteException("Could not create RcsGroupThread.");
             }
@@ -311,7 +307,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
             //  under one transaction
             if (participantIds != null) {
                 for (int participantId : participantIds) {
-                    addParticipantToGroupThread(groupThreadId, participantId, callingPackage);
+                    mThreadHelper.addParticipantToGroupThread(groupThreadId, participantId);
                 }
             }
 
@@ -326,7 +322,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
      */
     @Override
     public int createRcsParticipant(String canonicalAddress, String alias, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues contentValues = new ContentValues();
 
             long canonicalAddressId = Telephony.RcsColumns.RcsCanonicalAddressHelper
@@ -494,11 +490,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     public void addParticipantToGroupThread(int rcsThreadId, int participantId,
             String callingPackage) {
         performWriteOperation(callingPackage, () -> {
-            ContentValues contentValues = new ContentValues(2);
-            contentValues.put(RCS_THREAD_ID_COLUMN, rcsThreadId);
-            contentValues.put(RCS_PARTICIPANT_ID_COLUMN, participantId);
-
-            mContentResolver.insert(getAllParticipantsInThreadUri(rcsThreadId), contentValues);
+            mThreadHelper.addParticipantToGroupThread(rcsThreadId, participantId);
         });
     }
 
@@ -515,7 +507,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     public int addIncomingMessage(int rcsThreadId,
             RcsIncomingMessageCreationParams rcsIncomingMessageCreationParams,
             String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues contentValues = new ContentValues();
 
             contentValues.put(ARRIVAL_TIMESTAMP_COLUMN,
@@ -536,7 +528,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     public int addOutgoingMessage(int rcsThreadId,
             RcsOutgoingMessageCreationParams rcsOutgoingMessageCreationParameters,
             String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues contentValues = new ContentValues();
 
             mMessageQueryHelper.createContentValuesForGenericMessage(contentValues, rcsThreadId,
@@ -795,7 +787,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public int storeFileTransfer(int messageId, boolean isIncoming,
             RcsFileTransferCreationParams fileTransferCreationParameters, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues contentValues = mMessageQueryHelper.getContentValuesForFileTransfer(
                     fileTransferCreationParameters);
             Uri uri = mContentResolver.insert(
@@ -979,7 +971,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public int createGroupThreadNameChangedEvent(long timestamp, int threadId,
             int originationParticipantId, String newName, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues eventSpecificValues = new ContentValues();
             eventSpecificValues.put(NEW_NAME_COLUMN, newName);
 
@@ -991,7 +983,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public int createGroupThreadIconChangedEvent(long timestamp, int threadId,
             int originationParticipantId, Uri newIcon, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues eventSpecificValues = new ContentValues();
             eventSpecificValues.put(NEW_ICON_URI_COLUMN,
                     newIcon == null ? null : newIcon.toString());
@@ -1004,7 +996,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public int createGroupThreadParticipantJoinedEvent(long timestamp, int threadId,
             int originationParticipantId, int participantId, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues eventSpecificValues = new ContentValues();
             eventSpecificValues.put(DESTINATION_PARTICIPANT_ID_COLUMN, participantId);
 
@@ -1017,7 +1009,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public int createGroupThreadParticipantLeftEvent(long timestamp, int threadId,
             int originationParticipantId, int participantId, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues eventSpecificValues = new ContentValues();
             eventSpecificValues.put(DESTINATION_PARTICIPANT_ID_COLUMN, participantId);
 
@@ -1029,7 +1021,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     @Override
     public int createParticipantAliasChangedEvent(long timestamp, int participantId,
             String newAlias, String callingPackage) {
-        return performCreateOperation(callingPackage, () -> {
+        return performWriteOperation(callingPackage, () -> {
             ContentValues contentValues = new ContentValues(4);
             contentValues.put(TIMESTAMP_COLUMN, timestamp);
             contentValues.put(SOURCE_PARTICIPANT_ID_COLUMN, participantId);
