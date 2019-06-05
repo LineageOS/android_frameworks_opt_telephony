@@ -198,6 +198,26 @@ public class DataEnabledSettings {
     }
 
     /**
+     * Set whether always allowing MMS data connection.
+     *
+     * @param alwaysAllow {@code true} if MMS data is always allowed.
+     *
+     * @return {@code false} if the setting is changed.
+     */
+    public synchronized boolean setAlwaysAllowMmsData(boolean alwaysAllow) {
+        localLog("setAlwaysAllowMmsData", alwaysAllow);
+        mDataEnabledOverride.setAlwaysAllowMms(alwaysAllow);
+        boolean changed = SubscriptionController.getInstance()
+                .setDataEnabledOverrideRules(mPhone.getSubId(), mDataEnabledOverride.getRules());
+        if (changed) {
+            updateDataEnabled();
+            notifyDataEnabledOverrideChanged();
+        }
+
+        return changed;
+    }
+
+    /**
      * Set allowing mobile data during voice call.
      *
      * @param allow {@code true} if allowing using data during voice call, {@code false} if
@@ -206,7 +226,7 @@ public class DataEnabledSettings {
      * @return {@code false} if the setting is changed.
      */
     public synchronized boolean setAllowDataDuringVoiceCall(boolean allow) {
-        localLog("setDataEnabledOverrideRules", allow);
+        localLog("setAllowDataDuringVoiceCall", allow);
         mDataEnabledOverride.setDataAllowedInVoiceCall(allow);
         boolean changed = SubscriptionController.getInstance()
                 .setDataEnabledOverrideRules(mPhone.getSubId(), mDataEnabledOverride.getRules());
