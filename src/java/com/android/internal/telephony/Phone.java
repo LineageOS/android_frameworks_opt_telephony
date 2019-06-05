@@ -4018,6 +4018,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mDcTrackers.get(transportType);
     }
 
+    // Return true if either CSIM or RUIM app is present. By default it returns false.
+    public boolean isCdmaSubscriptionAppPresent() {
+        return false;
+    }
+
     /**
      * Get the HAL version.
      *
