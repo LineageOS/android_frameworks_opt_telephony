@@ -3468,8 +3468,9 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
-    //return true if either CSIM or RUIM app is present
-    private boolean isCdmaSubscriptionAppPresent(){
+    // Return true if either CSIM or RUIM app is present
+    @Override
+    public boolean isCdmaSubscriptionAppPresent() {
         UiccCardApplication cdmaApplication =
                 mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP2);
         return cdmaApplication != null && (cdmaApplication.getType() == AppType.APPTYPE_CSIM ||
