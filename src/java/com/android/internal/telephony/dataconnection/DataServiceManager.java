@@ -285,10 +285,20 @@ public class DataServiceManager extends Handler {
     }
 
     private void bindDataService() {
+        Intent intent = null;
         String packageName = getDataServicePackageName();
+        String className = getDataServiceClassName();
         if (TextUtils.isEmpty(packageName)) {
             loge("Can't find the binding package");
             return;
+        }
+
+        if (TextUtils.isEmpty(className)) {
+            intent = new Intent(DataService.SERVICE_INTERFACE);
+            intent.setPackage(packageName);
+        } else {
+            ComponentName cm = new ComponentName(packageName, className);
+            intent = new Intent(DataService.SERVICE_INTERFACE).setComponent(cm);
         }
 
         if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
@@ -316,9 +326,7 @@ public class DataServiceManager extends Handler {
         try {
             mServiceConnection = new CellularDataServiceConnection();
             if (!mPhone.getContext().bindService(
-                    new Intent(DataService.SERVICE_INTERFACE).setPackage(packageName),
-                    mServiceConnection,
-                    Context.BIND_AUTO_CREATE)) {
+                    intent, mServiceConnection, Context.BIND_AUTO_CREATE)) {
                 loge("Cannot bind to the data service.");
                 return;
             }
@@ -397,6 +405,55 @@ public class DataServiceManager extends Handler {
         }
 
         return packageName;
+    }
+
+    /**
+     * Get the data service class name for our current transport type.
+     *
+     * @return class name of the data service package for the the current transportType.
+     */
+    private String getDataServiceClassName() {
+        return getDataServiceClassName(mTransportType);
+    }
+
+
+    /**
+     * Get the data service class by transport type.
+     *
+     * @param transportType either WWAN or WLAN
+     * @return class name of the data service package for the specified transportType.
+     */
+    private String getDataServiceClassName(int transportType) {
+        String className;
+        int resourceId;
+        String carrierConfig;
+        switch (transportType) {
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
+                resourceId = com.android.internal.R.string.config_wwan_data_service_class;
+                carrierConfig = CarrierConfigManager
+                        .KEY_CARRIER_DATA_SERVICE_WWAN_CLASS_OVERRIDE_STRING;
+                break;
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
+                resourceId = com.android.internal.R.string.config_wlan_data_service_class;
+                carrierConfig = CarrierConfigManager
+                        .KEY_CARRIER_DATA_SERVICE_WLAN_CLASS_OVERRIDE_STRING;
+                break;
+            default:
+                throw new IllegalStateException("Transport type not WWAN or WLAN. type="
+                        + transportType);
+        }
+
+        // Read package name from resource overlay
+        className = mPhone.getContext().getResources().getString(resourceId);
+
+        PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
+
+        if (b != null && !TextUtils.isEmpty(b.getString(carrierConfig))) {
+            // If carrier config overrides it, use the one from carrier config
+            className = b.getString(carrierConfig, className);
+        }
+
+        return className;
     }
 
     private void sendCompleteMessage(Message msg, int code) {
