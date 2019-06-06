@@ -476,6 +476,12 @@ public class TelephonyComponentFactory {
         return new RIL(context, preferredNetworkType, cdmaSubscription, instanceId);
     }
 
+    public MultiSimSettingController initMultiSimSettingController(Context c,
+            SubscriptionController sc) {
+        Rlog.i(TAG, " initMultiSimSettingController ");
+        return MultiSimSettingController.init(c, sc);
+    }
+
     public void makeExtTelephonyClasses(Context context,
             Phone[] phones, CommandsInterface[] commandsInterfaces) {
         Rlog.d(LOG_TAG, "makeExtTelephonyClasses");
