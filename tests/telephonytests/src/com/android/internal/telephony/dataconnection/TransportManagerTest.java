@@ -129,7 +129,7 @@ public class TransportManagerTest extends TelephonyTest {
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, params.targetTransport);
 
         // Notify handover succeeded.
-        params.callback.onCompleted(true);
+        params.callback.onCompleted(true, false);
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
                 mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
 
@@ -158,7 +158,7 @@ public class TransportManagerTest extends TelephonyTest {
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
                 mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
         // Notify handover succeeded.
-        params.callback.onCompleted(true);
+        params.callback.onCompleted(true, false);
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
     }
@@ -256,7 +256,7 @@ public class TransportManagerTest extends TelephonyTest {
         assertEquals(1, listQueue.size());
 
         // Notify handover succeeded.
-        params.callback.onCompleted(true);
+        params.callback.onCompleted(true, false);
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
                 mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
         waitForMs(100);
