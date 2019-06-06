@@ -96,8 +96,6 @@ public class CarrierKeyDownloadManager extends Handler {
     private static final String SEPARATOR = ":";
 
     private static final String JSON_CERTIFICATE = "certificate";
-    // This is a hack to accommodate certain Carriers who insists on using the public-key
-    // field to store the certificate. We'll just use which-ever is not null.
     private static final String JSON_CERTIFICATE_ALTERNATE = "public-key";
     private static final String JSON_TYPE = "key-type";
     private static final String JSON_IDENTIFIER = "key-identifier";
@@ -111,7 +109,6 @@ public class CarrierKeyDownloadManager extends Handler {
 
     private static final int[] CARRIER_KEY_TYPES = {TelephonyManager.KEY_TYPE_EPDG,
             TelephonyManager.KEY_TYPE_WLAN};
-    private static final int UNINITIALIZED_KEY_TYPE = -1;
 
     private final Phone mPhone;
     private final Context mContext;
@@ -451,20 +448,27 @@ public class CarrierKeyDownloadManager extends Handler {
             JSONArray keys = jsonObj.getJSONArray(JSON_CARRIER_KEYS);
             for (int i = 0; i < keys.length(); i++) {
                 JSONObject key = keys.getJSONObject(i);
-                // This is a hack to accommodate certain carriers who insist on using the public-key
-                // field to store the certificate. We'll just use which-ever is not null.
+                // Support both "public-key" and "certificate" String property.
+                // "certificate" is a more accurate description, however, the 3GPP draft spec
+                // S3-170116, "Privacy Protection for EAP-AKA" section 4.3 mandates the use of
+                // "public-key".
                 String cert = null;
                 if (key.has(JSON_CERTIFICATE)) {
                     cert = key.getString(JSON_CERTIFICATE);
                 } else {
                     cert = key.getString(JSON_CERTIFICATE_ALTERNATE);
                 }
-                String typeString = key.getString(JSON_TYPE);
-                int type = UNINITIALIZED_KEY_TYPE;
-                if (typeString.equals(JSON_TYPE_VALUE_WLAN)) {
-                    type = TelephonyManager.KEY_TYPE_WLAN;
-                } else if (typeString.equals(JSON_TYPE_VALUE_EPDG)) {
-                    type = TelephonyManager.KEY_TYPE_EPDG;
+                // The 3GPP draft spec 3GPP draft spec S3-170116, "Privacy Protection for EAP-AKA"
+                // section 4.3, does not specify any key-type property. To be compatible with these
+                // networks, the logic defaults to WLAN type if not specified.
+                int type = TelephonyManager.KEY_TYPE_WLAN;
+                if (key.has(JSON_TYPE)) {
+                    String typeString = key.getString(JSON_TYPE);
+                    if (typeString.equals(JSON_TYPE_VALUE_EPDG)) {
+                        type = TelephonyManager.KEY_TYPE_EPDG;
+                    } else if (!typeString.equals(JSON_TYPE_VALUE_WLAN)) {
+                        Log.e(LOG_TAG, "Invalid key-type specified: " + typeString);
+                    }
                 }
                 String identifier = key.getString(JSON_IDENTIFIER);
                 ByteArrayInputStream inStream = new ByteArrayInputStream(cert.getBytes());
