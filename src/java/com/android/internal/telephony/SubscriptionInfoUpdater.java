@@ -793,6 +793,7 @@ public class SubscriptionInfoUpdater extends Handler {
         for (EuiccProfileInfo embeddedProfile : embeddedProfiles) {
             int index =
                     findSubscriptionInfoForIccid(existingSubscriptions, embeddedProfile.getIccid());
+            int prevCarrierId = TelephonyManager.UNKNOWN_CARRIER_ID;
             int nameSource = SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE;
             if (index < 0) {
                 // No existing entry for this ICCID; create an empty one.
@@ -800,6 +801,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         embeddedProfile.getIccid(), SubscriptionManager.SIM_NOT_INSERTED);
             } else {
                 nameSource = existingSubscriptions.get(index).getNameSource();
+                prevCarrierId = existingSubscriptions.get(index).getCarrierId();
                 existingSubscriptions.remove(index);
             }
 
@@ -830,8 +832,13 @@ public class SubscriptionInfoUpdater extends Handler {
             values.put(SubscriptionManager.PROFILE_CLASS, embeddedProfile.getProfileClass());
             CarrierIdentifier cid = embeddedProfile.getCarrierIdentifier();
             if (cid != null) {
-                values.put(SubscriptionManager.CARRIER_ID,
-                        CarrierResolver.getCarrierIdFromIdentifier(mContext, cid));
+                // Due to the limited subscription information, carrier id identified here might
+                // not be accurate compared with CarrierResolver. Only update carrier id if there
+                // is no valid carrier id present.
+                if (prevCarrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+                    values.put(SubscriptionManager.CARRIER_ID,
+                            CarrierResolver.getCarrierIdFromIdentifier(mContext, cid));
+                }
                 String mcc = cid.getMcc();
                 String mnc = cid.getMnc();
                 values.put(SubscriptionManager.MCC_STRING, mcc);
