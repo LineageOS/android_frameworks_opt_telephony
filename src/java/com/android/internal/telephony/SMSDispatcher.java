@@ -125,10 +125,13 @@ public abstract class SMSDispatcher extends Handler {
     private static final int EVENT_SEND_LIMIT_REACHED_CONFIRMATION = 4;
 
     /** Send the user confirmed SMS */
-    static final int EVENT_SEND_CONFIRMED_SMS = 5;  // accessed from inner class
+    static final int EVENT_SEND_CONFIRMED_SMS = 5; // accessed from inner class
 
     /** Don't send SMS (user did not confirm). */
-    static final int EVENT_STOP_SENDING = 7;        // accessed from inner class
+    static final int EVENT_STOP_SENDING = 6; // accessed from inner class
+
+    /** Don't send SMS for this app (User had already denied eariler.) */
+    static final int EVENT_SENDING_NOT_ALLOWED = 7;
 
     /** Confirmation required for third-party apps sending to an SMS short code. */
     private static final int EVENT_CONFIRM_SEND_TO_POSSIBLE_PREMIUM_SHORT_CODE = 8;
@@ -315,6 +318,16 @@ public abstract class SMSDispatcher extends Handler {
                 sendSms(tracker);
             }
             mPendingTrackerCount--;
+            break;
+        }
+
+        case EVENT_SENDING_NOT_ALLOWED:
+        {
+            SmsTracker tracker = (SmsTracker) msg.obj;
+            Rlog.d(TAG, "SMSDispatcher: EVENT_SENDING_NOT_ALLOWED - "
+                    + "sending SHORT_CODE_NEVER_ALLOWED error code.");
+            tracker.onFailed(
+                    mContext, RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, 0 /*errorCode*/);
             break;
         }
 
@@ -1272,9 +1285,7 @@ public abstract class SMSDispatcher extends Handler {
 
                 case SmsUsageMonitor.PREMIUM_SMS_PERMISSION_NEVER_ALLOW:
                     Rlog.w(TAG, "User denied this app from sending to premium SMS");
-                    Message msg = obtainMessage(EVENT_STOP_SENDING, tracker);
-                    msg.arg1 = ConfirmDialogListener.SHORT_CODE_MSG;
-                    msg.arg2 = ConfirmDialogListener.NEVER_ALLOW;
+                    Message msg = obtainMessage(EVENT_SENDING_NOT_ALLOWED, tracker);
                     sendMessage(msg);
                     return false;   // reject this message
 
