@@ -141,8 +141,8 @@ public class DataEnabledSettings {
     }
 
     public synchronized void setInternalDataEnabled(boolean enabled) {
-        localLog("InternalDataEnabled", enabled);
         if (mInternalDataEnabled != enabled) {
+            localLog("InternalDataEnabled", enabled);
             mInternalDataEnabled = enabled;
             updateDataEnabledAndNotify(REASON_INTERNAL_DATA_ENABLED);
         }
@@ -155,10 +155,10 @@ public class DataEnabledSettings {
         // Can't disable data for stand alone opportunistic subscription.
         if (isStandAloneOpportunistic(mPhone.getSubId(), mPhone.getContext()) && !enabled) return;
 
-        localLog("UserDataEnabled", enabled);
         boolean changed = GlobalSettingsHelper.setInt(mPhone.getContext(),
                 Settings.Global.MOBILE_DATA, mPhone.getSubId(), (enabled ? 1 : 0));
         if (changed) {
+            localLog("UserDataEnabled", enabled);
             mPhone.notifyUserMobileDataStateChanged(enabled);
             updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
             MultiSimSettingController.getInstance().notifyUserDataEnabled(mPhone.getSubId(),
@@ -178,8 +178,8 @@ public class DataEnabledSettings {
     }
 
     public synchronized void setPolicyDataEnabled(boolean enabled) {
-        localLog("PolicyDataEnabled", enabled);
         if (mPolicyDataEnabled != enabled) {
+            localLog("PolicyDataEnabled", enabled);
             mPolicyDataEnabled = enabled;
             updateDataEnabledAndNotify(REASON_POLICY_DATA_ENABLED);
         }
@@ -190,8 +190,8 @@ public class DataEnabledSettings {
     }
 
     public synchronized void setCarrierDataEnabled(boolean enabled) {
-        localLog("CarrierDataEnabled", enabled);
         if (mCarrierDataEnabled != enabled) {
+            localLog("CarrierDataEnabled", enabled);
             mCarrierDataEnabled = enabled;
             updateDataEnabledAndNotify(REASON_DATA_ENABLED_BY_CARRIER);
         }
@@ -257,13 +257,12 @@ public class DataEnabledSettings {
     }
 
     public synchronized void setDataRoamingEnabled(boolean enabled) {
-        localLog("setDataRoamingEnabled", enabled);
-
         // will trigger handleDataOnRoamingChange() through observer
         boolean changed = GlobalSettingsHelper.setBoolean(mPhone.getContext(),
                 Settings.Global.DATA_ROAMING, mPhone.getSubId(), enabled);
 
         if (changed) {
+            localLog("setDataRoamingEnabled", enabled);
             MultiSimSettingController.getInstance().notifyRoamingDataEnabled(mPhone.getSubId(),
                     enabled);
         }
