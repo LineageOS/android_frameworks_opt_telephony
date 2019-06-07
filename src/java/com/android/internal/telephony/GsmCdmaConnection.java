@@ -136,7 +136,7 @@ public class GsmCdmaConnection extends Connection {
         mHandler = new MyHandler(mOwner.getLooper());
 
         mAddress = dc.number;
-        setEmergencyCallInfo();
+        setEmergencyCallInfo(mOwner);
 
         mIsIncoming = dc.isMT;
         mCreateTime = System.currentTimeMillis();
@@ -179,7 +179,7 @@ public class GsmCdmaConnection extends Connection {
 
         mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
         if (isEmergencyCall) {
-            setEmergencyCallInfo();
+            setEmergencyCallInfo(mOwner);
         }
 
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
