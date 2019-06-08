@@ -1093,7 +1093,7 @@ public class EuiccController extends IEuiccController.Stub {
     @Nullable
     private SubscriptionInfo getSubscriptionForSubscriptionId(int subscriptionId) {
         List<SubscriptionInfo> subs = mSubscriptionManager.getAvailableSubscriptionInfoList();
-        int subCount = subs.size();
+        int subCount = (subs != null) ? subs.size() : 0;
         for (int i = 0; i < subCount; i++) {
             SubscriptionInfo sub = subs.get(i);
             if (subscriptionId == sub.getSubscriptionId()) {
