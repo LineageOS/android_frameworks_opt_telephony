@@ -30,6 +30,7 @@ import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
@@ -40,6 +41,7 @@ import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -252,6 +254,7 @@ public class MultiSimSettingController extends Handler {
         if (DBG) log("onAllSubscriptionsLoaded");
         updateDefaults(/*init*/ true);
         disableDataForNonDefaultNonOpportunisticSubscriptions();
+        deactivateGroupedOpportunisticSubscriptionIfNeeded();
     }
 
     /**
@@ -264,6 +267,7 @@ public class MultiSimSettingController extends Handler {
         if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
         updateDefaults(/*init*/ false);
         disableDataForNonDefaultNonOpportunisticSubscriptions();
+        deactivateGroupedOpportunisticSubscriptionIfNeeded();
     }
 
     /**
@@ -643,6 +647,38 @@ public class MultiSimSettingController extends Handler {
         }
 
         return SubscriptionManager.isValidSubscriptionId(newValue);
+    }
+
+    // When a primary and its grouped opportunistic subscriptions were active, and the primary
+    // subscription gets deactivated or removed, we need to automatically disable the grouped
+    // opportunistic subscription, which will be marked isGroupDisabled as true by SubController.
+    private void deactivateGroupedOpportunisticSubscriptionIfNeeded() {
+        if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
+
+        List<SubscriptionInfo> opptSubList = mSubController.getOpportunisticSubscriptions(
+                mContext.getOpPackageName());
+
+        if (ArrayUtils.isEmpty(opptSubList)) return;
+
+        for (SubscriptionInfo info : opptSubList) {
+            if (info.isGroupDisabled() && mSubController.isActiveSubId(info.getSubscriptionId())) {
+                log("[deactivateGroupedOpptSubIfNeeded] "
+                        + "Deactivating grouped opportunistic subscription "
+                        + info.getSubscriptionId());
+                deactivateSubscription(info);
+            }
+        }
+    }
+
+    private void deactivateSubscription(SubscriptionInfo info) {
+        // TODO: b/133379187 have a way to deactivate pSIM.
+        if (info.isEmbedded()) {
+            log("[deactivateSubscription] eSIM profile " + info.getSubscriptionId());
+            EuiccManager euiccManager = (EuiccManager)
+                    mContext.getSystemService(Context.EUICC_SERVICE);
+            euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                    PendingIntent.getService(mContext, 0, new Intent(), 0));
+        }
     }
 
     private void log(String msg) {
