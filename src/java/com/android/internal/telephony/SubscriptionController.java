@@ -2099,30 +2099,25 @@ public class SubscriptionController extends ISub.Stub {
         }
         if (DBG) logdl("[setDefaultVoiceSubId] subId=" + subId);
 
-        int previousSetting = Settings.Global.getInt(mContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
-                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
         int previousDefaultSub = getDefaultSubId();
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
         broadcastDefaultVoiceSubIdChanged(subId);
 
-        if (previousSetting != subId) {
-            PhoneAccountHandle newHandle =
-                    subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
-                            ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(
-                            subId);
+        PhoneAccountHandle newHandle =
+                subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                        ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(
+                        subId);
 
-            TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
-            PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
+        TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
+        PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
 
-            if (!Objects.equals(currentHandle, newHandle)) {
-                telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
-                logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
-            } else {
-                logd("[setDefaultVoiceSubId] default phone account not changed");
-            }
+        if (!Objects.equals(currentHandle, newHandle)) {
+            telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
+            logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
+        } else {
+            logd("[setDefaultVoiceSubId] default phone account not changed");
         }
 
         if (previousDefaultSub != getDefaultSubId()) {
