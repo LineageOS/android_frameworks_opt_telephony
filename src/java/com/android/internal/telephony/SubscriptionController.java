@@ -3682,6 +3682,8 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    // TODO: This method should belong to Telephony manager like other data enabled settings and
+    // override APIs. Remove this once TelephonyManager API is added.
     @Override
     public boolean setAlwaysAllowMmsData(int subId, boolean alwaysAllow) {
         if (DBG) logd("[setAlwaysAllowMmsData]+ alwaysAllow:" + alwaysAllow + " subId:" + subId);
@@ -3692,11 +3694,9 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
-            DataEnabledOverride dataEnabledOverride =
-                    new DataEnabledOverride(getDataEnabledOverrideRules(subId));
-            dataEnabledOverride.setAlwaysAllowMms(alwaysAllow);
-
-            return setDataEnabledOverrideRules(subId, dataEnabledOverride.getRules());
+            Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+            if (phone == null) return false;
+            return phone.getDataEnabledSettings().setAlwaysAllowMmsData(alwaysAllow);
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -3738,5 +3738,28 @@ public class SubscriptionController extends ISub.Stub {
     public String getDataEnabledOverrideRules(int subId) {
         return TextUtils.emptyIfNull(getSubscriptionProperty(subId,
                 SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES));
+    }
+
+    /**
+     * Get active data subscription id.
+     *
+     * @return Active data subscription id
+     *
+     * @hide
+     */
+    @Override
+    public int getActiveDataSubscriptionId() {
+        enforceReadPrivilegedPhoneState("getActiveDataSubscriptionId");
+        final long token = Binder.clearCallingIdentity();
+
+        try {
+            int subId = PhoneSwitcher.getInstance().getActiveDataSubId();
+            if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
+                subId = getDefaultDataSubId();
+            }
+            return subId;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 }

@@ -974,7 +974,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     uusInfo, result);
             return;
         }
-
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_DIAL, result,
@@ -1033,7 +1032,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy14.emergencyDial(rr.mSerial, dialInfo,
                         emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
-                        (ArrayList) emergencyNumberInfo.getEmergencyUrns(),
+                        emergencyNumberInfo.getEmergencyUrns() != null
+                                ? new ArrayList(emergencyNumberInfo.getEmergencyUrns())
+                                : new ArrayList<>(),
                         emergencyNumberInfo.getEmergencyCallRouting(),
                         hasKnownUserIntentEmergency,
                         emergencyNumberInfo.getEmergencyNumberSourceBitmask()
