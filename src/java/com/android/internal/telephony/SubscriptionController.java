@@ -77,6 +77,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -114,6 +115,7 @@ public class SubscriptionController extends ISub.Stub {
 
     /* Similar to mCacheActiveSubInfoList but only caching opportunistic subscriptions. */
     private List<SubscriptionInfo> mCacheOpportunisticSubInfoList = new ArrayList<>();
+    private AtomicBoolean mOpptSubInfoListChangedDirtyBit = new AtomicBoolean();
 
     private static final Comparator<SubscriptionInfo> SUBSCRIPTION_INFO_COMPARATOR =
             (arg0, arg1) -> {
@@ -302,6 +304,10 @@ public class SubscriptionController extends ISub.Stub {
         List<SubscriptionInfo> subInfos;
         synchronized (mSubInfoListLock) {
             subInfos = new ArrayList<>(mCacheActiveSubInfoList);
+        }
+
+        if (mOpptSubInfoListChangedDirtyBit.getAndSet(false)) {
+            notifyOpportunisticSubscriptionInfoChanged();
         }
         metrics.updateActiveSubscriptionInfoList(subInfos);
     }
@@ -717,7 +723,7 @@ public class SubscriptionController extends ISub.Stub {
             }
 
             // Refresh cached opportunistic sub list and detect whether it's changed.
-            opptSubListChanged = refreshCachedOpportunisticSubscriptionInfoList();
+            refreshCachedOpportunisticSubscriptionInfoList();
 
             if (DBG_CACHE) {
                 if (!mCacheActiveSubInfoList.isEmpty()) {
@@ -729,11 +735,6 @@ public class SubscriptionController extends ISub.Stub {
                     logdl("[refreshCachedActiveSubscriptionInfoList]- no info return");
                 }
             }
-        }
-
-        // Send notification outside synchronization.
-        if (opptSubListChanged) {
-            notifyOpportunisticSubscriptionInfoChanged();
         }
     }
 
@@ -2146,30 +2147,25 @@ public class SubscriptionController extends ISub.Stub {
         }
         if (DBG) logdl("[setDefaultVoiceSubId] subId=" + subId);
 
-        int previousSetting = Settings.Global.getInt(mContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
-                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
         int previousDefaultSub = getDefaultSubId();
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
         broadcastDefaultVoiceSubIdChanged(subId);
 
-        if (previousSetting != subId) {
-            PhoneAccountHandle newHandle =
-                    subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
-                            ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(
-                            subId);
+        PhoneAccountHandle newHandle =
+                subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                        ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(
+                        subId);
 
-            TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
-            PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
+        TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
+        PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
 
-            if (!Objects.equals(currentHandle, newHandle)) {
-                telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
-                logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
-            } else {
-                logd("[setDefaultVoiceSubId] default phone account not changed");
-            }
+        if (!Objects.equals(currentHandle, newHandle)) {
+            telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
+            logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
+        } else {
+            logd("[setDefaultVoiceSubId] default phone account not changed");
         }
 
         if (previousDefaultSub != getDefaultSubId()) {
@@ -3614,7 +3610,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private boolean refreshCachedOpportunisticSubscriptionInfoList() {
+    private void refreshCachedOpportunisticSubscriptionInfoList() {
         synchronized (mSubInfoListLock) {
             List<SubscriptionInfo> oldOpptCachedList = mCacheOpportunisticSubInfoList;
 
@@ -3634,13 +3630,6 @@ public class SubscriptionController extends ISub.Stub {
             for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
                 if (shouldDisableSubGroup(info.getGroupUuid())) {
                     info.setGroupDisabled(true);
-                    // TODO: move it to ONS.
-                    if (isActiveSubId(info.getSubscriptionId()) && isSubInfoReady()) {
-                        logd("[refreshCachedOpportunisticSubscriptionInfoList] "
-                                + "Deactivating grouped opportunistic subscription "
-                                + info.getSubscriptionId());
-                        deactivateSubscription(info);
-                    }
                 }
             }
 
@@ -3655,7 +3644,9 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
-            return !oldOpptCachedList.equals(mCacheOpportunisticSubInfoList);
+            if (!oldOpptCachedList.equals(mCacheOpportunisticSubInfoList)) {
+                mOpptSubInfoListChangedDirtyBit.set(true);
+            }
         }
     }
 
@@ -3669,17 +3660,6 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         return true;
-    }
-
-    private void deactivateSubscription(SubscriptionInfo info) {
-        // TODO: b/120439488 deactivate pSIM.
-        if (info.isEmbedded()) {
-            logd("[deactivateSubscription] eSIM profile " + info.getSubscriptionId());
-            EuiccManager euiccManager = (EuiccManager)
-                    mContext.getSystemService(Context.EUICC_SERVICE);
-            euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
-                    PendingIntent.getService(mContext, 0, new Intent(), 0));
-        }
     }
 
     // TODO: This method should belong to Telephony manager like other data enabled settings and
