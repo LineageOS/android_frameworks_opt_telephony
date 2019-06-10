@@ -127,7 +127,7 @@ public class ConnectionTest extends TelephonyTest {
         assertNull(connection1.getEmergencyNumberInfo());
         assertFalse(connection1.hasKnownUserIntentEmergency());
 
-        connection2.setEmergencyCallInfo();
+        connection2.setEmergencyCallInfo(mPhone.getCallTracker());
         connection2.setHasKnownUserIntentEmergency(true);
         connection1.migrateFrom(connection2);
 
@@ -141,7 +141,7 @@ public class ConnectionTest extends TelephonyTest {
     @Test
     public void testEmergencyCallParameters() {
         Connection connection = new TestConnection(TEST_PHONE_TYPE);
-        connection.setEmergencyCallInfo();
+        connection.setEmergencyCallInfo(mPhone.getCallTracker());
         assertTrue(connection.isEmergencyCall());
         assertEquals(getTestEmergencyNumber(), connection.getEmergencyNumberInfo());
         connection.setHasKnownUserIntentEmergency(true);
