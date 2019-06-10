@@ -3693,7 +3693,6 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int getActiveDataSubscriptionId() {
-        enforceReadPrivilegedPhoneState("getActiveDataSubscriptionId");
         final long token = Binder.clearCallingIdentity();
 
         try {
