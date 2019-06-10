@@ -1748,6 +1748,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     }
 
     @UnsupportedAppUsage
+    @Override
     public GsmCdmaPhone getPhone() {
         return mPhone;
     }

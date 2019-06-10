@@ -630,4 +630,20 @@ public class UiccProfileTest extends TelephonyTest {
         }
         assertTrue(carrierFound);
     }
+
+    @Test
+    @SmallTest
+    public void testIsEmptyProfile() {
+        testUpdateUiccProfileApplication();
+        assertFalse(mUiccProfile.isEmptyProfile());
+
+        // Manually resetting app shouldn't indicate we are on empty profile.
+        mUiccProfile.resetAppWithAid("", true);
+        assertFalse(mUiccProfile.isEmptyProfile());
+
+        // If we update there's no application, then we are on empty profile.
+        testUpdateUiccProfileApplicationNoApplication();
+        assertTrue(mUiccProfile.isEmptyProfile());
+
+    }
 }
