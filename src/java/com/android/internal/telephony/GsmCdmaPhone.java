@@ -3782,7 +3782,11 @@ public class GsmCdmaPhone extends Phone {
         if (subInfo == null) {
             return null;
         }
-        return subInfo.getCountryIso().toUpperCase();
+        final String country = subInfo.getCountryIso();
+        if (country == null) {
+            return null;
+        }
+        return country.toUpperCase();
     }
 
     public void notifyEcbmTimerReset(Boolean flag) {
