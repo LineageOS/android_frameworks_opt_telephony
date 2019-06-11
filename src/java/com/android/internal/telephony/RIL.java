@@ -5231,6 +5231,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "GET_CURRENT_CALLS";
             case RIL_REQUEST_DIAL:
                 return "DIAL";
+            case RIL_REQUEST_EMERGENCY_DIAL:
+                return "EMERGENCY_DIAL";
             case RIL_REQUEST_GET_IMSI:
                 return "GET_IMSI";
             case RIL_REQUEST_HANGUP:
