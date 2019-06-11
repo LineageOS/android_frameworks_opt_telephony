@@ -2628,7 +2628,7 @@ public class ServiceStateTracker extends Handler {
                 final boolean forceDisplayNoService = mPhone.getContext().getResources().getBoolean(
                         com.android.internal.R.bool.config_display_no_service_when_sim_unready)
                         && !mIsSimReady;
-                if (mEmergencyOnly && !forceDisplayNoService) {
+                if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
                     // No service but emergency call allowed
                     plmn = Resources.getSystem().
                             getText(com.android.internal.R.string.emergency_calls_only).toString();
