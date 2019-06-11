@@ -4766,6 +4766,8 @@ public class ServiceStateTracker extends Handler {
     public void requestAllCellInfo(WorkSource workSource, Message rspMsg) {
         if (VDBG) log("SST.requestAllCellInfo(): E");
         if (mCi.getRilVersion() < 8) {
+            AsyncResult.forMessage(rspMsg);
+            rspMsg.sendToTarget();
             if (DBG) log("SST.requestAllCellInfo(): not implemented");
             return;
         }
