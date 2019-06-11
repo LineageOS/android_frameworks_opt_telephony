@@ -349,7 +349,7 @@ public class DataEnabledOverride {
 
         if (phone != null) {
             // Check if the device is on voice call
-            if (phone.getCallTracker().getState() != PhoneConstants.State.IDLE) {
+            if (phone.getState() != PhoneConstants.State.IDLE) {
                 conditions |= OverrideConditions.CONDITION_IN_VOICE_CALL;
             }
 
