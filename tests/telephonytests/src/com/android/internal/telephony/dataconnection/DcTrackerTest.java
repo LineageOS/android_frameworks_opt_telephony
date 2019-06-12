@@ -967,10 +967,10 @@ public class DcTrackerTest extends TelephonyTest {
 
         verifyDataConnected(FAKE_APN1);
 
-        assertTrue(mDct.getAutoAttachEnabled());
+        assertTrue(mDct.shouldAutoAttach());
         mDct.update();
         // The auto attach flag should be reset after update
-        assertFalse(mDct.getAutoAttachEnabled());
+        assertFalse(mDct.shouldAutoAttach());
 
         verify(mSST, times(1)).registerForDataConnectionDetached(
                 eq(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), eq(mDct),
