@@ -408,13 +408,17 @@ public class DataEnabledSettings {
     }
 
     public synchronized boolean isDataEnabled(int apnType) {
-        boolean userDataEnabled = isUserDataEnabled();
-        // Check if we should temporarily enable data in certain conditions.
-        boolean isDataEnabledOverridden = mDataEnabledOverride
-                .shouldOverrideDataEnabledSettings(mPhone, apnType);
+        if (isProvisioning()) {
+            return isProvisioningDataEnabled();
+        } else {
+            boolean userDataEnabled = isUserDataEnabled();
+            // Check if we should temporarily enable data in certain conditions.
+            boolean isDataEnabledOverridden = mDataEnabledOverride
+                    .shouldOverrideDataEnabledSettings(mPhone, apnType);
 
-        return (mInternalDataEnabled && mPolicyDataEnabled && mCarrierDataEnabled
-                && (userDataEnabled || isDataEnabledOverridden));
+            return (mInternalDataEnabled && mPolicyDataEnabled && mCarrierDataEnabled
+                    && (userDataEnabled || isDataEnabledOverridden));
+        }
     }
 
     private void log(String s) {
