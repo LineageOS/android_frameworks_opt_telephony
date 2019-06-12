@@ -2383,8 +2383,7 @@ public class DcTracker extends Handler {
                     return;
                 case CONNECTED:
                     if (DBG) log("onEnableApn: 'CONNECTED' so return");
-                    apnContext.requestLog("onEnableApn state=CONNECTED, so return");
-
+                    // Don't add to local log since this is so common
                     sendRequestNetworkCompleteMsg(onCompleteMsg, true, mTransportType,
                             requestType, DataFailCause.NONE);
                     return;
