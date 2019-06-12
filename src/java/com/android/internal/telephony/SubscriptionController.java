@@ -3696,11 +3696,16 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            int subId = PhoneSwitcher.getInstance().getActiveDataSubId();
-            if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
-                subId = getDefaultDataSubId();
+            PhoneSwitcher phoneSwitcher = PhoneSwitcher.getInstance();
+            if (phoneSwitcher != null) {
+                int activeDataSubId = phoneSwitcher.getActiveDataSubId();
+                if (SubscriptionManager.isUsableSubscriptionId(activeDataSubId)) {
+                    return activeDataSubId;
+                }
             }
-            return subId;
+            // If phone switcher isn't ready, or active data sub id is not available, use default
+            // sub id from settings.
+            return getDefaultDataSubId();
         } finally {
             Binder.restoreCallingIdentity(token);
         }
