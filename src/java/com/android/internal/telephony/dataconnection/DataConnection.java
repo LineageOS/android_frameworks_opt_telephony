@@ -47,6 +47,7 @@ import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -154,6 +155,9 @@ public class DataConnection extends StateMachine {
     // The score we report to connectivity service
     private int mScore;
 
+    // The subscription id associated with this data connection.
+    private int mSubId;
+
     // The data connection controller
     private DcController mDcController;
 
@@ -182,16 +186,18 @@ public class DataConnection extends StateMachine {
         final int mConnectionGeneration;
         @RequestNetworkType
         final int mRequestType;
+        final int mSubId;
 
         ConnectionParams(ApnContext apnContext, int profileId, int rilRadioTechnology,
                          Message onCompletedMsg, int connectionGeneration,
-                         @RequestNetworkType int requestType) {
+                         @RequestNetworkType int requestType, int subId) {
             mApnContext = apnContext;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
             mOnCompletedMsg = onCompletedMsg;
             mConnectionGeneration = connectionGeneration;
             mRequestType = requestType;
+            mSubId = subId;
         }
 
         @Override
@@ -201,6 +207,7 @@ public class DataConnection extends StateMachine {
                     + " mRat=" + mRilRat
                     + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg)
                     + " mRequestType=" + DcTracker.requestTypeToString(mRequestType)
+                    + " mSubId=" + mSubId
                     + "}";
         }
     }
@@ -872,6 +879,7 @@ public class DataConnection extends StateMachine {
         mRestrictedNetworkOverride = false;
         mDcFailCause = DataFailCause.NONE;
         mDisabledApnTypeBitMask = 0;
+        mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
     /**
@@ -1253,7 +1261,7 @@ public class DataConnection extends StateMachine {
         result.setLinkUpstreamBandwidthKbps(up);
         result.setLinkDownstreamBandwidthKbps(down);
 
-        result.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(mPhone.getSubId())));
+        result.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(mSubId)));
 
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
                 !mPhone.getServiceState().getDataRoaming());
@@ -1721,6 +1729,10 @@ public class DataConnection extends StateMachine {
                         notifyConnectCompleted(cp, cause, false);
                         transitionTo(mInactiveState);
                         return HANDLED;
+                    }
+
+                    if (mSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        mSubId = cp.mSubId;
                     }
 
                     transitionTo(mActivatingState);
@@ -2413,16 +2425,17 @@ public class DataConnection extends StateMachine {
      * @param connectionGeneration used to track a single connection request so disconnects can get
      *                             ignored if obsolete.
      * @param requestType Data request type
+     * @param subId the subscription id associated with this data connection.
      */
     public void bringUp(ApnContext apnContext, int profileId, int rilRadioTechnology,
                         Message onCompletedMsg, int connectionGeneration,
-                        @RequestNetworkType int requestType) {
+                        @RequestNetworkType int requestType, int subId) {
         if (DBG) {
             log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_CONNECT,
                 new ConnectionParams(apnContext, profileId, rilRadioTechnology, onCompletedMsg,
-                        connectionGeneration, requestType));
+                        connectionGeneration, requestType, subId));
     }
 
     /**
@@ -2770,6 +2783,7 @@ public class DataConnection extends StateMachine {
         pw.println("mDisconnectParams=" + mDisconnectParams);
         pw.println("mDcFailCause=" + mDcFailCause);
         pw.println("mPhone=" + mPhone);
+        pw.println("mSubId=" + mSubId);
         pw.println("mLinkProperties=" + mLinkProperties);
         pw.flush();
         pw.println("mDataRegState=" + mDataRegState);
