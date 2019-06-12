@@ -4009,6 +4009,29 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Check if the device can only make the emergency call. The device is emergency call only if
+     * none of the phone is in service, and one of them has the capability to make the emergency
+     * call.
+     *
+     * @return {@code True} if the device is emergency call only, otherwise return {@code False}.
+     */
+    public static boolean isEmergencyCallOnly() {
+        boolean isEmergencyCallOnly = false;
+        for (Phone phone : PhoneFactory.getPhones()) {
+            if (phone != null) {
+                ServiceState ss = phone.getServiceStateTracker().getServiceState();
+                // One of the phone is in service, hence the device is not emergency call only.
+                if (ss.getState() == ServiceState.STATE_IN_SERVICE
+                        || ss.getDataRegState() == ServiceState.STATE_IN_SERVICE) {
+                    return false;
+                }
+                isEmergencyCallOnly |= ss.isEmergencyOnly();
+            }
+        }
+        return isEmergencyCallOnly;
+    }
+
+    /**
      * Get data connection tracker based on the transport type
      *
      * @param transportType Transport type defined in AccessNetworkConstants.TransportType
