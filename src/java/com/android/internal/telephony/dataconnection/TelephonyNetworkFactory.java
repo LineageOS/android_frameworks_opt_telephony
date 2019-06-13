@@ -228,13 +228,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     // apply or revoke requests if our active-ness changes
     private void onActivePhoneSwitch() {
-        // For non DDS phone, mAutoAttachOnCreation should be true because it may be detached
-        // automatically from network only because it's idle for too long. In this case, we should
-        // try setting up data call even if it's not attached. And doing so will trigger PS attach
-        // if possible.
-        mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .updateAutoAttachOnCreation();
-
         for (HashMap.Entry<NetworkRequest, Integer> entry : mNetworkRequests.entrySet()) {
             NetworkRequest networkRequest = entry.getKey();
             boolean applied = entry.getValue() != AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
