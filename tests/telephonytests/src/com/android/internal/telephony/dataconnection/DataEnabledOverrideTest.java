@@ -68,12 +68,12 @@ public class DataEnabledOverrideTest extends TelephonyTest {
         assertTrue(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_MMS));
 
-        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
 
         assertFalse(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_DEFAULT));
 
-        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
+        doReturn(PhoneConstants.State.OFFHOOK).when(mPhone).getState();
 
         assertTrue(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_DEFAULT));
@@ -98,12 +98,12 @@ public class DataEnabledOverrideTest extends TelephonyTest {
         assertTrue(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_MMS));
 
-        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
 
         assertFalse(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_DEFAULT));
 
-        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
+        doReturn(PhoneConstants.State.OFFHOOK).when(mPhone).getState();
 
         assertTrue(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_DEFAULT));
@@ -138,7 +138,7 @@ public class DataEnabledOverrideTest extends TelephonyTest {
     @SmallTest
     public void testAllApnTypesInRule() throws Exception {
         DataEnabledOverride dataEnabledOverride = new DataEnabledOverride("*=inVoiceCall");
-        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
+        doReturn(PhoneConstants.State.OFFHOOK).when(mPhone).getState();
 
         assertTrue(dataEnabledOverride.shouldOverrideDataEnabledSettings(
                 mPhone, ApnSetting.TYPE_FOTA));
@@ -208,7 +208,8 @@ public class DataEnabledOverrideTest extends TelephonyTest {
         assertTrue(deo.isDataAllowedInVoiceCall());
         doReturn(1).when(mPhone).getSubId();
         doReturn(2).when(mSubscriptionController).getDefaultSmsSubId();
-        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
+
+        doReturn(PhoneConstants.State.OFFHOOK).when(mPhone).getState();
         assertTrue(deo.getRules(), deo.shouldOverrideDataEnabledSettings(mPhone,
                 ApnSetting.TYPE_DEFAULT));
         deo.setDataAllowedInVoiceCall(false);
