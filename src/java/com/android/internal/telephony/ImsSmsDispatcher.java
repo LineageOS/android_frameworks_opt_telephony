@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ImsSmsDispatcher extends SMSDispatcher {
 
-    private static final String TAG = "ImsSmsDispacher";
+    private static final String TAG = "ImsSmsDispatcher";
 
     @VisibleForTesting
     public Map<Integer, SmsTracker> mTrackers = new ConcurrentHashMap<>();
