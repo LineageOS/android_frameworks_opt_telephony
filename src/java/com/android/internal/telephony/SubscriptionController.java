@@ -1559,10 +1559,14 @@ public class SubscriptionController extends ISub.Stub {
         final long identity = Binder.clearCallingIdentity();
         try {
             validateSubId(subId);
-            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+            List<SubscriptionInfo> allSubInfo = getSubInfo(null, null);
+            // if there is no sub in the db, return 0 since subId does not exist in db
+            if (allSubInfo == null || allSubInfo.isEmpty()) return 0;
+            for (SubscriptionInfo subInfo : allSubInfo) {
                 if (subInfo.getSubscriptionId() == subId
-                        && getNameSourcePriority(subInfo.getNameSource())
-                                > getNameSourcePriority(nameSource)) {
+                        && (getNameSourcePriority(subInfo.getNameSource())
+                                > getNameSourcePriority(nameSource)
+                        || (displayName != null && displayName.equals(subInfo.getDisplayName())))) {
                     return 0;
                 }
             }
