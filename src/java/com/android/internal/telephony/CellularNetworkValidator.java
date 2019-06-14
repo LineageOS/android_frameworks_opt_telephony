@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.telephony.SubscriptionManager;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 
@@ -58,8 +59,12 @@ public class CellularNetworkValidator {
     private ValidationCallback mValidationCallback;
     private Context mContext;
     private ConnectivityManager mConnectivityManager;
-    private Handler mHandler = new Handler();
-    private ConnectivityNetworkCallback mNetworkCallback;
+    @VisibleForTesting
+    public Handler mHandler = new Handler();
+    @VisibleForTesting
+    public ConnectivityNetworkCallback mNetworkCallback;
+    @VisibleForTesting
+    public Runnable mTimeoutCallback;
 
     /**
      * Callback to pass in when starting validation.
@@ -99,7 +104,8 @@ public class CellularNetworkValidator {
                 .validationBeforeSwitchSupported;
     }
 
-    private CellularNetworkValidator(Context context) {
+    @VisibleForTesting
+    public CellularNetworkValidator(Context context) {
         mContext = context;
         mConnectivityManager = (ConnectivityManager)
                 mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -136,8 +142,22 @@ public class CellularNetworkValidator {
 
         mNetworkCallback = new ConnectivityNetworkCallback(subId);
 
-        mConnectivityManager.requestNetwork(
-                mNetworkRequest, mNetworkCallback, mHandler, mTimeoutInMs);
+        mConnectivityManager.requestNetwork(mNetworkRequest, mNetworkCallback, mHandler);
+
+        mTimeoutCallback = () -> {
+            logd("timeout on subId " + subId + " validation.");
+            reportValidationResult(false, subId);
+        };
+
+        mHandler.postDelayed(mTimeoutCallback, mTimeoutInMs);
+    }
+
+    private void removeTimeoutCallback() {
+        // Remove timeout callback.
+        if (mTimeoutCallback != null) {
+            mHandler.removeCallbacks(mTimeoutCallback);
+            mTimeoutCallback = null;
+        }
     }
 
     /**
@@ -150,6 +170,8 @@ public class CellularNetworkValidator {
             mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
             mState = STATE_IDLE;
         }
+
+        removeTimeoutCallback();
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
@@ -179,6 +201,8 @@ public class CellularNetworkValidator {
         // If the validation result is not for current subId, do nothing.
         if (mSubId != subId) return;
 
+        removeTimeoutCallback();
+
         // Deal with the result only when state is still VALIDATING. This is to avoid
         // receiving multiple callbacks in queue.
         if (mState == STATE_VALIDATING) {
@@ -198,7 +222,8 @@ public class CellularNetworkValidator {
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
-    class ConnectivityNetworkCallback extends ConnectivityManager.NetworkCallback {
+    @VisibleForTesting
+    public class ConnectivityNetworkCallback extends ConnectivityManager.NetworkCallback {
         private final int mSubId;
 
         ConnectivityNetworkCallback(int subId) {
