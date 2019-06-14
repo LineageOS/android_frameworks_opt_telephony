@@ -916,10 +916,12 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
+        final boolean isWapPush = (destPort == SmsHeader.PORT_WAP_PUSH);
+
         // At this point, all parts of the SMS are received. Update metrics for incoming SMS.
         // WAP-PUSH messages are handled below to also keep track of the result of the processing.
         String format = (!tracker.is3gpp2() ? SmsConstants.FORMAT_3GPP : SmsConstants.FORMAT_3GPP2);
-        if (destPort != SmsHeader.PORT_WAP_PUSH) {
+        if (!isWapPush) {
             mMetrics.writeIncomingSmsSession(mPhone.getPhoneId(), mLastSmsWasInjected,
                     format, timestamps, block);
         }
@@ -934,30 +936,36 @@ public abstract class InboundSmsHandler extends StateMachine {
             return false;
         }
 
-        SmsBroadcastReceiver resultReceiver = new SmsBroadcastReceiver(tracker);
-
-        if (!mUserManager.isUserUnlocked()) {
-            return processMessagePartWithUserLocked(tracker, pdus, destPort, resultReceiver);
-        }
-
-        if (destPort == SmsHeader.PORT_WAP_PUSH) {
-            // Build up the data stream
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        if (isWapPush) {
             for (byte[] pdu : pdus) {
                 // 3GPP needs to extract the User Data from the PDU; 3GPP2 has already done this
-                if (!tracker.is3gpp2()) {
+                if (format == SmsConstants.FORMAT_3GPP) {
                     SmsMessage msg = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
                     if (msg != null) {
                         pdu = msg.getUserData();
                     } else {
                         loge("processMessagePart: SmsMessage.createFromPdu returned null");
                         mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
-                                format, timestamps, false);
+                                SmsConstants.FORMAT_3GPP, timestamps, false);
                         return false;
                     }
                 }
                 output.write(pdu, 0, pdu.length);
             }
+        }
+
+        SmsBroadcastReceiver resultReceiver = new SmsBroadcastReceiver(tracker);
+
+        if (!mUserManager.isUserUnlocked()) {
+            return processMessagePartWithUserLocked(
+                    tracker,
+                    (isWapPush ? new byte[][] {output.toByteArray()} : pdus),
+                    destPort,
+                    resultReceiver);
+        }
+
+        if (isWapPush) {
             int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver,
                     this, address);
             if (DBG) log("dispatchWapPdu() returned " + result);
