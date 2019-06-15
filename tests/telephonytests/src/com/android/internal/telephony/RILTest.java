@@ -130,8 +130,11 @@ import android.telephony.CellInfoWcdma;
 import android.telephony.CellSignalStrengthCdma;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
+import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
@@ -148,7 +151,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -295,7 +297,6 @@ public class RILTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(RILTest.class.getSimpleName());
-        MockitoAnnotations.initMocks(this);
         mTestHandler = new RILTestHandler(getClass().getSimpleName());
         mTestHandler.start();
         waitUntilReady();
@@ -1894,6 +1895,35 @@ public class RILTest extends TelephonyTest {
         assertEquals(ROAMING_PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
         assertEquals(BEARER_BITMASK, dpi.bearerBitmap);
         assertEquals(MTU, dpi.mtu);
+    }
+
+    @Test
+    public void testFixupSignalStrength10() {
+        final int gsmWcdmaRssiDbm = -65;
+
+        // Test the positive case where rat=UMTS and SignalStrength=GSM
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS)
+                .when(mServiceState).getRilVoiceRadioTechnology();
+
+        SignalStrength gsmSignalStrength = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(gsmWcdmaRssiDbm, 1, CellInfo.UNAVAILABLE),
+                new CellSignalStrengthWcdma(), new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(), new CellSignalStrengthNr());
+        SignalStrength result = mRILUnderTest.fixupSignalStrength10(gsmSignalStrength);
+
+        assertTrue(result.getCellSignalStrengths(CellSignalStrengthGsm.class).isEmpty());
+        assertFalse(result.getCellSignalStrengths(CellSignalStrengthWcdma.class).isEmpty());
+
+        // Even though the dBm values are equal, the above checks ensure that the value has
+        // been migrated to WCDMA (with no change in the top-level getDbm() result).
+        assertEquals(result.getDbm(), gsmSignalStrength.getDbm());
+
+        // Test the no-op case where rat=GSM and SignalStrength=GSM
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_GSM)
+                .when(mServiceState).getRilVoiceRadioTechnology();
+        result = mRILUnderTest.fixupSignalStrength10(gsmSignalStrength);
+        assertEquals(result, gsmSignalStrength);
     }
 
     @Test

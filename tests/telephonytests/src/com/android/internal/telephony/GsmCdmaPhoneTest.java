@@ -169,6 +169,89 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testGetMergedServiceState() throws Exception {
+        ServiceState imsServiceState = new ServiceState();
+
+        NetworkRegistrationInfo imsCsWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+
+        NetworkRegistrationInfo imsPsWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+
+        NetworkRegistrationInfo imsPsWlanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+
+        imsServiceState.addNetworkRegistrationInfo(imsCsWwanRegInfo);
+        imsServiceState.addNetworkRegistrationInfo(imsPsWwanRegInfo);
+        imsServiceState.addNetworkRegistrationInfo(imsPsWlanRegInfo);
+
+        imsServiceState.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        imsServiceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        imsServiceState.setIwlanPreferred(true);
+        doReturn(imsServiceState).when(mImsPhone).getServiceState();
+
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        ServiceState serviceState = new ServiceState();
+
+        NetworkRegistrationInfo csWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                .build();
+
+        NetworkRegistrationInfo psWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                .build();
+
+        NetworkRegistrationInfo psWlanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+
+        serviceState.addNetworkRegistrationInfo(csWwanRegInfo);
+        serviceState.addNetworkRegistrationInfo(psWwanRegInfo);
+        serviceState.addNetworkRegistrationInfo(psWlanRegInfo);
+        serviceState.setVoiceRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        serviceState.setIwlanPreferred(true);
+
+        mSST.mSS = serviceState;
+        mPhoneUT.mSST = mSST;
+
+        ServiceState mergedServiceState = mPhoneUT.getServiceState();
+
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getVoiceRegState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegState());
+        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, mergedServiceState.getDataNetworkType());
+    }
+
+    @Test
+    @SmallTest
     public void testGetSubscriberIdForGsmPhone() {
         final String subscriberId = "123456789";
         IccRecords iccRecords = Mockito.mock(IccRecords.class);
@@ -1002,3 +1085,4 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(msisdn, mPhoneUT.getLine1Number());
     }
 }
+
