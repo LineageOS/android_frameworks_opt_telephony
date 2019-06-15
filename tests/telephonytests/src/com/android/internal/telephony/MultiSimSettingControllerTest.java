@@ -177,14 +177,12 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
 
         // Mark subscription ready as false. The below sub info change should be ignored.
-        replaceInstance(SubscriptionInfoUpdater.class, "sIsSubInfoInitialized", null, false);
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
         waitABit();
         verify(mSubControllerMock, never()).setDefaultDataSubId(anyInt());
         verify(mSubControllerMock, never()).setDefaultVoiceSubId(anyInt());
         verify(mSubControllerMock, never()).setDefaultSmsSubId(anyInt());
 
-        replaceInstance(SubscriptionInfoUpdater.class, "sIsSubInfoInitialized", null, true);
         mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
         waitABit();
 
