@@ -17,6 +17,9 @@
 package com.android.internal.telephony.dataconnection;
 
 
+import static android.telephony.PhoneStateListener.LISTEN_CALL_STATE;
+import static android.telephony.PhoneStateListener.LISTEN_NONE;
+
 import android.annotation.IntDef;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -25,9 +28,11 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
+import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -60,7 +65,9 @@ public class DataEnabledSettings {
                     REASON_POLICY_DATA_ENABLED,
                     REASON_DATA_ENABLED_BY_CARRIER,
                     REASON_PROVISIONED_CHANGED,
-                    REASON_PROVISIONING_DATA_ENABLED_CHANGED
+                    REASON_PROVISIONING_DATA_ENABLED_CHANGED,
+                    REASON_OVERRIDE_RULE_CHANGED,
+                    REASON_OVERRIDE_CONDITION_CHANGED
             })
     public @interface DataEnabledChangedReason {}
 
@@ -77,6 +84,10 @@ public class DataEnabledSettings {
     public static final int REASON_PROVISIONED_CHANGED = 5;
 
     public static final int REASON_PROVISIONING_DATA_ENABLED_CHANGED = 6;
+
+    public static final int REASON_OVERRIDE_RULE_CHANGED = 7;
+
+    public static final int REASON_OVERRIDE_CONDITION_CHANGED = 8;
 
     /**
      * responds to the setInternalDataEnabled call - used internally to turn off data.
@@ -114,6 +125,8 @@ public class DataEnabledSettings {
 
     private DataEnabledOverride mDataEnabledOverride;
 
+    private TelephonyManager mTelephonyManager;
+
     // for msim, user data enabled setting depends on subId.
     private final SubscriptionManager.OnSubscriptionsChangedListener
             mOnSubscriptionsChangeListener =
@@ -126,12 +139,28 @@ public class DataEnabledSettings {
                                     + mPhone.getSubId());
                             mSubId = mPhone.getSubId();
                             mDataEnabledOverride = getDataEnabledOverride();
+                            updatePhoneStateListener();
                             updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
                             mPhone.notifyUserMobileDataStateChanged(isUserDataEnabled());
                         }
                     }
                 }
             };
+
+    private void updatePhoneStateListener() {
+        mTelephonyManager.listen(mPhoneStateListener, LISTEN_NONE);
+        if (SubscriptionManager.isUsableSubscriptionId(mSubId)) {
+            mTelephonyManager = mTelephonyManager.createForSubscriptionId(mSubId);
+        }
+        mTelephonyManager.listen(mPhoneStateListener, LISTEN_CALL_STATE);
+    }
+
+    private final PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
+        @Override
+        public void onCallStateChanged(@TelephonyManager.CallState int state, String phoneNumber) {
+            updateDataEnabledAndNotify(REASON_OVERRIDE_CONDITION_CHANGED);
+        }
+    };
 
     @Override
     public String toString() {
@@ -151,6 +180,8 @@ public class DataEnabledSettings {
         SubscriptionManager subscriptionManager = (SubscriptionManager) mPhone.getContext()
                 .getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         subscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangeListener);
+        mTelephonyManager = (TelephonyManager) mPhone.getContext()
+                .getSystemService(Context.TELEPHONY_SERVICE);
         mDataEnabledOverride = getDataEnabledOverride();
         updateDataEnabled();
     }
@@ -210,7 +241,7 @@ public class DataEnabledSettings {
         boolean changed = SubscriptionController.getInstance()
                 .setDataEnabledOverrideRules(mPhone.getSubId(), mDataEnabledOverride.getRules());
         if (changed) {
-            updateDataEnabled();
+            updateDataEnabledAndNotify(REASON_OVERRIDE_RULE_CHANGED);
             notifyDataEnabledOverrideChanged();
         }
 
@@ -231,7 +262,7 @@ public class DataEnabledSettings {
         boolean changed = SubscriptionController.getInstance()
                 .setDataEnabledOverrideRules(mPhone.getSubId(), mDataEnabledOverride.getRules());
         if (changed) {
-            updateDataEnabled();
+            updateDataEnabledAndNotify(REASON_OVERRIDE_RULE_CHANGED);
             notifyDataEnabledOverrideChanged();
         }
 
