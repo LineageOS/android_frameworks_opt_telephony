@@ -1129,7 +1129,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void writeSmsToRuim(int status, String pdu, Message response) {
+    public void writeSmsToRuim(int status, byte[] pdu, Message response) {
         Rlog.d(LOG_TAG, "Write SMS to RUIM with status " + status);
         unimplemented(response);
     }

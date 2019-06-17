@@ -1210,8 +1210,20 @@ public interface CommandsInterface {
     @UnsupportedAppUsage
     void writeSmsToSim(int status, String smsc, String pdu, Message response);
 
+    /**
+     * Writes an SMS message to RUIM memory (EF_SMS).
+     *
+     * @param status status of message on SIM. One of:
+     *                  SmsManger.STATUS_ON_ICC_READ
+     *                  SmsManger.STATUS_ON_ICC_UNREAD
+     *                  SmsManger.STATUS_ON_ICC_SENT
+     *                  SmsManger.STATUS_ON_ICC_UNSENT
+     * @param pdu message PDU, as byte array
+     * @param response sent when operation completes. response.obj will be an AsyncResult, and will
+     *     indicate any error that may have occurred (eg, out of memory).
+     */
     @UnsupportedAppUsage
-    void writeSmsToRuim(int status, String pdu, Message response);
+    void writeSmsToRuim(int status, byte[] pdu, Message response);
 
     @UnsupportedAppUsage
     void setRadioPower(boolean on, Message response);
