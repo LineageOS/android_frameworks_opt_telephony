@@ -865,7 +865,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void writeSmsToRuim(int status, String pdu, Message response) {
+    public void writeSmsToRuim(int status, byte[] pdu, Message response) {
 
     }
 
