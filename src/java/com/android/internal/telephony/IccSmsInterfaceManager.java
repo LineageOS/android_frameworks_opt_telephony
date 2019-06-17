@@ -287,8 +287,7 @@ public class IccSmsInterfaceManager {
                 mPhone.mCi.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
                         IccUtils.bytesToHexString(pdu), response);
             } else {
-                mPhone.mCi.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
-                        response);
+                mPhone.mCi.writeSmsToRuim(status, pdu, response);
             }
 
             try {
