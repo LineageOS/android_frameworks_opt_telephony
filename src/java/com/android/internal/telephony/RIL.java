@@ -3236,7 +3236,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void writeSmsToRuim(int status, String pdu, Message result) {
+    public void writeSmsToRuim(int status, byte[] pdu, Message result) {
         status = translateStatus(status);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
@@ -3251,7 +3251,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             CdmaSmsWriteArgs args = new CdmaSmsWriteArgs();
             args.status = status;
-            constructCdmaSendSmsRilRequest(args.message, pdu.getBytes());
+            constructCdmaSendSmsRilRequest(args.message, pdu);
 
             try {
                 radioProxy.writeSmsToRuim(rr.mSerial, args);
