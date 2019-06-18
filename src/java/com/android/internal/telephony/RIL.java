@@ -5925,7 +5925,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         List<CellSignalStrengthGsm> gsmList = signalStrength.getCellSignalStrengths(
                 CellSignalStrengthGsm.class);
         // If GSM is not the primary type, then bail out; no fixup needed.
-        if (gsmList == null || gsmList.get(0) == null || !gsmList.get(0).isValid()) {
+        if (gsmList.isEmpty() || !gsmList.get(0).isValid()) {
             return signalStrength;
         }
 
