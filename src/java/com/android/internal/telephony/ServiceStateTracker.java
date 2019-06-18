@@ -4203,7 +4203,7 @@ public class ServiceStateTracker extends Handler {
                 .setContentTitle(title)
                 .setStyle(new Notification.BigTextStyle().bigText(details))
                 .setContentText(details)
-                .setChannel(NotificationChannelController.CHANNEL_ID_ALERT)
+                .setChannelId(NotificationChannelController.CHANNEL_ID_ALERT)
                 .build();
 
         NotificationManager notificationManager = (NotificationManager)
