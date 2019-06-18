@@ -56,6 +56,7 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.IccRecords;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1550,8 +1551,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 sb.append(getErrorMessage(ar));
             }
         } else {
-            List<ImsSsInfo> infos = (List<ImsSsInfo>) ar.result;
-            if (infos.size() == 0) {
+            List<ImsSsInfo> infos = null;
+            try {
+                infos = (List<ImsSsInfo>) ar.result;
+            } catch (ClassCastException cce) {
+                // TODO in R: #157# still has ImsSsInfo[] type, fix the type in IImsUtListener.aidl.
+                infos = Arrays.asList((ImsSsInfo[]) ar.result);
+            }
+            if (infos == null || infos.size() == 0) {
                 sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
             } else {
                 ImsSsInfo info;
