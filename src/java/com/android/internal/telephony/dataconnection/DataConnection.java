@@ -1131,14 +1131,28 @@ public class DataConnection extends StateMachine {
      * @return True if this data connection should only be used for unmetered purposes.
      */
     private boolean isUnmeteredUseOnly() {
-        // The data connection can only be unmetered used only if all requests' reasons are
-        // unmetered.
+        // If this data connection is on IWLAN, then it's unmetered and can be used by everyone.
+        // Should not be for unmetered used only.
+        if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            return false;
+        }
+
+        // If data is enabled, this data connection can't be for unmetered used only because
+        // everyone should be able to use it.
+        if (mPhone.getDataEnabledSettings().isDataEnabled()) {
+            return false;
+        }
+
+        // If the device is roaming and data roaming it turned on, then this data connection can't
+        // be for unmetered use only.
+        if (mDct.getDataRoamingEnabled() && mPhone.getServiceState().getDataRoaming()) {
+            return false;
+        }
+
+        // The data connection can only be unmetered used only if all attached APN contexts
+        // attached to this data connection are unmetered.
         for (ApnContext apnContext : mApnContexts.keySet()) {
-            DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
-            boolean isDataAllowed = mDct.isDataAllowed(apnContext, DcTracker.REQUEST_TYPE_NORMAL,
-                    dataConnectionReasons);
-            if (!isDataAllowed || !dataConnectionReasons.contains(
-                    DataConnectionReasons.DataAllowedReasonType.UNMETERED_APN)) {
+            if (ApnSettingUtils.isMeteredApnType(apnContext.getApnTypeBitmask(), mPhone)) {
                 return false;
             }
         }
