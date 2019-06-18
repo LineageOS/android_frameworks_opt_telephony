@@ -1301,6 +1301,13 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
+    /**
+     * @return The active data subscription id
+     */
+    public int getActiveDataSubId() {
+        return mPreferredDataSubId;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         final IndentingPrintWriter pw = new IndentingPrintWriter(writer, "  ");
         pw.println("PhoneSwitcher:");
