@@ -3430,6 +3430,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     Connection newConnection =
                             mPhone.getDefaultPhone().dial(mLastDialString, mLastDialArgs);
                     oldConnection.onOriginalConnectionReplaced(newConnection);
+
+                    final ImsCall imsCall = mForegroundCall.getImsCall();
+                    final ImsCallProfile callProfile = imsCall.getCallProfile();
+                    /* update EXTRA_EMERGENCY_CALL for clients to infer
+                       from this extra that the call is emergency call */
+                    callProfile.setCallExtraBoolean(
+                            ImsCallProfile.EXTRA_EMERGENCY_CALL, true);
+                    ImsPhoneConnection conn = findConnection(imsCall);
+                    conn.updateExtras(imsCall);
                 } catch (CallStateException e) {
                     sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
                 }
