@@ -450,7 +450,7 @@ public class CarrierServiceStateTracker extends Handler {
                     .setContentTitle(title)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setContentText(details)
-                    .setChannel(NotificationChannelController.CHANNEL_ID_ALERT)
+                    .setChannelId(NotificationChannelController.CHANNEL_ID_ALERT)
                     .setContentIntent(settingsIntent);
         }
     }
@@ -525,7 +525,7 @@ public class CarrierServiceStateTracker extends Handler {
                     .setContentTitle(title)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setContentText(details)
-                    .setChannel(NotificationChannelController.CHANNEL_ID_WFC);
+                    .setChannelId(NotificationChannelController.CHANNEL_ID_WFC);
         }
     }
 }
