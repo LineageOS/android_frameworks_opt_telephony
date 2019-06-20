@@ -52,6 +52,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(0).when(mSubscriptionController).getPhoneId(eq(0));
         doReturn(1).when(mSubscriptionController).getPhoneId(eq(1));
         doReturn(2).when(mTelephonyManager).getPhoneCount();
+        doReturn(true).when(mSubscriptionController).isActiveSubId(0, TAG);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(1, TAG);
 
         mServiceManagerMockedServices.put("isub", mSubscriptionController);
         doReturn(mSubscriptionController).when(mSubscriptionController)
@@ -344,6 +346,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn("310260426283122").when(mSecondPhone).getSubscriberId();
         assertEquals("310260426283122", mPhoneSubInfoControllerUT
                 .getSubscriberIdForSubscriber(1, TAG));
+    }
+
+    @Test
+    @SmallTest
+    public void testGetSubscriberIdWithInactiveSubId() {
+        //IMSI
+        assertNull(mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(2, TAG));
     }
 
     @Test

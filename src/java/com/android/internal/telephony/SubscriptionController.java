@@ -1823,6 +1823,56 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Set IMSI by subscription ID
+     * @param imsi IMSI (International Mobile Subscriber Identity)
+     * @return the number of records updated
+     */
+    public int setImsi(String imsi, int subId) {
+        if (DBG) logd("[setImsi]+ imsi:" + imsi + " subId:" + subId);
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.IMSI, imsi);
+
+        int result = mContext.getContentResolver().update(
+                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        notifySubscriptionInfoChanged();
+
+        return result;
+    }
+
+    /**
+     * Get IMSI by subscription ID
+     * For active subIds, this will always return the corresponding imsi
+     * For inactive subIds, once they are activated once, even if they are deactivated at the time
+     *   of calling this function, the corresponding imsi will be returned
+     * When calling this method, the permission check should have already been done to allow
+     *   only privileged read
+     *
+     * @return imsi
+     */
+    public String getImsiPrivileged(int subId) {
+        try (Cursor cursor = mContext.getContentResolver().query(
+                SubscriptionManager.CONTENT_URI, null,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=?",
+                new String[] {String.valueOf(subId)}, null)) {
+            String imsi = null;
+            if (cursor != null) {
+                if (cursor.moveToNext()) {
+                    imsi = getOptionalStringFromCursor(cursor, SubscriptionManager.IMSI,
+                            /*defaultVal*/ null);
+                }
+            } else {
+                logd("getImsiPrivileged: failed to retrieve imsi.");
+            }
+
+            return imsi;
+        }
+    }
+
+    /**
      * Set ISO country code by subscription ID
      * @param iso iso country code associated with the subscription
      * @param subId the unique SubInfoRecord index in database
@@ -2917,7 +2967,6 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     *
      * @param groupUuid a UUID assigned to the subscription group.
      * @param callingPackage the package making the IPC.
      * @return if callingPackage has carrier privilege on sublist.
