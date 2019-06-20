@@ -3756,7 +3756,7 @@ public class GsmCdmaPhone extends Phone {
         int subId = getSubId();
         SubscriptionInfo subInfo = SubscriptionManager.from(getContext())
                 .getActiveSubscriptionInfo(subId);
-        if (subInfo == null) {
+        if (subInfo == null || TextUtils.isEmpty(subInfo.getCountryIso())) {
             return null;
         }
         return subInfo.getCountryIso().toUpperCase();
