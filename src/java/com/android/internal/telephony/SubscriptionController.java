@@ -151,6 +151,18 @@ public class SubscriptionController extends ISub.Stub {
     private int[] colorArr;
     private long mLastISubServiceRegTime;
 
+    // The properties that should be shared and synced across grouped subscriptions.
+    private static final Set<String> GROUP_SHARING_PROPERTIES = new HashSet<>(Arrays.asList(
+            SubscriptionManager.ENHANCED_4G_MODE_ENABLED,
+            SubscriptionManager.VT_IMS_ENABLED,
+            SubscriptionManager.WFC_IMS_ENABLED,
+            SubscriptionManager.WFC_IMS_MODE,
+            SubscriptionManager.WFC_IMS_ROAMING_MODE,
+            SubscriptionManager.WFC_IMS_ROAMING_ENABLED,
+            SubscriptionManager.DATA_ROAMING,
+            SubscriptionManager.DISPLAY_NAME,
+            SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES));
+
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
@@ -1598,8 +1610,7 @@ public class SubscriptionController extends ISub.Stub {
                             mContext, 0 /* requestCode */, new Intent(), 0 /* flags */));
             }
 
-            int result = mContext.getContentResolver().update(
-                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+            int result = updateDatabase(value, subId, true);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1713,7 +1724,7 @@ public class SubscriptionController extends ISub.Stub {
             value.put(SubscriptionManager.DATA_ROAMING, roaming);
             if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
 
-            int result = databaseUpdateHelper(value, subId, true);
+            int result = updateDatabase(value, subId, true);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
@@ -1726,18 +1737,54 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-
     public void syncGroupedSetting(int refSubId) {
-        // Currently it only syncs allow MMS. Sync other settings as well if needed.
-        String dataEnabledOverrideRules = getSubscriptionProperty(
-                refSubId, SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES);
+        logd("syncGroupedSetting");
+        try (Cursor cursor = mContext.getContentResolver().query(
+                SubscriptionManager.CONTENT_URI, null,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=?",
+                new String[] {String.valueOf(refSubId)}, null)) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                logd("[syncGroupedSetting] failed. Can't find refSubId " + refSubId);
+                return;
+            }
 
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES, dataEnabledOverrideRules);
-        databaseUpdateHelper(value, refSubId, true);
+            ContentValues values = new ContentValues(GROUP_SHARING_PROPERTIES.size());
+            for (String propKey : GROUP_SHARING_PROPERTIES) {
+                copyDataFromCursorToContentValue(propKey, cursor, values);
+            }
+            updateDatabase(values, refSubId, true);
+        }
     }
 
-    private int databaseUpdateHelper(ContentValues value, int subId, boolean updateEntireGroup) {
+    private void copyDataFromCursorToContentValue(String propKey, Cursor cursor,
+            ContentValues values) {
+        int columnIndex = cursor.getColumnIndex(propKey);
+        if (columnIndex == -1) {
+            logd("[copyDataFromCursorToContentValue] can't find column " + propKey);
+            return;
+        }
+
+        switch (propKey) {
+            case SubscriptionManager.ENHANCED_4G_MODE_ENABLED:
+            case SubscriptionManager.VT_IMS_ENABLED:
+            case SubscriptionManager.WFC_IMS_ENABLED:
+            case SubscriptionManager.WFC_IMS_MODE:
+            case SubscriptionManager.WFC_IMS_ROAMING_MODE:
+            case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
+            case SubscriptionManager.DATA_ROAMING:
+                values.put(propKey, cursor.getInt(columnIndex));
+                break;
+            case SubscriptionManager.DISPLAY_NAME:
+            case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
+                values.put(propKey, cursor.getString(columnIndex));
+                break;
+            default:
+                loge("[copyDataFromCursorToContentValue] invalid propKey " + propKey);
+        }
+    }
+
+    // TODO: replace all updates with this helper method.
+    private int updateDatabase(ContentValues value, int subId, boolean updateEntireGroup) {
         List<SubscriptionInfo> infoList = getSubscriptionsInGroup(getGroupUuid(subId),
                 mContext.getOpPackageName());
         if (!updateEntireGroup || infoList == null || infoList.size() == 0) {
@@ -2564,9 +2611,10 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private static int setSubscriptionPropertyIntoContentResolver(
+    private int setSubscriptionPropertyIntoContentResolver(
             int subId, String propKey, String propValue, ContentResolver resolver) {
         ContentValues value = new ContentValues();
+        boolean updateEntireGroup = GROUP_SHARING_PROPERTIES.contains(propKey);
         switch (propKey) {
             case SubscriptionManager.CB_EXTREME_THREAT_ALERT:
             case SubscriptionManager.CB_SEVERE_THREAT_ALERT:
@@ -2594,8 +2642,7 @@ public class SubscriptionController extends ISub.Stub {
                 break;
         }
 
-        return resolver.update(SubscriptionManager.getUriForSubscriptionId(subId),
-                value, null, null);
+        return updateDatabase(value, subId, updateEntireGroup);
     }
 
     /**
@@ -3700,7 +3747,7 @@ public class SubscriptionController extends ISub.Stub {
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES, rules);
 
-        boolean result = databaseUpdateHelper(value, subId, true) > 0;
+        boolean result = updateDatabase(value, subId, true) > 0;
 
         if (result) {
             // Refresh the Cache of Active Subscription Info List
