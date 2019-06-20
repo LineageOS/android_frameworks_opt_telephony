@@ -26,7 +26,7 @@ import android.os.RemoteException;
 import android.text.TextUtils;
 
 /**
- * Utility functions for {@link RcsMessageStoreController}
+ * Utility functions for {@link RcsMessageController}
  *
  * @hide
  */

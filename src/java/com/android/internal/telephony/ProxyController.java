@@ -29,7 +29,7 @@ import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import com.android.internal.telephony.ims.RcsMessageStoreController;
+import com.android.internal.telephony.ims.RcsMessageController;
 import com.android.internal.telephony.uicc.UiccController;
 
 import java.util.ArrayList;
@@ -132,7 +132,7 @@ public class ProxyController {
         mCi = ci;
         mPhoneSwitcher = phoneSwitcher;
 
-        RcsMessageStoreController.init(context);
+        RcsMessageController.init(context);
 
         mUiccPhoneBookController = new UiccPhoneBookController(mPhones);
         mPhoneSubInfoController = new PhoneSubInfoController(mContext, mPhones);

@@ -93,31 +93,31 @@ import android.telephony.ims.RcsEventQueryParams;
 import android.telephony.ims.RcsEventQueryResultDescriptor;
 import android.telephony.ims.RcsFileTransferCreationParams;
 import android.telephony.ims.RcsIncomingMessageCreationParams;
+import android.telephony.ims.RcsMessageManager;
 import android.telephony.ims.RcsMessageQueryParams;
 import android.telephony.ims.RcsMessageQueryResultParcelable;
 import android.telephony.ims.RcsMessageSnippet;
-import android.telephony.ims.RcsMessageStore;
 import android.telephony.ims.RcsOutgoingMessageCreationParams;
 import android.telephony.ims.RcsParticipantQueryParams;
 import android.telephony.ims.RcsParticipantQueryResultParcelable;
 import android.telephony.ims.RcsQueryContinuationToken;
 import android.telephony.ims.RcsThreadQueryParams;
 import android.telephony.ims.RcsThreadQueryResultParcelable;
-import android.telephony.ims.aidl.IRcs;
+import android.telephony.ims.aidl.IRcsMessage;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.FunctionalUtils.ThrowingRunnable;
 import com.android.internal.util.FunctionalUtils.ThrowingSupplier;
 
 /**
- * Backing implementation of {@link RcsMessageStore}.
+ * Backing implementation of {@link RcsMessageManager}.
  */
-public class RcsMessageStoreController extends IRcs.Stub {
+public class RcsMessageController extends IRcsMessage.Stub {
 
-    static final String TAG = "RcsMsgStoreController";
-    private static final String RCS_SERVICE_NAME = "ircs";
+    static final String TAG = "RcsMsgController";
+    private static final String RCS_SERVICE_NAME = Context.TELEPHONY_RCS_MESSAGE_SERVICE;
 
-    private static RcsMessageStoreController sInstance;
+    private static RcsMessageController sInstance;
 
     private final Context mContext;
     private final ContentResolver mContentResolver;
@@ -130,10 +130,10 @@ public class RcsMessageStoreController extends IRcs.Stub {
     /**
      * Initialize the instance. Should only be called once.
      */
-    public static RcsMessageStoreController init(Context context) {
-        synchronized (RcsMessageStoreController.class) {
+    public static RcsMessageController init(Context context) {
+        synchronized (RcsMessageController.class) {
             if (sInstance == null) {
-                sInstance = new RcsMessageStoreController(context);
+                sInstance = new RcsMessageController(context);
                 if (ServiceManager.getService(RCS_SERVICE_NAME) == null) {
                     ServiceManager.addService(RCS_SERVICE_NAME, sInstance);
                 }
@@ -177,7 +177,7 @@ public class RcsMessageStoreController extends IRcs.Stub {
     }
 
     @VisibleForTesting
-    public RcsMessageStoreController(Context context) {
+    public RcsMessageController(Context context) {
         mContext = context;
         mContentResolver = context.getContentResolver();
         mParticipantQueryHelper = new RcsParticipantQueryHelper(mContentResolver);
