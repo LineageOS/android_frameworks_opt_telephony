@@ -189,8 +189,11 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         int ss = mPhone.getServiceState().getState();
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-            tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
-            return;
+            if(mPhone.getServiceState().getRilDataRadioTechnology()
+                    != ServiceState.RIL_RADIO_TECHNOLOGY_NR) {
+                tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
+                return;
+            }
         }
 
         byte smsc[] = (byte[]) map.get("smsc");
