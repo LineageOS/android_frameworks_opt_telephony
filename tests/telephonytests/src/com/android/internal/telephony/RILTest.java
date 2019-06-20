@@ -1924,6 +1924,17 @@ public class RILTest extends TelephonyTest {
                 .when(mServiceState).getRilVoiceRadioTechnology();
         result = mRILUnderTest.fixupSignalStrength10(gsmSignalStrength);
         assertEquals(result, gsmSignalStrength);
+
+        // Check that non-GSM non-WCDMA signal strengths are also passed through.
+        SignalStrength lteSignalStrength = new SignalStrength(
+                new CellSignalStrengthCdma(), new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(), new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(CellInfo.UNAVAILABLE,
+                        -120, -10, CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE,
+                        CellInfo.UNAVAILABLE), new CellSignalStrengthNr());
+        SignalStrength lteResult = mRILUnderTest.fixupSignalStrength10(lteSignalStrength);
+
+        assertEquals(lteResult, lteSignalStrength);
     }
 
     @Test
