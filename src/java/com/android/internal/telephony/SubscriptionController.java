@@ -1893,28 +1893,31 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get IMSI by subscription ID
+     * For active subIds, this will always return the corresponding imsi
+     * For inactive subIds, once they are activated once, even if they are deactivated at the time
+     *   of calling this function, the corresponding imsi will be returned
+     * When calling this method, the permission check should have already been done to allow
+     *   only privileged read
+     *
      * @return imsi
      */
-    public String getImsi(int subId) {
-        Cursor cursor = mContext.getContentResolver().query(
-                SubscriptionManager.getUriForSubscriptionId(subId), null,
+    public String getImsiPrivileged(int subId) {
+        try (Cursor cursor = mContext.getContentResolver().query(
+                SubscriptionManager.CONTENT_URI, null,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=?",
-                new String[]{String.valueOf(subId)}, null);
-
-        String imsi = null;
-        try {
+                new String[] {String.valueOf(subId)}, null)) {
+            String imsi = null;
             if (cursor != null) {
                 if (cursor.moveToNext()) {
                     imsi = getOptionalStringFromCursor(cursor, SubscriptionManager.IMSI,
                             /*defaultVal*/ null);
                 }
+            } else {
+                logd("getImsiPrivileged: failed to retrieve imsi.");
             }
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
+
+            return imsi;
         }
-        return imsi;
     }
 
     /**
