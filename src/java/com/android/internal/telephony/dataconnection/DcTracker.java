@@ -73,6 +73,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
@@ -1757,8 +1758,8 @@ public class DcTracker extends Handler {
         }
 
         for (ApnSetting dunSetting : dunCandidates) {
-            if (!ServiceState.networkBitmaskHasAccessNetworkType(dunSetting.getNetworkTypeBitmask(),
-                    ServiceState.rilRadioTechnologyToAccessNetworkType(bearer))) {
+            if (!dunSetting.canSupportNetworkType(
+                    ServiceState.rilRadioTechnologyToNetworkType(bearer))) {
                 continue;
             }
             retDunSettings.add(dunSetting);
@@ -3270,9 +3271,8 @@ public class DcTracker extends Handler {
                         + mPreferredApn.getOperatorNumeric() + ":" + mPreferredApn);
             }
             if (mPreferredApn.getOperatorNumeric().equals(operator)) {
-                if (ServiceState.networkBitmaskHasAccessNetworkType(
-                        mPreferredApn.getNetworkTypeBitmask(),
-                        ServiceState.rilRadioTechnologyToAccessNetworkType(radioTech))) {
+                if (mPreferredApn.canSupportNetworkType(
+                        ServiceState.rilRadioTechnologyToNetworkType(radioTech))) {
                     apnList.add(mPreferredApn);
                     apnList = sortApnListByPreferred(apnList);
                     if (DBG) log("buildWaitingApns: X added preferred apnList=" + apnList);
@@ -3292,8 +3292,8 @@ public class DcTracker extends Handler {
         if (DBG) log("buildWaitingApns: mAllApnSettings=" + mAllApnSettings);
         for (ApnSetting apn : mAllApnSettings) {
             if (apn.canHandleType(requestedApnTypeBitmask)) {
-                if (ServiceState.networkBitmaskHasAccessNetworkType(apn.getNetworkTypeBitmask(),
-                        ServiceState.rilRadioTechnologyToAccessNetworkType(radioTech))) {
+                if (apn.canSupportNetworkType(
+                        ServiceState.rilRadioTechnologyToNetworkType(radioTech))) {
                     if (VDBG) log("buildWaitingApns: adding apn=" + apn);
                     apnList.add(apn);
                 } else {
@@ -4816,6 +4816,7 @@ public class DcTracker extends Handler {
         return "UNKNOWN";
     }
 
+    @RilRadioTechnology
     private int getDataRat() {
         ServiceState ss = mPhone.getServiceState();
         NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
@@ -4826,6 +4827,7 @@ public class DcTracker extends Handler {
         return ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
     }
 
+    @RilRadioTechnology
     private int getVoiceRat() {
         ServiceState ss = mPhone.getServiceState();
         NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
