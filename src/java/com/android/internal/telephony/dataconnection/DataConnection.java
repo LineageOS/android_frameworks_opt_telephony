@@ -2185,6 +2185,7 @@ public class DataConnection extends StateMachine {
                     int handle = mNetworkAgent.keepaliveTracker.getHandleForSlot(slotId);
                     if (handle < 0) {
                         loge("No slot found for stopSocketKeepalive! " + slotId);
+                        mNetworkAgent.onSocketKeepaliveEvent(slotId, SocketKeepalive.NO_KEEPALIVE);
                         retVal = HANDLED;
                         break;
                     } else {
