@@ -208,12 +208,14 @@ public class PhoneConfigurationManager {
         try {
             return getPhoneStatusFromCache(phoneId);
         } catch (NoSuchElementException ex) {
-            updatePhoneStatus(phone);
             // Return true if modem status cannot be retrieved. For most cases, modem status
             // is on. And for older version modems, GET_MODEM_STATUS and disable modem are not
             // supported. Modem is always on.
             //TODO: this should be fixed in R to support a third status UNKNOWN b/131631629
             return true;
+        } finally {
+            //in either case send an asynchronous request to retrieve the phone status
+            updatePhoneStatus(phone);
         }
     }
 
