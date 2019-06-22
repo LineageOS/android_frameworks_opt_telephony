@@ -17,8 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
-import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
-import static android.telephony.PhoneStateListener.LISTEN_PRECISE_CALL_STATE;
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -50,7 +48,6 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
-import android.telephony.PreciseCallState;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -223,15 +220,17 @@ public class PhoneSwitcher extends Handler {
     // mEmergencyOverride, start the countdown to remove the override using the message
     // EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE. The only exception to this is if the device moves to
     // ECBM, which is detected by EVENT_EMERGENCY_TOGGLE.
-    private static final int EVENT_PHONE_IN_CALL_CHANGED          = 109;
+    @VisibleForTesting
+    public static final int EVENT_PRECISE_CALL_STATE_CHANGED      = 109;
     private static final int EVENT_NETWORK_VALIDATION_DONE        = 110;
     private static final int EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK = 111;
     private static final int EVENT_MODEM_COMMAND_DONE             = 112;
     private static final int EVENT_MODEM_COMMAND_RETRY            = 113;
-    private static final int EVENT_DATA_ENABLED_CHANGED           = 114;
+    @VisibleForTesting
+    public static final int EVENT_DATA_ENABLED_CHANGED            = 114;
     // An emergency call is about to be originated and requires the DDS to be overridden.
-    // Uses EVENT_PHONE_IN_CALL_CHANGED message to start countdown to finish override defined in
-    // mEmergencyOverride. If EVENT_PHONE_IN_CALL_CHANGED does not come in
+    // Uses EVENT_PRECISE_CALL_STATE_CHANGED message to start countdown to finish override defined
+    // in mEmergencyOverride. If EVENT_PRECISE_CALL_STATE_CHANGED does not come in
     // DEFAULT_DATA_OVERRIDE_TIMEOUT_MS milliseconds, then the override will be removed.
     private static final int EVENT_OVERRIDE_DDS_FOR_EMERGENCY     = 115;
     // If it exists, remove the current mEmergencyOverride DDS override.
@@ -315,6 +314,28 @@ public class PhoneSwitcher extends Handler {
         mValidator = CellularNetworkValidator.getInstance();
     }
 
+    private boolean isPhoneInVoiceCallChanged() {
+        int oldPhoneIdInVoiceCall = mPhoneIdInVoiceCall;
+        // If there's no active call, the value will become INVALID_PHONE_INDEX
+        // and internet data will be switched back to system selected or user selected
+        // subscription.
+        mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
+        for (Phone phone : mPhones) {
+            if (isCallActive(phone) || isCallActive(phone.getImsPhone())) {
+                mPhoneIdInVoiceCall = phone.getPhoneId();
+                break;
+            }
+        }
+
+        if (mPhoneIdInVoiceCall != oldPhoneIdInVoiceCall) {
+            log("isPhoneInVoiceCallChanged from phoneId " + oldPhoneIdInVoiceCall
+                    + " to phoneId " + mPhoneIdInVoiceCall);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     @VisibleForTesting
     public PhoneSwitcher(int maxActivePhones, int numPhones, Context context,
             SubscriptionController subscriptionController, Looper looper, ITelephonyRegistry tr,
@@ -335,51 +356,9 @@ public class PhoneSwitcher extends Handler {
             public void onPhoneCapabilityChanged(PhoneCapability capability) {
                 onPhoneCapabilityChangedInternal(capability);
             }
-
-            @Override
-            public void onPreciseCallStateChanged(PreciseCallState callState) {
-                int oldPhoneIdInVoiceCall = mPhoneIdInVoiceCall;
-                // If there's no active call, the value will become INVALID_PHONE_INDEX
-                // and internet data will be switched back to system selected or user selected
-                // subscription.
-                mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
-                for (Phone phone : mPhones) {
-                    if (isCallActive(phone) || isCallActive(phone.getImsPhone())) {
-                        mPhoneIdInVoiceCall = phone.getPhoneId();
-                        break;
-                    }
-                }
-
-                if (mPhoneIdInVoiceCall != oldPhoneIdInVoiceCall) {
-                    log("mPhoneIdInVoiceCall changed from" + oldPhoneIdInVoiceCall
-                            + " to " + mPhoneIdInVoiceCall);
-
-                    // Switches and listens to the updated voice phone.
-                    Phone dataPhone = findPhoneById(mPhoneIdInVoiceCall);
-                    if (dataPhone != null && dataPhone.getDataEnabledSettings() != null) {
-                        dataPhone.getDataEnabledSettings()
-                                .registerForDataEnabledChanged(getInstance(),
-                                        EVENT_DATA_ENABLED_CHANGED, null);
-                    }
-
-                    Phone oldDataPhone = findPhoneById(oldPhoneIdInVoiceCall);
-                    if (oldDataPhone != null && oldDataPhone.getDataEnabledSettings() != null) {
-                        oldDataPhone.getDataEnabledSettings()
-                                .unregisterForDataEnabledChanged(getInstance());
-                    }
-
-                    Message msg = PhoneSwitcher.this.obtainMessage(EVENT_PHONE_IN_CALL_CHANGED);
-                    msg.sendToTarget();
-                }
-            }
         };
 
         mValidator = CellularNetworkValidator.getInstance();
-
-        TelephonyManager telephonyManager =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        telephonyManager.listen(mPhoneStateListener, LISTEN_PHONE_CAPABILITY_CHANGE
-                | LISTEN_PRECISE_CALL_STATE);
 
         mActivePhoneRegistrants = new RegistrantList();
         mPhoneStates = new PhoneState[numPhones];
@@ -387,6 +366,15 @@ public class PhoneSwitcher extends Handler {
             mPhoneStates[i] = new PhoneState();
             if (mPhones[i] != null) {
                 mPhones[i].registerForEmergencyCallToggle(this, EVENT_EMERGENCY_TOGGLE, null);
+                // TODO (b/135566422): combine register for both GsmCdmaPhone and ImsPhone.
+                mPhones[i].registerForPreciseCallStateChanged(
+                        this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
+                if (mPhones[i].getImsPhone() != null) {
+                    mPhones[i].getImsPhone().registerForPreciseCallStateChanged(
+                            this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
+                }
+                mPhones[i].getDataEnabledSettings().registerForDataEnabledChanged(
+                        this, EVENT_DATA_ENABLED_CHANGED, null);
             }
         }
 
@@ -510,7 +498,10 @@ public class PhoneSwitcher extends Handler {
                 onEvaluate(REQUESTS_UNCHANGED, "EVENT_RADIO_AVAILABLE");
                 break;
             }
-            case EVENT_PHONE_IN_CALL_CHANGED: {
+            case EVENT_PRECISE_CALL_STATE_CHANGED: {
+                // If the phoneId in voice call didn't change, do nothing.
+                if (!isPhoneInVoiceCallChanged()) break;
+
                 // Only handle this event if we are currently waiting for the emergency call
                 // associated with the override request to start or end.
                 if (mEmergencyOverride != null && mEmergencyOverride.mPendingOriginatingCall) {
@@ -529,7 +520,7 @@ public class PhoneSwitcher extends Handler {
             }
             // fall through
             case EVENT_DATA_ENABLED_CHANGED:
-                if (onEvaluate(REQUESTS_UNCHANGED, "EVENT_PHONE_IN_CALL_CHANGED")) {
+                if (onEvaluate(REQUESTS_UNCHANGED, "EVENT_PRECISE_CALL_STATE_CHANGED")) {
                     logDataSwitchEvent(mOpptDataSubId,
                             TelephonyEvent.EventState.EVENT_STATE_START,
                             DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
@@ -601,8 +592,8 @@ public class PhoneSwitcher extends Handler {
                 Message msg2 = obtainMessage(EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE);
                 // Make sure that if we never get an incall indication that we remove the override.
                 sendMessageDelayed(msg2, DEFAULT_DATA_OVERRIDE_TIMEOUT_MS);
-                // Wait for call to end and EVENT_PHONE_IN_CALL_CHANGED to be called, then start
-                // timer to remove DDS emergency override.
+                // Wait for call to end and EVENT_PRECISE_CALL_STATE_CHANGED to be called, then
+                // start timer to remove DDS emergency override.
                 if (!onEvaluate(REQUESTS_UNCHANGED, "emer_override_dds")) {
                     // Nothing changed as a result of override, so no modem command was sent. Treat
                     // as success.
@@ -619,19 +610,6 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
         }
-    }
-
-    private boolean isEmergency() {
-        if (isInEmergencyCallbackMode()) return true;
-        for (Phone p : mPhones) {
-            if (p == null) continue;
-            if (p.isInEmergencyCall()) return true;
-            Phone imsPhone = p.getImsPhone();
-            if (imsPhone != null && imsPhone.isInEmergencyCall()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isInEmergencyCallbackMode() {
@@ -749,10 +727,6 @@ public class PhoneSwitcher extends Handler {
      */
     private boolean onEvaluate(boolean requestsChanged, String reason) {
         StringBuilder sb = new StringBuilder(reason);
-        if (isEmergency()) {
-            log("onEvaluate for reason " + reason + " aborted due to Emergency");
-            return false;
-        }
 
         // If we use HAL_COMMAND_PREFERRED_DATA,
         boolean diffDetected = mHalCommandToUse != HAL_COMMAND_PREFERRED_DATA && requestsChanged;
@@ -827,12 +801,19 @@ public class PhoneSwitcher extends Handler {
                         newActivePhones.add(mPhones[i].getPhoneId());
                     }
                 } else {
-                    for (DcRequest dcRequest : mPrioritizedDcRequests) {
-                        int phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
-                        if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
-                        if (newActivePhones.contains(phoneIdForRequest)) continue;
-                        newActivePhones.add(phoneIdForRequest);
-                        if (newActivePhones.size() >= mMaxActivePhones) break;
+                    // First try to activate phone in voice call.
+                    if (mPhoneIdInVoiceCall != SubscriptionManager.INVALID_PHONE_INDEX) {
+                        newActivePhones.add(mPhoneIdInVoiceCall);
+                    }
+
+                    if (newActivePhones.size() < mMaxActivePhones) {
+                        for (DcRequest dcRequest : mPrioritizedDcRequests) {
+                            int phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
+                            if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
+                            if (newActivePhones.contains(phoneIdForRequest)) continue;
+                            newActivePhones.add(phoneIdForRequest);
+                            if (newActivePhones.size() >= mMaxActivePhones) break;
+                        }
                     }
 
                     if (newActivePhones.size() < mMaxActivePhones
