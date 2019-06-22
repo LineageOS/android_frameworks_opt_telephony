@@ -343,6 +343,12 @@ public class DataConnectionTest extends TelephonyTest {
         return (long) method.invoke(mDc, response);
     }
 
+    private boolean isUnmeteredUseOnly() throws Exception {
+        Method method = DataConnection.class.getDeclaredMethod("isUnmeteredUseOnly");
+        method.setAccessible(true);
+        return (boolean) method.invoke(mDc);
+    }
+
     private SetupResult setLinkProperties(DataCallResponse response,
                                                          LinkProperties linkProperties)
             throws Exception {
@@ -901,5 +907,29 @@ public class DataConnectionTest extends TelephonyTest {
     @SmallTest
     public void testStartNattKeepaliveFailCondensed() throws Exception {
         checkStartNattKeepaliveFail(true);
+    }
+
+    @Test
+    @SmallTest
+    public void testIsUnmeteredUseOnly() throws Exception {
+        Field field = DataConnection.class.getDeclaredField("mTransportType");
+        field.setAccessible(true);
+        field.setInt(mDc, AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        assertFalse(isUnmeteredUseOnly());
+
+        field = DataConnection.class.getDeclaredField("mTransportType");
+        field.setAccessible(true);
+        field.setInt(mDc, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        doReturn(false).when(mDataEnabledSettings).isDataEnabled();
+        doReturn(false).when(mServiceState).getDataRoaming();
+        doReturn(ApnSetting.TYPE_MMS).when(mApnContext).getApnTypeBitmask();
+
+        mContextFixture.getCarrierConfigBundle().putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[] { "default" });
+
+        assertTrue(isUnmeteredUseOnly());
     }
 }
