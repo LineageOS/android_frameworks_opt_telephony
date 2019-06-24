@@ -18,22 +18,9 @@ package com.android.internal.telephony;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 
-
-
-/** Interface for applications to access the ICC phone book.
- *
- * <p>The following code snippet demonstrates a static method to
- * retrieve the IIccPhoneBook interface from Android:</p>
- * <pre>private static IIccPhoneBook getSimPhoneBookInterface()
-            throws DeadObjectException {
-    IServiceManager sm = ServiceManagerNative.getDefault();
-    IIccPhoneBook spb;
-    spb = IIccPhoneBook.Stub.asInterface(sm.getService("iccphonebook"));
-    return spb;
-}
- * </pre>
+/**
+ * Interface for applications to access the ICC phone book.
  */
-
 interface IIccPhoneBook {
 
     /**
