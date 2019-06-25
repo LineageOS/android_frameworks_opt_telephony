@@ -521,6 +521,21 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
+    public int checkSmsShortCodeDestination(
+            int subId, String callingPackage, String destAddress, String countryIso) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(getPhone(subId).getContext(),
+                subId, callingPackage, "checkSmsShortCodeDestination")) {
+            return SmsManager.SMS_CATEGORY_NOT_SHORT_CODE;
+        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            return getPhone(subId).mSmsUsageMonitor.checkDestination(destAddress, countryIso);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (!checkDumpPermission(mContext, LOG_TAG, pw)) {
             return;
