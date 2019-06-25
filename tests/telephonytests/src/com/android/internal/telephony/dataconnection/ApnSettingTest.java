@@ -27,6 +27,7 @@ import android.net.Uri;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -683,5 +684,76 @@ public class ApnSettingTest extends TelephonyTest {
 
         assertTrue(apn1.equals(apn2, false));
         assertFalse(apn1.equals(apn2, true));
+    }
+
+    @Test
+    @SmallTest
+    public void testCanHandleNetwork() throws Exception {
+        ApnSetting apn1 = ApnSetting.makeApnSetting(
+                1234,
+                "310260",
+                "",
+                "ims",
+                null,
+                -1,
+                null,
+                null,
+                -1,
+                "",
+                "",
+                -1,
+                ApnSetting.TYPE_IMS,
+                ApnSetting.PROTOCOL_IPV6,
+                -1,
+                true,
+                (int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS),
+                0,
+                false,
+                0,
+                0,
+                0,
+                1440,
+                -1,
+                "");
+
+        ApnSetting apn2 = ApnSetting.makeApnSetting(
+                1235,
+                "310260",
+                "",
+                "ims",
+                null,
+                -1,
+                null,
+                null,
+                -1,
+                "",
+                "",
+                -1,
+                ApnSetting.TYPE_IMS,
+                ApnSetting.PROTOCOL_IPV6,
+                ApnSetting.PROTOCOL_IPV6,
+                true,
+                (int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS),
+                0,
+                false,
+                0,
+                0,
+                0,
+                1440,
+                -1,
+                "");
+
+        assertFalse(apn1.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_1xRTT));
+        assertTrue(apn1.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_LTE));
+        assertTrue(apn1.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_UMTS));
+
+        assertFalse(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_1xRTT));
+        assertFalse(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_LTE));
+        assertTrue(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_GPRS));
+        assertTrue(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_EDGE));
+
+        assertTrue(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_GSM));
     }
 }
