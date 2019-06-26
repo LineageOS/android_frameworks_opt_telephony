@@ -353,12 +353,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyPhysicalChannelConfiguration(List<PhysicalChannelConfig> configs) {
-        throw new RuntimeException("Not implemented");
-    }
-
-    @Override
-    public void notifyPhysicalChannelConfigurationForSubscriber(int subId,
+    public void notifyPhysicalChannelConfigurationForSubscriber(int phoneId, int subId,
             List<PhysicalChannelConfig> configs) {
         throw new RuntimeException("Not implemented");
     }
