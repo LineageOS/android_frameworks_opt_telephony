@@ -245,9 +245,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyPhysicalChannelConfiguration(Phone sender,
             List<PhysicalChannelConfig> configs) {
         int subId = sender.getSubId();
+        int phoneId = sender.getPhoneId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyPhysicalChannelConfigurationForSubscriber(subId, configs);
+                mRegistry.notifyPhysicalChannelConfigurationForSubscriber(phoneId, subId, configs);
             }
         } catch (RemoteException ex) {
             // system process is dead
