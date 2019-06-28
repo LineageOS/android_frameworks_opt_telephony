@@ -3466,6 +3466,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 try {
                     mLastDialArgs.intentExtras.putBoolean(
                             android.telecom.TelecomManager.EXTRA_START_CALL_WITH_RTT, false);
+                    mLastDialArgs = ImsPhone.ImsDialArgs.Builder.from(mLastDialArgs)
+                                            .setRttTextStream(null).build();
                     Connection newConnection =
                             mPhone.getDefaultPhone().dial(mLastDialString, mLastDialArgs);
                     oldConnection.onOriginalConnectionReplaced(newConnection);
