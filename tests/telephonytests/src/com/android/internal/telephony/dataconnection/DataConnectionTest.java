@@ -506,6 +506,12 @@ public class DataConnectionTest extends TelephonyTest {
         return (NetworkCapabilities) method.invoke(mDc);
     }
 
+    private int getDisallowedApnTypes() throws Exception {
+        Method method = DataConnection.class.getDeclaredMethod("getDisallowedApnTypes");
+        method.setAccessible(true);
+        return (int) method.invoke(mDc);
+    }
+
     @Test
     @SmallTest
     public void testNetworkCapability() throws Exception {
@@ -522,6 +528,10 @@ public class DataConnectionTest extends TelephonyTest {
         assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS));
 
+        mContextFixture.getCarrierConfigBundle().putStringArray(
+                CarrierConfigManager.KEY_CARRIER_WWAN_DISALLOWED_APN_TYPES_STRING_ARRAY,
+                new String[] {"supl"});
+
         mDc.sendMessage(DataConnection.EVENT_DISCONNECT, mDcp);
         waitForMs(100);
         doReturn(mApn1).when(mApnContext).getApnSetting();
@@ -532,7 +542,7 @@ public class DataConnectionTest extends TelephonyTest {
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN));
         assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
-        assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+        assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL));
     }
 
@@ -931,5 +941,17 @@ public class DataConnectionTest extends TelephonyTest {
                 new String[] { "default" });
 
         assertTrue(isUnmeteredUseOnly());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetDisallowedApnTypes() throws Exception {
+        mContextFixture.getCarrierConfigBundle().putStringArray(
+                CarrierConfigManager.KEY_CARRIER_WWAN_DISALLOWED_APN_TYPES_STRING_ARRAY,
+                new String[] { "mms", "supl", "fota" });
+        testConnectEvent();
+
+        assertEquals(ApnSetting.TYPE_MMS | ApnSetting.TYPE_SUPL | ApnSetting.TYPE_FOTA,
+                getDisallowedApnTypes());
     }
 }
