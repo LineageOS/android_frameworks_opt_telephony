@@ -284,6 +284,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testGetSubscriberIdWithInactiveSubId() {
+        //IMSI
+        assertNull(mPhoneSubInfoControllerUT.getSubscriberIdForSubscriber(2, TAG));
+    }
+
+    @Test
+    @SmallTest
     public void testGetSubscriberIdWithOutPermission() {
         doReturn("310260426283121").when(mPhone).getSubscriberId();
         doReturn("310260426283122").when(mSecondPhone).getSubscriberId();
