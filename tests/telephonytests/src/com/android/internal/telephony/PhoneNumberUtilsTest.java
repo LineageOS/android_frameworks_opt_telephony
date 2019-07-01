@@ -29,10 +29,27 @@ import android.text.style.TtsSpan;
 
 import androidx.test.filters.FlakyTest;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class PhoneNumberUtilsTest {
+
+    private static final int MIN_MATCH = 7;
+
+    private int mOldMinMatch;
+
+    @Before
+    public void setUp() throws Exception {
+        mOldMinMatch = PhoneNumberUtils.getMinMatchForTest();
+        PhoneNumberUtils.setMinMatchForTest(MIN_MATCH);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        PhoneNumberUtils.setMinMatchForTest(mOldMinMatch);
+    }
 
     @SmallTest
     @Test
