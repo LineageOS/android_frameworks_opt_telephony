@@ -1064,10 +1064,14 @@ public class SubscriptionInfoUpdater extends Handler {
     private void broadcastSimApplicationStateChanged(int phoneId, int state) {
         // Broadcast if the state has changed, except if old state was UNKNOWN and new is NOT_READY,
         // because that's the initial state and a broadcast should be sent only on a transition
-        // after SIM is PRESENT
-        if (!(state == sSimApplicationState[phoneId]
-                || (state == TelephonyManager.SIM_STATE_NOT_READY
-                && sSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN))) {
+        // after SIM is PRESENT. The only exception is eSIM boot profile, where NOT_READY is the
+        // terminal state.
+        boolean isUnknownToNotReady =
+                (sSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN
+                        && state == TelephonyManager.SIM_STATE_NOT_READY);
+        IccCard iccCard = mPhone[phoneId].getIccCard();
+        boolean emptyProfile = iccCard != null && iccCard.isEmptyProfile();
+        if (state != sSimApplicationState[phoneId] && (!isUnknownToNotReady || emptyProfile)) {
             sSimApplicationState[phoneId] = state;
             Intent i = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
             i.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
