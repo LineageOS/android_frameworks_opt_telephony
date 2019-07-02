@@ -26,7 +26,6 @@ import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
-import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -116,7 +115,7 @@ public interface CommandsInterface {
      * get latest radio power state from modem
      * @return
      */
-    @TelephonyManager.RadioPowerState int getRadioState();
+    int getRadioState();
 
     /**
      * response.obj.result is an int[2]

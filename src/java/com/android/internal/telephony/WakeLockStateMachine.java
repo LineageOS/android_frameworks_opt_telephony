@@ -28,6 +28,8 @@ import android.telephony.Rlog;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Generic state machine for handling messages and waiting for ordered broadcasts to complete.
  * Subclasses implement {@link #handleSmsMessage}, which returns true to transition into waiting
@@ -54,6 +56,8 @@ public abstract class WakeLockStateMachine extends StateMachine {
 
     @UnsupportedAppUsage
     protected Context mContext;
+
+    protected AtomicInteger mReceiverCount = new AtomicInteger(0);
 
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKE_LOCK_TIMEOUT = 3000;
@@ -213,7 +217,9 @@ public abstract class WakeLockStateMachine extends StateMachine {
     protected final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            sendMessage(EVENT_BROADCAST_COMPLETE);
+            if (mReceiverCount.decrementAndGet() == 0) {
+                sendMessage(EVENT_BROADCAST_COMPLETE);
+            }
         }
     };
 

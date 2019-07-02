@@ -3413,10 +3413,10 @@ public class ServiceStateTracker extends Handler {
     }
 
     private String getOperatorNameFromEri() {
+        String eriText = null;
         if (mPhone.isPhoneTypeCdma()) {
             if ((mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
                     && (!mIsSubscriptionFromRuim)) {
-                String eriText;
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
@@ -3426,7 +3426,6 @@ public class ServiceStateTracker extends Handler {
                     eriText = mPhone.getContext().getText(
                             com.android.internal.R.string.roamingTextSearching).toString();
                 }
-                return eriText;
             }
         } else if (mPhone.isPhoneTypeCdmaLte()) {
             boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null &&
@@ -3437,7 +3436,7 @@ public class ServiceStateTracker extends Handler {
                     || mPhone.getContext().getResources().getBoolean(com.android.internal.R
                     .bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
-                String eriText = mSS.getOperatorAlpha();
+                eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
@@ -3454,7 +3453,6 @@ public class ServiceStateTracker extends Handler {
                     eriText = mPhone.getContext()
                             .getText(com.android.internal.R.string.roamingTextSearching).toString();
                 }
-                return eriText;
             }
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
@@ -3470,11 +3468,11 @@ public class ServiceStateTracker extends Handler {
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF)
                         && isInHomeSidNid(mSS.getCdmaSystemId(), mSS.getCdmaNetworkId())
                         && mIccRecords != null) {
-                    return getServiceProviderName();
+                    eriText = getServiceProviderName();
                 }
             }
         }
-        return null;
+        return eriText;
     }
 
     /**
@@ -4766,6 +4764,8 @@ public class ServiceStateTracker extends Handler {
     public void requestAllCellInfo(WorkSource workSource, Message rspMsg) {
         if (VDBG) log("SST.requestAllCellInfo(): E");
         if (mCi.getRilVersion() < 8) {
+            AsyncResult.forMessage(rspMsg);
+            rspMsg.sendToTarget();
             if (DBG) log("SST.requestAllCellInfo(): not implemented");
             return;
         }

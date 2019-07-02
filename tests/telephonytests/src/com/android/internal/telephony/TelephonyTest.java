@@ -34,8 +34,10 @@ import android.content.Context;
 import android.content.IIntentSender;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -44,6 +46,7 @@ import android.os.Looper;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
+import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkRegistrationInfo;
@@ -195,6 +198,8 @@ public abstract class TelephonyTest {
     protected SmsUsageMonitor mSmsUsageMonitor;
     @Mock
     protected PackageInfo mPackageInfo;
+    @Mock
+    protected ApplicationInfo mApplicationInfo;
     @Mock
     protected EriManager mEriManager;
     @Mock
@@ -622,11 +627,73 @@ public abstract class TelephonyTest {
         }
     }
 
+    public static class FakeSettingsConfigProvider extends MockContentProvider {
+        private static final String PROPERTY_DEVICE_IDENTIFIER_ACCESS_RESTRICTIONS_DISABLED =
+                DeviceConfig.NAMESPACE_PRIVACY + "/"
+                        + "device_identifier_access_restrictions_disabled";
+
+        @Override
+        public Bundle call(String method, String arg, Bundle extras) {
+            switch (method) {
+                case Settings.CALL_METHOD_GET_CONFIG: {
+                    switch (arg) {
+                        case PROPERTY_DEVICE_IDENTIFIER_ACCESS_RESTRICTIONS_DISABLED: {
+                            Bundle bundle = new Bundle();
+                            bundle.putString(
+                                    PROPERTY_DEVICE_IDENTIFIER_ACCESS_RESTRICTIONS_DISABLED,
+                                    "0");
+                            return bundle;
+                        }
+                        default: {
+                            fail("arg not expected: " + arg);
+                        }
+                    }
+                    break;
+                }
+                default:
+                    fail("Method not expected: " + method);
+            }
+            return null;
+        }
+    }
+
     protected void setupMockPackagePermissionChecks() throws Exception {
         doReturn(new String[]{TAG}).when(mPackageManager).getPackagesForUid(anyInt());
         doReturn(mPackageInfo).when(mPackageManager).getPackageInfo(eq(TAG), anyInt());
         doReturn(mPackageInfo).when(mPackageManager).getPackageInfoAsUser(
                 eq(TAG), anyInt(), anyInt());
+    }
+
+    protected void setupMocksForTelephonyPermissions() throws Exception {
+        // If the calling package does not meet the new requirements for device identifier access
+        // TelephonyPermissions will query the PackageManager for the ApplicationInfo of the package
+        // to determine the target SDK. For apps targeting Q a SecurityException is thrown
+        // regardless of if the package satisfies the previous requirements for device ID access.
+        mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
+        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(TAG), anyInt(),
+                anyInt());
+
+        // TelephonyPermissions queries DeviceConfig to determine if the identifier access
+        // restrictions should be enabled; this results in a NPE when DeviceConfig uses
+        // Activity.currentActivity.getContentResolver as the resolver for Settings.Config.getString
+        // since the IContentProvider in the NameValueCache's provider holder is null.
+        Class c = Class.forName("android.provider.Settings$Config");
+        Field field = c.getDeclaredField("sNameValueCache");
+        field.setAccessible(true);
+        Object cache = field.get(null);
+
+        c = Class.forName("android.provider.Settings$NameValueCache");
+        field = c.getDeclaredField("mProviderHolder");
+        field.setAccessible(true);
+        Object providerHolder = field.get(cache);
+
+        FakeSettingsConfigProvider fakeSettingsProvider = new FakeSettingsConfigProvider();
+        field = MockContentProvider.class.getDeclaredField("mIContentProvider");
+        field.setAccessible(true);
+        Object iContentProvider = field.get(fakeSettingsProvider);
+
+        replaceInstance(Class.forName("android.provider.Settings$ContentProviderHolder"),
+                "mContentProvider", providerHolder, iContentProvider);
     }
 
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {

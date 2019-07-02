@@ -65,6 +65,7 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
+import com.android.internal.telephony.CarrierResolver;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.GsmCdmaConnection;
 import com.android.internal.telephony.PhoneConstants;
@@ -246,13 +247,23 @@ public class TelephonyMetrics {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (args != null && args.length > 0) {
+            boolean reset = true;
+            if (args.length > 1 && "--keep".equals(args[1])) {
+                reset = false;
+            }
+
             switch (args[0]) {
                 case "--metrics":
                     printAllMetrics(pw);
                     break;
                 case "--metricsproto":
                     pw.println(convertProtoToBase64String(buildProto()));
-                    reset();
+                    if (reset) {
+                        reset();
+                    }
+                    break;
+                case "--metricsprototext":
+                    pw.println(buildProto().toString());
                     break;
             }
         }
@@ -587,8 +598,24 @@ public class TelephonyMetrics {
         mStartSystemTimeMs = System.currentTimeMillis();
         mStartElapsedTimeMs = SystemClock.elapsedRealtime();
 
-        // Insert the last known service state, ims capabilities, and ims connection states as the
-        // base.
+        // Insert the last known sim state, enabled modem bitmap, active subscription info,
+        // service state, ims capabilities, ims connection states, carrier id and Data call
+        // events as the base.
+        // Sim state, modem bitmap and active subscription info events are logged before
+        // other events.
+        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
+                .setSimStateChange(mLastSimState).build());
+
+        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
+                .setEnabledModemBitmap(mLastEnabledModemBitmap).build());
+
+        for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
+          final int key = mLastActiveSubscriptionInfos.keyAt(i);
+          TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                  .setActiveSubscriptionInfoChange(mLastActiveSubscriptionInfos.get(key)).build();
+          addTelephonyEvent(event);
+        }
+
         for (int i = 0; i < mLastServiceState.size(); i++) {
             final int key = mLastServiceState.keyAt(i);
 
@@ -620,13 +647,6 @@ public class TelephonyMetrics {
             addTelephonyEvent(event);
         }
 
-        for (int i = 0; i < mLastActiveSubscriptionInfos.size(); i++) {
-            final int key = mLastActiveSubscriptionInfos.keyAt(i);
-            TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
-                    .setActiveSubscriptionInfoChange(mLastActiveSubscriptionInfos.get(key)).build();
-            addTelephonyEvent(event);
-        }
-
         for (int i = 0; i < mLastRilDataCallEvents.size(); i++) {
             final int key = mLastRilDataCallEvents.keyAt(i);
             for (int j = 0; j < mLastRilDataCallEvents.get(key).size(); j++) {
@@ -637,11 +657,6 @@ public class TelephonyMetrics {
                         .setDataCalls(dataCalls).build());
             }
         }
-        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
-                .setSimStateChange(mLastSimState).build());
-
-        addTelephonyEvent(new TelephonyEventBuilder(mStartElapsedTimeMs, -1 /* phoneId */)
-                .setEnabledModemBitmap(mLastEnabledModemBitmap).build());
     }
 
     /**
@@ -2427,27 +2442,44 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param version Carrier table version
      * @param cid Unique Carrier Id
-     * @param mccmnc MCC and MNC that map to this carrier
-     * @param gid1 Group id level 1
+     * @param unknownMcmnc MCC and MNC that map to this carrier
+     * @param unknownGid1 Group id level 1
+     * @param simInfo Subscription info
      */
     public void writeCarrierIdMatchingEvent(int phoneId, int version, int cid,
-                                            String mccmnc, String gid1) {
+                                            String unknownMcmnc, String unknownGid1,
+                                            CarrierResolver.CarrierMatchingRule simInfo) {
         final CarrierIdMatching carrierIdMatching = new CarrierIdMatching();
         final CarrierIdMatchingResult carrierIdMatchingResult = new CarrierIdMatchingResult();
 
+        // fill in information for unknown mccmnc and gid1 for unidentified carriers.
         if (cid != TelephonyManager.UNKNOWN_CARRIER_ID) {
             // Successful matching event if result only has carrierId
             carrierIdMatchingResult.carrierId = cid;
             // Unknown Gid1 event if result only has carrierId, gid1 and mccmnc
-            if (gid1 != null) {
-                carrierIdMatchingResult.mccmnc = mccmnc;
-                carrierIdMatchingResult.gid1 = gid1;
+            if (unknownGid1 != null) {
+                carrierIdMatchingResult.unknownMccmnc = unknownMcmnc;
+                carrierIdMatchingResult.unknownGid1 = unknownGid1;
             }
         } else {
             // Unknown mccmnc event if result only has mccmnc
-            if (mccmnc != null) {
-                carrierIdMatchingResult.mccmnc = mccmnc;
+            if (unknownMcmnc != null) {
+                carrierIdMatchingResult.unknownMccmnc = unknownMcmnc;
             }
+        }
+
+        // fill in complete matching information from the SIM.
+        carrierIdMatchingResult.mccmnc = TextUtils.emptyIfNull(simInfo.mccMnc);
+        carrierIdMatchingResult.spn = TextUtils.emptyIfNull(simInfo.spn);
+        carrierIdMatchingResult.pnn = TextUtils.emptyIfNull(simInfo.plmn);
+        carrierIdMatchingResult.gid1 = TextUtils.emptyIfNull(simInfo.gid1);
+        carrierIdMatchingResult.gid2 = TextUtils.emptyIfNull(simInfo.gid2);
+        carrierIdMatchingResult.imsiPrefix = TextUtils.emptyIfNull(simInfo.imsiPrefixPattern);
+        carrierIdMatchingResult.iccidPrefix = TextUtils.emptyIfNull(simInfo.iccidPrefix);
+        carrierIdMatchingResult.preferApn = TextUtils.emptyIfNull(simInfo.apn);
+        if (simInfo.privilegeAccessRule != null) {
+            carrierIdMatchingResult.privilegeAccessRule =
+                    simInfo.privilegeAccessRule.stream().toArray(String[]::new);
         }
 
         carrierIdMatching.cidTableVersion = version;

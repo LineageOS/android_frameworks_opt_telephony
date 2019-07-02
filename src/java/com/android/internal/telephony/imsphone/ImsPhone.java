@@ -1034,7 +1034,15 @@ public class ImsPhone extends ImsPhoneBase {
     @UnsupportedAppUsage
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
-        setCallWaiting(enable, CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
+        int serviceClass = CommandsInterface.SERVICE_CLASS_VOICE;
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfigForSubId(getSubId());
+        if (b != null) {
+            serviceClass = b.getInt(CarrierConfigManager.KEY_CALL_WAITING_SERVICE_CLASS_INT,
+                    CommandsInterface.SERVICE_CLASS_VOICE);
+        }
+        setCallWaiting(enable, serviceClass, onComplete);
     }
 
     public void setCallWaiting(boolean enable, int serviceClass, Message onComplete) {
@@ -1594,6 +1602,7 @@ public class ImsPhone extends ImsPhoneBase {
             setIsInEcm(true);
             // notify change
             sendEmergencyCallbackModeChange();
+            ((GsmCdmaPhone) mDefaultPhone).notifyEmergencyCallRegistrants(true);
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.

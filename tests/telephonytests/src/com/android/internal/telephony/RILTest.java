@@ -84,6 +84,7 @@ import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -163,12 +164,17 @@ public class RILTest extends TelephonyTest {
     // refer to RIL#DEFAULT_WAKE_LOCK_TIMEOUT_MS
     private static final int DEFAULT_WAKE_LOCK_TIMEOUT_MS = 60000;
 
+    // timer for CountDownLatch timeout
+    private static final int WAIT_TIMER = 10; //
+
     @Mock
     private ConnectivityManager mConnectionManager;
     @Mock
     private IRadio mRadioProxy;
     @Mock
     private IOemHook mOemHookProxy;
+
+    private HalVersion mRadioVersion = new HalVersion(1, 0);
 
     private RilHandler mRilHandler;
     private RIL mRILInstance;
@@ -266,6 +272,11 @@ public class RILTest extends TelephonyTest {
             doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
             doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
 
+            try {
+                replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersion);
+            } catch (Exception e) {
+            }
+
             mRilHandler = mRILUnderTest.getRilHandler();
 
             setReady(true);
@@ -296,6 +307,38 @@ public class RILTest extends TelephonyTest {
         mTestHandler.quit();
         mTestHandler.join();
         super.tearDown();
+    }
+
+    @Test
+    public void testRadioErrorWithWakelockTimeout() throws Exception {
+        RadioBugDetector detector = mRILInstance.getRadioBugDetector();
+        int wakelockTimeoutThreshold = detector.getWakelockTimeoutThreshold();
+        for (int i = 0; i < wakelockTimeoutThreshold; i++) {
+            invokeMethod(
+                    mRILInstance,
+                    "obtainRequest",
+                    new Class<?>[]{Integer.TYPE, Message.class, WorkSource.class},
+                    new Object[]{RIL_REQUEST_GET_SIM_STATUS, obtainMessage(), new WorkSource()});
+        }
+
+        waitForHandlerActionDelayed(mRilHandler, WAIT_TIMER, DEFAULT_WAKE_LOCK_TIMEOUT_MS);
+        assertTrue(1 == detector.getWakelockTimoutCount());
+    }
+
+    @FlakyTest
+    @Test
+    public void testRadioErrorWithContinuousSystemErr() throws Exception {
+        RadioBugDetector detector = mRILUnderTest.getRadioBugDetector();
+        int systemErrorThreshold = detector.getSystemErrorThreshold();
+        for (int i = 0; i < systemErrorThreshold; i++) {
+            mRILUnderTest.getIccCardStatus(obtainMessage());
+            verify(mRadioProxy, atLeast(1)).getIccCardStatus(mSerialNumberCaptor.capture());
+            verifyRILErrorResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                    RIL_REQUEST_GET_SIM_STATUS, RadioError.SYSTEM_ERR);
+        }
+
+        int status = detector.getRadioBugStatus();
+        assertTrue(status == RadioBugDetector.RADIO_BUG_REPETITIVE_SYSTEM_ERROR);
     }
 
     @FlakyTest
@@ -1066,6 +1109,22 @@ public class RILTest extends TelephonyTest {
     private static void verifyRILResponse(RIL ril, int serial, int requestType) {
         RadioResponseInfo responseInfo =
                 createFakeRadioResponseInfo(serial, RadioError.NONE, RadioResponseType.SOLICITED);
+
+        RILRequest rr = ril.processResponse(responseInfo);
+        assertNotNull(rr);
+
+        assertEquals(serial, rr.getSerial());
+        assertEquals(requestType, rr.getRequest());
+        assertTrue(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+
+        ril.processResponseDone(rr, responseInfo, null);
+        assertEquals(0, ril.getRilRequestList().size());
+        assertFalse(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+    }
+
+    private static void verifyRILErrorResponse(RIL ril, int serial, int requestType, int error) {
+        RadioResponseInfo responseInfo =
+                createFakeRadioResponseInfo(serial, error, RadioResponseType.SOLICITED);
 
         RILRequest rr = ril.processResponse(responseInfo);
         assertNotNull(rr);

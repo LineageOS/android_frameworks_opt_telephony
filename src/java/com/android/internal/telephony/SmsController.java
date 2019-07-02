@@ -29,8 +29,10 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.ServiceManager;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.IFinancialSmsCallback;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
@@ -500,8 +502,37 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
+    public String createAppSpecificSmsTokenWithPackageInfo(
+            int subId, String callingPkg, String prefixes, PendingIntent intent) {
+        return getPhone(subId).getAppSmsManager().createAppSpecificSmsTokenWithPackageInfo(
+                subId, callingPkg, prefixes, intent);
+    }
+
+    @Override
     public String createAppSpecificSmsToken(int subId, String callingPkg, PendingIntent intent) {
         return getPhone(subId).getAppSmsManager().createAppSpecificSmsToken(callingPkg, intent);
+    }
+
+    @Override
+    public void getSmsMessagesForFinancialApp(
+            int subId, String callingPkg, Bundle params, IFinancialSmsCallback callback) {
+        getPhone(subId).getAppSmsManager().getSmsMessagesForFinancialApp(
+                callingPkg, params, callback);
+    }
+
+    @Override
+    public int checkSmsShortCodeDestination(
+            int subId, String callingPackage, String destAddress, String countryIso) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(getPhone(subId).getContext(),
+                subId, callingPackage, "checkSmsShortCodeDestination")) {
+            return SmsManager.SMS_CATEGORY_NOT_SHORT_CODE;
+        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            return getPhone(subId).mSmsUsageMonitor.checkDestination(destAddress, countryIso);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -517,21 +548,6 @@ public class SmsController extends ISmsImplBase {
             byte[] data = text.getBytes(StandardCharsets.UTF_8);
             sendDataForSubscriberWithSelfPermissionsInternal(subId, callingPackage, number,
                     null, (short) port, data, sentIntent, null, true /* isForVvm */);
-        }
-    }
-
-    @Override
-    public int checkSmsShortCodeDestination(
-            int subId, String callingPackage, String destAddress, String countryIso) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(getPhone(subId).getContext(),
-                subId, callingPackage, "checkSmsShortCodeDestination")) {
-            return SmsManager.SMS_CATEGORY_NOT_SHORT_CODE;
-        }
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            return getPhone(subId).mSmsUsageMonitor.checkDestination(destAddress, countryIso);
-        } finally {
-            Binder.restoreCallingIdentity(identity);
         }
     }
 
