@@ -377,9 +377,8 @@ public class CarrierDisplayNameResolver {
         String plmn = null;
         boolean isSimReady = mPhone.getUiccCardApplication() != null
                 && mPhone.getUiccCardApplication().getState() == AppState.APPSTATE_READY;
-        boolean forceDisplayNoService = mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_display_no_service_when_sim_unready)
-                && !isSimReady;
+        boolean forceDisplayNoService =
+                mPhone.getServiceStateTracker().shouldForceDisplayNoService() && !isSimReady;
         ServiceState ss = getServiceState();
         if (ss.getVoiceRegState() == ServiceState.STATE_POWER_OFF
                 || forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
