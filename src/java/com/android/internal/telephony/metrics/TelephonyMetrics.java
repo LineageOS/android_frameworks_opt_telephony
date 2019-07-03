@@ -1725,7 +1725,7 @@ public class TelephonyMetrics {
             Rlog.e(TAG, "SMS session is missing");
         } else {
 
-            int errorCode = 0;
+            int errorCode = SmsResponse.NO_ERROR_CODE;
             if (response != null) {
                 errorCode = response.mErrorCode;
             }
