@@ -2631,9 +2631,7 @@ public class ServiceStateTracker extends Handler {
                 showPlmn = true;
 
                 // Force display no service
-                final boolean forceDisplayNoService = mPhone.getContext().getResources().getBoolean(
-                        com.android.internal.R.bool.config_display_no_service_when_sim_unready)
-                        && !mIsSimReady;
+                final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
                 if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
                     // No service but emergency call allowed
                     plmn = Resources.getSystem().
@@ -2742,6 +2740,28 @@ public class ServiceStateTracker extends Handler {
                 .setShowPlmn(showPlmn)
                 .build());
         log("updateSpnDisplayLegacy-");
+    }
+
+    /**
+     * Checks whether force to display "no service" to the user based on the current country.
+     *
+     * This method should only be used when SIM is unready.
+     *
+     * @return {@code True} if "no service" should be displayed.
+     */
+    public boolean shouldForceDisplayNoService() {
+        String[] countriesWithNoService = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.config_display_no_service_when_sim_unready);
+        if (ArrayUtils.isEmpty(countriesWithNoService)) {
+            return false;
+        }
+        String currentCountry = mLocaleTracker.getCurrentCountry();
+        for (String country : countriesWithNoService) {
+            if (country.equalsIgnoreCase(currentCountry)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected void setPowerStateToDesired() {
