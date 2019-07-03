@@ -35,7 +35,7 @@ import android.util.TimestampedValue;
  * new service.
  */
 // Non-final to allow mocking.
-public class NewTimeServiceHelper {
+public class TimeServiceHelper {
 
     /**
      * Callback interface for automatic detection enable/disable changes.
@@ -56,7 +56,7 @@ public class NewTimeServiceHelper {
     private Listener mListener;
 
     /** Creates a TimeServiceHelper */
-    public NewTimeServiceHelper(Context context) {
+    public TimeServiceHelper(Context context) {
         mContext = context;
         mCr = context.getContentResolver();
         mTimeDetector = context.getSystemService(TimeDetector.class);
