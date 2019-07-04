@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
+
 import android.content.Context;
 import android.os.Binder;
 import android.os.PersistableBundle;
@@ -133,7 +135,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     mPhone.notifySmsSent(tracker.mDestAddress);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR:
-                    tracker.onFailed(mContext, reason, 0 /* errorCode */);
+                    tracker.onFailed(mContext, reason, NO_ERROR_CODE);
                     mTrackers.remove(token);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
