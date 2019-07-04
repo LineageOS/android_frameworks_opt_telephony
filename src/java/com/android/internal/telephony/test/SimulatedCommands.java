@@ -1095,7 +1095,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void sendSMS (String smscPDU, String pdu, Message result) {
         SimulatedCommandsVerifier.getInstance().sendSMS(smscPDU, pdu, result);
-        resultSuccess(result, new SmsResponse(0 /*messageRef*/, null, 0));
+        resultSuccess(result, new SmsResponse(0 /*messageRef*/, null, SmsResponse.NO_ERROR_CODE));
     }
 
     /**
@@ -1974,7 +1974,7 @@ public class SimulatedCommands extends BaseCommands
     public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
             Message response){
         SimulatedCommandsVerifier.getInstance().sendImsCdmaSms(pdu, retry, messageRef, response);
-        resultSuccess(response, new SmsResponse(0 /*messageRef*/, null, 0));
+        resultSuccess(response, new SmsResponse(0 /*messageRef*/, null, SmsResponse.NO_ERROR_CODE));
     }
 
     @Override
@@ -1982,7 +1982,7 @@ public class SimulatedCommands extends BaseCommands
             int retry, int messageRef, Message response){
         SimulatedCommandsVerifier.getInstance().sendImsGsmSms(smscPDU, pdu, retry, messageRef,
                 response);
-        resultSuccess(response, new SmsResponse(0 /*messageRef*/, null, 0));
+        resultSuccess(response, new SmsResponse(0 /*messageRef*/, null, SmsResponse.NO_ERROR_CODE));
     }
 
     @Override
