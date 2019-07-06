@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.gsm;
 
+import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
+
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
@@ -189,7 +191,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         int ss = mPhone.getServiceState().getState();
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-            tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
+            tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
             return;
         }
 
