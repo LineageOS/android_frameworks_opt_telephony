@@ -51,6 +51,8 @@ public interface CommandsInterface {
     static final int CLIR_INVOCATION = 1;   // (restrict CLI presentation)
     static final int CLIR_SUPPRESSION = 2;  // (allow CLI presentation)
 
+    // Used as return value for CDMA SS query
+    static final int SS_STATUS_UNKNOWN          = 0xff;
 
     // Used as parameters for call forward methods below
     static final int CF_ACTION_DISABLE          = 0;
