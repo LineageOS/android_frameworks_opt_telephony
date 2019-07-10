@@ -3658,15 +3658,15 @@ public class GsmCdmaPhone extends Phone {
         pw.println(" mSST=" + mSST);
         pw.println(" mPendingMMIs=" + mPendingMMIs);
         pw.println(" mIccPhoneBookIntManager=" + mIccPhoneBookIntManager);
-        if (VDBG) pw.println(" mImei=" + mImei);
-        if (VDBG) pw.println(" mImeiSv=" + mImeiSv);
-        if (VDBG) pw.println(" mVmNumber=" + mVmNumber);
+        pw.println(" mImei=" + pii(mImei));
+        pw.println(" mImeiSv=" + pii(mImeiSv));
+        pw.println(" mVmNumber=" + pii(mVmNumber));
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mCdmaSubscriptionSource=" + mCdmaSubscriptionSource);
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" isInEcm()=" + isInEcm());
-        if (VDBG) pw.println(" mEsn=" + mEsn);
-        if (VDBG) pw.println(" mMeid=" + mMeid);
+        pw.println(" mEsn=" + pii(mEsn));
+        pw.println(" mMeid=" + pii(mMeid));
         pw.println(" mCarrierOtaSpNumSchema=" + mCarrierOtaSpNumSchema);
         if (!isPhoneTypeGsm()) {
             pw.println(" getCdmaEriIconIndex()=" + getCdmaEriIconIndex());
@@ -3880,6 +3880,10 @@ public class GsmCdmaPhone extends Phone {
     @UnsupportedAppUsage
     private void loge(String s) {
         Rlog.e(LOG_TAG, "[" + mPhoneId + "] " + s);
+    }
+
+    private static String pii(String s) {
+        return Rlog.pii(LOG_TAG, s);
     }
 
     @Override
