@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -85,7 +86,8 @@ public class TelephonyPermissionsTest {
                 mMockSubscriptionManager);
         when(mMockContext.getSystemService(Context.DEVICE_POLICY_SERVICE)).thenReturn(
                 mMockDevicePolicyManager);
-        when(mMockSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(new int[]{SUB_ID});
+        when(mMockSubscriptionManager.getActiveSubscriptionIdList(anyBoolean())).thenReturn(
+                new int[]{SUB_ID});
 
         // By default, assume we have no permissions or app-ops bits.
         doThrow(new SecurityException()).when(mMockContext)
@@ -318,13 +320,27 @@ public class TelephonyPermissionsTest {
     @Test
     public void testCheckReadDeviceIdentifiers_hasCarrierPrivilegesOnOtherSubscription()
             throws Exception {
-        when(mMockSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(
+        when(mMockSubscriptionManager.getActiveSubscriptionIdList(anyBoolean())).thenReturn(
                 new int[]{SUB_ID, SUB_ID_2});
         when(mMockTelephony.getCarrierPrivilegeStatusForUid(eq(SUB_ID_2), eq(UID))).thenReturn(
                 TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         assertTrue(
                 TelephonyPermissions.checkReadDeviceIdentifiers(mMockContext, () -> mMockTelephony,
                         SUB_ID, PID, UID, PACKAGE, MSG));
+    }
+
+    @Test
+    public void testCheckReadDeviceIdentifiers_hasCarrierPrivilegesOnInvisibleSubscription()
+            throws Exception {
+        when(mMockSubscriptionManager.getActiveSubscriptionIdList(true)).thenReturn(
+                new int[]{SUB_ID});
+        when(mMockSubscriptionManager.getActiveSubscriptionIdList(false)).thenReturn(
+                new int[]{SUB_ID, SUB_ID_2});
+        when(mMockTelephony.getCarrierPrivilegeStatusForUid(eq(SUB_ID_2), eq(UID)))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(
+                TelephonyPermissions.checkReadDeviceIdentifiers(mMockContext, () -> mMockTelephony,
+                        SUB_ID_2, PID, UID, PACKAGE, MSG));
     }
 
     @Test
