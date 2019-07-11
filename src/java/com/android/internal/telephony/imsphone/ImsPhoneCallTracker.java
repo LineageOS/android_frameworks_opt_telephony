@@ -156,7 +156,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private TelephonyMetrics mMetrics;
     private final Map<String, CallQualityMetrics> mCallQualityMetrics = new ConcurrentHashMap<>();
-    private final ConcurrentLinkedQueue<String> mLeastRecentCallId = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<CallQualityMetrics> mCallQualityMetricsHistory =
+            new ConcurrentLinkedQueue<>();
     private boolean mCarrierConfigLoaded = false;
 
     private final MmTelFeatureListener mMmTelFeatureListener = new MmTelFeatureListener();
@@ -2354,6 +2355,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
                     reasonInfo, mCallQualityMetrics.get(callId), conn.getEmergencyNumberInfo(),
                     getNetworkCountryIso());
+            // Remove info for the callId from the current calls and add it to the history
+            CallQualityMetrics lastCallMetrics = mCallQualityMetrics.remove(callId);
+            if (lastCallMetrics != null) {
+                mCallQualityMetricsHistory.add(lastCallMetrics);
+            }
             pruneCallQualityMetricsHistory();
             mPhone.notifyImsReason(reasonInfo);
 
@@ -2987,7 +2993,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             CallQualityMetrics cqm = mCallQualityMetrics.get(callId);
             if (cqm == null) {
                 cqm = new CallQualityMetrics(mPhone);
-                mLeastRecentCallId.add(callId);
             }
             cqm.saveCallQuality(callQuality);
             mCallQualityMetrics.put(callId, cqm);
@@ -3549,6 +3554,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mVtDataUsageSnapshot=" + mVtDataUsageSnapshot);
         pw.println(" mVtDataUsageUidSnapshot=" + mVtDataUsageUidSnapshot);
         pw.println(" mCallQualityMetrics=" + mCallQualityMetrics);
+        pw.println(" mCallQualityMetricsHistory=" + mCallQualityMetricsHistory);
 
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
@@ -4125,10 +4131,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mIsDataEnabled = isDataEnabled;
     }
 
-    // Removes old call quality metrics if mCallQualityMetrics exceeds its max size
+    // Removes old call quality metrics if mCallQualityMetricsHistory exceeds its max size
     private void pruneCallQualityMetricsHistory() {
-        if (mCallQualityMetrics.size() > MAX_CALL_QUALITY_HISTORY) {
-            mCallQualityMetrics.remove(mLeastRecentCallId.poll());
+        if (mCallQualityMetricsHistory.size() > MAX_CALL_QUALITY_HISTORY) {
+            mCallQualityMetricsHistory.poll();
         }
     }
 
