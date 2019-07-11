@@ -91,7 +91,7 @@ public class DataEnabledSettingsTest extends TelephonyTest {
         ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
         verify(mSubscriptionController).setDataEnabledOverrideRules(anyInt(),
                 stringCaptor.capture());
-        assertEquals("*=nonDefault&inVoiceCall", stringCaptor.getValue());
+        assertEquals("*=nonDefault&inVoiceCall&DefaultDataOn&dsdsEnabled", stringCaptor.getValue());
 
         clearInvocations(mSubscriptionController);
 
