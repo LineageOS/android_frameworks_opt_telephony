@@ -275,6 +275,10 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onNeedNetworkFor(Message msg) {
         NetworkRequest networkRequest = (NetworkRequest) msg.obj;
+        if (networkRequest.type != NetworkRequest.Type.REQUEST) {
+           logl("Skip non REQUEST type request: " + networkRequest);
+           return;
+        }
         boolean shouldApply = mPhoneSwitcher.shouldApplyNetworkRequest(
                 networkRequest, mPhone.getPhoneId());
 
@@ -299,6 +303,9 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onReleaseNetworkFor(Message msg) {
         NetworkRequest networkRequest = (NetworkRequest) msg.obj;
+        if (!mNetworkRequests.containsKey(networkRequest)) {
+            return;
+        }
         boolean applied = mNetworkRequests.get(networkRequest)
                 != AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
 

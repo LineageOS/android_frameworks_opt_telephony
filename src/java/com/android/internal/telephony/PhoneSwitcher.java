@@ -661,6 +661,11 @@ public class PhoneSwitcher extends Handler {
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
         final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
+        if (networkRequest.type != NetworkRequest.Type.REQUEST) {
+           log("Skip non REQUEST type request - " + networkRequest);
+           return;
+        }
+
         if (!mPrioritizedDcRequests.contains(dcRequest)) {
             collectRequestNetworkMetrics(networkRequest);
             mPrioritizedDcRequests.add(dcRequest);
@@ -672,7 +677,8 @@ public class PhoneSwitcher extends Handler {
     private void onReleaseNetwork(NetworkRequest networkRequest) {
         final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
 
-        if (mPrioritizedDcRequests.remove(dcRequest)) {
+        if (mPrioritizedDcRequests.contains(dcRequest) &&
+                mPrioritizedDcRequests.remove(dcRequest)) {
             onEvaluate(REQUESTS_CHANGED, "netReleased");
             collectReleaseNetworkMetrics(networkRequest);
         }
