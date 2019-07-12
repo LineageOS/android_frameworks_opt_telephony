@@ -1594,6 +1594,7 @@ public class ImsPhone extends ImsPhoneBase {
             setIsInEcm(true);
             // notify change
             sendEmergencyCallbackModeChange();
+            ((GsmCdmaPhone) mDefaultPhone).notifyEmergencyCallRegistrants(true);
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
