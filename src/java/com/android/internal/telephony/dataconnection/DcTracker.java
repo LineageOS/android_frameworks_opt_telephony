@@ -3882,23 +3882,27 @@ public class DcTracker extends Handler {
         mPhone.updateCurrentCarrierInProvider();
     }
 
-    /**
-     * For non DDS phone, mAutoAttachEnabled should be true because it may be detached
-     * automatically from network only because it's idle for too long. In this case, we should
-     * try setting up data call even if it's not attached for 2G or 3G networks. And doing so will
-     * trigger PS attach if possible.
-     */
     @VisibleForTesting
     public boolean shouldAutoAttach() {
         if (mAutoAttachEnabled.get()) return true;
 
         PhoneSwitcher phoneSwitcher = PhoneSwitcher.getInstance();
         ServiceState serviceState = mPhone.getServiceState();
-        return phoneSwitcher != null && serviceState != null
-                && mPhone.getPhoneId() != phoneSwitcher.getPreferredDataPhoneId()
-                && serviceState.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
-                && serviceState.getVoiceNetworkType() != NETWORK_TYPE_LTE
-                && serviceState.getVoiceNetworkType() != NETWORK_TYPE_NR;
+
+        if (phoneSwitcher == null || serviceState == null) return false;
+
+        // If voice is also not in service, don't auto attach.
+        if (serviceState.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) return false;
+
+        // If voice is on LTE or NR, don't auto attach as for LTE / NR data would be attached.
+        if (serviceState.getVoiceNetworkType() == NETWORK_TYPE_LTE
+                || serviceState.getVoiceNetworkType() == NETWORK_TYPE_NR) return false;
+
+        // If phone is non default phone, modem may have detached from data for optimization.
+        // If phone is in voice call, for DSDS case DDS switch may be limited so we do try our
+        // best to setup data connection and allow auto-attach.
+        return (mPhone.getPhoneId() != phoneSwitcher.getPreferredDataPhoneId()
+                || mPhone.getState() != PhoneConstants.State.IDLE);
     }
 
     private void notifyAllDataDisconnected() {
