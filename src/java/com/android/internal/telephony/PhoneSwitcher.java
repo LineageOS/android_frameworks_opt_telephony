@@ -321,7 +321,7 @@ public class PhoneSwitcher extends Handler {
         // subscription.
         mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
         for (Phone phone : mPhones) {
-            if (isCallActive(phone) || isCallActive(phone.getImsPhone())) {
+            if (isPhoneInVoiceCall(phone) || isPhoneInVoiceCall(phone.getImsPhone())) {
                 mPhoneIdInVoiceCall = phone.getPhoneId();
                 break;
             }
@@ -1232,13 +1232,20 @@ public class PhoneSwitcher extends Handler {
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
-    private boolean isCallActive(Phone phone) {
+    private boolean isPhoneInVoiceCall(Phone phone) {
         if (phone == null) {
             return false;
         }
 
+        // A phone in voice call might trigger data being switched to it.
+        // We only report true if its precise call state is ACTIVE, ALERTING or HOLDING.
+        // The reason is data switching is interrupting, so we only switch when necessary and
+        // acknowledged by the users. For incoming call, we don't switch until answered
+        // (RINGING -> ACTIVE), for outgoing call we don't switch until call is connected
+        // in network (DIALING -> ALERTING).
         return (phone.getForegroundCall().getState() == Call.State.ACTIVE
-                || phone.getForegroundCall().getState() == Call.State.ALERTING);
+                || phone.getForegroundCall().getState() == Call.State.ALERTING
+                || phone.getBackgroundCall().getState() == Call.State.HOLDING);
     }
 
     private void updateHalCommandToUse() {

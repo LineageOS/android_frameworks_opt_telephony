@@ -91,6 +91,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Mock
     private GsmCdmaCall mActiveCall;
     @Mock
+    private GsmCdmaCall mHoldingCall;
+    @Mock
     private GsmCdmaCall mInactiveCall;
 
     // The thread that mPhoneSwitcher will handle events in.
@@ -116,6 +118,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         doReturn(Call.State.ACTIVE).when(mActiveCall).getState();
         doReturn(Call.State.IDLE).when(mInactiveCall).getState();
+        doReturn(Call.State.HOLDING).when(mHoldingCall).getState();
     }
 
     @After
@@ -572,7 +575,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
         notifyDataEnabled(false);
         notifyPhoneAsInCall(mPhone2);
         verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
-        waitABit();
         assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
         assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
 
@@ -588,6 +590,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
         assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+        clearInvocations(mMockRadioConfig);
+
+        // Phone2 has holding call, but data is turned off. So no data switching should happen.
+        notifyPhoneAsInHoldingCall(mPhone2);
+        verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
 
         mHandlerThread.quit();
     }
@@ -874,6 +883,12 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     private void notifyPhoneAsInCall(Phone phone) {
         doReturn(mActiveCall).when(phone).getForegroundCall();
+        mPhoneSwitcher.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
+        waitABit();
+    }
+
+    private void notifyPhoneAsInHoldingCall(Phone phone) {
+        doReturn(mHoldingCall).when(phone).getBackgroundCall();
         mPhoneSwitcher.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
         waitABit();
     }
