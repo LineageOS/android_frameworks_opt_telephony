@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
+import static com.android.internal.telephony.PhoneSwitcher.EVENT_PRECISE_CALL_STATE_CHANGED;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -565,8 +568,16 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setAllPhonesInactive();
         // Initialization done.
 
-        // Phone2 has active call. So data switch to it.
+        // Phone2 has active call, but data is turned off. So no data switching should happen.
+        notifyDataEnabled(false);
         notifyPhoneAsInCall(mPhone2);
+        verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
+        waitABit();
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+
+        // Phone2 has active call. So data switch to it.
+        notifyDataEnabled(true);
         verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
         assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
         assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
@@ -863,13 +874,19 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     private void notifyPhoneAsInCall(Phone phone) {
         doReturn(mActiveCall).when(phone).getForegroundCall();
-        mPhoneSwitcher.mPhoneStateListener.onPreciseCallStateChanged(null);
+        mPhoneSwitcher.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
         waitABit();
     }
 
     private void notifyPhoneAsInactive(Phone phone) {
         doReturn(mInactiveCall).when(phone).getForegroundCall();
-        mPhoneSwitcher.mPhoneStateListener.onPreciseCallStateChanged(null);
+        mPhoneSwitcher.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
+        waitABit();
+    }
+
+    private void notifyDataEnabled(boolean dataEnabled) {
+        doReturn(dataEnabled).when(mDataEnabledSettings).isDataEnabled(anyInt());
+        mPhoneSwitcher.sendEmptyMessage(EVENT_DATA_ENABLED_CHANGED);
         waitABit();
     }
 
