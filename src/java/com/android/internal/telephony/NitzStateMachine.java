@@ -59,6 +59,12 @@ public interface NitzStateMachine {
     void handleNitzReceived(TimestampedValue<NitzData> nitzSignal);
 
     /**
+     * Handle the user putting the device into or out of airplane mode
+     * @param on true if airplane mode has been turned on, false if it's been turned off.
+     */
+    void handleAirplaneModeChanged(boolean on);
+
+    /**
      * Dumps the current in-memory state to the supplied PrintWriter.
      */
     void dumpState(PrintWriter pw);

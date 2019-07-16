@@ -1746,6 +1746,10 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    public void onAirplaneModeChanged(boolean isAirplaneModeOn) {
+        mNitzState.handleAirplaneModeChanged(isAirplaneModeOn);
+    }
+
     protected Phone getPhone() {
         return mPhone;
     }
