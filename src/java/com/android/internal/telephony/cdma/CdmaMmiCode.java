@@ -429,4 +429,12 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         }
         return prefixWithNum;
     }
+
+    public static String getCallWaitingPrefix(boolean enable) {
+        if (enable) {
+            return "*74";
+        } else {
+            return "*740";
+        }
+    }
 }
