@@ -70,6 +70,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -1821,7 +1822,7 @@ public class ServiceStateTracker extends Handler {
                  * data roaming status. If TSB58 roaming indicator is not in the
                  * carrier-specified list of ERIs for home system then set roaming.
                  */
-                final int dataRat = mNewSS.getRilDataRadioTechnology();
+                final int dataRat = getRilDataRadioTechnologyForWwan(mNewSS);
                 if (ServiceState.isCdma(dataRat)) {
                     final boolean isVoiceInService =
                             (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
@@ -2158,7 +2159,7 @@ public class ServiceStateTracker extends Handler {
                     // information coming from the modem, which might take a long time to come or
                     // even not come at all.  In order to provide the best user experience, we
                     // query the latest signal information so it will show up on the UI on time.
-                    int oldDataRAT = mSS.getRilDataRadioTechnology();
+                    int oldDataRAT = getRilDataRadioTechnologyForWwan(mSS);
                     if (((oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)
                             && (newDataRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN))
                             || (ServiceState.isCdma(oldDataRAT) && ServiceState.isLte(newDataRat))
@@ -3158,28 +3159,23 @@ public class ServiceStateTracker extends Handler {
         boolean hasMultiApnSupport = false;
         boolean hasLostMultiApnSupport = false;
         if (mPhone.isPhoneTypeCdmaLte()) {
+            final int wwanDataRat = getRilDataRadioTechnologyForWwan(mSS);
+            final int newWwanDataRat = getRilDataRadioTechnologyForWwan(mNewSS);
             has4gHandoff = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
-                    && ((ServiceState.isLte(mSS.getRilDataRadioTechnology())
-                    && (mNewSS.getRilDataRadioTechnology()
-                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+                    && ((ServiceState.isLte(wwanDataRat)
+                    && (newWwanDataRat == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
                     ||
-                    ((mSS.getRilDataRadioTechnology()
-                            == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)
-                            && ServiceState.isLte(mNewSS.getRilDataRadioTechnology())));
+                    ((wwanDataRat == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)
+                    && ServiceState.isLte(newWwanDataRat)));
 
-            hasMultiApnSupport = ((ServiceState.isLte(mNewSS.getRilDataRadioTechnology())
-                    || (mNewSS.getRilDataRadioTechnology()
-                    == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
+            hasMultiApnSupport = ((ServiceState.isLte(newWwanDataRat)
+                    || (newWwanDataRat == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
                     &&
-                    (!ServiceState.isLte(mSS.getRilDataRadioTechnology())
-                            && (mSS.getRilDataRadioTechnology()
-                            != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
+                    (!ServiceState.isLte(wwanDataRat)
+                    && (wwanDataRat != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
 
-            hasLostMultiApnSupport =
-                    ((mNewSS.getRilDataRadioTechnology()
-                            >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A)
-                            && (mNewSS.getRilDataRadioTechnology()
-                            <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
+            hasLostMultiApnSupport = ((newWwanDataRat >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A)
+                    && (newWwanDataRat <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
         }
 
         if (DBG) {
@@ -5140,7 +5136,7 @@ public class ServiceStateTracker extends Handler {
         }
         final boolean isDataInService =
                 (currentServiceState.getDataRegState() == ServiceState.STATE_IN_SERVICE);
-        final int dataRegType = currentServiceState.getRilDataRadioTechnology();
+        final int dataRegType = getRilDataRadioTechnologyForWwan(currentServiceState);
         if (isDataInService) {
             if (!currentServiceState.getDataRoaming()) {
                 currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
@@ -5456,5 +5452,16 @@ public class ServiceStateTracker extends Handler {
             }
         }
         return operatorName;
+    }
+
+    @RilRadioTechnology
+    private static int getRilDataRadioTechnologyForWwan(ServiceState ss) {
+        NetworkRegistrationInfo regInfo = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (regInfo != null) {
+            networkType = regInfo.getAccessNetworkTechnology();
+        }
+        return ServiceState.networkTypeToRilRadioTechnology(networkType);
     }
 }
