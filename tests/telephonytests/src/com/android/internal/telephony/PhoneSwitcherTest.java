@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_PRECISE_CALL_STATE_CHANGED;
 
@@ -94,6 +98,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private GsmCdmaCall mHoldingCall;
     @Mock
     private GsmCdmaCall mInactiveCall;
+    @Mock
+    private ISetOpportunisticDataCallback mSetOpptDataCallback1;
+    @Mock
+    private ISetOpportunisticDataCallback mSetOpptDataCallback2;
 
     // The thread that mPhoneSwitcher will handle events in.
     private HandlerThread mHandlerThread;
@@ -869,6 +877,107 @@ public class PhoneSwitcherTest extends TelephonyTest {
         verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(1));
 
 
+        mHandlerThread.quit();
+    }
+
+    @Test
+    @SmallTest
+    public void testSetPreferredDataCallback() throws Exception {
+        final int numPhones = 2;
+        final int maxActivePhones = 1;
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize(numPhones, maxActivePhones);
+
+        // Mark sub 2 as opportunistic.
+        doReturn(true).when(mSubscriptionController).isOpportunistic(2);
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        waitABit();
+
+        // Validating on sub 10 which is inactive.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(10, true, mSetOpptDataCallback1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION);
+
+        // Switch to active subId without validating. Should always succeed.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, false, mSetOpptDataCallback1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Validating on sub 1 and fails.
+        clearInvocations(mSetOpptDataCallback1);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(1, true, mSetOpptDataCallback1);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(false, 1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+
+        // Validating on sub 2 and succeeds.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback2);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(true, 2);
+        waitABit();
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Switching data back to primary and validation fails.
+        clearInvocations(mSetOpptDataCallback2);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback2);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(false, 1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+
+        // Switching data back to primary and succeeds.
+        clearInvocations(mSetOpptDataCallback2);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback2);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(true, 1);
+        waitABit();
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Back to back call on same subId.
+        clearInvocations(mSetOpptDataCallback1);
+        clearInvocations(mSetOpptDataCallback2);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback1);
+        waitABit();
+        verify(mCellularNetworkValidator).validate(eq(2), anyInt(), eq(false),
+                eq(mPhoneSwitcher.mValidationCallback));
+        doReturn(true).when(mCellularNetworkValidator).isValidating();
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback2);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+        verify(mSetOpptDataCallback2, never()).onComplete(anyInt());
+        // Validation succeeds.
+        doReturn(false).when(mCellularNetworkValidator).isValidating();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(true, 2);
+        waitABit();
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, false, null);
+        waitABit();
+        clearInvocations(mSetOpptDataCallback1);
+        clearInvocations(mSetOpptDataCallback2);
+        clearInvocations(mCellularNetworkValidator);
+        // Back to back call, call 1 to switch to subId 2, call 2 to switch back.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback1);
+        waitABit();
+        verify(mCellularNetworkValidator).validate(eq(2), anyInt(), eq(false),
+                eq(mPhoneSwitcher.mValidationCallback));
+        doReturn(true).when(mCellularNetworkValidator).isValidating();
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback2);
+        waitABit();
+        // Call 1 should be cancelled and failed. Call 2 return success immediately as there's no
+        // change.
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
         mHandlerThread.quit();
     }
 

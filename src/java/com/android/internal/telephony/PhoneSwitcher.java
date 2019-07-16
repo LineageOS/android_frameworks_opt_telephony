@@ -1131,12 +1131,17 @@ public class PhoneSwitcher extends Handler {
             return;
         }
 
+        // Remove EVENT_NETWORK_VALIDATION_DONE. Don't handle validation result of previously subId
+        // if queued.
+        removeMessages(EVENT_NETWORK_VALIDATION_DONE);
+
         int subIdToValidate = (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
                 ? mPrimaryDataSubId : subId;
 
-        if (mValidator.isValidating()
-                && (!needValidation || subIdToValidate != mValidator.getSubIdInValidation())) {
+        if (mValidator.isValidating()) {
             mValidator.stopValidation();
+            sendSetOpptCallbackHelper(mSetOpptSubCallback, SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+            mSetOpptSubCallback = null;
         }
 
         if (subId == mOpptDataSubId) {
