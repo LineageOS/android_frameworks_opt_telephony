@@ -300,6 +300,12 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         updateTimeFromNitz();
     }
 
+    @Override
+    public void handleAirplaneModeChanged(boolean on) {
+        Rlog.d(LOG_TAG, "handleAirplaneModeChanged: on=" + on);
+        // TODO
+    }
+
     private void updateTimeFromNitz() {
         TimestampedValue<NitzData> nitzSignal = mLatestNitzSignal;
         try {
