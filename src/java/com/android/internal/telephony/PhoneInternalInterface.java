@@ -567,19 +567,19 @@ public interface PhoneInternalInterface {
      * setCallForwardingOptions
      * sets a call forwarding option.
      *
-     * @param commandInterfaceCFReason is one of the valid call forwarding
-     *        CF_REASONS, as defined in
-     *        <code>com.android.internal.telephony.CommandsInterface.</code>
      * @param commandInterfaceCFAction is one of the valid call forwarding
      *        CF_ACTIONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param commandInterfaceCFReason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
      *        <code>com.android.internal.telephony.CommandsInterface.</code>
      * @param dialingNumber is the target phone number to forward calls to
      * @param timerSeconds is used by CFNRy to indicate the timeout before
      *        forwarding is attempted.
      * @param onComplete a callback message when the action is completed.
      */
-    void setCallForwardingOption(int commandInterfaceCFReason,
-                                 int commandInterfaceCFAction,
+    void setCallForwardingOption(int commandInterfaceCFAction,
+                                 int commandInterfaceCFReason,
                                  String dialingNumber,
                                  int timerSeconds,
                                  Message onComplete);
