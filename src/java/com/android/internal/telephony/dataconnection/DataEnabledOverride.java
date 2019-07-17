@@ -18,14 +18,18 @@ package com.android.internal.telephony.dataconnection;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DataEnabledOverride.OverrideConditions.Condition;
 
@@ -52,7 +56,9 @@ public class DataEnabledOverride {
      */
     private static final OverrideRule OVERRIDE_RULE_ALLOW_DATA_DURING_VOICE_CALL =
             new OverrideRule(ApnSetting.TYPE_ALL, OverrideConditions.CONDITION_IN_VOICE_CALL
-                    | OverrideConditions.CONDITION_NON_DEFAULT);
+                    | OverrideConditions.CONDITION_NON_DEFAULT
+                    | OverrideConditions.CONDITION_DEFAULT_DATA_ENABLED
+                    | OverrideConditions.CONDITION_DSDS_ENABLED);
 
     /**
      * The rule for always allowing mms. Without adding any condition to the rule, any condition can
@@ -157,6 +163,12 @@ public class DataEnabledOverride {
         /** Enable data only when device has ongoing voice call */
         static final int CONDITION_IN_VOICE_CALL = 1 << 1;
 
+        /** Enable data only when default data is on */
+        static final int CONDITION_DEFAULT_DATA_ENABLED = 1 << 2;
+
+        /** Enable data only when device is in DSDS mode */
+        static final int CONDITION_DSDS_ENABLED = 1 << 3;
+
         /** Enable data unconditionally in string format */
         static final String CONDITION_UNCONDITIONALLY_STRING = "unconditionally";
 
@@ -166,10 +178,18 @@ public class DataEnabledOverride {
         /** Enable data only when device has ongoing voice call in string format */
         static final String CONDITION_VOICE_CALL_STRING = "inVoiceCall";
 
+        /** Enable data only when default data is on in string format */
+        static final String CONDITION_DEFAULT_DATA_ENABLED_STRING = "DefaultDataOn";
+
+        /** Enable data only when device is in DSDS mode in string format */
+        static final String CONDITION_DSDS_ENABLED_STRING = "dsdsEnabled";
+
         /** @hide */
         @IntDef(flag = true, prefix = { "OVERRIDE_CONDITION_" }, value = {
                 CONDITION_NON_DEFAULT,
                 CONDITION_IN_VOICE_CALL,
+                CONDITION_DEFAULT_DATA_ENABLED,
+                CONDITION_DSDS_ENABLED
         })
         @Retention(RetentionPolicy.SOURCE)
         public @interface Condition {}
@@ -182,6 +202,10 @@ public class DataEnabledOverride {
                     CONDITION_NON_DEFAULT_STRING);
             OVERRIDE_CONDITION_INT_MAP.put(CONDITION_IN_VOICE_CALL,
                     CONDITION_VOICE_CALL_STRING);
+            OVERRIDE_CONDITION_INT_MAP.put(CONDITION_DEFAULT_DATA_ENABLED,
+                    CONDITION_DEFAULT_DATA_ENABLED_STRING);
+            OVERRIDE_CONDITION_INT_MAP.put(CONDITION_DSDS_ENABLED,
+                    CONDITION_DSDS_ENABLED_STRING);
 
             OVERRIDE_CONDITION_STRING_MAP.put(CONDITION_UNCONDITIONALLY_STRING,
                     CONDITION_UNCONDITIONALLY);
@@ -189,6 +213,10 @@ public class DataEnabledOverride {
                     CONDITION_NON_DEFAULT);
             OVERRIDE_CONDITION_STRING_MAP.put(CONDITION_VOICE_CALL_STRING,
                     CONDITION_IN_VOICE_CALL);
+            OVERRIDE_CONDITION_STRING_MAP.put(CONDITION_DEFAULT_DATA_ENABLED_STRING,
+                    CONDITION_DEFAULT_DATA_ENABLED);
+            OVERRIDE_CONDITION_STRING_MAP.put(CONDITION_DSDS_ENABLED_STRING,
+                    CONDITION_DSDS_ENABLED);
         }
 
         private final @Condition int mConditions;
@@ -353,8 +381,27 @@ public class DataEnabledOverride {
                 conditions |= OverrideConditions.CONDITION_IN_VOICE_CALL;
             }
 
-            if (phone.getSubId() != SubscriptionController.getInstance().getDefaultDataSubId()) {
+            int defaultDataSubId = SubscriptionController.getInstance().getDefaultDataSubId();
+
+            if (phone.getSubId() != defaultDataSubId) {
                 conditions |= OverrideConditions.CONDITION_NON_DEFAULT;
+            }
+
+            if (defaultDataSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                int phoneId = SubscriptionController.getInstance().getPhoneId(defaultDataSubId);
+                try {
+                    Phone defaultDataPhone = PhoneFactory.getPhone(phoneId);
+                    if (defaultDataPhone != null && defaultDataPhone.isUserDataEnabled()) {
+                        conditions |= OverrideConditions.CONDITION_DEFAULT_DATA_ENABLED;
+                    }
+                } catch (IllegalStateException e) {
+                    //ignore the exception and do not add the condition
+                    Log.d("DataEnabledOverride", e.getMessage());
+                }
+            }
+
+            if (TelephonyManager.from(phone.getContext()).isMultiSimEnabled()) {
+                conditions |= OverrideConditions.CONDITION_DSDS_ENABLED;
             }
         }
 
