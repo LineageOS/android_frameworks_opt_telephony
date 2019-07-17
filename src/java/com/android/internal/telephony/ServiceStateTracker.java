@@ -70,6 +70,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -1816,7 +1817,7 @@ public class ServiceStateTracker extends Handler {
                  * data roaming status. If TSB58 roaming indicator is not in the
                  * carrier-specified list of ERIs for home system then set roaming.
                  */
-                final int dataRat = mNewSS.getRilDataRadioTechnology();
+                final int dataRat = getRilDataRadioTechnologyForWwan(mNewSS);
                 if (ServiceState.isCdma(dataRat)) {
                     final boolean isVoiceInService =
                             (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
@@ -5165,7 +5166,7 @@ public class ServiceStateTracker extends Handler {
         }
         final boolean isDataInService =
                 (currentServiceState.getDataRegState() == ServiceState.STATE_IN_SERVICE);
-        final int dataRegType = currentServiceState.getRilDataRadioTechnology();
+        final int dataRegType = getRilDataRadioTechnologyForWwan(currentServiceState);
         if (isDataInService) {
             if (!currentServiceState.getDataRoaming()) {
                 currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
@@ -5481,5 +5482,16 @@ public class ServiceStateTracker extends Handler {
             }
         }
         return operatorName;
+    }
+
+    @RilRadioTechnology
+    private static int getRilDataRadioTechnologyForWwan(ServiceState ss) {
+        NetworkRegistrationInfo regInfo = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (regInfo != null) {
+            networkType = regInfo.getAccessNetworkTechnology();
+        }
+        return ServiceState.networkTypeToRilRadioTechnology(networkType);
     }
 }
