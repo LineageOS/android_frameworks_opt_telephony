@@ -24,6 +24,7 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
@@ -388,9 +389,14 @@ public class DataEnabledOverride {
 
             if (defaultDataSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
                 int phoneId = SubscriptionController.getInstance().getPhoneId(defaultDataSubId);
-                Phone defaultDataPhone = PhoneFactory.getPhone(phoneId);
-                if (defaultDataPhone.isUserDataEnabled()) {
-                    conditions |= OverrideConditions.CONDITION_DEFAULT_DATA_ENABLED;
+                try {
+                    Phone defaultDataPhone = PhoneFactory.getPhone(phoneId);
+                    if (defaultDataPhone != null && defaultDataPhone.isUserDataEnabled()) {
+                        conditions |= OverrideConditions.CONDITION_DEFAULT_DATA_ENABLED;
+                    }
+                } catch (IllegalStateException e) {
+                    //ignore the exception and do not add the condition
+                    Log.d("DataEnabledOverride", e.getMessage());
                 }
             }
 
