@@ -20,6 +20,7 @@ import android.Manifest;
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
+import android.app.AppGlobals;
 import android.app.UserSwitchObserver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -36,6 +37,7 @@ import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.permission.IPermissionManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.Global;
@@ -112,6 +114,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private EuiccManager mEuiccManager;
     @UnsupportedAppUsage
     private IPackageManager mPackageManager;
+    private IPermissionManager mPermissionManager;
     private Handler mBackgroundHandler;
 
     // The current foreground user ID.
@@ -137,12 +140,14 @@ public class SubscriptionInfoUpdater extends Handler {
     public SubscriptionInfoUpdater(
             Looper looper, Context context, Phone[] phone, CommandsInterface[] ci) {
         this(looper, context, phone, ci,
-                IPackageManager.Stub.asInterface(ServiceManager.getService("package")));
+                IPackageManager.Stub.asInterface(ServiceManager.getService("package")),
+                AppGlobals.getPermissionManager());
     }
 
     @VisibleForTesting public SubscriptionInfoUpdater(
             Looper looper, Context context, Phone[] phone,
-            CommandsInterface[] ci, IPackageManager packageMgr) {
+            CommandsInterface[] ci, IPackageManager packageMgr,
+            IPermissionManager permissionMgr) {
         logd("Constructor invoked");
         mBackgroundHandler = new Handler(looper);
 
@@ -151,6 +156,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = packageMgr;
+        mPermissionManager = permissionMgr;
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
         initializeCarrierApps();
@@ -169,7 +175,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         throws RemoteException {
                     mCurrentlyActiveUserId = newUserId;
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                            mPackageManager, TelephonyManager.getDefault(),
+                            mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
                             mContext.getContentResolver(), mCurrentlyActiveUserId);
 
                     if (reply != null) {
@@ -185,8 +191,8 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
         }
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(), mContext.getContentResolver(),
-                mCurrentlyActiveUserId);
+                mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
+                mContext.getContentResolver(), mCurrentlyActiveUserId);
     }
 
     /**
@@ -537,7 +543,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
         // Update set of enabled carrier apps now that the privilege rules may have changed.
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(),
+                mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
                 mContext.getContentResolver(), mCurrentlyActiveUserId);
 
         /**

@@ -16,17 +16,17 @@
 
 package com.android.internal.telephony.ims;
 
+import android.app.AppGlobals;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.IPackageManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.permission.IPermissionManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
@@ -176,7 +176,7 @@ public class ImsServiceController {
     private static final int REBIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
-    private final IPackageManager mPackageManager;
+    private final IPermissionManager mPermissionManager;
     private ImsServiceControllerCallbacks mCallbacks;
     private ExponentialBackoff mBackoff;
 
@@ -298,7 +298,7 @@ public class ImsServiceController {
                 2, /* multiplier */
                 mHandlerThread.getLooper(),
                 mRestartImsServiceRunnable);
-        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+        mPermissionManager = AppGlobals.getPermissionManager();
     }
 
     @VisibleForTesting
@@ -315,7 +315,7 @@ public class ImsServiceController {
                 2, /* multiplier */
                 handler,
                 mRestartImsServiceRunnable);
-        mPackageManager = null;
+        mPermissionManager = null;
     }
 
     /**
@@ -584,14 +584,14 @@ public class ImsServiceController {
         mBackoff.start();
     }
 
-    // Grant runtime permissions to ImsService. PackageManager ensures that the ImsService is
+    // Grant runtime permissions to ImsService. PermissionManager ensures that the ImsService is
     // system/signed before granting permissions.
     private void grantPermissionsToService() {
         Log.i(LOG_TAG, "Granting Runtime permissions to:" + getComponentName());
         String[] pkgToGrant = {mComponentName.getPackageName()};
         try {
-            if (mPackageManager != null) {
-                mPackageManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
+            if (mPermissionManager != null) {
+                mPermissionManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
                         mContext.getUserId());
             }
         } catch (RemoteException e) {

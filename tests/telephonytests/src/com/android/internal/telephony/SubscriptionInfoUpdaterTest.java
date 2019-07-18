@@ -42,6 +42,7 @@ import android.net.Uri;
 import android.os.HandlerThread;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
+import android.permission.IPermissionManager;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -99,6 +100,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @Mock
     private IPackageManager mPackageManager;
     @Mock
+    private IPermissionManager mPermissionManager;
+    @Mock
     private UiccSlot mUiccSlot;
 
     /*Custom ContentProvider */
@@ -118,7 +121,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             mUpdater = new SubscriptionInfoUpdater(getLooper(), mContext, new Phone[]{mPhone},
-                    new CommandsInterface[]{mSimulatedCommands}, mPackageManager);
+                    new CommandsInterface[]{mSimulatedCommands}, mPackageManager,
+                    mPermissionManager);
             setReady(true);
         }
     }

@@ -24,7 +24,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.LinkProperties;
@@ -37,6 +36,7 @@ import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.permission.IPermissionManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
@@ -74,7 +74,7 @@ public class DataServiceManager extends Handler {
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final AppOpsManager mAppOps;
-    private final IPackageManager mPackageManager;
+    private final IPermissionManager mPermissionManager;
 
     private final int mTransportType;
 
@@ -122,7 +122,7 @@ public class DataServiceManager extends Handler {
     private void grantPermissionsToService(String packageName) {
         final String[] pkgToGrant = {packageName};
         try {
-            mPackageManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
+            mPermissionManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
                     pkgToGrant, mPhone.getContext().getUserId());
             mAppOps.setMode(AppOpsManager.OP_MANAGE_IPSEC_TUNNELS, mPhone.getContext().getUserId(),
                     pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
@@ -146,7 +146,7 @@ public class DataServiceManager extends Handler {
         try {
             String[] dataServicesArray = new String[dataServices.size()];
             dataServices.toArray(dataServicesArray);
-            mPackageManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
+            mPermissionManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
                     dataServicesArray, mPhone.getContext().getUserId());
             for (String pkg : dataServices) {
                 mAppOps.setMode(AppOpsManager.OP_MANAGE_IPSEC_TUNNELS,
@@ -258,7 +258,11 @@ public class DataServiceManager extends Handler {
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
-        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+        // NOTE: Do NOT use AppGlobals to retrieve the permission manager; AppGlobals
+        // caches the service instance, but we need to explicitly request a new service
+        // so it can be mocked out for tests
+        mPermissionManager =
+                IPermissionManager.Stub.asInterface(ServiceManager.getService("permissionmgr"));
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
 
         IntentFilter intentFilter = new IntentFilter();
