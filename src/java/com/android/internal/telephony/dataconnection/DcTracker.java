@@ -1351,6 +1351,16 @@ public class DcTracker extends Handler {
             reasons.add(DataDisallowedReasonType.RADIO_DISABLED_BY_CARRIER);
         }
 
+        if (apnContext != null) {
+            // If the transport has been already switched to the other transport, we should not
+            // allow the data setup. The only exception is the handover case, where we setup
+            // handover data connection before switching the transport.
+            if (mTransportType != mPhone.getTransportManager().getCurrentTransport(
+                    apnContext.getApnTypeBitmask()) && requestType != REQUEST_TYPE_HANDOVER) {
+                reasons.add(DataDisallowedReasonType.ON_OTHER_TRANSPORT);
+            }
+        }
+
         boolean isDataEnabled = apnContext == null ? mDataEnabledSettings.isDataEnabled()
                 : mDataEnabledSettings.isDataEnabled(apnContext.getApnTypeBitmask());
 
