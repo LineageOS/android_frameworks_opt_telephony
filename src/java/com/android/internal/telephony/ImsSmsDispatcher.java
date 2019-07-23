@@ -234,7 +234,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                             mIsImsServiceUp = false;
                         }
                     }
-                });
+                }, "ImsSmsDispatcher");
         mImsManagerConnector.connect();
     }
 
