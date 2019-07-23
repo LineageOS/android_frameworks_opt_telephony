@@ -115,7 +115,10 @@ public class DataConnectionReasons {
         RADIO_DISABLED_BY_CARRIER(true),
         APN_NOT_CONNECTABLE(true),
         ON_IWLAN(true),
-        IN_ECBM(true);
+        IN_ECBM(true),
+        ON_OTHER_TRANSPORT(true);   // When data retry occurs, the given APN type's preferred
+                                    // transport might be already changed. In this case we
+                                    // should disallow data retry.
 
         private boolean mIsHardReason;
 
