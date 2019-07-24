@@ -36,6 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.LinkedList;
+import java.util.concurrent.TimeUnit;
 
 public class NitzStateMachineImplTest extends TelephonyTest {
 
@@ -629,6 +630,101 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
         assertEquals(expectedZoneId, mNitzStateMachine.getSavedTimeZoneId());
+    }
+
+    @Test
+    public void test_airplaneModeClearsState() throws Exception {
+        Scenario scenario = UNITED_KINGDOM_SCENARIO.mutableCopy();
+        long timeStepMillis = TimeUnit.HOURS.toMillis(3);
+
+        Script script = new Script()
+                .setRealtimeClockFromScenario(scenario)
+                .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
+                .initializeTimeZoneDetectionEnabled(true)
+                .initializeTimeZoneSetting(null);
+
+        // Pre-flight: Simulate a device receiving signals that allow it to detect time and time
+        // zone.
+        TimestampedValue<NitzData> preflightNitzSignal = scenario.createNitzSignal();
+        script.nitzReceived(preflightNitzSignal)
+                .countryReceived(scenario.getNetworkCountryIsoCode())
+                .verifyTimeSuggestedAndZoneSetAndReset(
+                        scenario.createTimeSignal(), scenario.getTimeZoneId());
+
+        // Demonstrate the NitzStateMachineImpl is "opinionated" about time zone: toggling auto-time
+        // zone on should cause it to set the last known time zone again.
+        // Note: Historically Android telephony time detection hasn't retained an opinion about time
+        // so only the time zone is set. Also, NitzStateMachine doesn't pay attention to whether
+        // auto-time is enabled; it is left to the system server service to decide whether to act on
+        // the time suggestion if the settings allow.
+        script.toggleTimeZoneDetectionEnabled(false)
+                .verifyNothingWasSetAndReset()
+                .toggleTimeZoneDetectionEnabled(true)
+                .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
+
+        // Check state that NitzStateMachine must expose.
+        assertEquals(preflightNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
+
+        // Boarded flight: Airplane mode turned on / time zone detection still enabled.
+        // The NitzStateMachineImpl must lose all state and stop having an opinion about time zone.
+
+        // Simulate the passage of time and update the device realtime clock.
+        scenario.incrementTime(timeStepMillis);
+        script.setRealtimeClockFromScenario(scenario);
+
+        script.toggleAirplaneMode(true);
+
+        // Check state that NitzStateMachine must expose.
+        assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
+
+        // Verify there's no time zone opinion by toggling auto time zone off and on.
+        script.toggleTimeZoneDetectionEnabled(false)
+                .verifyNothingWasSetAndReset()
+                .toggleTimeZoneDetectionEnabled(true)
+                .verifyNothingWasSetAndReset();
+
+        // During flight: Airplane mode turned off / time zone detection still enabled.
+        // The NitzStateMachineImpl still must not have an opinion about time zone / hold any state.
+
+        // Simulate the passage of time and update the device realtime clock.
+        scenario.incrementTime(timeStepMillis);
+        script.setRealtimeClockFromScenario(scenario);
+
+        script.toggleAirplaneMode(false);
+
+        // Verify there's still no opinion by toggling auto time zone off and on.
+        script.toggleTimeZoneDetectionEnabled(false)
+                .verifyNothingWasSetAndReset()
+                .toggleTimeZoneDetectionEnabled(true)
+                .verifyNothingWasSetAndReset();
+
+        // Check the state that NitzStateMachine must expose.
+        assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
+
+        // Post flight: Device has moved and receives new signals.
+
+        // Simulate the passage of time and update the device realtime clock.
+        scenario.incrementTime(timeStepMillis);
+        script.setRealtimeClockFromScenario(scenario);
+
+        // Simulate the movement to the destination.
+        scenario.changeCountry(UNIQUE_US_ZONE_SCENARIO.getTimeZoneId(),
+                UNIQUE_US_ZONE_SCENARIO.getNetworkCountryIsoCode());
+
+        // Simulate the device receiving NITZ signals again after the flight. Now the
+        // NitzStateMachineImpl is opinionated again.
+        TimestampedValue<NitzData> postFlightNitzSignal = scenario.createNitzSignal();
+        script.countryReceived(scenario.getNetworkCountryIsoCode())
+                .nitzReceived(postFlightNitzSignal)
+                .verifyTimeSuggestedAndZoneSetAndReset(
+                        scenario.createTimeSignal(), scenario.getTimeZoneId());
+
+        // Check state that NitzStateMachine must expose.
+        assertEquals(postFlightNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     /**
