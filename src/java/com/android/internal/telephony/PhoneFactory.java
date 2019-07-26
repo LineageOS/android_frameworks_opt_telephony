@@ -243,7 +243,7 @@ public class PhoneFactory {
                     Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
                     sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones,
                             isDynamicBinding);
-                    sImsResolver.initPopulateCacheAndStartBind();
+                    sImsResolver.initialize();
                     // Start monitoring after defaults have been made.
                     // Default phone must be ready before ImsPhone is created because ImsService
                     // might need it when it is being opened. This should initialize multiple
