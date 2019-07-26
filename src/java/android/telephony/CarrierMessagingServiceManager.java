@@ -26,6 +26,8 @@ import android.service.carrier.ICarrierMessagingService;
 
 import com.android.internal.util.Preconditions;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 /**
  * Provides basic structure for platform to connect to the carrier messaging service.
  * <p>
@@ -42,7 +44,12 @@ import com.android.internal.util.Preconditions;
  * CarrierMessagingService.
  * @hide
  */
+
 public abstract class CarrierMessagingServiceManager {
+
+    @UnsupportedAppUsage(maxTargetSdk = android.os.Build.VERSION_CODES.P)
+    public CarrierMessagingServiceManager() {}
+
     // Populated by bindToCarrierMessagingService. bindToCarrierMessagingService must complete
     // prior to calling disposeConnection so that mCarrierMessagingServiceConnection is initialized.
     private volatile CarrierMessagingServiceConnection mCarrierMessagingServiceConnection;
