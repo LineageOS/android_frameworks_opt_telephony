@@ -1343,7 +1343,8 @@ public abstract class SMSDispatcher extends Handler {
     private CharSequence getAppLabel(String appPackage, @UserIdInt int userId) {
         PackageManager pm = mContext.getPackageManager();
         try {
-            ApplicationInfo appInfo = pm.getApplicationInfoAsUser(appPackage, 0, userId);
+            ApplicationInfo appInfo = pm.getApplicationInfoAsUser(appPackage, 0,
+                UserHandle.getUserHandleForUid(userId));
             return appInfo.loadSafeLabel(pm, PackageItemInfo.DEFAULT_MAX_LABEL_SIZE_PX,
                     PackageItemInfo.SAFE_LABEL_FLAG_TRIM
                             | PackageItemInfo.SAFE_LABEL_FLAG_FIRST_LINE);
