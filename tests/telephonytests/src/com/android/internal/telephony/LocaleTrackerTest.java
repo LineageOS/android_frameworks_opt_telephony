@@ -44,14 +44,19 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class LocaleTrackerTest extends TelephonyTest {
 
     private static final String US_MCC = "310";
+    private static final String LIECHTENSTEIN_MCC = "295";
+
     private static final String FAKE_MNC = "123";
-    private static final String US_COUNTRY_CODE = "us";
+
     private static final String COUNTRY_CODE_UNAVAILABLE = "";
+    private static final String US_COUNTRY_CODE = "us";
+    private static final String LIECHTENSTEIN_COUNTRY_CODE = "li";
 
     private LocaleTracker mLocaleTracker;
 
@@ -156,11 +161,12 @@ public class LocaleTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testNoSim() throws Exception {
+        // updateOperatorNumeric("") will not trigger an instantaneous country change
         mLocaleTracker.updateOperatorNumeric("");
         sendGsmCellInfo();
         sendServiceState(ServiceState.STATE_EMERGENCY_ONLY);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
-        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
+        verifyCountryCodeNotified(new String[]{US_COUNTRY_CODE});
         assertTrue(mLocaleTracker.isTracking());
     }
 
@@ -183,11 +189,11 @@ public class LocaleTrackerTest extends TelephonyTest {
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
         assertFalse(mLocaleTracker.isTracking());
 
+        // updateOperatorNumeric("") will not trigger an instantaneous country change
         mLocaleTracker.updateOperatorNumeric("");
         waitForHandlerAction(mLocaleTracker, 100);
-        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
-        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE,
-                COUNTRY_CODE_UNAVAILABLE});
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
         sendServiceState(ServiceState.STATE_POWER_OFF);
         assertFalse(mLocaleTracker.isTracking());
     }
@@ -208,6 +214,70 @@ public class LocaleTrackerTest extends TelephonyTest {
         waitForHandlerAction(mLocaleTracker, 100);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
     }
+
+    @Test
+    @SmallTest
+    public void testToggleAirplaneModeOosPlmn() throws Exception {
+        sendServiceState(ServiceState.STATE_POWER_OFF);
+        mLocaleTracker.updateOperatorNumeric("");
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE});
+        assertFalse(mLocaleTracker.isTracking());
+
+        // Override the setUp() function and return an empty list for CellInfo
+        doAnswer(invocation -> {
+            Message m = invocation.getArgument(1);
+            AsyncResult.forMessage(m, Collections.emptyList(), null);
+            m.sendToTarget();
+            return null; }).when(mPhone).requestCellInfoUpdate(any(), any());
+
+        sendServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertTrue(mLocaleTracker.isTracking());
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+
+        mLocaleTracker.updateOperatorNumeric(US_MCC + FAKE_MNC);
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
+
+        mLocaleTracker.updateOperatorNumeric("");
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
+
+        mLocaleTracker.updateOperatorNumeric(LIECHTENSTEIN_MCC + FAKE_MNC);
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(LIECHTENSTEIN_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{
+                COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE, LIECHTENSTEIN_COUNTRY_CODE});
+    }
+
+    @Test
+    @SmallTest
+    public void testToggleAirplaneModeNoCellInfo() throws Exception {
+        sendServiceState(ServiceState.STATE_POWER_OFF);
+        mLocaleTracker.updateOperatorNumeric("");
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE});
+        assertFalse(mLocaleTracker.isTracking());
+
+        // Override the setUp() function and return an empty list for CellInfo
+        doAnswer(invocation -> {
+            Message m = invocation.getArgument(1);
+            AsyncResult.forMessage(m, Collections.emptyList(), null);
+            m.sendToTarget();
+            return null; }).when(mPhone).requestCellInfoUpdate(any(), any());
+
+        sendServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertTrue(mLocaleTracker.isTracking());
+        waitForHandlerAction(mLocaleTracker, 100);
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+    }
+
 
     @Test
     @SmallTest
