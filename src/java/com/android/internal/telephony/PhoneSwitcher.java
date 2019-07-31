@@ -258,11 +258,12 @@ public class PhoneSwitcher extends Handler {
         public int mExpectedSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         public int mSwitchReason = TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
         @Override
-        public void onAvailable(Network network) {
-            NetworkCapabilities nc = mConnectivityManager.getNetworkCapabilities(network);
-            if (nc.hasTransport(TRANSPORT_CELLULAR)
+        public void onCapabilitiesChanged(Network network,
+                NetworkCapabilities networkCapabilities) {
+            if (networkCapabilities.hasTransport(TRANSPORT_CELLULAR)
                     && SubscriptionManager.isValidSubscriptionId(mExpectedSubId)
-                    && mExpectedSubId == getSubIdFromNetworkSpecifier(nc.getNetworkSpecifier())) {
+                    && mExpectedSubId == getSubIdFromNetworkSpecifier(
+                            networkCapabilities.getNetworkSpecifier())) {
                 logDataSwitchEvent(
                         mExpectedSubId,
                         TelephonyEvent.EventState.EVENT_STATE_END,
@@ -1275,6 +1276,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void logDataSwitchEvent(int subId, int state, int reason) {
+        log("logDataSwitchEvent subId " + subId + " state " + state + " reason " + reason);
         DataSwitch dataSwitch = new DataSwitch();
         dataSwitch.state = state;
         dataSwitch.reason = reason;
