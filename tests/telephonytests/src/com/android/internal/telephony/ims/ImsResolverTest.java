@@ -828,7 +828,7 @@ public class ImsResolverTest extends ImsTestBase {
         // Only return info if not using the compat argument
         when(mMockPM.queryIntentServicesAsUser(
                 argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
-                anyInt(), anyInt())).thenReturn(infos);
+                anyInt(), any())).thenReturn(infos);
     }
 
     private void setupPackageQuery(ComponentName name, Set<String> features,
@@ -838,7 +838,7 @@ public class ImsResolverTest extends ImsTestBase {
         // Only return info if not using the compat argument
         when(mMockPM.queryIntentServicesAsUser(
                 argThat(argument -> ImsService.SERVICE_INTERFACE.equals(argument.getAction())),
-                anyInt(), anyInt())).thenReturn(info);
+                anyInt(), any())).thenReturn(info);
     }
 
     private ImsServiceController setupController() {
