@@ -1279,16 +1279,6 @@ public class DataConnection extends StateMachine {
         return result;
     }
 
-    /** @return {@code true} if validation is required, {@code false} otherwise. */
-    public boolean isValidationRequired() {
-        final NetworkCapabilities nc = getNetworkCapabilities();
-        return nc != null
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
-    }
-
     /**
      * @return {@code True} if 464xlat should be skipped.
      */
