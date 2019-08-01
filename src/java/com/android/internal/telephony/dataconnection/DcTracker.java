@@ -2931,11 +2931,10 @@ public class DcTracker extends Handler {
      *
      * @param status One of {@code NetworkAgent.VALID_NETWORK} or
      * {@code NetworkAgent.INVALID_NETWORK}.
-     * @param cid context id {@code cid}
      * @param redirectUrl If the Internet probe was redirected, this
      * is the destination it was redirected to, otherwise {@code null}
      */
-    private void onNetworkStatusChanged(int status, int cid, String redirectUrl) {
+    private void onNetworkStatusChanged(int status, String redirectUrl) {
         if (!TextUtils.isEmpty(redirectUrl)) {
             Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED);
             intent.putExtra(TelephonyIntents.EXTRA_REDIRECTION_URL_KEY, redirectUrl);
@@ -2943,7 +2942,6 @@ public class DcTracker extends Handler {
             log("Notify carrier signal receivers with redirectUrl: " + redirectUrl);
         } else {
             final boolean isValid = status == NetworkAgent.VALID_NETWORK;
-            final DataConnection dc = getDataConnectionByContextId(cid);
             if (!mDsRecoveryHandler.isRecoveryOnBadNetworkEnabled()) {
                 if (DBG) log("Skip data stall recovery on network status change with in threshold");
                 return;
@@ -2952,9 +2950,7 @@ public class DcTracker extends Handler {
                 if (DBG) log("Skip data stall recovery on non WWAN");
                 return;
             }
-            if (dc != null && dc.isValidationRequired()) {
-                mDsRecoveryHandler.processNetworkStatusChanged(isValid);
-            }
+            mDsRecoveryHandler.processNetworkStatusChanged(isValid);
         }
     }
 
@@ -3603,9 +3599,8 @@ public class DcTracker extends Handler {
 
             case DctConstants.EVENT_NETWORK_STATUS_CHANGED:
                 int status = msg.arg1;
-                int cid = msg.arg2;
                 String url = (String) msg.obj;
-                onNetworkStatusChanged(status, cid, url);
+                onNetworkStatusChanged(status, url);
                 break;
 
             case DctConstants.EVENT_RADIO_AVAILABLE:

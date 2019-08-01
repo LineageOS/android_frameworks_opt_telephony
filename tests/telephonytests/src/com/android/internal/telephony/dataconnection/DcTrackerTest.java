@@ -1575,17 +1575,16 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        waitForMs(200);
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.VALID_NETWORK, 1, null));
+                NetworkAgent.VALID_NETWORK, 0, null));
         waitForMs(200);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.INVALID_NETWORK, 1, null));
+                NetworkAgent.INVALID_NETWORK, 0, null));
         waitForMs(200);
 
         // Verify that its no-op when the new data stall detection feature is disabled
@@ -1617,17 +1616,16 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        waitForMs(200);
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.VALID_NETWORK, 1, null));
+                NetworkAgent.VALID_NETWORK, 0, null));
         waitForMs(200);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.INVALID_NETWORK, 1, null));
+                NetworkAgent.INVALID_NETWORK, 0, null));
         waitForMs(200);
 
         verify(mSimulatedCommandsVerifier, times(1)).getDataCallList(any(Message.class));
@@ -1660,12 +1658,11 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
-        waitForMs(200);
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED false");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.INVALID_NETWORK, 1, null));
+                NetworkAgent.INVALID_NETWORK, 0, null));
         waitForMs(200);
 
         // expected tear down all DataConnections
@@ -1705,7 +1702,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED false");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.INVALID_NETWORK, 1, null));
+                NetworkAgent.INVALID_NETWORK, 0, null));
         waitForMs(200);
 
         // expected to get preferred network type
@@ -1742,7 +1739,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         logd("Sending EVENT_NETWORK_STATUS_CHANGED false");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                NetworkAgent.INVALID_NETWORK, 1, null));
+                NetworkAgent.INVALID_NETWORK, 0, null));
         waitForMs(200);
 
         // expected to get preferred network type
