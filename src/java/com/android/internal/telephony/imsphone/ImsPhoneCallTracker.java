@@ -1948,6 +1948,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     @VisibleForTesting
     public void addReasonCodeRemapping(Integer fromCode, String message, Integer toCode) {
+        if (message != null) {
+            message = message.toLowerCase();
+        }
         mImsReasonCodeMap.put(new Pair<>(fromCode, message), toCode);
     }
 
@@ -1966,6 +1969,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         String reason = reasonInfo.getExtraMessage();
         if (reason == null) {
             reason = "";
+        } else {
+            reason = reason.toLowerCase();
         }
         log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
                 + reason);
@@ -2037,6 +2042,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case ImsReasonInfo.CODE_SIP_NOT_ACCEPTABLE:
             case ImsReasonInfo.CODE_SIP_GLOBAL_ERROR:
                 return DisconnectCause.SERVER_ERROR;
+
+            case ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE:
+                return DisconnectCause.EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE;
+
+            case ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION:
+                return DisconnectCause.WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION;
 
             case ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE:
             case ImsReasonInfo.CODE_SIP_SERVER_ERROR:
