@@ -21,6 +21,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -94,7 +95,7 @@ public class TelephonyPermissionsTest {
                 .enforcePermission(anyString(), eq(PID), eq(UID), eq(MSG));
         doThrow(new SecurityException()).when(mMockContext)
                 .enforcePermission(anyString(), eq(PID), eq(UID), eq(MSG));
-        when(mMockAppOps.noteOp(anyInt(), eq(UID), eq(PACKAGE)))
+        when(mMockAppOps.noteOp(anyString(), eq(UID), eq(PACKAGE)))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
         when(mMockAppOps.noteOpNoThrow(anyString(), eq(UID), eq(PACKAGE))).thenReturn(
                 AppOpsManager.MODE_ERRORED);
@@ -129,7 +130,7 @@ public class TelephonyPermissionsTest {
     public void testCheckReadPhoneState_hasPermissionAndAppOp() {
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PHONE_STATE, PID, UID, MSG);
-        when(mMockAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, UID, PACKAGE))
+        when(mMockAppOps.noteOp(AppOpsManager.OPSTR_READ_PHONE_STATE, UID, PACKAGE))
                 .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneState(
                 mMockContext, () -> mMockTelephony, SUB_ID, PID, UID, PACKAGE, MSG));
@@ -169,7 +170,7 @@ public class TelephonyPermissionsTest {
     public void testCheckReadPhoneStateOnAnyActiveSub_hasPermissionAndAppOp() {
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PHONE_STATE, PID, UID, MSG);
-        when(mMockAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, UID, PACKAGE))
+        when(mMockAppOps.noteOp(AppOpsManager.OPSTR_READ_PHONE_STATE, UID, PACKAGE))
                 .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneStateOnAnyActiveSub(
                 mMockContext, () -> mMockTelephony, PID, UID, PACKAGE, MSG));
@@ -204,7 +205,7 @@ public class TelephonyPermissionsTest {
 
     @Test
     public void testCheckReadPhoneNumber_defaultSmsApp() {
-        when(mMockAppOps.noteOp(AppOpsManager.OP_WRITE_SMS, UID, PACKAGE))
+        when(mMockAppOps.noteOp(AppOpsManager.OPSTR_WRITE_SMS, UID, PACKAGE))
                 .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneNumber(
                 mMockContext, () -> mMockTelephony, SUB_ID, PID, UID, PACKAGE, MSG));
@@ -222,7 +223,7 @@ public class TelephonyPermissionsTest {
     public void testCheckReadPhoneNumber_hasReadSms() {
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_SMS, PID, UID, MSG);
-        when(mMockAppOps.noteOp(AppOpsManager.OP_READ_SMS, UID, PACKAGE))
+        when(mMockAppOps.noteOp(AppOpsManager.OPSTR_READ_SMS, UID, PACKAGE))
                 .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneNumber(
                 mMockContext, () -> mMockTelephony, SUB_ID, PID, UID, PACKAGE, MSG));
@@ -232,7 +233,7 @@ public class TelephonyPermissionsTest {
     public void testCheckReadPhoneNumber_hasReadPhoneNumbers() {
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
-        when(mMockAppOps.noteOp(AppOpsManager.OP_READ_PHONE_NUMBERS, UID, PACKAGE))
+        when(mMockAppOps.noteOp(AppOpsManager.OPSTR_READ_PHONE_NUMBERS, UID, PACKAGE))
                 .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneNumber(
                 mMockContext, () -> mMockTelephony, SUB_ID, PID, UID, PACKAGE, MSG));
@@ -411,8 +412,8 @@ public class TelephonyPermissionsTest {
         // regardless of if the package satisfies the previous requirements for device ID access.
         mMockApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
         when(mMockContext.getPackageManager()).thenReturn(mMockPackageManager);
-        when(mMockPackageManager.getApplicationInfoAsUser(eq(PACKAGE), anyInt(),
-                anyInt())).thenReturn(mMockApplicationInfo);
+        when(mMockPackageManager.getApplicationInfoAsUser(eq(PACKAGE), anyInt(), any()))
+            .thenReturn(mMockApplicationInfo);
 
         when(mMockContext.checkCallingOrSelfPermission(
                 android.Manifest.permission.READ_DEVICE_CONFIG)).thenReturn(
