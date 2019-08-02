@@ -1756,6 +1756,44 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForMs(200);
     }
 
+    private void changeRegStateWithIwlan(int state, CellIdentity cid, int voiceRat, int dataRat,
+            int iwlanState, int iwlanDataRat) {
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+        sst.mPollingContext[0] = 3;
+
+        // PS WWAN
+        NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                state, dataRat, 0, false,
+                null, cid, 1, false, false, false, lteVopsSupportInfo, false);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForMs(200);
+
+        // CS WWAN
+        NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                state, voiceRat, 0, false,
+                null, cid, false, 0, 0, 0);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+        waitForMs(200);
+
+        // PS WLAN
+        NetworkRegistrationInfo dataIwlanResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                iwlanState, iwlanDataRat, 0, false,
+                null, null, 1, false, false, false, lteVopsSupportInfo, false);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataIwlanResult, null)));
+        waitForMs(200);
+    }
+
     // Edge and GPRS are grouped under the same family and Edge has higher rate than GPRS.
     // Expect no rat update when move from E to G.
     @Test
@@ -1926,6 +1964,49 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForMs(200);
         assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
+    }
+
+    /**
+     * Ensure that TransportManager changes due to transport preference changes are picked up in the
+     * new ServiceState when a poll event occurs. This causes ServiceState#getRilDataRadioTechnology
+     * to change even though the underlying transports have not changed state.
+     */
+    @SmallTest
+    @Test
+    public void testRilDataTechnologyChangeTransportPreference() {
+        when(mTransportManager.isAnyApnPreferredOnIwlan()).thenReturn(false);
+
+        // Start state: Cell data only LTE + IWLAN
+        CellIdentityLte cellIdentity =
+                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst");
+        changeRegStateWithIwlan(
+                // WWAN
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, cellIdentity,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, TelephonyManager.NETWORK_TYPE_LTE,
+                // WLAN
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_LTE, sst.mSS.getRilDataRadioTechnology());
+
+        sst.registerForDataRegStateOrRatChanged(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                mTestHandler, EVENT_DATA_RAT_CHANGED, null);
+        // transport preference change for a PDN for IWLAN occurred, no registration change, but
+        // trigger unrelated poll to pick up transport preference.
+        when(mTransportManager.isAnyApnPreferredOnIwlan()).thenReturn(true);
+        changeRegStateWithIwlan(
+                // WWAN
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, cellIdentity,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, TelephonyManager.NETWORK_TYPE_LTE,
+                // WLAN
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_IWLAN);
+        // Now check to make sure a transport independent notification occurred for the registrants.
+        // There will be two, one when the registration happened and another when the transport
+        // preference changed.
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler, times(2)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, sst.mSS.getRilDataRadioTechnology());
     }
 
     @Test
