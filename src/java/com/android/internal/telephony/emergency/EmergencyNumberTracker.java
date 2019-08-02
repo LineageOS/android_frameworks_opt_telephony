@@ -41,6 +41,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -80,6 +81,11 @@ public class EmergencyNumberTracker extends Handler {
     private final CommandsInterface mCi;
     private final Phone mPhone;
     private String mCountryIso;
+    /**
+     * Indicates if the country iso is set by another subscription.
+     * @hide
+     */
+    public boolean mIsCountrySetByAnotherSub = false;
     private String[] mEmergencyNumberPrefix = new String[0];
 
     private static final String EMERGENCY_NUMBER_DB_ASSETS_FILE = "eccdata";
@@ -131,7 +137,9 @@ public class EmergencyNumberTracker extends Handler {
                     if (TextUtils.isEmpty(countryIso)) {
                         return;
                     }
-                    updateEmergencyNumberDatabaseCountryChange(countryIso);
+
+                    // Update country iso change for available Phones
+                    updateEmergencyCountryIsoAllPhones(countryIso);
                 }
                 return;
             }
@@ -222,8 +230,37 @@ public class EmergencyNumberTracker extends Handler {
         // If country iso has been cached when listener is set, don't need to cache the initial
         // country iso and initial database.
         if (mCountryIso == null) {
-            mCountryIso = getInitialCountryIso().toLowerCase();
+            updateEmergencyCountryIso(getInitialCountryIso().toLowerCase());
             cacheEmergencyDatabaseByCountry(mCountryIso);
+        }
+    }
+
+    /**
+     * Update Emergency country iso for all the Phones
+     */
+    @VisibleForTesting
+    public void updateEmergencyCountryIsoAllPhones(String countryIso) {
+        // Notify country iso change for current Phone
+        mIsCountrySetByAnotherSub = false;
+        updateEmergencyNumberDatabaseCountryChange(countryIso);
+
+        // Share and notify country iso change for other Phones if the country
+        // iso in their emergency number tracker is not available or the country
+        // iso there is set by another active subscription.
+        for (Phone phone: PhoneFactory.getPhones()) {
+            if (phone.getPhoneId() == mPhone.getPhoneId()) {
+                continue;
+            }
+            EmergencyNumberTracker emergencyNumberTracker;
+            if (phone != null && phone.getEmergencyNumberTracker() != null) {
+                emergencyNumberTracker = phone.getEmergencyNumberTracker();
+                if (TextUtils.isEmpty(emergencyNumberTracker.getEmergencyCountryIso())
+                        || emergencyNumberTracker.mIsCountrySetByAnotherSub) {
+                    emergencyNumberTracker.mIsCountrySetByAnotherSub = true;
+                    emergencyNumberTracker.updateEmergencyNumberDatabaseCountryChange(
+                            countryIso);
+                }
+            }
         }
     }
 
@@ -381,8 +418,7 @@ public class EmergencyNumberTracker extends Handler {
     private void updateEmergencyNumberListDatabaseAndNotify(String countryIso) {
         logd("updateEmergencyNumberListDatabaseAndNotify(): receiving countryIso: "
                 + countryIso);
-
-        mCountryIso = countryIso.toLowerCase();
+        updateEmergencyCountryIso(countryIso.toLowerCase());
         cacheEmergencyDatabaseByCountry(countryIso);
         writeUpdatedEmergencyNumberListMetrics(mEmergencyNumberListFromDatabase);
         if (!DBG) {
@@ -558,6 +594,14 @@ public class EmergencyNumberTracker extends Handler {
             }
         }
         return EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
+    }
+
+    public String getEmergencyCountryIso() {
+        return mCountryIso;
+    }
+
+    private synchronized void updateEmergencyCountryIso(String countryIso) {
+        mCountryIso = countryIso;
     }
 
     /**
