@@ -119,6 +119,12 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
             mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, "",
                     ImsReasonInfo.CODE_SIP_FORBIDDEN);
+            mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
+                    "emergency calls over wifi not allowed in this location",
+                    ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE);
+            mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_FORBIDDEN,
+                    "service not allowed in this location",
+                    ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION);
             mCTUT.setDataEnabled(true);
             mCTHander = new Handler(mCTUT.getLooper());
             setReady(true);
@@ -621,7 +627,11 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE,
                 mCTUT.maybeRemapReasonCode(new ImsReasonInfo(501, 1, "Call answered elsewhere.")));
         assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE,
+                mCTUT.maybeRemapReasonCode(new ImsReasonInfo(501, 1, "CALL answered elsewhere.")));
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE,
                 mCTUT.maybeRemapReasonCode(new ImsReasonInfo(510, 1, "Call answered elsewhere.")));
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE,
+                mCTUT.maybeRemapReasonCode(new ImsReasonInfo(510, 1, "CALL ANswered elsewhere.")));
         assertEquals(90210, mCTUT.maybeRemapReasonCode(new ImsReasonInfo(90210, 1,
                 "Call answered elsewhere.")));
     }
@@ -915,6 +925,38 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0)));
         assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN, mCTUT.maybeRemapReasonCode(
                 new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0, "")));
+    }
+
+    @Test
+    @SmallTest
+    public void testRemapEmergencyCallsOverWfc() {
+        assertEquals(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
+                mCTUT.maybeRemapReasonCode(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE, 0)));
+        assertEquals(ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE,
+                mCTUT.maybeRemapReasonCode(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE, 0,
+                                "emergency calls over wifi not allowed in this location")));
+        assertEquals(ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE,
+                mCTUT.maybeRemapReasonCode(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE, 0,
+                                "EMERGENCY calls over wifi not allowed in this location")));
+    }
+
+    @Test
+    @SmallTest
+    public void testRemapWfcNotAvailable() {
+        assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN,
+                mCTUT.maybeRemapReasonCode(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_FORBIDDEN, 0)));
+        assertEquals(ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION,
+                mCTUT.maybeRemapReasonCode(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_FORBIDDEN, 0,
+                                "Service not allowed in this location")));
+        assertEquals(ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION,
+                mCTUT.maybeRemapReasonCode(
+                        new ImsReasonInfo(ImsReasonInfo.CODE_SIP_FORBIDDEN, 0,
+                                "SERVICE not allowed in this location")));
     }
 
     private void placeCallAndMakeActive() {
