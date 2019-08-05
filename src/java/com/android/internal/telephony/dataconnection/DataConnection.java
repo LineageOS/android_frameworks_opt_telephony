@@ -1642,7 +1642,14 @@ public class DataConnection extends StateMachine {
 
     private void updateNetworkInfo() {
         final ServiceState state = mPhone.getServiceState();
-        final int subtype = state.getDataNetworkType();
+
+        NetworkRegistrationInfo nri = state.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        int subtype = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (nri != null) {
+            subtype = nri.getAccessNetworkTechnology();
+        }
+
         mNetworkInfo.setSubtype(subtype, TelephonyManager.getNetworkTypeName(subtype));
         mNetworkInfo.setRoaming(state.getDataRoaming());
     }
