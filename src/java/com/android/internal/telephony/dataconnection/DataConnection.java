@@ -585,7 +585,14 @@ public class DataConnection extends StateMachine {
         ServiceState ss = mPhone.getServiceState();
         mRilRat = ss.getRilDataRadioTechnology();
         mDataRegState = mPhone.getServiceState().getDataRegState();
-        int networkType = ss.getDataNetworkType();
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+
+        NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        if (nri != null) {
+            networkType = nri.getAccessNetworkTechnology();
+        }
+
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
                 networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
         mNetworkInfo.setRoaming(ss.getDataRoaming());
@@ -1614,7 +1621,14 @@ public class DataConnection extends StateMachine {
 
     private void updateNetworkInfo() {
         final ServiceState state = mPhone.getServiceState();
-        final int subtype = state.getDataNetworkType();
+
+        NetworkRegistrationInfo nri = state.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        int subtype = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (nri != null) {
+            subtype = nri.getAccessNetworkTechnology();
+        }
+
         mNetworkInfo.setSubtype(subtype, TelephonyManager.getNetworkTypeName(subtype));
         mNetworkInfo.setRoaming(state.getDataRoaming());
     }
