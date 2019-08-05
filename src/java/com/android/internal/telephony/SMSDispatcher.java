@@ -1784,7 +1784,7 @@ public abstract class SMSDispatcher extends Handler {
         PackageManager pm = mContext.getPackageManager();
 
         // Get package info via packagemanager
-        final int userId = UserHandle.getCallingUserId();
+        final int userId = UserHandle.getUserHandleForUid(Binder.getCallingUid()).getIdentifier();
         PackageInfo appInfo = null;
         try {
             appInfo = pm.getPackageInfoAsUser(
@@ -2000,7 +2000,7 @@ public abstract class SMSDispatcher extends Handler {
         try {
             PackageManager pm = mContext.getPackageManager();
             ApplicationInfo ai = pm.getApplicationInfo(getCarrierAppPackageName(), 0);
-            if (!UserHandle.isSameApp(ai.uid, Binder.getCallingUid())) {
+            if (UserHandle.getAppId(ai.uid) != UserHandle.getAppId(Binder.getCallingUid())) {
                 throw new SecurityException("Caller is not phone or carrier app!");
             }
         } catch (PackageManager.NameNotFoundException re) {
