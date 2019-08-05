@@ -35,7 +35,7 @@ import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
-import com.android.i18n.phonenumbers.ShortNumberInfo;
+
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.LocaleTracker;
@@ -48,6 +48,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
 import com.android.phone.ecc.nano.ProtobufEccData.EccInfo;
+import com.google.i18n.phonenumbers.ShortNumberInfo;
 
 import libcore.io.IoUtils;
 
