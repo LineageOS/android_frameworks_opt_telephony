@@ -246,7 +246,8 @@ public class ImsServiceController {
             @Override
             public void notifyImsFeatureStatus(int featureStatus) throws RemoteException {
                 Log.i(LOG_TAG, "notifyImsFeatureStatus: slot=" + mSlotId + ", feature="
-                        + mFeatureType + ", status=" + featureStatus);
+                        + ImsFeature.FEATURE_LOG_MAP.get(mFeatureType) + ", status="
+                        + ImsFeature.STATE_LOG_MAP.get(featureStatus));
                 sendImsFeatureStatusChanged(mSlotId, mFeatureType, featureStatus);
             }
         };
@@ -692,7 +693,8 @@ public class ImsServiceController {
             } catch (RemoteException e) {
                 // The connection to this ImsService doesn't exist. This may happen if the service
                 // has died and we are removing features.
-                Log.i(LOG_TAG, "Couldn't remove feature {" + featurePair.featureType
+                Log.i(LOG_TAG, "Couldn't remove feature {"
+                        + ImsFeature.FEATURE_LOG_MAP.get(featurePair.featureType)
                         + "}, connection is down: " + e.getMessage());
             }
         } else {
