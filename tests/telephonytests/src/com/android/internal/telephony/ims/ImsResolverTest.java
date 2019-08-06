@@ -29,6 +29,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,7 +59,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -96,6 +96,7 @@ public class ImsResolverTest extends ImsTestBase {
     private ImsResolver mTestImsResolver;
     private BroadcastReceiver mTestPackageBroadcastReceiver;
     private BroadcastReceiver mTestCarrierConfigReceiver;
+    private BroadcastReceiver mTestBootCompleteReceiver;
     private ImsServiceFeatureQueryManager.Listener mDynamicQueryListener;
     private PersistableBundle[] mCarrierConfigs;
 
@@ -793,6 +794,50 @@ public class ImsResolverTest extends ImsTestBase {
         verify(deviceController).changeImsServiceFeatures(deviceFeatureSet);
     }
 
+    /**
+     * Inform the ImsResolver that BOOT_COMPLETE has happened. A non-FBE enabled ImsService is now
+     * available to be bound.
+     */
+    @Test
+    @SmallTest
+    public void testBootCompleteNonFbeEnabledCarrierImsService() throws RemoteException {
+        setupResolver(2/*numSlots*/);
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> deviceFeatures = new HashSet<>();
+        deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
+        // Set the carrier override package for slot 0
+        setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        // Use device default package, which will load the ImsService that the device provides
+        info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
+        setupPackageQuery(info);
+        ImsServiceController deviceController = mock(ImsServiceController.class);
+        ImsServiceController carrierController = mock(ImsServiceController.class);
+        setImsServiceControllerFactory(deviceController, carrierController);
+
+        // Bind with device ImsService
+        startBind();
+
+        // Boot complete happens and the Carrier ImsService is now available.
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> carrierFeatures = new HashSet<>();
+        // Carrier service doesn't support the voice feature.
+        carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(0, ImsFeature.FEATURE_RCS));
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true));
+        // Boot complete has happened and the carrier ImsService is now available.
+        mTestBootCompleteReceiver.onReceive(null, new Intent(Intent.ACTION_BOOT_COMPLETED));
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+        setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
+
+        // Verify that all features that have been defined for the carrier override are bound
+        verify(carrierController).bind(carrierFeatures);
+        // device features change
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
+                convertToHashSet(deviceFeatures, 1);
+        deviceFeatureSet.addAll(convertToHashSet(deviceFeatures, 0));
+        deviceFeatureSet.removeAll(carrierFeatures);
+        verify(deviceController).changeImsServiceFeatures(deviceFeatureSet);
+    }
+
     private void setupResolver(int numSlots) {
         when(mMockContext.getSystemService(eq(Context.CARRIER_CONFIG_SERVICE))).thenReturn(
                 mMockCarrierConfigManager);
@@ -811,13 +856,14 @@ public class ImsResolverTest extends ImsTestBase {
 
         ArgumentCaptor<BroadcastReceiver> packageBroadcastCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
-        ArgumentCaptor<BroadcastReceiver> carrierConfigCaptor =
+        ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
         verify(mMockContext).registerReceiverAsUser(packageBroadcastCaptor.capture(), any(),
                 any(), any(), any());
-        verify(mMockContext).registerReceiver(carrierConfigCaptor.capture(), any());
-        mTestCarrierConfigReceiver = carrierConfigCaptor.getValue();
         mTestPackageBroadcastReceiver = packageBroadcastCaptor.getValue();
+        verify(mMockContext, times(2)).registerReceiver(receiversCaptor.capture(), any());
+        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(0);
+        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(1);
         mTestImsResolver.setSubscriptionManagerProxy(mTestSubscriptionManagerProxy);
         when(mMockQueryManagerFactory.create(any(Context.class),
                 any(ImsServiceFeatureQueryManager.Listener.class))).thenReturn(mMockQueryManager);
@@ -861,7 +907,7 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     private void startBind() {
-        mTestImsResolver.initPopulateCacheAndStartBind();
+        mTestImsResolver.initialize();
         ArgumentCaptor<ImsServiceFeatureQueryManager.Listener> queryManagerCaptor =
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
@@ -876,7 +922,7 @@ public class ImsResolverTest extends ImsTestBase {
         // ensure that startQuery was called
         when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
                 .thenReturn(true);
-        verify(mMockQueryManager, Mockito.times(times)).startQuery(eq(name), any(String.class));
+        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onComplete(name, features);
         // wait for handling of onComplete
         waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
