@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -212,8 +213,14 @@ public class AccessNetworksManager extends Handler {
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        phone.getContext().registerReceiverAsUser(mConfigChangedReceiver, UserHandle.ALL,
-                intentFilter, null, null);
+        try {
+            Context contextAsUser = phone.getContext().createPackageContextAsUser(
+                phone.getContext().getPackageName(), 0, UserHandle.ALL);
+            contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
+                null /* broadcastPermission */, null);
+        } catch (PackageManager.NameNotFoundException e) {
+            Rlog.e(TAG, "Package name not found: " + e.getMessage());
+        }
         sendEmptyMessage(EVENT_BIND_QUALIFIED_NETWORKS_SERVICE);
     }
 
