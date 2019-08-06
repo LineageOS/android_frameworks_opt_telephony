@@ -1739,6 +1739,11 @@ public class DataConnection extends StateMachine {
                     return HANDLED;
                 case EVENT_CONNECT:
                     if (DBG) log("DcInactiveState: mag.what=EVENT_CONNECT");
+                    if (isPdpRejectConfigEnabled() && !isDataCallConnectAllowed()) {
+                        if (DBG) log("DcInactiveState: skip EVENT_CONNECT");
+                        return HANDLED;
+                    }
+
                     ConnectionParams cp = (ConnectionParams) msg.obj;
 
                     if (!initConnection(cp)) {
@@ -1778,6 +1783,8 @@ public class DataConnection extends StateMachine {
                     }
                     if (mConnectionParams != null) {
                         if (initConnection(mConnectionParams)) {
+                            //In case of apn modify, get the latest apn to retry
+                            mApnSetting = mConnectionParams.mApnContext.getApnSetting();
                             connect(mConnectionParams);
                             transitionTo(mActivatingState);
                         } else {
@@ -2878,5 +2885,9 @@ public class DataConnection extends StateMachine {
     protected boolean isPdpRejectConfigEnabled() {
         return mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_pdp_retry_for_29_33_55_enabled);
+    }
+
+    protected boolean isDataCallConnectAllowed() {
+        return true;
     }
 }
