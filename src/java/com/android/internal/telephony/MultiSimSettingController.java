@@ -694,7 +694,7 @@ public class MultiSimSettingController extends Handler {
                 // If enable is true and it's not opportunistic subscription, we don't enable it,
                 // as there can't e two
                 if (phone != null) {
-                    phone.getDataEnabledSettings().setUserDataEnabled(enable);
+                    phone.getDataEnabledSettings().setUserDataEnabled(enable, false);
                 }
             } else {
                 // For inactive subscription, directly write into global settings.
