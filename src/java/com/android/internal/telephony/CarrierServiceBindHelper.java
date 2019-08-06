@@ -129,9 +129,15 @@ public class CarrierServiceBindHelper {
 
         mPackageMonitor.register(
                 context, mHandler.getLooper(), UserHandle.ALL, false /* externalStorage */);
-        mContext.registerReceiverAsUser(mUserUnlockedReceiver, UserHandle.SYSTEM,
+        try {
+            Context contextAsUser = mContext.createPackageContextAsUser(mContext.getPackageName(),
+                0, UserHandle.SYSTEM);
+            contextAsUser.registerReceiver(mUserUnlockedReceiver,
                 new IntentFilter(Intent.ACTION_USER_UNLOCKED), null /* broadcastPermission */,
                 mHandler);
+        } catch (PackageManager.NameNotFoundException e) {
+            loge("Package name not found: " + e.getMessage());
+        }
     }
 
     // Create or dispose mBindings and mLastSimState objects.
@@ -423,6 +429,8 @@ public class CarrierServiceBindHelper {
     private static void log(String message) {
         Log.d(LOG_TAG, message);
     }
+
+    private static void loge(String message) { Log.e(LOG_TAG, message); }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("CarrierServiceBindHelper:");

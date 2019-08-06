@@ -536,10 +536,14 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             appChangedFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
             appChangedFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
             appChangedFilter.addDataScheme("package");
-            context.registerReceiverAsUser(mAppChangedReceiver, UserHandle.ALL, appChangedFilter,
-                    null,
-                    null);
-
+            try {
+                Context contextAsUser = context.createPackageContextAsUser(
+                    context.getPackageName(), 0, UserHandle.ALL);
+                contextAsUser.registerReceiver(mAppChangedReceiver, appChangedFilter,
+                    null /* broadcastPermission */, null);
+            } catch (PackageManager.NameNotFoundException e) {
+                Log.e(TAG, "Package name not found: " + e.getMessage());
+            }
             context.registerReceiver(mConfigChangedReceiver, new IntentFilter(
                     CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
             context.registerReceiver(mBootCompleted, new IntentFilter(
@@ -1363,7 +1367,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         for (ResolveInfo entry : packageManager.queryIntentServicesAsUser(
                 serviceIntent,
                 PackageManager.GET_META_DATA,
-                UserHandle.getUserHandleForUid(mContext.getUserId()))) {
+                UserHandle.getUserHandleForUid(UserHandle.myUserId()))) {
             ServiceInfo serviceInfo = entry.serviceInfo;
 
             if (serviceInfo != null) {

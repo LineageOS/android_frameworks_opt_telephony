@@ -20,6 +20,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
@@ -83,8 +84,14 @@ public class RatRatcheter {
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        phone.getContext().registerReceiverAsUser(mConfigChangedReceiver, UserHandle.ALL,
-                intentFilter, null, null);
+        try {
+            Context contextAsUser = phone.getContext().createPackageContextAsUser(
+                phone.getContext().getPackageName(), 0, UserHandle.ALL);
+            contextAsUser.registerReceiver(mConfigChangedReceiver,
+                intentFilter, null /* broadcastPermission */, null);
+        } catch (PackageManager.NameNotFoundException e) {
+            Rlog.e(LOG_TAG, "Package name not found: " + e.getMessage());
+        }
         resetRatFamilyMap();
     }
 
