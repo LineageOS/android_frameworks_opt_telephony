@@ -20,6 +20,7 @@ import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.icu.util.ULocale;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.SystemProperties;
@@ -29,7 +30,6 @@ import android.util.Slog;
 import com.android.internal.app.LocaleStore;
 import com.android.internal.app.LocaleStore.LocaleInfo;
 
-import libcore.icu.ICU;
 import libcore.timezone.TimeZoneFinder;
 
 import java.util.ArrayList;
@@ -149,7 +149,7 @@ public final class MccTable {
         }
 
         // Ask CLDR for the language this country uses...
-        Locale likelyLocale = ICU.addLikelySubtags(new Locale("und", country));
+        ULocale likelyLocale = ULocale.addLikelySubtags(new ULocale("und", country));
         String likelyLanguage = likelyLocale.getLanguage();
         Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + country + " uses " +
                likelyLanguage);
