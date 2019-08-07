@@ -132,6 +132,13 @@ public class DcNetworkAgent extends NetworkAgent {
         mDataConnection = null;
     }
 
+    /**
+     * @return The data connection that owns this agent
+     */
+    public synchronized DataConnection getDataConnection() {
+        return mDataConnection;
+    }
+
     @Override
     protected synchronized void unwanted() {
         if (mDataConnection == null) {
