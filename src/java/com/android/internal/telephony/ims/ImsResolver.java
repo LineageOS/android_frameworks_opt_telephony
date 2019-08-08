@@ -97,6 +97,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     private static final int HANDLER_DYNAMIC_FEATURE_CHANGE = 4;
     // Testing: Overrides the current configuration for ImsService binding
     private static final int HANDLER_OVERRIDE_IMS_SERVICE_CONFIG = 5;
+    // Based on boot complete indication. When this happens, there may be ImsServices that are not
+    // direct boot aware that need to be started.
+    private static final int HANDLER_BOOT_COMPLETE = 6;
 
     // Delay between dynamic ImsService queries.
     private static final int DELAY_DYNAMIC_QUERY_MS = 5000;
@@ -173,7 +176,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 res.append("(");
                 res.append(feature.slotId);
                 res.append(",");
-                res.append(feature.featureType);
+                res.append(ImsFeature.FEATURE_LOG_MAP.get(feature.featureType));
                 res.append(") ");
             }
             return res.toString();
@@ -221,6 +224,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             Log.i(TAG, "Received Carrier Config Changed for SlotId: " + slotId);
 
             mHandler.obtainMessage(HANDLER_CONFIG_CHANGED, slotId).sendToTarget();
+        }
+    };
+
+    // Receives the broadcast that the device has finished booting (and the device is no longer
+    // encrypted).
+    private BroadcastReceiver mBootCompleted = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.i(TAG, "Received BOOT_COMPLETED");
+            // Recalculate all cached services to pick up ones that have just been enabled since
+            // boot complete.
+            mHandler.obtainMessage(HANDLER_BOOT_COMPLETE, null).sendToTarget();
         }
     };
 
@@ -352,6 +367,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 maybeRemovedImsService(packageName);
                 break;
             }
+            case HANDLER_BOOT_COMPLETE: {
+                // Re-evaluate bound services for all slots after requerying packagemanager
+                maybeAddedImsService(null);
+                break;
+            }
             case HANDLER_CONFIG_CHANGED: {
                 int slotId = (Integer) msg.obj;
                 carrierConfigChanged(slotId);
@@ -379,7 +399,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 if (isCarrierImsService) {
                     Log.i(TAG, "overriding carrier ImsService - slot=" + slotId + " packageName="
                             + packageName);
-                    maybeRebindService(slotId, packageName);
+                    overrideService(slotId, packageName);
                 } else {
                     Log.i(TAG, "overriding device ImsService -  packageName=" + packageName);
                     if (TextUtils.equals(mDeviceService, packageName)) {
@@ -417,8 +437,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 @Override
                 public void onComplete(ComponentName name,
                         Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
-                    Log.d(TAG, "onComplete called for name: " + name + "features:"
-                            + printFeatures(features));
+                    Log.d(TAG, "onComplete called for name: " + name + printFeatures(features));
                     handleFeaturesChanged(name, features);
                 }
 
@@ -472,6 +491,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
             context.registerReceiver(mConfigChangedReceiver, new IntentFilter(
                     CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+            context.registerReceiver(mBootCompleted, new IntentFilter(
+                    Intent.ACTION_BOOT_COMPLETED));
         }
     }
 
@@ -496,10 +517,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     /**
-     * Needs to be called after the constructor to first populate the cache and possibly bind to
-     * ImsServices.
+     * Needs to be called after the constructor to kick off the process of binding to ImsServices.
      */
-    public void initPopulateCacheAndStartBind() {
+    public void initialize() {
         Log.i(TAG, "Initializing cache and binding.");
         mFeatureQueryManager = mDynamicQueryManagerFactory.create(mContext, mDynamicQueryListener);
         // Populates the CarrierConfig override package names for each slot
@@ -678,7 +698,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 mBoundImsServicesByFeature.add(slotId, services);
             }
             Log.i(TAG, "ImsServiceController added on slot: " + slotId + " with feature: "
-                    + feature + " using package: " + controller.getComponentName());
+                    + ImsFeature.FEATURE_LOG_MAP.get(feature) + " using package: "
+                    + controller.getComponentName());
             services.put(feature, controller);
         }
     }
@@ -698,7 +719,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             ImsServiceController c = services.get(feature, null);
             if (c != null) {
                 Log.i(TAG, "ImsServiceController removed on slot: " + slotId + " with feature: "
-                        + feature + " using package: " + c.getComponentName());
+                        + ImsFeature.FEATURE_LOG_MAP.get(feature) + " using package: "
+                        + c.getComponentName());
                 services.remove(feature);
             }
             return c;
@@ -999,10 +1021,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return bindableFeatures > 0;
     }
 
-    // Possibly rebind to another ImsService if currently installed ImsServices were changed or if
-    // the SIM card has changed.
+    // Possibly rebind to another ImsService for testing.
     // Called from the handler ONLY
-    private void maybeRebindService(int slotId, String newPackageName) {
+    private void overrideService(int slotId, String newPackageName) {
         if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
             // not specified, replace package on all slots.
             for (int i = 0; i < mNumSlots; i++) {
@@ -1014,18 +1035,29 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     }
 
+    // Called from handler ONLY.
     private void carrierConfigChanged(int slotId) {
-        int subId = mSubscriptionManagerProxy.getSubId(slotId);
-        PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId);
-        if (config != null) {
-            String newPackageName = config.getString(
-                    CarrierConfigManager.KEY_CONFIG_IMS_PACKAGE_OVERRIDE_STRING, null);
-            maybeRebindService(slotId, newPackageName);
-        } else {
-            Log.w(TAG, "carrierConfigChanged: CarrierConfig is null!");
+        if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+            // not specified, update carrier override cache and possibly rebind on all slots.
+            for (int i = 0; i < mNumSlots; i++) {
+                updateBoundCarrierServices(i, getImsPackageOverrideConfig(i));
+            }
         }
+        updateBoundCarrierServices(slotId, getImsPackageOverrideConfig(slotId));
     }
 
+    private String getImsPackageOverrideConfig(int slotId) {
+        int subId = mSubscriptionManagerProxy.getSubId(slotId);
+        PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId);
+        if (config == null) return null;
+        return config.getString(CarrierConfigManager.KEY_CONFIG_IMS_PACKAGE_OVERRIDE_STRING, null);
+    }
+
+    /**
+     * Use the slotId specified to update the carrier override cache with the new package name.
+     * If it has changed, trigger an unbind from the old service kick off the process to recalculate
+     * features supported on the new service.
+     */
     private void updateBoundCarrierServices(int slotId, String newPackageName) {
         if (slotId > SubscriptionManager.INVALID_SIM_SLOT_INDEX && slotId < mNumSlots) {
             String oldPackageName = mCarrierServices[slotId];
@@ -1136,13 +1168,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     private String printFeatures(Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
         StringBuilder featureString = new StringBuilder();
-        featureString.append("features: [");
+        featureString.append(" features: [");
         if (features != null) {
             for (ImsFeatureConfiguration.FeatureSlotPair feature : features) {
                 featureString.append("{");
                 featureString.append(feature.slotId);
                 featureString.append(",");
-                featureString.append(feature.featureType);
+                featureString.append(ImsFeature.FEATURE_LOG_MAP.get(feature.featureType));
                 featureString.append("} ");
             }
             featureString.append("]");

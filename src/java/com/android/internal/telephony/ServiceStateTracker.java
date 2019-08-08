@@ -2387,21 +2387,16 @@ public class ServiceStateTracker extends Handler {
              * is set to roaming when either is true.
              *
              * There are exceptions for the above rule.
-             * The new SS is not set as roaming while gsm service reports
-             * roaming but indeed it is same operator.
-             * And the operator is considered non roaming.
+             * The new SS is not set as roaming while gsm service or
+             * data service reports roaming but indeed it is same
+             * operator. And the operator is considered non roaming.
              *
              * The test for the operators is to handle special roaming
              * agreements and MVNO's.
              */
             boolean roaming = (mGsmRoaming || mDataRoaming);
 
-            // for IWLAN case, data is home. Only check voice roaming.
-            if (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
-                roaming = mGsmRoaming;
-            }
-
-            if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS)
+            if (roaming && !isOperatorConsideredRoaming(mNewSS)
                     && (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
                 log("updateRoamingState: resource override set non roaming.isSameNamedOperators="
                         + isSameNamedOperators(mNewSS) + ",isOperatorConsideredNonRoaming="

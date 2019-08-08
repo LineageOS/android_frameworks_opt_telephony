@@ -41,9 +41,12 @@ import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.Looper;
+import android.os.Message;
+import android.os.Process;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.provider.BlockedNumberContract;
@@ -261,6 +264,59 @@ public abstract class TelephonyTest {
     protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
     protected Phone[] mPhones;
 
+    /**
+     * Similar to Runnable but its run() throws exception.
+     */
+    interface RunnableWithException {
+        void run() throws Exception;
+    }
+
+    /**
+     * This API is used to run a runnable that triggers an async action (e.g. send a message)
+     * in mTesteeHandlerThread and wait until it's processed.
+     */
+    public void doAndWaitReady(RunnableWithException runnable) throws Exception {
+        setReady(false);
+        runnable.run();
+        waitUntilReady();
+    }
+
+    /**
+     * Similar to doAndWaitReady above except the runnable here will run in mTesteeHandlerThread.
+     * This can be used to initialize the testee object.
+     *
+     * @param runnable
+     * @throws Exception
+     */
+    public void doInHandlerThreadAndWait(Runnable runnable) throws Exception {
+        doAndWaitReady(()->mTesteeHandlerThread.getThreadHandler().post(runnable));
+    }
+
+    protected HandlerThread mTesteeHandlerThread = new HandlerThread("mTesteeHandlerThread") {
+        @Override
+        public void onLooperPrepared() {
+            Looper.setObserver(mObserver);
+        }
+
+        Looper.Observer mObserver = new Looper.Observer() {
+            @Override
+            public Object messageDispatchStarting() {
+                return Process.myTid();
+            }
+
+            @Override
+            public void messageDispatched(Object token, Message msg) {
+                if ((int) token == getThreadId() && Looper.myQueue().isIdle()) {
+                    setReady(true);
+                }
+            }
+
+            @Override
+            public void dispatchingThrewException(Object token, Message msg, Exception exception) {
+            }
+        };
+    };
+
 
     protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
     private HashMap<InstanceKey, Object> mOldInstances = new HashMap<InstanceKey, Object>();
@@ -303,7 +359,8 @@ public abstract class TelephonyTest {
                 }
 
                 if (!mReady) {
-                    fail("Telephony tests failed to initialize");
+                    fail("mReady Stayed false. Most likely another thread failed to trigger"
+                            + " setReady().");
                 }
             }
         }
@@ -312,7 +369,7 @@ public abstract class TelephonyTest {
     protected void setReady(boolean ready) {
         synchronized (mLock) {
             mReady = ready;
-            mLock.notifyAll();
+            if (ready) mLock.notifyAll();
         }
     }
 
@@ -591,10 +648,12 @@ public abstract class TelephonyTest {
         assertNotNull("Failed to set up SubscriptionController singleton",
                 SubscriptionController.getInstance());
         setReady(false);
+        mTesteeHandlerThread.start();
     }
 
     protected void tearDown() throws Exception {
-
+        mTesteeHandlerThread.quit();
+        mTesteeHandlerThread.join(1000);
         mSimulatedCommands.dispose();
 
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
