@@ -72,6 +72,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
@@ -2469,14 +2470,14 @@ public class TelephonyMetrics {
         }
 
         // fill in complete matching information from the SIM.
-        carrierIdMatchingResult.mccmnc = TextUtils.emptyIfNull(simInfo.mccMnc);
-        carrierIdMatchingResult.spn = TextUtils.emptyIfNull(simInfo.spn);
-        carrierIdMatchingResult.pnn = TextUtils.emptyIfNull(simInfo.plmn);
-        carrierIdMatchingResult.gid1 = TextUtils.emptyIfNull(simInfo.gid1);
-        carrierIdMatchingResult.gid2 = TextUtils.emptyIfNull(simInfo.gid2);
-        carrierIdMatchingResult.imsiPrefix = TextUtils.emptyIfNull(simInfo.imsiPrefixPattern);
-        carrierIdMatchingResult.iccidPrefix = TextUtils.emptyIfNull(simInfo.iccidPrefix);
-        carrierIdMatchingResult.preferApn = TextUtils.emptyIfNull(simInfo.apn);
+        carrierIdMatchingResult.mccmnc = TelephonyUtils.emptyIfNull(simInfo.mccMnc);
+        carrierIdMatchingResult.spn = TelephonyUtils.emptyIfNull(simInfo.spn);
+        carrierIdMatchingResult.pnn = TelephonyUtils.emptyIfNull(simInfo.plmn);
+        carrierIdMatchingResult.gid1 = TelephonyUtils.emptyIfNull(simInfo.gid1);
+        carrierIdMatchingResult.gid2 = TelephonyUtils.emptyIfNull(simInfo.gid2);
+        carrierIdMatchingResult.imsiPrefix = TelephonyUtils.emptyIfNull(simInfo.imsiPrefixPattern);
+        carrierIdMatchingResult.iccidPrefix = TelephonyUtils.emptyIfNull(simInfo.iccidPrefix);
+        carrierIdMatchingResult.preferApn = TelephonyUtils.emptyIfNull(simInfo.apn);
         if (simInfo.privilegeAccessRule != null) {
             carrierIdMatchingResult.privilegeAccessRule =
                     simInfo.privilegeAccessRule.stream().toArray(String[]::new);
