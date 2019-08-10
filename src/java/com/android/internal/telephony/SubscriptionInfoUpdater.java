@@ -186,7 +186,9 @@ public class SubscriptionInfoUpdater extends Handler {
                     }
                 }
             }, LOG_TAG);
-            mCurrentlyActiveUserId = ActivityManager.getService().getCurrentUser().id;
+            ActivityManager am = (ActivityManager) mContext.getSystemService(
+                Context.ACTIVITY_SERVICE);
+            mCurrentlyActiveUserId = am.getCurrentUser();
         } catch (RemoteException e) {
             logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
         }
