@@ -24,9 +24,11 @@ import static junit.framework.Assert.fail;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.aidl.IImsServiceController;
@@ -59,11 +61,14 @@ public class ImsServiceTest {
 
     private Context mMockContext;
     private IImsFeatureStatusCallback mTestCallback;
+    private IBinder mImsFeatureStatusCallbackBinder;
 
     @Before
     public void setUp() throws Exception {
         mMockContext = mock(Context.class);
         mTestCallback = mock(IImsFeatureStatusCallback.class);
+        mImsFeatureStatusCallbackBinder = mock(IBinder.class);
+        when(mTestCallback.asBinder()).thenReturn(mImsFeatureStatusCallbackBinder);
         mTestImsService = new TestImsService(mMockContext);
         mTestImsServiceBinder = (IImsServiceController) mTestImsService.onBind(
                 new Intent(ImsService.SERVICE_INTERFACE));
