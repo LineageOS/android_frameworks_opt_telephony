@@ -19,8 +19,10 @@ package com.google.android.mms.util;
 import android.content.Context;
 import android.drm.DrmConvertedStatus;
 import android.drm.DrmManagerClient;
-import android.util.Log;
 import android.provider.Downloads;
+import android.util.Log;
+
+import dalvik.annotation.compat.UnsupportedAppUsage;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -44,6 +46,7 @@ public class DrmConvertSession {
      * @param mimeType Mimetype of content that shall be converted.
      * @return A convert session or null in case an error occurs.
      */
+    @UnsupportedAppUsage
     public static DrmConvertSession open(Context context, String mimeType) {
         DrmManagerClient drmClient = null;
         int convertSessionId = -1;
@@ -80,6 +83,7 @@ public class DrmConvertSession {
      * @return A Buffer filled with converted data, if execution is ok, in all
      *         other case null.
      */
+    @UnsupportedAppUsage
     public byte [] convert(byte[] inBuffer, int size) {
         byte[] result = null;
         if (inBuffer != null) {
@@ -121,6 +125,7 @@ public class DrmConvertSession {
      *         occurs when accessing drm framework.
      *         Downloads.Impl.STATUS_UNKNOWN_ERROR if a general error occurred.
      */
+    @UnsupportedAppUsage
     public int close(String filename) {
         DrmConvertedStatus convertedStatus = null;
         int result = Downloads.Impl.STATUS_UNKNOWN_ERROR;

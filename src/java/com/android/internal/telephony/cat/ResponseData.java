@@ -16,20 +16,25 @@
 
 package com.android.internal.telephony.cat;
 
-import com.android.internal.telephony.EncodeException;
-import com.android.internal.telephony.GsmAlphabet;
-import java.util.Calendar;
-import java.util.TimeZone;
+import android.annotation.UnsupportedAppUsage;
 import android.os.SystemProperties;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.EncodeException;
+import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.cat.AppInterface.CommandType;
 
-import android.annotation.UnsupportedAppUsage;
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 abstract class ResponseData {
+
+    @UnsupportedAppUsage
+    ResponseData() {
+    }
+
     /**
      * Format the data appropriate for TERMINAL RESPONSE and write it into
      * the ByteArrayOutputStream object.

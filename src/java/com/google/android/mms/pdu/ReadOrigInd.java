@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 public class ReadOrigInd extends GenericPdu {
@@ -38,6 +40,7 @@ public class ReadOrigInd extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     ReadOrigInd(PduHeaders headers) {
         super(headers);
     }
@@ -86,6 +89,7 @@ public class ReadOrigInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageId() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_ID);
     }
@@ -105,6 +109,7 @@ public class ReadOrigInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getReadStatus() {
         return mPduHeaders.getOctet(PduHeaders.READ_STATUS);
     }

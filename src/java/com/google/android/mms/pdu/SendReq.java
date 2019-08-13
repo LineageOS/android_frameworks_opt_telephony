@@ -19,11 +19,14 @@ package com.google.android.mms.pdu;
 
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 public class SendReq extends MultimediaMessagePdu {
     private static final String TAG = "SendReq";
 
+    @UnsupportedAppUsage
     public SendReq() {
         super();
 
@@ -84,6 +87,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param headers Headers for this PDU.
      * @param body Body of this PDu.
      */
+    @UnsupportedAppUsage
     SendReq(PduHeaders headers, PduBody body) {
         super(headers, body);
     }
@@ -93,6 +97,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue[] getBcc() {
         return mPduHeaders.getEncodedStringValues(PduHeaders.BCC);
     }
@@ -103,6 +108,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void addBcc(EncodedStringValue value) {
         mPduHeaders.appendEncodedStringValue(value, PduHeaders.BCC);
     }
@@ -113,6 +119,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setBcc(EncodedStringValue[] value) {
         mPduHeaders.setEncodedStringValues(value, PduHeaders.BCC);
     }
@@ -122,6 +129,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue[] getCc() {
         return mPduHeaders.getEncodedStringValues(PduHeaders.CC);
     }
@@ -132,6 +140,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void addCc(EncodedStringValue value) {
         mPduHeaders.appendEncodedStringValue(value, PduHeaders.CC);
     }
@@ -142,6 +151,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setCc(EncodedStringValue[] value) {
         mPduHeaders.setEncodedStringValues(value, PduHeaders.CC);
     }
@@ -151,6 +161,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getContentType() {
         return mPduHeaders.getTextString(PduHeaders.CONTENT_TYPE);
     }
@@ -161,6 +172,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setContentType(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.CONTENT_TYPE);
     }
@@ -170,6 +182,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getDeliveryReport() {
         return mPduHeaders.getOctet(PduHeaders.DELIVERY_REPORT);
     }
@@ -180,6 +193,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setDeliveryReport(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.DELIVERY_REPORT);
     }
@@ -192,6 +206,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public long getExpiry() {
         return mPduHeaders.getLongInteger(PduHeaders.EXPIRY);
     }
@@ -201,6 +216,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @param value the value
      */
+    @UnsupportedAppUsage
     public void setExpiry(long value) {
         mPduHeaders.setLongInteger(value, PduHeaders.EXPIRY);
     }
@@ -212,6 +228,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public long getMessageSize() {
         return mPduHeaders.getLongInteger(PduHeaders.MESSAGE_SIZE);
     }
@@ -221,6 +238,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @param value the value
      */
+    @UnsupportedAppUsage
     public void setMessageSize(long value) {
         mPduHeaders.setLongInteger(value, PduHeaders.MESSAGE_SIZE);
     }
@@ -232,6 +250,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageClass() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_CLASS);
     }
@@ -242,6 +261,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setMessageClass(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.MESSAGE_CLASS);
     }
@@ -251,6 +271,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getReadReport() {
         return mPduHeaders.getOctet(PduHeaders.READ_REPORT);
     }
@@ -261,6 +282,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setReadReport(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.READ_REPORT);
     }
@@ -271,6 +293,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setTo(EncodedStringValue[] value) {
         mPduHeaders.setEncodedStringValues(value, PduHeaders.TO);
     }
@@ -280,6 +303,7 @@ public class SendReq extends MultimediaMessagePdu {
      *
      * @return the X-Mms-Report-Allowed value
      */
+    @UnsupportedAppUsage
     public byte[] getTransactionId() {
         return mPduHeaders.getTextString(PduHeaders.TRANSACTION_ID);
     }
@@ -290,6 +314,7 @@ public class SendReq extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setTransactionId(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.TRANSACTION_ID);
     }

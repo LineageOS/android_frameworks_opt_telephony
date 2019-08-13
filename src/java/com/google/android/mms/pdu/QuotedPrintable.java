@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.io.ByteArrayOutputStream;
 
 public class QuotedPrintable {
@@ -36,6 +38,7 @@ public class QuotedPrintable {
      * @return array of original bytes,
      *         null if quoted-printable decoding is unsuccessful.
      */
+    @UnsupportedAppUsage
     public static final byte[] decodeQuotedPrintable(byte[] bytes) {
         if (bytes == null) {
             return null;

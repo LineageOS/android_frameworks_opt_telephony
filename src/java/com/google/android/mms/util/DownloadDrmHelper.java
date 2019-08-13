@@ -21,6 +21,8 @@ import android.content.Context;
 import android.drm.DrmManagerClient;
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 public class DownloadDrmHelper {
     private static final String TAG = "DownloadDrmHelper";
 
@@ -63,6 +65,7 @@ public class DownloadDrmHelper {
      * @param mimetype Media type of the content
      * @return True if convert is needed else false
      */
+    @UnsupportedAppUsage
     public static boolean isDrmConvertNeeded(String mimetype) {
         return MIMETYPE_DRM_MESSAGE.equals(mimetype);
     }
@@ -71,6 +74,7 @@ public class DownloadDrmHelper {
      * Modifies the file extension for a DRM Forward Lock file NOTE: This
      * function shouldn't be called if the file shouldn't be DRM converted
      */
+    @UnsupportedAppUsage
     public static String modifyDrmFwLockFileExtension(String filename) {
         if (filename != null) {
             int extensionIndex;

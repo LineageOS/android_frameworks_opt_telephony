@@ -68,6 +68,8 @@ public interface AppInterface {
      * implementation should support those.
      * Refer to ETSI TS 102.223 section 9.4
      */
+    @UnsupportedAppUsage(implicitMember =
+            "values()[Lcom/android/internal/telephony/cat/AppInterface$CommandType;")
     public static enum CommandType {
         @UnsupportedAppUsage
         DISPLAY_TEXT(0x21),

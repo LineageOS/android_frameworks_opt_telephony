@@ -55,6 +55,8 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.util.ArrayUtils;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -136,15 +138,25 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** Instance Variables
 
+    @UnsupportedAppUsage
     GsmCdmaPhone mPhone;
+    @UnsupportedAppUsage
     Context mContext;
     UiccCardApplication mUiccApplication;
+    @UnsupportedAppUsage
     IccRecords mIccRecords;
 
     String mAction;              // One of ACTION_*
+    @UnsupportedAppUsage
     String mSc;                  // Service Code
-    String mSia, mSib, mSic;       // Service Info a,b,c
+    @UnsupportedAppUsage
+    String mSia;                 // Service Info a
+    @UnsupportedAppUsage
+    String mSib;                 // Service Info b
+    @UnsupportedAppUsage
+    String mSic;                 // Service Info c
     String mPoundString;         // Entire MMI string up to and including #
+    @UnsupportedAppUsage
     public String mDialingNumber;
     String mPwd;                 // For password registration
 
@@ -165,6 +177,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     // See TS 22.030 6.5.2 "Structure of the MMI"
 
+    @UnsupportedAppUsage
     static Pattern sPatternSuppService = Pattern.compile(
         "((\\*|#|\\*#|\\*\\*|##)(\\d{2,3})(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*))?)?)?)?#)(.*)");
 /*       1  2                    3          4  5       6   7         8    9     10  11             12
@@ -205,6 +218,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      *
      * Please see flow chart in TS 22.030 6.5.3.2
      */
+    @UnsupportedAppUsage
     public static GsmMmiCode newFromDialString(String dialString, GsmCdmaPhone phone,
             UiccCardApplication app) {
         return newFromDialString(dialString, phone, app, null);
@@ -461,6 +475,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     /** make empty strings be null.
      *  Regexp returns empty strings for empty groups
      */
+    @UnsupportedAppUsage
     private static String
     makeEmptyNull (String s) {
         if (s != null && s.length() == 0) return null;
@@ -498,6 +513,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
     }
 
+    @UnsupportedAppUsage
     private static int
     siToServiceClass(String si) {
         if (si == null || si.length() == 0) {
@@ -547,6 +563,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
     }
 
+    @UnsupportedAppUsage
     static boolean
     isServiceCodeCallForwarding(String sc) {
         return sc != null &&
@@ -556,6 +573,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 || sc.equals(SC_CF_All_Conditional));
     }
 
+    @UnsupportedAppUsage
     static boolean
     isServiceCodeCallBarring(String sc) {
         Resources resource = Resources.getSystem();
@@ -600,6 +618,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** Constructor
 
+    @UnsupportedAppUsage
     public GsmMmiCode(GsmCdmaPhone phone, UiccCardApplication app) {
         // The telephony unit-test cases may create GsmMmiCode's
         // in secondary threads
@@ -782,6 +801,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      *  In temporary mode, to invoke CLIR for a single call enter:
      *       " # 31 # [called number] SEND "
      */
+    @UnsupportedAppUsage
     public boolean
     isTemporaryModeCLIR() {
         return mSc != null && mSc.equals(SC_CLIR) && mDialingNumber != null
@@ -792,6 +812,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      * returns CommandsInterface.CLIR_*
      * See also isTemporaryModeCLIR()
      */
+    @UnsupportedAppUsage
     public int
     getCLIRMode() {
         if (mSc != null && mSc.equals(SC_CLIR)) {
@@ -829,22 +850,27 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return false;
     }
 
+    @UnsupportedAppUsage
     boolean isActivate() {
         return mAction != null && mAction.equals(ACTION_ACTIVATE);
     }
 
+    @UnsupportedAppUsage
     boolean isDeactivate() {
         return mAction != null && mAction.equals(ACTION_DEACTIVATE);
     }
 
+    @UnsupportedAppUsage
     boolean isInterrogate() {
         return mAction != null && mAction.equals(ACTION_INTERROGATE);
     }
 
+    @UnsupportedAppUsage
     boolean isRegister() {
         return mAction != null && mAction.equals(ACTION_REGISTER);
     }
 
+    @UnsupportedAppUsage
     boolean isErasure() {
         return mAction != null && mAction.equals(ACTION_ERASURE);
     }
@@ -874,6 +900,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     }
 
     /** Process a MMI code or short code...anything that isn't a dialing number */
+    @UnsupportedAppUsage
     public void
     processCode() throws CallStateException {
         try {
@@ -1264,6 +1291,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return mContext.getText(com.android.internal.R.string.mmiError);
     }
 
+    @UnsupportedAppUsage
     private CharSequence getScString() {
         if (mSc != null) {
             if (isServiceCodeCallBarring(mSc)) {

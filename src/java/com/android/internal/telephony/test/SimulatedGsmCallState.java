@@ -16,16 +16,19 @@
 
 package com.android.internal.telephony.test;
 
+import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Handler;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.Rlog;
+
 import com.android.internal.telephony.ATParseEx;
 import com.android.internal.telephony.DriverCall;
-import java.util.List;
-import java.util.ArrayList;
 
-import android.telephony.Rlog;
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
+import java.util.ArrayList;
+import java.util.List;
 
 class CallInfo {
     enum State {
@@ -388,6 +391,7 @@ class SimulatedGsmCallState extends Handler {
         return found;
     }
 
+    @UnsupportedAppUsage
     public boolean
     onChld(char c0, char c1) {
         boolean ret;
@@ -444,6 +448,7 @@ class SimulatedGsmCallState extends Handler {
         return ret;
     }
 
+    @UnsupportedAppUsage
     public boolean
     releaseHeldOrUDUB() {
         boolean found = false;
@@ -474,6 +479,7 @@ class SimulatedGsmCallState extends Handler {
     }
 
 
+    @UnsupportedAppUsage
     public boolean
     releaseActiveAcceptHeldOrWaiting() {
         boolean foundHeld = false;
@@ -529,6 +535,7 @@ class SimulatedGsmCallState extends Handler {
         return true;
     }
 
+    @UnsupportedAppUsage
     public boolean
     switchActiveAndHeldOrWaiting() {
         boolean hasHeld = false;
@@ -562,6 +569,7 @@ class SimulatedGsmCallState extends Handler {
     }
 
 
+    @UnsupportedAppUsage
     public boolean
     separateCall(int index) {
         try {
@@ -603,6 +611,7 @@ class SimulatedGsmCallState extends Handler {
 
 
 
+    @UnsupportedAppUsage
     public boolean
     conference() {
         int countCalls = 0;

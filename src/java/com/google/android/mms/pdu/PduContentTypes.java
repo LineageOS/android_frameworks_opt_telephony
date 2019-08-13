@@ -17,11 +17,14 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 public class PduContentTypes {
     /**
      * All content types. From:
      * http://www.openmobilealliance.org/tech/omna/omna-wsp-content-type.htm
      */
+    @UnsupportedAppUsage
     static final String[] contentTypes = {
         "*/*",                                        /* 0x00 */
         "text/*",                                     /* 0x01 */

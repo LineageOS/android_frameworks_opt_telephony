@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 public class SendConf extends GenericPdu {
@@ -28,6 +30,7 @@ public class SendConf extends GenericPdu {
      *
      * @throws InvalidHeaderValueException if error occurs.
      */
+    @UnsupportedAppUsage
     public SendConf() throws InvalidHeaderValueException {
         super();
         setMessageType(PduHeaders.MESSAGE_TYPE_SEND_CONF);
@@ -38,6 +41,7 @@ public class SendConf extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     SendConf(PduHeaders headers) {
         super(headers);
     }
@@ -47,6 +51,7 @@ public class SendConf extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageId() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_ID);
     }
@@ -66,6 +71,7 @@ public class SendConf extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getResponseStatus() {
         return mPduHeaders.getOctet(PduHeaders.RESPONSE_STATUS);
     }
@@ -85,6 +91,7 @@ public class SendConf extends GenericPdu {
      *
      * @return the X-Mms-Report-Allowed value
      */
+    @UnsupportedAppUsage
     public byte[] getTransactionId() {
         return mPduHeaders.getTextString(PduHeaders.TRANSACTION_ID);
     }

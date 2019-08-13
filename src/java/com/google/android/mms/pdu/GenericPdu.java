@@ -17,17 +17,21 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 public class GenericPdu {
     /**
      * The headers of pdu.
      */
+    @UnsupportedAppUsage
     PduHeaders mPduHeaders = null;
 
     /**
      * Constructor.
      */
+    @UnsupportedAppUsage
     public GenericPdu() {
         mPduHeaders = new PduHeaders();
     }
@@ -46,6 +50,7 @@ public class GenericPdu {
      *
      * @return A PduHeaders of this PDU.
      */
+    @UnsupportedAppUsage
     PduHeaders getPduHeaders() {
         return mPduHeaders;
     }
@@ -55,6 +60,7 @@ public class GenericPdu {
      *
      * @return the X-Mms-Report-Allowed value
      */
+    @UnsupportedAppUsage
     public int getMessageType() {
         return mPduHeaders.getOctet(PduHeaders.MESSAGE_TYPE);
     }
@@ -66,6 +72,7 @@ public class GenericPdu {
      * @throws InvalidHeaderValueException if the value is invalid.
      *         RuntimeException if field's value is not Octet.
      */
+    @UnsupportedAppUsage
     public void setMessageType(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.MESSAGE_TYPE);
     }
@@ -97,6 +104,7 @@ public class GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue getFrom() {
        return mPduHeaders.getEncodedStringValue(PduHeaders.FROM);
     }
@@ -107,6 +115,7 @@ public class GenericPdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setFrom(EncodedStringValue value) {
         mPduHeaders.setEncodedStringValue(value, PduHeaders.FROM);
     }

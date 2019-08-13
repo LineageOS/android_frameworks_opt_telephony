@@ -17,6 +17,8 @@
 
 package com.google.android.mms.util;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.pdu.GenericPdu;
 
 public final class PduCacheEntry {
@@ -24,20 +26,24 @@ public final class PduCacheEntry {
     private final int mMessageBox;
     private final long mThreadId;
 
+    @UnsupportedAppUsage
     public PduCacheEntry(GenericPdu pdu, int msgBox, long threadId) {
         mPdu = pdu;
         mMessageBox = msgBox;
         mThreadId = threadId;
     }
 
+    @UnsupportedAppUsage
     public GenericPdu getPdu() {
         return mPdu;
     }
 
+    @UnsupportedAppUsage
     public int getMessageBox() {
         return mMessageBox;
     }
 
+    @UnsupportedAppUsage
     public long getThreadId() {
         return mThreadId;
     }

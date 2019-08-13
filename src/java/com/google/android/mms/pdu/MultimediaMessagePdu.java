@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 /**
@@ -31,6 +33,7 @@ public class MultimediaMessagePdu extends GenericPdu{
     /**
      * Constructor.
      */
+    @UnsupportedAppUsage
     public MultimediaMessagePdu() {
         super();
     }
@@ -41,6 +44,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      * @param header the header of this PDU
      * @param body the body of this PDU
      */
+    @UnsupportedAppUsage
     public MultimediaMessagePdu(PduHeaders header, PduBody body) {
         super(header);
         mMessageBody = body;
@@ -60,6 +64,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @return the body
      */
+    @UnsupportedAppUsage
     public PduBody getBody() {
         return mMessageBody;
     }
@@ -69,6 +74,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @param body the body
      */
+    @UnsupportedAppUsage
     public void setBody(PduBody body) {
         mMessageBody = body;
     }
@@ -78,6 +84,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue getSubject() {
         return mPduHeaders.getEncodedStringValue(PduHeaders.SUBJECT);
     }
@@ -88,6 +95,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setSubject(EncodedStringValue value) {
         mPduHeaders.setEncodedStringValue(value, PduHeaders.SUBJECT);
     }
@@ -97,6 +105,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue[] getTo() {
         return mPduHeaders.getEncodedStringValues(PduHeaders.TO);
     }
@@ -107,6 +116,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void addTo(EncodedStringValue value) {
         mPduHeaders.appendEncodedStringValue(value, PduHeaders.TO);
     }
@@ -116,6 +126,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getPriority() {
         return mPduHeaders.getOctet(PduHeaders.PRIORITY);
     }
@@ -126,6 +137,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setPriority(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.PRIORITY);
     }
@@ -135,6 +147,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public long getDate() {
         return mPduHeaders.getLongInteger(PduHeaders.DATE);
     }
@@ -144,6 +157,7 @@ public class MultimediaMessagePdu extends GenericPdu{
      *
      * @param value the value
      */
+    @UnsupportedAppUsage
     public void setDate(long value) {
         mPduHeaders.setLongInteger(value, PduHeaders.DATE);
     }

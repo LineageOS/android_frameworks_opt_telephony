@@ -18,18 +18,18 @@ package com.android.internal.telephony.imsphone;
 
 import android.annotation.UnsupportedAppUsage;
 import android.telecom.ConferenceParticipant;
-import android.telephony.Rlog;
 import android.telephony.DisconnectCause;
+import android.telephony.Rlog;
+import android.telephony.ims.ImsStreamMediaProfile;
 import android.util.Log;
 
+import com.android.ims.ImsCall;
+import com.android.ims.ImsException;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
-import com.android.ims.ImsCall;
-import com.android.ims.ImsException;
-import android.telephony.ims.ImsStreamMediaProfile;
 
 import java.util.List;
 
@@ -297,6 +297,7 @@ public class ImsPhoneCall extends Call {
      * @return The {@link ImsCall}.
      */
     @VisibleForTesting
+    @UnsupportedAppUsage
     public ImsCall
     getImsCall() {
         return (getFirstConnection() == null) ? null : getFirstConnection().getImsCall();

@@ -39,6 +39,9 @@ public class IccRefreshResponse {
                                                   from 0xA0, 0x00 -> 0x41,
                                                   0x30, 0x30, 0x30 */
                                                /* Example: a0000000871002f310ffff89080000ff */
+    @UnsupportedAppUsage
+    public IccRefreshResponse() {
+    }
 
     @Override
     public String toString() {

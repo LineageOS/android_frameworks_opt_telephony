@@ -23,6 +23,8 @@ import android.net.Uri;
 import android.provider.Telephony.Mms;
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -75,12 +77,14 @@ public final class PduCache extends AbstractCache<Uri, PduCacheEntry> {
     private final HashMap<Long, HashSet<Uri>> mThreads;
     private final HashSet<Uri> mUpdating;
 
+    @UnsupportedAppUsage
     private PduCache() {
         mMessageBoxes = new HashMap<Integer, HashSet<Uri>>();
         mThreads = new HashMap<Long, HashSet<Uri>>();
         mUpdating = new HashSet<Uri>();
     }
 
+    @UnsupportedAppUsage
     synchronized public static final PduCache getInstance() {
         if (sInstance == null) {
             if (LOCAL_LOGV) {
@@ -125,11 +129,13 @@ public final class PduCache extends AbstractCache<Uri, PduCacheEntry> {
         }
     }
 
+    @UnsupportedAppUsage
     synchronized public boolean isUpdating(Uri uri) {
         return mUpdating.contains(uri);
     }
 
     @Override
+    @UnsupportedAppUsage
     synchronized public PduCacheEntry purge(Uri uri) {
         int match = URI_MATCHER.match(uri);
         switch (match) {
@@ -171,6 +177,7 @@ public final class PduCache extends AbstractCache<Uri, PduCacheEntry> {
         return null;
     }
 
+    @UnsupportedAppUsage
     @Override
     synchronized public void purgeAll() {
         super.purgeAll();
