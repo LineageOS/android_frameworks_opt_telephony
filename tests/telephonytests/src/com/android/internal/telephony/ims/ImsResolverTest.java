@@ -830,6 +830,97 @@ public class ImsResolverTest extends ImsTestBase {
         verify(deviceController).changeImsServiceFeatures(deviceFeatureSet);
     }
 
+    /**
+     * If a misbehaving ImsService returns null for the Binder connection when we perform a dynamic
+     * feature query, verify we never perform a full bind for any features.
+     */
+    @Test
+    @SmallTest
+    public void testPermanentBindFailureDuringFeatureQuery() throws RemoteException {
+        setupResolver(1/*numSlots*/);
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> deviceFeatures = new HashSet<>();
+        deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
+        // Set the carrier override package for slot 0
+        setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> carrierFeatures = new HashSet<>();
+        // Carrier service doesn't support the voice feature.
+        carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(0, ImsFeature.FEATURE_RCS));
+        // Use device default package, which will load the ImsService that the device provides
+        info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true));
+        setupPackageQuery(info);
+        ImsServiceController deviceController = mock(ImsServiceController.class);
+        ImsServiceController carrierController = mock(ImsServiceController.class);
+        setImsServiceControllerFactory(deviceController, carrierController);
+
+        startBindCarrierConfigAlreadySet();
+        // dynamic query results in a failure.
+        setupDynamicQueryFeaturesFailure(TEST_CARRIER_DEFAULT_NAME, 1);
+
+        // Verify that a bind never occurs for the carrier controller.
+        verify(carrierController, never()).bind(any());
+        verify(carrierController, never()).unbind();
+        // Verify that all features are used to bind to the device ImsService since the carrier
+        // ImsService failed to bind properly.
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
+                convertToHashSet(deviceFeatures, 0);
+        verify(deviceController).bind(deviceFeatureSet);
+        verify(deviceController, never()).unbind();
+        assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
+    }
+
+    /**
+     * If a misbehaving ImsService returns null for the Binder connection when we perform bind,
+     * verify the service is disconnected.
+     */
+    @Test
+    @SmallTest
+    public void testPermanentBindFailureDuringBind() throws RemoteException {
+        setupResolver(1/*numSlots*/);
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> deviceFeatures = new HashSet<>();
+        deviceFeatures.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        deviceFeatures.add(ImsResolver.METADATA_RCS_FEATURE);
+        // Set the carrier override package for slot 0
+        setConfigCarrierString(0, TEST_CARRIER_DEFAULT_NAME.getPackageName());
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> carrierFeatures = new HashSet<>();
+        // Carrier service doesn't support the voice feature.
+        carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(0, ImsFeature.FEATURE_RCS));
+        // Use device default package, which will load the ImsService that the device provides
+        info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, deviceFeatures, true));
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true));
+        setupPackageQuery(info);
+        ImsServiceController deviceController = mock(ImsServiceController.class);
+        ImsServiceController carrierController = mock(ImsServiceController.class);
+        setImsServiceControllerFactory(deviceController, carrierController);
+
+        startBindCarrierConfigAlreadySet();
+        setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
+
+        // Verify that a bind never occurs for the carrier controller.
+        verify(carrierController).bind(carrierFeatures);
+        verify(carrierController, never()).unbind();
+        // Verify that all features that are not defined in the carrier override are bound in the
+        // device controller (including emergency voice for slot 0)
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatureSet =
+                convertToHashSet(deviceFeatures, 0);
+        deviceFeatureSet.removeAll(carrierFeatures);
+        verify(deviceController).bind(deviceFeatureSet);
+        verify(deviceController, never()).unbind();
+        assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
+
+        mTestImsResolver.imsServiceBindPermanentError(TEST_CARRIER_DEFAULT_NAME);
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+        verify(carrierController).unbind();
+        // Verify that the device ImsService features are changed to include the ones previously
+        // taken by the carrier app.
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> originalDeviceFeatureSet =
+                convertToHashSet(deviceFeatures, 0);
+        verify(deviceController).changeImsServiceFeatures(originalDeviceFeatureSet);
+    }
+
     private void setupResolver(int numSlots) {
         when(mMockContext.getSystemService(eq(Context.CARRIER_CONFIG_SERVICE))).thenReturn(
                 mMockCarrierConfigManager);
@@ -941,6 +1032,18 @@ public class ImsResolverTest extends ImsTestBase {
         verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onComplete(name, features);
         // wait for handling of onComplete
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+    }
+
+    private void setupDynamicQueryFeaturesFailure(ComponentName name, int times) {
+        // wait for schedule to happen
+        waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
+        // ensure that startQuery was called
+        when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
+                .thenReturn(true);
+        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
+        mDynamicQueryListener.onPermanentError(name);
+        // wait for handling of onPermanentError
         waitForHandlerAction(mTestImsResolver.getHandler(), TEST_TIMEOUT);
     }
 
