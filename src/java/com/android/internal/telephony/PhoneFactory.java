@@ -279,7 +279,6 @@ public class PhoneFactory {
 
                 sNotificationChannelController = new NotificationChannelController(context);
 
-                sTelephonyNetworkFactories = new TelephonyNetworkFactory[numPhones];
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
                             sSubscriptionMonitor, Looper.myLooper(), sPhones[i]);
