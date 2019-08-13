@@ -20,8 +20,10 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.telephony.ims.aidl.IImsCapabilityCallback;
@@ -71,12 +73,19 @@ public class ImsFeatureTest {
     @Mock
     private IImsFeatureStatusCallback mTestStatusCallback;
     @Mock
+    private IBinder mTestBinder;
+    @Mock
     private IImsFeatureStatusCallback mTestStatusCallback2;
+    @Mock
+    private IBinder mTestBinder2;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         mTestImsFeature = new TestImsFeature();
+        // Needed for RemoteCallbackList registration
+        doReturn(mTestBinder).when(mTestStatusCallback).asBinder();
+        doReturn(mTestBinder2).when(mTestStatusCallback2).asBinder();
     }
 
     @After
