@@ -42,26 +42,27 @@ public class InboundSmsTrackerTest {
     private static final int FAKE_SEQUENCE_NUMBER = 3;
     private static final int FAKE_MESSAGE_COUNT = 5;
     private static final String FAKE_MESSAGE_BODY = "message body";
+    private static final int FAKE_SUBID = 0;
 
     @Before
     public void setUp() throws Exception {
         mInboundSmsTracker = new InboundSmsTracker(FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
                 FAKE_ADDRESS, FAKE_DISPLAY_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER,
-                FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */);
+                FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */, FAKE_SUBID);
     }
 
     public static MatrixCursor createFakeCursor() {
         MatrixCursor mc = new MatrixCursor(
                 new String[]{"pdu", "seq", "dest", "date", "ref", "cnt", "addr", "id", "msg_body",
-                        "display_originating_addr"});
+                        "display_originating_addr", "sub_id"});
         mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
                 FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
                 FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 1, FAKE_MESSAGE_BODY,
-                FAKE_DISPLAY_ADDRESS});
+                FAKE_DISPLAY_ADDRESS, FAKE_SUBID});
         mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
                 FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
                 FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 2, FAKE_MESSAGE_BODY,
-                FAKE_DISPLAY_ADDRESS});
+                FAKE_DISPLAY_ADDRESS, FAKE_SUBID});
         mc.moveToFirst();
         return mc;
     }
@@ -82,6 +83,7 @@ public class InboundSmsTrackerTest {
         assertEquals(FAKE_MESSAGE_BODY, mInboundSmsTracker.getMessageBody());
         assertEquals(FAKE_DISPLAY_ADDRESS, mInboundSmsTracker.getDisplayAddress());
         assertEquals(false, mInboundSmsTracker.isClass0());
+        assertEquals(FAKE_SUBID, mInboundSmsTracker.getSubId());
 
         String[] args = new String[]{"123"};
         mInboundSmsTracker.setDeleteWhere(InboundSmsHandler.SELECT_BY_ID, args);

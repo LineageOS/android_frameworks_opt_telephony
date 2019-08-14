@@ -36,6 +36,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 /**
  * Called when the credential-encrypted storage is unlocked, collecting all acknowledged messages
@@ -65,8 +66,26 @@ public class SmsBroadcastUndelivered {
             "address",
             "_id",
             "message_body",
-            "display_originating_addr"
+            "display_originating_addr",
+            "sub_id"
     };
+
+    /** Mapping from DB COLUMN to PDU_PENDING_MESSAGE_PROJECTION index */
+    static final Map<Integer, Integer> PDU_PENDING_MESSAGE_PROJECTION_INDEX_MAPPING =
+            new HashMap<Integer, Integer>() {{
+                put(InboundSmsHandler.PDU_COLUMN, 0);
+                put(InboundSmsHandler.SEQUENCE_COLUMN, 1);
+                put(InboundSmsHandler.DESTINATION_PORT_COLUMN, 2);
+                put(InboundSmsHandler.DATE_COLUMN, 3);
+                put(InboundSmsHandler.REFERENCE_NUMBER_COLUMN, 4);
+                put(InboundSmsHandler.COUNT_COLUMN, 5);
+                put(InboundSmsHandler.ADDRESS_COLUMN, 6);
+                put(InboundSmsHandler.ID_COLUMN, 7);
+                put(InboundSmsHandler.MESSAGE_BODY_COLUMN, 8);
+                put(InboundSmsHandler.DISPLAY_ADDRESS_COLUMN, 9);
+                put(InboundSmsHandler.SUBID_COLUMN, 10);
+            }};
+
 
     private static SmsBroadcastUndelivered instance;
 
