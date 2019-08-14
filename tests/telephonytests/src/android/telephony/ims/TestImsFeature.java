@@ -40,6 +40,11 @@ public class TestImsFeature extends ImsFeature {
     }
 
     @Override
+    public boolean queryCapabilityConfiguration(int capability, int radioTech) {
+        return false;
+    }
+
+    @Override
     public void changeEnabledCapabilities(CapabilityChangeRequest request,
             CapabilityCallbackProxy c) {
         lastRequest = request;
