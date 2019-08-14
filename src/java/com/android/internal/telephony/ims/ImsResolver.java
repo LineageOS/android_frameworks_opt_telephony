@@ -34,6 +34,7 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
@@ -217,7 +218,19 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     SubscriptionManager.INVALID_SIM_SLOT_INDEX);
 
             if (slotId == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
-                Log.i(TAG, "Received SIM change for invalid slot id.");
+                Log.i(TAG, "Received CCC for invalid slot id.");
+                return;
+            }
+
+            int subId = intent.getIntExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+            int slotSimState = mTelephonyManagerProxy.getSimState(mContext, slotId);
+            if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                    && slotSimState != TelephonyManager.SIM_STATE_ABSENT) {
+                // We only care about carrier config updates that happen when a slot is known to be
+                // absent or populated and the carrier config has been loaded.
+                Log.i(TAG, "Received CCC for slot " + slotId + " and sim state "
+                        + slotSimState + ", ignoring.");
                 return;
             }
 
@@ -253,6 +266,28 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
          */
         int getSlotIndex(int subId);
     }
+
+    /**
+     * Testing interface used to stub out TelephonyManager dependencies.
+     */
+    @VisibleForTesting
+    public interface TelephonyManagerProxy {
+        /**
+         * @return the SIM state for the slot ID specified.
+         */
+        int getSimState(Context context, int slotId);
+    }
+
+    private TelephonyManagerProxy mTelephonyManagerProxy = new TelephonyManagerProxy() {
+        @Override
+        public int getSimState(Context context, int slotId) {
+            TelephonyManager tm = context.getSystemService(TelephonyManager.class);
+            if (tm == null) {
+                return TelephonyManager.SIM_STATE_UNKNOWN;
+            }
+            return tm.getSimState(slotId);
+        }
+    };
 
     private SubscriptionManagerProxy mSubscriptionManagerProxy = new SubscriptionManagerProxy() {
         @Override
@@ -446,6 +481,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     Log.w(TAG, "onError: " + name + "returned with an error result");
                     scheduleQueryForFeatures(name, DELAY_DYNAMIC_QUERY_MS);
                 }
+
+                @Override
+                public void onPermanentError(ComponentName name) {
+                    Log.w(TAG, "onPermanentError: component=" + name);
+                    mHandler.obtainMessage(HANDLER_REMOVE_PACKAGE,
+                            name.getPackageName()).sendToTarget();
+                }
             };
 
     // Array index corresponds to slot Id associated with the service package name.
@@ -497,6 +539,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     @VisibleForTesting
+    public void setTelephonyManagerProxy(TelephonyManagerProxy proxy) {
+        mTelephonyManagerProxy = proxy;
+    }
+
+    @VisibleForTesting
     public void setSubscriptionManagerProxy(SubscriptionManagerProxy proxy) {
         mSubscriptionManagerProxy = proxy;
     }
@@ -520,13 +567,32 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      * Needs to be called after the constructor to kick off the process of binding to ImsServices.
      */
     public void initialize() {
-        Log.i(TAG, "Initializing cache and binding.");
+        Log.i(TAG, "Initializing cache.");
         mFeatureQueryManager = mDynamicQueryManagerFactory.create(mContext, mDynamicQueryListener);
-        // Populates the CarrierConfig override package names for each slot
-        mHandler.obtainMessage(HANDLER_CONFIG_CHANGED,
-                SubscriptionManager.INVALID_SIM_SLOT_INDEX).sendToTarget();
-        // Starts first bind to the system.
-        mHandler.obtainMessage(HANDLER_ADD_PACKAGE, null).sendToTarget();
+
+        // This will get all services with the correct intent filter from PackageManager
+        List<ImsServiceInfo> infos = getImsServiceInfo(null);
+        for (ImsServiceInfo info : infos) {
+            if (!mInstalledServicesCache.containsKey(info.name)) {
+                mInstalledServicesCache.put(info.name, info);
+            }
+        }
+        // Update the package names of the carrier ImsServices if they do not exist already and
+        // possibly bind if carrier configs exist. Otherwise wait for CarrierConfigChanged
+        // indication.
+        for (int i = 0; i < mNumSlots; i++) {
+            int subId = mSubscriptionManagerProxy.getSubId(i);
+            PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId);
+            if (config != null && mCarrierServices[i] == null) {
+                String newPackageName = config.getString(
+                        CarrierConfigManager.KEY_CONFIG_IMS_PACKAGE_OVERRIDE_STRING, null);
+                if (!TextUtils.isEmpty(newPackageName)) {
+                    updateBoundCarrierServices(i, newPackageName);
+                    Log.i(TAG, "Initializing, found package " + newPackageName + " on slot "
+                            + i);
+                }
+            }
+        }
     }
 
     /**
@@ -781,8 +847,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
     }
 
-    // Remove the ImsService from the cache. At this point, the ImsService will have already been
-    // killed.
+    // Remove the ImsService from the cache. This may have been due to the ImsService being removed
+    // from the device or was returning permanent errors when bound.
     // Called from the handler ONLY
     private boolean maybeRemovedImsService(String packageName) {
         ImsServiceInfo match = getInfoByPackageName(mInstalledServicesCache, packageName);
@@ -860,7 +926,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     Log.d(TAG, "Updating Features - New Features: " + features);
                     controller.changeImsServiceFeatures(features);
                 } else {
-                    Log.i(TAG, "updateImsServiceFeatures: unbound with active features, rebinding");
+                    Log.i(TAG, "updateImsServiceFeatures: unbound with active features, binding");
                     bindImsServiceWithFeatures(newInfo, features);
                 }
                 // If the carrier service features have changed, the device features will also
@@ -1007,6 +1073,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         handleFeaturesChanged(controller.getComponentName(), config.getServiceFeatures());
     }
 
+    @Override
+    public void imsServiceBindPermanentError(ComponentName name) {
+        if (name == null) {
+            return;
+        }
+        Log.w(TAG, "imsServiceBindPermanentError: component=" + name);
+        mHandler.obtainMessage(HANDLER_REMOVE_PACKAGE, name.getPackageName()).sendToTarget();
+    }
+
     /**
      * Determines if the features specified should cause a bind or keep a binding active to an
      * ImsService.
@@ -1068,18 +1143,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 // ImsService is retrieved from the cache. If the cache hasn't been populated yet,
                 // the calls to unbind/bind will fail (intended during initial start up).
                 unbindImsService(getImsServiceInfoFromCache(oldPackageName));
-                ImsServiceInfo newInfo = getImsServiceInfoFromCache(newPackageName);
-                // if there is no carrier ImsService, newInfo is null. This we still want to update
-                // bindings for device ImsService to pick up the missing features.
-                if (newInfo == null || newInfo.featureFromMetadata) {
-                    bindImsService(newInfo);
-                    // Recalculate the device ImsService features to reflect changes.
-                    updateImsServiceFeatures(getImsServiceInfoFromCache(mDeviceService));
-                } else {
-                    // ImsServiceInfo that has not had features queried yet. Start async
-                    // bind and query features.
-                    scheduleQueryForFeatures(newInfo);
-                }
+            }
+            ImsServiceInfo newInfo = getImsServiceInfoFromCache(newPackageName);
+            // if there is no carrier ImsService, newInfo is null. This we still want to update
+            // bindings for device ImsService to pick up the missing features.
+            if (newInfo == null || newInfo.featureFromMetadata) {
+                bindImsService(newInfo);
+                // Recalculate the device ImsService features to reflect changes.
+                updateImsServiceFeatures(getImsServiceInfoFromCache(mDeviceService));
+            } else {
+                // ImsServiceInfo that has not had features queried yet. Start async
+                // bind and query features.
+                scheduleQueryForFeatures(newInfo);
             }
         }
     }
