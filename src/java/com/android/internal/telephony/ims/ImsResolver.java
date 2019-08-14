@@ -481,6 +481,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     Log.w(TAG, "onError: " + name + "returned with an error result");
                     scheduleQueryForFeatures(name, DELAY_DYNAMIC_QUERY_MS);
                 }
+
+                @Override
+                public void onPermanentError(ComponentName name) {
+                    Log.w(TAG, "onPermanentError: component=" + name);
+                    mHandler.obtainMessage(HANDLER_REMOVE_PACKAGE,
+                            name.getPackageName()).sendToTarget();
+                }
             };
 
     // Array index corresponds to slot Id associated with the service package name.
@@ -840,8 +847,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
     }
 
-    // Remove the ImsService from the cache. At this point, the ImsService will have already been
-    // killed.
+    // Remove the ImsService from the cache. This may have been due to the ImsService being removed
+    // from the device or was returning permanent errors when bound.
     // Called from the handler ONLY
     private boolean maybeRemovedImsService(String packageName) {
         ImsServiceInfo match = getInfoByPackageName(mInstalledServicesCache, packageName);
@@ -1064,6 +1071,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         Log.i(TAG, "imsServiceFeaturesChanged: config=" + config.getServiceFeatures()
                 + ", ComponentName=" + controller.getComponentName());
         handleFeaturesChanged(controller.getComponentName(), config.getServiceFeatures());
+    }
+
+    @Override
+    public void imsServiceBindPermanentError(ComponentName name) {
+        if (name == null) {
+            return;
+        }
+        Log.w(TAG, "imsServiceBindPermanentError: component=" + name);
+        mHandler.obtainMessage(HANDLER_REMOVE_PACKAGE, name.getPackageName()).sendToTarget();
     }
 
     /**
