@@ -397,6 +397,9 @@ public class ImsServiceController {
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> newImsFeatures)
             throws RemoteException {
         synchronized (mLock) {
+            if (mImsFeatures.equals(newImsFeatures)) {
+                return;
+            }
             Log.i(LOG_TAG, "Features changed (" + mImsFeatures + "->" + newImsFeatures + ") for "
                     + "ImsService: " + mComponentName);
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> oldImsFeatures =
