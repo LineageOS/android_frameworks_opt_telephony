@@ -71,25 +71,23 @@ public class ImsServiceController {
             synchronized (mLock) {
                 mIsBound = true;
                 mIsBinding = false;
-                Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
-                        + service);
-                if (service != null) {
-                    try {
-                        setServiceController(service);
-                        notifyImsServiceReady();
-                        // create all associated features in the ImsService
-                        for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
-                            addImsServiceFeature(i);
-                        }
-                    } catch (RemoteException e) {
-                        mIsBound = false;
-                        mIsBinding = false;
-                        // Remote exception means that the binder already died.
-                        cleanupConnection();
-                        startDelayedRebindToService();
-                        Log.e(LOG_TAG, "ImsService(" + name + ") RemoteException:"
-                                + e.getMessage());
+                try {
+                    Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
+                            + service);
+                    setServiceController(service);
+                    notifyImsServiceReady();
+                    // create all associated features in the ImsService
+                    for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
+                        addImsServiceFeature(i);
                     }
+                } catch (RemoteException e) {
+                    mIsBound = false;
+                    mIsBinding = false;
+                    // Remote exception means that the binder already died.
+                    cleanupConnection();
+                    startDelayedRebindToService();
+                    Log.e(LOG_TAG, "ImsService(" + name + ") RemoteException:"
+                            + e.getMessage());
                 }
             }
         }
@@ -111,10 +109,27 @@ public class ImsServiceController {
                 mIsBound = false;
             }
             cleanupConnection();
+            // according to the docs, we should fully unbind before rebinding again.
+            mContext.unbindService(mImsServiceConnection);
             Log.w(LOG_TAG, "ImsService(" + name + "): onBindingDied. Starting rebind...");
             startDelayedRebindToService();
         }
 
+        @Override
+        public void onNullBinding(ComponentName name) {
+            Log.w(LOG_TAG, "ImsService(" + name + "): onNullBinding. Removing.");
+            synchronized (mLock) {
+                mIsBinding = false;
+                mIsBound = false;
+            }
+            cleanupConnection();
+            if (mCallbacks != null) {
+                // Will trigger an unbind.
+                mCallbacks.imsServiceBindPermanentError(getComponentName());
+            }
+        }
+
+        // Does not clear features, just removes all active features.
         private void cleanupConnection() {
             cleanupAllFeatures();
             cleanUpService();
@@ -151,6 +166,12 @@ public class ImsServiceController {
          */
         void imsServiceFeaturesChanged(ImsFeatureConfiguration config,
                 ImsServiceController controller);
+
+        /**
+         * Called by the ImsServiceController when there has been an error binding that is
+         * not recoverable, such as the ImsService returning a null binder.
+         */
+        void imsServiceBindPermanentError(ComponentName name);
     }
 
     /**
@@ -385,6 +406,8 @@ public class ImsServiceController {
             removeImsServiceFeatureCallbacks();
             Log.i(LOG_TAG, "Unbinding ImsService: " + mComponentName);
             mContext.unbindService(mImsServiceConnection);
+            mIsBound = false;
+            mIsBinding = false;
             cleanUpService();
         }
     }

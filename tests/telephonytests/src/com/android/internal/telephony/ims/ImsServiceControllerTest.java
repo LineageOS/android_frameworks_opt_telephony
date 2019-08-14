@@ -295,6 +295,26 @@ public class ImsServiceControllerTest extends ImsTestBase {
     }
 
     /**
+     * Ensures that imsServiceBindPermanentError is called when the binder returns null.
+     */
+    @SmallTest
+    @Test
+    public void testBindServiceAndReturnedNull() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        // Slot 1, MMTel
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        // Slot 1, RCS
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+
+        bindAndNullServiceError(testFeatures);
+
+        verify(mMockCallbacks, never()).imsServiceFeatureCreated(anyInt(), anyInt(),
+                eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks, never()).imsFeatureCreated(anyInt(), anyInt());
+        verify(mMockCallbacks).imsServiceBindPermanentError(eq(mTestComponentName));
+    }
+
+    /**
      * Ensures ImsService and ImsResolver are notified when a feature is added.
      */
     @SmallTest
@@ -499,16 +519,27 @@ public class ImsServiceControllerTest extends ImsTestBase {
         verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
     }
 
+    private void bindAndNullServiceError(
+            HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures) {
+        ServiceConnection connection = bindService(testFeatures);
+        connection.onNullBinding(mTestComponentName);
+    }
+
     private ServiceConnection bindAndConnectService(
+            HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures) {
+        ServiceConnection connection = bindService(testFeatures);
+        IImsServiceController.Stub controllerStub = mock(IImsServiceController.Stub.class);
+        when(controllerStub.queryLocalInterface(any())).thenReturn(mMockServiceControllerBinder);
+        connection.onServiceConnected(mTestComponentName, controllerStub);
+        return connection;
+    }
+
+    private ServiceConnection bindService(
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures) {
         ArgumentCaptor<ServiceConnection> serviceCaptor =
                 ArgumentCaptor.forClass(ServiceConnection.class);
         assertTrue(mTestImsServiceController.bind(testFeatures));
         verify(mMockContext).bindService(any(), serviceCaptor.capture(), anyInt());
-        IImsServiceController.Stub controllerStub = mock(IImsServiceController.Stub.class);
-        when(controllerStub.queryLocalInterface(any())).thenReturn(mMockServiceControllerBinder);
-        serviceCaptor.getValue().onServiceConnected(mTestComponentName,
-                controllerStub);
         return serviceCaptor.getValue();
     }
 }
