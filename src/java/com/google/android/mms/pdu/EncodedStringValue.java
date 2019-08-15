@@ -19,6 +19,8 @@ package com.google.android.mms.pdu;
 
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -49,6 +51,7 @@ public class EncodedStringValue implements Cloneable {
      * @param data the Text-string value
      * @throws NullPointerException if Text-string value is null.
      */
+    @UnsupportedAppUsage
     public EncodedStringValue(int charset, byte[] data) {
         // TODO: CharSet needs to be validated against MIBEnum.
         if(null == data) {
@@ -66,10 +69,12 @@ public class EncodedStringValue implements Cloneable {
      * @param data the Text-string value
      * @throws NullPointerException if Text-string value is null.
      */
+    @UnsupportedAppUsage
     public EncodedStringValue(byte[] data) {
         this(CharacterSets.DEFAULT_CHARSET, data);
     }
 
+    @UnsupportedAppUsage
     public EncodedStringValue(String data) {
         try {
             mData = data.getBytes(CharacterSets.DEFAULT_CHARSET_NAME);
@@ -84,6 +89,7 @@ public class EncodedStringValue implements Cloneable {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getCharacterSet() {
         return mCharacterSet;
     }
@@ -93,6 +99,7 @@ public class EncodedStringValue implements Cloneable {
      *
      * @param charset the Char-set value
      */
+    @UnsupportedAppUsage
     public void setCharacterSet(int charset) {
         // TODO: CharSet needs to be validated against MIBEnum.
         mCharacterSet = charset;
@@ -103,6 +110,7 @@ public class EncodedStringValue implements Cloneable {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getTextString() {
         byte[] byteArray = new byte[mData.length];
 
@@ -116,6 +124,7 @@ public class EncodedStringValue implements Cloneable {
      * @param textString the Text-string value
      * @throws NullPointerException if Text-string value is null.
      */
+    @UnsupportedAppUsage
     public void setTextString(byte[] textString) {
         if(null == textString) {
             throw new NullPointerException("EncodedStringValue: Text-string is null.");
@@ -132,6 +141,7 @@ public class EncodedStringValue implements Cloneable {
      *
      * @return The decoded String.
      */
+    @UnsupportedAppUsage
     public String getString()  {
         if (CharacterSets.ANY_CHARSET == mCharacterSet) {
             return new String(mData); // system default encoding.
@@ -159,6 +169,7 @@ public class EncodedStringValue implements Cloneable {
      * @throws NullPointerException if the text String is null
      *                      or an IOException occured.
      */
+    @UnsupportedAppUsage
     public void appendTextString(byte[] textString) {
         if(null == textString) {
             throw new NullPointerException("Text-string is null.");
@@ -227,6 +238,7 @@ public class EncodedStringValue implements Cloneable {
     /**
      * Extract an EncodedStringValue[] from a given String.
      */
+    @UnsupportedAppUsage
     public static EncodedStringValue[] extract(String src) {
         String[] values = src.split(";");
 
@@ -248,6 +260,7 @@ public class EncodedStringValue implements Cloneable {
     /**
      * Concatenate an EncodedStringValue[] into a single String.
      */
+    @UnsupportedAppUsage
     public static String concat(EncodedStringValue[] addr) {
         StringBuilder sb = new StringBuilder();
         int maxIndex = addr.length - 1;
@@ -261,6 +274,7 @@ public class EncodedStringValue implements Cloneable {
         return sb.toString();
     }
 
+    @UnsupportedAppUsage
     public static EncodedStringValue copy(EncodedStringValue value) {
         if (value == null) {
             return null;
@@ -269,6 +283,7 @@ public class EncodedStringValue implements Cloneable {
         return new EncodedStringValue(value.mCharacterSet, value.mData);
     }
     
+    @UnsupportedAppUsage
     public static EncodedStringValue[] encodeStrings(String[] array) {
         int count = array.length;
         if (count > 0) {

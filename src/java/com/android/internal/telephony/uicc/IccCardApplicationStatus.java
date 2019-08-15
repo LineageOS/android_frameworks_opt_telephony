@@ -29,6 +29,8 @@ import com.android.internal.telephony.uicc.IccCardStatus.PinState;
  */
 public class IccCardApplicationStatus {
     // TODO: Replace with constants from PhoneConstants.APPTYPE_xxx
+    @UnsupportedAppUsage(implicitMember =
+            "values()[Lcom/android/internal/telephony/uicc/IccCardApplicationStatus$AppType;")
     public enum AppType{
         @UnsupportedAppUsage
         APPTYPE_UNKNOWN,
@@ -44,6 +46,8 @@ public class IccCardApplicationStatus {
         APPTYPE_ISIM
     }
 
+    @UnsupportedAppUsage(implicitMember =
+            "values()[Lcom/android/internal/telephony/uicc/IccCardApplicationStatus$AppState;")
     public enum AppState{
         @UnsupportedAppUsage
         APPSTATE_UNKNOWN,
@@ -80,6 +84,8 @@ public class IccCardApplicationStatus {
         }
     }
 
+    @UnsupportedAppUsage(implicitMember =
+            "values()[Lcom/android/internal/telephony/uicc/IccCardApplicationStatus$PersoSubState;")
     public enum PersoSubState{
         @UnsupportedAppUsage
         PERSOSUBSTATE_UNKNOWN,
@@ -131,6 +137,10 @@ public class IccCardApplicationStatus {
     public int            pin1_replaced;
     public PinState       pin1;
     public PinState       pin2;
+
+    @UnsupportedAppUsage
+    public IccCardApplicationStatus() {
+    }
 
     @UnsupportedAppUsage
     public AppType AppTypeFromRILInt(int type) {

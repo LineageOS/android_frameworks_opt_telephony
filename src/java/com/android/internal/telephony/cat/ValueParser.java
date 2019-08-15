@@ -16,13 +16,14 @@
 
 package com.android.internal.telephony.cat;
 
+import android.annotation.UnsupportedAppUsage;
+import android.content.res.Resources;
+import android.content.res.Resources.NotFoundException;
+
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.cat.Duration.TimeUnit;
 import com.android.internal.telephony.uicc.IccUtils;
 
-import android.annotation.UnsupportedAppUsage;
-import android.content.res.Resources;
-import android.content.res.Resources.NotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +63,7 @@ abstract class ValueParser {
      *         Command Details object is found, ResultException is thrown.
      * @throws ResultException
      */
+    @UnsupportedAppUsage
     static DeviceIdentities retrieveDeviceIdentities(ComprehensionTlv ctlv)
             throws ResultException {
 

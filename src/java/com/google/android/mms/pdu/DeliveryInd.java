@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 /**
@@ -41,6 +43,7 @@ public class DeliveryInd extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     DeliveryInd(PduHeaders headers) {
         super(headers);
     }
@@ -50,6 +53,7 @@ public class DeliveryInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public long getDate() {
         return mPduHeaders.getLongInteger(PduHeaders.DATE);
     }
@@ -68,6 +72,7 @@ public class DeliveryInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageId() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_ID);
     }
@@ -87,6 +92,7 @@ public class DeliveryInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getStatus() {
         return mPduHeaders.getOctet(PduHeaders.STATUS);
     }
@@ -106,6 +112,7 @@ public class DeliveryInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue[] getTo() {
         return mPduHeaders.getEncodedStringValues(PduHeaders.TO);
     }

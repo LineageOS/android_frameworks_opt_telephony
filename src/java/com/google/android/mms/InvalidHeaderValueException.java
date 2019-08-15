@@ -17,6 +17,8 @@
 
 package com.google.android.mms;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 /**
  * Thrown when an invalid header value was set.
  */
@@ -35,6 +37,7 @@ public class InvalidHeaderValueException extends MmsException {
      *
      * @param message the detailed message.
      */
+    @UnsupportedAppUsage
     public InvalidHeaderValueException(String message) {
         super(message);
     }

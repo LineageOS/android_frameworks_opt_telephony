@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -32,6 +34,7 @@ public class PduBody {
     /**
      * Constructor.
      */
+    @UnsupportedAppUsage
     public PduBody() {
         mParts = new Vector<PduPart>();
 
@@ -77,6 +80,7 @@ public class PduBody {
      * @return true when success, false when fail
      * @throws NullPointerException when part is null
      */
+    @UnsupportedAppUsage
     public boolean addPart(PduPart part) {
         if(null == part) {
             throw new NullPointerException();
@@ -93,6 +97,7 @@ public class PduBody {
      * @param part part to be inserted
      * @throws NullPointerException when part is null
      */
+    @UnsupportedAppUsage
     public void addPart(int index, PduPart part) {
         if(null == part) {
             throw new NullPointerException();
@@ -108,6 +113,7 @@ public class PduBody {
      * @param index index of the part to return
      * @return part at the specified index
      */
+    @UnsupportedAppUsage
     public PduPart removePart(int index) {
         return mParts.remove(index);
     }
@@ -125,6 +131,7 @@ public class PduBody {
      * @param index index of the part to return
      * @return part at the specified index
      */
+    @UnsupportedAppUsage
     public PduPart getPart(int index) {
         return mParts.get(index);
     }
@@ -135,6 +142,7 @@ public class PduBody {
      * @param part the part object
      * @return index the index of the first occurrence of the part in this body
      */
+    @UnsupportedAppUsage
     public int getPartIndex(PduPart part) {
         return mParts.indexOf(part);
     }
@@ -144,6 +152,7 @@ public class PduBody {
      *
      * @return the number of parts
      */
+    @UnsupportedAppUsage
     public int getPartsNum() {
         return mParts.size();
     }
@@ -154,6 +163,7 @@ public class PduBody {
      * @param cid the value of content id.
      * @return the pdu part.
      */
+    @UnsupportedAppUsage
     public PduPart getPartByContentId(String cid) {
         return mPartMapByContentId.get(cid);
     }
@@ -165,6 +175,7 @@ public class PduBody {
      * @param fileName the value of filename.
      * @return the pdu part.
      */
+    @UnsupportedAppUsage
     public PduPart getPartByContentLocation(String contentLocation) {
         return mPartMapByContentLocation.get(contentLocation);
     }
@@ -175,6 +186,7 @@ public class PduBody {
      * @param fileName the value of filename.
      * @return the pdu part.
      */
+    @UnsupportedAppUsage
     public PduPart getPartByName(String name) {
         return mPartMapByName.get(name);
     }
@@ -185,6 +197,7 @@ public class PduBody {
      * @param fileName the value of filename.
      * @return the pdu part.
      */
+    @UnsupportedAppUsage
     public PduPart getPartByFileName(String filename) {
         return mPartMapByFileName.get(filename);
     }

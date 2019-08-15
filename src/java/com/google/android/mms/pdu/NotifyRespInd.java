@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 /**
@@ -33,6 +35,7 @@ public class NotifyRespInd extends GenericPdu {
      *         NullPointerException if transactionId is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public NotifyRespInd(int mmsVersion,
                          byte[] transactionId,
                          int status) throws InvalidHeaderValueException {
@@ -48,6 +51,7 @@ public class NotifyRespInd extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     NotifyRespInd(PduHeaders headers) {
         super(headers);
     }
@@ -68,6 +72,7 @@ public class NotifyRespInd extends GenericPdu {
      * @throws InvalidHeaderValueException if the value is invalid.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setReportAllowed(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.REPORT_ALLOWED);
     }
@@ -79,6 +84,7 @@ public class NotifyRespInd extends GenericPdu {
      * @throws InvalidHeaderValueException if the value is invalid.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setStatus(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.STATUS);
     }
@@ -108,6 +114,7 @@ public class NotifyRespInd extends GenericPdu {
      * @throws NullPointerException if the value is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setTransactionId(byte[] value) {
             mPduHeaders.setTextString(value, PduHeaders.TRANSACTION_ID);
     }

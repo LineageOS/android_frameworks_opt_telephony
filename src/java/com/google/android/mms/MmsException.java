@@ -17,6 +17,8 @@
 
 package com.google.android.mms;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 /**
  * A generic exception that is thrown by the Mms client.
  */
@@ -26,6 +28,7 @@ public class MmsException extends Exception {
     /**
      * Creates a new MmsException.
      */
+    @UnsupportedAppUsage
     public MmsException() {
         super();
     }
@@ -35,6 +38,7 @@ public class MmsException extends Exception {
      *
      * @param message the detail message.
      */
+    @UnsupportedAppUsage
     public MmsException(String message) {
         super(message);
     }
@@ -44,6 +48,7 @@ public class MmsException extends Exception {
      *
      * @param cause the cause.
      */
+    @UnsupportedAppUsage
     public MmsException(Throwable cause) {
         super(cause);
     }
@@ -54,6 +59,7 @@ public class MmsException extends Exception {
      * @param message the detail message.
      * @param cause the cause.
      */
+    @UnsupportedAppUsage
     public MmsException(String message, Throwable cause) {
         super(message, cause);
     }

@@ -19,8 +19,9 @@ package com.google.android.mms.pdu;
 
 import android.content.ContentResolver;
 import android.content.Context;
-import android.util.Log;
 import android.text.TextUtils;
+
+import dalvik.annotation.compat.UnsupportedAppUsage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -85,36 +86,43 @@ public class PduComposer {
     /**
      * The output message.
      */
+    @UnsupportedAppUsage
     protected ByteArrayOutputStream mMessage = null;
 
     /**
      * The PDU.
      */
+    @UnsupportedAppUsage
     private GenericPdu mPdu = null;
 
     /**
      * Current visiting position of the mMessage.
      */
+    @UnsupportedAppUsage
     protected int mPosition = 0;
 
     /**
      * Message compose buffer stack.
      */
+    @UnsupportedAppUsage
     private BufferStack mStack = null;
 
     /**
      * Content resolver.
      */
+    @UnsupportedAppUsage
     private final ContentResolver mResolver;
 
     /**
      * Header of this pdu.
      */
+    @UnsupportedAppUsage
     private PduHeaders mPduHeader = null;
 
     /**
      * Map of all content type
      */
+    @UnsupportedAppUsage
     private static HashMap<String, Integer> mContentTypeMap = null;
 
     static {
@@ -132,6 +140,7 @@ public class PduComposer {
      * @param context the context
      * @param pdu the pdu to be composed
      */
+    @UnsupportedAppUsage
     public PduComposer(Context context, GenericPdu pdu) {
         mPdu = pdu;
         mResolver = context.getContentResolver();
@@ -148,6 +157,7 @@ public class PduComposer {
      * @return OutputStream of maked message. Return null if
      *         the PDU is invalid.
      */
+    @UnsupportedAppUsage
     public byte[] make() {
         // Get Message-type.
         int type = mPdu.getMessageType();
@@ -185,6 +195,7 @@ public class PduComposer {
     /**
      *  Copy buf to mMessage.
      */
+    @UnsupportedAppUsage
     protected void arraycopy(byte[] buf, int pos, int length) {
         mMessage.write(buf, pos, length);
         mPosition = mPosition + length;
@@ -203,6 +214,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendShortInteger(int value) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -223,6 +235,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendOctet(int number) {
         append(number);
     }
@@ -245,6 +258,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendLongInteger(long longInt) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -281,6 +295,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendTextString(byte[] text) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -302,6 +317,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendTextString(String str) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -318,6 +334,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendEncodedString(EncodedStringValue enStr) {
         /*
          * From OMA-TS-MMS-ENC-V1_3-20050927-C:
@@ -353,6 +370,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendUintvarInteger(long value) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -403,6 +421,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendValueLength(long value) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -426,6 +445,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendQuotedString(byte[] text) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -443,6 +463,7 @@ public class PduComposer {
      * This implementation doesn't check the validity of parameter, since it
      * assumes that the values are validated in the GenericPdu setter methods.
      */
+    @UnsupportedAppUsage
     protected void appendQuotedString(String str) {
         /*
          * From WAP-230-WSP-20010705-a:
@@ -479,6 +500,7 @@ public class PduComposer {
     /**
      * Append header to mMessage.
      */
+    @UnsupportedAppUsage
     private int appendHeader(int field) {
         switch (field) {
             case PduHeaders.MMS_VERSION:
@@ -1057,6 +1079,7 @@ public class PduComposer {
         private int c_pos;   // Current position
         private int currentStackSize;  // Current stack size
 
+        @UnsupportedAppUsage
         int getLength() {
             // If these assert fails, likely that you are finding the
             // size of buffer that is deep in BufferStack you can only
@@ -1083,6 +1106,7 @@ public class PduComposer {
         /**
          *  Create a new message buffer and push it into the stack.
          */
+        @UnsupportedAppUsage
         void newbuf() {
             // You can't create a new buff when toCopy != null
             // That is after calling pop() and before calling copy()
@@ -1108,6 +1132,7 @@ public class PduComposer {
         /**
          *  Pop the message before and record current message in the stack.
          */
+        @UnsupportedAppUsage
         void pop() {
             ByteArrayOutputStream currentMessage = mMessage;
             int currentPosition = mPosition;
@@ -1128,6 +1153,7 @@ public class PduComposer {
         /**
          *  Append current message to the message before.
          */
+        @UnsupportedAppUsage
         void copy() {
             arraycopy(toCopy.currentMessage.toByteArray(), 0,
                     toCopy.currentPosition);
@@ -1138,6 +1164,7 @@ public class PduComposer {
         /**
          *  Mark current message position
          */
+        @UnsupportedAppUsage
         PositionMarker mark() {
             PositionMarker m = new PositionMarker();
 

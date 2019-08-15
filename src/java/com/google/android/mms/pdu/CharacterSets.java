@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 
@@ -141,6 +143,7 @@ public class CharacterSets {
      * @return The name string of the charset.
      * @throws UnsupportedEncodingException
      */
+    @UnsupportedAppUsage
     public static String getMimeName(int mibEnumValue)
             throws UnsupportedEncodingException {
         String name = MIBENUM_TO_NAME_MAP.get(mibEnumValue);
@@ -157,6 +160,7 @@ public class CharacterSets {
      * @return The MIBEnum number assigned by IANA for this charset.
      * @throws UnsupportedEncodingException
      */
+    @UnsupportedAppUsage
     public static int getMibEnumValue(String mimeName)
             throws UnsupportedEncodingException {
         if(null == mimeName) {

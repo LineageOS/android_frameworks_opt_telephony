@@ -19,6 +19,8 @@ package com.google.android.mms.pdu;
 
 import android.net.Uri;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -124,6 +126,7 @@ public class PduPart {
      /**
       * Empty Constructor.
       */
+     @UnsupportedAppUsage
      public PduPart() {
          mPartHeader = new HashMap<Integer, Object>();
      }
@@ -133,6 +136,7 @@ public class PduPart {
       *
       * @param data the data
       */
+     @UnsupportedAppUsage
      public void setData(byte[] data) {
          if(data == null) {
             return;
@@ -147,6 +151,7 @@ public class PduPart {
       *         the data is stored as Uri.
       * @see #getDataUri
       */
+     @UnsupportedAppUsage
      public byte[] getData() {
          if(mPartData == null) {
             return null;
@@ -160,6 +165,7 @@ public class PduPart {
     /**
      * @return The length of the data, if this object have data, else 0.
      */
+     @UnsupportedAppUsage
      public int getDataLength() {
          if(mPartData != null){
              return mPartData.length;
@@ -174,6 +180,7 @@ public class PduPart {
       *
       * @param uri the uri
       */
+     @UnsupportedAppUsage
      public void setDataUri(Uri uri) {
          mUri = uri;
      }
@@ -183,6 +190,7 @@ public class PduPart {
       *         the data is stored as byte array.
       * @see #getData
       */
+     @UnsupportedAppUsage
      public Uri getDataUri() {
          return mUri;
      }
@@ -193,6 +201,7 @@ public class PduPart {
       * @param contentId the content-id value
       * @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setContentId(byte[] contentId) {
          if((contentId == null) || (contentId.length == 0)) {
              throw new IllegalArgumentException(
@@ -219,6 +228,7 @@ public class PduPart {
       *
       * @return the value
       */
+     @UnsupportedAppUsage
      public byte[] getContentId() {
          return (byte[]) mPartHeader.get(P_CONTENT_ID);
      }
@@ -228,6 +238,7 @@ public class PduPart {
       *
       * @param charset the value
       */
+     @UnsupportedAppUsage
      public void setCharset(int charset) {
          mPartHeader.put(P_CHARSET, charset);
      }
@@ -237,6 +248,7 @@ public class PduPart {
       *
       * @return the charset value. Return 0 if charset was not set.
       */
+     @UnsupportedAppUsage
      public int getCharset() {
          Integer charset = (Integer) mPartHeader.get(P_CHARSET);
          if(charset == null) {
@@ -252,6 +264,7 @@ public class PduPart {
       * @param contentLocation the value
       * @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setContentLocation(byte[] contentLocation) {
          if(contentLocation == null) {
              throw new NullPointerException("null content-location");
@@ -268,6 +281,7 @@ public class PduPart {
       *     return PduPart.disposition[1] instead of <Octet 129> (Attachment).
       *     return PduPart.disposition[2] instead of <Octet 130> (Inline).
       */
+     @UnsupportedAppUsage
      public byte[] getContentLocation() {
          return (byte[]) mPartHeader.get(P_CONTENT_LOCATION);
      }
@@ -281,6 +295,7 @@ public class PduPart {
       * @param contentDisposition the value
       * @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setContentDisposition(byte[] contentDisposition) {
          if(contentDisposition == null) {
              throw new NullPointerException("null content-disposition");
@@ -294,6 +309,7 @@ public class PduPart {
       *
       * @return the value
       */
+     @UnsupportedAppUsage
      public byte[] getContentDisposition() {
          return (byte[]) mPartHeader.get(P_CONTENT_DISPOSITION);
      }
@@ -304,6 +320,7 @@ public class PduPart {
       *  @param value the value
       *  @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setContentType(byte[] contentType) {
          if(contentType == null) {
              throw new NullPointerException("null content-type");
@@ -317,6 +334,7 @@ public class PduPart {
       *
       * @return the value
       */
+     @UnsupportedAppUsage
      public byte[] getContentType() {
          return (byte[]) mPartHeader.get(P_CONTENT_TYPE);
      }
@@ -327,6 +345,7 @@ public class PduPart {
       * @param contentId the content-id value
       * @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setContentTransferEncoding(byte[] contentTransferEncoding) {
          if(contentTransferEncoding == null) {
              throw new NullPointerException("null content-transfer-encoding");
@@ -340,6 +359,7 @@ public class PduPart {
       *
       * @return the value
       */
+     @UnsupportedAppUsage
      public byte[] getContentTransferEncoding() {
          return (byte[]) mPartHeader.get(P_CONTENT_TRANSFER_ENCODING);
      }
@@ -350,6 +370,7 @@ public class PduPart {
       * @param name the name value
       * @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setName(byte[] name) {
          if(null == name) {
              throw new NullPointerException("null content-id");
@@ -363,6 +384,7 @@ public class PduPart {
       *
       *  @return the name
       */
+     @UnsupportedAppUsage
      public byte[] getName() {
          return (byte[]) mPartHeader.get(P_NAME);
      }
@@ -373,6 +395,7 @@ public class PduPart {
       * @param fileName the filename value
       * @throws NullPointerException if the value is null.
       */
+     @UnsupportedAppUsage
      public void setFilename(byte[] fileName) {
          if(null == fileName) {
              throw new NullPointerException("null content-id");
@@ -386,10 +409,12 @@ public class PduPart {
       *
       * @return the filename
       */
+     @UnsupportedAppUsage
      public byte[] getFilename() {
          return (byte[]) mPartHeader.get(P_FILENAME);
      }
 
+    @UnsupportedAppUsage
     public String generateLocation() {
         // Assumption: At least one of the content-location / name / filename
         // or content-id should be set. This is guaranteed by the PduParser
