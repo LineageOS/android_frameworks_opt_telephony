@@ -366,6 +366,13 @@ public class ServiceStateTracker extends Handler {
 
                     mPhone.notifyPhoneStateChanged();
                     mPhone.notifyCallForwardingIndicator();
+                    if (!SubscriptionManager.isValidSubscriptionId(
+                            ServiceStateTracker.this.mPrevSubId)) {
+                        // just went from invalid to valid subId, so notify with current service
+                        // state in case our service stat was never broadcasted (we don't notify
+                        // service states when the subId is invalid)
+                        mPhone.notifyServiceStateChanged(mSS);
+                    }
 
                     boolean restoreSelection = !context.getResources().getBoolean(
                             com.android.internal.R.bool.skip_restoring_network_selection);
