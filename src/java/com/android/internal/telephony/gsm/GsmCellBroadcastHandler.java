@@ -229,7 +229,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
 
             SmsCbLocation location;
             switch (header.getGeographicalScope()) {
-                case SmsCbMessage.GEOGRAPHICAL_SCOPE_LA_WIDE:
+                case SmsCbMessage.GEOGRAPHICAL_SCOPE_LOCATION_AREA_WIDE:
                     location = new SmsCbLocation(plmn, lac, -1);
                     break;
 
