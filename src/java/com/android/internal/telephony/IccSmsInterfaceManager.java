@@ -806,6 +806,9 @@ public class IccSmsInterfaceManager {
     }
 
     public boolean enableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
+        mContext.enforceCallingPermission("android.permission.RECEIVE_EMERGENCY_BROADCAST",
+                "enabling cell broadcast range [" + startMessageId + "-" + endMessageId + "]. "
+                        + "ranType=" + ranType);
         if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM) {
             return enableGsmBroadcastRange(startMessageId, endMessageId);
         } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA) {
@@ -816,6 +819,9 @@ public class IccSmsInterfaceManager {
     }
 
     public boolean disableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
+        mContext.enforceCallingPermission("android.permission.RECEIVE_EMERGENCY_BROADCAST",
+                "disabling cell broadcast range [" + startMessageId + "-" + endMessageId
+                        + "]. ranType=" + ranType);
         if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM ) {
             return disableGsmBroadcastRange(startMessageId, endMessageId);
         } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA)  {
