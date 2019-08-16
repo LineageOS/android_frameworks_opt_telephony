@@ -51,7 +51,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * different {@link DataConnection}. Thus each method in this class needs to be synchronized.
  */
 public class DcNetworkAgent extends NetworkAgent {
-    private String mTag;
+    private final String mTag;
 
     private Phone mPhone;
 
@@ -67,6 +67,8 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private static AtomicInteger sSerialNumber = new AtomicInteger(0);
 
+    private NetworkInfo mNetworkInfo;
+
     private DcNetworkAgent(DataConnection dc, String tag, Phone phone, NetworkInfo ni,
                            int score, NetworkMisc misc, int factorySerialNumber,
                            int transportType) {
@@ -78,7 +80,15 @@ public class DcNetworkAgent extends NetworkAgent {
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
         mDataConnection = dc;
+        mNetworkInfo = ni;
         logd(tag + " created for data connection " + dc.getName());
+    }
+
+    /**
+     * @return The tag
+     */
+    String getTag() {
+        return mTag;
     }
 
     /**
@@ -263,7 +273,17 @@ public class DcNetworkAgent extends NetworkAgent {
                     + mDataConnection.getName() + ", ignored the request from " + dc.getName());
             return;
         }
+        mNetworkInfo = networkInfo;
         sendNetworkInfo(networkInfo);
+    }
+
+    /**
+     * Get the latest sent network info.
+     *
+     * @return network info
+     */
+    public synchronized NetworkInfo getNetworkInfo() {
+        return mNetworkInfo;
     }
 
     @Override
