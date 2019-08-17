@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 import java.util.ArrayList;
@@ -327,6 +329,7 @@ public class PduHeaders {
     /**
      * Constructor of PduHeaders.
      */
+    @UnsupportedAppUsage
     public PduHeaders() {
         mHeaderMap = new HashMap<Integer, Object>();
     }
@@ -339,6 +342,7 @@ public class PduHeaders {
      *          with specified header field. Return 0 if
      *          the value is not set.
      */
+    @UnsupportedAppUsage
     protected int getOctet(int field) {
         Integer octet = (Integer) mHeaderMap.get(field);
         if (null == octet) {
@@ -355,6 +359,7 @@ public class PduHeaders {
      * @param field the field
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     protected void setOctet(int value, int field)
             throws InvalidHeaderValueException{
         /**
@@ -499,6 +504,7 @@ public class PduHeaders {
      * @return the TextString value of the pdu header
      *          with specified header field
      */
+    @UnsupportedAppUsage
     protected byte[] getTextString(int field) {
         return (byte[]) mHeaderMap.get(field);
     }
@@ -548,6 +554,7 @@ public class PduHeaders {
      * @return the EncodedStringValue value of the pdu header
      *          with specified header field
      */
+    @UnsupportedAppUsage
     protected EncodedStringValue getEncodedStringValue(int field) {
         return (EncodedStringValue) mHeaderMap.get(field);
     }
@@ -559,6 +566,7 @@ public class PduHeaders {
      * @return the EncodeStringValue array of the pdu header
      *          with specified header field
      */
+    @UnsupportedAppUsage
     protected EncodedStringValue[] getEncodedStringValues(int field) {
         ArrayList<EncodedStringValue> list =
                 (ArrayList<EncodedStringValue>) mHeaderMap.get(field);
@@ -578,6 +586,7 @@ public class PduHeaders {
      *          with specified header field
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     protected void setEncodedStringValue(EncodedStringValue value, int field) {
         /**
          * Check whether this field can be set for specific
@@ -648,6 +657,7 @@ public class PduHeaders {
      * @param field the field
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     protected void appendEncodedStringValue(EncodedStringValue value,
                                     int field) {
         if (null == value) {
@@ -680,6 +690,7 @@ public class PduHeaders {
      *          with specified header field. if return -1, the
      *          field is not existed in pdu header.
      */
+    @UnsupportedAppUsage
     protected long getLongInteger(int field) {
         Long longInteger = (Long) mHeaderMap.get(field);
         if (null == longInteger) {
@@ -695,6 +706,7 @@ public class PduHeaders {
      * @param value the value
      * @param field the field
      */
+    @UnsupportedAppUsage
     protected void setLongInteger(long value, int field) {
         /**
          * Check whether this field can be set for specific

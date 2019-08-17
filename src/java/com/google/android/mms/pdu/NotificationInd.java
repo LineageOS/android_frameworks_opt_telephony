@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 /**
@@ -32,6 +34,7 @@ public class NotificationInd extends GenericPdu {
      * @throws InvalidHeaderValueException if error occurs.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public NotificationInd() throws InvalidHeaderValueException {
         super();
         setMessageType(PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND);
@@ -42,6 +45,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     NotificationInd(PduHeaders headers) {
         super(headers);
     }
@@ -51,6 +55,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getContentClass() {
         return mPduHeaders.getOctet(PduHeaders.CONTENT_CLASS);
     }
@@ -62,6 +67,7 @@ public class NotificationInd extends GenericPdu {
      * @throws InvalidHeaderValueException if the value is invalid.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setContentClass(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.CONTENT_CLASS);
     }
@@ -73,6 +79,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getContentLocation() {
         return mPduHeaders.getTextString(PduHeaders.CONTENT_LOCATION);
     }
@@ -84,6 +91,7 @@ public class NotificationInd extends GenericPdu {
      * @throws NullPointerException if the value is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setContentLocation(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.CONTENT_LOCATION);
     }
@@ -96,6 +104,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public long getExpiry() {
         return mPduHeaders.getLongInteger(PduHeaders.EXPIRY);
     }
@@ -106,6 +115,7 @@ public class NotificationInd extends GenericPdu {
      * @param value the value
      * @throws RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setExpiry(long value) {
         mPduHeaders.setLongInteger(value, PduHeaders.EXPIRY);
     }
@@ -117,6 +127,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue getFrom() {
        return mPduHeaders.getEncodedStringValue(PduHeaders.FROM);
     }
@@ -128,6 +139,7 @@ public class NotificationInd extends GenericPdu {
      * @throws NullPointerException if the value is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setFrom(EncodedStringValue value) {
         mPduHeaders.setEncodedStringValue(value, PduHeaders.FROM);
     }
@@ -139,6 +151,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageClass() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_CLASS);
     }
@@ -150,6 +163,7 @@ public class NotificationInd extends GenericPdu {
      * @throws NullPointerException if the value is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setMessageClass(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.MESSAGE_CLASS);
     }
@@ -160,6 +174,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public long getMessageSize() {
         return mPduHeaders.getLongInteger(PduHeaders.MESSAGE_SIZE);
     }
@@ -170,6 +185,7 @@ public class NotificationInd extends GenericPdu {
      * @param value the value
      * @throws RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setMessageSize(long value) {
         mPduHeaders.setLongInteger(value, PduHeaders.MESSAGE_SIZE);
     }
@@ -179,6 +195,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue getSubject() {
         return mPduHeaders.getEncodedStringValue(PduHeaders.SUBJECT);
     }
@@ -190,6 +207,7 @@ public class NotificationInd extends GenericPdu {
      * @throws NullPointerException if the value is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setSubject(EncodedStringValue value) {
         mPduHeaders.setEncodedStringValue(value, PduHeaders.SUBJECT);
     }
@@ -199,6 +217,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getTransactionId() {
         return mPduHeaders.getTextString(PduHeaders.TRANSACTION_ID);
     }
@@ -210,6 +229,7 @@ public class NotificationInd extends GenericPdu {
      * @throws NullPointerException if the value is null.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setTransactionId(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.TRANSACTION_ID);
     }
@@ -219,6 +239,7 @@ public class NotificationInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getDeliveryReport() {
         return mPduHeaders.getOctet(PduHeaders.DELIVERY_REPORT);
     }
@@ -230,6 +251,7 @@ public class NotificationInd extends GenericPdu {
      * @throws InvalidHeaderValueException if the value is invalid.
      *         RuntimeException if an undeclared error occurs.
      */
+    @UnsupportedAppUsage
     public void setDeliveryReport(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.DELIVERY_REPORT);
     }

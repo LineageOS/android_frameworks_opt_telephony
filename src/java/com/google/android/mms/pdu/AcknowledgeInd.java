@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 /**
@@ -31,6 +33,7 @@ public class AcknowledgeInd extends GenericPdu {
      * @throws InvalidHeaderValueException if parameters are invalid.
      *         NullPointerException if transactionId is null.
      */
+    @UnsupportedAppUsage
     public AcknowledgeInd(int mmsVersion, byte[] transactionId)
             throws InvalidHeaderValueException {
         super();
@@ -45,6 +48,7 @@ public class AcknowledgeInd extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     AcknowledgeInd(PduHeaders headers) {
         super(headers);
     }
@@ -64,6 +68,7 @@ public class AcknowledgeInd extends GenericPdu {
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setReportAllowed(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.REPORT_ALLOWED);
     }
@@ -83,6 +88,7 @@ public class AcknowledgeInd extends GenericPdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setTransactionId(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.TRANSACTION_ID);
     }

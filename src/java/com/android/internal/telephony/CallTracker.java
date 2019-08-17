@@ -75,6 +75,10 @@ public abstract class CallTracker extends Handler {
     protected static final int EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA = 16;
     protected static final int EVENT_THREE_WAY_DIAL_BLANK_FLASH    = 20;
 
+    @UnsupportedAppUsage
+    public CallTracker() {
+    }
+
     protected void pollCallsWhenSafe() {
         mNeedsPoll = true;
 

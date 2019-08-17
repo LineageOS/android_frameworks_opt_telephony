@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 public class Base64 {
     /**
      * Used to get the number of Quadruples.
@@ -61,6 +63,7 @@ public class Base64 {
      * @param base64Data Byte array containing Base64 data
      * @return Array containing decoded data.
      */
+    @UnsupportedAppUsage
     public static byte[] decodeBase64(byte[] base64Data) {
         // RFC 2045 requires that we discard ALL non-Base64 characters
         base64Data = discardNonBase64(base64Data);

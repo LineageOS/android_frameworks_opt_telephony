@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 public class ReadRecInd extends GenericPdu {
@@ -31,6 +33,7 @@ public class ReadRecInd extends GenericPdu {
      * @throws InvalidHeaderValueException if parameters are invalid.
      *         NullPointerException if messageId or to is null.
      */
+    @UnsupportedAppUsage
     public ReadRecInd(EncodedStringValue from,
                       byte[] messageId,
                       int mmsVersion,
@@ -50,6 +53,7 @@ public class ReadRecInd extends GenericPdu {
      *
      * @param headers Headers for this PDU.
      */
+    @UnsupportedAppUsage
     ReadRecInd(PduHeaders headers) {
         super(headers);
     }
@@ -68,6 +72,7 @@ public class ReadRecInd extends GenericPdu {
      *
      * @param value the value
      */
+    @UnsupportedAppUsage
     public void setDate(long value) {
         mPduHeaders.setLongInteger(value, PduHeaders.DATE);
     }
@@ -77,6 +82,7 @@ public class ReadRecInd extends GenericPdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageId() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_ID);
     }

@@ -17,6 +17,8 @@
 
 package com.google.android.mms;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.ArrayList;
 
 public class ContentType {
@@ -166,38 +168,47 @@ public class ContentType {
     private ContentType() {
     }
 
+    @UnsupportedAppUsage
     public static boolean isSupportedType(String contentType) {
         return (null != contentType) && sSupportedContentTypes.contains(contentType);
     }
 
+    @UnsupportedAppUsage
     public static boolean isSupportedImageType(String contentType) {
         return isImageType(contentType) && isSupportedType(contentType);
     }
 
+    @UnsupportedAppUsage
     public static boolean isSupportedAudioType(String contentType) {
         return isAudioType(contentType) && isSupportedType(contentType);
     }
 
+    @UnsupportedAppUsage
     public static boolean isSupportedVideoType(String contentType) {
         return isVideoType(contentType) && isSupportedType(contentType);
     }
 
+    @UnsupportedAppUsage
     public static boolean isTextType(String contentType) {
         return (null != contentType) && contentType.startsWith("text/");
     }
 
+    @UnsupportedAppUsage
     public static boolean isImageType(String contentType) {
         return (null != contentType) && contentType.startsWith("image/");
     }
 
+    @UnsupportedAppUsage
     public static boolean isAudioType(String contentType) {
         return (null != contentType) && contentType.startsWith("audio/");
     }
 
+    @UnsupportedAppUsage
     public static boolean isVideoType(String contentType) {
         return (null != contentType) && contentType.startsWith("video/");
     }
 
+    @UnsupportedAppUsage
     public static boolean isDrmType(String contentType) {
         return (null != contentType)
                 && (contentType.equals(APP_DRM_CONTENT)
@@ -208,16 +219,19 @@ public class ContentType {
         return (null != contentType) && contentType.endsWith("*");
     }
 
+    @UnsupportedAppUsage
     @SuppressWarnings("unchecked")
     public static ArrayList<String> getImageTypes() {
         return (ArrayList<String>) sSupportedImageTypes.clone();
     }
 
+    @UnsupportedAppUsage
     @SuppressWarnings("unchecked")
     public static ArrayList<String> getAudioTypes() {
         return (ArrayList<String>) sSupportedAudioTypes.clone();
     }
 
+    @UnsupportedAppUsage
     @SuppressWarnings("unchecked")
     public static ArrayList<String> getVideoTypes() {
         return (ArrayList<String>) sSupportedVideoTypes.clone();

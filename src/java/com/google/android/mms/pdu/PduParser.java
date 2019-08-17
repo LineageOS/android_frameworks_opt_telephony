@@ -19,6 +19,8 @@ package com.google.android.mms.pdu;
 
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.ContentType;
 import com.google.android.mms.InvalidHeaderValueException;
 
@@ -96,6 +98,7 @@ public class PduParser {
      * @param pduDataStream pdu data to be parsed
      * @param parseContentDisposition whether to parse the Content-Disposition part header
      */
+    @UnsupportedAppUsage
     public PduParser(byte[] pduDataStream, boolean parseContentDisposition) {
         mPduDataStream = new ByteArrayInputStream(pduDataStream);
         mParseContentDisposition = parseContentDisposition;
@@ -107,6 +110,7 @@ public class PduParser {
      * @return the pdu structure if parsing successfully.
      *         null if parsing error happened or mandatory fields are not set.
      */
+    @UnsupportedAppUsage
     public GenericPdu parse(){
         if (mPduDataStream == null) {
             return null;
@@ -946,6 +950,7 @@ public class PduParser {
      *
      * @param text log information
      */
+    @UnsupportedAppUsage
     private static void log(String text) {
         if (LOCAL_LOGV) {
             Log.v(LOG_TAG, text);
@@ -958,6 +963,7 @@ public class PduParser {
      * @param pduDataStream pdu data input stream
      * @return the integer, -1 when failed
      */
+    @UnsupportedAppUsage
     protected static int parseUnsignedInt(ByteArrayInputStream pduDataStream) {
         /**
          * From wap-230-wsp-20010705-a.pdf
@@ -992,6 +998,7 @@ public class PduParser {
      * @param pduDataStream pdu data input stream
      * @return the integer
      */
+    @UnsupportedAppUsage
     protected static int parseValueLength(ByteArrayInputStream pduDataStream) {
         /**
          * From wap-230-wsp-20010705-a.pdf
@@ -1066,6 +1073,7 @@ public class PduParser {
      * @param stringType TYPE_TEXT_STRING or TYPE_QUOTED_STRING
      * @return the string without End-of-string in byte array
      */
+    @UnsupportedAppUsage
     protected static byte[] parseWapString(ByteArrayInputStream pduDataStream,
             int stringType) {
         assert(null != pduDataStream);
@@ -1236,6 +1244,7 @@ public class PduParser {
      * @param pduDataStream pdu data input stream
      * @return the byte
      */
+    @UnsupportedAppUsage
     protected static int parseShortInteger(ByteArrayInputStream pduDataStream) {
         /**
          * From wap-230-wsp-20010705-a.pdf
@@ -1520,6 +1529,7 @@ public class PduParser {
      * @param map to store parameters in Content-Type header field
      * @return Content-Type value
      */
+    @UnsupportedAppUsage
     protected static byte[] parseContentType(ByteArrayInputStream pduDataStream,
             HashMap<Integer, Object> map) {
         /**
@@ -1591,6 +1601,7 @@ public class PduParser {
      * @param length length of the headers
      * @return true if parse successfully, false otherwise
      */
+    @UnsupportedAppUsage
     protected boolean parsePartHeaders(ByteArrayInputStream pduDataStream,
             PduPart part, int length) {
         assert(null != pduDataStream);
@@ -1759,6 +1770,7 @@ public class PduParser {
      * @return part position, THE_FIRST_PART when it's the
      * first one, THE_LAST_PART when it's the last one.
      */
+    @UnsupportedAppUsage
     private static int checkPartPosition(PduPart part) {
         assert(null != part);
         if ((null == mTypeParam) &&

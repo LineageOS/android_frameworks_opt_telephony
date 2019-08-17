@@ -17,6 +17,8 @@
 
 package com.google.android.mms.pdu;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.InvalidHeaderValueException;
 
 /**
@@ -31,6 +33,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @throws InvalidHeaderValueException if error occurs.
      */
+    @UnsupportedAppUsage
     public RetrieveConf() throws InvalidHeaderValueException {
         super();
         setMessageType(PduHeaders.MESSAGE_TYPE_RETRIEVE_CONF);
@@ -51,6 +54,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param headers Headers for this PDU.
      * @param body Body of this PDu.
      */
+    @UnsupportedAppUsage
     RetrieveConf(PduHeaders headers, PduBody body) {
         super(headers, body);
     }
@@ -60,6 +64,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue[] getCc() {
         return mPduHeaders.getEncodedStringValues(PduHeaders.CC);
     }
@@ -70,6 +75,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void addCc(EncodedStringValue value) {
         mPduHeaders.appendEncodedStringValue(value, PduHeaders.CC);
     }
@@ -79,6 +85,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getContentType() {
         return mPduHeaders.getTextString(PduHeaders.CONTENT_TYPE);
     }
@@ -89,6 +96,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setContentType(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.CONTENT_TYPE);
     }
@@ -98,6 +106,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getDeliveryReport() {
         return mPduHeaders.getOctet(PduHeaders.DELIVERY_REPORT);
     }
@@ -108,6 +117,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setDeliveryReport(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.DELIVERY_REPORT);
     }
@@ -119,6 +129,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue getFrom() {
        return mPduHeaders.getEncodedStringValue(PduHeaders.FROM);
     }
@@ -129,6 +140,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setFrom(EncodedStringValue value) {
         mPduHeaders.setEncodedStringValue(value, PduHeaders.FROM);
     }
@@ -140,6 +152,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageClass() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_CLASS);
     }
@@ -150,6 +163,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setMessageClass(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.MESSAGE_CLASS);
     }
@@ -159,6 +173,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getMessageId() {
         return mPduHeaders.getTextString(PduHeaders.MESSAGE_ID);
     }
@@ -169,6 +184,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setMessageId(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.MESSAGE_ID);
     }
@@ -178,6 +194,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getReadReport() {
         return mPduHeaders.getOctet(PduHeaders.READ_REPORT);
     }
@@ -188,6 +205,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setReadReport(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.READ_REPORT);
     }
@@ -197,6 +215,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public int getRetrieveStatus() {
         return mPduHeaders.getOctet(PduHeaders.RETRIEVE_STATUS);
     }
@@ -207,6 +226,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws InvalidHeaderValueException if the value is invalid.
      */
+    @UnsupportedAppUsage
     public void setRetrieveStatus(int value) throws InvalidHeaderValueException {
         mPduHeaders.setOctet(value, PduHeaders.RETRIEVE_STATUS);
     }
@@ -216,6 +236,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public EncodedStringValue getRetrieveText() {
         return mPduHeaders.getEncodedStringValue(PduHeaders.RETRIEVE_TEXT);
     }
@@ -226,6 +247,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setRetrieveText(EncodedStringValue value) {
         mPduHeaders.setEncodedStringValue(value, PduHeaders.RETRIEVE_TEXT);
     }
@@ -235,6 +257,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      *
      * @return the value
      */
+    @UnsupportedAppUsage
     public byte[] getTransactionId() {
         return mPduHeaders.getTextString(PduHeaders.TRANSACTION_ID);
     }
@@ -245,6 +268,7 @@ public class RetrieveConf extends MultimediaMessagePdu {
      * @param value the value
      * @throws NullPointerException if the value is null.
      */
+    @UnsupportedAppUsage
     public void setTransactionId(byte[] value) {
         mPduHeaders.setTextString(value, PduHeaders.TRANSACTION_ID);
     }

@@ -66,6 +66,7 @@ public class ImsPhoneConnection extends Connection implements
     private ImsPhoneCallTracker mOwner;
     @UnsupportedAppUsage
     private ImsPhoneCall mParent;
+    @UnsupportedAppUsage
     private ImsCall mImsCall;
     private Bundle mExtras = new Bundle();
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
@@ -719,6 +720,7 @@ public class ImsPhoneConnection extends Connection implements
      * @return {@code true} if the {@link ImsPhoneConnection} or its media capabilities have been
      *     changed, and {@code false} otherwise.
      */
+    @UnsupportedAppUsage
     public boolean update(ImsCall imsCall, ImsPhoneCall.State state) {
         if (state == ImsPhoneCall.State.ACTIVE) {
             // If the state of the call is active, but there is a pending request to the RIL to hold

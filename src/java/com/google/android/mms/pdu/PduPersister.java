@@ -39,6 +39,8 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import com.google.android.mms.ContentType;
 import com.google.android.mms.InvalidHeaderValueException;
 import com.google.android.mms.MmsException;
@@ -91,8 +93,10 @@ public class PduPersister {
     public static final int PROC_STATUS_COMPLETED           = 3;
 
     private static PduPersister sPersister;
+    @UnsupportedAppUsage
     private static final PduCache PDU_CACHE_INSTANCE;
 
+    @UnsupportedAppUsage
     private static final int[] ADDRESS_FIELDS = new int[] {
             PduHeaders.BCC,
             PduHeaders.CC,
@@ -158,6 +162,7 @@ public class PduPersister {
     private static final int PDU_COLUMN_SUBJECT_CHARSET       = 25;
     private static final int PDU_COLUMN_RETRIEVE_TEXT_CHARSET = 26;
 
+    @UnsupportedAppUsage
     private static final String[] PART_PROJECTION = new String[] {
         Part._ID,
         Part.CHARSET,
@@ -180,6 +185,7 @@ public class PduPersister {
     private static final int PART_COLUMN_NAME                = 7;
     private static final int PART_COLUMN_TEXT                = 8;
 
+    @UnsupportedAppUsage
     private static final HashMap<Uri, Integer> MESSAGE_BOX_MAP;
     // These map are used for convenience in persist() and load().
     private static final HashMap<Integer, Integer> CHARSET_COLUMN_INDEX_MAP;
@@ -187,10 +193,15 @@ public class PduPersister {
     private static final HashMap<Integer, Integer> TEXT_STRING_COLUMN_INDEX_MAP;
     private static final HashMap<Integer, Integer> OCTET_COLUMN_INDEX_MAP;
     private static final HashMap<Integer, Integer> LONG_COLUMN_INDEX_MAP;
+    @UnsupportedAppUsage
     private static final HashMap<Integer, String> CHARSET_COLUMN_NAME_MAP;
+    @UnsupportedAppUsage
     private static final HashMap<Integer, String> ENCODED_STRING_COLUMN_NAME_MAP;
+    @UnsupportedAppUsage
     private static final HashMap<Integer, String> TEXT_STRING_COLUMN_NAME_MAP;
+    @UnsupportedAppUsage
     private static final HashMap<Integer, String> OCTET_COLUMN_NAME_MAP;
+    @UnsupportedAppUsage
     private static final HashMap<Integer, String> LONG_COLUMN_NAME_MAP;
 
     static {
@@ -275,9 +286,12 @@ public class PduPersister {
         PDU_CACHE_INSTANCE = PduCache.getInstance();
      }
 
+    @UnsupportedAppUsage
     private final Context mContext;
+    @UnsupportedAppUsage
     private final ContentResolver mContentResolver;
     private final DrmManagerClient mDrmManagerClient;
+    @UnsupportedAppUsage
     private final TelephonyManager mTelephonyManager;
 
     private PduPersister(Context context) {
@@ -289,6 +303,7 @@ public class PduPersister {
      }
 
     /** Get(or create if not exist) an instance of PduPersister */
+    @UnsupportedAppUsage
     public static PduPersister getPduPersister(Context context) {
         if ((sPersister == null)) {
             sPersister = new PduPersister(context);
@@ -340,6 +355,7 @@ public class PduPersister {
         }
     }
 
+    @UnsupportedAppUsage
     private Integer getIntegerFromPartColumn(Cursor c, int columnIndex) {
         if (!c.isNull(columnIndex)) {
             return c.getInt(columnIndex);
@@ -347,6 +363,7 @@ public class PduPersister {
         return null;
     }
 
+    @UnsupportedAppUsage
     private byte[] getByteArrayFromPartColumn(Cursor c, int columnIndex) {
         if (!c.isNull(columnIndex)) {
             return getBytes(c.getString(columnIndex));
@@ -523,6 +540,7 @@ public class PduPersister {
      * @return A generic PDU object, it may be cast to dedicated PDU.
      * @throws MmsException Failed to load some fields of a PDU.
      */
+    @UnsupportedAppUsage
     public GenericPdu load(Uri uri) throws MmsException {
         GenericPdu pdu = null;
         PduCacheEntry cacheEntry = null;
@@ -679,6 +697,7 @@ public class PduPersister {
         return pdu;
     }
 
+    @UnsupportedAppUsage
     private void persistAddress(
             long msgId, int type, EncodedStringValue[] array) {
         ContentValues values = new ContentValues(3);
@@ -694,10 +713,12 @@ public class PduPersister {
         }
     }
 
+    @UnsupportedAppUsage
     private static String getPartContentType(PduPart part) {
         return part.getContentType() == null ? null : toIsoString(part.getContentType());
     }
 
+    @UnsupportedAppUsage
     public Uri persistPart(PduPart part, long msgId, HashMap<Uri, InputStream> preOpenedFiles)
             throws MmsException {
         Uri uri = Uri.parse("content://mms/" + msgId + "/part");
@@ -909,6 +930,7 @@ public class PduPersister {
         }
     }
 
+    @UnsupportedAppUsage
     private void updateAddress(
             long msgId, int type, EncodedStringValue[] array) {
         // Delete old address information and then insert new ones.
@@ -926,6 +948,7 @@ public class PduPersister {
      * @param pdu New headers.
      * @throws MmsException Bad URI or updating failed.
      */
+    @UnsupportedAppUsage
     public void updateHeaders(Uri uri, SendReq sendReq) {
         synchronized(PDU_CACHE_INSTANCE) {
             // If the cache item is getting updated, wait until it's done updating before
@@ -1093,6 +1116,7 @@ public class PduPersister {
      * @param preOpenedFiles if not null, a map of preopened InputStreams for the parts.
      * @throws MmsException Bad URI or updating failed.
      */
+    @UnsupportedAppUsage
     public void updateParts(Uri uri, PduBody body, HashMap<Uri, InputStream> preOpenedFiles)
             throws MmsException {
         try {
@@ -1181,6 +1205,7 @@ public class PduPersister {
      * @return A Uri which can be used to access the stored PDU.
      */
 
+    @UnsupportedAppUsage
     public Uri persist(GenericPdu pdu, Uri uri, boolean createThreadId, boolean groupMmsEnabled,
             HashMap<Uri, InputStream> preOpenedFiles)
             throws MmsException {
@@ -1411,6 +1436,7 @@ public class PduPersister {
      * @param addressMap a HashMap of the addresses from the ADDRESS_FIELDS header
      * @param excludeMyNumber if true, the number of this phone will be excluded from recipients
      */
+    @UnsupportedAppUsage
     private void loadRecipients(int addressType, HashSet<String> recipients,
             HashMap<Integer, EncodedStringValue[]> addressMap, boolean excludeMyNumber) {
         EncodedStringValue[] array = addressMap.get(addressType);
@@ -1464,6 +1490,7 @@ public class PduPersister {
      * @return New Uri of the moved PDU.
      * @throws MmsException Error occurred while moving the message.
      */
+    @UnsupportedAppUsage
     public Uri move(Uri from, Uri to) throws MmsException {
         // Check whether the 'msgId' has been assigned a valid value.
         long msgId = ContentUris.parseId(from);
@@ -1490,6 +1517,7 @@ public class PduPersister {
     /**
      * Wrap a byte[] into a String.
      */
+    @UnsupportedAppUsage
     public static String toIsoString(byte[] bytes) {
         try {
             return new String(bytes, CharacterSets.MIMENAME_ISO_8859_1);
@@ -1503,6 +1531,7 @@ public class PduPersister {
     /**
      * Unpack a given String into a byte[].
      */
+    @UnsupportedAppUsage
     public static byte[] getBytes(String data) {
         try {
             return data.getBytes(CharacterSets.MIMENAME_ISO_8859_1);
@@ -1524,6 +1553,7 @@ public class PduPersister {
     /**
      * Find all messages to be sent or downloaded before certain time.
      */
+    @UnsupportedAppUsage
     public Cursor getPendingMessages(long dueTime) {
         Uri.Builder uriBuilder = PendingMessages.CONTENT_URI.buildUpon();
         uriBuilder.appendQueryParameter("protocol", "mms");

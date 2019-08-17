@@ -19,6 +19,8 @@ package com.google.android.mms.util;
 
 import android.util.Log;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.HashMap;
 
 public abstract class AbstractCache<K, V> {
@@ -30,10 +32,12 @@ public abstract class AbstractCache<K, V> {
 
     private final HashMap<K, CacheEntry<V>> mCacheMap;
 
+    @UnsupportedAppUsage
     protected AbstractCache() {
         mCacheMap = new HashMap<K, CacheEntry<V>>();
     }
 
+    @UnsupportedAppUsage
     public boolean put(K key, V value) {
         if (LOCAL_LOGV) {
             Log.v(TAG, "Trying to put " + key + " into cache.");
@@ -61,6 +65,7 @@ public abstract class AbstractCache<K, V> {
         return false;
     }
 
+    @UnsupportedAppUsage
     public V get(K key) {
         if (LOCAL_LOGV) {
             Log.v(TAG, "Trying to get " + key + " from cache.");
@@ -79,6 +84,7 @@ public abstract class AbstractCache<K, V> {
         return null;
     }
 
+    @UnsupportedAppUsage
     public V purge(K key) {
         if (LOCAL_LOGV) {
             Log.v(TAG, "Trying to purge " + key);
@@ -93,6 +99,7 @@ public abstract class AbstractCache<K, V> {
         return v != null ? v.value : null;
     }
 
+    @UnsupportedAppUsage
     public void purgeAll() {
         if (LOCAL_LOGV) {
             Log.v(TAG, "Purging cache, " + mCacheMap.size()

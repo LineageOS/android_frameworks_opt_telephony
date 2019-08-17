@@ -27,6 +27,8 @@ import android.net.Uri;
 import android.util.Log;
 import android.widget.Toast;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 public final class SqliteWrapper {
     private static final String TAG = "SqliteWrapper";
     private static final String SQLITE_EXCEPTION_DETAIL_MESSAGE
@@ -56,6 +58,7 @@ public final class SqliteWrapper {
         return e.getMessage().equals(SQLITE_EXCEPTION_DETAIL_MESSAGE);
     }
 
+    @UnsupportedAppUsage
     public static void checkSQLiteException(Context context, SQLiteException e) {
         if (isLowMemory(e)) {
             Toast.makeText(context, com.android.internal.R.string.low_memory,
@@ -65,6 +68,7 @@ public final class SqliteWrapper {
         }
     }
 
+    @UnsupportedAppUsage
     public static Cursor query(Context context, ContentResolver resolver, Uri uri,
             String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         try {
@@ -76,6 +80,7 @@ public final class SqliteWrapper {
         }
     }
 
+    @UnsupportedAppUsage
     public static boolean requery(Context context, Cursor cursor) {
         try {
             return cursor.requery();
@@ -85,6 +90,7 @@ public final class SqliteWrapper {
             return false;
         }
     }
+    @UnsupportedAppUsage
     public static int update(Context context, ContentResolver resolver, Uri uri,
             ContentValues values, String where, String[] selectionArgs) {
         try {
@@ -96,6 +102,7 @@ public final class SqliteWrapper {
         }
     }
 
+    @UnsupportedAppUsage
     public static int delete(Context context, ContentResolver resolver, Uri uri,
             String where, String[] selectionArgs) {
         try {
@@ -107,6 +114,7 @@ public final class SqliteWrapper {
         }
     }
 
+    @UnsupportedAppUsage
     public static Uri insert(Context context, ContentResolver resolver,
             Uri uri, ContentValues values) {
         try {
