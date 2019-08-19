@@ -3335,8 +3335,17 @@ public class ServiceStateTracker extends Handler {
 
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
 
-            if (isInvalidOperatorNumeric(operatorNumeric)) {
-                if (DBG) log("operatorNumeric " + operatorNumeric + " is invalid");
+            // If the OPERATOR command hasn't returned a valid operator, but if the device has
+            // camped on a cell either to attempt registration or for emergency services, then
+            // for purposes of setting the locale, we don't care if registration fails or is
+            // incomplete.
+            String localeOperator = isInvalidOperatorNumeric(operatorNumeric)
+                    && (mCellIdentity != null)
+                    ? mCellIdentity.getMccString() + mCellIdentity.getMncString()
+                    : operatorNumeric;
+
+            if (isInvalidOperatorNumeric(localeOperator)) {
+                if (DBG) log("localeOperator " + localeOperator + " is invalid");
                 // Passing empty string is important for the first update. The initial value of
                 // operator numeric in locale tracker is null. The async update will allow getting
                 // cell info from the modem instead of using the cached one.
@@ -3348,10 +3357,10 @@ public class ServiceStateTracker extends Handler {
 
                 // Update IDD.
                 if (!mPhone.isPhoneTypeGsm()) {
-                    setOperatorIdd(operatorNumeric);
+                    setOperatorIdd(localeOperator);
                 }
 
-                mLocaleTracker.updateOperatorNumeric(operatorNumeric);
+                mLocaleTracker.updateOperatorNumeric(localeOperator);
             }
 
             tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
