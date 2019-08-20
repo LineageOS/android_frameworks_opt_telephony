@@ -203,6 +203,18 @@ public class DataEnabledSettings {
     }
 
     public synchronized void setUserDataEnabled(boolean enabled) {
+        // By default the change should propagate to the group.
+        setUserDataEnabled(enabled, true);
+    }
+
+    /**
+     * @param notifyMultiSimSettingController if setUserDataEnabled is already from propagating
+     *        from MultiSimSettingController, don't notify MultiSimSettingController again.
+     *        For example, if sub1 and sub2 are in the same group and user enables data for sub
+     *        1, sub 2 will also be enabled but with propagateToGroup = false.
+     */
+    public synchronized void setUserDataEnabled(boolean enabled,
+            boolean notifyMultiSimSettingController) {
         // Can't disable data for stand alone opportunistic subscription.
         if (isStandAloneOpportunistic(mPhone.getSubId(), mPhone.getContext()) && !enabled) return;
 
@@ -212,8 +224,10 @@ public class DataEnabledSettings {
             localLog("UserDataEnabled", enabled);
             mPhone.notifyUserMobileDataStateChanged(enabled);
             updateDataEnabledAndNotify(REASON_USER_DATA_ENABLED);
-            MultiSimSettingController.getInstance().notifyUserDataEnabled(mPhone.getSubId(),
-                    enabled);
+            if (notifyMultiSimSettingController) {
+                MultiSimSettingController.getInstance().notifyUserDataEnabled(
+                        mPhone.getSubId(), enabled);
+            }
         }
     }
 
