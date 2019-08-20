@@ -303,7 +303,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_ANSWER_WAITING_CALL = 30;
     private static final int EVENT_RESUME_NOW_FOREGROUND_CALL = 31;
     private static final int EVENT_RETRY_ON_IMS_WITHOUT_RTT = 40;
-    private static final int EVENT_RADIO_ON = 41;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
 
@@ -2401,7 +2400,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     && mAutoRetryFailedWifiEmergencyCall && isEmergencySrvCategoryPresent) {
                 Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
                 mPhone.getDefaultPhone().mCi.registerForOn(ImsPhoneCallTracker.this,
-                        EVENT_RADIO_ON, callInfo);
+                        EVENT_REDIAL_WIFI_E911_CALL, callInfo);
                 sendMessageDelayed(obtainMessage(EVENT_REDIAL_WIFI_E911_TIMEOUT, callInfo),
                         TIMEOUT_REDIAL_WIFI_E911_MS);
                 final ConnectivityManager mgr = (ConnectivityManager) mPhone.getContext()
@@ -3416,17 +3415,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
                 break;
             }
-            case EVENT_RADIO_ON: {
-                Pair<ImsCall, ImsReasonInfo> callInfo =
-                        (Pair<ImsCall, ImsReasonInfo>) ((AsyncResult) msg.obj).userObj;
-                mPhone.getDefaultPhone().mCi.unregisterForOn(this);
-                sendMessage(obtainMessage(EVENT_REDIAL_WIFI_E911_CALL, callInfo));
-                break;
-            }
             case EVENT_REDIAL_WIFI_E911_CALL: {
                 Pair<ImsCall, ImsReasonInfo> callInfo =
-                        (Pair<ImsCall, ImsReasonInfo>) msg.obj;
+                        (Pair<ImsCall, ImsReasonInfo>) ((AsyncResult) msg.obj).userObj;
                 removeMessages(EVENT_REDIAL_WIFI_E911_TIMEOUT);
+                mPhone.getDefaultPhone().mCi.unregisterForOn(this);
                 ImsPhoneConnection oldConnection = findConnection(callInfo.first);
                 if (oldConnection == null) {
                     sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
@@ -3456,7 +3449,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case EVENT_REDIAL_WIFI_E911_TIMEOUT: {
                 Pair<ImsCall, ImsReasonInfo> callInfo = (Pair<ImsCall, ImsReasonInfo>) msg.obj;
                 mPhone.getDefaultPhone().mCi.unregisterForOn(this);
-                removeMessages(EVENT_RADIO_ON);
                 removeMessages(EVENT_REDIAL_WIFI_E911_CALL);
                 sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
                 break;
