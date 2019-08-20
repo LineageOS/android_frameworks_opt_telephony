@@ -30,7 +30,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
-import android.net.ConnectivityManager.NetworkCallback;
 import android.net.MatchAllNetworkSpecifier;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -255,20 +254,26 @@ public class PhoneSwitcher extends Handler {
 
     private ConnectivityManager mConnectivityManager;
 
-    private final ConnectivityManager.NetworkCallback mDefaultNetworkCallback =
-            new NetworkCallback() {
-                @Override
-                public void onAvailable(Network network) {
-                    if (mConnectivityManager.getNetworkCapabilities(network)
-                            .hasTransport(TRANSPORT_CELLULAR)) {
-                        logDataSwitchEvent(
-                                mOpptDataSubId,
-                                TelephonyEvent.EventState.EVENT_STATE_END,
-                                TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN);
-                    }
-                    removeDefaultNetworkChangeCallback();
-                }
-            };
+    private class DefaultNetworkCallback extends ConnectivityManager.NetworkCallback {
+        public int mExpectedSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        public int mSwitchReason = TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
+        @Override
+        public void onCapabilitiesChanged(Network network,
+                NetworkCapabilities networkCapabilities) {
+            if (networkCapabilities.hasTransport(TRANSPORT_CELLULAR)
+                    && SubscriptionManager.isValidSubscriptionId(mExpectedSubId)
+                    && mExpectedSubId == getSubIdFromNetworkSpecifier(
+                            networkCapabilities.getNetworkSpecifier())) {
+                logDataSwitchEvent(
+                        mExpectedSubId,
+                        TelephonyEvent.EventState.EVENT_STATE_END,
+                        mSwitchReason);
+                removeDefaultNetworkChangeCallback();
+            }
+        }
+    }
+
+    private final DefaultNetworkCallback mDefaultNetworkCallback = new DefaultNetworkCallback();
 
     /**
      * Method to get singleton instance.
@@ -321,7 +326,7 @@ public class PhoneSwitcher extends Handler {
         // subscription.
         mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
         for (Phone phone : mPhones) {
-            if (isCallActive(phone) || isCallActive(phone.getImsPhone())) {
+            if (isPhoneInVoiceCall(phone) || isPhoneInVoiceCall(phone.getImsPhone())) {
                 mPhoneIdInVoiceCall = phone.getPhoneId();
                 break;
             }
@@ -448,10 +453,11 @@ public class PhoneSwitcher extends Handler {
             }
             case EVENT_PRIMARY_DATA_SUB_CHANGED: {
                 if (onEvaluate(REQUESTS_UNCHANGED, "primary data subId changed")) {
-                    logDataSwitchEvent(mOpptDataSubId,
+                    logDataSwitchEvent(mPreferredDataSubId,
                             TelephonyEvent.EventState.EVENT_STATE_START,
                             DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
-                    registerDefaultNetworkChangeCallback();
+                    registerDefaultNetworkChangeCallback(mPreferredDataSubId,
+                            DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
                 }
                 break;
             }
@@ -521,10 +527,11 @@ public class PhoneSwitcher extends Handler {
             // fall through
             case EVENT_DATA_ENABLED_CHANGED:
                 if (onEvaluate(REQUESTS_UNCHANGED, "EVENT_PRECISE_CALL_STATE_CHANGED")) {
-                    logDataSwitchEvent(mOpptDataSubId,
+                    logDataSwitchEvent(mPreferredDataSubId,
                             TelephonyEvent.EventState.EVENT_STATE_START,
                             DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
-                    registerDefaultNetworkChangeCallback();
+                    registerDefaultNetworkChangeCallback(mPreferredDataSubId,
+                            DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
                 }
                 break;
             case EVENT_NETWORK_VALIDATION_DONE: {
@@ -669,25 +676,20 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void removeDefaultNetworkChangeCallback() {
-        synchronized (mHasRegisteredDefaultNetworkChangeCallback) {
-            if (mHasRegisteredDefaultNetworkChangeCallback) {
-                mHasRegisteredDefaultNetworkChangeCallback = false;
-                removeMessages(EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK);
-                mConnectivityManager.unregisterNetworkCallback(mDefaultNetworkCallback);
-            }
-        }
+        removeMessages(EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK);
+        mDefaultNetworkCallback.mExpectedSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        mDefaultNetworkCallback.mSwitchReason =
+                TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
+        mConnectivityManager.unregisterNetworkCallback(mDefaultNetworkCallback);
     }
 
-    private void registerDefaultNetworkChangeCallback() {
-        removeDefaultNetworkChangeCallback();
-
-        synchronized (mHasRegisteredDefaultNetworkChangeCallback) {
-            mHasRegisteredDefaultNetworkChangeCallback = true;
-            mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback);
-            sendMessageDelayed(
-                    obtainMessage(EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK),
-                    DEFAULT_NETWORK_CHANGE_TIMEOUT_MS);
-        }
+    private void registerDefaultNetworkChangeCallback(int expectedSubId, int reason) {
+        mDefaultNetworkCallback.mExpectedSubId = expectedSubId;
+        mDefaultNetworkCallback.mSwitchReason = reason;
+        mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback, this);
+        sendMessageDelayed(
+                obtainMessage(EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK),
+                DEFAULT_NETWORK_CHANGE_TIMEOUT_MS);
     }
 
     private void collectRequestNetworkMetrics(NetworkRequest networkRequest) {
@@ -943,7 +945,8 @@ public class PhoneSwitcher extends Handler {
     }
 
     private int phoneIdForRequest(NetworkRequest netRequest) {
-        int subId = getSubIdFromNetworkRequest(netRequest);
+        int subId = getSubIdFromNetworkSpecifier(netRequest.networkCapabilities
+                .getNetworkSpecifier());
 
         if (subId == DEFAULT_SUBSCRIPTION_ID) return mPreferredDataPhoneId;
         if (subId == INVALID_SUBSCRIPTION_ID) return INVALID_PHONE_INDEX;
@@ -975,8 +978,7 @@ public class PhoneSwitcher extends Handler {
         return phoneId;
     }
 
-    private int getSubIdFromNetworkRequest(NetworkRequest networkRequest) {
-        NetworkSpecifier specifier = networkRequest.networkCapabilities.getNetworkSpecifier();
+    private int getSubIdFromNetworkSpecifier(NetworkSpecifier specifier) {
         if (specifier == null) {
             return DEFAULT_SUBSCRIPTION_ID;
         }
@@ -1131,18 +1133,30 @@ public class PhoneSwitcher extends Handler {
             return;
         }
 
+        // Remove EVENT_NETWORK_VALIDATION_DONE. Don't handle validation result of previously subId
+        // if queued.
+        removeMessages(EVENT_NETWORK_VALIDATION_DONE);
+
         int subIdToValidate = (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
                 ? mPrimaryDataSubId : subId;
 
-        if (mValidator.isValidating()
-                && (!needValidation || subIdToValidate != mValidator.getSubIdInValidation())) {
+        if (mValidator.isValidating()) {
             mValidator.stopValidation();
+            sendSetOpptCallbackHelper(mSetOpptSubCallback, SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+            mSetOpptSubCallback = null;
         }
 
         if (subId == mOpptDataSubId) {
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);
             return;
         }
+
+        logDataSwitchEvent(subId == DEFAULT_SUBSCRIPTION_ID ? mPrimaryDataSubId : subId,
+                TelephonyEvent.EventState.EVENT_STATE_START,
+                DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
+        registerDefaultNetworkChangeCallback(
+                subId == DEFAULT_SUBSCRIPTION_ID ? mPrimaryDataSubId : subId,
+                DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
 
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
@@ -1173,12 +1187,7 @@ public class PhoneSwitcher extends Handler {
     private void setOpportunisticSubscriptionInternal(int subId) {
         if (mOpptDataSubId != subId) {
             mOpptDataSubId = subId;
-            if (onEvaluate(REQUESTS_UNCHANGED, "oppt data subId changed")) {
-                logDataSwitchEvent(mOpptDataSubId,
-                        TelephonyEvent.EventState.EVENT_STATE_START,
-                        DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
-                registerDefaultNetworkChangeCallback();
-            }
+            onEvaluate(REQUESTS_UNCHANGED, "oppt data subId changed");
         }
     }
 
@@ -1231,13 +1240,20 @@ public class PhoneSwitcher extends Handler {
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
-    private boolean isCallActive(Phone phone) {
+    private boolean isPhoneInVoiceCall(Phone phone) {
         if (phone == null) {
             return false;
         }
 
+        // A phone in voice call might trigger data being switched to it.
+        // We only report true if its precise call state is ACTIVE, ALERTING or HOLDING.
+        // The reason is data switching is interrupting, so we only switch when necessary and
+        // acknowledged by the users. For incoming call, we don't switch until answered
+        // (RINGING -> ACTIVE), for outgoing call we don't switch until call is connected
+        // in network (DIALING -> ALERTING).
         return (phone.getForegroundCall().getState() == Call.State.ACTIVE
-                || phone.getForegroundCall().getState() == Call.State.ALERTING);
+                || phone.getForegroundCall().getState() == Call.State.ALERTING
+                || phone.getBackgroundCall().getState() == Call.State.HOLDING);
     }
 
     private void updateHalCommandToUse() {
@@ -1260,7 +1276,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void logDataSwitchEvent(int subId, int state, int reason) {
-        subId = subId == DEFAULT_SUBSCRIPTION_ID ? mPrimaryDataSubId : subId;
+        log("logDataSwitchEvent subId " + subId + " state " + state + " reason " + reason);
         DataSwitch dataSwitch = new DataSwitch();
         dataSwitch.state = state;
         dataSwitch.reason = reason;
