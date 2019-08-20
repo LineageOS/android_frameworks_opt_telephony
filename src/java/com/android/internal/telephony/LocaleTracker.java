@@ -73,6 +73,9 @@ public class LocaleTracker extends Handler {
     /** Event for incoming cell info */
     private static final int EVENT_RESPONSE_CELL_INFO = 5;
 
+    /** Event to fire if the operator from ServiceState is considered truly lost */
+    private static final int EVENT_OPERATOR_LOST = 6;
+
     // Todo: Read this from Settings.
     /** The minimum delay to get cell info from the modem */
     private static final long CELL_INFO_MIN_DELAY_MS = 2 * SECOND_IN_MILLIS;
@@ -84,6 +87,13 @@ public class LocaleTracker extends Handler {
     // Todo: Read this from Settings.
     /** The delay for periodically getting cell info from the modem */
     private static final long CELL_INFO_PERIODIC_POLLING_DELAY_MS = 10 * MINUTE_IN_MILLIS;
+
+    /**
+     * The delay after the last time the device camped on a cell before declaring that the
+     * ServiceState's MCC information can no longer be used (and thus kicking in the CellInfo
+     * based tracking.
+     */
+    private static final long SERVICE_OPERATOR_LOST_DELAY_MS = 10 * MINUTE_IN_MILLIS;
 
     /** The maximum fail count to prevent delay time overflow */
     private static final int MAX_FAIL_COUNT = 30;
@@ -164,6 +174,11 @@ public class LocaleTracker extends Handler {
 
             case EVENT_SIM_STATE_CHANGED:
                 onSimCardStateChanged(msg.arg1);
+                break;
+
+            case EVENT_OPERATOR_LOST:
+                updateOperatorNumericImmediate("");
+                updateTrackingStatus();
                 break;
 
             default:
@@ -247,7 +262,7 @@ public class LocaleTracker extends Handler {
      *
      * @param state SIM card state. Must be one of TelephonyManager.SIM_STATE_XXX.
      */
-    private synchronized void onSimCardStateChanged(int state) {
+    private void onSimCardStateChanged(int state) {
         mSimState = state;
         updateLocale();
         updateTrackingStatus();
@@ -270,8 +285,17 @@ public class LocaleTracker extends Handler {
      * @param operatorNumeric MCC/MNC of the operator
      */
     public void updateOperatorNumeric(String operatorNumeric) {
+        if (TextUtils.isEmpty(operatorNumeric)) {
+            sendMessageDelayed(obtainMessage(EVENT_OPERATOR_LOST), SERVICE_OPERATOR_LOST_DELAY_MS);
+        } else {
+            removeMessages(EVENT_OPERATOR_LOST);
+            updateOperatorNumericImmediate(operatorNumeric);
+        }
+    }
+
+    private void updateOperatorNumericImmediate(String operatorNumeric) {
         // Check if the operator numeric changes.
-        if (!Objects.equals(mOperatorNumeric, operatorNumeric)) {
+        if (!operatorNumeric.equals(mOperatorNumeric)) {
             String msg = "Operator numeric changes to \"" + operatorNumeric + "\"";
             if (DBG) log(msg);
             mLocalLog.log(msg);
