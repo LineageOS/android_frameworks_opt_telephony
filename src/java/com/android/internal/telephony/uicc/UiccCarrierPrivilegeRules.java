@@ -489,6 +489,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
                             mRules += IccUtils.bytesToHexString(response.payload)
                                     .toUpperCase(Locale.US);
                             if (isDataComplete()) {
+                                //TODO: here's where AccessRules are being updated from the psim
+                                // b/139133814
                                 mAccessRules.addAll(parseRules(mRules));
                                 if (mAIDInUse == ARAD) {
                                     mCheckedRules = true;
