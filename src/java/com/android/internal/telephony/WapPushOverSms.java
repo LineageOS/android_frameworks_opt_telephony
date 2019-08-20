@@ -326,27 +326,13 @@ public class WapPushOverSms implements ServiceConnection {
      * wap-230-wsp-20010705-a section 8 for details on the WAP PDU format.
      *
      * @param pdu The WAP PDU, made up of one or more SMS PDUs
-     * @return a result code from {@link android.provider.Telephony.Sms.Intents}, or
-     *         {@link Activity#RESULT_OK} if the message has been broadcast
-     *         to applications
-     */
-    @UnsupportedAppUsage
-    public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler) {
-        return dispatchWapPdu(pdu, receiver, handler, null);
-    }
-
-    /**
-     * Dispatches inbound messages that are in the WAP PDU format. See
-     * wap-230-wsp-20010705-a section 8 for details on the WAP PDU format.
-     *
-     * @param pdu The WAP PDU, made up of one or more SMS PDUs
      * @param address The originating address
      * @return a result code from {@link android.provider.Telephony.Sms.Intents}, or
      *         {@link Activity#RESULT_OK} if the message has been broadcast
      *         to applications
      */
     public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler,
-            String address) {
+            String address, int subId) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         if (result.statusCode != Activity.RESULT_OK) {
             return result.statusCode;
@@ -441,7 +427,7 @@ public class WapPushOverSms implements ServiceConnection {
 
         handler.dispatchIntent(intent, getPermissionForType(result.mimeType),
                 getAppOpsPermissionForIntent(result.mimeType), options, receiver,
-                UserHandle.SYSTEM);
+                UserHandle.SYSTEM, subId);
         return Activity.RESULT_OK;
     }
 
