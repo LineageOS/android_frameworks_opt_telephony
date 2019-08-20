@@ -1161,9 +1161,6 @@ public class PhoneSwitcher extends Handler {
         // If validation feature is not supported, set it directly. Otherwise,
         // start validation on the subscription first.
         if (mValidator.isValidationFeatureSupported() && needValidation) {
-            logDataSwitchEvent(subId, TelephonyEvent.EventState.EVENT_STATE_START,
-                    DataSwitch.Reason.DATA_SWITCH_REASON_CBRS);
-            registerDefaultNetworkChangeCallback();
             mSetOpptSubCallback = callback;
             mValidator.validate(subIdToValidate, DEFAULT_VALIDATION_EXPIRATION_TIME,
                     false, mValidationCallback);
