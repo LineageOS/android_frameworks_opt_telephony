@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_PRECISE_CALL_STATE_CHANGED;
 
@@ -91,7 +95,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Mock
     private GsmCdmaCall mActiveCall;
     @Mock
+    private GsmCdmaCall mHoldingCall;
+    @Mock
     private GsmCdmaCall mInactiveCall;
+    @Mock
+    private ISetOpportunisticDataCallback mSetOpptDataCallback1;
+    @Mock
+    private ISetOpportunisticDataCallback mSetOpptDataCallback2;
 
     // The thread that mPhoneSwitcher will handle events in.
     private HandlerThread mHandlerThread;
@@ -116,6 +126,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         doReturn(Call.State.ACTIVE).when(mActiveCall).getState();
         doReturn(Call.State.IDLE).when(mInactiveCall).getState();
+        doReturn(Call.State.HOLDING).when(mHoldingCall).getState();
     }
 
     @After
@@ -153,6 +164,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         clearInvocations(mActivePhoneSwitchHandler);
 
         setDefaultDataSubId(0);
+        waitABit();
 
         verify(mActivePhoneSwitchHandler, never()).sendMessageAtTime(any(), anyLong());
 
@@ -504,14 +516,15 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
         initialize(numPhones, maxActivePhones);
 
+        // Mark sub 2 as opportunistic.
+        doReturn(true).when(mSubscriptionController).isOpportunistic(2);
         // Phone 0 has sub 1, phone 1 has sub 2.
         // Sub 1 is default data sub.
         // Both are active subscriptions are active sub, as they are in both active slots.
         setSlotIndexToSubId(0, 1);
         setSlotIndexToSubId(1, 2);
         setDefaultDataSubId(1);
-        // Mark sub 2 as opportunistic.
-        doReturn(true).when(mSubscriptionController).isOpportunistic(2);
+        waitABit();
 
         // Phone 0 (sub 1) should be activated as it has default data sub.
         assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
@@ -572,7 +585,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
         notifyDataEnabled(false);
         notifyPhoneAsInCall(mPhone2);
         verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
-        waitABit();
         assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
         assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
 
@@ -588,6 +600,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
         assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+        clearInvocations(mMockRadioConfig);
+
+        // Phone2 has holding call, but data is turned off. So no data switching should happen.
+        notifyPhoneAsInHoldingCall(mPhone2);
+        verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
+        assertTrue(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 1));
+        assertFalse(mPhoneSwitcher.shouldApplyNetworkRequest(internetRequest, 0));
 
         mHandlerThread.quit();
     }
@@ -861,6 +880,107 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mHandlerThread.quit();
     }
 
+    @Test
+    @SmallTest
+    public void testSetPreferredDataCallback() throws Exception {
+        final int numPhones = 2;
+        final int maxActivePhones = 1;
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize(numPhones, maxActivePhones);
+
+        // Mark sub 2 as opportunistic.
+        doReturn(true).when(mSubscriptionController).isOpportunistic(2);
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        waitABit();
+
+        // Validating on sub 10 which is inactive.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(10, true, mSetOpptDataCallback1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION);
+
+        // Switch to active subId without validating. Should always succeed.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, false, mSetOpptDataCallback1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Validating on sub 1 and fails.
+        clearInvocations(mSetOpptDataCallback1);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(1, true, mSetOpptDataCallback1);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(false, 1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+
+        // Validating on sub 2 and succeeds.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback2);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(true, 2);
+        waitABit();
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Switching data back to primary and validation fails.
+        clearInvocations(mSetOpptDataCallback2);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback2);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(false, 1);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+
+        // Switching data back to primary and succeeds.
+        clearInvocations(mSetOpptDataCallback2);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback2);
+        waitABit();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(true, 1);
+        waitABit();
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        // Back to back call on same subId.
+        clearInvocations(mSetOpptDataCallback1);
+        clearInvocations(mSetOpptDataCallback2);
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback1);
+        waitABit();
+        verify(mCellularNetworkValidator).validate(eq(2), anyInt(), eq(false),
+                eq(mPhoneSwitcher.mValidationCallback));
+        doReturn(true).when(mCellularNetworkValidator).isValidating();
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback2);
+        waitABit();
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+        verify(mSetOpptDataCallback2, never()).onComplete(anyInt());
+        // Validation succeeds.
+        doReturn(false).when(mCellularNetworkValidator).isValidating();
+        mPhoneSwitcher.mValidationCallback.onValidationResult(true, 2);
+        waitABit();
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, false, null);
+        waitABit();
+        clearInvocations(mSetOpptDataCallback1);
+        clearInvocations(mSetOpptDataCallback2);
+        clearInvocations(mCellularNetworkValidator);
+        // Back to back call, call 1 to switch to subId 2, call 2 to switch back.
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(2, true, mSetOpptDataCallback1);
+        waitABit();
+        verify(mCellularNetworkValidator).validate(eq(2), anyInt(), eq(false),
+                eq(mPhoneSwitcher.mValidationCallback));
+        doReturn(true).when(mCellularNetworkValidator).isValidating();
+        mPhoneSwitcher.trySetOpportunisticDataSubscription(
+                SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true, mSetOpptDataCallback2);
+        waitABit();
+        // Call 1 should be cancelled and failed. Call 2 return success immediately as there's no
+        // change.
+        verify(mSetOpptDataCallback1).onComplete(SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED);
+        verify(mSetOpptDataCallback2).onComplete(SET_OPPORTUNISTIC_SUB_SUCCESS);
+        mHandlerThread.quit();
+    }
+
     /* Private utility methods start here */
 
     private void setAllPhonesInactive() {
@@ -874,6 +994,12 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     private void notifyPhoneAsInCall(Phone phone) {
         doReturn(mActiveCall).when(phone).getForegroundCall();
+        mPhoneSwitcher.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
+        waitABit();
+    }
+
+    private void notifyPhoneAsInHoldingCall(Phone phone) {
+        doReturn(mHoldingCall).when(phone).getBackgroundCall();
         mPhoneSwitcher.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
         waitABit();
     }
