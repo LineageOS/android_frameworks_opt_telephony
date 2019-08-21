@@ -1178,7 +1178,14 @@ public class CatService extends Handler implements AppInterface {
     private void changeLanguage(String language) throws RemoteException {
         IActivityManager am = ActivityManagerNative.getDefault();
         Configuration config = am.getConfiguration();
-        config.setLocales(new LocaleList(new Locale(language), LocaleList.getDefault()));
+        // get locale list, combined with language locale and default locale list.
+        LocaleList defaultLocaleList = LocaleList.getDefault();
+        Locale[] locales = new Locale[defaultLocaleList.size() + 1];
+        locales[0] = new Locale(language);
+        for (int i = 0; i < defaultLocaleList.size(); i++) {
+            locales[i+1] = defaultLocaleList.get(i);
+        }
+        config.setLocales(new LocaleList(locales));
         config.userSetLocale = true;
         am.updatePersistentConfiguration(config);
         BackupManager.dataChanged("com.android.providers.settings");
