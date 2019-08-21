@@ -80,8 +80,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     private boolean mNitzTimeZoneDetectionSuccessful = false;
 
     // Miscellaneous dependencies and helpers not related to detection state.
-    private final LocalLog mTimeLog = new LocalLog(15);
-    private final LocalLog mTimeZoneLog = new LocalLog(15);
+    private final LocalLog mTimeLog = new LocalLog(30);
+    private final LocalLog mTimeZoneLog = new LocalLog(30);
     private final GsmCdmaPhone mPhone;
     private final DeviceState mDeviceState;
     private final TimeServiceHelper mTimeServiceHelper;
