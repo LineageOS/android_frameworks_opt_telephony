@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.imsphone;
 
-import static android.telephony.ServiceState.STATE_IN_SERVICE;
-
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_ASYNC;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_SYNC;
@@ -1009,19 +1007,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (mPoundString != null) {
-                // We'll normally send USSD over the CS pipe, but if it happens that the CS phone
-                // is out of service, we'll just try over IMS instead.
-                if (mPhone.getDefaultPhone().getServiceStateTracker().mSS.getState()
-                        == STATE_IN_SERVICE) {
-                    Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
-                            + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe.");
-                    throw new CallStateException(Phone.CS_FALLBACK);
-                } else {
-                    Rlog.i(LOG_TAG, "processCode: CS is out of service, sending ussd string '"
-                            + Rlog.pii(LOG_TAG, mPoundString) + "' over IMS pipe.");
-                    sendUssd(mPoundString);
-                }
-
+                // USSD codes are not supported over IMS due to modem limitations; send over the CS
+                // pipe instead.  This should be fixed in the future.
+                Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
+                        + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe.");
+                throw new CallStateException(Phone.CS_FALLBACK);
             } else {
                 Rlog.d(LOG_TAG, "processCode: invalid or unsupported MMI");
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
