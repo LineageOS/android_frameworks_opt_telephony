@@ -84,7 +84,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
                 (byte) 0xFF
         };
 
-        mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, "123456");
+        mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, "123456", 0);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mInboundSmsHandler).dispatchIntent(intentArgumentCaptor.capture(),
@@ -92,7 +92,8 @@ public class WapPushOverSmsTest extends TelephonyTest {
                 eq(AppOpsManager.OP_RECEIVE_WAP_PUSH),
                 nullable(Bundle.class),
                 isNull(BroadcastReceiver.class),
-                eq(UserHandle.SYSTEM));
+                eq(UserHandle.SYSTEM),
+                anyInt());
         Intent intent = intentArgumentCaptor.getValue();
         assertEquals(Telephony.Sms.Intents.WAP_PUSH_DELIVER_ACTION, intent.getAction());
         assertEquals(0xFF, intent.getIntExtra("transactionId", 0));
@@ -138,13 +139,14 @@ public class WapPushOverSmsTest extends TelephonyTest {
                 111, 109, 47, 115, 97, 100, 102, 100, 100, 0};
 
         assertEquals(Telephony.Sms.Intents.RESULT_SMS_HANDLED,
-                mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler));
+                mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler, null, 0));
         verify(mInboundSmsHandler, never()).dispatchIntent(
                 any(Intent.class),
                 any(String.class),
                 anyInt(),
                 any(Bundle.class),
                 any(BroadcastReceiver.class),
-                any(UserHandle.class));
+                any(UserHandle.class),
+                anyInt());
     }
 }

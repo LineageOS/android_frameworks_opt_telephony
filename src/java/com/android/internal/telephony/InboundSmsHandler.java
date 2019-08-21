@@ -148,6 +148,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int MESSAGE_BODY_COLUMN = 8;
     public static final int DISPLAY_ADDRESS_COLUMN = 9;
     public static final int DELETED_FLAG_COLUMN = 10;
+    public static final int SUBID_COLUMN = 11;
 
     public static final String SELECT_BY_ID = "_id=?";
 
@@ -758,7 +759,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                     .makeInboundSmsTracker(sms.getPdu(),
                     sms.getTimestampMillis(), destPort, is3gpp2(), false,
                     sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
-                    sms.getMessageBody(), sms.getMessageClass() == MessageClass.CLASS_0);
+                    sms.getMessageBody(), sms.getMessageClass() == MessageClass.CLASS_0,
+                            mPhone.getSubId());
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
@@ -770,7 +772,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                     sms.getTimestampMillis(), destPort, is3gpp2(), sms.getOriginatingAddress(),
                     sms.getDisplayOriginatingAddress(), concatRef.refNumber, concatRef.seqNumber,
                     concatRef.msgCount, false, sms.getMessageBody(),
-                    sms.getMessageClass() == MessageClass.CLASS_0);
+                    sms.getMessageClass() == MessageClass.CLASS_0, mPhone.getSubId());
         }
 
         if (VDBG) log("created tracker: " + tracker);
@@ -958,7 +960,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 output.write(pdu, 0, pdu.length);
             }
             int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver,
-                    this, address);
+                    this, address, tracker.getSubId());
             if (DBG) log("dispatchWapPdu() returned " + result);
             // Add result of WAP-PUSH into metrics. RESULT_SMS_HANDLED indicates that the WAP-PUSH
             // needs to be ignored, so treating it as a success case.
@@ -990,7 +992,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         if (!filterInvoked) {
             dispatchSmsDeliveryIntent(pdus, tracker.getFormat(), destPort, resultReceiver,
-                    tracker.isClass0());
+                    tracker.isClass0(), tracker.getSubId());
         }
 
         return true;
@@ -1085,7 +1087,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         CarrierServicesSmsFilterCallback filterCallback =
                 new CarrierServicesSmsFilterCallback(
                         pdus, destPort, tracker.getFormat(), resultReceiver, userUnlocked,
-                        tracker.isClass0());
+                        tracker.isClass0(), tracker.getSubId());
         CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
                 mContext, mPhone, pdus, destPort, tracker.getFormat(),
                 filterCallback, getName(), mLocalLog);
@@ -1094,7 +1096,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         if (VisualVoicemailSmsFilter.filter(
-                mContext, pdus, tracker.getFormat(), destPort, mPhone.getSubId())) {
+                mContext, pdus, tracker.getFormat(), destPort, tracker.getSubId())) {
             log("Visual voicemail SMS dropped");
             dropSms(resultReceiver);
             return true;
@@ -1114,7 +1116,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     @UnsupportedAppUsage
     public void dispatchIntent(Intent intent, String permission, int appOp,
-            Bundle opts, BroadcastReceiver resultReceiver, UserHandle user) {
+            Bundle opts, BroadcastReceiver resultReceiver, UserHandle user, int subId) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         final String action = intent.getAction();
         if (Intents.SMS_DELIVER_ACTION.equals(action)
@@ -1130,6 +1132,14 @@ public abstract class InboundSmsHandler extends StateMachine {
             intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         }
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
+
+        // override the subId value in the intent with the values from tracker as they can be
+        // different, specifically if the message is coming from SmsBroadcastUndelivered
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+            intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
+        }
+
         if (user.equals(UserHandle.ALL)) {
             // Get a list of currently started users.
             int[] users = null;
@@ -1221,7 +1231,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param resultReceiver the receiver handling the delivery result
      */
     private void dispatchSmsDeliveryIntent(byte[][] pdus, String format, int destPort,
-            SmsBroadcastReceiver resultReceiver, boolean isClass0) {
+            SmsBroadcastReceiver resultReceiver, boolean isClass0, int subId) {
         Intent intent = new Intent();
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", format);
@@ -1269,7 +1279,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         Bundle options = handleSmsWhitelisting(intent.getComponent(), isClass0);
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM);
+                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM, subId);
     }
 
     /**
@@ -1443,6 +1453,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            int subId = intent.getIntExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
             if (action.equals(Intents.SMS_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.SMS_RECEIVED_ACTION);
@@ -1455,7 +1467,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
                         AppOpsManager.OP_RECEIVE_SMS,
-                        options, this, UserHandle.ALL);
+                        options, this, UserHandle.ALL, subId);
             } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
@@ -1478,7 +1490,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 String mimeType = intent.getType();
                 dispatchIntent(intent, WapPushOverSms.getPermissionForType(mimeType),
                         WapPushOverSms.getAppOpsPermissionForIntent(mimeType), options, this,
-                        UserHandle.SYSTEM);
+                        UserHandle.SYSTEM, subId);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
@@ -1520,16 +1532,18 @@ public abstract class InboundSmsHandler extends StateMachine {
         private final SmsBroadcastReceiver mSmsBroadcastReceiver;
         private final boolean mUserUnlocked;
         private final boolean mIsClass0;
+        private final int mSubId;
 
         CarrierServicesSmsFilterCallback(byte[][] pdus, int destPort, String smsFormat,
                 SmsBroadcastReceiver smsBroadcastReceiver,  boolean userUnlocked,
-                boolean isClass0) {
+                boolean isClass0, int subId) {
             mPdus = pdus;
             mDestPort = destPort;
             mSmsFormat = smsFormat;
             mSmsBroadcastReceiver = smsBroadcastReceiver;
             mUserUnlocked = userUnlocked;
             mIsClass0 = isClass0;
+            mSubId = subId;
         }
 
         @Override
@@ -1537,7 +1551,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             logv("onFilterComplete: result is " + result);
             if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
                 if (VisualVoicemailSmsFilter.filter(mContext, mPdus,
-                        mSmsFormat, mDestPort, mPhone.getSubId())) {
+                        mSmsFormat, mDestPort, mSubId)) {
                     log("Visual voicemail SMS dropped");
                     dropSms(mSmsBroadcastReceiver);
                     return;
@@ -1545,7 +1559,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 if (mUserUnlocked) {
                     dispatchSmsDeliveryIntent(
-                            mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver, mIsClass0);
+                            mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver, mIsClass0, mSubId);
                 } else {
                     // Don't do anything further, leave the message in the raw table if the
                     // credential-encrypted storage is still locked and show the new message
