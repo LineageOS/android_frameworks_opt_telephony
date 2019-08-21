@@ -70,6 +70,14 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     private String mSavedTimeZoneId;
 
     /**
+     * The last time zone ID that was set. It is used for log entry filtering. This is different
+     * from {@link #mSavedTimeZoneId} in that this records the last zone ID this class actually
+     * suggested should be set as the device zone ID; i.e. it is only set if automatic time zone
+     * detection is enabled.
+     */
+    private String mLastSetTimeZoneId;
+
+    /**
      * Boolean is {@code true} if NITZ has been used to determine a time zone (which may not
      * ultimately have been used due to user settings). Cleared by {@link #handleNetworkAvailable()}
      * and {@link #handleNetworkCountryCodeUnavailable()}. The flag can be used when historic NITZ
@@ -396,9 +404,17 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         if (DBG) {
             Rlog.d(LOG_TAG, logMessage);
         }
-        mTimeZoneLog.log(logMessage);
+
+        // Filter mTimeZoneLog entries to only store "interesting" ones. NITZ signals can be
+        // quite frequent (e.g. every few minutes) and logging each one soon obliterates useful
+        // entries from bug reports. http://b/138187241
+        if (!zoneId.equals(mLastSetTimeZoneId)) {
+            mTimeZoneLog.log(logMessage);
+            mLastSetTimeZoneId = zoneId;
+        }
 
         mTimeServiceHelper.setDeviceTimeZone(zoneId);
+
         if (DBG) {
             Rlog.d(LOG_TAG,
                     "setAndBroadcastNetworkSetTimeZone: called setDeviceTimeZone()"
