@@ -65,6 +65,8 @@ import com.android.internal.telephony.uicc.UiccSlot;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -965,6 +967,23 @@ public class SubscriptionInfoUpdater extends Handler {
         if (currentSubInfo.isOpportunistic() != isOpportunistic) {
             if (DBG) logd("Set SubId=" + currentSubId + " isOpportunistic=" + isOpportunistic);
             cv.put(SubscriptionManager.IS_OPPORTUNISTIC, isOpportunistic ? "1" : "0");
+        }
+
+        String[] certs = config.getStringArray(
+            CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
+        if (certs != null) {
+            UiccAccessRule[] carrierConfigAccessRules = new UiccAccessRule[certs.length];
+            try {
+                for (int i = 0; i < certs.length; i++) {
+                    carrierConfigAccessRules[i] = new UiccAccessRule(
+                        MessageDigest.getInstance("SHA-256").digest(certs[i].getBytes()), null, 0);
+                }
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException("for setCarrierConfigAccessRules, SHA-256 must exist",
+                    e);
+            }
+            cv.put(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS,
+                    UiccAccessRule.encodeRules(carrierConfigAccessRules));
         }
 
         String groupUuidString =
