@@ -65,8 +65,8 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccVmNotSupportedException;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
@@ -561,7 +561,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // shared pref
         Message msg = messageArgumentCaptor.getValue();
         AsyncResult.forMessage(msg).exception =
-                new IccException("setVoiceMailNumber not implemented");
+                new IccVmNotSupportedException("setVoiceMailNumber not implemented");
         msg.sendToTarget();
         processAllMessages();
 
