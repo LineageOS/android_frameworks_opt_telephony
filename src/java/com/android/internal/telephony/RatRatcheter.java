@@ -122,15 +122,19 @@ public class RatRatcheter {
     /** Ratchets RATs and cell bandwidths if oldSS and newSS have the same RAT family. */
     public void ratchet(@NonNull ServiceState oldSS, @NonNull ServiceState newSS,
                         boolean locationChange) {
-        if (!locationChange && isSameRatFamily(oldSS, newSS)) {
-            updateBandwidths(oldSS.getCellBandwidths(), newSS);
-        }
         // temporarily disable rat ratchet on location change.
         if (locationChange) {
             mVoiceRatchetEnabled = false;
             mDataRatchetEnabled = false;
             return;
         }
+
+        // Different rat family, don't need rat ratchet and update cell bandwidths.
+        if (!isSameRatFamily(oldSS, newSS)) {
+           return;
+        }
+
+        updateBandwidths(oldSS.getCellBandwidths(), newSS);
 
         boolean newUsingCA = oldSS.isUsingCarrierAggregation()
                 || newSS.isUsingCarrierAggregation()
@@ -178,6 +182,20 @@ public class RatRatcheter {
                     ss2.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                             AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                             .getAccessNetworkTechnology());
+
+            // The api getAccessNetworkTechnology@NetworkRegistrationInfo always returns LTE though
+            // data rat is LTE CA. Because it uses mIsUsingCarrierAggregation to indicate whether
+            // it is LTE CA or not. However, we need its actual data rat to check if they are the
+            // same family. So convert it to LTE CA.
+            if (dataRat1 == ServiceState.RIL_RADIO_TECHNOLOGY_LTE
+                    && ss1.isUsingCarrierAggregation()) {
+                dataRat1 = ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA;
+            }
+
+            if (dataRat2 == ServiceState.RIL_RADIO_TECHNOLOGY_LTE
+                    && ss2.isUsingCarrierAggregation()) {
+                dataRat2 = ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA;
+            }
 
             if (dataRat1 == dataRat2) return true;
             if (mRatFamilyMap.get(dataRat1) == null) {
