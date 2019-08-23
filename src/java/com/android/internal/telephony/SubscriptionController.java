@@ -3090,12 +3090,6 @@ public class SubscriptionController extends ISub.Stub {
             throw new IllegalArgumentException("Invalid groupUuid");
         }
 
-        // TODO: Revisit whether we need this restriction in R. There's no technical need for it,
-        // but we don't want to change the API behavior at this time.
-        if (getSubscriptionsInGroup(groupUuid, callingPackage).isEmpty()) {
-            throw new IllegalArgumentException("Cannot add subscriptions to a non-existent group!");
-        }
-
         // Makes sure calling package matches caller UID.
         mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
