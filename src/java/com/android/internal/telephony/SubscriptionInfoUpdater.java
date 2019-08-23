@@ -55,6 +55,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
@@ -724,19 +725,20 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         mBackgroundHandler.post(() -> {
-            List<GetEuiccProfileInfoListResult> results = new ArrayList<>();
+            List<Pair<Integer, GetEuiccProfileInfoListResult>> results = new ArrayList<>();
             for (int cardId : cardIds) {
                 GetEuiccProfileInfoListResult result =
                         EuiccController.get().blockingGetEuiccProfileInfoList(cardId);
                 if (DBG) logd("blockingGetEuiccProfileInfoList cardId " + cardId);
-                results.add(result);
+                results.add(Pair.create(cardId, result));
             }
 
             // The runnable will be executed in the main thread.
             this.post(() -> {
                 boolean hasChanges = false;
-                for (GetEuiccProfileInfoListResult result : results) {
-                    if (updateEmbeddedSubscriptionsCache(result)) {
+                for (Pair<Integer, GetEuiccProfileInfoListResult> cardIdAndResult : results) {
+                    if (updateEmbeddedSubscriptionsCache(cardIdAndResult.first,
+                            cardIdAndResult.second)) {
                         hasChanges = true;
                     }
                 }
@@ -757,7 +759,8 @@ public class SubscriptionInfoUpdater extends Handler {
      * but notifications about subscription changes may be skipped if this returns false as an
      * optimization to avoid spurious notifications.
      */
-    private boolean updateEmbeddedSubscriptionsCache(GetEuiccProfileInfoListResult result) {
+    private boolean updateEmbeddedSubscriptionsCache(int cardId,
+            GetEuiccProfileInfoListResult result) {
         if (DBG) logd("updateEmbeddedSubscriptionsCache");
 
         if (result == null) {
@@ -861,6 +864,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 values.put(SubscriptionManager.MCC, mcc);
                 values.put(SubscriptionManager.MNC_STRING, mnc);
                 values.put(SubscriptionManager.MNC, mnc);
+            }
+            // If cardId = unsupported or unitialized, we have no reason to update DB.
+            // Additionally, if the device does not support cardId for default eUICC, the CARD_ID
+            // field should not contain the EID
+            if (cardId >= 0 && UiccController.getInstance().getCardIdForDefaultEuicc()
+                    != TelephonyManager.UNSUPPORTED_CARD_ID) {
+                values.put(SubscriptionManager.CARD_ID,
+                        mEuiccManager.createForCardId(cardId).getEid());
             }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
