@@ -1047,6 +1047,11 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void transitionToEmergencyPhone() {
+        if (mNumPhones <= 0) {
+            log("No phones: unable to reset preferred phone for emergency");
+            return;
+        }
+
         if (mPreferredDataPhoneId != DEFAULT_EMERGENCY_PHONE_ID) {
             log("No active subscriptions: resetting preferred phone to 0 for emergency");
             mPreferredDataPhoneId = DEFAULT_EMERGENCY_PHONE_ID;
