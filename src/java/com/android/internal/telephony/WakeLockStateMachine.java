@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@link #quit}.
  */
 public abstract class WakeLockStateMachine extends StateMachine {
-    protected static final boolean DBG = true;    // TODO: change to false
+    protected static final boolean DBG = Build.IS_DEBUGGABLE;
 
     private final PowerManager.WakeLock mWakeLock;
 
@@ -75,12 +75,23 @@ public abstract class WakeLockStateMachine extends StateMachine {
 
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, debugTag);
-        mWakeLock.acquire();    // wake lock released after we enter idle state
+        // wake lock released after we enter idle state
+        mWakeLock.acquire();
 
         addState(mDefaultState);
         addState(mIdleState, mDefaultState);
         addState(mWaitingState, mDefaultState);
         setInitialState(mIdleState);
+    }
+
+    private void releaseWakeLock() {
+        if (mWakeLock.isHeld()) {
+            mWakeLock.release();
+        }
+
+        if (mWakeLock.isHeld()) {
+            loge("Wait lock is held after release.");
+        }
     }
 
     /**
@@ -155,15 +166,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
                     return HANDLED;
 
                 case EVENT_RELEASE_WAKE_LOCK:
-                    mWakeLock.release();
-                    if (DBG) {
-                        if (mWakeLock.isHeld()) {
-                            // this is okay as long as we call release() for every acquire()
-                            log("mWakeLock is still held after release");
-                        } else {
-                            log("mWakeLock released");
-                        }
-                    }
+                    releaseWakeLock();
                     return HANDLED;
 
                 default:
@@ -191,11 +194,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
                     return HANDLED;
 
                 case EVENT_RELEASE_WAKE_LOCK:
-                    mWakeLock.release();    // decrement wakelock from previous entry to Idle
-                    if (!mWakeLock.isHeld()) {
-                        // wakelock should still be held until 3 seconds after we enter Idle
-                        loge("mWakeLock released while still in WaitingState!");
-                    }
+                    releaseWakeLock();
                     return HANDLED;
 
                 default:
