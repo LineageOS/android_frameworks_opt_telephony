@@ -1584,8 +1584,16 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
             String nameToSet;
-            if (displayName == null) {
-                nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+            if (TextUtils.isEmpty(displayName) || displayName.trim().length() == 0) {
+                nameToSet = mTelephonyManager.getSimOperatorName(subId);
+                if (TextUtils.isEmpty(nameToSet)) {
+                    if (nameSource == SubscriptionManager.NAME_SOURCE_USER_INPUT
+                            && SubscriptionManager.isValidSlotIndex(getSlotIndex(subId))) {
+                        nameToSet = "CARD " + (getSlotIndex(subId) + 1);
+                    } else {
+                        nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+                    }
+                }
             } else {
                 nameToSet = displayName;
             }
