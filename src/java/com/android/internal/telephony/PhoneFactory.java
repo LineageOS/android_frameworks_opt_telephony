@@ -539,6 +539,16 @@ public class PhoneFactory {
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
+        pw.println("ImsResolver:");
+        pw.increaseIndent();
+        try {
+            if (sImsResolver != null) sImsResolver.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
+
         pw.println("SubscriptionMonitor:");
         pw.increaseIndent();
         try {
