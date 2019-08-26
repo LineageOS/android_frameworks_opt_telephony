@@ -208,7 +208,9 @@ public class TransportManager extends Handler {
         public final @ApnType int apnType;
         public final int targetTransport;
         public final HandoverCallback callback;
-        HandoverParams(int apnType, int targetTransport, HandoverCallback callback) {
+
+        @VisibleForTesting
+        public HandoverParams(int apnType, int targetTransport, HandoverCallback callback) {
             this.apnType = apnType;
             this.targetTransport = targetTransport;
             this.callback = callback;
