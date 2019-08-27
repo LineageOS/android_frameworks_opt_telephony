@@ -36,6 +36,7 @@ import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.aidl.IImsServiceController;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
+import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.ims.internal.IImsFeatureStatusCallback;
@@ -43,6 +44,7 @@ import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
 
+import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -73,6 +75,7 @@ public class ImsServiceController {
                 mIsBound = true;
                 mIsBinding = false;
                 try {
+                    mLocalLog.log("onServiceConnected");
                     Log.d(LOG_TAG, "ImsService(" + name + "): onServiceConnected with binder: "
                             + service);
                     setServiceController(service);
@@ -87,6 +90,8 @@ public class ImsServiceController {
                     // Remote exception means that the binder already died.
                     cleanupConnection();
                     startDelayedRebindToService();
+                    mLocalLog.log("onConnected exception=" + e.getMessage() + ", retry in "
+                            + mBackoff.getCurrentDelay() + " mS");
                     Log.e(LOG_TAG, "ImsService(" + name + ") RemoteException:"
                             + e.getMessage());
                 }
@@ -99,6 +104,7 @@ public class ImsServiceController {
                 mIsBinding = false;
             }
             cleanupConnection();
+            mLocalLog.log("onServiceDisconnected");
             Log.w(LOG_TAG, "ImsService(" + name + "): onServiceDisconnected. Waiting...");
             // Service disconnected, but we are still technically bound. Waiting for reconnect.
         }
@@ -114,11 +120,13 @@ public class ImsServiceController {
             mContext.unbindService(mImsServiceConnection);
             Log.w(LOG_TAG, "ImsService(" + name + "): onBindingDied. Starting rebind...");
             startDelayedRebindToService();
+            mLocalLog.log("onBindingDied, retrying in " + mBackoff.getCurrentDelay() + " mS");
         }
 
         @Override
         public void onNullBinding(ComponentName name) {
             Log.w(LOG_TAG, "ImsService(" + name + "): onNullBinding. Removing.");
+            mLocalLog.log("onNullBinding");
             synchronized (mLock) {
                 mIsBinding = false;
                 mIsBound = false;
@@ -136,16 +144,6 @@ public class ImsServiceController {
             cleanUpService();
         }
     }
-
-    private ImsService.Listener mFeatureChangedListener = new ImsService.Listener() {
-        @Override
-        public void onUpdateSupportedImsFeatures(ImsFeatureConfiguration c) {
-            if (mCallbacks == null) {
-                return;
-            }
-            mCallbacks.imsServiceFeaturesChanged(c, ImsServiceController.this);
-        }
-    };
 
     /**
      * Defines callbacks that are used by the ImsServiceController to notify when an ImsService
@@ -213,9 +211,21 @@ public class ImsServiceController {
     private Set<IImsServiceFeatureCallback> mImsStatusCallbacks = ConcurrentHashMap.newKeySet();
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
+    private final LocalLog mLocalLog = new LocalLog(10);
 
     protected final Object mLock = new Object();
     protected final Context mContext;
+
+    private ImsService.Listener mFeatureChangedListener = new ImsService.Listener() {
+        @Override
+        public void onUpdateSupportedImsFeatures(ImsFeatureConfiguration c) {
+            if (mCallbacks == null) {
+                return;
+            }
+            mLocalLog.log("onUpdateSupportedImsFeatures to " + c.getServiceFeatures());
+            mCallbacks.imsServiceFeaturesChanged(c, ImsServiceController.this);
+        }
+    };
 
     private class ImsFeatureContainer {
         public int slotId;
@@ -361,17 +371,22 @@ public class ImsServiceController {
                 mImsServiceConnection = new ImsServiceConnection();
                 int serviceFlags = Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE
                         | Context.BIND_IMPORTANT;
+                mLocalLog.log("binding " + imsFeatureSet);
                 Log.i(LOG_TAG, "Binding ImsService:" + mComponentName);
                 try {
                     boolean bindSucceeded = startBindToService(imsServiceIntent,
                             mImsServiceConnection, serviceFlags);
                     if (!bindSucceeded) {
+                        mLocalLog.log("    binding failed, retrying in "
+                                + mBackoff.getCurrentDelay() + " mS");
                         mIsBinding = false;
                         mBackoff.notifyFailed();
                     }
                     return bindSucceeded;
                 } catch (Exception e) {
                     mBackoff.notifyFailed();
+                    mLocalLog.log("    binding exception=" + e.getMessage() + ", retrying in "
+                            + mBackoff.getCurrentDelay() + " mS");
                     Log.e(LOG_TAG, "Error binding (" + mComponentName + ") with exception: "
                             + e.getMessage() + ", rebinding in " + mBackoff.getCurrentDelay()
                             + " ms");
@@ -406,6 +421,7 @@ public class ImsServiceController {
             changeImsServiceFeatures(new HashSet<>());
             removeImsServiceFeatureCallbacks();
             Log.i(LOG_TAG, "Unbinding ImsService: " + mComponentName);
+            mLocalLog.log("unbinding");
             mContext.unbindService(mImsServiceConnection);
             mIsBound = false;
             mIsBinding = false;
@@ -424,6 +440,7 @@ public class ImsServiceController {
             if (mImsFeatures.equals(newImsFeatures)) {
                 return;
             }
+            mLocalLog.log("Features changed (" + mImsFeatures + "->" + newImsFeatures + ")");
             Log.i(LOG_TAG, "Features changed (" + mImsFeatures + "->" + newImsFeatures + ") for "
                     + "ImsService: " + mComponentName);
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> oldImsFeatures =
@@ -615,6 +632,7 @@ public class ImsServiceController {
     // Grant runtime permissions to ImsService. PermissionManager ensures that the ImsService is
     // system/signed before granting permissions.
     private void grantPermissionsToService() {
+        mLocalLog.log("grant permissions to " + getComponentName());
         Log.i(LOG_TAG, "Granting Runtime permissions to:" + getComponentName());
         String[] pkgToGrant = {mComponentName.getPackageName()};
         try {
@@ -795,5 +813,19 @@ public class ImsServiceController {
             mImsServiceConnection = null;
             setServiceController(null);
         }
+    }
+
+    @Override
+    public String toString() {
+        synchronized (mLock) {
+            return "[ImsServiceController: componentName=" + getComponentName() + ", features="
+                    + mImsFeatures + ", isBinding=" + mIsBinding + ", isBound=" + mIsBound
+                    + ", serviceController=" + getImsServiceController() + ", rebindDelay="
+                    + getRebindDelay() + "]";
+        }
+    }
+
+    public void dump(PrintWriter printWriter) {
+        mLocalLog.dump(printWriter);
     }
 }
