@@ -99,9 +99,9 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
 
     @Ignore
     public void testBroadcastSms() {
-        mContextFixture.putResource(
-                com.android.internal.R.string.config_defaultCellBroadcastReceiverPkg,
-                "fake.cellbroadcastreceiver");
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_defaultCellBroadcastReceiverPkgs,
+                new String[]{"fake.cellbroadcastreceiver"});
 
         Settings.Secure.putString(mContext.getContentResolver(),
                 CMAS_ADDITIONAL_BROADCAST_PKG, "another.fake.pkg");
