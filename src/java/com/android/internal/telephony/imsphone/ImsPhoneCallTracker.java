@@ -1213,6 +1213,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             logi("Ignoring hold request while already holding or swapping");
             return;
         }
+        HoldSwapState oldHoldState = mHoldSwitchingState;
         ImsCall callToHold = mForegroundCall.getImsCall();
 
         mHoldSwitchingState = HoldSwapState.HOLDING_TO_DIAL_OUTGOING;
@@ -1225,6 +1226,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     ImsCommand.IMS_CMD_HOLD);
         } catch (ImsException e) {
             mForegroundCall.switchWith(mBackgroundCall);
+            mHoldSwitchingState = oldHoldState;
+            logHoldSwapState("holdActiveCallForPendingMo - fail");
             throw new CallStateException(e.getMessage());
         }
     }
@@ -1239,6 +1242,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 logi("Ignoring hold request while already holding or swapping");
                 return;
             }
+            HoldSwapState oldHoldState = mHoldSwitchingState;
             ImsCall callToHold = mForegroundCall.getImsCall();
             if (mBackgroundCall.getState().isAlive()) {
                 mCallExpectedToResume = mBackgroundCall.getImsCall();
@@ -1254,6 +1258,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         ImsCommand.IMS_CMD_HOLD);
             } catch (ImsException e) {
                 mForegroundCall.switchWith(mBackgroundCall);
+                mHoldSwitchingState = oldHoldState;
+                logHoldSwapState("holdActiveCall - fail");
                 throw new CallStateException(e.getMessage());
             }
         }
@@ -1267,6 +1273,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 && mRingingCall.getState() == ImsPhoneCall.State.WAITING;
         if (switchingWithWaitingCall) {
             ImsCall callToHold = mForegroundCall.getImsCall();
+            HoldSwapState oldHoldState = mHoldSwitchingState;
             mHoldSwitchingState = HoldSwapState.HOLDING_TO_ANSWER_INCOMING;
             mForegroundCall.switchWith(mBackgroundCall);
             logHoldSwapState("holdActiveCallForWaitingCall");
@@ -1276,6 +1283,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         ImsCommand.IMS_CMD_HOLD);
             } catch (ImsException e) {
                 mForegroundCall.switchWith(mBackgroundCall);
+                mHoldSwitchingState = oldHoldState;
+                logHoldSwapState("holdActiveCallForWaitingCall - fail");
                 throw new CallStateException(e.getMessage());
             }
         }
@@ -1285,24 +1294,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * Unhold the currently held call.
      */
     void unholdHeldCall() throws CallStateException {
-        try {
-            ImsCall imsCall = mBackgroundCall.getImsCall();
-            if (mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_UNHOLD
-                    || mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD) {
-                logi("Ignoring unhold request while already unholding or swapping");
-                return;
-            }
-            if (imsCall != null) {
-                mCallExpectedToResume = imsCall;
-                mHoldSwitchingState = HoldSwapState.PENDING_SINGLE_CALL_UNHOLD;
-                mForegroundCall.switchWith(mBackgroundCall);
-                logHoldSwapState("unholdCurrentCall");
+        ImsCall imsCall = mBackgroundCall.getImsCall();
+        if (mHoldSwitchingState == HoldSwapState.PENDING_SINGLE_CALL_UNHOLD
+                || mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD) {
+            logi("Ignoring unhold request while already unholding or swapping");
+            return;
+        }
+        if (imsCall != null) {
+            mCallExpectedToResume = imsCall;
+            HoldSwapState oldHoldState = mHoldSwitchingState;
+            mHoldSwitchingState = HoldSwapState.PENDING_SINGLE_CALL_UNHOLD;
+            mForegroundCall.switchWith(mBackgroundCall);
+            logHoldSwapState("unholdCurrentCall");
+            try {
                 imsCall.resume();
                 mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
                         ImsCommand.IMS_CMD_RESUME);
+            } catch (ImsException e) {
+                mForegroundCall.switchWith(mBackgroundCall);
+                mHoldSwitchingState = oldHoldState;
+                logHoldSwapState("unholdCurrentCall - fail");
+                throw new CallStateException(e.getMessage());
             }
-        } catch (ImsException e) {
-            throw new CallStateException(e.getMessage());
         }
     }
 
