@@ -407,7 +407,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " carrierConfigAccessRules: " + Arrays.toString(carrierConfigAccessRules)
                     + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
-                    + " profileClass:" + profileClass + " subscriptionType: " + subType);
+                    + " profileClass:" + profileClass + " subscriptionType: " + subType
+                    + " carrierConfigAccessRules:" + carrierConfigAccessRules);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -1588,8 +1589,16 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
             String nameToSet;
-            if (displayName == null) {
-                nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+            if (TextUtils.isEmpty(displayName) || displayName.trim().length() == 0) {
+                nameToSet = mTelephonyManager.getSimOperatorName(subId);
+                if (TextUtils.isEmpty(nameToSet)) {
+                    if (nameSource == SubscriptionManager.NAME_SOURCE_USER_INPUT
+                            && SubscriptionManager.isValidSlotIndex(getSlotIndex(subId))) {
+                        nameToSet = "CARD " + (getSlotIndex(subId) + 1);
+                    } else {
+                        nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+                    }
+                }
             } else {
                 nameToSet = displayName;
             }
@@ -3089,12 +3098,6 @@ public class SubscriptionController extends ISub.Stub {
             throw new IllegalArgumentException("Invalid groupUuid");
         }
 
-        // TODO: Revisit whether we need this restriction in R. There's no technical need for it,
-        // but we don't want to change the API behavior at this time.
-        if (getSubscriptionsInGroup(groupUuid, callingPackage).isEmpty()) {
-            throw new IllegalArgumentException("Cannot add subscriptions to a non-existent group!");
-        }
-
         // Makes sure calling package matches caller UID.
         mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
         // If it doesn't have modify phone state permission, or carrier privilege permission,
@@ -3308,7 +3311,7 @@ public class SubscriptionController extends ISub.Stub {
             int subId = info.getSubscriptionId();
             return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
                     callingPackage, "getSubscriptionsInGroup")
-                    || (info.isEmbedded() && info.canManageSubscription(mContext, callingPackage));
+                    || info.canManageSubscription(mContext, callingPackage);
         }).collect(Collectors.toList());
     }
 
