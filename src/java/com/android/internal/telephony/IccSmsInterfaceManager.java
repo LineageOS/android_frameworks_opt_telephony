@@ -178,17 +178,17 @@ public class IccSmsInterfaceManager {
         int count = messages.size();
 
         for (int i = 0; i < count; i++) {
-             byte[] ba = messages.get(i);
-             if (ba[0] == STATUS_ON_ICC_UNREAD) {
-                 int n = ba.length;
-                 byte[] nba = new byte[n - 1];
-                 System.arraycopy(ba, 1, nba, 0, n - 1);
-                 byte[] record = makeSmsRecordData(STATUS_ON_ICC_READ, nba);
-                 fh.updateEFLinearFixed(IccConstants.EF_SMS, i + 1, record, null, null);
-                 if (Rlog.isLoggable("SMS", Log.DEBUG)) {
-                     log("SMS " + (i + 1) + " marked as read");
-                 }
-             }
+            byte[] ba = messages.get(i);
+            if ((ba[0] & 0x07) == STATUS_ON_ICC_UNREAD) {
+                int n = ba.length;
+                byte[] nba = new byte[n - 1];
+                System.arraycopy(ba, 1, nba, 0, n - 1);
+                byte[] record = makeSmsRecordData(STATUS_ON_ICC_READ, nba);
+                fh.updateEFLinearFixed(IccConstants.EF_SMS, i + 1, record, null, null);
+                if (Rlog.isLoggable("SMS", Log.DEBUG)) {
+                    log("SMS " + (i + 1) + " marked as read");
+                }
+            }
         }
     }
 
@@ -785,7 +785,7 @@ public class IccSmsInterfaceManager {
         }
 
         // Status bits for this record.  See TS 51.011 10.5.3
-        data[0] = (byte)(status & 7);
+        data[0] = (byte) (status & 0x07);
 
         System.arraycopy(pdu, 0, data, 1, pdu.length);
 
