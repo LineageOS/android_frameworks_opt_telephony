@@ -357,6 +357,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                                 + "connection. Just move the request to transport "
                                 + AccessNetworkConstants.transportTypeToString(targetTransport)
                                 + ", dc=" + dc);
+                        entry.setValue(targetTransport);
                         releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_NORMAL,
                                 currentTransport);
                         requestNetworkInternal(networkRequest, DcTracker.REQUEST_TYPE_NORMAL,

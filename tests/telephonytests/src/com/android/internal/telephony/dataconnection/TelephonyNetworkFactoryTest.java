@@ -23,6 +23,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -30,11 +32,15 @@ import android.net.IConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.StringNetworkSpecifier;
+import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Messenger;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Rlog;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
@@ -43,6 +49,8 @@ import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
+import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams.HandoverCallback;
 import com.android.internal.telephony.mocks.ConnectivityServiceMock;
 import com.android.internal.telephony.mocks.PhoneSwitcherMock;
 import com.android.internal.telephony.mocks.SubscriptionControllerMock;
@@ -54,6 +62,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 public class TelephonyNetworkFactoryTest extends TelephonyTest {
@@ -302,5 +311,46 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mPhoneSwitcherMock.notifyActivePhoneChange(phoneId);
         waitForMs(250);
         assertEquals(3, mNetworkRequestList.size());
+    }
+
+    /**
+     * Test handover when there is no live data connection
+     */
+    @Test
+    @SmallTest
+    public void testHandoverNoLiveData() throws Exception {
+        createMockedTelephonyComponents(1);
+        mPhoneSwitcherMock.setPreferredDataPhoneId(0);
+        mSubscriptionControllerMock.setDefaultDataSubId(0);
+        mSubscriptionControllerMock.setSlotSubId(0, 0);
+        mSubscriptionMonitorMock.notifySubscriptionChanged(0);
+
+        mPhoneSwitcherMock.setPhoneActive(0, true);
+        mConnectivityServiceMock.addDefaultRequest();
+
+        makeSubSpecificMmsRequest(0);
+
+        waitForMs(100);
+
+        Field f = TelephonyNetworkFactory.class.getDeclaredField("mInternalHandler");
+        f.setAccessible(true);
+        Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
+
+        HandoverCallback handoverCallback = mock(HandoverCallback.class);
+
+        HandoverParams hp = new HandoverParams(ApnSetting.TYPE_MMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, handoverCallback);
+        AsyncResult ar = new AsyncResult(null, hp, null);
+        h.sendMessage(h.obtainMessage(5, ar));
+        waitForMs(100);
+
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mTransportManager)
+                .getCurrentTransport(anyInt());
+
+        hp = new HandoverParams(ApnSetting.TYPE_MMS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                handoverCallback);
+        ar = new AsyncResult(null, hp, null);
+        h.sendMessage(h.obtainMessage(5, ar));
+        waitForMs(100);
     }
 }
