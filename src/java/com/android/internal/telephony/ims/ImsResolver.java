@@ -41,15 +41,20 @@ import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.aidl.IImsRcsFeature;
 import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.text.TextUtils;
+import android.util.LocalLog;
 import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.os.SomeArgs;
+import com.android.internal.util.IndentingPrintWriter;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -169,18 +174,12 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
         @Override
         public String toString() {
-            StringBuilder res = new StringBuilder();
-            res.append("[ImsServiceInfo] name=");
-            res.append(name);
-            res.append(", supportedFeatures=[ ");
-            for (ImsFeatureConfiguration.FeatureSlotPair feature : mSupportedFeatures) {
-                res.append("(");
-                res.append(feature.slotId);
-                res.append(",");
-                res.append(ImsFeature.FEATURE_LOG_MAP.get(feature.featureType));
-                res.append(") ");
-            }
-            return res.toString();
+            return "[ImsServiceInfo] name="
+                    + name
+                    + ", featureFromMetadata="
+                    + featureFromMetadata
+                    + ","
+                    + printFeatures(mSupportedFeatures);
         }
     }
 
@@ -387,6 +386,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     private final boolean mIsDynamicBinding;
     // Package name of the default device service.
     private String mDeviceService;
+    // Persistent Logging
+    private final LocalLog mEventLog = new LocalLog(50);
 
     // Synchronize all messages on a handler to ensure that the cache includes the most recent
     // version of the installed ImsServices.
@@ -403,6 +404,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 break;
             }
             case HANDLER_BOOT_COMPLETE: {
+                mEventLog.log("handling BOOT_COMPLETE");
                 // Re-evaluate bound services for all slots after requerying packagemanager
                 maybeAddedImsService(null);
                 break;
@@ -437,6 +439,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     overrideService(slotId, packageName);
                 } else {
                     Log.i(TAG, "overriding device ImsService -  packageName=" + packageName);
+                    mEventLog.log("overriding device ImsService with " + packageName);
                     if (TextUtils.equals(mDeviceService, packageName)) {
                         // No change in device service.
                         break;
@@ -479,12 +482,14 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 @Override
                 public void onError(ComponentName name) {
                     Log.w(TAG, "onError: " + name + "returned with an error result");
+                    mEventLog.log("onError - dynamic query error for " + name);
                     scheduleQueryForFeatures(name, DELAY_DYNAMIC_QUERY_MS);
                 }
 
                 @Override
                 public void onPermanentError(ComponentName name) {
                     Log.w(TAG, "onPermanentError: component=" + name);
+                    mEventLog.log("onPermanentError - error for " + name);
                     mHandler.obtainMessage(HANDLER_REMOVE_PACKAGE,
                             name.getPackageName()).sendToTarget();
                 }
@@ -571,6 +576,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      * Needs to be called after the constructor to kick off the process of binding to ImsServices.
      */
     public void initialize() {
+        mEventLog.log("Initializing");
         Log.i(TAG, "Initializing cache.");
         mFeatureQueryManager = mDynamicQueryManagerFactory.create(mContext, mDynamicQueryListener);
 
@@ -591,6 +597,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 String newPackageName = config.getString(
                         CarrierConfigManager.KEY_CONFIG_IMS_PACKAGE_OVERRIDE_STRING, null);
                 if (!TextUtils.isEmpty(newPackageName)) {
+                    mEventLog.log("Initializing: found carrier package.");
                     updateBoundCarrierServices(i, newPackageName);
                     Log.i(TAG, "Initializing, found package " + newPackageName + " on slot "
                             + i);
@@ -767,6 +774,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 services = new SparseArray<>();
                 mBoundImsServicesByFeature.add(slotId, services);
             }
+            mEventLog.log("putImsController - [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(feature) + "] -> " + controller);
             Log.i(TAG, "ImsServiceController added on slot: " + slotId + " with feature: "
                     + ImsFeature.FEATURE_LOG_MAP.get(feature) + " using package: "
                     + controller.getComponentName());
@@ -788,6 +797,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             }
             ImsServiceController c = services.get(feature, null);
             if (c != null) {
+                mEventLog.log("removeImsController - [" + slotId + ", "
+                        + ImsFeature.FEATURE_LOG_MAP.get(feature) + "] -> " + c);
                 Log.i(TAG, "ImsServiceController removed on slot: " + slotId + " with feature: "
                         + ImsFeature.FEATURE_LOG_MAP.get(feature) + " using package: "
                         + c.getComponentName());
@@ -813,18 +824,23 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 // out the cache for the existing features or update yet. Instead start a query
                 // for features dynamically.
                 if (info.featureFromMetadata) {
-                    // update features in the cache
+                    mEventLog.log("maybeAddedImsService - updating features for " + info.name
+                            + ": " + printFeatures(match.getSupportedFeatures()) + " -> "
+                            + printFeatures(info.getSupportedFeatures()));
                     Log.i(TAG, "Updating features in cached ImsService: " + info.name);
                     Log.d(TAG, "Updating features - Old features: " + match + " new features: "
                             + info);
+                    // update features in the cache
                     match.replaceFeatures(info.getSupportedFeatures());
                     updateImsServiceFeatures(info);
                 } else {
+                    mEventLog.log("maybeAddedImsService - scheduling query for " + info);
                     // start a query to get ImsService features
                     scheduleQueryForFeatures(info);
                 }
             } else {
                 Log.i(TAG, "Adding newly added ImsService to cache: " + info.name);
+                mEventLog.log("maybeAddedImsService - adding new ImsService: " + info);
                 mInstalledServicesCache.put(info.name, info);
                 if (info.featureFromMetadata) {
                     newlyAddedInfos.add(info);
@@ -858,6 +874,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         ImsServiceInfo match = getInfoByPackageName(mInstalledServicesCache, packageName);
         if (match != null) {
             mInstalledServicesCache.remove(match.name);
+            mEventLog.log("maybeRemovedImsService - removing ImsService: " + match);
             Log.i(TAG, "Removing ImsService: " + match.name);
             unbindImsService(match);
             updateImsServiceFeatures(getImsServiceInfoFromCache(mDeviceService));
@@ -980,6 +997,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 Log.i(TAG, "Binding ImsService: " + controller.getComponentName()
                         + " with features: " + features);
                 controller.bind(features);
+                mEventLog.log("bindImsServiceWithFeatures - create new controller: "
+                        + controller);
             }
             mActiveControllers.put(info.name, controller);
         }
@@ -995,6 +1014,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             // Calls imsServiceFeatureRemoved on all features in the controller
             try {
                 Log.i(TAG, "Unbinding ImsService: " + controller.getComponentName());
+                mEventLog.log("unbindImsService - unbinding and removing " + controller);
                 controller.unbind();
             } catch (RemoteException e) {
                 Log.e(TAG, "unbindImsService: Remote Exception: " + e.getMessage());
@@ -1074,6 +1094,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
         Log.i(TAG, "imsServiceFeaturesChanged: config=" + config.getServiceFeatures()
                 + ", ComponentName=" + controller.getComponentName());
+        mEventLog.log("imsServiceFeaturesChanged - for " + controller + ", new config "
+                + config.getServiceFeatures());
         handleFeaturesChanged(controller.getComponentName(), config.getServiceFeatures());
     }
 
@@ -1083,6 +1105,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             return;
         }
         Log.w(TAG, "imsServiceBindPermanentError: component=" + name);
+        mEventLog.log("imsServiceBindPermanentError - for " + name);
         mHandler.obtainMessage(HANDLER_REMOVE_PACKAGE, name.getPackageName()).sendToTarget();
     }
 
@@ -1103,6 +1126,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // Possibly rebind to another ImsService for testing.
     // Called from the handler ONLY
     private void overrideService(int slotId, String newPackageName) {
+        mEventLog.log("overriding carrier ImsService to " + newPackageName
+                + " on slot " + slotId);
         if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
             // not specified, replace package on all slots.
             for (int i = 0; i < mNumSlots; i++) {
@@ -1143,6 +1168,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             mCarrierServices[slotId] = newPackageName;
             if (!TextUtils.equals(newPackageName, oldPackageName)) {
                 Log.i(TAG, "Carrier Config updated, binding new ImsService");
+                mEventLog.log("updateBoundCarrierServices - carrier package changed: "
+                        + oldPackageName + " -> " + newPackageName + " on slot " + slotId);
                 // Unbind old ImsService, not needed anymore
                 // ImsService is retrieved from the cache. If the cache hasn't been populated yet,
                 // the calls to unbind/bind will fail (intended during initial start up).
@@ -1152,12 +1179,16 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             // if there is no carrier ImsService, newInfo is null. This we still want to update
             // bindings for device ImsService to pick up the missing features.
             if (newInfo == null || newInfo.featureFromMetadata) {
+                mEventLog.log("updateBoundCarrierServices - recalculating bindings "
+                        + (newInfo != null ? newInfo : "for device"));
                 bindImsService(newInfo);
                 // Recalculate the device ImsService features to reflect changes.
                 updateImsServiceFeatures(getImsServiceInfoFromCache(mDeviceService));
             } else {
                 // ImsServiceInfo that has not had features queried yet. Start async
                 // bind and query features.
+                mEventLog.log("updateBoundCarrierServices - scheduling feature query for "
+                        + newInfo);
                 scheduleQueryForFeatures(newInfo);
             }
         }
@@ -1212,10 +1243,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     // Starts a dynamic query. Called from handler ONLY.
     private void startDynamicQuery(ImsServiceInfo service) {
+        mEventLog.log("startDynamicQuery - starting query for " + service);
         boolean queryStarted = mFeatureQueryManager.startQuery(service.name,
                 service.controllerFactory.getServiceInterface());
         if (!queryStarted) {
             Log.w(TAG, "startDynamicQuery: service could not connect. Retrying after delay.");
+            mEventLog.log("startDynamicQuery - query failed. Retrying in "
+                    + DELAY_DYNAMIC_QUERY_MS + " mS");
             scheduleQueryForFeatures(service, DELAY_DYNAMIC_QUERY_MS);
         } else {
             Log.d(TAG, "startDynamicQuery: Service queried, waiting for response.");
@@ -1231,6 +1265,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     + name);
             return;
         }
+        mEventLog.log("dynamicQueryComplete for package " + name + ", features: "
+                + printFeatures(service.getSupportedFeatures()) + " -> " + printFeatures(features));
         // Add features to service
         service.replaceFeatures(features);
         if (isActiveCarrierService(service)) {
@@ -1245,7 +1281,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
     }
 
-    private String printFeatures(Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
+    private static String printFeatures(Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
         StringBuilder featureString = new StringBuilder();
         featureString.append(" features: [");
         if (features != null) {
@@ -1254,7 +1290,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 featureString.append(feature.slotId);
                 featureString.append(",");
                 featureString.append(ImsFeature.FEATURE_LOG_MAP.get(feature.featureType));
-                featureString.append("} ");
+                featureString.append("}");
             }
             featureString.append("]");
         }
@@ -1371,5 +1407,56 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             }
         }
         return infos;
+    }
+
+    // Dump is called on the main thread, since ImsResolver Handler is also handled on main thread,
+    // we shouldn't need to worry about concurrent access of private params.
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println("ImsResolver:");
+        pw.increaseIndent();
+        pw.println("mIsDynamicBinding = " + mIsDynamicBinding);
+        pw.println("mDeviceService = " + mDeviceService);
+        pw.println("mCarrierServices: ");
+        pw.increaseIndent();
+        for (String s : mCarrierServices) {
+            pw.println(s);
+        }
+        pw.decreaseIndent();
+        pw.println("Bound Features:");
+        pw.increaseIndent();
+        for (int i = 0; i < mNumSlots; i++) {
+            for (int j = 0; j < MmTelFeature.FEATURE_MAX; j++) {
+                pw.print("slot=");
+                pw.print(i);
+                pw.print(", feature=");
+                pw.print(MmTelFeature.FEATURE_LOG_MAP.getOrDefault(j, "?"));
+                pw.println(": ");
+                pw.increaseIndent();
+                ImsServiceController c = getImsServiceController(i, j);
+                pw.println(c == null ? "none" : c);
+                pw.decreaseIndent();
+            }
+        }
+        pw.decreaseIndent();
+        pw.println("Cached ImsServices:");
+        pw.increaseIndent();
+        for (ImsServiceInfo i : mInstalledServicesCache.values()) {
+            pw.println(i);
+        }
+        pw.decreaseIndent();
+        pw.println("Active controllers:");
+        pw.increaseIndent();
+        for (ImsServiceController c : mActiveControllers.values()) {
+            pw.println(c);
+            pw.increaseIndent();
+            c.dump(pw);
+            pw.decreaseIndent();
+        }
+        pw.decreaseIndent();
+        pw.println("Event Log:");
+        pw.increaseIndent();
+        mEventLog.dump(pw);
+        pw.decreaseIndent();
     }
 }
