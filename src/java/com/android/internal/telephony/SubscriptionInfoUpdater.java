@@ -66,7 +66,6 @@ import com.android.internal.telephony.uicc.UiccSlot;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -113,11 +112,25 @@ public class SubscriptionInfoUpdater extends Handler {
     private EuiccManager mEuiccManager;
     @UnsupportedAppUsage
     private IPackageManager mPackageManager;
+    private Handler mBackgroundHandler;
 
     // The current foreground user ID.
     @UnsupportedAppUsage
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
+
+    /**
+     * Runnable with a boolean parameter. This is used in
+     * updateEmbeddedSubscriptions(List<Integer> cardIds, @Nullable UpdateEmbeddedSubsCallback).
+     */
+    private interface UpdateEmbeddedSubsCallback {
+        /**
+         * Callback of the Runnable.
+         * @param hasChanges Whether there is any subscription info change. If yes, we need to
+         * notify the listeners.
+         */
+        void run(boolean hasChanges);
+    }
 
     // TODO: The SubscriptionController instance should be passed in here from PhoneFactory
     // rather than invoking the static getter all over the place.
@@ -130,8 +143,8 @@ public class SubscriptionInfoUpdater extends Handler {
     @VisibleForTesting public SubscriptionInfoUpdater(
             Looper looper, Context context, Phone[] phone,
             CommandsInterface[] ci, IPackageManager packageMgr) {
-        super(looper);
         logd("Constructor invoked");
+        mBackgroundHandler = new Handler(looper);
 
         mContext = context;
         mPhone = phone;
@@ -228,6 +241,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
     @Override
     public void handleMessage(Message msg) {
+        List<Integer> cardIds = new ArrayList<>();
         switch (msg.what) {
             case EVENT_GET_NETWORK_SELECTION_MODE_DONE: {
                 AsyncResult ar = (AsyncResult)msg.obj;
@@ -279,6 +293,12 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_READY:
+                cardIds.add(getCardIdFromPhoneId(msg.arg1));
+                updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
+                    if (hasChanges) {
+                        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                    }
+                });
                 broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_READY, null);
                 broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_PRESENT);
                 broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
@@ -289,22 +309,28 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_NOT_READY:
-                handleSimNotReady(msg.arg1);
-                int cardId = getCardIdFromPhoneId(msg.arg1);
                 // an eUICC with no active subscriptions never becomes ready, so we need to trigger
                 // the embedded subscriptions update here
-                if (updateEmbeddedSubscriptions(cardId)) {
-                    SubscriptionController.getInstance().notifySubscriptionInfoChanged();
-                }
+                cardIds.add(getCardIdFromPhoneId(msg.arg1));
+                updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
+                    if (hasChanges) {
+                        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                    }
+                });
+                handleSimNotReady(msg.arg1);
                 break;
 
             case EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS:
-                if (updateEmbeddedSubscriptions(msg.arg1)) {
-                    SubscriptionController.getInstance().notifySubscriptionInfoChanged();
-                }
-                if (msg.obj != null) {
-                    ((Runnable) msg.obj).run();
-                }
+                cardIds.add(msg.arg1);
+                Runnable r = (Runnable) msg.obj;
+                updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
+                    if (hasChanges) {
+                        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                    }
+                    if (r != null) {
+                        r.run();
+                    }
+                });
                 break;
 
             default:
@@ -353,7 +379,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
         }
 
-        updateSubscriptionInfoByIccId(slotId);
+        updateSubscriptionInfoByIccId(slotId, true /* updateEmbeddedSubs */);
 
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
         broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_PRESENT);
@@ -387,7 +413,7 @@ public class SubscriptionInfoUpdater extends Handler {
             // phase, the subscription list is accessible. Treating NOT_READY
             // as equivalent to ABSENT, once the rest of the system can handle it.
             mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-            updateSubscriptionInfoByIccId(slotId);
+            updateSubscriptionInfoByIccId(slotId, false /* updateEmbeddedSubs */);
         }
 
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_NOT_READY,
@@ -419,7 +445,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
         mIccId[slotId] = IccUtils.stripTrailingFs(records.getFullIccId());
 
-        updateSubscriptionInfoByIccId(slotId);
+        updateSubscriptionInfoByIccId(slotId, true /* updateEmbeddedSubs */);
         List<SubscriptionInfo> subscriptionInfos = SubscriptionController.getInstance()
                 .getSubInfoUsingSlotIndexPrivileged(slotId);
         if (subscriptionInfos == null || subscriptionInfos.isEmpty()) {
@@ -547,7 +573,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("SIM" + (slotId + 1) + " hot plug out, absentAndInactive=" + absentAndInactive);
         }
         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-        updateSubscriptionInfoByIccId(slotId);
+        updateSubscriptionInfoByIccId(slotId, true /* updateEmbeddedSubs */);
         // Do not broadcast if the SIM is absent and inactive, because the logical slotId here is
         // no longer correct
         if (absentAndInactive == 0) {
@@ -564,7 +590,7 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("SIM" + (slotId + 1) + " Error ");
         }
         mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-        updateSubscriptionInfoByIccId(slotId);
+        updateSubscriptionInfoByIccId(slotId, true /* updateEmbeddedSubs */);
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR,
                 IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         broadcastSimCardStateChanged(slotId, TelephonyManager.SIM_STATE_CARD_IO_ERROR);
@@ -573,7 +599,8 @@ public class SubscriptionInfoUpdater extends Handler {
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
     }
 
-    synchronized private void updateSubscriptionInfoByIccId(int slotIndex) {
+    private synchronized void updateSubscriptionInfoByIccId(int slotIndex,
+            boolean updateEmbeddedSubs) {
         logd("updateSubscriptionInfoByIccId:+ Start");
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
             loge("[updateSubscriptionInfoByIccId]- invalid slotIndex=" + slotIndex);
@@ -627,20 +654,30 @@ public class SubscriptionInfoUpdater extends Handler {
             } else {
                 logd("bypass reset default data sub if inactive");
             }
-            UiccController uiccController = UiccController.getInstance();
-            UiccSlot[] uiccSlots = uiccController.getUiccSlots();
-            if (uiccSlots != null) {
-                Arrays.stream(uiccSlots)
-                        .filter(uiccSlot -> uiccSlot != null && uiccSlot.getUiccCard() != null)
-                        .map(uiccSlot -> uiccController.convertToPublicCardId(
-                                uiccSlot.getUiccCard().getCardId()))
-                        .forEach(cardId -> updateEmbeddedSubscriptions(cardId));
-            }
             setSubInfoInitialized();
         }
 
+        UiccController uiccController = UiccController.getInstance();
+        UiccSlot[] uiccSlots = uiccController.getUiccSlots();
+        if (uiccSlots != null && updateEmbeddedSubs) {
+            List<Integer> cardIds = new ArrayList<>();
+            for (UiccSlot uiccSlot : uiccSlots) {
+                if (uiccSlot != null && uiccSlot.getUiccCard() != null) {
+                    int cardId = uiccController.convertToPublicCardId(
+                            uiccSlot.getUiccCard().getCardId());
+                    cardIds.add(cardId);
+                }
+            }
+            updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
+                if (hasChanges) {
+                    SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                }
+                if (DBG) logd("updateSubscriptionInfoByIccId: SubscriptionInfo update complete");
+            });
+        }
+
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
-        logd("updateSubscriptionInfoByIccId:- SubscriptionInfo update complete");
+        if (DBG) logd("updateSubscriptionInfoByIccId: SubscriptionInfo update complete");
     }
 
     private static void setSubInfoInitialized() {
@@ -661,24 +698,58 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     /**
-     * Update the cached list of embedded subscription for the eUICC with the given card ID
-     * {@code cardId}.
+     * Updates the cached list of embedded subscription for the eUICC with the given list of card
+     * IDs {@code cardIds}. The step of reading the embedded subscription list from eUICC card is
+     * executed in background thread. The callback {@code callback} is executed after the cache is
+     * refreshed. The callback is executed in main thread.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public void updateEmbeddedSubscriptions(List<Integer> cardIds,
+            @Nullable UpdateEmbeddedSubsCallback callback) {
+        // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but they
+        // are filtered out of list calls as long as EuiccManager.isEnabled returns false).
+        if (!mEuiccManager.isEnabled()) {
+            callback.run(false /* hasChanges */);
+            return;
+        }
+
+        mBackgroundHandler.post(() -> {
+            List<GetEuiccProfileInfoListResult> results = new ArrayList<>();
+            for (int cardId : cardIds) {
+                GetEuiccProfileInfoListResult result =
+                        EuiccController.get().blockingGetEuiccProfileInfoList(cardId);
+                if (DBG) logd("blockingGetEuiccProfileInfoList cardId " + cardId);
+                results.add(result);
+            }
+
+            // The runnable will be executed in the main thread.
+            this.post(() -> {
+                boolean hasChanges = false;
+                for (GetEuiccProfileInfoListResult result : results) {
+                    if (updateEmbeddedSubscriptionsCache(result)) {
+                        hasChanges = true;
+                    }
+                }
+                // The latest state in the main thread may be changed when the callback is
+                // triggered.
+                if (callback != null) {
+                    callback.run(hasChanges);
+                }
+            });
+        });
+    }
+
+    /**
+     * Update the cached list of embedded subscription based on the passed in
+     * GetEuiccProfileInfoListResult {@code result}.
      *
      * @return true if changes may have been made. This is not a guarantee that changes were made,
      * but notifications about subscription changes may be skipped if this returns false as an
      * optimization to avoid spurious notifications.
      */
-    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public boolean updateEmbeddedSubscriptions(int cardId) {
-        if (DBG) logd("updateEmbeddedSubscriptions");
-        // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but they
-        // are filtered out of list calls as long as EuiccManager.isEnabled returns false).
-        if (!mEuiccManager.isEnabled()) {
-            return false;
-        }
+    private boolean updateEmbeddedSubscriptionsCache(GetEuiccProfileInfoListResult result) {
+        if (DBG) logd("updateEmbeddedSubscriptionsCache");
 
-        GetEuiccProfileInfoListResult result =
-                EuiccController.get().blockingGetEuiccProfileInfoList(cardId);
         if (result == null) {
             // IPC to the eUICC controller failed.
             return false;
