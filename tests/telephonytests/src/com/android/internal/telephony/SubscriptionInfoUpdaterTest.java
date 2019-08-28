@@ -76,6 +76,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private static final int FAKE_SUB_ID_1 = 0;
     private static final int FAKE_SUB_ID_2 = 1;
     private static final int FAKE_CARD_ID = 0;
+    private static final String FAKE_EID = "89049032000001000000031328322874";
     private static final String FAKE_MCC_MNC_1 = "123456";
     private static final String FAKE_MCC_MNC_2 = "456789";
 
@@ -485,6 +486,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testUpdateEmbeddedSubscriptions_listSuccess() throws Exception {
         when(mEuiccManager.isEnabled()).thenReturn(true);
+        when(mEuiccManager.createForCardId(anyInt())).thenReturn(mEuiccManager);
+        when(mEuiccManager.getEid()).thenReturn(FAKE_EID);
 
         EuiccProfileInfo[] euiccProfiles = new EuiccProfileInfo[] {
                 new EuiccProfileInfo("1", null /* accessRules */, null /* nickname */),
