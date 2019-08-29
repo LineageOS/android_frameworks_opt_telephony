@@ -56,6 +56,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -66,8 +67,6 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -764,17 +763,13 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testUpdateFromCarrierConfigCarrierCertificates() {
         String[] certs = new String[2];
-        certs[0] = "testCertificate";
-        certs[1] = "testCertificate2";
+        certs[0] = "d1f1";
+        certs[1] = "b5d6";
 
         UiccAccessRule[] carrierConfigAccessRules = new UiccAccessRule[certs.length];
-        try {
-            for (int i = 0; i < certs.length; i++) {
-                carrierConfigAccessRules[i] = new UiccAccessRule(
-                    MessageDigest.getInstance("SHA-256").digest(certs[i].getBytes()), null, 0);
-            }
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("for setCarrierConfigAccessRules, SHA-256 must exist", e);
+        for (int i = 0; i < certs.length; i++) {
+            carrierConfigAccessRules[i] = new UiccAccessRule(
+                IccUtils.hexStringToBytes(certs[i]), null, 0);
         }
 
         final int phoneId = mPhone.getPhoneId();
