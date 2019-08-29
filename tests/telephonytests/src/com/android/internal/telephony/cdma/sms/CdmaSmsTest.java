@@ -22,9 +22,11 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsHeader;
+import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.cdma.SmsMessage;
 import com.android.internal.util.HexDump;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -1032,5 +1034,35 @@ public class CdmaSmsTest extends AndroidTestCase {
                 encodeDecodeAssertEquals(fragments.get(i), header2, -1);
             }
         }
+    }
+
+    @SmallTest
+    public void testPreprocessFdeaWdpUserData() throws Exception {
+        // Refer to https://patents.google.com/patent/CN103906005A/en
+        String wdpUserData =
+                "0003156D60018103F80008011F805C26B031230B8383634B1B0BA34B7B717BB3732173BB0B81736B" +
+                "6B996B6B2B9B9B0B3B2805A43D7C246414C212522A3A522BD31AD3931210046C841B43A3A381D179" +
+                "798981719199A1718999B97189897A12522A3A522BD31AD393121004402C081815175C486C018999" +
+                "9989B181C9B99991C80454047011AF78";
+
+        SmsMessage cdmaSmsMessage = new SmsMessage();
+
+        Field field = SmsMessageBase.class.getDeclaredField("mUserData");
+        field.setAccessible(true);
+        field.set(cdmaSmsMessage, HexDump.hexStringToByteArray(wdpUserData));
+
+        BearerData bearerData = new BearerData();
+        bearerData.userData = new UserData();
+
+        field = SmsMessage.class.getDeclaredField("mBearerData");
+        field.setAccessible(true);
+        field.set(cdmaSmsMessage, bearerData);
+        bearerData = (BearerData) field.get(cdmaSmsMessage);
+
+        assertTrue(cdmaSmsMessage.preprocessCdmaFdeaWap());
+        assertEquals(BearerData.MESSAGE_TYPE_DELIVER, bearerData.messageType);
+        assertEquals(0x56D6, bearerData.messageId);
+        assertEquals(0x7F, bearerData.userData.numFields);
+        assertNotNull(bearerData.userData.payload);
     }
 }
