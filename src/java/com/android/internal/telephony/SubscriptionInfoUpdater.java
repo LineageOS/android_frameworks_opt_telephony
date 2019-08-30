@@ -66,8 +66,6 @@ import com.android.internal.telephony.uicc.UiccSlot;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -967,58 +965,55 @@ public class SubscriptionInfoUpdater extends Handler {
             return;
         }
 
-        if (!isCarrierServicePackage(phoneId, configPackageName)) {
-            loge("Cannot manage subId=" + currentSubId + ", carrierPackage=" + configPackageName);
-            return;
-        }
-
         ContentValues cv = new ContentValues();
-        boolean isOpportunistic = config.getBoolean(
-                CarrierConfigManager.KEY_IS_OPPORTUNISTIC_SUBSCRIPTION_BOOL, false);
-        if (currentSubInfo.isOpportunistic() != isOpportunistic) {
-            if (DBG) logd("Set SubId=" + currentSubId + " isOpportunistic=" + isOpportunistic);
-            cv.put(SubscriptionManager.IS_OPPORTUNISTIC, isOpportunistic ? "1" : "0");
-        }
+        ParcelUuid groupUuid = null;
 
+        // carrier certificates are not subscription-specific, so we want to load them even if
+        // this current package is not a CarrierServicePackage
         String[] certs = config.getStringArray(
             CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
         if (certs != null) {
             UiccAccessRule[] carrierConfigAccessRules = new UiccAccessRule[certs.length];
-            try {
-                for (int i = 0; i < certs.length; i++) {
-                    carrierConfigAccessRules[i] = new UiccAccessRule(
-                        MessageDigest.getInstance("SHA-256").digest(certs[i].getBytes()), null, 0);
-                }
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException("for setCarrierConfigAccessRules, SHA-256 must exist",
-                    e);
+            for (int i = 0; i < certs.length; i++) {
+                carrierConfigAccessRules[i] = new UiccAccessRule(IccUtils.hexStringToBytes(
+                    certs[i]), null, 0);
             }
             cv.put(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS,
                     UiccAccessRule.encodeRules(carrierConfigAccessRules));
         }
 
-        String groupUuidString =
+        if (!isCarrierServicePackage(phoneId, configPackageName)) {
+            loge("Cannot manage subId=" + currentSubId + ", carrierPackage=" + configPackageName);
+        } else {
+            boolean isOpportunistic = config.getBoolean(
+                    CarrierConfigManager.KEY_IS_OPPORTUNISTIC_SUBSCRIPTION_BOOL, false);
+            if (currentSubInfo.isOpportunistic() != isOpportunistic) {
+                if (DBG) logd("Set SubId=" + currentSubId + " isOpportunistic=" + isOpportunistic);
+                cv.put(SubscriptionManager.IS_OPPORTUNISTIC, isOpportunistic ? "1" : "0");
+            }
+
+            String groupUuidString =
                 config.getString(CarrierConfigManager.KEY_SUBSCRIPTION_GROUP_UUID_STRING, "");
-        ParcelUuid groupUuid = null;
-        if (!TextUtils.isEmpty(groupUuidString)) {
-            try {
-                // Update via a UUID Structure to ensure consistent formatting
-                groupUuid = ParcelUuid.fromString(groupUuidString);
-                if (groupUuid.equals(REMOVE_GROUP_UUID)
+            if (!TextUtils.isEmpty(groupUuidString)) {
+                try {
+                    // Update via a UUID Structure to ensure consistent formatting
+                    groupUuid = ParcelUuid.fromString(groupUuidString);
+                    if (groupUuid.equals(REMOVE_GROUP_UUID)
                             && currentSubInfo.getGroupUuid() != null) {
-                    cv.put(SubscriptionManager.GROUP_UUID, (String) null);
-                    if (DBG) logd("Group Removed for" + currentSubId);
-                } else if (SubscriptionController.getInstance().canPackageManageGroup(groupUuid,
+                        cv.put(SubscriptionManager.GROUP_UUID, (String) null);
+                        if (DBG) logd("Group Removed for" + currentSubId);
+                    } else if (SubscriptionController.getInstance().canPackageManageGroup(groupUuid,
                         configPackageName)) {
-                    cv.put(SubscriptionManager.GROUP_UUID, groupUuid.toString());
-                    cv.put(SubscriptionManager.GROUP_OWNER, configPackageName);
-                    if (DBG) logd("Group Added for" + currentSubId);
-                } else {
-                    loge("configPackageName " + configPackageName + " doesn't own grouUuid "
+                        cv.put(SubscriptionManager.GROUP_UUID, groupUuid.toString());
+                        cv.put(SubscriptionManager.GROUP_OWNER, configPackageName);
+                        if (DBG) logd("Group Added for" + currentSubId);
+                    } else {
+                        loge("configPackageName " + configPackageName + " doesn't own grouUuid "
                             + groupUuid);
+                    }
+                } catch (IllegalArgumentException e) {
+                    loge("Invalid Group UUID=" + groupUuidString);
                 }
-            } catch (IllegalArgumentException e) {
-                loge("Invalid Group UUID=" + groupUuidString);
             }
         }
         if (cv.size() > 0 && mContext.getContentResolver().update(SubscriptionManager
