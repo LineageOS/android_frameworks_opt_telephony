@@ -92,7 +92,8 @@ public class GsmSmsCbTest extends AndroidTestCase {
         doTestGeographicalScopeValue(pdu, (byte)0x00,
                 SmsCbMessage.GEOGRAPHICAL_SCOPE_CELL_WIDE_IMMEDIATE);
         doTestGeographicalScopeValue(pdu, (byte)0x40, SmsCbMessage.GEOGRAPHICAL_SCOPE_PLMN_WIDE);
-        doTestGeographicalScopeValue(pdu, (byte)0x80, SmsCbMessage.GEOGRAPHICAL_SCOPE_LA_WIDE);
+        doTestGeographicalScopeValue(pdu, (byte)0x80,
+                SmsCbMessage.GEOGRAPHICAL_SCOPE_LOCATION_AREA_WIDE);
         doTestGeographicalScopeValue(pdu, (byte)0xC0, SmsCbMessage.GEOGRAPHICAL_SCOPE_CELL_WIDE);
     }
 
