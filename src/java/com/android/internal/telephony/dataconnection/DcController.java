@@ -18,10 +18,8 @@ package com.android.internal.telephony.dataconnection;
 
 import android.content.Context;
 import android.hardware.radio.V1_4.DataConnActiveStatus;
-import android.net.INetworkPolicyListener;
 import android.net.LinkAddress;
 import android.net.LinkProperties.CompareResult;
-import android.net.NetworkPolicyManager;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -69,7 +67,6 @@ public class DcController extends StateMachine {
     private DccDefaultState mDccDefaultState = new DccDefaultState();
 
     final TelephonyManager mTelephonyManager;
-    final NetworkPolicyManager mNetworkPolicyManager;
 
     private PhoneStateListener mPhoneStateListener;
 
@@ -107,8 +104,6 @@ public class DcController extends StateMachine {
 
         mTelephonyManager = (TelephonyManager) phone.getContext()
                 .getSystemService(Context.TELEPHONY_SERVICE);
-        mNetworkPolicyManager = (NetworkPolicyManager) phone.getContext()
-                .getSystemService(Context.NETWORK_POLICY_SERVICE);
 
         mDcTesterDeactivateAll = (Build.IS_DEBUGGABLE)
                 ? new DcTesterDeactivateAll(mPhone, DcController.this, getHandler())
@@ -173,21 +168,6 @@ public class DcController extends StateMachine {
         return mExecutingCarrierChange;
     }
 
-    private final INetworkPolicyListener mListener = new NetworkPolicyManager.Listener() {
-        @Override
-        public void onSubscriptionOverride(int subId, int overrideMask, int overrideValue) {
-            if (mPhone == null || mPhone.getSubId() != subId) return;
-
-            final HashMap<Integer, DataConnection> dcListActiveByCid;
-            synchronized (mDcListAll) {
-                dcListActiveByCid = new HashMap<>(mDcListActiveByCid);
-            }
-            for (DataConnection dc : dcListActiveByCid.values()) {
-                dc.onSubscriptionOverride(overrideMask, overrideValue);
-            }
-        }
-    };
-
     private class DccDefaultState extends State {
         @Override
         public void enter() {
@@ -199,10 +179,6 @@ public class DcController extends StateMachine {
 
             mDataServiceManager.registerForDataCallListChanged(getHandler(),
                     DataConnection.EVENT_DATA_STATE_CHANGED);
-
-            if (mNetworkPolicyManager != null) {
-                mNetworkPolicyManager.registerListener(mListener);
-            }
         }
 
         @Override
@@ -215,9 +191,6 @@ public class DcController extends StateMachine {
 
             if (mDcTesterDeactivateAll != null) {
                 mDcTesterDeactivateAll.dispose();
-            }
-            if (mNetworkPolicyManager != null) {
-                mNetworkPolicyManager.unregisterListener(mListener);
             }
         }
 
