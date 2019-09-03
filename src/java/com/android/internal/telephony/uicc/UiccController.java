@@ -519,7 +519,7 @@ public class UiccController extends Handler {
 
     private Integer getCiIndex(Message msg) {
         AsyncResult ar;
-        Integer index = new Integer(PhoneConstants.DEFAULT_CARD_INDEX);
+        Integer index = new Integer(PhoneConstants.DEFAULT_SLOT_INDEX);
 
         /*
          * The events can be come in two ways. By explicitly sending it using
