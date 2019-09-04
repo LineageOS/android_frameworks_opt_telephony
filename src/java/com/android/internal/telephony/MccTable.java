@@ -30,9 +30,6 @@ import android.util.Slog;
 import com.android.internal.app.LocaleStore;
 import com.android.internal.app.LocaleStore.LocaleInfo;
 
-import libcore.timezone.CountryTimeZones;
-import libcore.timezone.TimeZoneFinder;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -97,9 +94,8 @@ public final class MccTable {
             return null;
         }
         final String lowerCaseCountryCode = entry.mIso;
-        CountryTimeZones countryTimeZones =
-                TimeZoneFinder.getInstance().lookupCountryTimeZones(lowerCaseCountryCode);
-        return countryTimeZones == null ? null : countryTimeZones.getDefaultTimeZoneId();
+        TimeZoneLookupHelper timeZoneLookupHelper = new TimeZoneLookupHelper();
+        return timeZoneLookupHelper.lookupDefaultTimeZoneIdByCountry(lowerCaseCountryCode);
     }
 
     /**
