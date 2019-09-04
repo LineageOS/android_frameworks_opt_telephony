@@ -300,7 +300,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         InboundSmsTracker tracker = TelephonyComponentFactory.getInstance()
                 .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(
                 userData, timestamp, destinationPort, true, address, dispAddr, referenceNumber,
-                segment, totalSegments, true, HexDump.toHexString(userData));
+                segment, totalSegments, true, HexDump.toHexString(userData), false /* isClass0 */);
 
         // de-duping is done only for text messages
         return addTrackerToRawTableAndSendMessage(tracker, false /* don't de-dup */);

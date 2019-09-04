@@ -17,8 +17,8 @@
 package com.android.internal.telephony.gsm;
 
 import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED;
-
 import static android.telephony.SmsManager.SMS_CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE;
+
 import static com.android.internal.telephony.SmsUsageMonitor.PREMIUM_SMS_PERMISSION_NEVER_ALLOW;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 

@@ -39,18 +39,22 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+@RunWith(AndroidJUnit4.class)
 public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private static final int VOICE_CALL_STARTED_EVENT = 0;
     private static final int VOICE_CALL_ENDED_EVENT = 1;
+    private static final int TEST_TIMEOUT = 5000;
     private String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
     /* Handler class initiated at the HandlerThread */
     private GsmCdmaCallTracker mCTUT;
@@ -232,11 +236,16 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
     }
 
-    @Test
+    /**
+     * Test that we can set up a ringing call. If a timeout occurs something probably went wrong.
+     */
+    @Test(timeout = 100)
     @SmallTest
-    @FlakyTest
-    @Ignore
     public void testMTCallRinging() {
+        setupRingingCall();
+    }
+
+    private void setupRingingCall() {
         /* Mock there is a MT call mRinging call and try to accept this MT call */
         /* if we got a active state followed by another MT call-> move to background call */
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -245,17 +254,22 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
         logd("MT call Ringing");
         mSimulatedCommands.triggerRing(mDialString);
-        waitForMs(50);
+        // handle EVENT_CALL_STATE_CHANGE
+        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
+        // handle EVENT_POLL_CALLS_RESULT
+        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
         assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
         assertEquals(1, mCTUT.mRingingCall.getConnections().size());
     }
 
-    @Test
-    @SmallTest
-    @FlakyTest
-    @Ignore
+    /**
+     * Set up a ringing call, then test that we can accept the call. If a timeout occurs something
+     * probably went wrong.
+     */
+    @Test(timeout = 200) // longer timeout because we first need to setup a ringing call
+    @MediumTest
     public void testMTCallAccept() {
-        testMTCallRinging();
+        setupRingingCall();
         assertEquals(mCTUT.mForegroundCall.getConnections().size(),0);
         logd("accept the MT call");
         try{
@@ -264,20 +278,26 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        verify(mSimulatedCommandsVerifier).acceptCall(isA(Message.class));
         /* send to the RIL */
-        TelephonyTestUtils.waitForMs(50);
+        verify(mSimulatedCommandsVerifier).acceptCall(isA(Message.class));
+        // handle EVENT_OPERATION_COMPLETE
+        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
+        // handle waitForHandlerAction
+        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
         assertEquals(GsmCdmaCall.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(1, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(0, mCTUT.mRingingCall.getConnections().size());
     }
 
-    @FlakyTest /* flakes 2.57% of the time */
-    @Test
-    @SmallTest
+    /**
+     * Set up a ringing call, then test that we can reject the call. If a timeout occurs something
+     * probably went wrong.
+     */
+    @Test(timeout = 200) // longer timeout because we first need to setup a ringing call
+    @MediumTest
     public void testMTCallReject() {
-        testMTCallRinging();
+        setupRingingCall();
         logd("MT call ringing and rejected ");
         /* get the reference of the connection before reject */
         Connection connection = mCTUT.mRingingCall.getConnections().get(0);
@@ -289,7 +309,10 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(50);
+        // handle EVENT_OPERATION_COMPLETE
+        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
+        // handle EVENT_POLL_CALLS_RESULT
+        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());

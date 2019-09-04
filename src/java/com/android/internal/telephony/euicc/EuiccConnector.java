@@ -253,7 +253,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public interface GetDefaultListCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the list has completed (though it may have failed). */
-        void onGetDefaultListComplete(GetDefaultDownloadableSubscriptionListResult result);
+        void onGetDefaultListComplete(int cardId,
+                GetDefaultDownloadableSubscriptionListResult result);
     }
 
     /** Callback class for {@link #getEuiccInfo}. */
@@ -703,7 +704,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                                 GetDownloadableSubscriptionMetadataResult result) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((GetMetadataCommandCallback) callback)
-                                                        .onGetMetadataComplete(slotId, result);
+                                                        .onGetMetadataComplete(cardId, result);
                                                 onCommandEnd(callback);
                                             });
                                         }
@@ -755,7 +756,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                         ) {
                                             sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
                                                 ((GetDefaultListCommandCallback) callback)
-                                                        .onGetDefaultListComplete(result);
+                                                        .onGetDefaultListComplete(cardId, result);
                                                 onCommandEnd(callback);
                                             });
                                         }

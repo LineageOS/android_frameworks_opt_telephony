@@ -376,6 +376,7 @@ public class ContextFixture implements TestFixture<Context> {
         public void sendOrderedBroadcast(Intent intent, String receiverPermission, Bundle options,
                 BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
                 String initialData, Bundle initialExtras) {
+            mLastBroadcastOptions = options;
             sendOrderedBroadcast(intent, receiverPermission, resultReceiver, scheduler,
                     initialCode, initialData, initialExtras);
         }
@@ -437,6 +438,7 @@ public class ContextFixture implements TestFixture<Context> {
                 BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
                 String initialData, Bundle initialExtras) {
             logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
+            mLastBroadcastOptions = options;
             sendBroadcast(intent);
             if (resultReceiver != null) {
                 synchronized (mOrderedBroadcastReceivers) {
@@ -538,7 +540,7 @@ public class ContextFixture implements TestFixture<Context> {
             ArrayListMultimap.create();
     private final HashSet<String> mPermissionTable = new HashSet<>();
     private final HashSet<String> mSystemFeatures = new HashSet<>();
-
+    private Bundle mLastBroadcastOptions;
 
 
     // The application context is the most important object this class provides to the system
@@ -720,6 +722,10 @@ public class ContextFixture implements TestFixture<Context> {
 
     public void addSystemFeature(String feature) {
         mSystemFeatures.add(feature);
+    }
+
+    public Bundle getLastBroadcastOptions() {
+        return mLastBroadcastOptions;
     }
 
     private static void logd(String s) {

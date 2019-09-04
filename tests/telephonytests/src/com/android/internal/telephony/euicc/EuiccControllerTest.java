@@ -145,7 +145,8 @@ public class EuiccControllerTest extends TelephonyTest {
         @Override
         public void addResolutionIntent(
                 Intent extrasIntent, String resolutionAction, String callingPackage,
-                int resolvableErrors, boolean confirmationCodeRetried, EuiccOperation op) {
+                int resolvableErrors, boolean confirmationCodeRetried, EuiccOperation op,
+                int cardId) {
             mResolutionAction = resolutionAction;
             mOp = op;
         }
@@ -1200,7 +1201,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 EuiccConnector.GetDefaultListCommandCallback cb = invocation
                         .getArgument(2 /* resultCallBack */);
                 if (complete) {
-                    cb.onGetDefaultListComplete(result);
+                    cb.onGetDefaultListComplete(CARD_ID, result);
                 } else {
                     cb.onEuiccServiceUnavailable();
                 }

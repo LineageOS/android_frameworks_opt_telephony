@@ -1608,11 +1608,43 @@ message TelephonyEvent {
 
     // Group id level 1. Logged only if gid1 is configured from subscription
     // but its matching rule is unknown
-    optional string gid1 = 2;
+    optional string unknown_gid1 = 2;
 
     // MCC and MNC that map to this carrier. Logged only if mccmnc is configured
     // from subscription but its matching rule is unknown
-    optional string mccmnc = 3;
+    optional string unknown_mccmnc = 3;
+
+    // MCC and MNC from the subscription that map to this carrier.
+    optional string mccmnc = 4;
+
+    // Group id level 1 from the subscription that map to this carrier.
+    optional string gid1 = 5;
+
+    // Group id level 2 from the subscription that map to this carrier.
+    optional string gid2 = 6;
+
+    // spn from the subscription that map to this carrier.
+    optional string spn = 7;
+
+    // pnn from the subscription that map to this carrier.
+    optional string pnn = 8;
+
+    // iccid prefix from the subscription that map to this carrier.
+    // only log first 7 outof 20 bit of full iccid
+    optional string iccid_prefix = 9;
+
+    // imsi prefix from the subscription that map to this carrier.
+    // only log additional 2 bits other than MCC MNC.
+    optional string imsi_prefix = 10;
+
+    // Carrier Privilege Access Rule in hex string from the subscription.
+    // Sample values: 61ed377e85d386a8dfee6b864bd85b0bfaa5af88
+    repeated string privilege_access_rule = 11;
+
+    // The Access Point Name, corresponding to "apn" field returned by
+    // "content://telephony/carriers/preferapn" on device.
+    // Sample values: fast.t-mobile.com, internet. Note only log if this apn is not user edited.
+    optional string preferApn = 12;
   }
 
   // Time when event happened on device, in milliseconds since epoch
