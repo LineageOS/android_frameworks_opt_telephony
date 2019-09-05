@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
@@ -151,7 +149,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         logd(LOG_TAG + ":testSendPrefNetworkNotification()");
         Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mContext.sendBroadcast(intent);
-        waitForMs(300);
+        waitForLastHandlerAction(mCarrierServiceStateTrackerTestHandler.getThreadHandler());
 
         Map<Integer, CarrierServiceStateTracker.NotificationType> notificationTypeMap =
                 mCarrierSST.getNotificationTypeMap();
@@ -172,7 +170,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
                 RILConstants.NETWORK_MODE_LTE_CDMA_EVDO);
         mSpyCarrierSST.getContentObserver().dispatchChange(false,
                 Settings.Global.getUriFor(prefNetworkMode));
-        waitForMs(500);
+        waitForLastHandlerAction(mCarrierServiceStateTrackerTestHandler.getThreadHandler());
         verify(mNotificationManager, atLeast(1)).notify(
                 eq(CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG),
                 eq(SUB_ID), isA(Notification.class));
@@ -182,7 +180,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
                 RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA);
         mSpyCarrierSST.getContentObserver().dispatchChange(false,
                 Settings.Global.getUriFor(prefNetworkMode));
-        waitForMs(500);
+        waitForLastHandlerAction(mCarrierServiceStateTrackerTestHandler.getThreadHandler());
         verify(mNotificationManager, atLeast(1)).cancel(
                 CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG, SUB_ID);
     }
@@ -193,7 +191,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         logd(LOG_TAG + ":testSendEmergencyNetworkNotification()");
         Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mContext.sendBroadcast(intent);
-        waitForMs(300);
+        waitForLastHandlerAction(mCarrierServiceStateTrackerTestHandler.getThreadHandler());
 
         Map<Integer, CarrierServiceStateTracker.NotificationType> notificationTypeMap =
                 mCarrierSST.getNotificationTypeMap();
