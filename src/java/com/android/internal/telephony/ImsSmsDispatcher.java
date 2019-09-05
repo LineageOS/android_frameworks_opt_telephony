@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import android.content.Context;
+import android.os.Binder;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.provider.Telephony.Sms.Intents;
@@ -264,30 +265,36 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         PersistableBundle b;
         boolean eSmsCarrierSupport = false;
         if (!PhoneNumberUtils.isLocalEmergencyNumber(mContext, mPhone.getSubId(), destAddr)) {
-            Rlog.e(TAG, "Emergency Sms is not supported for: " + destAddr);
+            Rlog.e(TAG, "Emergency Sms is not supported for: " + Rlog.pii(TAG, destAddr));
             return false;
         }
-        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
-                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (configManager == null) {
-            Rlog.e(TAG, "configManager is null");
-            return false;
-        }
-        b = configManager.getConfigForSubId(getSubId());
-        if (b == null) {
-            Rlog.e(TAG, "PersistableBundle is null");
-            return false;
-        }
-        eSmsCarrierSupport = b.getBoolean(CarrierConfigManager.
-                                                      KEY_SUPPORT_EMERGENCY_SMS_OVER_IMS_BOOL);
-        boolean lteOrLimitedLte = isEmergencySmsPossible();
-        Rlog.i(TAG, "isEmergencySmsSupport emergencySmsCarrierSupport: "
-               + eSmsCarrierSupport + " destAddr: " + destAddr + " mIsImsServiceUp: "
-               + mIsImsServiceUp + " lteOrLimitedLte: " + lteOrLimitedLte);
 
-        return eSmsCarrierSupport && mIsImsServiceUp && lteOrLimitedLte;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                    .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager == null) {
+                Rlog.e(TAG, "configManager is null");
+                return false;
+            }
+            b = configManager.getConfigForSubId(getSubId());
+            if (b == null) {
+                Rlog.e(TAG, "PersistableBundle is null");
+                return false;
+            }
+            eSmsCarrierSupport = b.getBoolean(
+                    CarrierConfigManager.KEY_SUPPORT_EMERGENCY_SMS_OVER_IMS_BOOL);
+            boolean lteOrLimitedLte = isEmergencySmsPossible();
+            Rlog.i(TAG, "isEmergencySmsSupport emergencySmsCarrierSupport: "
+                    + eSmsCarrierSupport + " destAddr: " + Rlog.pii(TAG, destAddr)
+                    + " mIsImsServiceUp: " + mIsImsServiceUp + " lteOrLimitedLte: "
+                    + lteOrLimitedLte);
+
+            return eSmsCarrierSupport && mIsImsServiceUp && lteOrLimitedLte;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
-
 
     public boolean isAvailable() {
         synchronized (mLock) {

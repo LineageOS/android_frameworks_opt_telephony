@@ -24,6 +24,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.net.NetworkFactory;
 import android.net.NetworkInfo;
 import android.net.NetworkMisc;
 import android.net.NetworkRequest;
@@ -310,11 +311,14 @@ public class ConnectivityServiceMock {
         public final String name;
         public final Messenger messenger;
         public final AsyncChannel asyncChannel;
+        public final int factorySerialNumber;
 
-        public NetworkFactoryInfo(String name, Messenger messenger, AsyncChannel asyncChannel) {
+        NetworkFactoryInfo(String name, Messenger messenger, AsyncChannel asyncChannel,
+                int factorySerialNumber) {
             this.name = name;
             this.messenger = messenger;
             this.asyncChannel = asyncChannel;
+            this.factorySerialNumber = factorySerialNumber;
         }
     }
 
@@ -416,9 +420,11 @@ public class ConnectivityServiceMock {
                 0, networkRequest));
     }
 
-    public void registerNetworkFactory(Messenger messenger, String name) {
-        NetworkFactoryInfo nfi = new NetworkFactoryInfo(name, messenger, new AsyncChannel());
+    public int registerNetworkFactory(Messenger messenger, String name) {
+        NetworkFactoryInfo nfi = new NetworkFactoryInfo(name, messenger, new AsyncChannel(),
+                NetworkFactory.SerialNumber.nextSerialNumber());
         mHandler.sendMessage(mHandler.obtainMessage(EVENT_REGISTER_NETWORK_FACTORY, nfi));
+        return nfi.factorySerialNumber;
     }
 
     private void handleRegisterNetworkFactory(NetworkFactoryInfo nfi) {
@@ -442,7 +448,7 @@ public class ConnectivityServiceMock {
 
     public int registerNetworkAgent(Messenger messenger, NetworkInfo networkInfo,
             LinkProperties linkProperties, NetworkCapabilities networkCapabilities,
-            int currentScore, NetworkMisc networkMisc) {
+            int currentScore, NetworkMisc networkMisc, int factorySerialNumber) {
 //        final NetworkAgentInfo nai = new NetworkAgentInfo(messenger, new AsyncChannel(),
 //                new Network(reserveNetId()), new NetworkInfo(networkInfo), new LinkProperties(
 //                linkProperties), new NetworkCapabilities(networkCapabilities), currentScore,

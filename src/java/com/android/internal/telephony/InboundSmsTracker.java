@@ -41,6 +41,7 @@ public class InboundSmsTracker {
     private final boolean mIs3gpp2;
     private final boolean mIs3gpp2WapPdu;
     private final String mMessageBody;
+    private final boolean mIsClass0;
 
     // Fields for concatenating multi-part SMS messages
     private final String mAddress;
@@ -103,7 +104,8 @@ public class InboundSmsTracker {
      *                       as originating address
      */
     public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
-            boolean is3gpp2WapPdu, String address, String displayAddress, String messageBody) {
+            boolean is3gpp2WapPdu, String address, String displayAddress, String messageBody,
+            boolean isClass0) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
@@ -112,6 +114,7 @@ public class InboundSmsTracker {
         mMessageBody = messageBody;
         mAddress = address;
         mDisplayAddress = displayAddress;
+        mIsClass0 = isClass0;
         // fields for multi-part SMS
         mReferenceNumber = -1;
         mSequenceNumber = getIndexOffset();     // 0 or 1, depending on type
@@ -139,13 +142,14 @@ public class InboundSmsTracker {
      */
     public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
             String address, String displayAddress, int referenceNumber, int sequenceNumber,
-            int messageCount, boolean is3gpp2WapPdu, String messageBody) {
+            int messageCount, boolean is3gpp2WapPdu, String messageBody, boolean isClass0) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
         mIs3gpp2 = is3gpp2;
         mIs3gpp2WapPdu = is3gpp2WapPdu;
         mMessageBody = messageBody;
+        mIsClass0 = isClass0;
         // fields used for check blocking message
         mDisplayAddress = displayAddress;
         // fields for multi-part SMS
@@ -162,6 +166,9 @@ public class InboundSmsTracker {
      */
     public InboundSmsTracker(Cursor cursor, boolean isCurrentFormat3gpp2) {
         mPdu = HexDump.hexStringToByteArray(cursor.getString(InboundSmsHandler.PDU_COLUMN));
+
+        // TODO: add a column to raw db to store this
+        mIsClass0 = false;
 
         if (cursor.isNull(InboundSmsHandler.DESTINATION_PORT_COLUMN)) {
             mDestPort = -1;
@@ -305,6 +312,10 @@ public class InboundSmsTracker {
 
     public boolean is3gpp2() {
         return mIs3gpp2;
+    }
+
+    public boolean isClass0() {
+        return mIsClass0;
     }
 
     @UnsupportedAppUsage
