@@ -22,7 +22,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -858,6 +860,65 @@ public class EuiccCardTest extends TelephonyTest {
         verifyStoreData(channel, "8803040506"); // ES8+.StoreMetadata
     }
 
+    @Test
+    public void testLoadBoundProfilePackage_NoProfileElements() {
+        int channel = mockLogicalChannelResponses_sgp22v210();
+
+        ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
+        mEuiccCard.loadBoundProfilePackage(
+                Asn1Node.newBuilder(0xBF36)
+                        .addChild(Asn1Node.newBuilder(0xBF23))
+                        .addChild(Asn1Node.newBuilder(0xA0)
+                                .addChildAsBytes(0x87, new byte[] {1, 2, 3}))
+                        .addChild(Asn1Node.newBuilder(0xA1)
+                                .addChildAsBytes(0x88, new byte[] {4, 5, 6}))
+                        .addChild(Asn1Node.newBuilder(0xA2))
+                        // No children
+                        .addChild(Asn1Node.newBuilder(0xA3))
+                        .build().toBytes(),
+                resultCaptor, mHandler);
+        resultCaptor.await();
+
+        EuiccCardException e = (EuiccCardException) resultCaptor.exception;
+        assertEquals("No profile elements in BPP", e.getCause().getMessage());
+        verify(mMockCi, never())
+                .iccTransmitApduLogicalChannel(
+                        eq(channel), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), any(),
+                        any());
+    }
+
+    @Test
+    public void testLoadBoundProfilePackage_UnrecognizedTag() {
+        int channel = mockLogicalChannelResponses_sgp22v210();
+
+        ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
+        mEuiccCard.loadBoundProfilePackage(
+                Asn1Node.newBuilder(0xBF36)
+                        .addChild(Asn1Node.newBuilder(0xBF23))
+                        .addChild(Asn1Node.newBuilder(0xA0)
+                                .addChildAsBytes(0x87, new byte[] {1, 2, 3}))
+                        .addChild(Asn1Node.newBuilder(0xA1)
+                                .addChildAsBytes(0x88, new byte[] {4, 5, 6}))
+                        .addChild(Asn1Node.newBuilder(0xA2))
+                        .addChild(Asn1Node.newBuilder(0xA3)
+                                .addChildAsBytes(0x86, new byte[] {7, 8, 9})
+                                .addChildAsBytes(0x86, new byte[] {0xA, 0xB, 0xC}))
+                        // Unrecognized tag
+                        .addChild(Asn1Node.newBuilder(0xA4))
+                        .build().toBytes(),
+                resultCaptor, mHandler);
+        resultCaptor.await();
+
+        EuiccCardException e = (EuiccCardException) resultCaptor.exception;
+        assertEquals(
+                "Actual BPP length (33) does not match segmented length (31), this must be due to a"
+                        + " malformed BPP",
+                e.getCause().getMessage());
+        verify(mMockCi, never())
+                .iccTransmitApduLogicalChannel(
+                        eq(channel), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), any(),
+                        any());
+    }
 
     @Test
     public void testCancelSession() {
@@ -1120,6 +1181,14 @@ public class EuiccCardTest extends TelephonyTest {
     private int mockLogicalChannelResponses(Object... responses) {
         int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi,
                 "E00582030200009000");
+        LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, responses);
+        LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel);
+        return channel;
+    }
+
+    private int mockLogicalChannelResponses_sgp22v210(Object... responses) {
+        int channel = LogicalChannelMocker.mockOpenLogicalChannelResponse(mMockCi,
+                "E00582030201009000");
         LogicalChannelMocker.mockSendToLogicalChannel(mMockCi, channel, responses);
         LogicalChannelMocker.mockCloseLogicalChannel(mMockCi, channel);
         return channel;
