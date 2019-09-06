@@ -58,12 +58,12 @@ public class Menu implements Parcelable {
 
     private Menu(Parcel in) {
         title = in.readString();
-        titleIcon = in.readParcelable(null);
+        titleIcon = in.readParcelable(Bitmap.class.getClassLoader());
         // rebuild items list.
         items = new ArrayList<Item>();
         int size = in.readInt();
         for (int i=0; i<size; i++) {
-            Item item = in.readParcelable(null);
+            Item item = in.readParcelable(Item.class.getClassLoader());
             items.add(item);
         }
         defaultItem = in.readInt();
