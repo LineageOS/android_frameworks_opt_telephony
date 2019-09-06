@@ -31,6 +31,7 @@ import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
 import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
+import android.text.format.DateUtils;
 
 import com.android.internal.telephony.CbGeoUtils.Geometry;
 import com.android.internal.telephony.CellBroadcastHandler;
@@ -83,16 +84,23 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
      * Find the cell broadcast messages specify by the geo-fencing trigger message and perform a
      * geo-fencing check for these messages.
      * @param geoFencingTriggerMessage the trigger message
+     *
+     * @return {@code True} if geo-fencing is need for some cell broadcast message.
      */
-    private void handleGeoFencingTriggerMessage(GeoFencingTriggerMessage geoFencingTriggerMessage) {
+    private boolean handleGeoFencingTriggerMessage(
+            GeoFencingTriggerMessage geoFencingTriggerMessage) {
         final List<SmsCbMessage> cbMessages = new ArrayList<>();
         final List<Uri> cbMessageUris = new ArrayList<>();
+
+        // Only consider the cell broadcast received within 24 hours.
+        long lastReceivedTime = System.currentTimeMillis() - DateUtils.DAY_IN_MILLIS;
 
         // Find the cell broadcast message identify by the message identifier and serial number
         // and is not broadcasted.
         String where = CellBroadcasts.SERVICE_CATEGORY + "=? AND "
                 + CellBroadcasts.SERIAL_NUMBER + "=? AND "
-                + CellBroadcasts.MESSAGE_BROADCASTED + "=?";
+                + CellBroadcasts.MESSAGE_BROADCASTED + "=? AND "
+                + CellBroadcasts.RECEIVED_TIME + ">?";
 
         ContentResolver resolver = mContext.getContentResolver();
         for (CellBroadcastIdentity identity : geoFencingTriggerMessage.cbIdentifiers) {
@@ -100,7 +108,8 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                     CellBroadcasts.QUERY_COLUMNS_FWK,
                     where,
                     new String[] { Integer.toString(identity.messageIdentifier),
-                            Integer.toString(identity.serialNumber), MESSAGE_NOT_BROADCASTED},
+                            Integer.toString(identity.serialNumber), MESSAGE_NOT_BROADCASTED,
+                            Long.toString(lastReceivedTime) },
                     null /* sortOrder */)) {
                 if (cursor != null) {
                     while (cursor.moveToNext()) {
@@ -121,6 +130,14 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
             }
         }
 
+        // ATIS doesn't specify the geo fencing maximum wait time for the cell broadcasts specified
+        // in geo fencing trigger message. We will pick the largest maximum wait time among these
+        // cell broadcasts.
+        int maximumWaitTimeSec = 0;
+        for (SmsCbMessage msg : cbMessages) {
+            maximumWaitTimeSec = Math.max(maximumWaitTimeSec, msg.getMaximumWaitingTime());
+        }
+
         if (DBG) {
             logd("Geo-fencing trigger message = " + geoFencingTriggerMessage);
             for (SmsCbMessage msg : cbMessages) {
@@ -130,10 +147,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
 
         if (cbMessages.isEmpty()) {
             if (DBG) logd("No CellBroadcast message need to be broadcasted");
-
-            // Need to send this event to make the state machine back to Idle.
-            if (mReceiverCount.get() == 0) sendMessage(EVENT_BROADCAST_COMPLETE);
-            return;
+            return false;
         }
 
         requestLocationUpdate(location -> {
@@ -152,14 +166,15 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                     }
                 }
             }
-        });
+        }, maximumWaitTimeSec);
+        return true;
     }
 
     /**
      * Handle 3GPP-format Cell Broadcast messages sent from radio.
      *
      * @param message the message to process
-     * @return true if an ordered broadcast was sent; false on failure
+     * @return true if need to wait for geo-fencing or an ordered broadcast was sent.
      */
     @Override
     protected boolean handleSmsMessage(Message message) {
@@ -173,8 +188,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                 GeoFencingTriggerMessage triggerMessage =
                         GsmSmsCbMessage.createGeoFencingTriggerMessage(pdu);
                 if (triggerMessage != null) {
-                    handleGeoFencingTriggerMessage(triggerMessage);
-                    return true;
+                    return handleGeoFencingTriggerMessage(triggerMessage);
                 }
             } else {
                 SmsCbMessage cbMessage = handleGsmBroadcastSms(header, ar);
