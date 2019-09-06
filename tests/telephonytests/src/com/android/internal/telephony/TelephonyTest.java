@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.anyBoolean;
@@ -706,6 +707,32 @@ public abstract class TelephonyTest {
                 // do nothing
             }
         }
+    }
+
+    /**
+     * Wait for up to 1 second for the handler message queue to clear.
+     */
+    protected final void waitForLastHandlerAction(Handler h) {
+        CountDownLatch lock = new CountDownLatch(1);
+        // Allow the handler to start work on stuff.
+        h.postDelayed(lock::countDown, 100);
+        int timeoutCount = 0;
+        while (timeoutCount < 5) {
+            try {
+                if (lock.await(200, TimeUnit.MILLISECONDS)) {
+                    // no messages in queue, stop waiting.
+                    if (!h.hasMessagesOrCallbacks()) break;
+                    lock = new CountDownLatch(1);
+                    // Delay to allow the handler thread to start work on stuff.
+                    h.postDelayed(lock::countDown, 100);
+                }
+
+            } catch (InterruptedException e) {
+                // do nothing
+            }
+            timeoutCount++;
+        }
+        assertTrue("Handler was not empty before timeout elapsed", timeoutCount < 5);
     }
 
     protected final void waitForHandlerActionDelayed(Handler h, long timeoutMillis, long delayMs) {
