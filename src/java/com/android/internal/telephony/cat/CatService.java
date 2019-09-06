@@ -543,7 +543,7 @@ public class CatService extends Handler implements AppInterface {
 
     private void broadcastCatCmdIntent(CatCmdMessage cmdMsg) {
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
-        intent.putExtra("STK CMD", cmdMsg);
+        intent.putExtra( "STK CMD", cmdMsg);
         intent.putExtra("SLOT_ID", mSlotId);
         intent.setComponent(AppInterface.getDefaultSTKApplication());
         CatLog.d(this, "Sending CmdMsg: " + cmdMsg+ " on slotid:" + mSlotId);

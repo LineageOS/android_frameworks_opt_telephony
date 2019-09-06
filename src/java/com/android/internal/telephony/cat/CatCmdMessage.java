@@ -138,10 +138,10 @@ public class CatCmdMessage implements Parcelable {
     }
 
     public CatCmdMessage(Parcel in) {
-        mCmdDet = in.readParcelable(null);
-        mTextMsg = in.readParcelable(null);
-        mMenu = in.readParcelable(null);
-        mInput = in.readParcelable(null);
+        mCmdDet = in.readParcelable(CommandDetails.class.getClassLoader());
+        mTextMsg = in.readParcelable(TextMessage.class.getClassLoader());
+        mMenu = in.readParcelable(Menu.class.getClassLoader());
+        mInput = in.readParcelable(Input.class.getClassLoader());
         mLoadIconFailed = (in.readByte() == 1);
         switch (getCmdType()) {
         case LAUNCH_BROWSER:
@@ -150,12 +150,12 @@ public class CatCmdMessage implements Parcelable {
             mBrowserSettings.mode = LaunchBrowserMode.values()[in.readInt()];
             break;
         case PLAY_TONE:
-            mToneSettings = in.readParcelable(null);
+            mToneSettings = in.readParcelable(ToneSettings.class.getClassLoader());
             break;
         case SET_UP_CALL:
             mCallSettings = new CallSettings();
-            mCallSettings.confirmMsg = in.readParcelable(null);
-            mCallSettings.callMsg = in.readParcelable(null);
+            mCallSettings.confirmMsg = in.readParcelable(TextMessage.class.getClassLoader());
+            mCallSettings.callMsg = in.readParcelable(TextMessage.class.getClassLoader());
             break;
         case SET_UP_EVENT_LIST:
             mSetupEventListSettings = new SetupEventListSettings();
