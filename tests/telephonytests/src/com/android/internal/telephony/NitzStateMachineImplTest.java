@@ -111,7 +111,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
         // allZonesHaveSameOffset == false, so we shouldn't pick an arbitrary zone.
         CountryResult expectedCountryLookupResult = new CountryResult(
-                "America/New_York", false /* allZonesHaveSameOffset */,
+                "America/New_York",
+                true /* multipleZonesInCountry */,
+                false /* allZonesHaveSameOffset */,
                 UNIQUE_US_ZONE_SCENARIO.getInitialSystemClockMillis());
         CountryResult actualCountryLookupResult =
                 mRealTimeZoneLookupHelper.lookupByCountry(
@@ -135,7 +137,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // allZonesHaveSameOffset == true (not only that, there is only one zone), so we can pick
         // the zone knowing only the country.
         CountryResult expectedCountryLookupResult = new CountryResult(
-                "Europe/London", true /* allZonesHaveSameOffset */,
+                "Europe/London",
+                false /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */,
                 UNITED_KINGDOM_SCENARIO.getInitialSystemClockMillis());
         CountryResult actualCountryLookupResult =
                 mRealTimeZoneLookupHelper.lookupByCountry(
