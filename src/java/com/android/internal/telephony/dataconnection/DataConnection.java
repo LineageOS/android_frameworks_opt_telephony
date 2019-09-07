@@ -81,6 +81,7 @@ import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkTyp
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.CollectionUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -691,19 +692,26 @@ public class DataConnection extends StateMachine {
                 return DataFailCause.HANDOVER_FAILED;
             }
 
-            linkProperties = dc.getLinkProperties();
             // Preserve the potential network agent from the source data connection. The ownership
             // is not transferred at this moment.
-            mHandoverLocalLog.log("Handover started. Preserved the agent.");
             mHandoverSourceNetworkAgent = dc.getNetworkAgent();
-            log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
-            dc.setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
-            if (linkProperties == null) {
+            if (mHandoverSourceNetworkAgent == null) {
+                loge("Cannot get network agent from the source dc " + dc.getName());
+                return DataFailCause.HANDOVER_FAILED;
+            }
+
+            linkProperties = dc.getLinkProperties();
+            if (linkProperties == null || CollectionUtils.isEmpty(
+                    linkProperties.getLinkAddresses())) {
                 loge("connect: Can't find link properties of handover data connection. dc="
                         + dc);
                 return DataFailCause.HANDOVER_FAILED;
             }
 
+            mHandoverLocalLog.log("Handover started. Preserved the agent.");
+            log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
+
+            dc.setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
             reason = DataService.REQUEST_REASON_HANDOVER;
         }
 
@@ -1700,7 +1708,7 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
             if (mHandoverState == HANDOVER_STATE_BEING_TRANSFERRED) {
-                mHandoverState = HANDOVER_STATE_COMPLETED;
+                setHandoverState(HANDOVER_STATE_COMPLETED);
             }
 
             // Check for dangling agent. Ideally the handover source agent should be null if
@@ -1713,7 +1721,8 @@ public class DataConnection extends StateMachine {
                     // If the source data connection still owns this agent, then just reset the
                     // handover state back to idle because handover is already failed.
                     mHandoverLocalLog.log(
-                            "Handover failed. Reset the source dc state to idle");
+                            "Handover failed. Reset the source dc " + sourceDc.getName()
+                                    + " state to idle");
                     sourceDc.setHandoverState(HANDOVER_STATE_IDLE);
                 } else {
                     // The agent is now a dangling agent. No data connection owns this agent.
@@ -1722,7 +1731,17 @@ public class DataConnection extends StateMachine {
                             "Handover failed and dangling agent found.");
                     mHandoverSourceNetworkAgent.acquireOwnership(
                             DataConnection.this, mTransportType);
-                    mHandoverSourceNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
+                    NetworkInfo networkInfo = mHandoverSourceNetworkAgent.getNetworkInfo();
+                    if (networkInfo != null) {
+                        networkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
+                                "dangling clean up", networkInfo.getExtraInfo());
+                        mHandoverSourceNetworkAgent.sendNetworkInfo(networkInfo,
+                                DataConnection.this);
+                    } else {
+                        String str = "Failed to get network info.";
+                        loge(str);
+                        mHandoverLocalLog.log(str);
+                    }
                     mHandoverSourceNetworkAgent.releaseOwnership(DataConnection.this);
                 }
                 mHandoverSourceNetworkAgent = null;
@@ -2009,7 +2028,8 @@ public class DataConnection extends StateMachine {
                 }
 
                 if (mHandoverSourceNetworkAgent != null) {
-                    String logStr = "Transfer network agent successfully.";
+                    String logStr = "Transfer network agent " + mHandoverSourceNetworkAgent.getTag()
+                            + " successfully.";
                     log(logStr);
                     mHandoverLocalLog.log(logStr);
                     mNetworkAgent = mHandoverSourceNetworkAgent;
@@ -2643,9 +2663,11 @@ public class DataConnection extends StateMachine {
     }
 
     void setHandoverState(@HandoverState int state) {
-        mHandoverLocalLog.log("State changed from " + handoverStateToString(mHandoverState)
-                + " to " + handoverStateToString(state));
-        mHandoverState = state;
+        if (mHandoverState != state) {
+            mHandoverLocalLog.log("State changed from " + handoverStateToString(mHandoverState)
+                    + " to " + handoverStateToString(state));
+            mHandoverState = state;
+        }
     }
 
     /**
