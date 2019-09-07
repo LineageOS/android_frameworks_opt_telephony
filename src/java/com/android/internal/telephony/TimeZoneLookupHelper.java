@@ -97,15 +97,26 @@ public class TimeZoneLookupHelper {
         public final String zoneId;
 
         /**
-         * True if all the time zones in the country have the same offset at {@link #whenMillis}.
+         * True if the country has multiple effective zones to choose from at {@link #whenMillis}.
+         */
+        public final boolean multipleZonesInCountry;
+
+        /**
+         * True if all the effective time zones in the country have the same offset at
+         * {@link #whenMillis}.
          */
         public final boolean allZonesHaveSameOffset;
 
-        /** The time associated with {@link #allZonesHaveSameOffset}. */
+        /**
+         * The time associated with {@link #allZonesHaveSameOffset} and
+         * {@link #multipleZonesInCountry}.
+         */
         public final long whenMillis;
 
-        public CountryResult(String zoneId, boolean allZonesHaveSameOffset, long whenMillis) {
+        public CountryResult(String zoneId, boolean multipleZonesInCountry,
+                boolean allZonesHaveSameOffset, long whenMillis) {
             this.zoneId = zoneId;
+            this.multipleZonesInCountry = multipleZonesInCountry;
             this.allZonesHaveSameOffset = allZonesHaveSameOffset;
             this.whenMillis = whenMillis;
         }
@@ -121,6 +132,9 @@ public class TimeZoneLookupHelper {
 
             CountryResult that = (CountryResult) o;
 
+            if (multipleZonesInCountry != that.multipleZonesInCountry) {
+                return false;
+            }
             if (allZonesHaveSameOffset != that.allZonesHaveSameOffset) {
                 return false;
             }
@@ -133,6 +147,7 @@ public class TimeZoneLookupHelper {
         @Override
         public int hashCode() {
             int result = zoneId.hashCode();
+            result = 31 * result + (multipleZonesInCountry ? 1 : 0);
             result = 31 * result + (allZonesHaveSameOffset ? 1 : 0);
             result = 31 * result + (int) (whenMillis ^ (whenMillis >>> 32));
             return result;
@@ -142,6 +157,7 @@ public class TimeZoneLookupHelper {
         public String toString() {
             return "CountryResult{"
                     + "zoneId='" + zoneId + '\''
+                    + ", multipleZonesInCountry=" + multipleZonesInCountry
                     + ", allZonesHaveSameOffset=" + allZonesHaveSameOffset
                     + ", whenMillis=" + whenMillis
                     + '}';
@@ -211,6 +227,7 @@ public class TimeZoneLookupHelper {
 
         return new CountryResult(
                 countryTimeZones.getDefaultTimeZoneId(),
+                countryTimeZones.getEffectiveTimeZoneMappingsAt(whenMillis).size() > 1,
                 countryTimeZones.isDefaultOkForCountryTimeZoneDetection(whenMillis),
                 whenMillis);
     }
