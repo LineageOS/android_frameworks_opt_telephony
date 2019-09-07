@@ -20,9 +20,11 @@ import android.icu.util.TimeZone;
 import android.text.TextUtils;
 
 import libcore.timezone.CountryTimeZones;
+import libcore.timezone.CountryTimeZones.TimeZoneMapping;
 import libcore.timezone.TimeZoneFinder;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -225,11 +227,55 @@ public class TimeZoneLookupHelper {
             return null;
         }
 
+        List<TimeZoneMapping> effectiveTimeZoneMappings =
+                countryTimeZones.getEffectiveTimeZoneMappingsAt(whenMillis);
+        boolean multipleZonesInCountry = effectiveTimeZoneMappings.size() > 1;
+        boolean defaultOkForCountryTimeZoneDetection = isDefaultOkForCountryTimeZoneDetection(
+                countryTimeZones.getDefaultTimeZone(), effectiveTimeZoneMappings, whenMillis);
         return new CountryResult(
-                countryTimeZones.getDefaultTimeZoneId(),
-                countryTimeZones.getEffectiveTimeZoneMappingsAt(whenMillis).size() > 1,
-                countryTimeZones.isDefaultOkForCountryTimeZoneDetection(whenMillis),
-                whenMillis);
+                countryTimeZones.getDefaultTimeZoneId(), multipleZonesInCountry,
+                defaultOkForCountryTimeZoneDetection, whenMillis);
+    }
+
+    /**
+     * Returns {@code true} if the default time zone for the country is either the only zone used or
+     * if it has the same offsets as all other zones used by the country <em>at the specified time
+     * </em> making the default equivalent to all other zones used by the country <em>at that time
+     * </em>.
+     */
+    private static boolean isDefaultOkForCountryTimeZoneDetection(
+            TimeZone countryDefault, List<TimeZoneMapping> timeZoneMappings, long whenMillis) {
+        if (timeZoneMappings.isEmpty()) {
+            // Should never happen unless there's been an error loading the data.
+            return false;
+        } else if (timeZoneMappings.size() == 1) {
+            // The default is the only zone so it's a good candidate.
+            return true;
+        } else {
+            if (countryDefault == null) {
+                return false;
+            }
+
+            String countryDefaultId = countryDefault.getID();
+            int countryDefaultOffset = countryDefault.getOffset(whenMillis);
+            for (TimeZoneMapping timeZoneMapping : timeZoneMappings) {
+                if (timeZoneMapping.timeZoneId.equals(countryDefaultId)) {
+                    continue;
+                }
+
+                TimeZone timeZone = timeZoneMapping.getTimeZone();
+                if (timeZone == null) {
+                    continue;
+                }
+
+                int candidateOffset = timeZone.getOffset(whenMillis);
+                if (countryDefaultOffset != candidateOffset) {
+                    // Multiple different offsets means the default should not be used.
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     /**
