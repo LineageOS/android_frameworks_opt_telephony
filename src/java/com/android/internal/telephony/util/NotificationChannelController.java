@@ -44,6 +44,11 @@ public class NotificationChannelController {
     public static final String CHANNEL_ID_SMS = "sms";
     public static final String CHANNEL_ID_VOICE_MAIL = "voiceMail";
     public static final String CHANNEL_ID_WFC = "wfc";
+    /**
+     * This channel is for sim related notifications similar as CHANNEL_ID_SIM except that this is
+     * high priority while CHANNEL_ID_SIM is low priority.
+     */
+    public static final String CHANNEL_ID_SIM_HIGH_PRIORITY = "simHighPriority";
 
     /** deprecated channel, replaced with @see #CHANNEL_ID_MOBILE_DATA_STATUS */
     private static final String CHANNEL_ID_MOBILE_DATA_ALERT_DEPRECATED = "mobileDataAlert";
@@ -95,6 +100,9 @@ public class NotificationChannelController {
                 new NotificationChannel(CHANNEL_ID_WFC,
                         context.getText(R.string.notification_channel_wfc),
                         NotificationManager.IMPORTANCE_LOW),
+                new NotificationChannel(CHANNEL_ID_SIM_HIGH_PRIORITY,
+                        context.getText(R.string.notification_channel_sim_high_prio),
+                        NotificationManager.IMPORTANCE_HIGH),
                 alertChannel, mobileDataStatusChannel,
                 simChannel, callforwardChannel));
 

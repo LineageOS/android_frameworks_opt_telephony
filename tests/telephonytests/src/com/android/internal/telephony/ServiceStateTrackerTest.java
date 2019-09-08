@@ -297,9 +297,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mBundle.putStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY,
                 CARRIER_CONFIG_PNN);
 
-        // Do not force display "No service" when sim is not ready
-        mContextFixture.putBooleanResource(
-                com.android.internal.R.bool.config_display_no_service_when_sim_unready, false);
+        // Do not force display "No service" when sim is not ready in any locales
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_display_no_service_when_sim_unready,
+                new String[0]);
 
         logd("ServiceStateTrackerTest -Setup!");
     }
@@ -2356,6 +2357,27 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isTrue();
         assertThat(b.getString(TelephonyIntents.EXTRA_PLMN)).isEqualTo(plmn);
         assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+    }
+
+    @Test
+    public void testShouldForceDisplayNoService_forceBasedOnLocale() {
+        // set up unaffected locale (US) and clear the resource
+        doReturn("us").when(mLocaleTracker).getCurrentCountry();
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_display_no_service_when_sim_unready,
+                new String[0]);
+        assertFalse(sst.shouldForceDisplayNoService());
+
+        // set up the resource to include Germany
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_display_no_service_when_sim_unready,
+                new String[]{"de"});
+        doReturn("us").when(mLocaleTracker).getCurrentCountry();
+        assertFalse(sst.shouldForceDisplayNoService());
+
+        // mock the locale to Germany
+        doReturn("de").when(mLocaleTracker).getCurrentCountry();
+        assertTrue(sst.shouldForceDisplayNoService());
     }
 
     private Bundle getExtrasFromLastSpnUpdateIntent() {

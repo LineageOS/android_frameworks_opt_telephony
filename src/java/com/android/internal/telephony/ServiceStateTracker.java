@@ -71,6 +71,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -553,6 +554,7 @@ public class ServiceStateTracker extends Handler {
     private String mPrlVersion;
     private boolean mIsMinInfoReady = false;
     private boolean mIsEriTextLoaded = false;
+    private String mEriText;
     @UnsupportedAppUsage
     private boolean mIsSubscriptionFromRuim = false;
     private CdmaSubscriptionSourceManager mCdmaSSM;
@@ -1822,7 +1824,7 @@ public class ServiceStateTracker extends Handler {
                  * data roaming status. If TSB58 roaming indicator is not in the
                  * carrier-specified list of ERIs for home system then set roaming.
                  */
-                final int dataRat = mNewSS.getRilDataRadioTechnology();
+                final int dataRat = getRilDataRadioTechnologyForWwan(mNewSS);
                 if (ServiceState.isCdma(dataRat)) {
                     final boolean isVoiceInService =
                             (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
@@ -2636,9 +2638,7 @@ public class ServiceStateTracker extends Handler {
                 showPlmn = true;
 
                 // Force display no service
-                final boolean forceDisplayNoService = mPhone.getContext().getResources().getBoolean(
-                        com.android.internal.R.bool.config_display_no_service_when_sim_unready)
-                        && !mIsSimReady;
+                final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
                 if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
                     // No service but emergency call allowed
                     plmn = Resources.getSystem().
@@ -2747,6 +2747,28 @@ public class ServiceStateTracker extends Handler {
                 .setShowPlmn(showPlmn)
                 .build());
         log("updateSpnDisplayLegacy-");
+    }
+
+    /**
+     * Checks whether force to display "no service" to the user based on the current country.
+     *
+     * This method should only be used when SIM is unready.
+     *
+     * @return {@code True} if "no service" should be displayed.
+     */
+    public boolean shouldForceDisplayNoService() {
+        String[] countriesWithNoService = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.config_display_no_service_when_sim_unready);
+        if (ArrayUtils.isEmpty(countriesWithNoService)) {
+            return false;
+        }
+        String currentCountry = mLocaleTracker.getCurrentCountry();
+        for (String country : countriesWithNoService) {
+            if (country.equalsIgnoreCase(currentCountry)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected void setPowerStateToDesired() {
@@ -3288,9 +3310,17 @@ public class ServiceStateTracker extends Handler {
             setNotification(CS_REJECT_CAUSE_ENABLED);
         }
 
-        if (hasChanged) {
+        String eriText = mPhone.getCdmaEriText();
+        boolean hasEriChanged = !TextUtils.equals(mEriText, eriText);
+        mEriText = eriText;
+        // Trigger updateSpnDisplay when
+        // 1. Service state is changed.
+        // 2. phone type is Cdma or CdmaLte and ERI text has changed.
+        if (hasChanged || (!mPhone.isPhoneTypeGsm() && hasEriChanged)) {
             updateSpnDisplay();
+        }
 
+        if (hasChanged) {
             tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlpha());
             String operatorNumeric = mSS.getOperatorNumeric();
 
@@ -5147,7 +5177,7 @@ public class ServiceStateTracker extends Handler {
         }
         final boolean isDataInService =
                 (currentServiceState.getDataRegState() == ServiceState.STATE_IN_SERVICE);
-        final int dataRegType = currentServiceState.getRilDataRadioTechnology();
+        final int dataRegType = getRilDataRadioTechnologyForWwan(currentServiceState);
         if (isDataInService) {
             if (!currentServiceState.getDataRoaming()) {
                 currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
@@ -5463,5 +5493,16 @@ public class ServiceStateTracker extends Handler {
             }
         }
         return operatorName;
+    }
+
+    @RilRadioTechnology
+    private static int getRilDataRadioTechnologyForWwan(ServiceState ss) {
+        NetworkRegistrationInfo regInfo = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (regInfo != null) {
+            networkType = regInfo.getAccessNetworkTechnology();
+        }
+        return ServiceState.networkTypeToRilRadioTechnology(networkType);
     }
 }
