@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony.euicc;
 
+import static android.telephony.euicc.EuiccCardManager.RESET_OPTION_DELETE_OPERATIONAL_PROFILES;
 import static android.telephony.euicc.EuiccManager.EUICC_OTA_STATUS_UNAVAILABLE;
 
 import static org.junit.Assert.assertEquals;
@@ -984,14 +985,43 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testEraseSubscriptions_error() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callEraseSubscriptions(true /* complete */, 42 /* result */);
-        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
-                42 /* detailedCode */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 42 /* detailedCode */);
     }
 
     @Test
     public void testEraseSubscriptions_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callEraseSubscriptions(true /* complete */, EuiccService.RESULT_OK);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
+        assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testEraseSubscriptionsWithOptions_noPrivileges() throws Exception {
+        setHasWriteEmbeddedPermission(false);
+        callEraseSubscriptionsWithOptions(false /* complete */, 0 /* result */);
+    }
+
+    @Test
+    public void testEraseSubscriptionsWithOptions_serviceUnavailable() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callEraseSubscriptionsWithOptions(false /* complete */, 0 /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector).eraseSubscriptionsWithOptions(anyInt(), anyInt(), any());
+    }
+
+    @Test
+    public void testEraseSubscriptionsWithOptions_error() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callEraseSubscriptionsWithOptions(true /* complete */, 42 /* result */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR, 42 /* detailedCode */);
+    }
+
+    @Test
+    public void testEraseSubscriptionsWithOptions_success() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callEraseSubscriptionsWithOptions(true /* complete */, EuiccService.RESULT_OK);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
         assertTrue(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
@@ -1316,6 +1346,25 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).eraseSubscriptions(anyInt(), any());
         mController.eraseSubscriptions(CARD_ID, resultCallback);
+    }
+
+    private void callEraseSubscriptionsWithOptions(final boolean complete, final int result) {
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Exception {
+                EuiccConnector.EraseCommandCallback cb = invocation
+                        .getArgument(2 /* resultCallback */);
+                if (complete) {
+                    cb.onEraseComplete(result);
+                } else {
+                    cb.onEuiccServiceUnavailable();
+                }
+                return null;
+            }
+        }).when(mMockConnector).eraseSubscriptionsWithOptions(anyInt(), anyInt(), any());
+        mController.eraseSubscriptionsWithOptions(CARD_ID,
+                RESET_OPTION_DELETE_OPERATIONAL_PROFILES, resultCallback);
     }
 
     private void callRetainSubscriptionsForFactoryReset(final boolean complete, final int result) {
