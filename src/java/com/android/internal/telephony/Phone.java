@@ -28,7 +28,6 @@ import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkStats;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -41,7 +40,6 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
@@ -565,23 +563,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
-        }
-
-        // The locale from the "ro.carrier" system property or R.array.carrier_properties.
-        // This will be overwritten by the Locale from the SIM language settings (EF-PL, EF-LI)
-        // if applicable.
-        final Locale carrierLocale = getLocaleFromCarrierProperties(mContext);
-        if (carrierLocale != null && !TextUtils.isEmpty(carrierLocale.getCountry())) {
-            final String country = carrierLocale.getCountry();
-            try {
-                Settings.Global.getInt(mContext.getContentResolver(),
-                        Settings.Global.WIFI_COUNTRY_CODE);
-            } catch (Settings.SettingNotFoundException e) {
-                // note this is not persisting
-                WifiManager wM = (WifiManager)
-                        mContext.getSystemService(Context.WIFI_SERVICE);
-                wM.setCountryCode(country);
-            }
         }
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
@@ -1716,14 +1697,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Set the properties by matching the carrier string in
      * a string-array resource
      */
-    private static Locale getLocaleFromCarrierProperties(Context ctx) {
+    @Nullable Locale getLocaleFromCarrierProperties() {
         String carrier = SystemProperties.get("ro.carrier");
 
         if (null == carrier || 0 == carrier.length() || "unknown".equals(carrier)) {
             return null;
         }
 
-        CharSequence[] carrierLocales = ctx.getResources().getTextArray(R.array.carrier_properties);
+        CharSequence[] carrierLocales = mContext.getResources().getTextArray(
+                R.array.carrier_properties);
 
         for (int i = 0; i < carrierLocales.length; i+=3) {
             String c = carrierLocales[i].toString();
@@ -3900,7 +3882,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return new Locale(records.getSimLanguage());
         }
 
-        return getLocaleFromCarrierProperties(mContext);
+        return getLocaleFromCarrierProperties();
     }
 
     public void updateDataConnectionTracker() {
