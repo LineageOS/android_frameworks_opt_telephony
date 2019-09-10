@@ -92,14 +92,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
         replaceInstance(MultiSimSettingController.class, "sInstance", null,
                 mMultiSimSettingControllerMock);
 
-        SubscriptionController.init(mContext, null);
-        mSubscriptionControllerUT = SubscriptionController.getInstance();
+        mSubscriptionControllerUT = SubscriptionController.init(mContext);
         mCallingPackage = mContext.getOpPackageName();
 
         doReturn(1).when(mProxyController).getMaxRafSupported();
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[]{5});
 
-        mSubscriptionControllerUT.getInstance().updatePhonesAvailability(new Phone[]{mPhone});
+        mSubscriptionControllerUT.updatePhonesAvailability(new Phone[] {mPhone});
     }
 
     @After
