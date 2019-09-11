@@ -27,6 +27,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -77,6 +78,31 @@ public class LocaleTracker extends Handler {
     /** Event to fire if the operator from ServiceState is considered truly lost */
     private static final int EVENT_OPERATOR_LOST = 6;
 
+    /** Event to override the current locale */
+    private static final int EVENT_OVERRIDE_LOCALE = 7;
+
+    /**
+     * The broadcast intent action to override the current country for testing purposes
+     *
+     * <p> This broadcast is not effective on user build.
+     *
+     * <p>Example: To override the current country <code>
+     * adb shell am broadcast -a com.android.internal.telephony.action.COUNTRY_OVERRIDE
+     * --es country us </code>
+     *
+     * <p> To remove the override <code>
+     * adb shell am broadcast -a com.android.internal.telephony.action.COUNTRY_OVERRIDE
+     * --ez reset true</code>
+     */
+    private static final String ACTION_COUNTRY_OVERRIDE =
+            "com.android.internal.telephony.action.COUNTRY_OVERRIDE";
+
+    /** The extra for country override */
+    private static final String EXTRA_COUNTRY = "country";
+
+    /** The extra for country override reset */
+    private static final String EXTRA_RESET = "reset";
+
     // Todo: Read this from Settings.
     /** The minimum delay to get cell info from the modem */
     private static final long CELL_INFO_MIN_DELAY_MS = 2 * SECOND_IN_MILLIS;
@@ -121,6 +147,10 @@ public class LocaleTracker extends Handler {
     @Nullable
     private String mCurrentCountryIso;
 
+    /** The country override for testing purposes */
+    @Nullable
+    private String mCountryOverride;
+
     /** Current service state. Must be one of ServiceState.STATE_XXX. */
     private int mLastServiceState = ServiceState.STATE_POWER_OFF;
 
@@ -139,6 +169,13 @@ public class LocaleTracker extends Handler {
                             intent.getIntExtra(TelephonyManager.EXTRA_SIM_STATE,
                                     TelephonyManager.SIM_STATE_UNKNOWN), 0).sendToTarget();
                 }
+            } else if (ACTION_COUNTRY_OVERRIDE.equals(intent.getAction())) {
+                String countryOverride = intent.getStringExtra(EXTRA_COUNTRY);
+                boolean reset = intent.getBooleanExtra(EXTRA_RESET, false);
+                if (reset) countryOverride = null;
+                log("Received country override: " + countryOverride);
+                // countryOverride null to reset the override.
+                obtainMessage(EVENT_OVERRIDE_LOCALE, countryOverride).sendToTarget();
             }
         }
     };
@@ -182,6 +219,11 @@ public class LocaleTracker extends Handler {
                 updateTrackingStatus();
                 break;
 
+            case EVENT_OVERRIDE_LOCALE:
+                mCountryOverride = (String) msg.obj;
+                updateLocale();
+                break;
+
             default:
                 throw new IllegalStateException("Unexpected message arrives. msg = " + msg.what);
         }
@@ -202,6 +244,9 @@ public class LocaleTracker extends Handler {
 
         final IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
+        if (Build.IS_DEBUGGABLE) {
+            filter.addAction(ACTION_COUNTRY_OVERRIDE);
+        }
         mPhone.getContext().registerReceiver(mBroadcastReceiver, filter);
 
         mPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
@@ -427,6 +472,11 @@ public class LocaleTracker extends Handler {
         if (TextUtils.isEmpty(countryIso)) {
             mcc = getMccFromCellInfo();
             countryIso = MccTable.countryCodeForMcc(mcc);
+        }
+
+        if (mCountryOverride != null) {
+            countryIso = mCountryOverride;
+            log("Override current country to " + mCountryOverride);
         }
 
         log("updateLocale: mcc = " + mcc + ", country = " + countryIso);
