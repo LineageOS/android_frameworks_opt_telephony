@@ -174,7 +174,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    public static SubscriptionController init(Context c, CommandsInterface[] ci) {
+    public static SubscriptionController init(Context c) {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
                 sInstance = new SubscriptionController(c);
@@ -196,11 +196,12 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     protected SubscriptionController(Context c) {
-        init(c);
+        internalInit(c);
         migrateImsSettings();
     }
 
-    protected void init(Context c) {
+    protected void internalInit(Context c) {
+
         mContext = c;
         mTelephonyManager = TelephonyManager.from(mContext);
 
