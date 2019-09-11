@@ -378,7 +378,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         switch(rr.mRequest) {
             case RIL_REQUEST_GET_ACTIVITY_INFO:
                 timeoutResponse = new ModemActivityInfo(
-                        0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS], 0, 0);
+                        0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS], 0);
                 break;
         };
         return timeoutResponse;
