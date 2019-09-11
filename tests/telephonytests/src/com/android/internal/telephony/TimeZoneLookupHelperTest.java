@@ -52,7 +52,7 @@ public class TimeZoneLookupHelperTest {
     }
 
     @Test
-    public void testLookupByNitzdByNitz() {
+    public void testLookupByNitzByNitz() {
         // Historical dates are used to avoid the test breaking due to data changes.
         // However, algorithm updates may change the exact time zone returned, though it shouldn't
         // ever be a less exact match.
@@ -215,7 +215,7 @@ public class TimeZoneLookupHelperTest {
         String summerTimeNitzString = "15/06/20,01:02:03+8"; // 2015-06-20 01:02:03 UTC, UTC+2
         String winterTimeNitzString = "15/01/20,01:02:03+4"; // 2015-01-20 01:02:03 UTC, UTC+1
 
-        // Summer, known DST state (DST == true).
+        // Summer, known & correct DST state (DST == true).
         {
             String summerTimeNitzStringWithDst = summerTimeNitzString + ",1";
             NitzData nitzData = NitzData.parse(summerTimeNitzStringWithDst);
@@ -234,10 +234,20 @@ public class TimeZoneLookupHelperTest {
             assertOffsetResultZoneCountry(adIso, adSummerWithDstResult);
         }
 
-        // Winter, known DST state (DST == false)
+        // Summer, known & incorrect DST state (DST == false)
         {
-            String winterTimeNitzStringWithDst = winterTimeNitzString + ",0";
-            NitzData nitzData = NitzData.parse(winterTimeNitzStringWithDst);
+            String summerTimeNitzStringWithNoDst = summerTimeNitzString + ",0";
+            NitzData nitzData = NitzData.parse(summerTimeNitzStringWithNoDst);
+
+            OffsetResult adSummerWithNoDstResult =
+                    mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, adIso);
+            assertNull(adSummerWithNoDstResult);
+        }
+
+        // Winter, known & correct DST state (DST == false)
+        {
+            String winterTimeNitzStringWithNoDst = winterTimeNitzString + ",0";
+            NitzData nitzData = NitzData.parse(winterTimeNitzStringWithNoDst);
             int expectedUtcOffset = (int) TimeUnit.HOURS.toMillis(1);
             Integer expectedDstOffset = 0;
             assertEquals(expectedUtcOffset, nitzData.getLocalOffsetMillis());
@@ -252,10 +262,17 @@ public class TimeZoneLookupHelperTest {
                     adWinterWithDstResult);
         }
 
-        // Summer, unknown DST state
-        // For historic reasons, GuessZoneIdByNitzCountry() does not handle unknown DST state - it
-        // assumes that "unknown DST" means "no DST": This leads to no match when DST is actually in
-        // force.
+        // Winter, known & incorrect DST state (DST == true)
+        {
+            String winterTimeNitzStringWithDst = winterTimeNitzString + ",1";
+            NitzData nitzData = NitzData.parse(winterTimeNitzStringWithDst);
+
+            OffsetResult adWinterWithDstResult =
+                    mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, adIso);
+            assertNull(adWinterWithDstResult);
+        }
+
+        // Summer, unknown DST state (will match any DST state with the correct offset).
         {
             NitzData nitzData = NitzData.parse(summerTimeNitzString);
             int expectedUtcOffset = (int) TimeUnit.HOURS.toMillis(2);
@@ -265,10 +282,14 @@ public class TimeZoneLookupHelperTest {
 
             OffsetResult adSummerUnknownDstResult =
                     mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, adIso);
-            assertNull(adSummerUnknownDstResult);
+            OffsetResult expectedResult =
+                    new OffsetResult(zone("Europe/Andorra"), true /* isOnlyMatch */);
+            assertEquals(expectedResult, adSummerUnknownDstResult);
+            assertOffsetResultZoneOffsets(nhSummerTimeMillis, expectedUtcOffset, expectedDstOffset,
+                    adSummerUnknownDstResult);
         }
 
-        // Winter, unknown DST state
+        // Winter, unknown DST state (will match any DST state with the correct offset)
         {
             NitzData nitzData = NitzData.parse(winterTimeNitzString);
             int expectedUtcOffset = (int) TimeUnit.HOURS.toMillis(1);
