@@ -106,7 +106,7 @@ public class LocaleTracker extends Handler {
     /** Count of invalid cell info we've got so far. Will reset once we get a successful one */
     private int mFailCellInfoCount;
 
-    /** The ISO-3166 code of device's current country */
+    /** The ISO-3166 two-letter code of device's current country */
     @Nullable
     private String mCurrentCountryIso;
 
