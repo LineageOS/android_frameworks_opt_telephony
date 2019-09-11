@@ -172,8 +172,8 @@ public class PhoneFactory {
                 sUiccController = UiccController.make(context, sCommandsInterfaces);
 
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
-                SubscriptionController.init(context, sCommandsInterfaces);
-                MultiSimSettingController.init(context, SubscriptionController.getInstance());
+                SubscriptionController sc = SubscriptionController.init(context);
+                MultiSimSettingController.init(context, sc);
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
@@ -226,8 +226,7 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = new SubscriptionInfoUpdater(
                         BackgroundThread.get().getLooper(), context, sPhones, sCommandsInterfaces);
-                SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
-
+                sc.updatePhonesAvailability(sPhones);
 
                 // Only bring up IMS if the device supports having an IMS stack.
                 if (context.getPackageManager().hasSystemFeature(
@@ -257,7 +256,6 @@ public class PhoneFactory {
 
                 ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
                         ServiceManager.getService("telephony.registry"));
-                SubscriptionController sc = SubscriptionController.getInstance();
 
                 sSubscriptionMonitor = new SubscriptionMonitor(tr, sContext, sc, numPhones);
 

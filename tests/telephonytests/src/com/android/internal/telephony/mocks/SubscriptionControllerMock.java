@@ -26,7 +26,6 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.SubscriptionInfo;
 
-import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.ITelephonyRegistry;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -48,7 +47,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
     public static SubscriptionController init(Phone phone) {
         throw new RuntimeException("not implemented");
     }
-    public static SubscriptionController init(Context c, CommandsInterface[] ci) {
+    public static SubscriptionController init(Context c) {
         throw new RuntimeException("not implemented");
     }
     public static SubscriptionController getInstance() {
@@ -65,7 +64,7 @@ public class SubscriptionControllerMock extends SubscriptionController {
         }
     }
 
-    protected void init(Context c) {
+    protected void internalInit(Context c) {
         mContext = c;
     }
 
