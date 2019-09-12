@@ -2721,8 +2721,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             foregroundImsPhoneCall.merge(peerImsPhoneCall, ImsPhoneCall.State.ACTIVE);
 
+            final ImsPhoneConnection conn = findConnection(call);
             try {
-                final ImsPhoneConnection conn = findConnection(call);
                 log("onCallMerged: ImsPhoneConnection=" + conn);
                 log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
                 setVideoCallProvider(conn, call);
@@ -2749,6 +2749,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 log("onCallMerged :: Merge requested by existing conference.");
                 // Reset the flag.
                 call.resetIsMergeRequestedByConf(false);
+            }
+
+            // Notify completion of merge
+            if (conn != null) {
+                conn.handleMergeComplete();
             }
             logState();
         }
