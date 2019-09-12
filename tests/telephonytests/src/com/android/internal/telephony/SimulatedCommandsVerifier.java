@@ -1127,7 +1127,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void sendCDMAFeatureCode(String FeatureCode, Message response) {
+    public void sendCDMAFeatureCode(String featureCode, Message response) {
 
     }
 
@@ -1260,7 +1260,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void iccOpenLogicalChannel(String AID, int p2, Message response) {
+    public void iccOpenLogicalChannel(String aid, int p2, Message response) {
 
     }
 

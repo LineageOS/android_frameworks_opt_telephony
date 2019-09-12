@@ -263,7 +263,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         }
 
         NitzData newNitzData = nitzSignal.getValue();
-        boolean zeroOffsetNitz = newNitzData.getLocalOffsetMillis() == 0 && !newNitzData.isDst();
+        boolean zeroOffsetNitz = newNitzData.getLocalOffsetMillis() == 0;
         return zeroOffsetNitz && !countryUsesUtc(isoCountryCode, nitzSignal);
     }
 
