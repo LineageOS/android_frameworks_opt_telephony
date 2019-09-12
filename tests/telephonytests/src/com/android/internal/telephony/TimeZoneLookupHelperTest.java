@@ -27,14 +27,11 @@ import static org.junit.Assert.assertTrue;
 import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 
-import libcore.timezone.TimeZoneFinder;
-
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TimeZoneLookupHelperTest {
@@ -231,7 +228,6 @@ public class TimeZoneLookupHelperTest {
             assertEquals(expectedResult, adSummerWithDstResult);
             assertOffsetResultZoneOffsets(nhSummerTimeMillis, expectedUtcOffset, expectedDstOffset,
                     adSummerWithDstResult);
-            assertOffsetResultZoneCountry(adIso, adSummerWithDstResult);
         }
 
         // Summer, known & incorrect DST state (DST == false)
@@ -389,15 +385,6 @@ public class TimeZoneLookupHelperTest {
         assertTrue(mTimeZoneLookupHelper.countryUsesUtc("gb", NH_WINTER_TIME_MILLIS));
     }
 
-    private static void assertOffsetResultZoneCountry(
-            String isoCountryCode, OffsetResult lookupResult) {
-        String timeZoneId = lookupResult.getTimeZone().getID();
-        List<String> zoneIdsByCountry =
-                TimeZoneFinder.getInstance().lookupTimeZoneIdsByCountry(isoCountryCode);
-        assertTrue(timeZoneId + " must be used in " + isoCountryCode,
-                zoneIdsByCountry.contains(timeZoneId));
-    }
-
     /**
      * Assert the time zone in the OffsetResult has the expected properties at the specified time.
      */
@@ -436,5 +423,4 @@ public class TimeZoneLookupHelperTest {
     private static TimeZone zone(String zoneId) {
         return TimeZone.getFrozenTimeZone(zoneId);
     }
-
 }
