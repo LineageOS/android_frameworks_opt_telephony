@@ -20,15 +20,15 @@ import android.app.timedetector.PhoneTimeSuggestion;
 import android.content.Context;
 import android.os.PowerManager;
 import android.os.TimestampedValue;
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
+import android.timezone.CountryTimeZones.OffsetResult;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
-import com.android.internal.telephony.TimeZoneLookupHelper.OffsetResult;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
