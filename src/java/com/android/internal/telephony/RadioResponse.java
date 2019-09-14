@@ -2186,10 +2186,10 @@ public class RadioResponse extends IRadioResponse.Stub {
                 }
                 final int rxModeTimeMs = activityInfo.rxModeTimeMs;
                 ret = new ModemActivityInfo(SystemClock.elapsedRealtime(), sleepModeTimeMs,
-                        idleModeTimeMs, txModeTimeMs, rxModeTimeMs, 0);
+                        idleModeTimeMs, txModeTimeMs, rxModeTimeMs);
             } else {
                 ret = new ModemActivityInfo(0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS],
-                        0, 0);
+                        0);
                 responseInfo.error = RadioError.NONE;
             }
             sendMessageResponse(rr.mResult, ret);

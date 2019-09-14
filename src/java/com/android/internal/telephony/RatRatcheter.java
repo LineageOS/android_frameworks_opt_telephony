@@ -203,7 +203,7 @@ public class RatRatcheter {
             final CarrierConfigManager configManager = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configManager == null) return;
-            PersistableBundle b = configManager.getConfig();
+            PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
             if (b == null) return;
 
             // Reads an array of strings, eg:
