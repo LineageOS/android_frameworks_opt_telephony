@@ -136,6 +136,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mGsmSmsDispatcher = null;
         mGsmSmsDispatcherTestHandler.quit();
+        mGsmSmsDispatcherTestHandler.join();
         super.tearDown();
     }
 

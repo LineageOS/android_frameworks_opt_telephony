@@ -110,8 +110,9 @@ public class ApduSenderTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         mThread.quit();
+        mThread.join();
     }
 
     @Test

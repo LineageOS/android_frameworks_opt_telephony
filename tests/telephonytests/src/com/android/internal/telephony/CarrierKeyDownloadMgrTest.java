@@ -103,6 +103,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCarrierActionAgentHandler.quit();
+        mCarrierActionAgentHandler.join();
         super.tearDown();
     }
 

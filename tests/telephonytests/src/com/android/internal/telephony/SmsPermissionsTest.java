@@ -80,6 +80,7 @@ public class SmsPermissionsTest {
     @After
     public void tearDown() throws Exception {
         mHandlerThread.quit();
+        mHandlerThread.join();
     }
 
     @Test

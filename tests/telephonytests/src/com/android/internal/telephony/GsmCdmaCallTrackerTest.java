@@ -97,6 +97,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mCTUT = null;
         mGsmCdmaCTHandlerThread.quit();
+        mGsmCdmaCTHandlerThread.join();
         super.tearDown();
     }
 

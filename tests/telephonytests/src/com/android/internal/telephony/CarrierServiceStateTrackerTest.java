@@ -101,6 +101,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCarrierServiceStateTrackerTestHandler.quit();
+        mCarrierServiceStateTrackerTestHandler.join();
         super.tearDown();
     }
 

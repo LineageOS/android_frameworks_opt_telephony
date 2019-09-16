@@ -122,6 +122,7 @@ public class DcControllerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mDcControllerTestHandler.quit();
+        mDcControllerTestHandler.join();
         super.tearDown();
     }
 

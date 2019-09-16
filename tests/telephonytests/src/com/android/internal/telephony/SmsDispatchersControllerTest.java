@@ -84,6 +84,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mSmsDispatchersController = null;
         mImsSmsDispatcherTestHandler.quit();
+        mImsSmsDispatcherTestHandler.join();
         super.tearDown();
     }
 

@@ -173,6 +173,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         mCdmaInboundSmsHandler = null;
         mContentProvider.shutdown();
         mCdmaInboundSmsHandlerTestHandler.quit();
+        mCdmaInboundSmsHandlerTestHandler.join();
         super.tearDown();
     }
 
