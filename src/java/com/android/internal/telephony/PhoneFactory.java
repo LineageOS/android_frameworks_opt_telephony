@@ -138,7 +138,7 @@ public class PhoneFactory {
                     }
                 }
 
-                sPhoneNotifier = new DefaultPhoneNotifier();
+                sPhoneNotifier = new DefaultPhoneNotifier(context);
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
