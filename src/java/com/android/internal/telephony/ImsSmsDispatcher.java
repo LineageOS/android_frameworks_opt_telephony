@@ -151,12 +151,28 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         }
 
         @Override
-        public void onSmsStatusReportReceived(int token, int messageRef, String format, byte[] pdu)
+        public void onSmsStatusReportReceived(int token, String format, byte[] pdu)
                 throws RemoteException {
             Rlog.d(TAG, "Status report received.");
-            SmsTracker tracker = mTrackers.get(token);
+            android.telephony.SmsMessage message =
+                    android.telephony.SmsMessage.createFromPdu(pdu, format);
+            if (message == null || message.mWrappedSmsMessage == null) {
+                throw new RemoteException(
+                        "Status report received with a PDU that could not be parsed.");
+            }
+            int messageRef = message.mWrappedSmsMessage.mMessageRef;
+            SmsTracker tracker = null;
+            int key = 0;
+            for (Map.Entry<Integer, SmsTracker> entry : mTrackers.entrySet()) {
+                if (messageRef == ((SmsTracker) entry.getValue()).mMessageRef) {
+                    tracker = entry.getValue();
+                    key = entry.getKey();
+                    break;
+                }
+            }
+
             if (tracker == null) {
-                throw new RemoteException("Invalid token.");
+                throw new RemoteException("No tracker for messageRef " + messageRef);
             }
             Pair<Boolean, Boolean> result = mSmsDispatchersController.handleSmsStatusReport(
                     tracker, format, pdu);
@@ -173,7 +189,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         + e.getMessage());
             }
             if (result.second) {
-                mTrackers.remove(token);
+                mTrackers.remove(key);
             }
         }
 
