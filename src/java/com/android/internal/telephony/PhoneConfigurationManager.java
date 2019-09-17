@@ -299,7 +299,7 @@ public class PhoneConfigurationManager {
     }
 
     private void notifyCapabilityChanged() {
-        PhoneNotifier notifier = new DefaultPhoneNotifier();
+        PhoneNotifier notifier = new DefaultPhoneNotifier(mContext);
 
         notifier.notifyPhoneCapabilityChanged(mStaticCapability);
     }

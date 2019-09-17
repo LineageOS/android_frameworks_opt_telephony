@@ -262,12 +262,12 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     }
 
     @Override
-    public void notifyCallState(int state, String incomingNumber) {
+    public void notifyCallStateForAllSubs(int state, String incomingNumber) {
         throw new RuntimeException("Not implemented");
     }
 
     @Override
-    public void notifyCallStateForPhoneId(int phoneId, int subId, int state,
+    public void notifyCallState(int phoneId, int subId, int state,
                 String incomingNumber) {
         throw new RuntimeException("Not implemented");
     }
