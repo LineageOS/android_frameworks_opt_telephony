@@ -24,6 +24,7 @@ import android.telephony.DataFailCause;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import java.util.List;
@@ -87,6 +88,12 @@ public interface PhoneNotifier {
 
     /** Notify of change to EmergencyNumberList. */
     void notifyEmergencyNumberList(Phone sender);
+
+    /** Notify of a change for Outgoing Emergency Call. */
+    void notifyOutgoingEmergencyCall(Phone sender, EmergencyNumber emergencyNumber);
+
+    /** Notify of a change for Outgoing Emergency Sms. */
+    void notifyOutgoingEmergencySms(Phone sender, EmergencyNumber emergencyNumber);
 
     /** Notify of a change to the call quality of an active foreground call. */
     void notifyCallQualityChanged(Phone sender, CallQuality callQuality, int callNetworkType);
