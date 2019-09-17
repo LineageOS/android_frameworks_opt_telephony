@@ -35,6 +35,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import java.util.List;
@@ -383,6 +384,30 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         try {
             if (mRegistry != null) {
                 mRegistry.notifyEmergencyNumberList(sender.getPhoneId(), sender.getSubId());
+            }
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
+    @Override
+    public void notifyOutgoingEmergencyCall(Phone sender, EmergencyNumber emergencyNumber) {
+        try {
+            if (mRegistry != null) {
+                mRegistry.notifyOutgoingEmergencyCall(sender.getPhoneId(), sender.getSubId(),
+                        emergencyNumber);
+            }
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
+    @Override
+    public void notifyOutgoingEmergencySms(Phone sender, EmergencyNumber emergencyNumber) {
+        try {
+            if (mRegistry != null) {
+                mRegistry.notifyOutgoingEmergencySms(sender.getPhoneId(), sender.getSubId(),
+                        emergencyNumber);
             }
         } catch (RemoteException ex) {
             // system process is dead
