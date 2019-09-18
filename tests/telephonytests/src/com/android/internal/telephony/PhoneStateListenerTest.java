@@ -105,6 +105,7 @@ public class PhoneStateListenerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mPhoneStateListenerHandler.quit();
+        mPhoneStateListenerHandler.join();
         super.tearDown();
     }
 

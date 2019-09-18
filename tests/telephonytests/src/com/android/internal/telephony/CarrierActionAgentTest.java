@@ -189,6 +189,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
     public void tearDown() throws Exception {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
         mCarrierActionAgentHandler.quit();
+        mCarrierActionAgentHandler.join();
         super.tearDown();
     }
 }

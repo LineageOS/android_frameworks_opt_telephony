@@ -94,6 +94,7 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mGsmCellBroadcastHandler = null;
         mGsmCellBroadcastHandlerTestHandler.quit();
+        mGsmCellBroadcastHandlerTestHandler.join();
         super.tearDown();
     }
 

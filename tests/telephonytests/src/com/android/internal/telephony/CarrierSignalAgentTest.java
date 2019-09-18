@@ -84,6 +84,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCarrierSignalAgentHandler.quit();
+        mCarrierSignalAgentHandler.join();
         super.tearDown();
     }
 

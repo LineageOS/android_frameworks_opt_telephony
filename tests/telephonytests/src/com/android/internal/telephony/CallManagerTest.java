@@ -122,6 +122,7 @@ public class CallManagerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         CallManager.getInstance().unregisterPhone(mPhone);
         mCallManagerHandlerThread.quit();
+        mCallManagerHandlerThread.join();
         super.tearDown();
     }
 

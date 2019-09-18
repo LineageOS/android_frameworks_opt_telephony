@@ -180,9 +180,10 @@ public class SimulatedCommands extends BaseCommands
         mPin2Code = DEFAULT_SIM_PIN2_CODE;
     }
 
-    public void dispose() {
+    public void dispose() throws Exception {
         if (mHandlerThread != null) {
             mHandlerThread.quit();
+            mHandlerThread.join();
         }
     }
 

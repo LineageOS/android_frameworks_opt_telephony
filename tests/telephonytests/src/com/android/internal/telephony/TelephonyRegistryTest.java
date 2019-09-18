@@ -97,6 +97,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mTelephonyRegistry = null;
         mHandlerThread.quit();
+        mHandlerThread.join();
         super.tearDown();
     }
 

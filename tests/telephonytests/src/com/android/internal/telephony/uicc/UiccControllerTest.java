@@ -134,6 +134,7 @@ public class UiccControllerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mUiccControllerHandlerThread.quit();
+        mUiccControllerHandlerThread.join();
         super.tearDown();
     }
 
@@ -148,6 +149,7 @@ public class UiccControllerTest extends TelephonyTest {
                 nonRemovableEuiccSlots);
         replaceInstance(UiccController.class, "mInstance", null, null);
         mUiccControllerHandlerThread.quit();
+        mUiccControllerHandlerThread.join();
         mUiccControllerHandlerThread = new UiccControllerHandlerThread(TAG);
         mUiccControllerHandlerThread.start();
         waitUntilReady();

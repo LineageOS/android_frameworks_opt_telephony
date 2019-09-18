@@ -228,6 +228,7 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
         mRttTextHandler.tearDown();
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         mHandlerThread.quit();
+        mHandlerThread.join();
         super.tearDown();
     }
 

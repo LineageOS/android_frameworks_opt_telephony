@@ -64,8 +64,8 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccVmNotSupportedException;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
@@ -565,16 +565,36 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
 
         // voicemail number from sharedPreference
+        voiceMailNumber = "1234567893";
         mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mSimRecords).setVoiceMailNumber(eq("alphaTag"), eq(voiceMailNumber),
                 messageArgumentCaptor.capture());
 
+        // SIM does not support voicemail number (IccVmNotSupportedException) so should be saved in
+        // shared pref
         Message msg = messageArgumentCaptor.getValue();
         AsyncResult.forMessage(msg).exception =
-                new IccException("setVoiceMailNumber not implemented");
+                new IccVmNotSupportedException("setVoiceMailNumber not implemented");
         msg.sendToTarget();
         waitForMs(50);
+
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number from SIM
+        voiceMailNumber = "1234567894";
+        mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
+        messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mSimRecords).setVoiceMailNumber(eq("alphaTag"), eq(voiceMailNumber),
+                messageArgumentCaptor.capture());
+
+        // successfully saved on SIM
+        msg = messageArgumentCaptor.getValue();
+        AsyncResult.forMessage(msg);
+        msg.sendToTarget();
+        waitForMs(50);
+
+        doReturn(voiceMailNumber).when(mSimRecords).getVoiceMailNumber();
 
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
     }

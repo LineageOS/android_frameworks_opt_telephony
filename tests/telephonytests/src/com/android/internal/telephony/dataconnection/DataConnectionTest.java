@@ -330,6 +330,7 @@ public class DataConnectionTest extends TelephonyTest {
         mDc = null;
         mDcc = null;
         mDataConnectionTestHandler.quit();
+        mDataConnectionTestHandler.join();
         super.tearDown();
     }
 
