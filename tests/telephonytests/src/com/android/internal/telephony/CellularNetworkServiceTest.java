@@ -16,12 +16,10 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import android.content.IntentFilter;
@@ -134,8 +132,6 @@ public class CellularNetworkServiceTest extends TelephonyTest {
             assertTrue(false);
         }
 
-        waitForMs(1000);
-
         NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
                 domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
@@ -143,7 +139,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 roamingIndicator, systemIsInPrl, defaultRoamingIndicator);
 
         try {
-            verify(mCallback, times(1)).onRequestNetworkRegistrationInfoComplete(
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
                     eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
         } catch (RemoteException e) {
             assertTrue(false);
@@ -157,8 +153,6 @@ public class CellularNetworkServiceTest extends TelephonyTest {
             assertTrue(false);
         }
 
-        waitForMs(1000);
-
         LteVopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
@@ -170,7 +164,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 lteVopsSupportInfo, false);
 
         try {
-            verify(mCallback, times(1)).onRequestNetworkRegistrationInfoComplete(
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
                     eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
         } catch (RemoteException e) {
             assertTrue(false);
