@@ -1491,10 +1491,12 @@ public class GsmCdmaPhone extends Phone {
     private void storeVoiceMailNumber(String number) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
+        setVmSimImsi(getSubscriberId());
+        logd("storeVoiceMailNumber: mPrecisePhoneType=" + mPrecisePhoneType + " vmNumber="
+                + number);
         if (isPhoneTypeGsm()) {
             editor.putString(VM_NUMBER + getPhoneId(), number);
             editor.apply();
-            setVmSimImsi(getSubscriberId());
         } else {
             editor.putString(VM_NUMBER_CDMA + getPhoneId(), number);
             editor.apply();
@@ -1504,17 +1506,23 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public String getVoiceMailNumber() {
         String number = null;
-        if (isPhoneTypeGsm()) {
+        if (isPhoneTypeGsm() || mSimRecords != null) {
             // Read from the SIM. If its null, try reading from the shared preference area.
-            IccRecords r = mIccRecords.get();
+            IccRecords r = isPhoneTypeGsm() ? mIccRecords.get() : mSimRecords;
             number = (r != null) ? r.getVoiceMailNumber() : "";
             if (TextUtils.isEmpty(number)) {
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-                number = sp.getString(VM_NUMBER + getPhoneId(), null);
+                String spName = isPhoneTypeGsm() ? VM_NUMBER : VM_NUMBER_CDMA;
+                number = sp.getString(spName + getPhoneId(), null);
+                logd("getVoiceMailNumber: from " + spName + " number=" + number);
+            } else {
+                logd("getVoiceMailNumber: from IccRecords number=" + number);
             }
-        } else {
+        }
+        if (!isPhoneTypeGsm() && TextUtils.isEmpty(number)) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
             number = sp.getString(VM_NUMBER_CDMA + getPhoneId(), null);
+            logd("getVoiceMailNumber: from VM_NUMBER_CDMA number=" + number);
         }
 
         if (TextUtils.isEmpty(number)) {
@@ -2667,8 +2675,10 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_SET_VM_NUMBER_DONE:
                 ar = (AsyncResult)msg.obj;
-                if ((isPhoneTypeGsm() && IccVmNotSupportedException.class.isInstance(ar.exception)) ||
-                        (!isPhoneTypeGsm() && IccException.class.isInstance(ar.exception))){
+                if (((isPhoneTypeGsm() || mSimRecords != null)
+                        && IccVmNotSupportedException.class.isInstance(ar.exception))
+                        || (!isPhoneTypeGsm() && mSimRecords == null
+                        && IccException.class.isInstance(ar.exception))) {
                     storeVoiceMailNumber(mVmNumber);
                     ar.exception = null;
                 }
