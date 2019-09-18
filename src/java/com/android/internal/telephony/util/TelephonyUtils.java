@@ -16,13 +16,19 @@
 package com.android.internal.telephony.util;
 
 import android.annotation.Nullable;
+import android.os.RemoteException;
 
 /**
  * This class provides various util functions
  */
 public final class TelephonyUtils {
-  /** {@hide} */
-  public static String emptyIfNull(@Nullable String str) {
-    return str == null ? "" : str;
+    /** {@hide} */
+    public static String emptyIfNull(@Nullable String str) {
+        return str == null ? "" : str;
+    }
+
+    /** {@hide} */
+    public static RuntimeException rethrowAsRuntimeException(RemoteException remoteException) {
+        throw new RuntimeException(remoteException);
+    }
   }
-}

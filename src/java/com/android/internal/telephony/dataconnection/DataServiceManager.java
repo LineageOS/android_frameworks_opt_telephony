@@ -53,6 +53,7 @@ import android.telephony.data.IDataServiceCallback;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.util.HashSet;
 import java.util.List;
@@ -136,7 +137,7 @@ public class DataServiceManager extends Handler {
                 UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
         } catch (RemoteException e) {
             loge("Binder to package manager died, permission grant for DataService failed.");
-            throw e.rethrowAsRuntimeException();
+            throw TelephonyUtils.rethrowAsRuntimeException(e);
         }
     }
 
@@ -162,7 +163,7 @@ public class DataServiceManager extends Handler {
             }
         } catch (RemoteException e) {
             loge("Binder to package manager died; failed to revoke DataService permissions.");
-            throw e.rethrowAsRuntimeException();
+            throw TelephonyUtils.rethrowAsRuntimeException(e);
         }
     }
 
