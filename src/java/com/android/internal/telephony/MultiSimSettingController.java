@@ -153,7 +153,7 @@ public class MultiSimSettingController extends Handler {
      * Return the singleton or create one if not existed.
      */
     public static MultiSimSettingController getInstance() {
-        synchronized (SubscriptionController.class) {
+        synchronized (MultiSimSettingController.class) {
             if (sInstance == null) {
                 Log.wtf(LOG_TAG, "getInstance null");
             }
@@ -166,7 +166,7 @@ public class MultiSimSettingController extends Handler {
      * Init instance of MultiSimSettingController.
      */
     public static MultiSimSettingController init(Context context, SubscriptionController sc) {
-        synchronized (SubscriptionController.class) {
+        synchronized (MultiSimSettingController.class) {
             if (sInstance == null) {
                 sInstance = new MultiSimSettingController(context, sc);
             } else {
