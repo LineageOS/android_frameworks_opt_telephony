@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -31,59 +29,42 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.ActivityManager;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.test.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 import android.util.Singleton;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class SmsDispatchersControllerTest extends TelephonyTest {
     @Mock
     private SMSDispatcher.SmsTracker mTracker;
 
     private SmsDispatchersController mSmsDispatchersController;
-    private ImsSmsDispatcherTestHandler mImsSmsDispatcherTestHandler;
     private boolean mInjectionCallbackTriggered = false;
-    private static final String TEST_INTENT = "com.android.internal.telephony.TEST_INTENT";
-    private static final int TEST_TIMEOUT = 5000;
-
-    private class ImsSmsDispatcherTestHandler extends HandlerThread {
-
-        private ImsSmsDispatcherTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mSmsDispatchersController = new SmsDispatchersController(mPhone, mSmsStorageMonitor,
-                    mSmsUsageMonitor);
-            //Initial state of RIL is power on, need to wait util RADIO_ON msg get handled
-            waitForMs(200);
-            setReady(true);
-        }
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         setupMockPackagePermissionChecks();
 
-        mImsSmsDispatcherTestHandler = new ImsSmsDispatcherTestHandler(getClass().getSimpleName());
-        mImsSmsDispatcherTestHandler.start();
-        waitUntilReady();
+        mSmsDispatchersController = new SmsDispatchersController(mPhone, mSmsStorageMonitor,
+            mSmsUsageMonitor);
+        processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
         mSmsDispatchersController = null;
-        mImsSmsDispatcherTestHandler.quit();
         super.tearDown();
     }
 
@@ -169,17 +150,15 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
                    assertEquals(Intents.RESULT_SMS_GENERIC_ERROR, result);
                 }
         );
-        waitForMs(100);
+        processAllMessages();
         assertEquals(true, mInjectionCallbackTriggered);
     }
 
     private void switchImsSmsFormat(int phoneType) {
         mSimulatedCommands.setImsRegistrationState(new int[]{1, phoneType});
         mSimulatedCommands.notifyImsNetworkStateChanged();
-        /* wait for async msg get handled */
-        waitForHandlerAction(mSmsDispatchersController, TEST_TIMEOUT);
         /* handle EVENT_IMS_STATE_DONE */
-        waitForHandlerAction(mSmsDispatchersController, TEST_TIMEOUT);
+        processAllMessages();
         assertTrue(mSmsDispatchersController.isIms());
     }
 }

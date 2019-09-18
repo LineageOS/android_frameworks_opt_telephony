@@ -109,8 +109,8 @@ import android.net.ConnectivityManager;
 import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.IPowerManager;
+import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.WorkSource;
@@ -140,15 +140,17 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.internal.telephony.RIL.RilHandler;
 import com.android.internal.telephony.dataconnection.DcTracker;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
@@ -156,6 +158,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class RILTest extends TelephonyTest {
 
     // refer to RIL#DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS
@@ -163,9 +167,6 @@ public class RILTest extends TelephonyTest {
 
     // refer to RIL#DEFAULT_WAKE_LOCK_TIMEOUT_MS
     private static final int DEFAULT_WAKE_LOCK_TIMEOUT_MS = 60000;
-
-    // timer for CountDownLatch timeout
-    private static final int WAIT_TIMER = 10; //
 
     @Mock
     private ConnectivityManager mConnectionManager;
@@ -176,10 +177,8 @@ public class RILTest extends TelephonyTest {
 
     private HalVersion mRadioVersion = new HalVersion(1, 0);
 
-    private RilHandler mRilHandler;
     private RIL mRILInstance;
     private RIL mRILUnderTest;
-    private RILTestHandler mTestHandler;
     ArgumentCaptor<Integer> mSerialNumberCaptor = ArgumentCaptor.forClass(Integer.class);
 
     // Constants
@@ -247,71 +246,43 @@ public class RILTest extends TelephonyTest {
     private static final int MTU = 1234;
     private static final boolean PERSISTENT = true;
 
-    private class RILTestHandler extends HandlerThread {
-
-        RILTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        protected void onLooperPrepared() {
-            super.onLooperPrepared();
-            createTelephonyDevController();
-            Context context = new ContextFixture().getTestDouble();
-            doReturn(true).when(mConnectionManager)
-                    .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
-            doReturn(mConnectionManager).when(context)
-                    .getSystemService(Context.CONNECTIVITY_SERVICE);
-            PowerManager powerManager = createPowerManager(context);
-            doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
-            doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
-
-            mRILInstance = new RIL(context, RILConstants.PREFERRED_NETWORK_MODE,
-                    Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
-            mRILUnderTest = spy(mRILInstance);
-            doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
-            doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
-
-            try {
-                replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersion);
-            } catch (Exception e) {
-            }
-
-            mRilHandler = mRILUnderTest.getRilHandler();
-
-            setReady(true);
-        }
-
-        private PowerManager createPowerManager(Context context) {
-            return new PowerManager(context, mock(IPowerManager.class), new Handler(getLooper()));
-        }
-
-        private void createTelephonyDevController() {
-            try {
-                TelephonyDevController.create();
-            } catch (RuntimeException e) {
-            }
-        }
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp(RILTest.class.getSimpleName());
-        mTestHandler = new RILTestHandler(getClass().getSimpleName());
-        mTestHandler.start();
-        waitUntilReady();
+        try {
+            TelephonyDevController.create();
+        } catch (RuntimeException e) {
+        }
+        Context context = new ContextFixture().getTestDouble();
+        doReturn(true).when(mConnectionManager)
+            .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
+        doReturn(mConnectionManager).when(context)
+            .getSystemService(Context.CONNECTIVITY_SERVICE);
+        PowerManager powerManager = new PowerManager(context, mock(IPowerManager.class),
+                new Handler(Looper.myLooper()));
+        doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
+        doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
+
+        mRILInstance = new RIL(context, RILConstants.PREFERRED_NETWORK_MODE,
+            Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
+        mRILUnderTest = spy(mRILInstance);
+        doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
+        doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
+
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersion);
+        } catch (Exception e) {
+        }
     }
 
     @After
     public void tearDown() throws Exception {
-        mTestHandler.quit();
-        mTestHandler.join();
         super.tearDown();
     }
 
     @Test
-    public void testRadioErrorWithWakelockTimeout() throws Exception {
-        RadioBugDetector detector = mRILInstance.getRadioBugDetector();
+    public void testRadioErrorWithWakelockTimeout() {
+        RadioBugDetector detector = mRILUnderTest.getRadioBugDetector();
         int wakelockTimeoutThreshold = detector.getWakelockTimeoutThreshold();
         for (int i = 0; i < wakelockTimeoutThreshold; i++) {
             invokeMethod(
@@ -320,8 +291,8 @@ public class RILTest extends TelephonyTest {
                     new Class<?>[]{Integer.TYPE, Message.class, WorkSource.class},
                     new Object[]{RIL_REQUEST_GET_SIM_STATUS, obtainMessage(), new WorkSource()});
         }
-
-        waitForHandlerActionDelayed(mRilHandler, WAIT_TIMER, DEFAULT_WAKE_LOCK_TIMEOUT_MS);
+        moveTimeForward(DEFAULT_WAKE_LOCK_TIMEOUT_MS);
+        processAllMessages();
         assertTrue(1 == detector.getWakelockTimoutCount());
     }
 
@@ -1007,7 +978,8 @@ public class RILTest extends TelephonyTest {
     public void testGetModemActivityInfoTimeout() {
         mRILUnderTest.getModemActivityInfo(obtainMessage(), new WorkSource());
         assertEquals(1, mRILUnderTest.getRilRequestList().size());
-        waitForHandlerActionDelayed(mRilHandler, 10, DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS);
+        moveTimeForward(DEFAULT_BLOCKING_MESSAGE_RESPONSE_TIMEOUT_MS);
+        processAllMessages();
         assertEquals(0, mRILUnderTest.getRilRequestList().size());
     }
 
@@ -1070,7 +1042,7 @@ public class RILTest extends TelephonyTest {
 
     @FlakyTest
     @Test
-    public void testWakeLockTimeout() throws Exception {
+    public void testWakeLockTimeout() {
         invokeMethod(
                 mRILInstance,
                 "obtainRequest",
@@ -1080,7 +1052,8 @@ public class RILTest extends TelephonyTest {
         // The wake lock should be held when obtain a RIL request.
         assertTrue(mRILInstance.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
 
-        waitForHandlerActionDelayed(mRilHandler, 10, DEFAULT_WAKE_LOCK_TIMEOUT_MS);
+        moveTimeForward(DEFAULT_WAKE_LOCK_TIMEOUT_MS);
+        processAllMessages();
 
         // The wake lock should be released after processed the time out event.
         assertFalse(mRILInstance.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
@@ -1103,7 +1076,7 @@ public class RILTest extends TelephonyTest {
     }
 
     private Message obtainMessage() {
-        return mTestHandler.getThreadHandler().obtainMessage();
+        return mRILUnderTest.getRilHandler().obtainMessage();
     }
 
     private static void verifyRILResponse(RIL ril, int serial, int requestType) {
@@ -1147,7 +1120,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoListForLTE() throws Exception {
+    public void testConvertHalCellInfoListForLTE() {
         android.hardware.radio.V1_0.CellInfoLte lte = new android.hardware.radio.V1_0.CellInfoLte();
         lte.cellIdentityLte.ci = CI;
         lte.cellIdentityLte.pci = PCI;
@@ -1190,7 +1163,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoListForGSM() throws Exception {
+    public void testConvertHalCellInfoListForGSM() {
         android.hardware.radio.V1_0.CellInfoGsm cellinfo =
                 new android.hardware.radio.V1_0.CellInfoGsm();
         cellinfo.cellIdentityGsm.lac = LAC;
@@ -1231,7 +1204,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoListForWcdma() throws Exception {
+    public void testConvertHalCellInfoListForWcdma() {
         android.hardware.radio.V1_0.CellInfoWcdma cellinfo =
                 new android.hardware.radio.V1_0.CellInfoWcdma();
         cellinfo.cellIdentityWcdma.lac = LAC;
@@ -1271,7 +1244,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoListForTdscdma() throws Exception {
+    public void testConvertHalCellInfoListForTdscdma() {
         android.hardware.radio.V1_2.CellInfoTdscdma cellinfo =
                 new android.hardware.radio.V1_2.CellInfoTdscdma();
         cellinfo.cellIdentityTdscdma.base.lac = LAC;
@@ -1312,7 +1285,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoListForCdma() throws Exception {
+    public void testConvertHalCellInfoListForCdma() {
         android.hardware.radio.V1_0.CellInfoCdma cellinfo =
                 new android.hardware.radio.V1_0.CellInfoCdma();
         cellinfo.cellIdentityCdma.networkId = NETWORK_ID;
@@ -1355,7 +1328,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForLTE() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForLTE() {
         ArrayList<CellInfo> ret = getCellInfoListForLTE(MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
 
         assertEquals(1, ret.size());
@@ -1375,7 +1348,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2_ForLTEWithEmptyOperatorInfo() throws Exception {
+    public void testConvertHalCellInfoList_1_2_ForLTEWithEmptyOperatorInfo() {
         ArrayList<CellInfo> ret = getCellInfoListForLTE(
                 MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
 
@@ -1396,7 +1369,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForLTEWithEmptyMccMnc() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForLTEWithEmptyMccMnc() {
         // MCC/MNC will be set as INT_MAX if unknown
         ArrayList<CellInfo> ret = getCellInfoListForLTE(
                 String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
@@ -1419,7 +1392,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForGSM() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForGSM() {
         ArrayList<CellInfo> ret = getCellInfoListForGSM(MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
 
         assertEquals(1, ret.size());
@@ -1439,7 +1412,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForGSMWithEmptyOperatorInfo() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForGSMWithEmptyOperatorInfo() {
         ArrayList<CellInfo> ret = getCellInfoListForGSM(
                 MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
 
@@ -1460,7 +1433,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForGSMWithEmptyMccMnc() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForGSMWithEmptyMccMnc() {
         // MCC/MNC will be set as INT_MAX if unknown
         ArrayList<CellInfo> ret = getCellInfoListForGSM(
                 String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
@@ -1483,7 +1456,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForWcdma() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForWcdma() {
         ArrayList<CellInfo> ret = getCellInfoListForWcdma(
                 MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
 
@@ -1504,7 +1477,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyOperatorInfo() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyOperatorInfo() {
         ArrayList<CellInfo> ret = getCellInfoListForWcdma(
                 MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
 
@@ -1525,7 +1498,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyMccMnc() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyMccMnc() {
         // MCC/MNC will be set as INT_MAX if unknown
         ArrayList<CellInfo> ret = getCellInfoListForWcdma(
                 String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
@@ -1548,7 +1521,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForCdma() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForCdma() {
         ArrayList<CellInfo> ret = getCellInfoListForCdma(ALPHA_LONG, ALPHA_SHORT);
 
         assertEquals(1, ret.size());
@@ -1569,7 +1542,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertHalCellInfoList_1_2ForCdmaWithEmptyOperatorInfo() throws Exception {
+    public void testConvertHalCellInfoList_1_2ForCdmaWithEmptyOperatorInfo() {
         ArrayList<CellInfo> ret = getCellInfoListForCdma(EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT);
 
         assertEquals(1, ret.size());
@@ -1590,7 +1563,7 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
-    public void testConvertDataCallResult() throws Exception {
+    public void testConvertDataCallResult() {
         // Test V1.0 SetupDataCallResult
         android.hardware.radio.V1_0.SetupDataCallResult result10 =
                 new android.hardware.radio.V1_0.SetupDataCallResult();
