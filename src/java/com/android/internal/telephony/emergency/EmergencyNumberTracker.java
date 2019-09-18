@@ -58,6 +58,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -273,7 +274,7 @@ public class EmergencyNumberTracker extends Handler {
                 if (b != null) {
                     String[] emergencyNumberPrefix = b.getStringArray(
                             CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
-                    if (!mEmergencyNumberPrefix.equals(emergencyNumberPrefix)) {
+                    if (!Arrays.equals(mEmergencyNumberPrefix, emergencyNumberPrefix)) {
                         this.obtainMessage(EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX,
                                 emergencyNumberPrefix).sendToTarget();
                     }
@@ -436,7 +437,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private void updateEmergencyNumberPrefixAndNotify(String[] emergencyNumberPrefix) {
         logd("updateEmergencyNumberPrefixAndNotify(): receiving emergencyNumberPrefix: "
-                + emergencyNumberPrefix.toString());
+                + Arrays.toString(emergencyNumberPrefix));
         mEmergencyNumberPrefix = emergencyNumberPrefix;
         updateEmergencyNumberList();
         if (!DBG) {
