@@ -151,6 +151,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
         mImsPhoneTestHandler.quit();
+        mImsPhoneTestHandler.join();
         super.tearDown();
     }
 

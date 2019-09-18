@@ -159,6 +159,7 @@ public class UiccProfileTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mTestHandlerThread.quit();
+        mTestHandlerThread.join();
         super.tearDown();
     }
 

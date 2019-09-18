@@ -61,6 +61,7 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsPhoneFactoryHandler.quit();
+        mImsPhoneFactoryHandler.join();
         super.tearDown();
     }
 

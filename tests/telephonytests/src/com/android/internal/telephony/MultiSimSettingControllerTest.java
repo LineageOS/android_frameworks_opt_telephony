@@ -150,6 +150,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mHandlerThread.quit();
+        mHandlerThread.join();
         super.tearDown();
     }
 

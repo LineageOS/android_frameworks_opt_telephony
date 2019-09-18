@@ -153,6 +153,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mConnectivityServiceMock.die();
         mLooper.quit();
         mHandlerThread.quit();
+        mHandlerThread.join();
         super.tearDown();
     }
 
