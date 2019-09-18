@@ -873,6 +873,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void switchPhone(int phoneId, boolean active) {
+        if (mPhoneStates.length <= phoneId) return;
         PhoneState state = mPhoneStates[phoneId];
         if (state.active == active) return;
         state.active = active;
