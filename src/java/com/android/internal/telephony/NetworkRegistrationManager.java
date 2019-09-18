@@ -39,7 +39,6 @@ import android.telephony.INetworkServiceCallback;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.Rlog;
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import java.util.Hashtable;
@@ -92,10 +91,7 @@ public class NetworkRegistrationManager extends Handler {
         mPhone = phone;
 
         String tagSuffix = "-" + ((transportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                ? "C" : "I");
-        if (TelephonyManager.getDefault().getPhoneCount() > 1) {
-            tagSuffix += "-" + mPhone.getPhoneId();
-        }
+                ? "C" : "I") + "-" + mPhone.getPhoneId();
         mTag = "NRM" + tagSuffix;
 
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
