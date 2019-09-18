@@ -414,7 +414,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         TelephonyManager tm =
                 (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
         String origNumber = dialString;
-        String operatorIsoContry = tm.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+        String operatorIsoContry = tm.getNetworkCountryIso(mPhone.getPhoneId());
         String simIsoContry = tm.getSimCountryIsoForPhone(mPhone.getPhoneId());
         boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoContry)
                 && !TextUtils.isEmpty(simIsoContry)
