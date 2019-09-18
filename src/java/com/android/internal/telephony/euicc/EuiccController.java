@@ -1184,7 +1184,8 @@ public class EuiccController extends IEuiccController.Stub {
 
         final PackageInfo info;
         try {
-            info = mPackageManager.getPackageInfo(callingPackage, PackageManager.GET_SIGNATURES);
+            info = mPackageManager.getPackageInfo(callingPackage,
+                PackageManager.GET_SIGNING_CERTIFICATES);
         } catch (PackageManager.NameNotFoundException e) {
             Log.e(TAG, "Calling package valid but gone");
             return false;
