@@ -100,8 +100,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
 
     public NitzStateMachineImpl(GsmCdmaPhone phone) {
         this(phone,
-                new TimeServiceHelper(phone.getContext()),
-                new DeviceState(phone),
+                new TimeServiceHelperImpl(phone.getContext()),
+                new DeviceStateImpl(phone),
                 new TimeZoneLookupHelper());
     }
 
