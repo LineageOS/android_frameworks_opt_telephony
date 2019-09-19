@@ -52,6 +52,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 /**
  *
@@ -745,6 +746,30 @@ public class SmsDispatchersController extends Handler {
 
     public SmsUsageMonitor getUsageMonitor() {
         return mUsageMonitor;
+    }
+
+    /**
+     * Handles the sms status report for the sent sms through ImsSmsDispatcher. Carriers can send
+     * the report over CS even if the previously submitted SMS-SUBMIT was sent over IMS. For this
+     * case, finds a corresponding tracker from the tracker map in ImsSmsDispatcher and handles it.
+     *
+     * @param messageRef the TP-MR of the previously submitted SMS-SUBMIT in the report.
+     * @param format the format.
+     * @param pdu the pdu of the report.
+     */
+    public void handleSentOverImsStatusReport(int messageRef, String format, byte[] pdu) {
+        for (Entry<Integer, SMSDispatcher.SmsTracker> entry :
+                mImsSmsDispatcher.mTrackers.entrySet()) {
+            int token = entry.getKey();
+            SMSDispatcher.SmsTracker tracker = entry.getValue();
+            if (tracker.mMessageRef == messageRef) {
+                Pair<Boolean, Boolean> result = handleSmsStatusReport(tracker, format, pdu);
+                if (result.second) {
+                    mImsSmsDispatcher.mTrackers.remove(token);
+                }
+                return;
+            }
+        }
     }
 
     /**

@@ -102,17 +102,24 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
      */
     @UnsupportedAppUsage
     private void handleCdmaStatusReport(SmsMessage sms) {
+        byte[] pdu = sms.getPdu();
+        int messageRef = sms.mMessageRef;
+        boolean handled = false;
         for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
             SmsTracker tracker = deliveryPendingList.get(i);
-            if (tracker.mMessageRef == sms.mMessageRef) {
+            if (tracker.mMessageRef == messageRef) {
                 Pair<Boolean, Boolean> result =
-                        mSmsDispatchersController.handleSmsStatusReport(tracker, getFormat(),
-                                sms.getPdu());
+                        mSmsDispatchersController.handleSmsStatusReport(tracker, getFormat(), pdu);
                 if (result.second) {
                     deliveryPendingList.remove(i);
                 }
-                break;  // Only expect to see one tracker matching this message.
+                handled = true;
+                break; // Only expect to see one tracker matching this message.
             }
+        }
+        if (!handled) {
+            // Try to find the sent SMS from the map in ImsSmsDispatcher.
+            mSmsDispatchersController.handleSentOverImsStatusReport(messageRef, getFormat(), pdu);
         }
     }
 
