@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -54,6 +55,7 @@ public class LocaleTrackerTest extends TelephonyTest {
 
     private static final String US_MCC = "310";
     private static final String LIECHTENSTEIN_MCC = "295";
+    private static final String BOGUS_MCC = "001";
 
     private static final String FAKE_MNC = "123";
 
@@ -110,6 +112,11 @@ public class LocaleTrackerTest extends TelephonyTest {
                 .obtainMessage(4 /*UNSOL_CELL_INFO*/,
                         new AsyncResult(null, Arrays.asList(mCellInfo), null))
                 .sendToTarget();
+        processAllMessages();
+    }
+
+    private void sendOperatorLost() {
+        mLocaleTracker.sendMessage(mLocaleTracker.obtainMessage(6 /* EVENT_OPERATOR_LOST */));
         processAllMessages();
     }
 
@@ -269,5 +276,22 @@ public class LocaleTrackerTest extends TelephonyTest {
         for (int i = 10; i <= 2000; i++) {
             assertEquals(600000, LocaleTracker.getCellInfoDelayTime(i));
         }
+    }
+
+    @Test
+    @SmallTest
+    public void updateOperatorNumeric_NoSim_shouldHandleNetworkCountryCodeUnavailable()
+            throws Exception {
+        mLocaleTracker.updateOperatorNumeric("");
+        sendOperatorLost();
+        verify(mNitzStateMachine, times(1)).handleNetworkCountryCodeUnavailable();
+    }
+
+    @Test
+    @SmallTest
+    public void updateOperatorNumeric_BogusNetwork_shouldHandleNetworkCountryCodeSet()
+            throws Exception {
+        mLocaleTracker.updateOperatorNumeric(BOGUS_MCC + FAKE_MNC);
+        verify(mNitzStateMachine, times(1)).handleNetworkCountryCodeSet(anyBoolean());
     }
 }
