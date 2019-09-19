@@ -876,6 +876,11 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void switchPhone(int phoneId, boolean active) {
+        if (phoneId < 0 || phoneId >= mNumPhones) {
+            log("switchPhone, phoneId: " + phoneId +
+                ", mNumPhones: " + mNumPhones + ", should never here!");
+            return;
+        }
         PhoneState state = mPhoneStates[phoneId];
         if (state.active == active) return;
         state.active = active;
@@ -1091,6 +1096,11 @@ public class PhoneSwitcher extends Handler {
 
     @VisibleForTesting
     protected boolean isPhoneActive(int phoneId) {
+        if (phoneId < 0 || phoneId >= mNumPhones) {
+            log("isPhoneActive, phoneId: " + phoneId +
+                ", mNumPhones: " + mNumPhones + ", should never here!");
+            return false;
+        }
         return mPhoneStates[phoneId].active;
     }
 

@@ -222,6 +222,11 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             phoneId = 0;
         }
+        if (phoneId < 0 || phoneId >= mPhone.length) {
+            log("getPhone, phoneId: " + phoneId +
+                ", mPhone.length: " + mPhone.length + ", should never here!");
+            return null;
+        }
         return mPhone[phoneId];
     }
 
@@ -466,6 +471,11 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         // Getting subId before doing permission check.
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             phoneId = 0;
+        }
+        if (phoneId < 0 || phoneId >= mPhone.length) {
+            log("callPhoneMethodForPhoneIdWithReadDeviceIdentifiersCheck, phoneId: " + phoneId +
+                ", mPhone.length: " + mPhone.length + ", should never here!");
+            return null;
         }
         final Phone phone = mPhone[phoneId];
         if (phone == null) {
