@@ -40,7 +40,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.net.Uri;
@@ -927,13 +926,6 @@ public class ImsResolverTest extends ImsTestBase {
 
     private void setupResolver(int numSlots) {
         when(mMockContext.getPackageManager()).thenReturn(mMockPM);
-        try {
-            when(mMockContext.createPackageContextAsUser(any(), eq(0), any()))
-                .thenReturn(mMockContext);
-        } catch (NameNotFoundException ex) {
-            fail("Package name not found: " + ex.getMessage());
-        }
-
         when(mMockContext.getSystemService(eq(Context.CARRIER_CONFIG_SERVICE))).thenReturn(
                 mMockCarrierConfigManager);
         mCarrierConfigs = new PersistableBundle[numSlots];
@@ -959,8 +951,8 @@ public class ImsResolverTest extends ImsTestBase {
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
         ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
-        verify(mMockContext).registerReceiver(packageBroadcastCaptor.capture(), any(),
-                any(), any());
+        verify(mMockContext).registerReceiverAsUser(packageBroadcastCaptor.capture(), any(),
+                any(), any(), any());
         mTestPackageBroadcastReceiver = packageBroadcastCaptor.getValue();
         verify(mMockContext, times(2)).registerReceiver(receiversCaptor.capture(), any());
         mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(0);
