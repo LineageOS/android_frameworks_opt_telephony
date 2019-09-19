@@ -35,7 +35,7 @@ import android.telephony.emergency.EmergencyNumber.EmergencyServiceCategories;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
-import com.android.i18n.phonenumbers.ShortNumberInfo;
+
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.LocaleTracker;
@@ -48,6 +48,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
 import com.android.phone.ecc.nano.ProtobufEccData.EccInfo;
+import com.google.i18n.phonenumbers.ShortNumberInfo;
 
 import libcore.io.IoUtils;
 
@@ -58,6 +59,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -273,7 +275,7 @@ public class EmergencyNumberTracker extends Handler {
                 if (b != null) {
                     String[] emergencyNumberPrefix = b.getStringArray(
                             CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
-                    if (!mEmergencyNumberPrefix.equals(emergencyNumberPrefix)) {
+                    if (!Arrays.equals(mEmergencyNumberPrefix, emergencyNumberPrefix)) {
                         this.obtainMessage(EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX,
                                 emergencyNumberPrefix).sendToTarget();
                     }
@@ -444,7 +446,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private void updateEmergencyNumberPrefixAndNotify(String[] emergencyNumberPrefix) {
         logd("updateEmergencyNumberPrefixAndNotify(): receiving emergencyNumberPrefix: "
-                + emergencyNumberPrefix.toString());
+                + Arrays.toString(emergencyNumberPrefix));
         mEmergencyNumberPrefix = emergencyNumberPrefix;
         updateEmergencyNumberList();
         if (!DBG) {
