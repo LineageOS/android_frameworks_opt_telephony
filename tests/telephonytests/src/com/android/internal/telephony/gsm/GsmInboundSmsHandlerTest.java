@@ -63,11 +63,11 @@ import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
+import com.android.internal.telephony.StateMachine;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.IState;
-import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
