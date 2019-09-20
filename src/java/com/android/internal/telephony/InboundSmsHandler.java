@@ -55,7 +55,6 @@ import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
 import android.telephony.Rlog;
-import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -1255,15 +1254,6 @@ public abstract class InboundSmsHandler extends StateMachine {
                     " " + componentName.getClassName());
             } else {
                 intent.setComponent(null);
-            }
-
-            // TODO: Validate that this is the right place to store the SMS.
-            if (SmsManager.getDefault().getAutoPersisting()) {
-                final Uri uri = writeInboxMessage(intent);
-                if (uri != null) {
-                    // Pass this to SMS apps so that they know where it is stored
-                    intent.putExtra("uri", uri.toString());
-                }
             }
 
             // Handle app specific sms messages.
