@@ -17,10 +17,10 @@
 package com.android.internal.telephony.mocks;
 
 import android.os.Handler;
-import android.os.Registrant;
-import android.os.RegistrantList;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.Registrant;
+import com.android.internal.telephony.RegistrantList;
 import com.android.internal.telephony.SubscriptionMonitor;
 
 public class SubscriptionMonitorMock extends SubscriptionMonitor {
