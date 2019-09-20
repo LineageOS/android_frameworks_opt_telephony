@@ -68,7 +68,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
-import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.RilRadioTechnology;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
@@ -1724,10 +1723,6 @@ public class DcTracker extends Handler {
      */
     @VisibleForTesting
     public @NonNull ArrayList<ApnSetting> fetchDunApns() {
-        if (SystemProperties.getBoolean("net.tethering.noprovisioning", false)) {
-            log("fetchDunApns: net.tethering.noprovisioning=true ret: empty list");
-            return new ArrayList<ApnSetting>(0);
-        }
         int bearer = getDataRat();
         ArrayList<ApnSetting> dunCandidates = new ArrayList<ApnSetting>();
         ArrayList<ApnSetting> retDunSettings = new ArrayList<ApnSetting>();
