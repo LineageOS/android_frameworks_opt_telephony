@@ -1232,6 +1232,7 @@ public class SIMRecords extends IccRecords {
                         response.sendToTarget();
                         break;
                     }
+
                     int maxWritebaleFplmns = dataLength / FPLMN_BYTE_SIZE;
                     List<String> fplmnsToWrite;
                     if (fplmns.size() <= maxWritebaleFplmns) {
