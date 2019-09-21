@@ -627,16 +627,16 @@ public abstract class TelephonyTest {
     }
 
     protected void tearDown() throws Exception {
-        // unmonitor TestableLooper
+        // unmonitor TestableLooper for TelephonyTest class
         if (mTestableLooper != null) {
             unmonitorTestableLooper(mTestableLooper);
         }
-        mSimulatedCommands.dispose();
-
-        // destroy all created TestableLoopers so they can be reused
+        // destroy all newly created TestableLoopers so they can be reused
         for (TestableLooper looper : mTestableLoopers) {
             looper.destroy();
         }
+
+        mSimulatedCommands.dispose();
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
         sharedPreferences.edit().clear().commit();
 
