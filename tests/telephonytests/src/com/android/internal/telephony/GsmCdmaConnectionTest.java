@@ -16,21 +16,28 @@
 
 package com.android.internal.telephony;
 
-import android.os.Handler;
-import android.os.Looper;
-import android.telephony.PhoneNumberUtils;
-import android.test.suitebuilder.annotation.SmallTest;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.telephony.DisconnectCause;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
+
+import android.os.Handler;
+import android.os.Looper;
+import android.telephony.DisconnectCause;
+import android.telephony.PhoneNumberUtils;
+import android.test.suitebuilder.annotation.MediumTest;
+import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class GsmCdmaConnectionTest extends TelephonyTest {
 
     private GsmCdmaConnection connection;
@@ -41,7 +48,7 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        replaceInstance(Handler.class, "mLooper", mCT, Looper.getMainLooper());
+        replaceInstance(Handler.class, "mLooper", mCT, Looper.myLooper());
 
         mCT.mForegroundCall = new GsmCdmaCall(mCT);
         mCT.mBackgroundCall = new GsmCdmaCall(mCT);
@@ -131,7 +138,9 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         mDC.state = DriverCall.State.HOLDING;
         connection.update(mDC);
         assertEquals(GsmCdmaCall.State.HOLDING, connection.getState());
+        // getHoldDurationMillis() calculated using System.currentTimeMillis()
         waitForMs(50);
+        processAllMessages();
         assertTrue(connection.getHoldDurationMillis() >= 50);
     }
 
@@ -148,8 +157,9 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         connection.update(mDC);
         logd("process post dail sequence with pause");
         assertEquals(Connection.PostDialState.PAUSE, connection.getPostDialState());
-        /* pause for 2000 ms + 50ms margin */
-        waitForMs(GsmCdmaConnection.PAUSE_DELAY_MILLIS_CDMA + 100);
+        /* pause for 2000 ms */
+        moveTimeForward(GsmCdmaConnection.PAUSE_DELAY_MILLIS_CDMA);
+        processAllMessages();
         assertEquals(Connection.PostDialState.COMPLETE, connection.getPostDialState());
     }
 
@@ -165,8 +175,9 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         connection.update(mDC);
         logd("process post dail sequence with pause");
         assertEquals(Connection.PostDialState.STARTED, connection.getPostDialState());
-        /* pause for 2000 ms + 50ms margin */
-        waitForMs(GsmCdmaConnection.PAUSE_DELAY_MILLIS_GSM + 100);
+        /* pause for 2000 ms */
+        moveTimeForward(GsmCdmaConnection.PAUSE_DELAY_MILLIS_GSM);
+        processAllMessages();
         assertEquals(Connection.PostDialState.COMPLETE, connection.getPostDialState());
     }
 
@@ -185,7 +196,7 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         logd("Process the post dial sequence with wait ");
         assertEquals(Connection.PostDialState.WAIT, connection.getPostDialState());
         connection.proceedAfterWaitChar();
-        waitForMs(50);
+        processAllMessages();
         assertEquals(Connection.PostDialState.COMPLETE, connection.getPostDialState());
     }
 

@@ -142,6 +142,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     private void handleStatusReport(AsyncResult ar) {
         byte[] pdu = (byte[]) ar.result;
         SmsMessage sms = SmsMessage.newFromCDS(pdu);
+        boolean handled = false;
 
         if (sms != null) {
             int messageRef = sms.mMessageRef;
@@ -155,9 +156,14 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     if (result.second) {
                         deliveryPendingList.remove(i);
                     }
-                    // Only expect to see one tracker matching this messageref
-                    break;
+                    handled = true;
+                    break; // Only expect to see one tracker matching this messageref
                 }
+            }
+            if (!handled) {
+                // Try to find the sent SMS from the map in ImsSmsDispatcher.
+                mSmsDispatchersController.handleSentOverImsStatusReport(
+                        messageRef, getFormat(), pdu);
             }
         }
         mCi.acknowledgeLastIncomingGsmSms(true, Intents.RESULT_SMS_HANDLED, null);

@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
-
 import android.content.Context;
 import android.os.Binder;
 import android.os.PersistableBundle;
@@ -116,9 +114,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private final IImsSmsListener mImsSmsListener = new IImsSmsListener.Stub() {
         @Override
         public void onSendSmsResult(int token, int messageRef, @SendStatusResult int status,
-                int reason) throws RemoteException {
+                int reason, int networkReasonCode) {
             Rlog.d(TAG, "onSendSmsResult token=" + token + " messageRef=" + messageRef
-                    + " status=" + status + " reason=" + reason);
+                    + " status=" + status + " reason=" + reason + " networkReasonCode="
+                    + networkReasonCode);
+            // TODO integrate networkReasonCode into IMS SMS metrics.
             mMetrics.writeOnImsServiceSmsSolicitedResponse(mPhone.getPhoneId(), status, reason);
             SmsTracker tracker = mTrackers.get(token);
             if (tracker == null) {
@@ -135,7 +135,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     mPhone.notifySmsSent(tracker.mDestAddress);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR:
-                    tracker.onFailed(mContext, reason, NO_ERROR_CODE);
+                    tracker.onFailed(mContext, reason, networkReasonCode);
                     mTrackers.remove(token);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:

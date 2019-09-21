@@ -1315,8 +1315,7 @@ public class IccSmsInterfaceManager {
 
     @UnsupportedAppUsage
     private String filterDestAddress(String destAddr) {
-        String result  = null;
-        result = SmsNumberUtils.filterDestAddr(mPhone, destAddr);
+        String result = SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(), destAddr);
         return result != null ? result : destAddr;
     }
 
