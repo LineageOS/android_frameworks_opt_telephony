@@ -228,6 +228,20 @@ public class DataEnabledSettings {
                 Settings.Global.MOBILE_DATA, mPhone.getSubId(), defaultVal);
     }
 
+    // TODO(b/129717543) function was deleted upstream, but still used below.  Need to confirm
+    // functionality is still valid
+    private String getMobileDataSettingName() {
+        // For single SIM phones, this is a per phone property. Or if it's invalid subId, we
+        // read default setting.
+        int subId = mPhone.getSubId();
+        if (TelephonyManager.getDefault().getSimCount() == 1
+                || !SubscriptionManager.isValidSubscriptionId(subId)) {
+            return Settings.Global.MOBILE_DATA;
+        } else {
+            return Settings.Global.MOBILE_DATA + mPhone.getSubId();
+        }
+    }
+
     /**
      * Set whether always allowing MMS data connection.
      *
