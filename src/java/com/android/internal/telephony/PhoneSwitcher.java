@@ -174,7 +174,7 @@ public class PhoneSwitcher extends Handler {
     // Which primary (non-opportunistic) subscription is set as data subscription among all primary
     // subscriptions. This value usually comes from user setting, and it's the subscription used for
     // Internet data if mOpptDataSubId is not set.
-    private int mPrimaryDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    protected int mPrimaryDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     // mOpptDataSubId must be an active subscription. If it's set, it overrides mPrimaryDataSubId
     // to be used for Internet data.

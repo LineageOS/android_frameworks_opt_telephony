@@ -277,7 +277,7 @@ public class MultiSimSettingController extends Handler {
      * If user is enabling a non-default non-opportunistic subscription, make it default
      * data subscription.
      */
-    private void onUserDataEnabled(int subId, boolean enable) {
+    protected void onUserDataEnabled(int subId, boolean enable) {
         if (DBG) log("onUserDataEnabled");
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
@@ -448,7 +448,7 @@ public class MultiSimSettingController extends Handler {
      * 4) If non above is met, clear the default value to INVALID.
      *
      */
-    private void updateDefaults() {
+    protected void updateDefaults() {
         if (DBG) log("updateDefaults");
 
         if (!isReadyToReevaluate()) return;
