@@ -38,7 +38,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.hardware.radio.V1_0.CellInfoType;
-import android.icu.util.TimeZone;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
@@ -3653,39 +3652,21 @@ public class ServiceStateTracker extends Handler {
             return operatorNumeric;
         }
 
-        // resolve the mcc from sid;
-        // if mNitzState.getSavedTimeZoneId() is null, TimeZone would get the default timeZone,
-        // and the mNitzState.fixTimeZone() couldn't help, because it depends on operator Numeric;
-        // if the sid is conflict and timezone is unavailable, the mcc may be not right.
-        boolean isNitzTimeZone;
-        TimeZone tzone;
-        if (mNitzState.getSavedTimeZoneId() != null) {
-            tzone = TimeZone.getTimeZone(mNitzState.getSavedTimeZoneId());
-            isNitzTimeZone = true;
-        } else {
-            NitzData lastNitzData = mNitzState.getCachedNitzData();
-            if (lastNitzData == null) {
-                tzone = null;
-            } else {
-                tzone = TimeZoneLookupHelper.guessZoneByNitzStatic(lastNitzData);
-                if (ServiceStateTracker.DBG) {
-                    log("fixUnknownMcc(): guessNitzTimeZone returned "
-                            + (tzone == null ? tzone : tzone.getID()));
-                }
-            }
-            isNitzTimeZone = false;
-        }
-
+        // resolve the mcc from sid, using time zone information from the latest NITZ signal when
+        // available.
         int utcOffsetHours = 0;
-        if (tzone != null) {
-            utcOffsetHours = tzone.getRawOffset() / MS_PER_HOUR;
+        boolean isDst = false;
+        boolean isNitzTimeZone = false;
+        NitzData lastNitzData = mNitzState.getCachedNitzData();
+        if (lastNitzData != null) {
+            utcOffsetHours = lastNitzData.getLocalOffsetMillis() / MS_PER_HOUR;
+            Integer dstAdjustmentMillis = lastNitzData.getDstAdjustmentMillis();
+            isDst = (dstAdjustmentMillis != null) && (dstAdjustmentMillis != 0);
+            isNitzTimeZone = true;
         }
-
-        NitzData nitzData = mNitzState.getCachedNitzData();
-        boolean isDst = nitzData != null && nitzData.isDst();
         int mcc = mHbpcdUtils.getMcc(sid, utcOffsetHours, (isDst ? 1 : 0), isNitzTimeZone);
         if (mcc > 0) {
-            operatorNumeric = Integer.toString(mcc) + DEFAULT_MNC;
+            operatorNumeric = mcc + DEFAULT_MNC;
         }
         return operatorNumeric;
     }
