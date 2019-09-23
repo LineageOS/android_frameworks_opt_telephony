@@ -836,7 +836,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         // verify that a broadcast receiver is registered for current user (user == null) based on
         // implementation in ContextFixture
-        verify(mContext).registerReceiver(any(BroadcastReceiver.class),
+        // The test receiver will also be passed to registerReceiver, so verify 2 times
+        verify(mContext, times(2)).registerReceiver(any(BroadcastReceiver.class),
                 any(IntentFilter.class), eq((String)null), eq((Handler)null));
 
         // wait for ScanRawTableThread
