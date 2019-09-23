@@ -613,7 +613,7 @@ public class SipPhone extends SipPhoneBase {
         void unhold() throws CallStateException {
             if (SC_DBG) log("unhold:");
             setState(State.ACTIVE);
-            AudioGroup audioGroup = new AudioGroup();
+            AudioGroup audioGroup = new AudioGroup(mContext);
             for (Connection c : mConnections) {
                 ((SipConnection) c).unhold(audioGroup);
             }
