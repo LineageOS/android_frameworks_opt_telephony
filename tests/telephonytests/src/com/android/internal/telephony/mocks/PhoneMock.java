@@ -22,8 +22,7 @@ import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
-import android.os.RegistrantList;
+
 import android.os.ResultReceiver;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
@@ -39,6 +38,8 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.Registrant;
+import com.android.internal.telephony.RegistrantList;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UsimServiceTable;

@@ -45,11 +45,12 @@ java_library {
     },
     srcs: [
         ":opt-telephony-common-srcs",
+        ":framework-telephony-stack-shared-srcs",
         "src/java/**/I*.aidl",
         "src/java/**/*.logtags",
     ],
 
-    jarjar_rules: ":framework-jarjar-rules",
+    jarjar_rules: "jarjar-rules-shared.txt",
 
     libs: [
         "android.hardware.radio-V1.0-java",
