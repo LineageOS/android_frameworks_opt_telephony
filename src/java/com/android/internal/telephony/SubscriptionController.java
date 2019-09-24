@@ -2391,7 +2391,7 @@ public class SubscriptionController extends ISub.Stub {
     public void sendDefaultChangedBroadcast(int subId) {
         // Broadcast an Intent for default sub change
         int phoneId = SubscriptionManager.getPhoneId(subId);
-        Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
+        Intent intent = new Intent(SubscriptionManager.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
                 | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
