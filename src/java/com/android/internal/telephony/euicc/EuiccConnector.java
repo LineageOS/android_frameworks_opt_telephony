@@ -67,6 +67,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.content.PackageMonitor;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -616,9 +617,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                     isSameComponent = mSelectedComponent != null;
                 } else {
                     isSameComponent = mSelectedComponent == null
-                            || Objects.equals(
-                                    bestComponent.getComponentName(),
-                                    mSelectedComponent.getComponentName());
+                            || Objects.equals(new ComponentName(bestComponent.packageName,
+                            bestComponent.name),
+                        new ComponentName(mSelectedComponent.packageName, mSelectedComponent.name));
                 }
                 boolean forceRebind = bestComponent != null
                         && Objects.equals(bestComponent.packageName, affectedPackage);
@@ -1006,7 +1007,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
             return false;
         }
         Intent intent = new Intent(EuiccService.EUICC_SERVICE_INTERFACE);
-        intent.setComponent(mSelectedComponent.getComponentName());
+        intent.setComponent(new ComponentName(mSelectedComponent.packageName,
+            mSelectedComponent.name));
         // We bind this as a foreground service because it is operating directly on the SIM, and we
         // do not want it subjected to power-savings restrictions while doing so.
         return mContext.bindService(intent, this,
@@ -1030,7 +1032,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
                 if (resolveInfo.filter.getPriority() > bestPriority) {
                     bestPriority = resolveInfo.filter.getPriority();
-                    bestComponent = resolveInfo.getComponentInfo();
+                    bestComponent = TelephonyUtils.getComponentInfo(resolveInfo);
                 }
             }
         }
@@ -1040,8 +1042,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     private static boolean isValidEuiccComponent(
             PackageManager packageManager, ResolveInfo resolveInfo) {
-        ComponentInfo componentInfo = resolveInfo.getComponentInfo();
-        String packageName = componentInfo.getComponentName().getPackageName();
+        ComponentInfo componentInfo = TelephonyUtils.getComponentInfo(resolveInfo);
+        String packageName = new ComponentName(componentInfo.packageName, componentInfo.name)
+            .getPackageName();
 
         // Verify that the app is privileged (via granting of a privileged permission).
         if (packageManager.checkPermission(
