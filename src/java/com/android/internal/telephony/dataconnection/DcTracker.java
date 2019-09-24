@@ -964,7 +964,9 @@ public class DcTracker extends Handler {
 
         private void enableMobileProvisioning() {
             final Message msg = obtainMessage(DctConstants.CMD_ENABLE_MOBILE_PROVISIONING);
-            msg.setData(Bundle.forPair(DctConstants.PROVISIONING_URL_KEY, mProvisionUrl));
+            Bundle bundle = new Bundle(1);
+            bundle.putString(DctConstants.PROVISIONING_URL_KEY, mProvisionUrl);
+            msg.setData(bundle);
             sendMessage(msg);
         }
 
