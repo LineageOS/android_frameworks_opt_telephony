@@ -150,9 +150,7 @@ public class PhoneFactory {
                 /* In case of multi SIM mode two instances of Phone, RIL are created,
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
-                TelephonyManager tm = (TelephonyManager) context.getSystemService(
-                        Context.TELEPHONY_SERVICE);
-                int numPhones = tm.getPhoneCount();
+                int numPhones = TelephonyManager.getDefault().getPhoneCount();
 
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];
@@ -210,10 +208,8 @@ public class PhoneFactory {
                 // Set the default phone in base class.
                 // FIXME: This is a first best guess at what the defaults will be. It
                 // FIXME: needs to be done in a more controlled manner in the future.
-                if (numPhones > 0) {
-                    sPhone = sPhones[0];
-                    sCommandsInterface = sCommandsInterfaces[0];
-                }
+                sPhone = sPhones[0];
+                sCommandsInterface = sCommandsInterfaces[0];
 
                 // Ensure that we have a default SMS app. Requesting the app with
                 // updateIfNeeded set to true is enough to configure a default SMS app.
