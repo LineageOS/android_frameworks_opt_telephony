@@ -26,17 +26,14 @@ import com.android.internal.telephony.SubscriptionMonitor;
 public class SubscriptionMonitorMock extends SubscriptionMonitor {
     private final int mNumPhones;
     private final RegistrantList mSubscriptionsChangedRegistrants[];
-    private final RegistrantList mDefaultSubscriptionRegistrants[];
 
     public SubscriptionMonitorMock(int numPhones) {
         super();
         mNumPhones = numPhones;
         mSubscriptionsChangedRegistrants = new RegistrantList[numPhones];
-        mDefaultSubscriptionRegistrants = new RegistrantList[numPhones];
 
         for (int i = 0; i < numPhones; i++) {
             mSubscriptionsChangedRegistrants[i] = new RegistrantList();
-            mDefaultSubscriptionRegistrants[i] = new RegistrantList();
         }
     }
 
@@ -54,31 +51,10 @@ public class SubscriptionMonitorMock extends SubscriptionMonitor {
         mSubscriptionsChangedRegistrants[phoneId].remove(h);
     }
 
-    @Override
-    public void registerForDefaultDataSubscriptionChanged(int phoneId, Handler h, int what,
-            Object o) {
-        validatePhoneId(phoneId);
-        Registrant r = new Registrant(h, what, o);
-        mDefaultSubscriptionRegistrants[phoneId].add(r);
-        r.notifyRegistrant();
-    }
-
-    @Override
-    public void unregisterForDefaultDataSubscriptionChanged(int phoneId, Handler h) {
-        validatePhoneId(phoneId);
-        mDefaultSubscriptionRegistrants[phoneId].remove(h);
-    }
-
     @VisibleForTesting
     public void notifySubscriptionChanged(int phoneId) {
         validatePhoneId(phoneId);
         mSubscriptionsChangedRegistrants[phoneId].notifyRegistrants();
-    }
-
-    @VisibleForTesting
-    public void notifyDefaultSubscriptionChanged(int phoneId) {
-        validatePhoneId(phoneId);
-        mDefaultSubscriptionRegistrants[phoneId].notifyRegistrants();
     }
 
     private void validatePhoneId(int phoneId) {

@@ -16,13 +16,7 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
-import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -43,14 +37,11 @@ import java.io.PrintWriter;
 public class SubscriptionMonitor {
 
     private final RegistrantList mSubscriptionsChangedRegistrants[];
-    private final RegistrantList mDefaultDataSubChangedRegistrants[];
 
     private final SubscriptionController mSubscriptionController;
     private final Context mContext;
 
     private final int mPhoneSubId[];
-    private int mDefaultDataSubId;
-    private int mDefaultDataPhoneId;
 
     private final Object mLock = new Object();
 
@@ -66,15 +57,10 @@ public class SubscriptionMonitor {
         mContext = context;
 
         mSubscriptionsChangedRegistrants = new RegistrantList[numPhones];
-        mDefaultDataSubChangedRegistrants = new RegistrantList[numPhones];
         mPhoneSubId = new int[numPhones];
-
-        mDefaultDataSubId = mSubscriptionController.getDefaultDataSubId();
-        mDefaultDataPhoneId = mSubscriptionController.getPhoneId(mDefaultDataSubId);
 
         for (int phoneId = 0; phoneId < numPhones; phoneId++) {
             mSubscriptionsChangedRegistrants[phoneId] = new RegistrantList();
-            mDefaultDataSubChangedRegistrants[phoneId] = new RegistrantList();
             mPhoneSubId[phoneId] = mSubscriptionController.getSubIdUsingPhoneId(phoneId);
         }
 
@@ -83,15 +69,11 @@ public class SubscriptionMonitor {
                     mSubscriptionsChangedListener);
         } catch (RemoteException e) {
         }
-
-        mContext.registerReceiver(mDefaultDataSubscriptionChangedReceiver,
-                new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
     }
 
     @VisibleForTesting
     public SubscriptionMonitor() {
         mSubscriptionsChangedRegistrants = null;
-        mDefaultDataSubChangedRegistrants = null;
         mSubscriptionController = null;
         mContext = null;
         mPhoneSubId = null;
@@ -102,79 +84,15 @@ public class SubscriptionMonitor {
         @Override
         public void onSubscriptionsChanged() {
             synchronized (mLock) {
-                int newDefaultDataPhoneId = INVALID_PHONE_INDEX;
                 for (int phoneId = 0; phoneId < mPhoneSubId.length; phoneId++) {
                     final int newSubId = mSubscriptionController.getSubIdUsingPhoneId(phoneId);
                     final int oldSubId = mPhoneSubId[phoneId];
                     if (oldSubId != newSubId) {
-                        log("Phone[" + phoneId + "] subId changed " + oldSubId + "->" +
-                                newSubId + ", " +
-                                mSubscriptionsChangedRegistrants[phoneId].size() + " registrants");
+                        log("Phone[" + phoneId + "] subId changed " + oldSubId + "->" + newSubId
+                                + ", " + mSubscriptionsChangedRegistrants[phoneId].size()
+                                + " registrants");
                         mPhoneSubId[phoneId] = newSubId;
                         mSubscriptionsChangedRegistrants[phoneId].notifyRegistrants();
-
-                        // if the default isn't set, just move along..
-                        if (mDefaultDataSubId == INVALID_SUBSCRIPTION_ID) continue;
-
-                        // check if this affects default data
-                        if (newSubId == mDefaultDataSubId || oldSubId == mDefaultDataSubId) {
-                            log("mDefaultDataSubId = " + mDefaultDataSubId + ", " +
-                                    mDefaultDataSubChangedRegistrants[phoneId].size() +
-                                    " registrants");
-                            mDefaultDataSubChangedRegistrants[phoneId].notifyRegistrants();
-                        }
-                    }
-                    if (newSubId == mDefaultDataSubId) {
-                        newDefaultDataPhoneId = phoneId;
-                    }
-                }
-                mDefaultDataPhoneId = newDefaultDataPhoneId;
-            }
-        }
-    };
-
-    private final BroadcastReceiver mDefaultDataSubscriptionChangedReceiver =
-            new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final int newDefaultDataSubId = mSubscriptionController.getDefaultDataSubId();
-            synchronized (mLock) {
-                if (mDefaultDataSubId != newDefaultDataSubId) {
-                    log("Default changed " + mDefaultDataSubId + "->" + newDefaultDataSubId);
-                    final int oldDefaultDataSubId = mDefaultDataSubId;
-                    final int oldDefaultDataPhoneId = mDefaultDataPhoneId;
-                    mDefaultDataSubId = newDefaultDataSubId;
-
-                    int newDefaultDataPhoneId =
-                            mSubscriptionController.getPhoneId(INVALID_SUBSCRIPTION_ID);
-                    if (newDefaultDataSubId != INVALID_SUBSCRIPTION_ID) {
-                        for (int phoneId = 0; phoneId < mPhoneSubId.length; phoneId++) {
-                            if (mPhoneSubId[phoneId] == newDefaultDataSubId) {
-                                newDefaultDataPhoneId = phoneId;
-                                if (VDBG) log("newDefaultDataPhoneId=" + newDefaultDataPhoneId);
-                                break;
-                            }
-                        }
-                    }
-                    if (newDefaultDataPhoneId != oldDefaultDataPhoneId) {
-                        log("Default phoneId changed " + oldDefaultDataPhoneId + "->" +
-                                newDefaultDataPhoneId + ", " +
-                                (invalidPhoneId(oldDefaultDataPhoneId) ?
-                                 0 :
-                                 mDefaultDataSubChangedRegistrants[oldDefaultDataPhoneId].size()) +
-                                "," + (invalidPhoneId(newDefaultDataPhoneId) ?
-                                  0 :
-                                  mDefaultDataSubChangedRegistrants[newDefaultDataPhoneId].size()) +
-                                " registrants");
-                        mDefaultDataPhoneId = newDefaultDataPhoneId;
-                        if (!invalidPhoneId(oldDefaultDataPhoneId)) {
-                            mDefaultDataSubChangedRegistrants[oldDefaultDataPhoneId].
-                                    notifyRegistrants();
-                        }
-                        if (!invalidPhoneId(newDefaultDataPhoneId)) {
-                            mDefaultDataSubChangedRegistrants[newDefaultDataPhoneId].
-                                    notifyRegistrants();
-                        }
                     }
                 }
             }
@@ -195,23 +113,6 @@ public class SubscriptionMonitor {
             throw new IllegalArgumentException("Invalid PhoneId");
         }
         mSubscriptionsChangedRegistrants[phoneId].remove(h);
-    }
-
-    public void registerForDefaultDataSubscriptionChanged(int phoneId, Handler h, int what,
-            Object o) {
-        if (invalidPhoneId(phoneId)) {
-            throw new IllegalArgumentException("Invalid PhoneId");
-        }
-        Registrant r = new Registrant(h, what, o);
-        mDefaultDataSubChangedRegistrants[phoneId].add(r);
-        r.notifyRegistrant();
-    }
-
-    public void unregisterForDefaultDataSubscriptionChanged(int phoneId, Handler h) {
-        if (invalidPhoneId(phoneId)) {
-            throw new IllegalArgumentException("Invalid PhoneId");
-        }
-        mDefaultDataSubChangedRegistrants[phoneId].remove(h);
     }
 
     private boolean invalidPhoneId(int phoneId) {
