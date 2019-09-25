@@ -326,7 +326,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 // Acquire the wake lock as we are reading the elapsed realtime clock below.
                 mWakeLock.acquire();
 
-                long elapsedRealtime = mTimeServiceHelper.elapsedRealtime();
+                long elapsedRealtime = mDeviceState.elapsedRealtime();
                 long millisSinceNitzReceived =
                         elapsedRealtime - nitzSignal.getReferenceTimeMillis();
                 if (millisSinceNitzReceived < 0 || millisSinceNitzReceived > Integer.MAX_VALUE) {
