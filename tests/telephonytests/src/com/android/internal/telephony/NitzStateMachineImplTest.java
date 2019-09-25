@@ -774,11 +774,11 @@ public class NitzStateMachineImplTest extends TelephonyTest {
             when(mDeviceState.getIgnoreNitz()).thenReturn(false);
             when(mDeviceState.getNitzUpdateDiffMillis()).thenReturn(2000);
             when(mDeviceState.getNitzUpdateSpacingMillis()).thenReturn(1000 * 60 * 10);
+            when(mDeviceState.elapsedRealtime()).thenReturn(mInitialRealtimeMillis);
 
             // Simulate the country not being known.
             when(mDeviceState.getNetworkCountryIsoForPhone()).thenReturn("");
 
-            when(mTimeServiceHelper.elapsedRealtime()).thenReturn(mInitialRealtimeMillis);
             when(mTimeServiceHelper.currentTimeMillis()).thenReturn(mInitialSystemClockMillis);
             when(mTimeServiceHelper.isTimeZoneDetectionEnabled())
                     .thenReturn(mTimeZoneDetectionEnabled);
@@ -967,7 +967,6 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         verify(mTimeServiceHelper, atLeast(0)).setListener(any());
         verify(mTimeServiceHelper, atLeast(0)).isTimeZoneDetectionEnabled();
         verify(mTimeServiceHelper, atLeast(0)).isTimeZoneSettingInitialized();
-        verify(mTimeServiceHelper, atLeast(0)).elapsedRealtime();
         verify(mTimeServiceHelper, atLeast(0)).currentTimeMillis();
         verifyNoMoreInteractions(mTimeServiceHelper);
     }

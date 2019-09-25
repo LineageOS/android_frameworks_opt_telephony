@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
@@ -141,6 +142,13 @@ public interface NitzStateMachine {
 
         public String getNetworkCountryIsoForPhone() {
             return mTelephonyManager.getNetworkCountryIso(mPhone.getPhoneId());
+        }
+
+        /**
+         * Returns the same value as {@link SystemClock#elapsedRealtime()}.
+         */
+        public long elapsedRealtime() {
+            return SystemClock.elapsedRealtime();
         }
     }
 }
