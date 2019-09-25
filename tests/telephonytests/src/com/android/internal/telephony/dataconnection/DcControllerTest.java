@@ -44,8 +44,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
-import com.android.internal.telephony.StateMachine;
 import com.android.internal.util.IState;
+import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
