@@ -357,11 +357,11 @@ public final class MccTable {
      * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
      */
     private static void setTimezoneFromMccIfNeeded(Context context, int mcc) {
-        if (!TimeServiceHelper.isTimeZoneSettingInitializedStatic()) {
+        if (!TimeServiceHelperImpl.isTimeZoneSettingInitializedStatic()) {
             String zoneId = defaultTimeZoneForMcc(mcc);
             if (zoneId != null && zoneId.length() > 0) {
                 // Set time zone based on MCC
-                TimeServiceHelper.setDeviceTimeZoneStatic(context, zoneId);
+                TimeServiceHelperImpl.setDeviceTimeZoneStatic(context, zoneId);
                 Slog.d(LOG_TAG, "timezone set to " + zoneId);
             }
         }
