@@ -24,7 +24,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.os.Handler;
-import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -88,13 +87,6 @@ public class TimeServiceHelper {
      */
     public long currentTimeMillis() {
         return System.currentTimeMillis();
-    }
-
-    /**
-     * Returns the same value as {@link SystemClock#elapsedRealtime()}.
-     */
-    public long elapsedRealtime() {
-        return SystemClock.elapsedRealtime();
     }
 
     /**
