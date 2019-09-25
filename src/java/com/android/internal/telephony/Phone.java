@@ -1961,7 +1961,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
-    protected void setVoiceCallForwardingFlag(IccRecords r, int line, boolean enable,
+    /**
+     * Set the voice call forwarding flag for GSM/UMTS and the like SIMs
+     *
+     * @param r to enable/disable
+     * @param line to enable/disable
+     * @param enable
+     * @param number to which CFU is enabled
+     */
+    public void setVoiceCallForwardingFlag(IccRecords r, int line, boolean enable,
                                               String number) {
         setCallForwardingIndicatorInSharedPref(enable);
         r.setVoiceCallForwardingFlag(line, enable, number);
