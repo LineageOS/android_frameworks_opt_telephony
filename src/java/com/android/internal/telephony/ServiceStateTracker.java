@@ -3339,10 +3339,13 @@ public class ServiceStateTracker extends Handler {
             // camped on a cell either to attempt registration or for emergency services, then
             // for purposes of setting the locale, we don't care if registration fails or is
             // incomplete.
-            String localeOperator = isInvalidOperatorNumeric(operatorNumeric)
-                    && (mCellIdentity != null)
-                    ? mCellIdentity.getMccString() + mCellIdentity.getMncString()
-                    : operatorNumeric;
+            // CellIdentity can return a null MCC and MNC in CDMA
+            String localeOperator = operatorNumeric;
+            if (isInvalidOperatorNumeric(operatorNumeric) && (mCellIdentity != null)
+                    && mCellIdentity.getMccString() != null
+                    && mCellIdentity.getMncString() != null) {
+                localeOperator = mCellIdentity.getMccString() + mCellIdentity.getMncString();
+            }
 
             if (isInvalidOperatorNumeric(localeOperator)) {
                 if (DBG) log("localeOperator " + localeOperator + " is invalid");
