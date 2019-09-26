@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -395,8 +396,8 @@ public class TelephonyPermissionsTest {
         // regardless of if the package satisfies the previous requirements for device ID access.
         mMockApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
         when(mMockContext.getPackageManager()).thenReturn(mMockPackageManager);
-        when(mMockPackageManager.getApplicationInfoAsUser(eq(PACKAGE), anyInt(),
-                anyInt())).thenReturn(mMockApplicationInfo);
+        when(mMockPackageManager.getApplicationInfoAsUser(eq(PACKAGE), anyInt(), any()))
+            .thenReturn(mMockApplicationInfo);
 
         when(mMockContext.checkCallingOrSelfPermission(
                 android.Manifest.permission.READ_DEVICE_CONFIG)).thenReturn(
