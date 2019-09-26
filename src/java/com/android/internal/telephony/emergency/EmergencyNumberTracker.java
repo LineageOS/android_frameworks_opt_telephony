@@ -371,7 +371,15 @@ public class EmergencyNumberTracker extends Handler {
         } catch (IOException ex) {
             loge("Cache emergency database failure: " + ex);
         } finally {
-            IoUtils.closeQuietly(inputStream);
+            // close quietly by catching non-runtime exceptions.
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (RuntimeException rethrown) {
+                    throw rethrown;
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 
