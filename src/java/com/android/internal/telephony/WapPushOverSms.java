@@ -34,7 +34,6 @@ import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteException;
-import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -478,9 +477,7 @@ public class WapPushOverSms implements ServiceConnection {
                     // Update thread ID for ReadOrigInd & DeliveryInd.
                     final ContentValues values = new ContentValues(1);
                     values.put(Telephony.Mms.THREAD_ID, threadId);
-                    if (SqliteWrapper.update(
-                            mContext,
-                            mContext.getContentResolver(),
+                    if (mContext.getContentResolver().update(
                             uri,
                             values,
                             null/*where*/,
@@ -552,17 +549,15 @@ public class WapPushOverSms implements ServiceConnection {
         }
         Cursor cursor = null;
         try {
-            cursor = SqliteWrapper.query(
-                    context,
-                    context.getContentResolver(),
-                    Telephony.Mms.CONTENT_URI,
-                    new String[]{ Telephony.Mms.THREAD_ID },
-                    THREAD_ID_SELECTION,
-                    new String[]{
-                            DatabaseUtils.sqlEscapeString(messageId),
-                            Integer.toString(PduHeaders.MESSAGE_TYPE_SEND_REQ)
-                    },
-                    null/*sortOrder*/);
+            cursor = context.getContentResolver().query(
+                Telephony.Mms.CONTENT_URI,
+                new String[]{ Telephony.Mms.THREAD_ID },
+                THREAD_ID_SELECTION,
+                new String[]{
+                    DatabaseUtils.sqlEscapeString(messageId),
+                    Integer.toString(PduHeaders.MESSAGE_TYPE_SEND_REQ)
+                },
+                null/*sortOrder*/);
             if (cursor != null && cursor.moveToFirst()) {
                 return cursor.getLong(0);
             }
@@ -587,17 +582,15 @@ public class WapPushOverSms implements ServiceConnection {
             String[] selectionArgs = new String[] { location };
             Cursor cursor = null;
             try {
-                cursor = SqliteWrapper.query(
-                        context,
-                        context.getContentResolver(),
-                        Telephony.Mms.CONTENT_URI,
-                        new String[]{Telephony.Mms._ID},
-                        LOCATION_SELECTION,
-                        new String[]{
-                                Integer.toString(PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND),
-                                new String(rawLocation)
-                        },
-                        null/*sortOrder*/);
+                cursor = context.getContentResolver().query(
+                    Telephony.Mms.CONTENT_URI,
+                    new String[]{ Telephony.Mms._ID },
+                    LOCATION_SELECTION,
+                    new String[]{
+                        Integer.toString(PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND),
+                        new String(rawLocation)
+                    },
+                    null/*sortOrder*/);
                 if (cursor != null && cursor.getCount() > 0) {
                     // We already received the same notification before.
                     return true;
