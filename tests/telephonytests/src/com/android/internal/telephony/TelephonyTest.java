@@ -676,7 +676,7 @@ public abstract class TelephonyTest {
         // regardless of if the package satisfies the previous requirements for device ID access.
         mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
         doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(TAG), anyInt(),
-                anyInt());
+                any());
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access
         // restrictions should be enabled; this results in a NPE when DeviceConfig uses

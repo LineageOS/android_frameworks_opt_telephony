@@ -597,7 +597,7 @@ public class ContextFixture implements TestFixture<Context> {
                         (Intent) invocation.getArguments()[0],
                         (Integer) invocation.getArguments()[1]);
             }
-        }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), anyInt());
+        }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), any());
 
         try {
             doReturn(mPackageInfo).when(mPackageManager).getPackageInfoAsUser(any(), anyInt(),
