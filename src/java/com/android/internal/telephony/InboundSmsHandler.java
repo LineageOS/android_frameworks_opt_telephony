@@ -1161,15 +1161,14 @@ public abstract class InboundSmsHandler extends StateMachine {
             // Deliver the broadcast only to those running users that are permitted
             // by user policy.
             for (int i = users.length - 1; i >= 0; i--) {
-                UserHandle targetUser = new UserHandle(users[i]);
+                UserHandle targetUser = UserHandle.of(users[i]);
                 if (users[i] != UserHandle.USER_SYSTEM) {
                     // Is the user not allowed to use SMS?
                     if (mUserManager.hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
                         continue;
                     }
                     // Skip unknown users and managed profiles as well
-                    UserInfo info = mUserManager.getUserInfo(users[i]);
-                    if (info == null || info.isManagedProfile()) {
+                    if (mUserManager.isManagedProfile(users[i])) {
                         continue;
                     }
                 }

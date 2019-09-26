@@ -18,6 +18,7 @@ package com.android.internal.telephony.mocks;
 
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -181,7 +182,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
 
             r.onOpportunisticSubscriptionsChangedListenerCallback = callback;
             r.callingPackage = callingPackage;
-            r.callerUserId = UserHandle.getCallingUserId();
+            r.callerUserId = UserHandle.getUserHandleForUid(Binder.getCallingUid()).getIdentifier();
             r.events = 0;
             r.canReadPhoneState = true; // permission has been enforced above
             // Always notify when registration occurs if there has been a notification.
