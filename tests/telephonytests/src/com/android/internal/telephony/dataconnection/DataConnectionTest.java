@@ -69,8 +69,8 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
 import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
-import com.android.internal.telephony.StateMachine;
 import com.android.internal.util.IState;
+import com.android.internal.util.StateMachine;
 import com.android.server.pm.PackageManagerService;
 import com.android.server.pm.permission.PermissionManagerService;
 
