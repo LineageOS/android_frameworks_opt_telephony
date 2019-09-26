@@ -28,34 +28,33 @@ class RcsPermissions {
 
         context.enforcePermission(Manifest.permission.READ_SMS, pid, uid, null);
 
-        checkOp(context, uid, callingPackage, AppOpsManager.OP_READ_SMS);
+        checkOp(context, uid, callingPackage, AppOpsManager.OPSTR_READ_SMS);
     }
 
     static void checkWritePermissions(Context context, String callingPackage) {
         int uid = Binder.getCallingUid();
 
-        checkOp(context, uid, callingPackage, AppOpsManager.OP_WRITE_SMS);
+        checkOp(context, uid, callingPackage, AppOpsManager.OPSTR_WRITE_SMS);
     }
 
     /**
      * Notes the provided op, but throws even if the op mode is {@link AppOpsManager.MODE_IGNORED}.
      * <p>
-     * {@link AppOpsManager.OP_WRITE_SMS} defaults to {@link AppOpsManager.MODE_IGNORED} to avoid
+     * {@link AppOpsManager.OPSTR_WRITE_SMS} defaults to {@link AppOpsManager.MODE_IGNORED} to avoid
      * crashing applications written before the app op was introduced. Since this is a new API,
      * consumers should be aware of the permission requirements, and we should be safe to throw a
      * {@link SecurityException} instead of providing a dummy value (which could cause unexpected
-     * application behavior and possible loss of user data). {@link AppOpsManager.OP_READ_SMS} is
+     * application behavior and possible loss of user data). {@link AppOpsManager.OPSTR_READ_SMS} is
      * not normally in {@link AppOpsManager.MODE_IGNORED}, but we maintain the same behavior for
      * consistency with handling of write permissions.
      */
-    private static void checkOp(Context context, int uid, String callingPackage, int op) {
+    private static void checkOp(Context context, int uid, String callingPackage, String op) {
         AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
 
         int mode = appOps.noteOp(op, uid, callingPackage);
 
         if (mode != AppOpsManager.MODE_ALLOWED) {
-            throw new SecurityException(
-                    AppOpsManager.opToName(op) + " not allowed for " + callingPackage);
+            throw new SecurityException(op + " not allowed for " + callingPackage);
         }
     }
 }

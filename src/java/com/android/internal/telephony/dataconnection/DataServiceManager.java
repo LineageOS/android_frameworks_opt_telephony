@@ -132,8 +132,8 @@ public class DataServiceManager extends Handler {
         try {
             mPackageManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
                     pkgToGrant, mPhone.getContext().getUserId());
-            mAppOps.setMode(AppOpsManager.OP_MANAGE_IPSEC_TUNNELS, mPhone.getContext().getUserId(),
-                    pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
+            mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
+                mPhone.getContext().getUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
         } catch (RemoteException e) {
             loge("Binder to package manager died, permission grant for DataService failed.");
             throw e.rethrowAsRuntimeException();
@@ -157,7 +157,7 @@ public class DataServiceManager extends Handler {
             mPackageManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
                     dataServicesArray, mPhone.getContext().getUserId());
             for (String pkg : dataServices) {
-                mAppOps.setMode(AppOpsManager.OP_MANAGE_IPSEC_TUNNELS,
+                mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
                         mPhone.getContext().getUserId(),
                         pkg, AppOpsManager.MODE_ERRORED);
             }
