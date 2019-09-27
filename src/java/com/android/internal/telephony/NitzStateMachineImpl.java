@@ -535,9 +535,4 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     public NitzData getCachedNitzData() {
         return mLatestNitzSignal != null ? mLatestNitzSignal.getValue() : null;
     }
-
-    @Override
-    public String getSavedTimeZoneId() {
-        return mSavedTimeZoneId;
-    }
 }
