@@ -156,7 +156,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                 broadcastMessage(cbMessages, cbMessageUris);
             } else {
                 for (int i = 0; i < cbMessages.size(); i++) {
-                    List<Geometry> broadcastArea = commonBroadcastArea.isEmpty()
+                    List<Geometry> broadcastArea = !commonBroadcastArea.isEmpty()
                             ? commonBroadcastArea : cbMessages.get(i).getGeometries();
                     if (broadcastArea == null || broadcastArea.isEmpty()) {
                         broadcastMessage(cbMessages.get(i), cbMessageUris.get(i));
