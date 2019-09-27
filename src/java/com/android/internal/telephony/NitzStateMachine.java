@@ -84,12 +84,6 @@ public interface NitzStateMachine {
     NitzData getCachedNitzData();
 
     /**
-     * Returns the time zone ID from the most recent time that a time zone could be determined by
-     * this state machine.
-     */
-    String getSavedTimeZoneId();
-
-    /**
      * A proxy over read-only device state that allows things like system properties, elapsed
      * realtime clock to be faked for tests.
      */
