@@ -27,6 +27,7 @@ import android.os.Handler;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.telephony.Annotation.CallState;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
@@ -157,7 +158,7 @@ public class DataEnabledSettings {
 
     private final PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
         @Override
-        public void onCallStateChanged(@TelephonyManager.CallState int state, String phoneNumber) {
+        public void onCallStateChanged(@CallState int state, String phoneNumber) {
             updateDataEnabledAndNotify(REASON_OVERRIDE_CONDITION_CHANGED);
         }
     };

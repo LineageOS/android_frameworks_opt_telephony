@@ -17,13 +17,14 @@
 package com.android.internal.telephony;
 
 import android.annotation.UnsupportedAppUsage;
+import android.telephony.Annotation.DataFailureCause;
+import android.telephony.Annotation.RadioPowerState;
+import android.telephony.Annotation.SrvccState;
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
-import android.telephony.DataFailCause;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
-import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -69,10 +70,10 @@ public interface PhoneNotifier {
     void notifyImsDisconnectCause(Phone sender, ImsReasonInfo imsReasonInfo);
 
     public void notifyPreciseDataConnectionFailed(Phone sender, String apnType, String apn,
-                                                  @DataFailCause.FailCause int failCause);
+                                                  @DataFailureCause int failCause);
 
     /** send a notification that the SRVCC state has changed.*/
-    void notifySrvccStateChanged(Phone sender, @TelephonyManager.SrvccState int state);
+    void notifySrvccStateChanged(Phone sender, @SrvccState int state);
 
     public void notifyVoiceActivationStateChanged(Phone sender, int activationState);
 
@@ -84,7 +85,7 @@ public interface PhoneNotifier {
 
     public void notifyPhoneCapabilityChanged(PhoneCapability capability);
 
-    void notifyRadioPowerStateChanged(Phone sender, @TelephonyManager.RadioPowerState int state);
+    void notifyRadioPowerStateChanged(Phone sender, @RadioPowerState int state);
 
     /** Notify of change to EmergencyNumberList. */
     void notifyEmergencyNumberList(Phone sender);
