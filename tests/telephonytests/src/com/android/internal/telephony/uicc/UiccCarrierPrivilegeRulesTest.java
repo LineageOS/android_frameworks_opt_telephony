@@ -25,78 +25,36 @@ import static org.mockito.Mockito.doAnswer;
 
 import android.content.pm.Signature;
 import android.os.AsyncResult;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
     private UiccCarrierPrivilegeRules mUiccCarrierPrivilegeRules;
-    public UiccCarrierPrivilegeRulesTest() {
-        super();
-    }
-    private UiccCarrierPrivilegeRulesHandlerThread mTestHandlerThread;
-    private Handler mHandler;
-
-    private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 1;
-    private static final int EVENT_TEST_DONE = 2;
 
     @Mock
     private UiccProfile mUiccProfile;
 
-    private class UiccCarrierPrivilegeRulesHandlerThread extends HandlerThread {
-
-        private UiccCarrierPrivilegeRulesHandlerThread(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            /* create a custom handler for the Handler Thread */
-            mHandler = new Handler(mTestHandlerThread.getLooper()) {
-                @Override
-                public void handleMessage(Message msg) {
-                    switch (msg.what) {
-                        case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
-                            /* Upon handling this event, new CarrierPrivilegeRule
-                            will be created with the looper of HandlerThread */
-                            mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(
-                                    mUiccProfile, mHandler.obtainMessage(EVENT_TEST_DONE));
-                            break;
-                        case EVENT_TEST_DONE:
-                            setReady(true);
-                            break;
-                        default:
-                            logd("Unknown Event " + msg.what);
-                    }
-                }
-            };
-            setReady(true);
-        }
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mTestHandlerThread = new UiccCarrierPrivilegeRulesHandlerThread(TAG);
-        mTestHandlerThread.start();
-
-        waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
-        mTestHandlerThread.quit();
-        mTestHandlerThread.join();
         super.tearDown();
         mUiccCarrierPrivilegeRules = null;
     }
@@ -135,10 +93,8 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             }
         }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
-        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
-        setReady(false);
-        mCardOpenLogicalChannel.sendToTarget();
-        waitUntilReady();
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
     }
 
     @Test
@@ -352,10 +308,8 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
 
-        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
-        setReady(false);
-        mCardOpenLogicalChannel.sendToTarget();
-        waitUntilReady();
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
 
         assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
         assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());
@@ -414,11 +368,8 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             }
         }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
-
-        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
-        setReady(false);
-        mCardOpenLogicalChannel.sendToTarget();
-        waitUntilReady();
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
 
         assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
         assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());
@@ -474,11 +425,8 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             }
         }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
-
-        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
-        setReady(false);
-        mCardOpenLogicalChannel.sendToTarget();
-        waitUntilReady();
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
 
         Signature signature = new Signature("abcd92cbb156b280fa4e1429a6eceeb6e5c1bfe4");
         assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
@@ -528,10 +476,8 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             }
         }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
-        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
-        setReady(false);
-        mCardOpenLogicalChannel.sendToTarget();
-        waitUntilReady();
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
 
         assertTrue(!mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
     }
@@ -604,11 +550,8 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
             }
         }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
 
-
-        Message mCardOpenLogicalChannel = mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE);
-        setReady(false);
-        mCardOpenLogicalChannel.sendToTarget();
-        waitUntilReady();
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
 
         assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
         assertEquals(1, mUiccCarrierPrivilegeRules.getPackageNames().size());

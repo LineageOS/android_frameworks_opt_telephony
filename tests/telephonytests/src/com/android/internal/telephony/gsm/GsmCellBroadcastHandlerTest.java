@@ -34,23 +34,27 @@ import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.TelephonyTestUtils;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.List;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     @Mock
     private SmsStorageMonitor mSmsStorageMonitor;
@@ -60,21 +64,6 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
     private SmsMessage mGsmSmsMessage;
 
     private GsmCellBroadcastHandler mGsmCellBroadcastHandler;
-    private GsmCellBroadcastHandlerTestHandler mGsmCellBroadcastHandlerTestHandler;
-
-    private class GsmCellBroadcastHandlerTestHandler extends HandlerThread {
-
-        private GsmCellBroadcastHandlerTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mGsmCellBroadcastHandler = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(
-                    mContextFixture.getTestDouble(), mPhone);
-            setReady(true);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -84,20 +73,20 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
 
-        mGsmCellBroadcastHandlerTestHandler =
-                new GsmCellBroadcastHandlerTestHandler(getClass().getSimpleName());
-        mGsmCellBroadcastHandlerTestHandler.start();
-        waitUntilReady();
+        mGsmCellBroadcastHandler = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(
+                mContext, mPhone);
+        monitorTestableLooper(
+                new TestableLooper(mGsmCellBroadcastHandler.getHandler().getLooper()));
+        processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
         mGsmCellBroadcastHandler = null;
-        mGsmCellBroadcastHandlerTestHandler.quit();
-        mGsmCellBroadcastHandlerTestHandler.join();
         super.tearDown();
     }
 
+    @Test
     @Ignore
     public void testBroadcastSms() {
         mContextFixture.putStringArrayResource(
@@ -114,7 +103,7 @@ public class GsmCellBroadcastHandlerTest extends TelephonyTest {
                 (byte)0x01, //message identifier
                 (byte)0x01
         });
-        TelephonyTestUtils.waitForMs(100);
+        processAllMessages();
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContextFixture.getTestDouble(), times(2)).sendOrderedBroadcastAsUser(
                 intentArgumentCaptor.capture(), eq(UserHandle.ALL),

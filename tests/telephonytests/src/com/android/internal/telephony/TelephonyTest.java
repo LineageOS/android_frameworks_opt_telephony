@@ -47,6 +47,7 @@ import android.os.IDeviceIdleController;
 import android.os.Looper;
 import android.os.Message;
 import android.os.MessageQueue;
+import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.telephony.TelephonyRegistryManager;
 import android.provider.BlockedNumberContract;
@@ -79,7 +80,6 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
-import com.android.internal.telephony.RegistrantList;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -627,16 +627,16 @@ public abstract class TelephonyTest {
     }
 
     protected void tearDown() throws Exception {
-        // unmonitor TestableLooper
+        // unmonitor TestableLooper for TelephonyTest class
         if (mTestableLooper != null) {
             unmonitorTestableLooper(mTestableLooper);
         }
-        mSimulatedCommands.dispose();
-
-        // destroy all created TestableLoopers so they can be reused
+        // destroy all newly created TestableLoopers so they can be reused
         for (TestableLooper looper : mTestableLoopers) {
             looper.destroy();
         }
+
+        mSimulatedCommands.dispose();
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
         sharedPreferences.edit().clear().commit();
 

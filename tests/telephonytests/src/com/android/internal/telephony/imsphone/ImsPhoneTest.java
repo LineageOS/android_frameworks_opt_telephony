@@ -18,7 +18,6 @@ package com.android.internal.telephony.imsphone;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -46,7 +45,6 @@ import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
@@ -55,6 +53,8 @@ import android.telephony.ServiceState;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
@@ -76,11 +76,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.List;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class ImsPhoneTest extends TelephonyTest {
     @Mock
     private ImsPhoneCall mForegroundCall;
@@ -96,25 +99,11 @@ public class ImsPhoneTest extends TelephonyTest {
     ImsUtInterface mImsUtInterface;
 
     private ImsPhone mImsPhoneUT;
-    private ImsPhoneTestHandler mImsPhoneTestHandler;
     private boolean mDoesRilSendMultipleCallRing;
     private static final int EVENT_SUPP_SERVICE_NOTIFICATION = 1;
     private static final int EVENT_SUPP_SERVICE_FAILED = 2;
     private static final int EVENT_INCOMING_RING = 3;
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 4;
-
-    private class ImsPhoneTestHandler extends HandlerThread {
-
-        private ImsPhoneTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, true);
-            setReady(true);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -129,9 +118,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
 
-        mImsPhoneTestHandler = new ImsPhoneTestHandler(TAG);
-        mImsPhoneTestHandler.start();
-        waitUntilReady();
+        mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, true);
 
         mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_RIL_SENDS_MULTIPLE_CALL_RING, true);
@@ -144,14 +131,13 @@ public class ImsPhoneTest extends TelephonyTest {
         mImsPhoneUT.registerForIncomingRing(mTestHandler,
                 EVENT_INCOMING_RING, null);
         doReturn(mImsUtInterface).when(mImsCT).getUtInterface();
+        processAllMessages();
     }
 
 
     @After
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
-        mImsPhoneTestHandler.quit();
-        mImsPhoneTestHandler.join();
         super.tearDown();
     }
 
@@ -434,7 +420,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testIncomingRing() {
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         mImsPhoneUT.notifyIncomingRing();
-        waitForMs(100);
+        processAllMessages();
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
                 anyLong());

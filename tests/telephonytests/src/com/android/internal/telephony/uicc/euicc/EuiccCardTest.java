@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 
 import android.content.res.Resources;
 import android.os.Handler;
-import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
@@ -39,6 +39,8 @@ import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
 import android.telephony.euicc.EuiccRulesAuthTable;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 import android.util.ExceptionUtils;
 import android.util.Log;
 
@@ -57,14 +59,15 @@ import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class EuiccCardTest extends TelephonyTest {
-    private static final long WAIT_TIMEOUT_MLLIS = 5000;
 
     private static class ResultCaptor<T> extends AsyncResultCallback<T> {
         public T result;
@@ -74,14 +77,6 @@ public class EuiccCardTest extends TelephonyTest {
 
         private ResultCaptor() {
             mLatch = new CountDownLatch(1);
-        }
-
-        public void await() {
-            try {
-                mLatch.await(WAIT_TIMEOUT_MLLIS, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                fail("Execution is interrupted: " + e);
-            }
         }
 
         @Override
@@ -97,41 +92,11 @@ public class EuiccCardTest extends TelephonyTest {
         }
     }
 
-    private class UiccCardHandlerThread extends HandlerThread {
-        private UiccCardHandlerThread(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mEuiccCard =
-                    new EuiccCard(mContextFixture.getTestDouble(), mMockCi, mMockIccCardStatus,
-                            0 /* phoneId */, new Object()) {
-                        @Override
-                        protected byte[] getDeviceId() {
-                            return IccUtils.bcdToBytes("987654321012345");
-                        }
-
-                        @Override
-                        protected void loadEidAndNotifyRegistrants() {}
-
-                        @Override
-                        protected Resources getResources() {
-                            return mMockResources;
-                        }
-
-                    };
-            mHandler = new Handler(mTestHandlerThread.getLooper());
-            setReady(true);
-        }
-    }
-
     @Mock
     private CommandsInterface mMockCi;
     @Mock
     private IccCardStatus mMockIccCardStatus;
 
-    private UiccCardHandlerThread mTestHandlerThread;
     private Handler mHandler;
 
     private EuiccCard mEuiccCard;
@@ -149,16 +114,29 @@ public class EuiccCardTest extends TelephonyTest {
                         mMockIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mMockIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
 
-        mTestHandlerThread = new UiccCardHandlerThread(getClass().getSimpleName());
-        mTestHandlerThread.start();
+        mEuiccCard =
+            new EuiccCard(mContext, mMockCi, mMockIccCardStatus,
+                0 /* phoneId */, new Object()) {
+                @Override
+                protected byte[] getDeviceId() {
+                    return IccUtils.bcdToBytes("987654321012345");
+                }
 
-        waitUntilReady();
+                @Override
+                protected void loadEidAndNotifyRegistrants() {}
+
+                @Override
+                protected Resources getResources() {
+                    return mMockResources;
+                }
+
+            };
+        mHandler = new Handler(Looper.myLooper());
+        processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
-        mTestHandlerThread.quit();
-        mTestHandlerThread.join();
         super.tearDown();
     }
 
@@ -170,56 +148,46 @@ public class EuiccCardTest extends TelephonyTest {
     }
 
     @Test
-    public void testPassEidInContructor() throws InterruptedException {
+    public void testPassEidInConstructor() {
         mMockIccCardStatus.eid = "1A2B3C4D";
         mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
                 mMockIccCardStatus, 0 /* phoneId */, new Object());
 
         final int eventEidReady = 0;
-        final CountDownLatch latch = new CountDownLatch(1);
-        Handler handler = new Handler(mTestHandlerThread.getLooper()) {
+        Handler handler = new Handler(Looper.myLooper()) {
             @Override
             public void handleMessage(Message msg) {
                 if (msg.what == eventEidReady) {
                     assertEquals("1A2B3C4D", mEuiccCard.getEid());
-                    latch.countDown();
                 }
             }
         };
         // This will instantly return, since EID is already set
         mEuiccCard.registerForEidReady(handler, eventEidReady, null /* obj */);
-        assertTrue(latch.await(WAIT_TIMEOUT_MLLIS, TimeUnit.MILLISECONDS));
+        processAllMessages();
     }
 
     @Test
-    public void testLoadEidAndNotifyRegistrants() throws InterruptedException {
+    public void testLoadEidAndNotifyRegistrants() {
         int channel = mockLogicalChannelResponses("BF3E065A041A2B3C4D9000");
-
-        {
-            final CountDownLatch latch = new CountDownLatch(1);
-            mHandler.post(() -> {
-                mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
-                        mMockIccCardStatus, 0 /* phoneId */, new Object());
-                latch.countDown();
-            });
-            assertTrue(latch.await(WAIT_TIMEOUT_MLLIS, TimeUnit.MILLISECONDS));
-        }
+        mHandler.post(() -> {
+            mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
+                    mMockIccCardStatus, 0 /* phoneId */, new Object());
+        });
+        processAllMessages();
 
         final int eventEidReady = 0;
-        final CountDownLatch latch = new CountDownLatch(1);
-        Handler handler = new Handler(mTestHandlerThread.getLooper()) {
+        Handler handler = new Handler(Looper.myLooper()) {
             @Override
             public void handleMessage(Message msg) {
                 if (msg.what == eventEidReady) {
                     assertEquals("1A2B3C4D", mEuiccCard.getEid());
-                    latch.countDown();
                 }
             }
         };
 
         mEuiccCard.registerForEidReady(handler, eventEidReady, null /* obj */);
-        assertTrue(latch.await(WAIT_TIMEOUT_MLLIS, TimeUnit.MILLISECONDS));
-
+        processAllMessages();
         verifyStoreData(channel, "BF3E035C015A");
     }
 
@@ -230,7 +198,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getAllProfiles(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         EuiccProfileInfo[] profiles = resultCaptor.result;
@@ -248,7 +216,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getAllProfiles(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         EuiccProfileInfo[] profiles = resultCaptor.result;
         assertEquals(1, profiles.length);
@@ -275,7 +243,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<EuiccProfileInfo> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getProfile("98760000000000543210", resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         EuiccProfileInfo profile = resultCaptor.result;
         assertEquals("98760000000000543210", profile.getIccid());
@@ -309,7 +277,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.disableProfile("98760000000000543210", true, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF3211A00C5A0A896700000000004523018101FF");
@@ -321,7 +289,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.disableProfile("98760000000000543210", true, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF3211A00C5A0A896700000000004523018101FF");
@@ -333,7 +301,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.disableProfile("98760000000000543210", true, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF3211A00C5A0A896700000000004523018101FF");
@@ -345,7 +313,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.switchToProfile("98760000000000543210", true, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF3111A00C5A0A896700000000004523018101FF");
@@ -357,7 +325,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.switchToProfile("98760000000000543210", true, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF3111A00C5A0A896700000000004523018101FF");
@@ -369,7 +337,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.switchToProfile("98760000000000543210", true, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF3111A00C5A0A896700000000004523018101FF");
@@ -381,7 +349,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<String> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getEid(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("1A2B3C4D", resultCaptor.result);
         verifyStoreData(channel, "BF3E035C015A");
@@ -393,7 +361,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.setNickname("98760000000000543210", "new nickname", resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF291A5A0A89670000000000452301900C6E6577206E69636B6E616D65");
@@ -405,7 +373,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.deleteProfile("98760000000000543210", resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF330C5A0A89670000000000452301");
@@ -417,7 +385,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.deleteProfile("98760000000000543210", resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF330C5A0A89670000000000452301");
@@ -430,7 +398,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<String> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getDefaultSmdpAddress(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("SMDP.COM", resultCaptor.result);
         verifyStoreData(channel, "BF3C00");
@@ -443,7 +411,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<String> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getSmdsAddress(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("smds.com", resultCaptor.result);
         verifyStoreData(channel, "BF3C00");
@@ -455,7 +423,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.setDefaultSmdpAddress("smdp.gsma.com", resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF3F0F800D736D64702E67736D612E636F6D");
@@ -480,7 +448,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<EuiccRulesAuthTable> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getRulesAuthTable(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         EuiccRulesAuthTable rat = resultCaptor.result;
         assertEquals(-1,
@@ -503,7 +471,7 @@ public class EuiccCardTest extends TelephonyTest {
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.resetMemory(EuiccCardManager.RESET_OPTION_DELETE_FIELD_LOADED_TEST_PROFILES,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF340482020640");
@@ -516,7 +484,7 @@ public class EuiccCardTest extends TelephonyTest {
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.resetMemory(EuiccCardManager.RESET_OPTION_DELETE_FIELD_LOADED_TEST_PROFILES,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF340482020640");
@@ -528,7 +496,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getEuiccChallenge(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertArrayEquals(new byte[] {1, 2, 3}, resultCaptor.result);
         verifyStoreData(channel, "BF2E00");
@@ -540,7 +508,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getEuiccInfo1(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("BF2003010203", IccUtils.bytesToHexString(resultCaptor.result));
         verifyStoreData(channel, "BF2000");
@@ -552,7 +520,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.getEuiccInfo2(resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("BF2203010203", IccUtils.bytesToHexString(resultCaptor.result));
         verifyStoreData(channel, "BF2200");
@@ -572,7 +540,7 @@ public class EuiccCardTest extends TelephonyTest {
                 Asn1Node.newBuilder(0xA1).build().toBytes(),
                 Asn1Node.newBuilder(0xA2).build().toBytes(),
                 Asn1Node.newBuilder(0xA3).build().toBytes(), resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         assertEquals("BF3802A000", IccUtils.bytesToHexString(resultCaptor.result));
@@ -598,7 +566,7 @@ public class EuiccCardTest extends TelephonyTest {
                 Asn1Node.newBuilder(0xA1).build().toBytes(),
                 Asn1Node.newBuilder(0xA2).build().toBytes(),
                 Asn1Node.newBuilder(0xA3).build().toBytes(), resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel,
@@ -629,7 +597,7 @@ public class EuiccCardTest extends TelephonyTest {
                 Asn1Node.newBuilder(0xA1).build().toBytes(),
                 Asn1Node.newBuilder(0xA2).build().toBytes(),
                 Asn1Node.newBuilder(0xA3).build().toBytes(), resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         assertEquals("BF3802A000", IccUtils.bytesToHexString(resultCaptor.result));
@@ -652,7 +620,7 @@ public class EuiccCardTest extends TelephonyTest {
                 Asn1Node.newBuilder(0xA0).build().toBytes(),
                 Asn1Node.newBuilder(0xA1).build().toBytes(),
                 Asn1Node.newBuilder(0xA2).build().toBytes(), resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("BF2102A000", IccUtils.bytesToHexString(resultCaptor.result));
         verifyStoreData(channel,
@@ -671,7 +639,7 @@ public class EuiccCardTest extends TelephonyTest {
                 Asn1Node.newBuilder(0xA0).build().toBytes(),
                 Asn1Node.newBuilder(0xA1).build().toBytes(),
                 Asn1Node.newBuilder(0xA2).build().toBytes(), resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel,
@@ -714,7 +682,7 @@ public class EuiccCardTest extends TelephonyTest {
                                 .addChildAsBytes(0x86, new byte[] {0xA, 0xB, 0xC}))
                         .build().toBytes(),
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("BF3700", IccUtils.bytesToHexString(resultCaptor.result));
         verifyStoreData(channel, "BF361FBF2300"); // ES8+.InitialiseSecureChannel
@@ -761,7 +729,7 @@ public class EuiccCardTest extends TelephonyTest {
                                 .addChildAsBytes(0x86, new byte[] {0xA, 0xB, 0xC}))
                         .build().toBytes(),
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF361FBF2300"); // ES8+.InitialiseSecureChannel
@@ -808,7 +776,7 @@ public class EuiccCardTest extends TelephonyTest {
                                 .addChildAsBytes(0x86, new byte[] {0xA, 0xB, 0xC}))
                         .build().toBytes(),
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF361FBF2300"); // ES8+.InitialiseSecureChannel
@@ -851,7 +819,7 @@ public class EuiccCardTest extends TelephonyTest {
                                 .addChildAsBytes(0x86, new byte[] {0xA, 0xB, 0xC}))
                         .build().toBytes(),
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         EuiccCardException e = (EuiccCardException) resultCaptor.exception;
         assertEquals(0x6985, ((ApduException) e.getCause()).getApduStatus());
@@ -878,7 +846,7 @@ public class EuiccCardTest extends TelephonyTest {
                         .addChild(Asn1Node.newBuilder(0xA3))
                         .build().toBytes(),
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         EuiccCardException e = (EuiccCardException) resultCaptor.exception;
         assertEquals("No profile elements in BPP", e.getCause().getMessage());
@@ -908,7 +876,7 @@ public class EuiccCardTest extends TelephonyTest {
                         .addChild(Asn1Node.newBuilder(0xA4))
                         .build().toBytes(),
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         EuiccCardException e = (EuiccCardException) resultCaptor.exception;
         assertEquals(
@@ -928,7 +896,7 @@ public class EuiccCardTest extends TelephonyTest {
         ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.cancelSession(IccUtils.hexStringToBytes("A1B2C3"),
                 EuiccCardManager.CANCEL_REASON_POSTPONED, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals("BF4100", IccUtils.bytesToHexString(resultCaptor.result));
         verifyStoreData(channel, "BF41088003A1B2C3810101");
@@ -941,7 +909,7 @@ public class EuiccCardTest extends TelephonyTest {
         ResultCaptor<byte[]> resultCaptor = new ResultCaptor<>();
         mEuiccCard.cancelSession(IccUtils.hexStringToBytes("A1B2C3"),
                 EuiccCardManager.CANCEL_REASON_POSTPONED, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF41088003A1B2C3810101");
@@ -958,7 +926,7 @@ public class EuiccCardTest extends TelephonyTest {
         mEuiccCard.listNotifications(
                 EuiccNotification.EVENT_DELETE | EuiccNotification.EVENT_DISABLE,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertArrayEquals(
                 new EuiccNotification[] {
@@ -977,7 +945,7 @@ public class EuiccCardTest extends TelephonyTest {
         mEuiccCard.listNotifications(
                 EuiccNotification.EVENT_DELETE | EuiccNotification.EVENT_DISABLE,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF280481020430");
@@ -996,7 +964,7 @@ public class EuiccCardTest extends TelephonyTest {
         mEuiccCard.retrieveNotificationList(
                 EuiccNotification.EVENT_DELETE | EuiccNotification.EVENT_DISABLE,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertArrayEquals(
                 new EuiccNotification[] {
@@ -1019,7 +987,7 @@ public class EuiccCardTest extends TelephonyTest {
         mEuiccCard.retrieveNotificationList(
                 EuiccNotification.EVENT_DELETE | EuiccNotification.EVENT_DISABLE,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertArrayEquals(new EuiccNotification[0], resultCaptor.result);
         verifyStoreData(channel, "BF2B06A00481020430");
@@ -1033,7 +1001,7 @@ public class EuiccCardTest extends TelephonyTest {
         mEuiccCard.retrieveNotificationList(
                 EuiccNotification.EVENT_DELETE | EuiccNotification.EVENT_DISABLE,
                 resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(3, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF2B06A00481020430");
@@ -1047,7 +1015,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<EuiccNotification> resultCaptor = new ResultCaptor<>();
         mEuiccCard.retrieveNotification(5, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(
                 new EuiccNotification(1, "smdp.com", EuiccNotification.EVENT_DELETE,
@@ -1062,7 +1030,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<EuiccNotification> resultCaptor = new ResultCaptor<>();
         mEuiccCard.retrieveNotification(5, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertEquals(1, ((EuiccCardErrorException) resultCaptor.exception).getErrorCode());
         verifyStoreData(channel, "BF2B05A003800105");
@@ -1074,7 +1042,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mEuiccCard.removeNotificationFromList(5, resultCaptor, mHandler);
-        resultCaptor.await();
+        processAllMessages();
 
         assertUnexpectedException(resultCaptor.exception);
         verifyStoreData(channel, "BF3003800105");
