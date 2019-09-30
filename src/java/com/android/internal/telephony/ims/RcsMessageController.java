@@ -163,7 +163,12 @@ public class RcsMessageController extends IRcsMessage.Stub {
      */
     private <T> T performWriteOperation(String callingPackage, ThrowingSupplier<T> fn) {
         RcsPermissions.checkWritePermissions(mContext, callingPackage);
-        return Binder.withCleanCallingIdentity(fn);
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return fn.get();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     /**
@@ -173,7 +178,12 @@ public class RcsMessageController extends IRcsMessage.Stub {
      */
     private <T> T performReadOperation(String callingPackage, ThrowingSupplier<T> fn) {
         RcsPermissions.checkReadPermissions(mContext, callingPackage);
-        return Binder.withCleanCallingIdentity(fn);
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return fn.get();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     @VisibleForTesting
