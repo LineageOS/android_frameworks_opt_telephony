@@ -324,6 +324,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     private Context mContext;
     private PackageManager mPm;
+    private TelephonyManager mTm;
+    private SubscriptionManager mSm;
 
     private final PackageMonitor mPackageMonitor = new EuiccPackageMonitor();
     private final BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
@@ -367,6 +369,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private void init(Context context) {
         mContext = context;
         mPm = context.getPackageManager();
+        mTm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        mSm = (SubscriptionManager)
+                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
 
         // Unavailable/Available both monitor for package changes and update mSelectedComponent but
         // do not need to adjust the binding.
@@ -536,6 +541,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 } else if (getCurrentState() != mUnavailableState) {
                     transitionTo(mUnavailableState);
                 }
+                updateSubscriptionInfoListForAllAccessibleEuiccs();
                 return HANDLED;
             } else if (isEuiccCommand(message.what)) {
                 BaseEuiccCommandCallback callback = getCallback(message);
@@ -644,6 +650,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                         transitionTo(mBindingState);
                     }
                 }
+                updateSubscriptionInfoListForAllAccessibleEuiccs();
                 return HANDLED;
             } else if (message.what == CMD_CONNECT_TIMEOUT) {
                 transitionTo(mAvailableState);
@@ -1166,5 +1173,18 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         pw.println("mSelectedComponent=" + mSelectedComponent);
         pw.println("mEuiccService=" + mEuiccService);
         pw.println("mActiveCommandCount=" + mActiveCommandCallbacks.size());
+    }
+
+    private void updateSubscriptionInfoListForAllAccessibleEuiccs() {
+        if (mTm.getCardIdForDefaultEuicc() == TelephonyManager.UNSUPPORTED_CARD_ID) {
+            // Device does not support card ID
+            mSm.requestEmbeddedSubscriptionInfoListRefresh();
+        } else {
+            for (UiccCardInfo cardInfo : mTm.getUiccCardsInfo()) {
+                if (cardInfo.isEuicc()) {
+                    mSm.requestEmbeddedSubscriptionInfoListRefresh(cardInfo.getCardId());
+                }
+            }
+        }
     }
 }
