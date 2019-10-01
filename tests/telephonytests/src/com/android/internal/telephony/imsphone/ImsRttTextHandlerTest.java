@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
 import android.telecom.Connection;
@@ -114,8 +116,8 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
         // make sure at it hasn't been sent.
         Assert.assertEquals("", mNetworkWriter.getContents());
         // Wait for 300ms
-        waitForHandlerActionDelayed(mRttTextHandler, TEST_TIMEOUT,
-                ImsRttTextHandler.MAX_BUFFERING_DELAY_MILLIS + 100);
+        waitForMs(ImsRttTextHandler.MAX_BUFFERING_DELAY_MILLIS + 100);
+        waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         // make sure that it has been sent and check that it's correct
         Assert.assertEquals("abcd", mNetworkWriter.getContents());
     }
@@ -141,7 +143,7 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
         Assert.assertEquals("", mNetworkWriter.getContents());
 
         // Send the second part
-        Thread.sleep(10);
+        waitForMs(10);
         // Register a read notifier
         readNotifier = new CountDownLatch(1);
         mRttTextHandler.setReadNotifier(readNotifier);
@@ -176,7 +178,7 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
         for (char c : characters) {
             mPipeToHandler.write(String.valueOf(c));
             mPipeToHandler.flush();
-            Thread.sleep(10);
+            waitForMs(10);
         }
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
@@ -194,19 +196,19 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
             String toSend = new String(characters, i, Math.min(3, characters.length - i));
             mPipeToHandler.write(toSend);
             mPipeToHandler.flush();
-            Thread.sleep(10);
+            waitForMs(10);
         }
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
 
         // Wait one second and see how many characters are sent in that time.
         int numCharsSoFar = mNetworkWriter.getContents().length();
-        Thread.sleep(1000);
+        waitForMs(1000);
         int numCharsInOneSec = mNetworkWriter.getContents().length() - numCharsSoFar;
         Assert.assertTrue(numCharsInOneSec <= ImsRttTextHandler.MAX_CODEPOINTS_PER_SECOND);
 
         // Wait 5 seconds for all the chars to make it through
-        Thread.sleep(5000);
+        waitForMs(5000);
         Assert.assertEquals(LONG_TEXT, mNetworkWriter.getContents());
     }
 

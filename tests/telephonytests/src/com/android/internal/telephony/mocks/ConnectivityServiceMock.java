@@ -106,12 +106,15 @@ public class ConnectivityServiceMock {
         mTrackerHandler = new NetworkStateTrackerHandler(mHandlerThread.getLooper());
     }
 
-    public void die() throws Exception {
+    public void die() {
         // clean up threads/handlers
         if (mHandlerThread != null) {
             mHandlerThread.quit();
-            mHandlerThread.join();
         }
+    }
+
+    public HandlerThread getHandlerThread() {
+        return mHandlerThread;
     }
 
     private class InternalHandler extends Handler {
