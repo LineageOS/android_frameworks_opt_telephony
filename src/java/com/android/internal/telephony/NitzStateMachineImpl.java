@@ -493,7 +493,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
      */
     private void updateTimeZoneFromNetworkCountryCode(String iso) {
         CountryResult lookupResult = mTimeZoneLookupHelper.lookupByCountry(
-                iso, mTimeServiceHelper.currentTimeMillis());
+                iso, mDeviceState.currentTimeMillis());
         if (lookupResult != null && lookupResult.allZonesHaveSameOffset) {
             String logMsg = "updateTimeZoneFromNetworkCountryCode: tz result found"
                     + " iso=" + iso
