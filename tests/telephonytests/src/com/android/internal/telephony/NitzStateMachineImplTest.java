@@ -88,8 +88,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         super.setUp("NitzStateMachineTest");
 
         // In tests we use a fake impls for TimeServiceHelper and DeviceState.
-        mFakeTimeServiceHelper = new FakeTimeServiceHelper();
         mFakeDeviceState = new FakeDeviceState();
+        mFakeTimeServiceHelper = new FakeTimeServiceHelper(mFakeDeviceState);
 
         // In tests we use the real TimeZoneLookupHelper.
         mRealTimeZoneLookupHelper = new TimeZoneLookupHelper();
@@ -750,7 +750,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         }
 
         Script initializeSystemClock(long timeMillis) {
-            mFakeTimeServiceHelper.currentTimeMillis = timeMillis;
+            mFakeDeviceState.currentTimeMillis = timeMillis;
             return this;
         }
 
@@ -892,22 +892,22 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     private static class FakeTimeServiceHelper implements TimeServiceHelper {
 
+        private final FakeDeviceState mFakeDeviceState;
+
         public TimeServiceHelper.Listener listener;
         public boolean timeZoneDetectionEnabled;
-        public long currentTimeMillis;
 
         // State we want to track.
         public TestState<String> deviceTimeZone = new TestState<>();
         public TestState<TimestampedValue<Long>> suggestedTime = new TestState<>();
 
-        @Override
-        public void setListener(Listener listener) {
-            this.listener = listener;
+        FakeTimeServiceHelper(FakeDeviceState fakeDeviceState) {
+            mFakeDeviceState = fakeDeviceState;
         }
 
         @Override
-        public long currentTimeMillis() {
-            return currentTimeMillis;
+        public void setListener(Listener listener) {
+            this.listener = listener;
         }
 
         @Override
@@ -929,7 +929,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         public void suggestDeviceTime(TimestampedValue<Long> deviceTime) {
             suggestedTime.set(deviceTime);
             // The fake time service just uses the latest suggestion.
-            currentTimeMillis = deviceTime.getValue();
+            mFakeDeviceState.currentTimeMillis = deviceTime.getValue();
         }
 
         void commitState() {
