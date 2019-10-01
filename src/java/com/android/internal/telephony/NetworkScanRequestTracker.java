@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.os.Binder.withCleanCallingIdentity;
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.EUTRAN;
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.GERAN;
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
@@ -24,6 +23,7 @@ import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
 import android.content.Context;
 import android.hardware.radio.V1_0.RadioError;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -178,10 +178,15 @@ public final class NetworkScanRequestTracker {
      * scan when scan results are restricted due to location privacy.
      */
     public static Set<String> getAllowedMccMncsForLocationRestrictedScan(Context context) {
-        return withCleanCallingIdentity(() -> SubscriptionController.getInstance()
-            .getAvailableSubscriptionInfoList(context.getOpPackageName()).stream()
-            .flatMap(NetworkScanRequestTracker::getAllowableMccMncsFromSubscriptionInfo)
-            .collect(Collectors.toSet()));
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return SubscriptionController.getInstance()
+                    .getAvailableSubscriptionInfoList(context.getOpPackageName()).stream()
+                    .flatMap(NetworkScanRequestTracker::getAllowableMccMncsFromSubscriptionInfo)
+                    .collect(Collectors.toSet());
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     private static Stream<String> getAllowableMccMncsFromSubscriptionInfo(SubscriptionInfo info) {
