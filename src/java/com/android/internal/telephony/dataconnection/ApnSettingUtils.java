@@ -18,10 +18,10 @@ package com.android.internal.telephony.dataconnection;
 
 import android.content.Context;
 import android.os.PersistableBundle;
+import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnSetting.ApnType;
 import android.util.Log;
 
 import com.android.internal.telephony.Phone;

@@ -24,11 +24,11 @@ import android.content.pm.PackageManager;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyManager.NetworkType;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 

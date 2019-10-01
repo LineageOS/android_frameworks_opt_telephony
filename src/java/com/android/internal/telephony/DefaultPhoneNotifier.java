@@ -25,10 +25,12 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.telephony.TelephonyRegistryManager;
+import android.telephony.Annotation.DataFailureCause;
+import android.telephony.Annotation.RadioPowerState;
+import android.telephony.Annotation.SrvccState;
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
-import android.telephony.DataFailCause;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseCallState;
@@ -236,13 +238,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     public void notifyPreciseDataConnectionFailed(Phone sender, String apnType,
-        String apn, @DataFailCause.FailCause int failCause) {
+        String apn, @DataFailureCause int failCause) {
         mTelephonyRegistryMgr.notifyPreciseDataConnectionFailed(sender.getSubId(),
             sender.getPhoneId(), apnType, apn, failCause);
     }
 
     @Override
-    public void notifySrvccStateChanged(Phone sender, @TelephonyManager.SrvccState int state) {
+    public void notifySrvccStateChanged(Phone sender, @SrvccState int state) {
         mTelephonyRegistryMgr.notifySrvccStateChanged(sender.getSubId(), state);
     }
 
@@ -276,8 +278,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyRadioPowerStateChanged(Phone sender,
-        @TelephonyManager.RadioPowerState int state) {
+    public void notifyRadioPowerStateChanged(Phone sender, @RadioPowerState int state) {
         mTelephonyRegistryMgr.notifyRadioPowerStateChanged(sender.getSubId(), sender.getPhoneId(),
             state);
     }

@@ -45,6 +45,8 @@ import android.os.SystemProperties;
 import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.DataFailureCause;
+import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
@@ -53,7 +55,6 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnSetting.ApnType;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -251,7 +252,7 @@ public class DataConnection extends StateMachine {
     private ApnSetting mApnSetting;
     private ConnectionParams mConnectionParams;
     private DisconnectParams mDisconnectParams;
-    @DataFailCause.FailCause
+    @DataFailureCause
     private int mDcFailCause;
 
     private Phone mPhone;
@@ -260,7 +261,7 @@ public class DataConnection extends StateMachine {
     private LinkProperties mLinkProperties = new LinkProperties();
     private long mCreateTime;
     private long mLastFailTime;
-    @DataFailCause.FailCause
+    @DataFailureCause
     private int mLastFailCause;
     private static final String NULL_IP = "0.0.0.0";
     private Object mUserData;
@@ -627,7 +628,7 @@ public class DataConnection extends StateMachine {
      *
      * @return Fail cause if failed to setup data connection. {@link DataFailCause#NONE} if success.
      */
-    private @DataFailCause.FailCause int connect(ConnectionParams cp) {
+    private @DataFailureCause int connect(ConnectionParams cp) {
         log("connect: carrier='" + mApnSetting.getEntryName()
                 + "' APN='" + mApnSetting.getApnName()
                 + "' proxy='" + mApnSetting.getProxyAddressAsString()
@@ -782,7 +783,7 @@ public class DataConnection extends StateMachine {
      * @param cause and if no error the cause is DataFailCause.NONE
      * @param sendAll is true if all contexts are to be notified
      */
-    private void notifyConnectCompleted(ConnectionParams cp, @DataFailCause.FailCause int cause,
+    private void notifyConnectCompleted(ConnectionParams cp, @DataFailureCause int cause,
                                         boolean sendAll) {
         ApnContext alreadySent = null;
 
@@ -1675,7 +1676,7 @@ public class DataConnection extends StateMachine {
     private class DcInactiveState extends State {
         // Inform all contexts we've failed connecting
         public void setEnterNotificationParams(ConnectionParams cp,
-                                               @DataFailCause.FailCause int cause) {
+                                               @DataFailureCause int cause) {
             if (VDBG) log("DcInactiveState: setEnterNotificationParams cp,cause");
             mConnectionParams = cp;
             mDisconnectParams = null;
@@ -1691,7 +1692,7 @@ public class DataConnection extends StateMachine {
         }
 
         // Inform all contexts of the failure cause
-        public void setEnterNotificationParams(@DataFailCause.FailCause int cause) {
+        public void setEnterNotificationParams(@DataFailureCause int cause) {
             mConnectionParams = null;
             mDisconnectParams = null;
             mDcFailCause = cause;

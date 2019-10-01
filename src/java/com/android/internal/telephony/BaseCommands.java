@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.telephony.Annotation.RadioPowerState;
 import android.telephony.TelephonyManager;
 
 /**
@@ -160,7 +161,7 @@ public abstract class BaseCommands implements CommandsInterface {
     //***** CommandsInterface implementation
 
     @Override
-    public @TelephonyManager.RadioPowerState int getRadioState() {
+    public @RadioPowerState int getRadioState() {
         return mState;
     }
 
