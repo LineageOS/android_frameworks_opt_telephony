@@ -63,7 +63,7 @@ class RilMessageDecoder extends StateMachine {
     public static synchronized RilMessageDecoder getInstance(Handler caller, IccFileHandler fh,
             int slotId) {
         if (null == mInstance) {
-            mSimCount = TelephonyManager.getDefault().getSimCount();
+            mSimCount = TelephonyManager.getDefault().getMaxPhoneCount();
             mInstance = new RilMessageDecoder[mSimCount];
             for (int i = 0; i < mSimCount; i++) {
                 mInstance[i] = null;

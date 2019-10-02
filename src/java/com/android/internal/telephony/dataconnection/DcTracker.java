@@ -739,9 +739,7 @@ public class DcTracker extends Handler {
         // between two DcTrackers, one for each.
         String tagSuffix = "-" + ((transportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 ? "C" : "I");
-        if (mTelephonyManager.getPhoneCount() > 1) {
-            tagSuffix += "-" + mPhone.getPhoneId();
-        }
+        tagSuffix += "-" + mPhone.getPhoneId();
         mLogTag = "DCT" + tagSuffix;
 
         mTransportType = transportType;
