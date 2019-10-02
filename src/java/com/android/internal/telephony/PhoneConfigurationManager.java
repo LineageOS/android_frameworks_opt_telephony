@@ -120,6 +120,19 @@ public class PhoneConfigurationManager {
     }
 
     /**
+     * Whether the phoneId has a corresponding active slot / logical modem. If a DSDS capable
+     * device is in single SIM mode, phoneId=1 is valid but not active.
+     *
+     * TODO: b/139642279 combine with SubscriptionManager#isValidPhoneId when phone objects
+     * are dynamically allocated instead of always based on getMaxPhoneCount.
+     * @hide
+     */
+    public static boolean isPhoneActive(int phoneId) {
+        // Currently it simply depends on getPhoneCount. In future it can be generalized.
+        return phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount();
+    }
+
+    /**
      * Handler class to handle callbacks
      */
     private final class MainThreadHandler extends Handler {
@@ -365,6 +378,11 @@ public class PhoneConfigurationManager {
         } else {
             log("setMultiSimProperties: Rebooting is not required to switch multi-sim config to "
                     + finalMultiSimConfig);
+            // Register to RIL service if needed.
+            for (int i = 0; i < mPhones.length; i++) {
+                Phone phone = mPhones[i];
+                phone.mCi.onSlotActiveStatusChange(isPhoneActive(i));
+            }
         }
     }
 
