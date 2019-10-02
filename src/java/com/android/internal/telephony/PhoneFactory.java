@@ -77,8 +77,6 @@ public class PhoneFactory {
     private static @Nullable EuiccController sEuiccController;
     private static @Nullable EuiccCardController sEuiccCardController;
 
-    @UnsupportedAppUsage
-    static private CommandsInterface sCommandsInterface = null;
     static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
 
     @UnsupportedAppUsage
@@ -202,7 +200,6 @@ public class PhoneFactory {
                 // FIXME: This is a first best guess at what the defaults will be. It
                 // FIXME: needs to be done in a more controlled manner in the future.
                 sPhone = sPhones[0];
-                sCommandsInterface = sCommandsInterfaces[0];
 
                 // Ensure that we have a default SMS app. Requesting the app with
                 // updateIfNeeded set to true is enough to configure a default SMS app.
@@ -266,8 +263,7 @@ public class PhoneFactory {
                         sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
                         sPhones);
 
-                sProxyController = ProxyController.getInstance(context, sPhones,
-                        sUiccController, sCommandsInterfaces, sPhoneSwitcher);
+                sProxyController = ProxyController.getInstance(context, sPhones, sPhoneSwitcher);
 
                 sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
