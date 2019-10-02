@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony.uicc;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -249,6 +251,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         assertEquals(mUiccProfile.getState(), State.NOT_READY);
     }
@@ -278,6 +281,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -309,6 +313,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -344,6 +349,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -379,6 +385,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         // state is loaded as all records are loaded right away as SimulatedCommands returns
         // response for them right away. Ideally applications and records should be mocked.
@@ -400,6 +407,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
@@ -423,6 +431,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
         // state is loaded since there is no applications.
         assertEquals(State.NOT_READY, mUiccProfile.getState());
@@ -452,6 +461,7 @@ public class UiccProfileTest extends TelephonyTest {
 
         mUiccProfile.mHandler.sendMessage(
                 mUiccProfile.mHandler.obtainMessage(UiccProfile.EVENT_APP_READY));
+        waitForMs(100);
         processAllMessages();
     }
 
