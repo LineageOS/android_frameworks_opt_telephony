@@ -19,7 +19,9 @@ package com.android.internal.telephony;
 import android.os.Parcel;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
+import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -51,6 +53,36 @@ public class CellIdentityTest extends AndroidTestCase {
     private static final int LONGITUDE = 2592000;
     // Latitude ranges from -1296000 to 1296000.
     private static final int LATITUDE = 1296000;
+
+    private static final int MAX_LAC = 65535;
+    private static final int MAX_CID = 65535;
+    private static final int MAX_ARFCN = 65535;
+    private static final int MAX_BSIC = 63;
+
+    @SmallTest
+    public void testConstructCellIdentityGsm() {
+        // Test values below zero (these must all be non-negative)
+        CellIdentityGsm gsm = new CellIdentityGsm(-1, -1, -1, -1, null, null, null, null);
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getLac());
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getCid());
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getArfcn());
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getBsic());
+
+        // Test max values of LAC, CID, ARFCN, and BSIC
+        gsm = new CellIdentityGsm(MAX_LAC, MAX_CID, MAX_ARFCN, MAX_BSIC, null, null, null, null);
+        assertEquals(MAX_LAC, gsm.getLac());
+        assertEquals(MAX_CID, gsm.getCid());
+        assertEquals(MAX_ARFCN, gsm.getArfcn());
+        assertEquals(MAX_BSIC, gsm.getBsic());
+
+        // Test max values + 1 of LAC, CID, ARFCN, and BSIC
+        gsm = new CellIdentityGsm(
+                MAX_LAC + 1, MAX_CID + 1, MAX_ARFCN + 1, MAX_BSIC + 1, null, null, null, null);
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getLac());
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getCid());
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getArfcn());
+        assertEquals(CellInfo.UNAVAILABLE, gsm.getBsic());
+    }
 
     @SmallTest
     public void testEquals() {
