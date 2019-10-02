@@ -39,6 +39,7 @@ import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
+import android.telephony.emergency.EmergencyNumber;
 import android.util.LocalLog;
 import android.util.Log;
 
@@ -492,6 +493,7 @@ public class IccSmsInterfaceManager {
                     + deliveryIntent + " priority=" + priority + " expectMore=" + expectMore
                     + " validityPeriod=" + validityPeriod + " isForVVM=" + isForVvm);
         }
+        notifyIfOutgoingEmergencySms(destAddr);
         destAddr = filterDestAddress(destAddr);
         mDispatchersController.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                 null/*messageUri*/, callingPackage, persistMessageForNonDefaultSmsApp,
@@ -690,7 +692,7 @@ public class IccSmsInterfaceManager {
                         ", part[" + (i++) + "]=" + part);
             }
         }
-
+        notifyIfOutgoingEmergencySms(destAddr);
         destAddr = filterDestAddress(destAddr);
 
         if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
@@ -1153,6 +1155,7 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
+        notifyIfOutgoingEmergencySms(textAndAddress[1]);
         textAndAddress[1] = filterDestAddress(textAndAddress[1]);
         mDispatchersController.sendText(textAndAddress[1], scAddress, textAndAddress[0],
                 sentIntent, deliveryIntent, messageUri, callingPkg,
@@ -1186,6 +1189,7 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntents);
             return;
         }
+        notifyIfOutgoingEmergencySms(textAndAddress[1]);
         textAndAddress[1] = filterDestAddress(textAndAddress[1]);
 
         if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
@@ -1292,6 +1296,14 @@ public class IccSmsInterfaceManager {
             Binder.restoreCallingIdentity(identity);
         }
         return null;
+    }
+
+    private void notifyIfOutgoingEmergencySms(String destAddr) {
+        EmergencyNumber emergencyNumber = mPhone.getEmergencyNumberTracker().getEmergencyNumber(
+                destAddr);
+        if (emergencyNumber != null) {
+            mPhone.notifyOutgoingEmergencySms(emergencyNumber);
+        }
     }
 
     private void returnUnspecifiedFailure(PendingIntent pi) {
