@@ -24,7 +24,6 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
@@ -49,10 +48,10 @@ public class VendorSubscriptionInfoUpdater extends SubscriptionInfoUpdater {
             .getSupportedModemCount();
 
     static VendorSubscriptionInfoUpdater init(Looper looper, Context context,
-            CommandsInterface[] ci) {
+            SubscriptionController sc) {
         synchronized (VendorSubscriptionInfoUpdater.class) {
             if (sInstance == null) {
-                sInstance = new VendorSubscriptionInfoUpdater(looper, context, ci);
+                sInstance = new VendorSubscriptionInfoUpdater(looper, context, sc);
             } else {
                 Log.wtf(LOG_TAG, "init() called multiple times!  sInstance = " + sInstance);
             }
@@ -68,8 +67,8 @@ public class VendorSubscriptionInfoUpdater extends SubscriptionInfoUpdater {
     }
 
     protected VendorSubscriptionInfoUpdater(Looper looper, Context context,
-            CommandsInterface[] ci) {
-        super(looper, context, ci);
+            SubscriptionController sc) {
+        super(looper, context, sc);
         sContext = context;
         mIsRecordUpdateRequired = new boolean[SUPPORTED_MODEM_COUNT];
 
@@ -105,7 +104,7 @@ public class VendorSubscriptionInfoUpdater extends SubscriptionInfoUpdater {
         cardIds.add(getCardIdFromPhoneId(phoneId));
         updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
             if (hasChanges) {
-                SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+                mSubscriptionController.notifySubscriptionInfoChanged();
             }
         });
         broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_READY, null);
