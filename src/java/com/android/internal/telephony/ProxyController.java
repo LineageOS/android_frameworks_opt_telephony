@@ -30,7 +30,6 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.ims.RcsMessageController;
-import com.android.internal.telephony.uicc.UiccController;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -63,10 +62,6 @@ public class ProxyController {
     private static ProxyController sProxyController;
 
     private Phone[] mPhones;
-
-    private UiccController mUiccController;
-
-    private CommandsInterface[] mCi;
 
     private Context mContext;
 
@@ -109,10 +104,9 @@ public class ProxyController {
 
 
     //***** Class Methods
-    public static ProxyController getInstance(Context context, Phone[] phone,
-            UiccController uiccController, CommandsInterface[] ci, PhoneSwitcher ps) {
+    public static ProxyController getInstance(Context context, Phone[] phone, PhoneSwitcher ps) {
         if (sProxyController == null) {
-            sProxyController = new ProxyController(context, phone, uiccController, ci, ps);
+            sProxyController = new ProxyController(context, phone, ps);
         }
         return sProxyController;
     }
@@ -122,14 +116,11 @@ public class ProxyController {
         return sProxyController;
     }
 
-    private ProxyController(Context context, Phone[] phone, UiccController uiccController,
-            CommandsInterface[] ci, PhoneSwitcher phoneSwitcher) {
+    private ProxyController(Context context, Phone[] phone, PhoneSwitcher phoneSwitcher) {
         logd("Constructor - Enter");
 
         mContext = context;
         mPhones = phone;
-        mUiccController = uiccController;
-        mCi = ci;
         mPhoneSwitcher = phoneSwitcher;
 
         RcsMessageController.init(context);
