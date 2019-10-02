@@ -69,11 +69,6 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
     }
 
     @Override
-    public long currentTimeMillis() {
-        return System.currentTimeMillis();
-    }
-
-    @Override
     public boolean isTimeZoneSettingInitialized() {
         return isTimeZoneSettingInitializedStatic();
 

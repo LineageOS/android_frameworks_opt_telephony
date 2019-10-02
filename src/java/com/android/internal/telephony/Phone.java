@@ -42,12 +42,13 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.ApnType;
+import android.telephony.Annotation.DataFailureCause;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
-import android.telephony.DataFailCause;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
@@ -58,7 +59,6 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnSetting.ApnType;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
@@ -3246,7 +3246,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void notifyPreciseDataConnectionFailed(String apnType, String apn,
-            @DataFailCause.FailCause int failCause) {
+                                                  @DataFailureCause int failCause) {
         mNotifier.notifyPreciseDataConnectionFailed(this, apnType, apn, failCause);
     }
 

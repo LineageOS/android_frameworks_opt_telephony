@@ -153,6 +153,7 @@ final class NitzStateMachineTestSupport {
         public int nitzUpdateSpacingMillis;
         public String networkCountryIsoForPhone;
         public long elapsedRealtime;
+        public long currentTimeMillis;
 
         @Override
         public int getNitzUpdateSpacingMillis() {
@@ -178,6 +179,12 @@ final class NitzStateMachineTestSupport {
         public long elapsedRealtime() {
             return elapsedRealtime;
         }
+
+        @Override
+        public long currentTimeMillis() {
+            return currentTimeMillis;
+        }
+
     }
 
     private NitzStateMachineTestSupport() {}

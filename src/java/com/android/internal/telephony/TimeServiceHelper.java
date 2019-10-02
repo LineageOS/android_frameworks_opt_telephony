@@ -42,11 +42,6 @@ public interface TimeServiceHelper {
     void setListener(Listener listener);
 
     /**
-     * Returns the same value as {@link System#currentTimeMillis()}.
-     */
-    long currentTimeMillis();
-
-    /**
      * Returns true if the device has an explicit time zone set.
      */
     boolean isTimeZoneSettingInitialized();

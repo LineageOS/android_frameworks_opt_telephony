@@ -2630,7 +2630,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /**
      * convert RAF from {@link android.hardware.radio.V1_0.RadioAccessFamily} to
      * {@link TelephonyManager.NetworkTypeBitMask}, the bitmask represented by
-     * {@link TelephonyManager.NetworkType}.
+     * {@link android.telephony.Annotation.NetworkType}.
      *
      * @param raf {@link android.hardware.radio.V1_0.RadioAccessFamily}
      * @return {@link TelephonyManager.NetworkTypeBitMask}
