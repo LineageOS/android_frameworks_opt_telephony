@@ -181,7 +181,8 @@ public final class NetworkScanRequestTracker {
         final long token = Binder.clearCallingIdentity();
         try {
             return SubscriptionController.getInstance()
-                    .getAvailableSubscriptionInfoList(context.getOpPackageName()).stream()
+                    .getAvailableSubscriptionInfoList(context.getOpPackageName(),
+                            context.getFeatureId()).stream()
                     .flatMap(NetworkScanRequestTracker::getAllowableMccMncsFromSubscriptionInfo)
                     .collect(Collectors.toSet());
         } finally {

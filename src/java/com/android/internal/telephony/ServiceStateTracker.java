@@ -4094,7 +4094,8 @@ public class ServiceStateTracker extends Handler {
         Context context = mPhone.getContext();
 
         SubscriptionInfo info = mSubscriptionController
-                .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName());
+                .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName(),
+                        context.getFeatureId());
 
         //if subscription is part of a group and non-primary, suppress all notifications
         if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
@@ -4906,7 +4907,8 @@ public class ServiceStateTracker extends Handler {
         if (!isStale) return false;
 
         List<SubscriptionInfo> subInfoList = SubscriptionController.getInstance()
-                .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName());
+                .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName(),
+                        mPhone.getContext().getFeatureId());
         for (SubscriptionInfo info : subInfoList) {
             // If we have an active opportunistic subscription whose data is IN_SERVICE, we needs
             // to get signal strength to decide data switching threshold. In this case, we poll
