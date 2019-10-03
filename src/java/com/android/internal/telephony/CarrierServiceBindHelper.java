@@ -108,7 +108,7 @@ public class CarrierServiceBindHelper {
     public CarrierServiceBindHelper(Context context) {
         mContext = context;
 
-        int numPhones = TelephonyManager.from(context).getPhoneCount();
+        int numPhones = TelephonyManager.from(context).getMaxPhoneCount();
         mBindings = new AppBinding[numPhones];
         mLastSimState = new String[numPhones];
 

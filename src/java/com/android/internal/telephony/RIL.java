@@ -91,6 +91,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.PrefNetworkMode;
@@ -413,6 +414,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** Returns a {@link IRadio} instance or null if the service is not available. */
     @VisibleForTesting
     public synchronized IRadio getRadioProxy(Message result) {
+        if (!SubscriptionManager.isActivePhoneId(mPhoneId)) return null;
         if (!mIsMobileNetworkSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
             if (result != null) {
@@ -506,6 +508,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** Returns an {@link IOemHook} instance or null if the service is not available. */
     @VisibleForTesting
     public synchronized IOemHook getOemHookProxy(Message result) {
+        if (!SubscriptionManager.isActivePhoneId(mPhoneId)) return null;
         if (!mIsMobileNetworkSupported) {
             if (RILJ_LOGV) riljLog("getOemHookProxy: Not calling getService(): wifi-only");
             if (result != null) {
