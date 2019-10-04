@@ -117,9 +117,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -211,6 +213,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mImsCapabilityChangedRegistrants = new RegistrantList();
+    private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -1548,8 +1551,10 @@ public class ServiceStateTracker extends Handler {
                     mLastPhysicalChannelConfigList = list;
                     boolean hasChanged =
                             updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
-                    hasChanged |= updateNrStateFromPhysicalChannelConfigs(
-                            list, mSS);
+                    if (updateNrStateFromPhysicalChannelConfigs(list, mSS)) {
+                        mNrStateChangedRegistrants.notifyRegistrants();
+                        hasChanged = true;
+                    }
 
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged
@@ -5497,5 +5502,44 @@ public class ServiceStateTracker extends Handler {
             networkType = regInfo.getAccessNetworkTechnology();
         }
         return ServiceState.networkTypeToRilRadioTechnology(networkType);
+    }
+
+    /**
+     * Registers for 5G NR state changed.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForNrStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mNrStateChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for 5G NR state changed.
+     * @param h handler to notify
+     */
+    public void unregisterForNrStateChanged(Handler h) {
+        mNrStateChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Get the NR data connection context ids.
+     *
+     * @return data connection context ids.
+     */
+    @NonNull
+    public Set<Integer> getNrContextIds() {
+        Set<Integer> idSet = new HashSet<>();
+
+        for (PhysicalChannelConfig config : mLastPhysicalChannelConfigList) {
+            if (isNrPhysicalChannelConfig(config)) {
+                for (int id : config.getContextIds()) {
+                    idSet.add(id);
+                }
+            }
+        }
+
+        return idSet;
     }
 }
