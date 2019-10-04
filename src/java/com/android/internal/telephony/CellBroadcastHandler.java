@@ -395,7 +395,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
         }
 
         private boolean hasPermission(String permission) {
-            return PermissionChecker.checkCallingOrSelfPermission(mContext, permission)
+            return PermissionChecker.checkCallingOrSelfPermissionForDataDelivery(mContext, permission)
                     == PERMISSION_GRANTED;
         }
 
