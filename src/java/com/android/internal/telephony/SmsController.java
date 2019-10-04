@@ -542,6 +542,9 @@ public class SmsController extends ISmsImplBase {
         }
     }
 
+    /**
+     * Triggered by `adb shell dumpsys isms`
+     */
     @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (!checkDumpPermission(mContext, LOG_TAG, pw)) {
