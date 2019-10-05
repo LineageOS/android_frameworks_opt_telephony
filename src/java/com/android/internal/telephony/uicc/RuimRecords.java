@@ -376,6 +376,7 @@ public class RuimRecords extends IccRecords {
 
         @Override
         public void onRecordLoaded(AsyncResult ar) {
+            mEssentialRecordsToLoad -= 1;
             byte[] data = (byte[]) ar.result;
             if (data == null || data.length < 10) {
                 if (DBG) log("Invalid IMSI from EF_CSIM_IMSIM");
@@ -664,6 +665,7 @@ public class RuimRecords extends IccRecords {
             /* IO events */
             case EVENT_GET_IMSI_DONE:
                 isRecordLoadResponse = true;
+                mEssentialRecordsToLoad -= 1;
 
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception != null) {
@@ -715,6 +717,7 @@ public class RuimRecords extends IccRecords {
 
             case EVENT_GET_ICCID_DONE:
                 isRecordLoadResponse = true;
+                mEssentialRecordsToLoad -= 1;
 
                 ar = (AsyncResult)msg.obj;
                 data = (byte[])ar.result;
@@ -793,13 +796,18 @@ public class RuimRecords extends IccRecords {
         mRecordsToLoad -= 1;
         if (DBG) log("onRecordLoaded " + mRecordsToLoad + " requested: " + mRecordsRequested);
 
+        if (getEssentialRecordsLoaded() && !mEssentialRecordsListenerNotified) {
+            onAllEssentialRecordsLoaded();
+        }
+
         if (getRecordsLoaded()) {
             onAllRecordsLoaded();
         } else if (getLockedRecordsLoaded() || getNetworkLockedRecordsLoaded()) {
             onLockedAllRecordsLoaded();
-        } else if (mRecordsToLoad < 0) {
+        } else if (mRecordsToLoad < 0 || mEssentialRecordsToLoad < 0) {
             loge("recordsToLoad <0, programmer error suspected");
             mRecordsToLoad = 0;
+            mEssentialRecordsToLoad = 0;
         }
     }
 
@@ -816,8 +824,8 @@ public class RuimRecords extends IccRecords {
     }
 
     @Override
-    protected void onAllRecordsLoaded() {
-        if (DBG) log("record load complete");
+    protected void onAllEssentialRecordsLoaded() {
+        if (DBG) log("Essential record load complete");
 
         // Further records that can be inserted are Operator/OEM dependent
 
@@ -825,25 +833,33 @@ public class RuimRecords extends IccRecords {
         if (false) {
             String operator = getRUIMOperatorNumeric();
             if (!TextUtils.isEmpty(operator)) {
-                log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
+                log("onAllEssentialRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                         operator + "'");
                 log("update icc_operator_numeric=" + operator);
                 mTelephonyManager.setSimOperatorNumericForPhone(
                         mParentApp.getPhoneId(), operator);
             } else {
-                log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
+                log("onAllEssentialRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
             }
 
             String imsi = getIMSI();
 
             if (!TextUtils.isEmpty(imsi)) {
-                log("onAllRecordsLoaded set mcc imsi=" + (VDBG ? ("=" + imsi) : ""));
+                log("onAllEssentialRecordsLoaded set mcc imsi=" + (VDBG ? ("=" + imsi) : ""));
                 mTelephonyManager.setSimCountryIsoForPhone(mParentApp.getPhoneId(),
                         MccTable.countryCodeForMcc(imsi.substring(0, 3)));
             } else {
-                log("onAllRecordsLoaded empty imsi skipping setting mcc");
+                log("onAllEssentialRecordsLoaded empty imsi skipping setting mcc");
             }
         }
+
+        mEssentialRecordsListenerNotified = true;
+        mEssentialRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+    }
+
+    @Override
+    protected void onAllRecordsLoaded() {
+        if (DBG) log("record load complete");
 
         Resources resource = Resources.getSystem();
         if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
@@ -881,21 +897,37 @@ public class RuimRecords extends IccRecords {
         mRecordsToLoad++;
     }
 
-    @UnsupportedAppUsage
-    private void fetchRuimRecords() {
-        mRecordsRequested = true;
-
-        if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
+    private void fetchEssentialRuimRecords() {
+        if (DBG) log("fetchEssentialRuimRecords " + mRecordsToLoad);
 
         if (!TextUtils.isEmpty(mParentApp.getAid())
                 || mParentApp.getUiccProfile().getNumApplications() <= 1) {
             mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
             mRecordsToLoad++;
+            mEssentialRecordsToLoad++;
         }
 
         mFh.loadEFTransparent(EF_ICCID,
                 obtainMessage(EVENT_GET_ICCID_DONE));
         mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_CSIM_IMSIM,
+                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimImsimLoaded()));
+        mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
+
+        if (DBG) log("fetchEssentialRuimRecords " + mRecordsToLoad +
+                " requested: " + mRecordsRequested);
+    }
+
+    @UnsupportedAppUsage
+    private void fetchRuimRecords() {
+        mRecordsRequested = true;
+
+        fetchEssentialRuimRecords();
+
+        if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
 
         mFh.loadEFTransparent(EF_PL,
                 obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfPlLoaded()));
@@ -911,10 +943,6 @@ public class RuimRecords extends IccRecords {
 
         mFh.loadEFLinearFixed(EF_CSIM_MDN, 1,
                 obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimMdnLoaded()));
-        mRecordsToLoad++;
-
-        mFh.loadEFTransparent(EF_CSIM_IMSIM,
-                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimImsimLoaded()));
         mRecordsToLoad++;
 
         mFh.loadEFLinearFixedAll(EF_CSIM_CDMAHOME,
