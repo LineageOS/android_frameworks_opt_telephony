@@ -29,10 +29,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.ServiceManager;
 import android.provider.Telephony.Sms.Intents;
-import android.telephony.IFinancialSmsCallback;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
@@ -514,13 +512,6 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
-    public void getSmsMessagesForFinancialApp(
-            int subId, String callingPkg, Bundle params, IFinancialSmsCallback callback) {
-        getPhone(subId).getAppSmsManager().getSmsMessagesForFinancialApp(
-                callingPkg, params, callback);
-    }
-
-    @Override
     public int checkSmsShortCodeDestination(
             int subId, String callingPackage, String destAddress, String countryIso) {
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(getPhone(subId).getContext(),
@@ -551,6 +542,9 @@ public class SmsController extends ISmsImplBase {
         }
     }
 
+    /**
+     * Triggered by `adb shell dumpsys isms`
+     */
     @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (!checkDumpPermission(mContext, LOG_TAG, pw)) {

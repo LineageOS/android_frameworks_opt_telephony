@@ -30,6 +30,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.telecom.TelecomManager;
+import android.telephony.Annotation.RilRadioTechnology;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DisconnectCause;
@@ -1654,7 +1655,7 @@ public class GsmCdmaCallTracker extends CallTracker {
      * @param vrat the RIL voice radio technology for CS calls,
      *             see {@code RIL_RADIO_TECHNOLOGY_*} in {@link android.telephony.ServiceState}.
      */
-    public void dispatchCsCallRadioTech(@ServiceState.RilRadioTechnology int vrat) {
+    public void dispatchCsCallRadioTech(@RilRadioTechnology int vrat) {
         if (mConnections == null) {
             log("dispatchCsCallRadioTech: mConnections is null");
             return;
