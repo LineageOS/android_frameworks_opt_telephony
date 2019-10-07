@@ -240,6 +240,10 @@ public abstract class InboundSmsHandler extends StateMachine {
     @UnsupportedAppUsage
     IDeviceIdleController mDeviceIdleController;
 
+    protected static boolean sEnableCbModule = false;
+
+    protected CellBroadcastServiceManager mCellBroadcastServiceManager;
+
     // Delete permanently from raw table
     private final int DELETE_PERMANENTLY = 1;
     // Only mark deleted, but keep in db for message de-duping
@@ -283,6 +287,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mDeviceIdleController = TelephonyComponentFactory.getInstance()
                 .inject(IDeviceIdleController.class.getName()).getIDeviceIdleController();
+        mCellBroadcastServiceManager = new CellBroadcastServiceManager(context, phone);
 
         addState(mDefaultState);
         addState(mStartupState, mDefaultState);
@@ -307,6 +312,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     @Override
     protected void onQuitting() {
         mWapPush.dispose();
+        mCellBroadcastServiceManager.disable();
 
         while (mWakeLock.isHeld()) {
             mWakeLock.release();
@@ -1711,6 +1717,9 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (mCellBroadcastHandler != null) {
             mCellBroadcastHandler.dump(fd, pw, args);
         }
+        if (mCellBroadcastServiceManager != null) {
+            mCellBroadcastServiceManager.dump(fd, pw, args);
+        }
         mLocalLog.dump(fd, pw, args);
     }
 
@@ -1755,6 +1764,32 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
+    protected byte[] decodeHexString(String hexString) {
+        if (hexString == null || hexString.length() % 2 == 1) {
+            return null;
+        }
+        byte[] bytes = new byte[hexString.length() / 2];
+        for (int i = 0; i < hexString.length(); i += 2) {
+            bytes[i / 2] = hexToByte(hexString.substring(i, i + 2));
+        }
+        return bytes;
+    }
+
+    private byte hexToByte(String hexString) {
+        int firstDigit = toDigit(hexString.charAt(0));
+        int secondDigit = toDigit(hexString.charAt(1));
+        return (byte) ((firstDigit << 4) + secondDigit);
+    }
+
+    private int toDigit(char hexChar) {
+        int digit = Character.digit(hexChar, 16);
+        if (digit == -1) {
+            return 0;
+        }
+        return digit;
+    }
+
+
     /**
      * Registers the broadcast receiver to launch the default SMS app when the user clicks the
      * new message notification.
@@ -1763,5 +1798,47 @@ public abstract class InboundSmsHandler extends StateMachine {
         IntentFilter userFilter = new IntentFilter();
         userFilter.addAction(ACTION_OPEN_SMS_APP);
         context.registerReceiver(new NewMessageNotificationActionReceiver(), userFilter);
+    }
+
+    protected abstract class CbTestBroadcastReceiver extends BroadcastReceiver {
+
+        protected abstract void handleTestAction(Intent intent);
+        protected abstract void handleToggleEnable();
+        protected abstract void handleToggleDisable(Context context);
+
+        protected final String mTestAction;
+        protected final String mToggleAction;
+
+        public CbTestBroadcastReceiver(String testAction, String toggleAction) {
+            mTestAction = testAction;
+            mToggleAction = toggleAction;
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            logd("Received test intent action=" + intent.getAction());
+            if (intent.getAction().equals(mTestAction)) {
+                // Return early if phone_id is explicilty included and does not match mPhone.
+                // If phone_id extra is not included, continue.
+                int phoneId = mPhone.getPhoneId();
+                if (intent.getIntExtra("phone_id", phoneId) != phoneId) {
+                    return;
+                }
+                handleTestAction(intent);
+            } else if (intent.getAction().equals(mToggleAction)) {
+                if (intent.hasExtra("enable")) {
+                    sEnableCbModule = intent.getBooleanExtra("enable", false);
+                } else {
+                    sEnableCbModule = !sEnableCbModule;
+                }
+                if (sEnableCbModule) {
+                    log("enabling CB module");
+                    handleToggleEnable();
+                } else {
+                    log("enabling legacy platform CB handling");
+                    handleToggleDisable(context);
+                }
+            }
+        }
     }
 }
