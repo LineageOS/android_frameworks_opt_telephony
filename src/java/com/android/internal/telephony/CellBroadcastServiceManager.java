@@ -31,6 +31,8 @@ import android.telephony.ICellBroadcastService;
 import android.util.LocalLog;
 import android.util.Log;
 
+import com.android.internal.telephony.cdma.SmsMessage;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
@@ -53,7 +55,8 @@ public class CellBroadcastServiceManager {
     private final LocalLog mLocalLog = new LocalLog(100);
 
     /** New SMS cell broadcast received as an AsyncResult. */
-    private static final int EVENT_NEW_SMS_CB = 0;
+    private static final int EVENT_NEW_GSM_SMS_CB = 0;
+    private static final int EVENT_NEW_CDMA_SMS_CB = 1;
     private boolean mEnabled;
 
     public CellBroadcastServiceManager(Context context, Phone phone) {
@@ -63,10 +66,22 @@ public class CellBroadcastServiceManager {
     }
 
     /**
-     * Send a CB message to the CellBroadcastServieManager's handler.
+     * Send a GSM CB message to the CellBroadcastServieManager's handler.
      * @param m the message
      */
-    public void sendMessageToHandler(Message m) {
+    public void sendGsmMessageToHandler(Message m) {
+        m.what = EVENT_NEW_GSM_SMS_CB;
+        mModuleCellBroadcastHandler.sendMessage(m);
+    }
+
+    /**
+     * Send a CDMA CB message to the CellBroadcastServieManager's handler.
+     * @param sms the SmsMessage to forward
+     */
+    public void sendCdmaMessageToHandler(SmsMessage sms) {
+        Message m = Message.obtain();
+        m.what = EVENT_NEW_CDMA_SMS_CB;
+        m.obj = sms;
         mModuleCellBroadcastHandler.sendMessage(m);
     }
 
@@ -106,12 +121,25 @@ public class CellBroadcastServiceManager {
                         Log.d(TAG, "CB module is disabled.");
                         return;
                     }
+                    if (sServiceConnection.mService == null) {
+                        Log.d(TAG, "No connection to CB module, ignoring message.");
+                        return;
+                    }
                     try {
                         ICellBroadcastService cellBroadcastService =
                                 ICellBroadcastService.Stub.asInterface(
                                         sServiceConnection.mService);
-                        cellBroadcastService.handleGsmCellBroadcastSms(mPhone.getPhoneId(),
-                                (byte[]) ((AsyncResult) msg.obj).result);
+                        if (msg.what == EVENT_NEW_GSM_SMS_CB) {
+                            mLocalLog.log("GSM SMS CB for phone " + mPhone.getPhoneId());
+                            cellBroadcastService.handleGsmCellBroadcastSms(mPhone.getPhoneId(),
+                                    (byte[]) ((AsyncResult) msg.obj).result);
+                        } else if (msg.what == EVENT_NEW_CDMA_SMS_CB) {
+                            mLocalLog.log("CDMA SMS CB for phone " + mPhone.getPhoneId());
+                            SmsMessage sms = (SmsMessage) msg.obj;
+                            cellBroadcastService.handleCdmaCellBroadcastSms(mPhone.getPhoneId(),
+                                    sms.getEnvelopeBearerData(), sms.getEnvelopeServiceCategory());
+
+                        }
                     } catch (RemoteException e) {
                         Log.e(TAG, "Failed to connect to default app: "
                                 + mCellBroadcastServicePackage + " err: " + e.toString());
@@ -128,7 +156,7 @@ public class CellBroadcastServiceManager {
             if (sServiceConnection.mService == null) {
                 mContext.bindService(intent, sServiceConnection, Context.BIND_AUTO_CREATE);
             }
-            mPhone.mCi.setOnNewGsmBroadcastSms(mModuleCellBroadcastHandler, EVENT_NEW_SMS_CB,
+            mPhone.mCi.setOnNewGsmBroadcastSms(mModuleCellBroadcastHandler, EVENT_NEW_GSM_SMS_CB,
                     null);
         } else {
             Log.e(TAG, "Unable to bind service; no cell broadcast service found");
@@ -155,6 +183,16 @@ public class CellBroadcastServiceManager {
         public void onServiceDisconnected(ComponentName arg0) {
             Log.d(TAG, "mICellBroadcastService has disconnected unexpectedly");
             this.mService = null;
+        }
+
+        @Override
+        public void onBindingDied(ComponentName name) {
+            Log.d(TAG, "Binding died");
+        }
+
+        @Override
+        public void onNullBinding(ComponentName name) {
+            Log.d(TAG, "Null binding");
         }
     }
 
