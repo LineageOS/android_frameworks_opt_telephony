@@ -68,8 +68,8 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getNaiForSubscriber(int subId, String callingPackage) {
-        return callPhoneMethodForSubIdWithReadCheck(subId, callingPackage, "getNai",
-                (phone)-> phone.getNai());
+        return callPhoneMethodForSubIdWithReadSubscriberIdentifiersCheck(subId, callingPackage,
+                "getNai", (phone)-> phone.getNai());
     }
 
     public String getImeiForSubscriber(int subId, String callingPackage) {
