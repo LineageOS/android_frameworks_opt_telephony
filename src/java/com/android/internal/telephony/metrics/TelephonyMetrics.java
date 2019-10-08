@@ -72,7 +72,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
-import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
@@ -105,6 +104,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
 import com.android.internal.telephony.protobuf.nano.MessageNano;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -434,6 +434,8 @@ public class TelephonyMetrics {
                         + "(" + "Data RAT " + event.serviceState.dataRat
                         + " Voice RAT " + event.serviceState.voiceRat
                         + " Channel Number " + event.serviceState.channelNumber
+                        + " NR Frequency Range " + event.serviceState.nrFrequencyRange
+                        + " NR State " + event.serviceState.nrState
                         + ")");
             } else {
                 pw.print(telephonyEventToString(event.type));
@@ -463,6 +465,8 @@ public class TelephonyMetrics {
                             + "(" + "Data RAT " + event.serviceState.dataRat
                             + " Voice RAT " + event.serviceState.voiceRat
                             + " Channel Number " + event.serviceState.channelNumber
+                            + " NR Frequency Range " + event.serviceState.nrFrequencyRange
+                            + " NR State " + event.serviceState.nrState
                             + ")");
                 } else if (event.type == TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED) {
                     pw.println(callSessionEventToString(event.type));
@@ -912,6 +916,8 @@ public class TelephonyMetrics {
         ssProto.voiceRat = serviceState.getRilVoiceRadioTechnology();
         ssProto.dataRat = serviceState.getRilDataRadioTechnology();
         ssProto.channelNumber = serviceState.getChannelNumber();
+        ssProto.nrFrequencyRange = serviceState.getNrFrequencyRange();
+        ssProto.nrState = serviceState.getNrState();
         return ssProto;
     }
 
