@@ -311,7 +311,8 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                 }
             }
 
-            return GsmSmsCbMessage.createSmsCbMessage(mContext, header, location, pdus);
+            return GsmSmsCbMessage.createSmsCbMessage(mContext, header, location, pdus,
+                mPhone.getPhoneId());
 
         } catch (RuntimeException e) {
             loge("Error in decoding SMS CB pdu", e);
