@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.os.SystemClock;
@@ -60,7 +62,7 @@ public interface NitzStateMachine {
     /**
      * Handle a new NITZ signal being received.
      */
-    void handleNitzReceived(TimestampedValue<NitzData> nitzSignal);
+    void handleNitzReceived(@NonNull TimestampedValue<NitzData> nitzSignal);
 
     /**
      * Handle the user putting the device into or out of airplane mode
@@ -81,6 +83,7 @@ public interface NitzStateMachine {
     /**
      * Returns the last NITZ data that was cached.
      */
+    @Nullable
     NitzData getCachedNitzData();
 
     /**
@@ -106,7 +109,7 @@ public interface NitzStateMachine {
          */
         boolean getIgnoreNitz();
 
-        String getNetworkCountryIsoForPhone();
+        @Nullable String getNetworkCountryIsoForPhone();
 
         /**
          * Returns the same value as {@link SystemClock#elapsedRealtime()}.
@@ -135,7 +138,7 @@ public interface NitzStateMachine {
         private final TelephonyManager mTelephonyManager;
         private final ContentResolver mCr;
 
-        DeviceStateImpl(GsmCdmaPhone phone) {
+        public DeviceStateImpl(GsmCdmaPhone phone) {
             mPhone = phone;
 
             Context context = phone.getContext();
@@ -166,6 +169,7 @@ public interface NitzStateMachine {
         }
 
         @Override
+        @Nullable
         public String getNetworkCountryIsoForPhone() {
             return mTelephonyManager.getNetworkCountryIso(mPhone.getPhoneId());
         }

@@ -204,8 +204,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
 
                 zoneId = null;
             } else {
-                OffsetResult lookupResult = mTimeZoneLookupHelper.lookupByNitzCountry(
-                        nitzData, isoCountryCode);
+                OffsetResult lookupResult =
+                        mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, isoCountryCode);
                 if (DBG) {
                     Rlog.d(LOG_TAG, "updateTimeZoneFromCountryAndNitz: using"
                             + " lookupByNitzCountry(nitzData, isoCountryCode),"
