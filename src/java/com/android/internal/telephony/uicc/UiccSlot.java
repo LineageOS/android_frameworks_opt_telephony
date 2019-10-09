@@ -34,6 +34,8 @@ import android.view.WindowManager;
 import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
 
@@ -295,6 +297,13 @@ public class UiccSlot extends Handler {
             log("onIccSwap: isHotSwapSupported is true, don't prompt for rebooting");
             return;
         }
+
+        Phone phone = PhoneFactory.getPhone(mPhoneId);
+        if (phone != null && phone.isShuttingDown()) {
+            log("onIccSwap: already doing shutdown, no need to prompt");
+            return;
+        }
+
         log("onIccSwap: isHotSwapSupported is false, prompt for rebooting");
 
         promptForRestart(isAdded);
