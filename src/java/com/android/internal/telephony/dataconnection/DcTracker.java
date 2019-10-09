@@ -1942,7 +1942,7 @@ public class DcTracker extends Handler {
         // this type.
         if (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DUN)
                 || ServiceState.isGsm(getDataRat())) {
-            dataConnection = checkForCompatibleConnectedApnContext(apnContext);
+            dataConnection = checkForCompatibleDataConnection(apnContext);
             if (dataConnection != null) {
                 // Get the apn setting used by the data connection
                 ApnSetting dataConnectionApnSetting = dataConnection.getApnSetting();
@@ -2270,7 +2270,7 @@ public class DcTracker extends Handler {
         setDataProfilesAsNeeded();
     }
 
-    private DataConnection checkForCompatibleConnectedApnContext(ApnContext apnContext) {
+    private DataConnection checkForCompatibleDataConnection(ApnContext apnContext) {
         int apnType = apnContext.getApnTypeBitmask();
         ArrayList<ApnSetting> dunSettings = null;
 
@@ -2278,71 +2278,46 @@ public class DcTracker extends Handler {
             dunSettings = sortApnListByPreferred(fetchDunApns());
         }
         if (DBG) {
-            log("checkForCompatibleConnectedApnContext: apnContext=" + apnContext );
+            log("checkForCompatibleDataConnection: apnContext=" + apnContext);
         }
 
         DataConnection potentialDc = null;
-        ApnContext potentialApnCtx = null;
-        for (ApnContext curApnCtx : mApnContexts.values()) {
-            DataConnection curDc = curApnCtx.getDataConnection();
+        for (DataConnection curDc : mDataConnections.values()) {
             if (curDc != null) {
-                ApnSetting apnSetting = curApnCtx.getApnSetting();
+                ApnSetting apnSetting = curDc.getApnSetting();
                 log("apnSetting: " + apnSetting);
                 if (dunSettings != null && dunSettings.size() > 0) {
                     for (ApnSetting dunSetting : dunSettings) {
                         if (dunSetting.equals(apnSetting)) {
-                            switch (curApnCtx.getState()) {
-                                case CONNECTED:
-                                    if (DBG) {
-                                        log("checkForCompatibleConnectedApnContext:"
-                                                + " found dun conn=" + curDc
-                                                + " curApnCtx=" + curApnCtx);
-                                    }
-                                    return curDc;
-                                case CONNECTING:
-                                    potentialDc = curDc;
-                                    potentialApnCtx = curApnCtx;
-                                    break;
-                                default:
-                                    // Not connected, potential unchanged
-                                    break;
+                            if (curDc.isActive()) {
+                                if (DBG) {
+                                    log("checkForCompatibleDataConnection:"
+                                            + " found dun conn=" + curDc);
+                                }
+                                return curDc;
+                            } else if (curDc.isActivating()) {
+                                potentialDc = curDc;
                             }
                         }
                     }
                 } else if (apnSetting != null && apnSetting.canHandleType(apnType)) {
-                    switch (curApnCtx.getState()) {
-                        case CONNECTED:
-                            if (DBG) {
-                                log("checkForCompatibleConnectedApnContext:"
-                                        + " found canHandle conn=" + curDc
-                                        + " curApnCtx=" + curApnCtx);
-                            }
-                            return curDc;
-                        case CONNECTING:
-                            potentialDc = curDc;
-                            potentialApnCtx = curApnCtx;
-                            break;
-                        default:
-                            // Not connected, potential unchanged
-                            break;
+                    if (curDc.isActive()) {
+                        if (DBG) {
+                            log("checkForCompatibleDataConnection:"
+                                    + " found canHandle conn=" + curDc);
+                        }
+                        return curDc;
+                    } else if (curDc.isActivating()) {
+                        potentialDc = curDc;
                     }
                 }
-            } else {
-                if (VDBG) {
-                    log("checkForCompatibleConnectedApnContext: not conn curApnCtx=" + curApnCtx);
-                }
             }
-        }
-        if (potentialDc != null) {
-            if (DBG) {
-                log("checkForCompatibleConnectedApnContext: found potential conn=" + potentialDc
-                        + " curApnCtx=" + potentialApnCtx);
-            }
-            return potentialDc;
         }
 
-        if (DBG) log("checkForCompatibleConnectedApnContext: NO conn apnContext=" + apnContext);
-        return null;
+        if (DBG) {
+            log("checkForCompatibleDataConnection: potential dc=" + potentialDc);
+        }
+        return potentialDc;
     }
 
     private void addRequestNetworkCompleteMsg(Message onCompleteMsg,
