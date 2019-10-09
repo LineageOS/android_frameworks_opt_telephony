@@ -165,8 +165,6 @@ public class TimeZoneLookupHelper {
         }
     }
 
-    private static final int MS_PER_HOUR = 60 * 60 * 1000;
-
     /** The last CountryTimeZones object retrieved. */
     private CountryTimeZones mLastCountryTimeZones;
 
@@ -294,21 +292,6 @@ public class TimeZoneLookupHelper {
         CountryTimeZones countryTimeZones =
                 TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
         return countryTimeZones == null ? null : countryTimeZones.getDefaultTimeZoneId();
-    }
-
-    /**
-     * Finds a time zone using only information present in the supplied {@link NitzData} object.
-     * This is a static method for use by {@link ServiceStateTracker}.
-     *
-     * <p><em>Note:</em> Because multiple time zones can have the same offset / DST state at a given
-     * time this process is error prone; an arbitrary match is returned when there are multiple
-     * candidates. The algorithm can also return a non-exact match by assuming that the DST
-     * information provided by NITZ is incorrect. This method can return {@code null} if no matching
-     * time zones are found.
-     */
-    static TimeZone guessZoneByNitzStatic(NitzData nitzData) {
-        OffsetResult result = lookupByNitzStatic(nitzData);
-        return result != null ? result.getTimeZone() : null;
     }
 
     private static OffsetResult lookupByNitzStatic(NitzData nitzData) {

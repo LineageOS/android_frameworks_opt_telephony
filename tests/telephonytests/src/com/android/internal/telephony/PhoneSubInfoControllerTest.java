@@ -174,6 +174,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetNaiWithOutPermission() {
+        // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
+        // profile owner access check is required to access subscriber identifiers. Since none of
+        // those are true for this test each case will result in a SecurityException being thrown.
         doReturn("aaa@example.com").when(mPhone).getNai();
         doReturn("bbb@example.com").when(mSecondPhone).getNai();
 
@@ -199,15 +202,41 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG));
-        assertNull(mPhoneSubInfoControllerUT.getNaiForSubscriber(0, TAG));
-        assertNull(mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getNaiForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getNai"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getNai"));
+        }
 
         //case 3: no READ_PRIVILEGED_PHONE_STATE
         mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG));
-        assertEquals("aaa@example.com", mPhoneSubInfoControllerUT.getNaiForSubscriber(0, TAG));
-        assertEquals("bbb@example.com", mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG));
+        try {
+            mPhoneSubInfoControllerUT.getNaiForSubscriber(0, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getNai"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getNaiForSubscriber(1, TAG);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getNai"));
+        }
     }
 
     @Test

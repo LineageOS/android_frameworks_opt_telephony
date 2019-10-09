@@ -743,7 +743,6 @@ public abstract class TelephonyTest {
                 "mContentProvider", providerHolder, iContentProvider);
     }
 
-    // TODO(b/138886216): remove method after refactor
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {
         final CountDownLatch lock = new CountDownLatch(1);
         h.post(lock::countDown);
@@ -780,19 +779,6 @@ public abstract class TelephonyTest {
             timeoutCount++;
         }
         assertTrue("Handler was not empty before timeout elapsed", timeoutCount < 5);
-    }
-
-    // TODO(b/138886216): remove method after refactor
-    protected final void waitForHandlerActionDelayed(Handler h, long timeoutMillis, long delayMs) {
-        final CountDownLatch lock = new CountDownLatch(1);
-        h.postDelayed(lock::countDown, delayMs);
-        while (lock.getCount() > 0) {
-            try {
-                lock.await(timeoutMillis, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                // do nothing
-            }
-        }
     }
 
     protected final EmergencyNumber getTestEmergencyNumber() {
