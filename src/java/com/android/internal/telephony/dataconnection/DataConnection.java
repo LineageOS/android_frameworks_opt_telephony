@@ -81,6 +81,7 @@ import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkTyp
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.CollectionUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -696,19 +697,26 @@ public class DataConnection extends StateMachine {
                 return DataFailCause.HANDOVER_FAILED;
             }
 
-            linkProperties = dc.getLinkProperties();
             // Preserve the potential network agent from the source data connection. The ownership
             // is not transferred at this moment.
-            mHandoverLocalLog.log("Handover started. Preserved the agent.");
             mHandoverSourceNetworkAgent = dc.getNetworkAgent();
-            log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
-            dc.setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
-            if (linkProperties == null) {
+            if (mHandoverSourceNetworkAgent == null) {
+                loge("Cannot get network agent from the source dc " + dc.getName());
+                return DataFailCause.HANDOVER_FAILED;
+            }
+
+            linkProperties = dc.getLinkProperties();
+            if (linkProperties == null || CollectionUtils.isEmpty(
+                    linkProperties.getLinkAddresses())) {
                 loge("connect: Can't find link properties of handover data connection. dc="
                         + dc);
                 return DataFailCause.HANDOVER_FAILED;
             }
 
+            mHandoverLocalLog.log("Handover started. Preserved the agent.");
+            log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
+
+            dc.setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
             reason = DataService.REQUEST_REASON_HANDOVER;
         }
 
