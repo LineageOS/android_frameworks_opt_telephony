@@ -45,13 +45,13 @@ public class BtSmsInterfaceManager {
         BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter == null) {
             // No bluetooth service on this platform?
-            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_NO_SERVICE);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_NO_BLUETOOTH_SERVICE);
             return;
         }
         BluetoothDevice device = btAdapter.getRemoteDevice(info.getIccId());
         if (device == null) {
             Log.d(LOG_TAG, "Bluetooth device addr invalid: " + info.getIccId());
-            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_NO_SERVICE);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS);
             return;
         }
         btAdapter.getProfileProxy(ActivityThread.currentApplication().getApplicationContext(),
@@ -113,7 +113,7 @@ public class BtSmsInterfaceManager {
         public void onServiceDisconnected(int profile) {
             if (mMessage != null) {
                 Log.d(LOG_TAG, "Bluetooth disconnected before sending the message");
-                sendErrorInPendingIntent(mSentIntent, SmsManager.RESULT_ERROR_NO_SERVICE);
+                sendErrorInPendingIntent(mSentIntent, SmsManager.RESULT_BLUETOOTH_DISCONNECTED);
                 mMessage = null;
             }
         }
