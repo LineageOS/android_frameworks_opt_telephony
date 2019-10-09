@@ -1203,7 +1203,7 @@ public class EuiccController extends IEuiccController.Stub {
     }
 
     private boolean supportMultiActiveSlots() {
-        return mTelephonyManager.getMaxPhoneCount() > 1;
+        return mTelephonyManager.getSupportedModemCount() > 1;
     }
 
     // Checks whether the caller can manage the active embedded subscription on the SIM with the

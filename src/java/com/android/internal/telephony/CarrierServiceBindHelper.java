@@ -40,8 +40,8 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.content.PackageMonitor;
-
 import com.android.internal.telephony.util.TelephonyUtils;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
@@ -108,7 +108,7 @@ public class CarrierServiceBindHelper {
     public CarrierServiceBindHelper(Context context) {
         mContext = context;
 
-        int numPhones = TelephonyManager.from(context).getMaxPhoneCount();
+        int numPhones = TelephonyManager.from(context).getSupportedModemCount();
         mBindings = new AppBinding[numPhones];
         mLastSimState = new String[numPhones];
 
