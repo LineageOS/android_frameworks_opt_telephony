@@ -30,9 +30,12 @@
 package com.android.internal.telephony.uicc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.*;
 
 import android.os.HandlerThread;
+import android.os.Message;
+import android.util.Pair;
 
 import com.android.internal.telephony.TelephonyTest;
 
@@ -91,5 +94,17 @@ public class IccRecordsTest extends TelephonyTest {
         assertEquals(mIccRecords.getIMSI(), null);
         mIccRecords.setImsi("123456ABCDEF");
         assertEquals(mIccRecords.getIMSI(), null);
+    }
+
+    @Test
+    public void testPendingTansaction() {
+        Message msg = Message.obtain();
+        Object obj = new Object();
+        int key = mIccRecords.storePendingTransaction(msg, obj);
+        Pair<Message, Object> pair = mIccRecords.retrievePendingTransaction(key);
+        assertEquals(msg, pair.first);
+        assertEquals(obj, pair.second);
+        pair = mIccRecords.retrievePendingTransaction(key);
+        assertNull(pair);
     }
 }
