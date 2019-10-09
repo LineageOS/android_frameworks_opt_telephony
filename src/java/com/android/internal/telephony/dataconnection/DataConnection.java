@@ -1386,7 +1386,7 @@ public class DataConnection extends StateMachine {
                         if (!la.getAddress().isAnyLocalAddress()) {
                             if (DBG) {
                                 log("addr/pl=" + la.getAddress() + "/"
-                                        + la.getNetworkPrefixLength());
+                                        + la.getPrefixLength());
                             }
                             linkProperties.addLinkAddress(la);
                         }
