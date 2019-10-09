@@ -811,7 +811,7 @@ public class CatService extends Handler implements AppInterface {
      */
     //TODO Need to take care for MSIM
     public static AppInterface getInstance() {
-        int slotId = PhoneConstants.DEFAULT_CARD_INDEX;
+        int slotId = PhoneConstants.DEFAULT_SLOT_INDEX;
         SubscriptionController sControl = SubscriptionController.getInstance();
         if (sControl != null) {
             slotId = sControl.getSlotIndex(sControl.getDefaultSubId());
