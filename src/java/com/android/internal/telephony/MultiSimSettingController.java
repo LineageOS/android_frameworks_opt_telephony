@@ -183,7 +183,7 @@ public class MultiSimSettingController extends Handler {
 
         // Initialize mCarrierConfigLoadedSubIds and register to listen to carrier config change.
         final int phoneCount = ((TelephonyManager) mContext.getSystemService(
-                Context.TELEPHONY_SERVICE)).getMaxPhoneCount();
+                Context.TELEPHONY_SERVICE)).getSupportedModemCount();
         mCarrierConfigLoadedSubIds = new int[phoneCount];
         Arrays.fill(mCarrierConfigLoadedSubIds, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 

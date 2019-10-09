@@ -565,7 +565,7 @@ public abstract class TelephonyTest {
         doReturn(1).when(mTelephonyManager).getPhoneCount();
         // Have getMaxPhoneCount always return the same value with getPhoneCount by default.
         doAnswer((invocation)->mTelephonyManager.getPhoneCount())
-                .when(mTelephonyManager).getMaxPhoneCount();
+                .when(mTelephonyManager).getSupportedModemCount();
 
         //Data
         //Initial state is: userData enabled, provisioned.
