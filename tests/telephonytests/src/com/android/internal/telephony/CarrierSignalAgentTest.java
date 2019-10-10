@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE;
 import static com.android.internal.telephony.TelephonyIntents
         .ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED;
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -31,15 +30,17 @@ import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
@@ -47,43 +48,29 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class CarrierSignalAgentTest extends TelephonyTest {
 
     private CarrierSignalAgent mCarrierSignalAgentUT;
     private PersistableBundle mBundle;
-    private CarrierSignalAgentHandler mCarrierSignalAgentHandler;
     private static final String PCO_RECEIVER = "pak/PCO_RECEIVER";
     private static final String DC_ERROR_RECEIVER = "pak/DC_ERROR_RECEIVER";
     @Mock
     ResolveInfo mResolveInfo;
-
-    private class CarrierSignalAgentHandler extends HandlerThread {
-
-        private CarrierSignalAgentHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mCarrierSignalAgentUT = new CarrierSignalAgent(mPhone);
-            setReady(true);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
         logd("CarrierSignalAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
-        mCarrierSignalAgentHandler = new CarrierSignalAgentHandler(getClass().getSimpleName());
-        mCarrierSignalAgentHandler.start();
-        waitUntilReady();
+        mCarrierSignalAgentUT = new CarrierSignalAgent(mPhone);
+        processAllMessages();
         logd("CarrierSignalAgentTest -Setup!");
     }
 
     @After
     public void tearDown() throws Exception {
-        mCarrierSignalAgentHandler.quit();
         super.tearDown();
     }
 
@@ -106,7 +93,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
 
         // Trigger carrier config reloading
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-        waitForMs(50);
+        processAllMessages();
         count++;
 
         // Verify no broadcast has been sent due to no manifest receivers
@@ -148,7 +135,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
 
         // Trigger carrier config reloading
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-        waitForMs(50);
+        processAllMessages();
         count++;
 
         // Verify broadcast has been sent to registered components
@@ -185,8 +172,8 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 anyInt());
 
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
         count++;
-        waitForMs(50);
 
         // Wake signal for PAK_PCO_RECEIVER
         mCarrierSignalAgentUT.notifyCarrierSignalReceivers(
@@ -240,7 +227,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 new String[]{ PCO_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_PCO_VALUE + ","
                         + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED });
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-        waitForMs(50);
+        processAllMessages();
         // verify no reset action on initial config load
         verify(mCarrierActionAgent, times(0)).sendMessageAtTime(any(Message.class), anyLong());
 
@@ -250,7 +237,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 new String[]{ PCO_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED
                         + "," + ACTION_CARRIER_SIGNAL_PCO_VALUE});
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-        waitForMs(50);
+        processAllMessages();
         // verify no reset action for the same config (different order)
         verify(mCarrierActionAgent, times(0)).sendMessageAtTime(any(Message.class), anyLong());
 
@@ -260,7 +247,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 new String[]{ DC_ERROR_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED
                         + "," + ACTION_CARRIER_SIGNAL_PCO_VALUE});
         mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-        waitForMs(50);
+        processAllMessages();
         // verify there is no reset action
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mCarrierActionAgent, times(1))
