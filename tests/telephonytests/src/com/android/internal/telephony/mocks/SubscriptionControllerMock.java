@@ -44,9 +44,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
     final ITelephonyRegistry.Stub mTelephonyRegistry;
     final int[][] mSlotIndexToSubId;
 
-    public static SubscriptionController init(Phone phone) {
-        throw new RuntimeException("not implemented");
-    }
     public static SubscriptionController init(Context c) {
         throw new RuntimeException("not implemented");
     }
