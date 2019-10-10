@@ -40,6 +40,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccCardInfo;
 import android.telephony.euicc.DownloadableSubscription;
+import android.telephony.euicc.EuiccCardManager.ResetOption;
 import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
 import android.telephony.euicc.EuiccManager.OtaStatus;
@@ -957,7 +958,50 @@ public class EuiccController extends IEuiccController.Stub {
         }
         long token = Binder.clearCallingIdentity();
         try {
-            mConnector.eraseSubscriptions(cardId, new EuiccConnector.EraseCommandCallback() {
+            mConnector.eraseSubscriptions(
+                    cardId, new EuiccConnector.EraseCommandCallback() {
+                        @Override
+                        public void onEraseComplete(int result) {
+                            Intent extrasIntent = new Intent();
+                            final int resultCode;
+                            switch (result) {
+                                case EuiccService.RESULT_OK:
+                                    resultCode = OK;
+                                    refreshSubscriptionsAndSendResult(
+                                            callbackIntent, resultCode, extrasIntent);
+                                    return;
+                                default:
+                                    resultCode = ERROR;
+                                    extrasIntent.putExtra(
+                                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
+                                            result);
+                                    break;
+                            }
+
+                            sendResult(callbackIntent, resultCode, extrasIntent);
+                        }
+
+                        @Override
+                        public void onEuiccServiceUnavailable() {
+                            sendResult(callbackIntent, ERROR, null /* extrasIntent */);
+                        }
+                    });
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    @Override
+    public void eraseSubscriptionsWithOptions(
+            int cardId, @ResetOption int options, PendingIntent callbackIntent) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to erase subscriptions");
+        }
+        long token = Binder.clearCallingIdentity();
+        try {
+            mConnector.eraseSubscriptionsWithOptions(
+                    cardId, options, new EuiccConnector.EraseCommandCallback() {
                 @Override
                 public void onEraseComplete(int result) {
                     Intent extrasIntent = new Intent();

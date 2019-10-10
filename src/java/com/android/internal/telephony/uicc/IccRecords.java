@@ -29,6 +29,7 @@ import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Pair;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
@@ -181,8 +182,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected static final int HANDLER_ACTION_NONE = HANDLER_ACTION_BASE + 0;
     protected static final int HANDLER_ACTION_SEND_RESPONSE = HANDLER_ACTION_BASE + 1;
     protected static AtomicInteger sNextRequestId = new AtomicInteger(1);
-    protected final HashMap<Integer, Message> mPendingResponses = new HashMap<>();
-
+    protected final HashMap<Integer, Pair<Message, Object>> mPendingTransactions = new HashMap<>();
     // ***** Constants
 
     // Markers for mncLength
@@ -344,24 +344,42 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
-     * Adds a message to the pending requests list by generating a unique
-     * (integer) hash key and returning it. The message should never be null.
+     * Adds a message to the pending requests list by generating a unique (integer)
+     * hash key and returning it. The message should never be null.
+     *
+     * @param msg Message of the transaction to be stored
+     * @return the unique (integer) hash key to retrieve the pending transaction
      */
-    public int storePendingResponseMessage(Message msg) {
+    public int storePendingTransaction(Message msg) {
+        return storePendingTransaction(msg, null);
+    }
+
+    /**
+     * Adds a message and obj pair to the pending requests list by generating a unique (integer)
+     * hash key and returning it. The message should never be null.
+     *
+     * @param msg Message of the transaction to be stored
+     * @param obj Object of the transaction to be stored
+     * @return the unique (integer) hash key to retrieve the pending transaction
+     */
+    public int storePendingTransaction(Message msg, Object obj) {
         int key = sNextRequestId.getAndIncrement();
-        synchronized (mPendingResponses) {
-            mPendingResponses.put(key, msg);
+        Pair<Message, Object> pair = new Pair<Message, Object>(msg, obj);
+        synchronized (mPendingTransactions) {
+            mPendingTransactions.put(key, pair);
         }
         return key;
     }
 
     /**
-     * Returns the pending request, if any or null
+     * Returns the pending transaction and free it from memory, if any or null
+     *
+     * @param key key of the entry to retrieve
+     * @return The pending transaction.
      */
-    public Message retrievePendingResponseMessage(Integer key) {
-        Message m;
-        synchronized (mPendingResponses) {
-            return mPendingResponses.remove(key);
+    public Pair<Message, Object> retrievePendingTransaction(Integer key) {
+        synchronized (mPendingTransactions) {
+            return mPendingTransactions.remove(key);
         }
     }
 
