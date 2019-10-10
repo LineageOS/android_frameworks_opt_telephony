@@ -433,6 +433,8 @@ public class TelephonyMetrics {
                         + "(" + "Data RAT " + event.serviceState.dataRat
                         + " Voice RAT " + event.serviceState.voiceRat
                         + " Channel Number " + event.serviceState.channelNumber
+                        + " NR Frequency Range " + event.serviceState.nrFrequencyRange
+                        + " NR State " + event.serviceState.nrState
                         + ")");
             } else {
                 pw.print(telephonyEventToString(event.type));
@@ -462,6 +464,8 @@ public class TelephonyMetrics {
                             + "(" + "Data RAT " + event.serviceState.dataRat
                             + " Voice RAT " + event.serviceState.voiceRat
                             + " Channel Number " + event.serviceState.channelNumber
+                            + " NR Frequency Range " + event.serviceState.nrFrequencyRange
+                            + " NR State " + event.serviceState.nrState
                             + ")");
                 } else if (event.type == TelephonyCallSession.Event.Type.RIL_CALL_LIST_CHANGED) {
                     pw.println(callSessionEventToString(event.type));
@@ -911,6 +915,8 @@ public class TelephonyMetrics {
         ssProto.voiceRat = serviceState.getRilVoiceRadioTechnology();
         ssProto.dataRat = serviceState.getRilDataRadioTechnology();
         ssProto.channelNumber = serviceState.getChannelNumber();
+        ssProto.nrFrequencyRange = serviceState.getNrFrequencyRange();
+        ssProto.nrState = serviceState.getNrState();
         return ssProto;
     }
 
