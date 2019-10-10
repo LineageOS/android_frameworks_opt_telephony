@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -39,7 +37,7 @@ import android.content.Intent;
 import android.content.pm.IPackageManager;
 import android.content.pm.UserInfo;
 import android.net.Uri;
-import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.service.euicc.EuiccProfileInfo;
@@ -52,6 +50,8 @@ import android.telephony.UiccAccessRule;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -62,6 +62,7 @@ import com.android.internal.telephony.uicc.UiccSlot;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
@@ -73,6 +74,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     private static final int FAKE_SUB_ID_1 = 0;
@@ -82,7 +85,6 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private static final String FAKE_MCC_MNC_1 = "123456";
     private static final String FAKE_MCC_MNC_2 = "456789";
 
-    private SubscriptionInfoUpdaterHandlerThread mSubscriptionInfoUpdaterHandlerThread;
     private SubscriptionInfoUpdater mUpdater;
     private IccRecords mIccRecord;
     @Mock
@@ -109,20 +111,6 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         @Override
         public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
             return mContentProvider.update(uri, values, selection, selectionArgs);
-        }
-    }
-
-    private class SubscriptionInfoUpdaterHandlerThread extends HandlerThread {
-
-        private SubscriptionInfoUpdaterHandlerThread(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mUpdater = new SubscriptionInfoUpdater(getLooper(), mContext, new Phone[]{mPhone},
-                    new CommandsInterface[]{mSimulatedCommands}, mPackageManager);
-            setReady(true);
         }
     }
 
@@ -167,16 +155,15 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getActiveSubIdList(/*visibleOnly*/false);
         mIccRecord = mUiccProfile.getIccRecords();
 
-        mSubscriptionInfoUpdaterHandlerThread = new SubscriptionInfoUpdaterHandlerThread(TAG);
-        mSubscriptionInfoUpdaterHandlerThread.start();
-        waitUntilReady();
+        mUpdater = new SubscriptionInfoUpdater(Looper.myLooper(), mContext, new Phone[]{mPhone},
+            new CommandsInterface[]{mSimulatedCommands}, mPackageManager);
+        processAllMessages();
 
         assertFalse(mUpdater.isSubInfoInitialized());
     }
 
     @After
     public void tearDown() throws Exception {
-        mSubscriptionInfoUpdaterHandlerThread.quit();
         super.tearDown();
     }
 
@@ -190,7 +177,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         verify(mSubscriptionController, times(1)).clearSubInfoRecord(eq(FAKE_SUB_ID_1));
 
@@ -211,7 +198,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, FAKE_SUB_ID_1, true);
 
-        waitForMs(100);
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         verify(mSubscriptionController, times(1)).clearSubInfoRecord(eq(FAKE_SUB_ID_1));
 
@@ -231,7 +218,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_UNKNOWN, null, FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
+        processAllMessages();
         assertFalse(mUpdater.isSubInfoInitialized());
         verify(mSubscriptionContent, times(0)).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
@@ -248,7 +235,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR, null, FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         verify(mSubscriptionContent, times(0)).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
@@ -265,7 +252,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_IMSI, null, 2, false);
 
-        waitForMs(100);
+        processAllMessages();
         assertFalse(mUpdater.isSubInfoInitialized());
         verify(mSubscriptionContent, times(0)).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
@@ -288,7 +275,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, null, FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
 
         // verify SIM_STATE_CHANGED broadcast. It should be broadcast twice, once for
@@ -324,7 +311,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         // ACTION_USER_UNLOCKED should trigger another SIM_STATE_CHANGED
         Intent intentSimStateChanged = new Intent(Intent.ACTION_USER_UNLOCKED);
         mContext.sendBroadcast(intentSimStateChanged);
-        waitForMs(100);
+        processAllMessages();
 
         // verify SIM_STATE_CHANGED broadcast
         /* todo: cannot verify as intent is sent using ActivityManagerNative.broadcastStickyIntent()
@@ -354,7 +341,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, null, FAKE_SUB_ID_1, false);
 
-        waitForMs(300);
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mTelephonyManager).getSimOperatorNumeric(FAKE_SUB_ID_1);
@@ -381,8 +368,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOCKED, "TESTING", FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
-
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
@@ -430,8 +416,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, null, FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
-
+        processAllMessages();
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(anyString(), anyInt());
         verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
         verify(mSubscriptionController, times(1)).setMccMnc(anyString(), anyInt());
@@ -446,8 +431,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, null, FAKE_SUB_ID_2, false);
 
-        waitForMs(100);
-
+        processAllMessages();
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(eq("89012604200000000000"),
                 eq(FAKE_SUB_ID_1));
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(eq("89012604200000000001"),
@@ -469,8 +453,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOCKED, "TESTING", FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
-
+        processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
@@ -515,9 +498,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         List<Integer> cardIds = new ArrayList<>();
         cardIds.add(FAKE_CARD_ID);
         mUpdater.updateEmbeddedSubscriptions(cardIds, null /* callback */);
-
-        // Wait for some time until the callback is triggered.
-        waitForMs(100);
+        processAllMessages();
 
         // 3 is new and so a new entry should have been created.
         verify(mSubscriptionController).insertEmptySubInfoRecord(
@@ -622,7 +603,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, "TESTING", FAKE_SUB_ID_1, false);
 
-        waitForMs(100);
+        processAllMessages();
 
         SubscriptionManager mSubscriptionManager = SubscriptionManager.from(mContext);
         verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();

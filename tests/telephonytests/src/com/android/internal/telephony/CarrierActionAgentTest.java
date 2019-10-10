@@ -26,26 +26,28 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class CarrierActionAgentTest extends TelephonyTest {
     private CarrierActionAgent mCarrierActionAgentUT;
     private FakeContentResolver mFakeContentResolver;
     private static int DATA_CARRIER_ACTION_EVENT = 0;
     private static int RADIO_CARRIER_ACTION_EVENT = 1;
-    private static int TEST_TIMEOUT = 5000;
-    private CarrierActionAgentHandler mCarrierActionAgentHandler;
     @Mock
     private Handler mDataActionHandler;
     @Mock
@@ -64,34 +66,20 @@ public class CarrierActionAgentTest extends TelephonyTest {
         }
     }
 
-    private class CarrierActionAgentHandler extends HandlerThread {
-
-        private CarrierActionAgentHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mCarrierActionAgentUT = new CarrierActionAgent(mPhone);
-            mCarrierActionAgentUT.registerForCarrierAction(
-                    CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED, mDataActionHandler,
-                    DATA_CARRIER_ACTION_EVENT, null, false);
-            mCarrierActionAgentUT.registerForCarrierAction(
-                    CarrierActionAgent.CARRIER_ACTION_SET_RADIO_ENABLED, mRadioActionHandler,
-                    RADIO_CARRIER_ACTION_EVENT, null, false);
-            setReady(true);
-        }
-    }
-
     @Before
     public void setUp() throws Exception {
         logd("CarrierActionAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mFakeContentResolver = new FakeContentResolver();
         doReturn(mFakeContentResolver).when(mContext).getContentResolver();
-        mCarrierActionAgentHandler = new CarrierActionAgentHandler(getClass().getSimpleName());
-        mCarrierActionAgentHandler.start();
-        waitUntilReady();
+        mCarrierActionAgentUT = new CarrierActionAgent(mPhone);
+        mCarrierActionAgentUT.registerForCarrierAction(
+                CarrierActionAgent.CARRIER_ACTION_SET_METERED_APNS_ENABLED, mDataActionHandler,
+                DATA_CARRIER_ACTION_EVENT, null, false);
+        mCarrierActionAgentUT.registerForCarrierAction(
+                CarrierActionAgent.CARRIER_ACTION_SET_RADIO_ENABLED, mRadioActionHandler,
+                RADIO_CARRIER_ACTION_EVENT, null, false);
+        processAllMessages();
         logd("CarrierActionAgentTest -Setup!");
     }
 
@@ -103,7 +91,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_LOADED);
         mContext.sendBroadcast(intent);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
+        processAllMessages();
 
         // no carrier actions triggered from sim loading since there are same as the current one
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
@@ -113,8 +101,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         // disable metered apns and radio
         mCarrierActionAgentUT.carrierActionSetRadioEnabled(false);
         mCarrierActionAgentUT.carrierActionSetMeteredApnsEnabled(false);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
+        processAllMessages();
         verify(mDataActionHandler, times(1)).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
         assertEquals(false, ((AsyncResult) message.getValue().obj).result);
@@ -126,9 +113,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
         mFakeContentResolver.notifyChange(
                 Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON), null);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
+        processAllMessages();
 
         // carrier actions triggered from APM
         verify(mDataActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
@@ -148,7 +133,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_LOADED);
         mContext.sendBroadcast(intent);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
+        processAllMessages();
 
         // no carrier actions triggered from sim loading since there are same as the current one
         ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
@@ -158,8 +143,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         // disable metered apns and radio
         mCarrierActionAgentUT.carrierActionSetRadioEnabled(false);
         mCarrierActionAgentUT.carrierActionSetMeteredApnsEnabled(false);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
+        processAllMessages();
 
         verify(mDataActionHandler, times(1)).sendMessageAtTime(message.capture(), anyLong());
         assertEquals(DATA_CARRIER_ACTION_EVENT, message.getValue().what);
@@ -171,9 +155,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
 
         // Simulate APN change
         mFakeContentResolver.notifyChange(Telephony.Carriers.CONTENT_URI, null);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
-        waitForHandlerAction(mCarrierActionAgentUT, TEST_TIMEOUT);
+        processAllMessages();
 
         // Carrier actions triggered from APN change
         verify(mDataActionHandler, times(2)).sendMessageAtTime(message.capture(), anyLong());
@@ -188,7 +170,6 @@ public class CarrierActionAgentTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
-        mCarrierActionAgentHandler.quit();
         super.tearDown();
     }
 }
