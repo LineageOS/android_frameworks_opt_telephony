@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -30,16 +28,16 @@ import static org.mockito.Mockito.verify;
 
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
-import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -50,31 +48,18 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-@RunWith(AndroidJUnit4.class)
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private static final int VOICE_CALL_STARTED_EVENT = 0;
     private static final int VOICE_CALL_ENDED_EVENT = 1;
-    private static final int TEST_TIMEOUT = 5000;
     private String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
     /* Handler class initiated at the HandlerThread */
     private GsmCdmaCallTracker mCTUT;
-    private GsmCdmaCTHandlerThread mGsmCdmaCTHandlerThread;
     @Mock
     GsmCdmaConnection mConnection;
     @Mock
     private Handler mHandler;
-
-    private class GsmCdmaCTHandlerThread extends HandlerThread {
-
-        private GsmCdmaCTHandlerThread(String name) {
-            super(name);
-        }
-        @Override
-        public void onLooperPrepared() {
-            mCTUT = new GsmCdmaCallTracker(mPhone);
-            setReady(true);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -82,21 +67,17 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         mSimulatedCommands.setRadioPower(true, null);
         mPhone.mCi = this.mSimulatedCommands;
 
-        mGsmCdmaCTHandlerThread = new GsmCdmaCTHandlerThread(TAG);
-        mGsmCdmaCTHandlerThread.start();
-
-        waitUntilReady();
+        mCTUT = new GsmCdmaCallTracker(mPhone);
         logd("GsmCdmaCallTracker initiated, waiting for Power on");
         /* Make sure radio state is power on before dial.
          * When radio state changed from off to on, CallTracker
          * will poll result from RIL. Avoid dialing triggered at the same*/
-        waitForMs(100);
+        processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
-        mGsmCdmaCTHandlerThread.quit();
         super.tearDown();
     }
 
@@ -110,7 +91,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         try {
             mCTUT.dial(mDialString, new Bundle());
-            waitForMs(100);
+            processAllMessages();
         } catch(Exception ex) {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown"+ex.getMessage()+ex.getStackTrace());
@@ -130,10 +111,10 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     public void testMOCallPickUp() {
         testMOCallDial();
         logd("Waiting for POLL CALL response from RIL");
-        TelephonyTestUtils.waitForMs(50);
+        processAllMessages();
         logd("Pick Up MO call, expecting call state change event ");
         mSimulatedCommands.progressConnectingToActive();
-        waitForMs(100);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
     }
@@ -145,7 +126,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     public void testMOCallHangup() {
         testMOCallDial();
         logd("Waiting for POLL CALL response from RIL ");
-        TelephonyTestUtils.waitForMs(50);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.DIALING, mCTUT.mForegroundCall.getState());
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
         assertEquals(1, mCTUT.mForegroundCall.getConnections().size());
@@ -156,7 +137,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(300);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -181,8 +162,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        /* request send to RIL still in disconnecting state */
-        waitForMs(300);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -205,7 +185,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(300);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -228,7 +208,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(200);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.DIALING, mCTUT.mForegroundCall.getState());
         assertEquals(GsmCdmaCall.State.HOLDING, mCTUT.mBackgroundCall.getState());
         assertEquals(1, mCTUT.mForegroundCall.getConnections().size());
@@ -254,10 +234,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
         logd("MT call Ringing");
         mSimulatedCommands.triggerRing(mDialString);
-        // handle EVENT_CALL_STATE_CHANGE
-        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
-        // handle EVENT_POLL_CALLS_RESULT
-        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
+        // handle EVENT_CALL_STATE_CHANGE, EVENT_POLL_CALLS_RESULT
+        processAllMessages();
         assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
         assertEquals(1, mCTUT.mRingingCall.getConnections().size());
     }
@@ -281,9 +259,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         /* send to the RIL */
         verify(mSimulatedCommandsVerifier).acceptCall(isA(Message.class));
         // handle EVENT_OPERATION_COMPLETE
-        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
-        // handle waitForHandlerAction
-        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
+        processAllMessages();
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
         assertEquals(GsmCdmaCall.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(1, mCTUT.mForegroundCall.getConnections().size());
@@ -309,14 +285,12 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        // handle EVENT_OPERATION_COMPLETE
-        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
-        // handle EVENT_POLL_CALLS_RESULT
-        waitForHandlerAction(mCTUT, TEST_TIMEOUT);
+        // handle EVENT_OPERATION_COMPLETE, EVENT_POLL_CALLS_RESULT
+        processAllMessages();
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
-        /* ? why rejectCall didnt -> hang up locally to set the cause to LOCAL? */
+        /* ? why rejectCall didn't -> hang up locally to set the cause to LOCAL? */
         assertEquals(DisconnectCause.INCOMING_MISSED, connection.getDisconnectCause());
 
     }
@@ -334,7 +308,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(300);
+        processAllMessages();
         logd(" Foreground Call is IDLE and BackGround Call is still HOLDING ");
         /* if we want to hang up foreground call which is alerting state, hangup all */
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
@@ -355,7 +329,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
 
-        waitForMs(200);
+        processAllMessages();
         assertEquals(GsmCdmaCall.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(GsmCdmaCall.State.HOLDING, mCTUT.mBackgroundCall.getState());
 
@@ -366,8 +340,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-
-        waitForMs(300);
+        processAllMessages();
         logd(" BackGround Call switch to ForeGround Call ");
         assertEquals(GsmCdmaCall.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mBackgroundCall.getState());
@@ -407,14 +380,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).getCurrentCalls(any(Message.class));
 
         // update phone type (call the function on same thread as the call tracker)
-        Handler updatePhoneTypeHandler = new Handler(mCTUT.getLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                mCTUT.updatePhoneType();
-            }
-        };
-        updatePhoneTypeHandler.sendEmptyMessage(0);
-        waitForMs(100);
+        mCTUT.updatePhoneType();
+        processAllMessages();
 
         // verify getCurrentCalls is called on updating phone type
         verify(mSimulatedCommandsVerifier, times(2)).getCurrentCalls(any(Message.class));
@@ -428,8 +395,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
 
         // update phone type - call tracker goes to IDLE and then due to getCurrentCalls(),
         // goes back to OFFHOOK
-        updatePhoneTypeHandler.sendEmptyMessage(0);
-        waitForMs(100);
+        mCTUT.updatePhoneType();
+        processAllMessages();
 
         // verify CT and calls go to idle
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
@@ -448,14 +415,8 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         mCTUT.mConnections[0] = mConnection;
 
         // update phone type (call the function on same thread as the call tracker)
-        Handler updatePhoneTypeHandler = new Handler(mCTUT.getLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                mCTUT.updatePhoneType();
-            }
-        };
-        updatePhoneTypeHandler.sendEmptyMessage(0);
-        waitForMs(100);
+        mCTUT.updatePhoneType();
+        processAllMessages();
 
         // verify that the active call is disconnected
         verify(mConnection).onDisconnect(DisconnectCause.ERROR_UNSPECIFIED);
@@ -483,9 +444,9 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     public void testCantCallOtaspInProgress() {
         mDialString = "*22899";
         testMOCallDial();
-        waitForHandlerAction(mSimulatedCommands.getHandler(), 5000);
+        processAllMessages();
         mSimulatedCommands.progressConnectingToActive();
-        waitForHandlerAction(mSimulatedCommands.getHandler(), 5000);
+        processAllMessages();
         // Try to place another call.
         try {
             mCTUT.dial("650-555-1212", new Bundle());

@@ -32,20 +32,24 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.lang.reflect.Field;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class CallManagerTest extends TelephonyTest {
 
     @Mock
@@ -56,43 +60,6 @@ public class CallManagerTest extends TelephonyTest {
     GsmCdmaCall mRingingCall;
     @Mock
     Phone mSecondPhone;
-
-    private CallManagerHandlerThread mCallManagerHandlerThread;
-    private Handler mHandler;
-    private static final int PHONE_REGISTER_EVENT = 0;
-
-    private class CallManagerHandlerThread extends HandlerThread {
-        private CallManagerHandlerThread(String name) {
-            super(name);
-        }
-        @Override
-        public void onLooperPrepared() {
-            /* CallManager is a static object with private constructor,no need call constructor */
-            registerForPhone(mPhone);
-
-            // create a custom handler for the Handler Thread
-            mHandler = new Handler(mCallManagerHandlerThread.getLooper()) {
-                @Override
-                public void handleMessage(Message msg) {
-                    switch (msg.what) {
-                        case PHONE_REGISTER_EVENT:
-                            logd("Phone registered with CallManager");
-                            registerForPhone((Phone) msg.obj);
-                            setReady(true);
-                            break;
-                        default:
-                            logd("Unknown Event " + msg.what);
-                    }
-                }
-            };
-
-            setReady(true);
-        }
-
-        private void registerForPhone(Phone mPhone) {
-            CallManager.getInstance().registerPhone(mPhone);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -113,15 +80,14 @@ public class CallManagerTest extends TelephonyTest {
         doReturn(true).when(mFgCall).isIdle();
         doReturn(true).when(mRingingCall).isIdle();
 
-        mCallManagerHandlerThread = new CallManagerHandlerThread(TAG);
-        mCallManagerHandlerThread.start();
-        waitUntilReady();
+        /* CallManager is a static object with private constructor; no need to call constructor */
+        CallManager.getInstance().registerPhone(mPhone);
+        processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
         CallManager.getInstance().unregisterPhone(mPhone);
-        mCallManagerHandlerThread.quit();
         super.tearDown();
     }
 
@@ -271,12 +237,9 @@ public class CallManagerTest extends TelephonyTest {
         ServiceState mSecondServiceState = mock(ServiceState.class);
         doReturn(mSecondServiceState).when(mSecondPhone).getServiceState();
 
-        Message mRegisterPhone = mHandler.obtainMessage(PHONE_REGISTER_EVENT,
-                mSecondPhone);
-        setReady(false);
-        mRegisterPhone.sendToTarget();
-
-        waitUntilReady();
+        logd("Phone registered with CallManager");
+        CallManager.getInstance().registerPhone(mSecondPhone);
+        processAllMessages();
 
         // mPhone: STATE_IN_SERVICE > mPhoneSecond: state STATE_OUT_OF_SERVICE
         doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSecondServiceState).getState();
