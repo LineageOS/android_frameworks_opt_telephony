@@ -37,6 +37,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYP
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_UNSTRUCTURED;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNKNOWN;
 
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -72,7 +73,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
-import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
@@ -94,6 +94,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Carrier
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.NetworkCapabilitiesInfo;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall.DeactivateReason;
@@ -105,6 +106,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
 import com.android.internal.telephony.protobuf.nano.MessageNano;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -205,6 +207,12 @@ public class TelephonyMetrics {
      * Last carrier id matching.
      */
     private final SparseArray<CarrierIdMatching> mLastCarrierId = new SparseArray<>();
+
+    /**
+     * Last NetworkCapabilitiesInfo, indexed by phone id.
+     */
+    private final SparseArray<NetworkCapabilitiesInfo> mLastNetworkCapabilitiesInfos =
+            new SparseArray<>();
 
     /**
      * Last RilDataCall Events (indexed by cid), indexed by phone id
@@ -314,6 +322,8 @@ public class TelephonyMetrics {
                 return "NITZ_TIME";
             case TelephonyEvent.Type.EMERGENCY_NUMBER_REPORT:
                 return "EMERGENCY_NUMBER_REPORT";
+            case TelephonyEvent.Type.NETWORK_CAPABILITIES_CHANGED:
+                return "NETWORK_CAPABILITIES_CHANGED";
             default:
                 return Integer.toString(event);
         }
@@ -645,6 +655,13 @@ public class TelephonyMetrics {
             final int key = mLastCarrierId.keyAt(i);
             TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
                     .setCarrierIdMatching(mLastCarrierId.get(key)).build();
+            addTelephonyEvent(event);
+        }
+
+        for (int i = 0; i < mLastNetworkCapabilitiesInfos.size(); i++) {
+            final int key = mLastNetworkCapabilitiesInfos.keyAt(i);
+            TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                    .setNetworkCapabilities(mLastNetworkCapabilitiesInfos.get(key)).build();
             addTelephonyEvent(event);
         }
 
@@ -2506,6 +2523,24 @@ public class TelephonyMetrics {
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setUpdatedEmergencyNumber(
                 emergencyNumberInfo).build();
+        addTelephonyEvent(event);
+    }
+
+    /**
+     * Write network capabilities changed event
+     *
+     * @param phoneId Phone id
+     * @param networkCapabilities Network capabilities
+     */
+    public void writeNetworkCapabilitiesChangedEvent(int phoneId,
+            NetworkCapabilities networkCapabilities) {
+        final NetworkCapabilitiesInfo caps = new NetworkCapabilitiesInfo();
+        caps.isNetworkUnmetered = networkCapabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId)
+                .setNetworkCapabilities(caps).build();
+        mLastNetworkCapabilitiesInfos.put(phoneId, caps);
         addTelephonyEvent(event);
     }
 
