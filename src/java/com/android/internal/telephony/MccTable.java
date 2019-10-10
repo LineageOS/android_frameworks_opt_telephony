@@ -400,15 +400,18 @@ public final class MccTable {
 
 
         /*
-         * The table below is built from two resources:
+         * The table below is built from two main resources:
          *
-         * 1) ITU "Mobile Network Code (MNC) for the international
-         *   identification plan for mobile terminals and mobile users"
-         *   which is available as an annex to the ITU operational bulletin
-         *   available here: http://www.itu.int/itu-t/bulletin/annex.html
+         * 1) ITU "LIST OF MOBILE COUNTRY OR GEOGRAPHICAL AREA CODES (POSITION ON 1 FEBRUARY 2017)"
+         *    available here: http://handle.itu.int/11.1002/pub/80f1788f-en
+         *
          *
          * 2) The ISO 3166 country codes list, available here:
-         *    http://www.iso.org/iso/en/prods-services/iso3166ma/02iso-3166-code-lists/index.html
+         *    https://www.iso.org/iso-3166-country-codes.html
+         *
+         * There are entries below that are not found in the ITU documentation and have unclear
+         * origin but have been kept from previous Android releases as their entries do not conflict
+         * with ITU values. These are commented with (*).
          *
          * This table has not been verified.
          */
@@ -423,7 +426,8 @@ public final class MccTable {
         sTable.add(new MccEntry(216, "hu", 2)); // Hungary (Republic of)
         sTable.add(new MccEntry(218, "ba", 2)); // Bosnia and Herzegovina
         sTable.add(new MccEntry(219, "hr", 2)); // Croatia (Republic of)
-        sTable.add(new MccEntry(220, "rs", 2)); // Serbia and Montenegro
+        sTable.add(new MccEntry(220, "rs", 2)); // Serbia (Republic of)
+        sTable.add(new MccEntry(221, "xk", 2)); // Kosovo
         sTable.add(new MccEntry(222, "it", 2)); // Italy
         sTable.add(new MccEntry(225, "va", 2)); // Vatican City State
         sTable.add(new MccEntry(226, "ro", 2)); // Romania
@@ -459,15 +463,15 @@ public final class MccTable {
         sTable.add(new MccEntry(284, "bg", 2)); // Bulgaria (Republic of)
         sTable.add(new MccEntry(286, "tr", 2)); // Turkey
         sTable.add(new MccEntry(288, "fo", 2)); // Faroe Islands
-        sTable.add(new MccEntry(289, "ge", 2)); // Abkhazia (Georgia)
+        sTable.add(new MccEntry(289, "ge", 2)); // Abkhazia (Georgia) (*)
         sTable.add(new MccEntry(290, "gl", 2)); // Greenland (Denmark)
         sTable.add(new MccEntry(292, "sm", 2)); // San Marino (Republic of)
         sTable.add(new MccEntry(293, "si", 2)); // Slovenia (Republic of)
         sTable.add(new MccEntry(294, "mk", 2)); // The Former Yugoslav Republic of Macedonia
         sTable.add(new MccEntry(295, "li", 2)); // Liechtenstein (Principality of)
-        sTable.add(new MccEntry(297, "me", 2)); // Montenegro (Republic of)
+        sTable.add(new MccEntry(297, "me", 2)); // Montenegro
         sTable.add(new MccEntry(302, "ca", 3)); // Canada
-        sTable.add(new MccEntry(308, "pm", 2)); // Saint Pierre and Miquelon (Collectivit territoriale de la Rpublique franaise)
+        sTable.add(new MccEntry(308, "pm", 2)); // Saint Pierre and Miquelon (Collectivité territoriale de la République française)
         sTable.add(new MccEntry(310, "us", 3)); // United States of America
         sTable.add(new MccEntry(311, "us", 3)); // United States of America
         sTable.add(new MccEntry(312, "us", 3)); // United States of America
@@ -490,7 +494,7 @@ public final class MccTable {
         sTable.add(new MccEntry(356, "kn", 2)); // Saint Kitts and Nevis
         sTable.add(new MccEntry(358, "lc", 2)); // Saint Lucia
         sTable.add(new MccEntry(360, "vc", 2)); // Saint Vincent and the Grenadines
-        sTable.add(new MccEntry(362, "ai", 2)); // Netherlands Antilles
+        sTable.add(new MccEntry(362, "cw", 2)); // Curaçao
         sTable.add(new MccEntry(363, "aw", 2)); // Aruba
         sTable.add(new MccEntry(364, "bs", 2)); // Bahamas (Commonwealth of the)
         sTable.add(new MccEntry(365, "ai", 3)); // Anguilla
@@ -509,7 +513,7 @@ public final class MccTable {
         sTable.add(new MccEntry(410, "pk", 2)); // Pakistan (Islamic Republic of)
         sTable.add(new MccEntry(412, "af", 2)); // Afghanistan
         sTable.add(new MccEntry(413, "lk", 2)); // Sri Lanka (Democratic Socialist Republic of)
-        sTable.add(new MccEntry(414, "mm", 2)); // Myanmar (Union of)
+        sTable.add(new MccEntry(414, "mm", 2)); // Myanmar (the Republic of the Union of)
         sTable.add(new MccEntry(415, "lb", 2)); // Lebanon
         sTable.add(new MccEntry(416, "jo", 2)); // Jordan (Hashemite Kingdom of)
         sTable.add(new MccEntry(417, "sy", 2)); // Syrian Arab Republic
@@ -518,13 +522,13 @@ public final class MccTable {
         sTable.add(new MccEntry(420, "sa", 2)); // Saudi Arabia (Kingdom of)
         sTable.add(new MccEntry(421, "ye", 2)); // Yemen (Republic of)
         sTable.add(new MccEntry(422, "om", 2)); // Oman (Sultanate of)
-        sTable.add(new MccEntry(423, "ps", 2)); // Palestine
+        sTable.add(new MccEntry(423, "ps", 2)); // Palestine (*)
         sTable.add(new MccEntry(424, "ae", 2)); // United Arab Emirates
         sTable.add(new MccEntry(425, "il", 2)); // Israel (State of)
         sTable.add(new MccEntry(426, "bh", 2)); // Bahrain (Kingdom of)
         sTable.add(new MccEntry(427, "qa", 2)); // Qatar (State of)
         sTable.add(new MccEntry(428, "mn", 2)); // Mongolia
-        sTable.add(new MccEntry(429, "np", 2)); // Nepal
+        sTable.add(new MccEntry(429, "np", 2)); // Nepal (Federal Democratic Republic of)
         sTable.add(new MccEntry(430, "ae", 2)); // United Arab Emirates
         sTable.add(new MccEntry(431, "ae", 2)); // United Arab Emirates
         sTable.add(new MccEntry(432, "ir", 2)); // Iran (Islamic Republic of)
@@ -536,50 +540,51 @@ public final class MccTable {
         sTable.add(new MccEntry(441, "jp", 2)); // Japan
         sTable.add(new MccEntry(450, "kr", 2)); // Korea (Republic of)
         sTable.add(new MccEntry(452, "vn", 2)); // Viet Nam (Socialist Republic of)
-        sTable.add(new MccEntry(454, "hk", 2)); // "Hong Kong, China"
-        sTable.add(new MccEntry(455, "mo", 2)); // "Macao, China"
+        sTable.add(new MccEntry(454, "hk", 2)); // Hong Kong, China
+        sTable.add(new MccEntry(455, "mo", 2)); // Macao, China
         sTable.add(new MccEntry(456, "kh", 2)); // Cambodia (Kingdom of)
         sTable.add(new MccEntry(457, "la", 2)); // Lao People's Democratic Republic
         sTable.add(new MccEntry(460, "cn", 2)); // China (People's Republic of)
         sTable.add(new MccEntry(461, "cn", 2)); // China (People's Republic of)
-        sTable.add(new MccEntry(466, "tw", 2)); // Taiwan
+        sTable.add(new MccEntry(466, "tw", 2)); // Taiwan, China
         sTable.add(new MccEntry(467, "kp", 2)); // Democratic People's Republic of Korea
         sTable.add(new MccEntry(470, "bd", 2)); // Bangladesh (People's Republic of)
         sTable.add(new MccEntry(472, "mv", 2)); // Maldives (Republic of)
         sTable.add(new MccEntry(502, "my", 2)); // Malaysia
         sTable.add(new MccEntry(505, "au", 2)); // Australia
         sTable.add(new MccEntry(510, "id", 2)); // Indonesia (Republic of)
-        sTable.add(new MccEntry(514, "tl", 2)); // Democratic Republic of Timor-Leste
+        sTable.add(new MccEntry(514, "tl", 2)); // Timor-Leste (Democratic Republic of)
         sTable.add(new MccEntry(515, "ph", 2)); // Philippines (Republic of the)
         sTable.add(new MccEntry(520, "th", 2)); // Thailand
         sTable.add(new MccEntry(525, "sg", 2)); // Singapore (Republic of)
         sTable.add(new MccEntry(528, "bn", 2)); // Brunei Darussalam
         sTable.add(new MccEntry(530, "nz", 2)); // New Zealand
-        sTable.add(new MccEntry(534, "mp", 2)); // Northern Mariana Islands (Commonwealth of the)
-        sTable.add(new MccEntry(535, "gu", 2)); // Guam
+        sTable.add(new MccEntry(534, "mp", 2)); // Northern Mariana Islands (Commonwealth of the) (*)
+        sTable.add(new MccEntry(535, "gu", 2)); // Guam (*)
         sTable.add(new MccEntry(536, "nr", 2)); // Nauru (Republic of)
         sTable.add(new MccEntry(537, "pg", 2)); // Papua New Guinea
         sTable.add(new MccEntry(539, "to", 2)); // Tonga (Kingdom of)
         sTable.add(new MccEntry(540, "sb", 2)); // Solomon Islands
         sTable.add(new MccEntry(541, "vu", 2)); // Vanuatu (Republic of)
         sTable.add(new MccEntry(542, "fj", 2)); // Fiji (Republic of)
-        sTable.add(new MccEntry(543, "wf", 2)); // Wallis and Futuna (Territoire franais d'outre-mer)
+        sTable.add(new MccEntry(543, "wf", 2)); // Wallis and Futuna (Territoire français d'outre-mer)
         sTable.add(new MccEntry(544, "as", 2)); // American Samoa
         sTable.add(new MccEntry(545, "ki", 2)); // Kiribati (Republic of)
-        sTable.add(new MccEntry(546, "nc", 2)); // New Caledonia (Territoire franais d'outre-mer)
-        sTable.add(new MccEntry(547, "pf", 2)); // French Polynesia (Territoire franais d'outre-mer)
+        sTable.add(new MccEntry(546, "nc", 2)); // New Caledonia (Territoire français d'outre-mer)
+        sTable.add(new MccEntry(547, "pf", 2)); // French Polynesia (Territoire français d'outre-mer)
         sTable.add(new MccEntry(548, "ck", 2)); // Cook Islands
         sTable.add(new MccEntry(549, "ws", 2)); // Samoa (Independent State of)
         sTable.add(new MccEntry(550, "fm", 2)); // Micronesia (Federated States of)
         sTable.add(new MccEntry(551, "mh", 2)); // Marshall Islands (Republic of the)
         sTable.add(new MccEntry(552, "pw", 2)); // Palau (Republic of)
         sTable.add(new MccEntry(553, "tv", 2)); // Tuvalu
+        sTable.add(new MccEntry(554, "tk", 2)); // Tokelau
         sTable.add(new MccEntry(555, "nu", 2)); // Niue
         sTable.add(new MccEntry(602, "eg", 2)); // Egypt (Arab Republic of)
         sTable.add(new MccEntry(603, "dz", 2)); // Algeria (People's Democratic Republic of)
         sTable.add(new MccEntry(604, "ma", 2)); // Morocco (Kingdom of)
         sTable.add(new MccEntry(605, "tn", 2)); // Tunisia
-        sTable.add(new MccEntry(606, "ly", 2)); // Libya (Socialist People's Libyan Arab Jamahiriya)
+        sTable.add(new MccEntry(606, "ly", 2)); // Libya
         sTable.add(new MccEntry(607, "gm", 2)); // Gambia (Republic of the)
         sTable.add(new MccEntry(608, "sn", 2)); // Senegal (Republic of)
         sTable.add(new MccEntry(609, "mr", 2)); // Mauritania (Islamic Republic of)
@@ -619,7 +624,7 @@ public final class MccTable {
         sTable.add(new MccEntry(643, "mz", 2)); // Mozambique (Republic of)
         sTable.add(new MccEntry(645, "zm", 2)); // Zambia (Republic of)
         sTable.add(new MccEntry(646, "mg", 2)); // Madagascar (Republic of)
-        sTable.add(new MccEntry(647, "re", 2)); // Reunion (French Department of)
+        sTable.add(new MccEntry(647, "re", 2)); // French Departments and Territories in the Indian Ocean
         sTable.add(new MccEntry(648, "zw", 2)); // Zimbabwe (Republic of)
         sTable.add(new MccEntry(649, "na", 2)); // Namibia (Republic of)
         sTable.add(new MccEntry(650, "mw", 2)); // Malawi
