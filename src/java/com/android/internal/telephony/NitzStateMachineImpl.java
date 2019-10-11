@@ -31,6 +31,7 @@ import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.Objects;
 
 /**
  * {@hide}
@@ -144,8 +145,10 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     }
 
     private void updateTimeZoneFromCountryAndNitz() {
+        // This method must only be called after mLatestNitzSignal has been set to a non-null
+        // value.
+        TimestampedValue<NitzData> nitzSignal = Objects.requireNonNull(mLatestNitzSignal);
         String isoCountryCode = mDeviceState.getNetworkCountryIsoForPhone();
-        TimestampedValue<NitzData> nitzSignal = mLatestNitzSignal;
 
         // TimeZone.getDefault() returns a default zone (GMT) even when time zone have never
         // been set which makes it difficult to tell if it's what the user / time zone detection
@@ -185,13 +188,6 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 mTimeZoneLog.log(logMsg);
 
                 zoneId = lookupResult != null ? lookupResult.getTimeZone().getID() : null;
-            } else if (mLatestNitzSignal == null) {
-                if (DBG) {
-                    Rlog.d(LOG_TAG,
-                            "updateTimeZoneFromCountryAndNitz: No cached NITZ data available,"
-                                    + " not setting zone");
-                }
-                zoneId = null;
             } else if (isNitzSignalOffsetInfoBogus(nitzSignal, isoCountryCode)) {
                 String logMsg = "updateTimeZoneFromCountryAndNitz: Received NITZ looks bogus, "
                         + " isoCountryCode=" + isoCountryCode
