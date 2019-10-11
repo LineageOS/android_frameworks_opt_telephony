@@ -151,7 +151,7 @@ public class ProxyController {
     public void registerForAllDataDisconnected(int subId, Handler h, int what) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
-        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getMaxPhoneCount()) {
+        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getSupportedModemCount()) {
             mPhones[phoneId].registerForAllDataDisconnected(h, what);
         }
     }
@@ -159,7 +159,7 @@ public class ProxyController {
     public void unregisterForAllDataDisconnected(int subId, Handler h) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
-        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getMaxPhoneCount()) {
+        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getSupportedModemCount()) {
             mPhones[phoneId].unregisterForAllDataDisconnected(h);
         }
     }
@@ -168,7 +168,7 @@ public class ProxyController {
     public boolean areAllDataDisconnected(int subId) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
-        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getMaxPhoneCount()) {
+        if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getSupportedModemCount()) {
             return mPhones[phoneId].areAllDataDisconnected();
         } else {
             // if we can't find a phone for the given subId, it is disconnected.

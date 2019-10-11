@@ -146,7 +146,7 @@ public class PhoneFactory {
                 /* In case of multi SIM mode two instances of Phone, RIL are created,
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
-                int numPhones = TelephonyManager.getDefault().getMaxPhoneCount();
+                int numPhones = TelephonyManager.getDefault().getSupportedModemCount();
 
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];

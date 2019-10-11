@@ -221,7 +221,7 @@ public class CatService extends Handler implements AppInterface {
 
         synchronized (sInstanceLock) {
             if (sInstance == null) {
-                int simCount = TelephonyManager.getDefault().getMaxPhoneCount();
+                int simCount = TelephonyManager.getDefault().getSupportedModemCount();
                 sInstance = new CatService[simCount];
                 for (int i = 0; i < simCount; i++) {
                     sInstance[i] = null;
