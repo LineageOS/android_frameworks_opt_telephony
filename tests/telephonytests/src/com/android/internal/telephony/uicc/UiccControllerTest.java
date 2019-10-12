@@ -60,6 +60,7 @@ public class UiccControllerTest extends TelephonyTest {
     private static final int ICC_CHANGED_EVENT = 0;
     private static final int EVENT_GET_ICC_STATUS_DONE = 3;
     private static final int EVENT_GET_SLOT_STATUS_DONE = 4;
+    private static final int EVENT_EID_READY = 9;
     @Mock
     private Handler mMockedHandler;
     @Mock
@@ -541,10 +542,10 @@ public class UiccControllerTest extends TelephonyTest {
     }
 
     /**
-     * The default eUICC should not be the removable slot if there is a built-in eUICC, even if that
+     * The default eUICC should not be the removable slot if there is a built-in eUICC, unless that
      * eUICC is inactive.
      * When there is a built-in eUICC which is inactive, we set the mDefaultEuiccCardId to
-     * TEMPORARILY_UNSUPPORTED_CARD_ID.
+     * the removable eUICC.
      */
     @Test
     public void testDefaultEuiccIsNotRemovable_EuiccIsInactive() {
@@ -562,16 +563,16 @@ public class UiccControllerTest extends TelephonyTest {
         doReturn(true).when(mMockSlot).isEuicc();
         doReturn(false).when(mMockSlot).isRemovable();
         mUiccControllerUT.mUiccSlots[1] = mMockRemovableEuiccSlot;
-        doReturn(true).when(mMockSlot).isEuicc();
-        doReturn(true).when(mMockSlot).isRemovable();
+        doReturn(true).when(mMockRemovableEuiccSlot).isEuicc();
+        doReturn(true).when(mMockRemovableEuiccSlot).isRemovable();
 
-        // simulate slot status loaded so that the UiccController sets the card ID
+        // simulate slot status loaded with no EID provided (like HAL < 1.4)
         IccSlotStatus iss1 = new IccSlotStatus();
-        iss1.setSlotState(0 /* active */);
-        iss1.eid = "AB123456";
+        iss1.setSlotState(0 /* inactive */);
+        iss1.eid = "";
         IccSlotStatus iss2 = new IccSlotStatus();
         iss2.setSlotState(1 /* active */);
-        iss2.eid = "ZYW13094";
+        iss2.eid = "";
         ArrayList<IccSlotStatus> status = new ArrayList<IccSlotStatus>();
         status.add(iss1);
         status.add(iss2);
@@ -579,8 +580,19 @@ public class UiccControllerTest extends TelephonyTest {
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_SLOT_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
 
-        // assert that the default eUICC cardId is TEMPORARILY_UNSUPPORTED_CARD_ID
-        assertEquals(TelephonyManager.UNSUPPORTED_CARD_ID,
+        // slot status update will not set the default euicc because all EIDs are ""
+        assertEquals(TelephonyManager.UNINITIALIZED_CARD_ID,
+                mUiccControllerUT.getCardIdForDefaultEuicc());
+
+        // when EID is loaded for slot 1, then the default euicc should be set
+        ar = new AsyncResult(1 /* slot */, null, null);
+        msg = Message.obtain(mUiccControllerUT, EVENT_EID_READY, ar);
+        doReturn(mMockEuiccCard).when(mMockRemovableEuiccSlot).getUiccCard();
+        String eidForRemovableEuicc = "ASLDKFJLKSJDF";
+        doReturn(eidForRemovableEuicc).when(mMockEuiccCard).getEid();
+        mUiccControllerUT.handleMessage(msg);
+
+        assertEquals(mUiccControllerUT.convertToPublicCardId(eidForRemovableEuicc),
                 mUiccControllerUT.getCardIdForDefaultEuicc());
     }
 }
