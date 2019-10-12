@@ -264,7 +264,7 @@ public class DataConnection extends StateMachine {
     private static final String NULL_IP = "0.0.0.0";
     private Object mUserData;
     private int mSubscriptionOverride;
-    private int mRilRat = Integer.MAX_VALUE;
+    private int mRilRat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
     private int mDataRegState = Integer.MAX_VALUE;
     private NetworkInfo mNetworkInfo;
 
@@ -280,6 +280,8 @@ public class DataConnection extends StateMachine {
     private int mDisabledApnTypeBitMask = 0;
 
     int mTag;
+
+    /** Data connection id assigned by the modem. This is unique across transports */
     public int mCid;
 
     @HandoverState
@@ -315,9 +317,10 @@ public class DataConnection extends StateMachine {
     static final int EVENT_RESET = BASE + 24;
     static final int EVENT_REEVALUATE_RESTRICTED_STATE = BASE + 25;
     static final int EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES = BASE + 26;
+    static final int EVENT_NR_STATE_CHANGED = BASE + 27;
 
     private static final int CMD_TO_STRING_COUNT =
-            EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES - BASE + 1;
+            EVENT_NR_STATE_CHANGED - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -353,6 +356,8 @@ public class DataConnection extends StateMachine {
                 "EVENT_REEVALUATE_RESTRICTED_STATE";
         sCmdToString[EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES - BASE] =
                 "EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES";
+        sCmdToString[EVENT_NR_STATE_CHANGED - BASE] =
+                "EVENT_NR_STATE_CHANGED";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -583,9 +588,16 @@ public class DataConnection extends StateMachine {
         mId = id;
         mCid = -1;
         ServiceState ss = mPhone.getServiceState();
-        mRilRat = ss.getRilDataRadioTechnology();
         mDataRegState = mPhone.getServiceState().getDataRegState();
-        int networkType = ss.getDataNetworkType();
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+
+        NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        if (nri != null) {
+            networkType = nri.getAccessNetworkTechnology();
+            mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
+        }
+
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
                 networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
         mNetworkInfo.setRoaming(ss.getDataRoaming());
@@ -991,9 +1003,13 @@ public class DataConnection extends StateMachine {
 
         // NR 5G Non-Standalone use LTE cell as the primary cell, the ril technology is LTE in this
         // case. We use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
-        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
+        if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                && rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()
+                && mPhone.getServiceStateTracker().getNrContextIds().contains(mCid)) {
             ratName = RAT_NAME_5G;
         }
+
+        log("updateTcpBufferSizes: " + ratName);
 
         // in the form: "ratname:rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max"
         String[] configOverride = mPhone.getContext().getResources().getStringArray(
@@ -1041,7 +1057,7 @@ public class DataConnection extends StateMachine {
                 case ServiceState.RIL_RADIO_TECHNOLOGY_LTE:
                 case ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA:
                     // Use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
-                    if (isNRConnected()) {
+                    if (RAT_NAME_5G.equals(ratName)) {
                         sizes = TCP_BUFFER_SIZES_NR;
                     } else {
                         sizes = TCP_BUFFER_SIZES_LTE;
@@ -1049,6 +1065,9 @@ public class DataConnection extends StateMachine {
                     break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP:
                     sizes = TCP_BUFFER_SIZES_HSPAP;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_NR:
+                    sizes = TCP_BUFFER_SIZES_NR;
                     break;
                 default:
                     // Leave empty - this will let ConnectivityService use the system default.
@@ -1486,6 +1505,8 @@ public class DataConnection extends StateMachine {
                     DataConnection.EVENT_DATA_CONNECTION_ROAM_ON, null);
             mPhone.getServiceStateTracker().registerForDataRoamingOff(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_ROAM_OFF, null, true);
+            mPhone.getServiceStateTracker().registerForNrStateChanged(getHandler(),
+                    DataConnection.EVENT_NR_STATE_CHANGED, null);
 
             // Add ourselves to the list of data connections
             mDcController.addDc(DataConnection.this);
@@ -1602,8 +1623,7 @@ public class DataConnection extends StateMachine {
                     break;
                 default:
                     if (DBG) {
-                        log("DcDefaultState: shouldn't happen but ignore msg.what="
-                                + getWhatToString(msg.what));
+                        log("DcDefaultState: ignore msg.what=" + getWhatToString(msg.what));
                     }
                     break;
             }
@@ -2350,6 +2370,14 @@ public class DataConnection extends StateMachine {
                 case EVENT_REEVALUATE_DATA_CONNECTION_PROPERTIES: {
                     // Update other properties like link properties if needed in future.
                     updateScore();
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_NR_STATE_CHANGED: {
+                    updateTcpBufferSizes(mRilRat);
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
+                    }
                     retVal = HANDLED;
                     break;
                 }
