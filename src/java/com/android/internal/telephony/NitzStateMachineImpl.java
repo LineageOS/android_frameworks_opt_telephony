@@ -202,43 +202,14 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
             } else {
                 OffsetResult lookupResult =
                         mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, isoCountryCode);
-                if (lookupResult != null) {
-                    if (DBG) {
-                        Rlog.d(LOG_TAG, "updateTimeZoneFromCountryAndNitz: using"
-                                + " lookupByNitzCountry(nitzData, isoCountryCode),"
-                                + " nitzData=" + nitzData
-                                + " isoCountryCode=" + isoCountryCode
-                                + " lookupResult=" + lookupResult);
-                    }
-                    zoneId = lookupResult.getTimeZone().getID();
-                } else {
-                    // The country + offset provided no match, so see if the country by itself
-                    // would be enough.
-                    CountryResult countryResult = mTimeZoneLookupHelper.lookupByCountry(
-                            isoCountryCode, nitzData.getCurrentTimeInMillis());
-                    if (DBG) {
-                        Rlog.d(LOG_TAG, "updateTimeZoneFromCountryAndNitz: fallback to"
-                                + " lookupByCountry(isoCountryCode, whenMillis),"
-                                + " nitzData=" + nitzData
-                                + " isoCountryCode=" + isoCountryCode
-                                + " countryResult=" + countryResult);
-                    }
-                    if (countryResult != null) {
-                        // If the country has a single zone, or it has multiple zones but the
-                        // default is "boosted" (i.e. it is considered a good result in most cases)
-                        // then use it.
-                        if (countryResult.quality == CountryResult.QUALITY_SINGLE_ZONE
-                                || countryResult.quality == CountryResult.QUALITY_DEFAULT_BOOSTED) {
-                            zoneId = countryResult.zoneId;
-                        } else {
-                            // Quality is not high enough.
-                            zoneId = null;
-                        }
-                    } else {
-                        // Country not recognized.
-                        zoneId = null;
-                    }
+                if (DBG) {
+                    Rlog.d(LOG_TAG, "updateTimeZoneFromCountryAndNitz: using"
+                            + " lookupByNitzCountry(nitzData, isoCountryCode),"
+                            + " nitzData=" + nitzData
+                            + " isoCountryCode=" + isoCountryCode
+                            + " lookupResult=" + lookupResult);
                 }
+                zoneId = lookupResult != null ? lookupResult.getTimeZone().getID() : null;
             }
 
             String logMsg = "updateTimeZoneFromCountryAndNitz:"
@@ -519,9 +490,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     private void updateTimeZoneFromNetworkCountryCode(String iso) {
         CountryResult lookupResult = mTimeZoneLookupHelper.lookupByCountry(
                 iso, mDeviceState.currentTimeMillis());
-        if (lookupResult != null
-                && (lookupResult.quality == CountryResult.QUALITY_SINGLE_ZONE
-                        || lookupResult.quality == CountryResult.QUALITY_DEFAULT_BOOSTED)) {
+        if (lookupResult != null && lookupResult.allZonesHaveSameOffset) {
             String logMsg = "updateTimeZoneFromNetworkCountryCode: tz result found"
                     + " iso=" + iso
                     + " lookupResult=" + lookupResult;
