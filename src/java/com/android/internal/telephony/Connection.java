@@ -27,6 +27,7 @@ import android.telephony.ServiceState;
 import android.telephony.emergency.EmergencyNumber;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 
 import java.util.ArrayList;
@@ -320,6 +321,15 @@ public abstract class Connection {
      */
     public String getOrigDialString(){
         return null;
+    }
+
+    /**
+     * Get the number, as set by {@link #restoreDialedNumberAfterConversion(String)}.
+     * @return The converted number.
+     */
+    @VisibleForTesting
+    public String getConvertedNumber() {
+        return mConvertedNumber;
     }
 
     /**
@@ -1120,7 +1130,19 @@ public abstract class Connection {
         }
     }
 
-    public void setConverted(String oriNumber) {
+    /**
+     * {@link CallTracker#convertNumberIfNecessary(Phone, String)} can be used to convert a dialed
+     * number to another number based on carrier config.  This is used where a carrier wishes to
+     * redirect certain short codes such as *55 to another number (e.g. a 1-800 service number).
+     * The {@link CallTracker} sub-classes call
+     * {@link CallTracker#convertNumberIfNecessary(Phone, String)} to retrieve the newly converted
+     * number and instantiate the {@link Connection} instance using the converted number so that the
+     * system will dial out the substitution number instead of the originally dialed one.  This gem
+     * of a method is called after the dialing process to restore the originally dialed number and
+     * keep track of the fact that a converted number was used to place the call.
+     * @param oriNumber The original number prior to conversion.
+     */
+    public void restoreDialedNumberAfterConversion(String oriNumber) {
         mNumberConverted = true;
         mConvertedNumber = mAddress;
         mAddress = oriNumber;

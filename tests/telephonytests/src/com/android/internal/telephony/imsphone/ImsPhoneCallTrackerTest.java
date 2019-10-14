@@ -708,6 +708,45 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 nullable(MmTelFeature.Listener.class));
     }
 
+    @Test
+    @SmallTest
+    public void testRewriteOutgoingNumber() {
+        try {
+            doAnswer(new Answer<ImsCall>() {
+                @Override
+                public ImsCall answer(InvocationOnMock invocation) throws Throwable {
+                    mImsCallListener =
+                            (ImsCall.Listener) invocation.getArguments()[2];
+                    ImsCall imsCall = spy(new ImsCall(mContext, mImsCallProfile));
+                    imsCall.setListener(mImsCallListener);
+                    imsCallMocking(imsCall);
+                    return imsCall;
+                }
+            }).when(mImsManager).makeCall(eq(mImsCallProfile), (String[]) any(),
+                    (ImsCall.Listener) any());
+        } catch (ImsException ie) {
+        }
+
+        // Perform a dial string remapping.
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putStringArray(CarrierConfigManager.KEY_DIAL_STRING_REPLACE_STRING_ARRAY,
+                new String[] {"*55:6505551212"});
+
+        ImsPhoneConnection connection = null;
+        try {
+            connection = (ImsPhoneConnection) mCTUT.dial("*55",
+                    ImsCallProfile.CALL_TYPE_VOICE, null);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+        if (connection == null) {
+            Assert.fail("connection is null");
+        }
+        Assert.assertEquals("6505551212", connection.getConvertedNumber());
+        Assert.assertEquals("*55", connection.getAddress());
+    }
+
     /**
      * Test notification of handover from LTE to WIFI and WIFI to LTE and ensure that the expected
      * connection events are sent.
