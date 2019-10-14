@@ -53,6 +53,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyRegistryManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -80,8 +81,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private static final int ACTIVE_PHONE_SWITCH = 1;
 
     @Mock
-    private ITelephonyRegistry.Stub mTelRegistryMock;
-    @Mock
     private ITelephonyRegistry mTelRegistryInterfaceMock;
     @Mock
     private CommandsInterface mCommandsInterface0;
@@ -105,7 +104,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     CompletableFuture<Boolean> mFuturePhone;
 
     private PhoneSwitcher mPhoneSwitcher;
-    private IOnSubscriptionsChangedListener mSubChangedListener;
+    private SubscriptionManager.OnSubscriptionsChangedListener mSubChangedListener;
     private ConnectivityManager mConnectivityManager;
     // The messenger of PhoneSwitcher used to receive network requests.
     private Messenger mNetworkFactoryMessenger = null;
@@ -120,8 +119,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         PhoneCapability phoneCapability = new PhoneCapability(1, 1, 0, null, false);
         doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
-        mServiceManagerMockedServices.put("telephony.registry", mTelRegistryMock);
-        doReturn(mTelRegistryInterfaceMock).when(mTelRegistryMock).queryLocalInterface(any());
 
         doReturn(Call.State.ACTIVE).when(mActiveCall).getState();
         doReturn(Call.State.IDLE).when(mInactiveCall).getState();
@@ -618,7 +615,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mFuturePhone).complete(true);
         // Make sure the correct broadcast is sent out for the overridden phone ID
-        verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(2));
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(2));
     }
 
     @Test
@@ -657,7 +654,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setMsimDefaultDataSubId(numPhones, 1);
         setAllPhonesInactive();
         clearInvocations(mMockRadioConfig);
-        clearInvocations(mTelRegistryInterfaceMock);
+        clearInvocations(mTelephonyRegistryManager);
 
         // override the phone ID in prep for emergency call
 
@@ -670,13 +667,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         notifyPhoneAsInCall(mPhone2);
         notifyPhoneAsInactive(mPhone2);
 
-        clearInvocations(mTelRegistryInterfaceMock);
+        clearInvocations(mTelephonyRegistryManager);
         // Verify that the DDS is successfully switched back after 1 second + base ECBM timeout
         moveTimeForward(ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS + 1000);
         processAllMessages();
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         // Make sure the correct broadcast is sent out for the phone ID
-        verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(1));
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(1));
     }
 
     @Test
@@ -693,7 +690,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setMsimDefaultDataSubId(numPhones, 1);
         setAllPhonesInactive();
         clearInvocations(mMockRadioConfig);
-        clearInvocations(mTelRegistryInterfaceMock);
+        clearInvocations(mTelephonyRegistryManager);
 
         // override the phone ID in prep for emergency call
         mPhoneSwitcher.overrideDefaultDataForEmergency(1, 1, mFuturePhone);
@@ -714,10 +711,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mMockRadioConfig, never()).setPreferredDataModem(eq(0), any());
         // Make sure the correct broadcast is sent out for the phone ID
-        verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(2));
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(2));
 
         // End ECBM
-        clearInvocations(mTelRegistryInterfaceMock);
+        clearInvocations(mTelephonyRegistryManager);
         ecbmMessage = getEcbmRegistration(mPhone2);
         notifyEcbmEnd(mPhone2, ecbmMessage);
         // Verify that the DDS is successfully switched back after 1 second.
@@ -725,7 +722,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         // Make sure the correct broadcast is sent out for the phone ID
-        verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(1));
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(1));
     }
 
     @Test
@@ -742,7 +739,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setMsimDefaultDataSubId(numPhones, 1);
         setAllPhonesInactive();
         clearInvocations(mMockRadioConfig);
-        clearInvocations(mTelRegistryInterfaceMock);
+        clearInvocations(mTelephonyRegistryManager);
 
         // override the phone ID in prep for emergency call
         mPhoneSwitcher.overrideDefaultDataForEmergency(1, 1, mFuturePhone);
@@ -755,7 +752,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         // Make sure the correct broadcast is sent out for the phone ID
-        verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(1));
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(1));
     }
 
     @Test
@@ -772,7 +769,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setMsimDefaultDataSubId(numPhones, 1);
         setAllPhonesInactive();
         clearInvocations(mMockRadioConfig);
-        clearInvocations(mTelRegistryInterfaceMock);
+        clearInvocations(mTelephonyRegistryManager);
 
         // override the phone ID in prep for emergency call
         LinkedBlockingQueue<Boolean> queue = new LinkedBlockingQueue<>();
@@ -804,7 +801,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         // Make sure the correct broadcast is sent out for the phone ID
-        verify(mTelRegistryInterfaceMock).notifyActiveDataSubIdChanged(eq(1));
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(1));
     }
 
     @Test
@@ -1012,12 +1009,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
         initializeConnManagerMock();
 
         mPhoneSwitcher = new PhoneSwitcher(maxActivePhones, numPhones,
-                mContext, mSubscriptionController, Looper.myLooper(),
-                mTelRegistryMock, mCommandsInterfaces, mPhones);
+                mContext, mSubscriptionController, Looper.myLooper(), mCommandsInterfaces, mPhones);
         processAllMessages();
 
-        verify(mTelRegistryMock).addOnSubscriptionsChangedListener(
-                eq(mContext.getOpPackageName()), any());
+        verify(mTelephonyRegistryManager).addOnSubscriptionsChangedListener(any(), any());
     }
 
     /**
@@ -1076,12 +1071,12 @@ public class PhoneSwitcherTest extends TelephonyTest {
      */
     private void initializeTelRegistryMock() throws Exception {
         doAnswer(invocation -> {
-            IOnSubscriptionsChangedListener subChangedListener =
-                    (IOnSubscriptionsChangedListener) invocation.getArguments()[1];
+            SubscriptionManager.OnSubscriptionsChangedListener subChangedListener =
+                    (SubscriptionManager.OnSubscriptionsChangedListener) invocation.getArguments()[0];
             mSubChangedListener = subChangedListener;
             mSubChangedListener.onSubscriptionsChanged();
             return null;
-        }).when(mTelRegistryMock).addOnSubscriptionsChangedListener(any(), any());
+        }).when(mTelephonyRegistryManager).addOnSubscriptionsChangedListener(any(), any());
     }
 
     /**
