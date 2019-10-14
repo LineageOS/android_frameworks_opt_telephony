@@ -99,7 +99,9 @@ public class CellBroadcastServiceManager {
     public void disable() {
         mEnabled = false;
         mPhone.mCi.unSetOnNewGsmBroadcastSms(mModuleCellBroadcastHandler);
-        mContext.unbindService(sServiceConnection);
+        if (sServiceConnection.mService != null) {
+            mContext.unbindService(sServiceConnection);
+        }
     }
 
     /**
@@ -154,7 +156,16 @@ public class CellBroadcastServiceManager {
             Intent intent = new Intent(CellBroadcastService.CELL_BROADCAST_SERVICE_INTERFACE);
             intent.setPackage(mCellBroadcastServicePackage);
             if (sServiceConnection.mService == null) {
-                mContext.bindService(intent, sServiceConnection, Context.BIND_AUTO_CREATE);
+                boolean serviceWasBound = mContext.bindService(intent, sServiceConnection,
+                        Context.BIND_AUTO_CREATE);
+                Log.d(TAG, "serviceWasBound=" + serviceWasBound);
+                if (!serviceWasBound) {
+                    Log.e(TAG, "Unable to bind to service");
+                    mLocalLog.log("Unable to bind to service");
+                    return;
+                }
+            } else {
+                Log.d(TAG, "skipping bindService because connection already exists");
             }
             mPhone.mCi.setOnNewGsmBroadcastSms(mModuleCellBroadcastHandler, EVENT_NEW_GSM_SMS_CB,
                     null);
