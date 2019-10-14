@@ -16,10 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
-
-import android.annotation.IntDef;
 import android.icu.util.TimeZone;
 import android.text.TextUtils;
 
@@ -27,8 +23,6 @@ import libcore.timezone.CountryTimeZones;
 import libcore.timezone.CountryTimeZones.TimeZoneMapping;
 import libcore.timezone.TimeZoneFinder;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 import java.util.Objects;
 
@@ -100,35 +94,32 @@ public class TimeZoneLookupHelper {
      */
     public static final class CountryResult {
 
-        @IntDef({ QUALITY_SINGLE_ZONE, QUALITY_DEFAULT_BOOSTED, QUALITY_MULTIPLE_ZONES_SAME_OFFSET,
-                QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS })
-        @Retention(RetentionPolicy.SOURCE)
-        public @interface Quality {}
-
-        public static final int QUALITY_SINGLE_ZONE = 1;
-        public static final int QUALITY_DEFAULT_BOOSTED = 2;
-        public static final int QUALITY_MULTIPLE_ZONES_SAME_OFFSET = 3;
-        public static final int QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS = 4;
-
         /** A time zone to use for the country. */
         public final String zoneId;
 
         /**
-         * The quality of the match.
+         * True if the country has multiple effective zones to choose from at {@link #whenMillis}.
          */
-        @Quality
-        public final int quality;
+        public final boolean multipleZonesInCountry;
 
         /**
-         * Freeform information about why the value of {@link #quality} was chosen. Not used for
-         * {@link #equals(Object)}.
+         * True if all the effective time zones in the country have the same offset at
+         * {@link #whenMillis}.
          */
-        private final String mDebugInfo;
+        public final boolean allZonesHaveSameOffset;
 
-        public CountryResult(String zoneId, @Quality int quality, String debugInfo) {
+        /**
+         * The time associated with {@link #allZonesHaveSameOffset} and
+         * {@link #multipleZonesInCountry}.
+         */
+        public final long whenMillis;
+
+        public CountryResult(String zoneId, boolean multipleZonesInCountry,
+                boolean allZonesHaveSameOffset, long whenMillis) {
             this.zoneId = zoneId;
-            this.quality = quality;
-            mDebugInfo = debugInfo;
+            this.multipleZonesInCountry = multipleZonesInCountry;
+            this.allZonesHaveSameOffset = allZonesHaveSameOffset;
+            this.whenMillis = whenMillis;
         }
 
         @Override
@@ -139,22 +130,37 @@ public class TimeZoneLookupHelper {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
+
             CountryResult that = (CountryResult) o;
-            return quality == that.quality
-                    && zoneId.equals(that.zoneId);
+
+            if (multipleZonesInCountry != that.multipleZonesInCountry) {
+                return false;
+            }
+            if (allZonesHaveSameOffset != that.allZonesHaveSameOffset) {
+                return false;
+            }
+            if (whenMillis != that.whenMillis) {
+                return false;
+            }
+            return zoneId.equals(that.zoneId);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(zoneId, quality);
+            int result = zoneId.hashCode();
+            result = 31 * result + (multipleZonesInCountry ? 1 : 0);
+            result = 31 * result + (allZonesHaveSameOffset ? 1 : 0);
+            result = 31 * result + (int) (whenMillis ^ (whenMillis >>> 32));
+            return result;
         }
 
         @Override
         public String toString() {
             return "CountryResult{"
                     + "zoneId='" + zoneId + '\''
-                    + ", quality=" + quality
-                    + ", mDebugInfo=" + mDebugInfo
+                    + ", multipleZonesInCountry=" + multipleZonesInCountry
+                    + ", allZonesHaveSameOffset=" + allZonesHaveSameOffset
+                    + ", whenMillis=" + whenMillis
                     + '}';
         }
     }
@@ -220,63 +226,59 @@ public class TimeZoneLookupHelper {
             // Unknown country code.
             return null;
         }
-        TimeZone countryDefaultZone = countryTimeZones.getDefaultTimeZone();
-        if (countryDefaultZone == null) {
-            // This is not expected: the country default should have been validated before.
+        if (countryTimeZones.getDefaultTimeZoneId() == null) {
             return null;
         }
 
-        String debugInfo;
-        int matchQuality;
-        if (countryTimeZones.getDefaultTimeZoneBoost()) {
-            matchQuality = CountryResult.QUALITY_DEFAULT_BOOSTED;
-            debugInfo = "Country default is boosted";
-        } else {
-            List<TimeZoneMapping> effectiveTimeZoneMappings =
-                    countryTimeZones.getEffectiveTimeZoneMappingsAt(whenMillis);
-            if (effectiveTimeZoneMappings.isEmpty()) {
-                // This should never happen unless there's been an error loading the data.
-                // Treat it the same as a low quality answer.
-                matchQuality = QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
-                debugInfo = "No effective time zones found at whenMillis=" + whenMillis;
-            } else if (effectiveTimeZoneMappings.size() == 1) {
-                // The default is the only zone so it's a good candidate.
-                matchQuality = CountryResult.QUALITY_SINGLE_ZONE;
-                debugInfo = "One effective time zone found at whenMillis=" + whenMillis;
-            } else {
-                boolean countryUsesDifferentOffsets = countryUsesDifferentOffsets(
-                        whenMillis, effectiveTimeZoneMappings, countryDefaultZone);
-                matchQuality = countryUsesDifferentOffsets
-                        ? QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS
-                        : QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
-                debugInfo = "countryUsesDifferentOffsets=" + countryUsesDifferentOffsets + " at"
-                        + " whenMillis=" + whenMillis;
-            }
-        }
-        return new CountryResult(countryDefaultZone.getID(), matchQuality, debugInfo);
+        List<TimeZoneMapping> effectiveTimeZoneMappings =
+                countryTimeZones.getEffectiveTimeZoneMappingsAt(whenMillis);
+        boolean multipleZonesInCountry = effectiveTimeZoneMappings.size() > 1;
+        boolean defaultOkForCountryTimeZoneDetection = isDefaultOkForCountryTimeZoneDetection(
+                countryTimeZones.getDefaultTimeZone(), effectiveTimeZoneMappings, whenMillis);
+        return new CountryResult(
+                countryTimeZones.getDefaultTimeZoneId(), multipleZonesInCountry,
+                defaultOkForCountryTimeZoneDetection, whenMillis);
     }
 
-    private static boolean countryUsesDifferentOffsets(
-            long whenMillis, List<TimeZoneMapping> effectiveTimeZoneMappings,
-            TimeZone countryDefaultZone) {
-        String countryDefaultId = countryDefaultZone.getID();
-        int countryDefaultOffset = countryDefaultZone.getOffset(whenMillis);
-        for (TimeZoneMapping timeZoneMapping : effectiveTimeZoneMappings) {
-            if (timeZoneMapping.timeZoneId.equals(countryDefaultId)) {
-                continue;
+    /**
+     * Returns {@code true} if the default time zone for the country is either the only zone used or
+     * if it has the same offsets as all other zones used by the country <em>at the specified time
+     * </em> making the default equivalent to all other zones used by the country <em>at that time
+     * </em>.
+     */
+    private static boolean isDefaultOkForCountryTimeZoneDetection(
+            TimeZone countryDefault, List<TimeZoneMapping> timeZoneMappings, long whenMillis) {
+        if (timeZoneMappings.isEmpty()) {
+            // Should never happen unless there's been an error loading the data.
+            return false;
+        } else if (timeZoneMappings.size() == 1) {
+            // The default is the only zone so it's a good candidate.
+            return true;
+        } else {
+            if (countryDefault == null) {
+                return false;
             }
 
-            TimeZone timeZone = timeZoneMapping.getTimeZone();
-            if (timeZone == null) {
-                continue;
-            }
+            String countryDefaultId = countryDefault.getID();
+            int countryDefaultOffset = countryDefault.getOffset(whenMillis);
+            for (TimeZoneMapping timeZoneMapping : timeZoneMappings) {
+                if (timeZoneMapping.timeZoneId.equals(countryDefaultId)) {
+                    continue;
+                }
 
-            int candidateOffset = timeZone.getOffset(whenMillis);
-            if (countryDefaultOffset != candidateOffset) {
-                return true;
+                TimeZone timeZone = timeZoneMapping.getTimeZone();
+                if (timeZone == null) {
+                    continue;
+                }
+
+                int candidateOffset = timeZone.getOffset(whenMillis);
+                if (countryDefaultOffset != candidateOffset) {
+                    // Multiple different offsets means the default should not be used.
+                    return false;
+                }
             }
+            return true;
         }
-        return false;
     }
 
     /**
