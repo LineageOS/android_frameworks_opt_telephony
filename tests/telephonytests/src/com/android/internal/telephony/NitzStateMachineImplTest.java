@@ -19,10 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_TIME_ZONE_ID;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.CZECHIA_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_DEFAULT_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_OTHER_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO2;
+import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.createTimeSignalFromNitzSignal;
 
@@ -77,7 +74,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_uniqueUsZone_timeZoneEnabled_countryThenNitz() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -124,130 +121,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     }
 
     @Test
-    public void test_countryDefaultBoost_timeZoneEnabled_countryThenNitz() throws Exception {
-        Script script = new Script()
-                .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
-                .initializeTimeZoneDetectionEnabled(true)
-                .initializeTimeZoneSetting("Europe/London");
-
-        // Demonstrate the defaultTimeZoneBoost behavior: we can get a zone only from the
-        // countryIsoCode.
-        {
-            Scenario scenario = NEW_ZEALAND_DEFAULT_SCENARIO;
-            TimestampedValue<NitzData> nitzSignal =
-                    scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
-            script.countryReceived(scenario.getNetworkCountryIsoCode())
-                    // Even though there are multiple zones in the country, countryIsoCode is enough
-                    // to guess the time zone because the default zone is boosted.
-                    .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
-
-            // Confirm what happens when NITZ doesn't conflict with the country-only result.
-            script.nitzReceived(nitzSignal)
-                    // Country + NITZ is enough for both time + time zone detection.
-                    .verifyTimeSuggestedAndZoneSetAndReset(
-                            scenario.createTimeSignal(mFakeDeviceState.elapsedRealtime()),
-                            scenario.getTimeZoneId());
-
-            // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
-            assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
-        }
-
-        // A valid NITZ signal for the non-default zone should still be correctly detected.
-        {
-            Scenario scenario = NEW_ZEALAND_OTHER_SCENARIO;
-            TimestampedValue<NitzData> nitzSignal =
-                    scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
-            script.nitzReceived(nitzSignal)
-                    // Time won't be set because the UTC signal will be the same.
-                    .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
-
-            // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
-            assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
-        }
-
-        // Demonstrate what happens with a bogus NITZ for NZ: because the default zone is boosted
-        // then we should return to the country default zone.
-        {
-            // A scenario that has a different offset than NZ.
-            Scenario scenario = CZECHIA_SCENARIO;
-            TimestampedValue<NitzData> nitzSignal =
-                    scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
-            String expectedTimeZoneId = NEW_ZEALAND_DEFAULT_SCENARIO.getTimeZoneId();
-            script.nitzReceived(nitzSignal)
-                    // Time won't be set because the UTC signal will be the same.
-                    .verifyOnlyTimeZoneWasSetAndReset(expectedTimeZoneId);
-
-            // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
-            assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
-        }
-    }
-
-    @Test
-    public void test_noCountryDefaultBoost_timeZoneEnabled_countryThenNitz() throws Exception {
-        Script script = new Script()
-                .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
-                .initializeTimeZoneDetectionEnabled(true)
-                .initializeTimeZoneSetting("Europe/London");
-
-        // Demonstrate the behavior without default country boost for a country with multiple zones:
-        // we cannot get a zone only from the countryIsoCode.
-        {
-            Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-            TimestampedValue<NitzData> nitzSignal =
-                    scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
-            script.countryReceived(scenario.getNetworkCountryIsoCode())
-                    // The country should no be enough to guess time zone.
-                    .verifyNothingWasSetAndReset();
-
-            // The NITZ signal + country iso code will be enough.
-            script.nitzReceived(nitzSignal)
-                    // Country + NITZ is enough for both time + time zone detection.
-                    .verifyTimeSuggestedAndZoneSetAndReset(
-                            scenario.createTimeSignal(mFakeDeviceState.elapsedRealtime()),
-                            scenario.getTimeZoneId());
-
-            // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
-            assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
-        }
-
-        // A valid NITZ signal for a different zone should also be correctly detected.
-        {
-            Scenario scenario = UNIQUE_US_ZONE_SCENARIO2;
-            TimestampedValue<NitzData> nitzSignal =
-                    scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
-            script.nitzReceived(nitzSignal)
-                    // Time won't be set because the UTC signal will be the same.
-                    .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
-
-            // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
-            assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
-        }
-
-        // Demonstrate what happens with a bogus NITZ for US: because the default zone is not
-        // boosted we should not change anything.
-        {
-            // A scenario that has a different offset than US.
-            Scenario scenario = CZECHIA_SCENARIO;
-            TimestampedValue<NitzData> nitzSignal =
-                    scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
-            script.nitzReceived(nitzSignal)
-                    // Time won't be set because the UTC signal will be the same.
-                    .verifyNothingWasSetAndReset();
-
-            // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
-            assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
-        }
-    }
-
-    @Test
     public void test_uniqueUsZone_timeZoneDisabled_countryThenNitz() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(false)
@@ -293,7 +168,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_uniqueUsZone_timeZoneEnabled_nitzThenCountry() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -493,7 +368,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_bogusUniqueUsNitzSignal_nitzReceivedFirst() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -533,7 +408,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_bogusUsUniqueNitzSignal_countryReceivedFirst() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -572,7 +447,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_emulatorNitzExtensionUsedForTimeZone() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -605,7 +480,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_emptyCountryStringUsTime_countryReceivedFirst() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -635,7 +510,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Test
     public void test_emptyCountryStringUsTime_nitzReceivedFirst() throws Exception {
-        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO;
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
                 .initializeTimeZoneDetectionEnabled(true)
@@ -740,8 +615,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.incrementTime(timeStepMillis);
 
         // Simulate the movement to the destination.
-        scenario.changeCountry(UNIQUE_US_ZONE_SCENARIO1.getTimeZoneId(),
-                UNIQUE_US_ZONE_SCENARIO1.getNetworkCountryIsoCode());
+        scenario.changeCountry(UNIQUE_US_ZONE_SCENARIO.getTimeZoneId(),
+                UNIQUE_US_ZONE_SCENARIO.getNetworkCountryIsoCode());
 
         // Simulate the device receiving NITZ signals again after the flight. Now the
         // NitzStateMachineImpl is opinionated again.
