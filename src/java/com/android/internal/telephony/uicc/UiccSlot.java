@@ -63,6 +63,7 @@ public class UiccSlot extends Handler {
     private int mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
     private boolean mIsEuicc;
     private String mIccId;
+    private String mEid;
     private AnswerToReset mAtr;
     private int mPhoneId = INVALID_PHONE_ID;
     private boolean mIsRemovable;
@@ -147,6 +148,7 @@ public class UiccSlot extends Handler {
             parseAtr(iss.atr);
             mCardState = iss.cardState;
             mIccId = iss.iccid;
+            mEid = iss.eid;
             mIsRemovable = isSlotRemovable(slotIndex);
             if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
                 // TODO: (b/79432584) evaluate whether should broadcast card state change
@@ -271,6 +273,10 @@ public class UiccSlot extends Handler {
         } else {
             return null;
         }
+    }
+
+    public String getEid() {
+        return mEid;
     }
 
     public boolean isExtendedApduSupported() {
@@ -434,6 +440,7 @@ public class UiccSlot extends Handler {
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mIccId=" + mIccId);
+        pw.println(" mEid=" + mEid);
         pw.println(" mCardState=" + mCardState);
         if (mUiccCard != null) {
             pw.println(" mUiccCard=" + mUiccCard);
