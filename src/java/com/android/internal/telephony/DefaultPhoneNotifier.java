@@ -24,7 +24,7 @@ import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.os.telephony.TelephonyRegistryManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
