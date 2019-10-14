@@ -563,8 +563,10 @@ public abstract class TelephonyTest {
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
         doReturn(1).when(mTelephonyManager).getPhoneCount();
+        doReturn(1).when(mTelephonyManager).getActiveModemCount();
         // Have getMaxPhoneCount always return the same value with getPhoneCount by default.
-        doAnswer((invocation)->mTelephonyManager.getPhoneCount())
+        doAnswer((invocation)->Math.max(mTelephonyManager.getActiveModemCount(),
+                mTelephonyManager.getPhoneCount()))
                 .when(mTelephonyManager).getSupportedModemCount();
 
         //Data

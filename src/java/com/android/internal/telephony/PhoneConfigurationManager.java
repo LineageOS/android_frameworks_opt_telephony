@@ -25,12 +25,15 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.os.storage.StorageManager;
 import android.telephony.PhoneCapability;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+
+import com.android.internal.annotations.VisibleForTesting;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,9 +60,12 @@ public class PhoneConfigurationManager {
     private final Context mContext;
     private PhoneCapability mStaticCapability;
     private final RadioConfig mRadioConfig;
-    private final MainThreadHandler mHandler;
+    private final Handler mHandler;
     private final Phone[] mPhones;
     private final Map<Integer, Boolean> mPhoneStatusMap;
+    private MockableInterface mMi = new MockableInterface();
+    private TelephonyManager mTelephonyManager;
+    private static final RegistrantList sMultiSimConfigChangeRegistrants = new RegistrantList();
 
     /**
      * Init method to instantiate the object
@@ -83,11 +89,11 @@ public class PhoneConfigurationManager {
     private PhoneConfigurationManager(Context context) {
         mContext = context;
         // TODO: send commands to modem once interface is ready.
-        TelephonyManager telephonyManager = new TelephonyManager(context);
+        mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         //initialize with default, it'll get updated when RADIO is ON/AVAILABLE
         mStaticCapability = getDefaultCapability();
         mRadioConfig = RadioConfig.getInstance(mContext);
-        mHandler = new MainThreadHandler();
+        mHandler = new ConfigManagerHandler();
         mPhoneStatusMap = new HashMap<>();
 
         notifyCapabilityChanged();
@@ -139,7 +145,7 @@ public class PhoneConfigurationManager {
     /**
      * Handler class to handle callbacks
      */
-    private final class MainThreadHandler extends Handler {
+    private final class ConfigManagerHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
             AsyncResult ar;
@@ -163,7 +169,7 @@ public class PhoneConfigurationManager {
                     ar = (AsyncResult) msg.obj;
                     if (ar != null && ar.exception == null) {
                         int numOfLiveModems = msg.arg1;
-                        setMultiSimProperties(numOfLiveModems);
+                        onMultiSimConfigChanged(numOfLiveModems);
                     } else {
                         log(msg.what + " failure. Not switching multi-sim config." + ar.exception);
                     }
@@ -173,7 +179,7 @@ public class PhoneConfigurationManager {
                     if (ar != null && ar.exception == null) {
                         int phoneId = msg.arg1;
                         boolean enabled = (boolean) ar.result;
-                        //update the cache each time getModemStatus is requested
+                        // update the cache each time getModemStatus is requested
                         addToPhoneStatusCache(phoneId, enabled);
                     } else {
                         log(msg.what + " failure. Not updating modem status." + ar.exception);
@@ -287,8 +293,7 @@ public class PhoneConfigurationManager {
      * Returns how many phone objects the device supports.
      */
     public int getPhoneCount() {
-        TelephonyManager tm = new TelephonyManager(mContext);
-        return tm.getPhoneCount();
+        return mTelephonyManager.getActiveModemCount();
     }
 
     /**
@@ -301,6 +306,7 @@ public class PhoneConfigurationManager {
                     mHandler, EVENT_GET_PHONE_CAPABILITY_DONE);
             mRadioConfig.getPhoneCapability(callback);
         }
+        log("getStaticPhoneCapability: mStaticCapability " + mStaticCapability);
         return mStaticCapability;
     }
 
@@ -348,41 +354,19 @@ public class PhoneConfigurationManager {
      * Return value defaults to true
      */
     public boolean isRebootRequiredForModemConfigChange() {
-        String rebootRequired = SystemProperties.get(
-                TelephonyProperties.PROPERTY_REBOOT_REQUIRED_ON_MODEM_CHANGE);
-        log("isRebootRequiredForModemConfigChange: isRebootRequired = " + rebootRequired);
-        return !rebootRequired.equals("false");
+        return mMi.isRebootRequiredForModemConfigChange();
     }
 
-    /**
-     * Helper method to set system properties for setting multi sim configs,
-     * as well as doing the phone reboot
-     * NOTE: In order to support more than 3 sims, we need to change this method.
-     * @param numOfSims number of active sims
-     */
-    private void setMultiSimProperties(int numOfSims) {
-        String finalMultiSimConfig;
-        switch(numOfSims) {
-            case 3:
-                finalMultiSimConfig = TSTS;
-                break;
-            case 2:
-                finalMultiSimConfig = DSDS;
-                break;
-            default:
-                finalMultiSimConfig = SSSS;
-        }
+    private void onMultiSimConfigChanged(int numOfActiveModems) {
+        setMultiSimProperties(numOfActiveModems);
 
-        SystemProperties.set(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG, finalMultiSimConfig);
         if (isRebootRequiredForModemConfigChange()) {
-            log("setMultiSimProperties: Rebooting due to switching multi-sim config to "
-                    + finalMultiSimConfig);
+            log("onMultiSimConfigChanged: Rebooting.");
             PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-            pm.reboot("Switching to " + finalMultiSimConfig);
+            pm.reboot("Multi-SIM config changed.");
         } else {
-            log("setMultiSimProperties: Rebooting is not required to switch multi-sim config to "
-                    + finalMultiSimConfig);
-            broadcastSimSlotNumChange(numOfSims);
+            log("onMultiSimConfigChanged: Rebooting is not required.");
+            broadcastMultiSimConfigChange(numOfActiveModems);
             // Register to RIL service if needed.
             for (int i = 0; i < mPhones.length; i++) {
                 Phone phone = mPhones[i];
@@ -391,11 +375,81 @@ public class PhoneConfigurationManager {
         }
     }
 
-    private void broadcastSimSlotNumChange(int numOfSims) {
-        log("broadcastSimSlotNumChange numOfSims" + numOfSims);
+    /**
+     * Helper method to set system properties for setting multi sim configs,
+     * as well as doing the phone reboot
+     * NOTE: In order to support more than 3 sims, we need to change this method.
+     * @param numOfActiveModems number of active sims
+     */
+    private void setMultiSimProperties(int numOfActiveModems) {
+        mMi.setMultiSimProperties(numOfActiveModems);
+    }
+
+    private static void notifyMultiSimConfigChange(int numOfActiveModems) {
+        sMultiSimConfigChangeRegistrants.notifyResult(numOfActiveModems);
+    }
+
+    /**
+     * Register for multi-SIM configuration change, for example if the devices switched from single
+     * SIM to dual-SIM mode.
+     *
+     * It doesn't trigger callback upon registration as multi-SIM config change is in-frequent.
+     */
+    public static void registerForMultiSimConfigChange(Handler h, int what, Object obj) {
+        sMultiSimConfigChangeRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregister for multi-SIM configuration change.
+     */
+    public static void unregisterForMultiSimConfigChange(Handler h) {
+        sMultiSimConfigChangeRegistrants.remove(h);
+    }
+
+    private void broadcastMultiSimConfigChange(int numOfActiveModems) {
+        log("broadcastSimSlotNumChange numOfActiveModems" + numOfActiveModems);
+        // Notify internal registrants first.
+        notifyMultiSimConfigChange(numOfActiveModems);
+
         Intent intent = new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED);
-        intent.putExtra(EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED, numOfSims);
+        intent.putExtra(EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED, numOfActiveModems);
         mContext.sendBroadcast(intent);
+    }
+
+    /**
+     * A wrapper class that wraps some methods so that they can be replaced or mocked in unit-tests.
+     *
+     * For example, setting or reading system property are static native methods that can't be
+     * directly mocked. We can mock it by replacing MockableInterface object with a mock instance
+     * in unittest.
+     */
+    @VisibleForTesting
+    public static class MockableInterface {
+        @VisibleForTesting
+        public boolean isRebootRequiredForModemConfigChange() {
+            String rebootRequired = SystemProperties.get(
+                    TelephonyProperties.PROPERTY_REBOOT_REQUIRED_ON_MODEM_CHANGE);
+            log("isRebootRequiredForModemConfigChange: isRebootRequired = " + rebootRequired);
+            return !rebootRequired.equals("false");
+        }
+
+        @VisibleForTesting
+        public void setMultiSimProperties(int numOfActiveModems) {
+            String multiSimConfig;
+            switch(numOfActiveModems) {
+                case 3:
+                    multiSimConfig = TSTS;
+                    break;
+                case 2:
+                    multiSimConfig = DSDS;
+                    break;
+                default:
+                    multiSimConfig = SSSS;
+            }
+
+            log("setMultiSimProperties to " + multiSimConfig);
+            SystemProperties.set(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG, multiSimConfig);
+        }
     }
 
     private static void log(String s) {
