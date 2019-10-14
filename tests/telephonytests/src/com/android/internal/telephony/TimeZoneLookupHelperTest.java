@@ -16,12 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_DEBUG_INFO;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_DEFAULT_BOOSTED;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_SINGLE_ZONE;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -311,11 +305,15 @@ public class TimeZoneLookupHelperTest {
 
     @Test
     public void testLookupByCountry_oneZone() {
+        CountryResult expectedResult;
+
         // GB has one time zone.
-        CountryResult expectedResult =
-                new CountryResult("Europe/London", QUALITY_SINGLE_ZONE, ARBITRARY_DEBUG_INFO);
+        expectedResult = new CountryResult("Europe/London", false /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */, NH_SUMMER_TIME_MILLIS);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("gb", NH_SUMMER_TIME_MILLIS));
+        expectedResult = new CountryResult("Europe/London", false /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */, NH_WINTER_TIME_MILLIS);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("gb", NH_WINTER_TIME_MILLIS));
     }
@@ -330,110 +328,43 @@ public class TimeZoneLookupHelperTest {
         long nhSummerTimeMillis = createUtcTime(1975, 6, 20, 1, 2, 3);
         long nhWinterTimeMillis = createUtcTime(1975, 1, 20, 1, 2, 3);
 
-        // Before 1980, quality == QUALITY_MULTIPLE_ZONES_SAME_OFFSET because Europe/Busingen was
-        // relevant.
-        CountryResult expectedResult = new CountryResult(
-                "Europe/Berlin", QUALITY_MULTIPLE_ZONES_SAME_OFFSET, ARBITRARY_DEBUG_INFO);
+        CountryResult expectedResult;
+
+        expectedResult = new CountryResult("Europe/Berlin", true /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */, nhSummerTimeMillis);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("de", nhSummerTimeMillis));
+        expectedResult = new CountryResult("Europe/Berlin", true /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */, nhWinterTimeMillis);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("de", nhWinterTimeMillis));
 
-        // And in 2015, quality == QUALITY_SINGLE_ZONE because Europe/Busingen became irrelevant
+        // And in 2015, multipleZonesInCountry == false because Europe/Busingen became irrelevant
         // after 1980.
         nhSummerTimeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
         nhWinterTimeMillis = createUtcTime(2015, 1, 20, 1, 2, 3);
 
-        expectedResult =
-                new CountryResult("Europe/Berlin", QUALITY_SINGLE_ZONE, ARBITRARY_DEBUG_INFO);
+        expectedResult = new CountryResult("Europe/Berlin", false /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */, nhSummerTimeMillis);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("de", nhSummerTimeMillis));
+        expectedResult = new CountryResult("Europe/Berlin", false /* multipleZonesInCountry */,
+                true /* allZonesHaveSameOffset */, nhWinterTimeMillis);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("de", nhWinterTimeMillis));
     }
 
     @Test
-    public void testDefaultBoostBehavior() {
-        long timeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
-
-        // An example known to be explicitly boosted. New Zealand has two zones but the vast
-        // majority of the population use one of them so Android's data file explicitly boosts the
-        // country default. If that changes in future this test will need to be changed to use
-        // another example.
-        String countryIsoCode = "nz";
-
-        CountryResult expectedResult = new CountryResult(
-                "Pacific/Auckland", QUALITY_DEFAULT_BOOSTED, ARBITRARY_DEBUG_INFO);
-        assertEquals(expectedResult,
-                mTimeZoneLookupHelper.lookupByCountry(countryIsoCode, timeMillis));
-
-        // Data correct for the North and South Island.
-        int majorityWinterOffset = (int) TimeUnit.HOURS.toMillis(12);
-        NitzData majorityNitzData = NitzData.createForTests(
-                majorityWinterOffset, 0, timeMillis, null /* emulatorTimeZone */);
-
-        // Boost doesn't directly affect lookupByNitzCountry()
-        OffsetResult majorityOffsetResult =
-                mTimeZoneLookupHelper.lookupByNitzCountry(majorityNitzData, countryIsoCode);
-        assertEquals(zone("Pacific/Auckland"), majorityOffsetResult.getTimeZone());
-        assertTrue(majorityOffsetResult.getIsOnlyMatch());
-
-        // Data correct for the Chatham Islands.
-        int chathamWinterOffset = majorityWinterOffset + ((int) TimeUnit.MINUTES.toMillis(45));
-        NitzData chathamNitzData = NitzData.createForTests(
-                chathamWinterOffset, 0, timeMillis, null /* emulatorTimeZone */);
-        OffsetResult chathamOffsetResult =
-                mTimeZoneLookupHelper.lookupByNitzCountry(chathamNitzData, countryIsoCode);
-        assertEquals(zone("Pacific/Chatham"), chathamOffsetResult.getTimeZone());
-        assertTrue(chathamOffsetResult.getIsOnlyMatch());
-
-        // NITZ data that makes no sense for NZ results in no match.
-        int nonsenseOffset = (int) TimeUnit.HOURS.toMillis(5);
-        NitzData nonsenseNitzData = NitzData.createForTests(
-                nonsenseOffset, 0, timeMillis, null /* emulatorTimeZone */);
-        OffsetResult nonsenseOffsetResult =
-                mTimeZoneLookupHelper.lookupByNitzCountry(nonsenseNitzData, countryIsoCode);
-        assertNull(nonsenseOffsetResult);
-    }
-
-    @Test
-    public void testNoDefaultBoostBehavior() {
-        long timeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
-
-        // An example known to not be explicitly boosted. Micronesia is spread out and there's no
-        // suitable default.
-        String countryIsoCode = "fm";
-
-        CountryResult expectedResult = new CountryResult(
-                "Pacific/Pohnpei", QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS, ARBITRARY_DEBUG_INFO);
-        assertEquals(expectedResult,
-                mTimeZoneLookupHelper.lookupByCountry(countryIsoCode, timeMillis));
-
-        // Prove an OffsetResult can be found with the correct offset.
-        int chuukWinterOffset = (int) TimeUnit.HOURS.toMillis(10);
-        NitzData chuukNitzData = NitzData.createForTests(
-                chuukWinterOffset, 0, timeMillis, null /* emulatorTimeZone */);
-        OffsetResult chuukOffsetResult =
-                mTimeZoneLookupHelper.lookupByNitzCountry(chuukNitzData, countryIsoCode);
-        assertEquals(zone("Pacific/Chuuk"), chuukOffsetResult.getTimeZone());
-        assertTrue(chuukOffsetResult.getIsOnlyMatch());
-
-        // NITZ data that makes no sense for FM: no boost means we should get nothing.
-        int nonsenseOffset = (int) TimeUnit.HOURS.toMillis(5);
-        NitzData nonsenseNitzData = NitzData.createForTests(
-                nonsenseOffset, 0, timeMillis, null /* emulatorTimeZone */);
-        OffsetResult nonsenseOffsetResult =
-                mTimeZoneLookupHelper.lookupByNitzCountry(nonsenseNitzData, countryIsoCode);
-        assertNull(nonsenseOffsetResult);
-    }
-
-    @Test
     public void testLookupByCountry_multipleZones() {
+        CountryResult expectedResult;
+
         // US has many time zones that have different offsets.
-        CountryResult expectedResult = new CountryResult(
-                "America/New_York", QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS, ARBITRARY_DEBUG_INFO);
+        expectedResult = new CountryResult("America/New_York", true /* multipleZonesInCountry */,
+                false /* allZonesHaveSameOffset */, NH_SUMMER_TIME_MILLIS);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("us", NH_SUMMER_TIME_MILLIS));
+        expectedResult = new CountryResult("America/New_York", true /* multipleZonesInCountry */,
+                false /* allZonesHaveSameOffset */, NH_WINTER_TIME_MILLIS);
         assertEquals(expectedResult,
                 mTimeZoneLookupHelper.lookupByCountry("us", NH_WINTER_TIME_MILLIS));
     }
