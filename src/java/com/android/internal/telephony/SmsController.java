@@ -400,7 +400,7 @@ public class SmsController extends ISmsImplBase {
             }
 
             // If reached here and multiple SIMs and subs present, sms sim pick activity is needed
-            if (subInfoLength > 0 && telephonyManager.getSimCount() > 1) {
+            if (subInfoLength > 1 && telephonyManager.getSimCount() > 1) {
                 return true;
             }
         }
