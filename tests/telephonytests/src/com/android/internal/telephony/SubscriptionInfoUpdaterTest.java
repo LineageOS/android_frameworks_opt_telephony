@@ -48,6 +48,7 @@ import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.UiccAccessRule;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -65,6 +66,8 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -755,5 +758,52 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 SubscriptionManager.IS_OPPORTUNISTIC).intValue());
         assertNull(cvCaptor.getValue().getAsString(SubscriptionManager.GROUP_UUID));
         assertEquals(2, cvCaptor.getValue().size());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateFromCarrierConfigCarrierCertificates() {
+        String[] certs = new String[2];
+        certs[0] = "testCertificate";
+        certs[1] = "testCertificate2";
+
+        UiccAccessRule[] carrierConfigAccessRules = new UiccAccessRule[certs.length];
+        try {
+            for (int i = 0; i < certs.length; i++) {
+                carrierConfigAccessRules[i] = new UiccAccessRule(
+                    MessageDigest.getInstance("SHA-256").digest(certs[i].getBytes()), null, 0);
+            }
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("for setCarrierConfigAccessRules, SHA-256 must exist", e);
+        }
+
+        final int phoneId = mPhone.getPhoneId();
+        PersistableBundle carrierConfig = new PersistableBundle();
+        carrierConfig.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY, certs);
+
+        String carrierPackageName = "FakeCarrierPackageName";
+
+        doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(mSubInfo).when(mSubscriptionController).getSubscriptionInfo(eq(FAKE_SUB_ID_1));
+        doReturn(false).when(mSubInfo).isOpportunistic();
+        doReturn(Collections.singletonList(carrierPackageName)).when(mTelephonyManager)
+                .getCarrierPackageNamesForIntentAndPhone(any(), eq(phoneId));
+        ((MockContentResolver) mContext.getContentResolver()).addProvider(
+                SubscriptionManager.CONTENT_URI.getAuthority(),
+                new FakeSubscriptionContentProvider());
+
+        mUpdater.updateSubscriptionByCarrierConfig(mPhone.getPhoneId(),
+                carrierPackageName, carrierConfig);
+
+        ArgumentCaptor<ContentValues> cvCaptor = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider, times(1)).update(
+                eq(SubscriptionManager.getUriForSubscriptionId(FAKE_SUB_ID_1)),
+                cvCaptor.capture(), eq(null), eq(null));
+        assertEquals(carrierConfigAccessRules, UiccAccessRule.decodeRules(cvCaptor.getValue()
+                .getAsByteArray(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS)));
+        assertEquals(1, cvCaptor.getValue().size());
+        verify(mSubscriptionController, times(1)).refreshCachedActiveSubscriptionInfoList();
+        verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
     }
 }
