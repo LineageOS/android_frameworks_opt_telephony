@@ -412,7 +412,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getActiveSubscriptionIdList();
         doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getPhoneId(eq(FAKE_SUB_ID_1));
         doReturn(FAKE_SUB_ID_2).when(mSubscriptionController).getPhoneId(eq(FAKE_SUB_ID_2));
-        doReturn(2).when(mTelephonyManager).getSimCount();
+        doReturn(2).when(mTelephonyManager).getPhoneCount();
         doReturn(FAKE_MCC_MNC_1).when(mTelephonyManager).getSimOperatorNumeric(eq(FAKE_SUB_ID_1));
         doReturn(FAKE_MCC_MNC_2).when(mTelephonyManager).getSimOperatorNumeric(eq(FAKE_SUB_ID_2));
         verify(mSubscriptionController, times(0)).clearSubInfo();
