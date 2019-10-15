@@ -2364,6 +2364,14 @@ public interface CommandsInterface {
     default void enableModem(boolean enable, Message result) {};
 
     /**
+     * Notify CommandsInterface that whether its corresponding slot is active or not. If not,
+     * it means it has no RIL service or logical modem to connect to.
+     *
+     * @param active whether there's a matching active SIM slot.
+     */
+    default void onSlotActiveStatusChange(boolean active) {}
+
+    /**
      * Query whether logical modem is enabled or disabled
      *
      * @param result a Message to return to the requester
