@@ -25,7 +25,6 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 
-import com.android.internal.telephony.CellBroadcastServiceManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.Phone;
@@ -38,9 +37,6 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 
 import dalvik.annotation.compat.UnsupportedAppUsage;
 
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
-
 /**
  * This class broadcasts incoming SMS messages to interested apps after storing them in
  * the SmsProvider "raw" table and ACKing them to the SMSC. After each message has been
@@ -52,13 +48,11 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
     // When TEST_MODE is on we allow the test intent to trigger an SMS CB alert
-    private static boolean sEnableCbModule = false;
     private static final boolean TEST_MODE = true; //STOPSHIP if true
     private static final String TEST_ACTION = "com.android.internal.telephony.gsm"
             + ".TEST_TRIGGER_CELL_BROADCAST";
     private static final String TOGGLE_CB_MODULE = "com.android.internal.telephony.gsm"
             + ".TOGGLE_CB_MODULE";
-    private CellBroadcastServiceManager mCellBroadcastServiceManager;
 
     /**
      * Create a new GSM inbound SMS handler.
@@ -68,7 +62,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         super("GsmInboundSmsHandler", context, storageMonitor, phone, null);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi, phone.getPhoneId());
-        mCellBroadcastServiceManager = new CellBroadcastServiceManager(context, phone);
         if (sEnableCbModule) {
             mCellBroadcastServiceManager.enable();
         } else {
@@ -77,11 +70,13 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         }
 
         if (TEST_MODE) {
-            sTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(TEST_ACTION);
-            filter.addAction(TOGGLE_CB_MODULE);
-            context.registerReceiver(sTestBroadcastReceiver, filter);
+            if (sTestBroadcastReceiver == null) {
+                sTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(TEST_ACTION);
+                filter.addAction(TOGGLE_CB_MODULE);
+                context.registerReceiver(sTestBroadcastReceiver, filter);
+            }
         }
     }
 
@@ -102,85 +97,60 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      *
      * adb shell am broadcast -a com.android.internal.telephony.gsm.TOGGLE_CB_MODULE
      *
-     * adb shell am broadcast -a com.android.internal.telephony.gsm.TOGGLE_CB_MODULE -ez enable true
+     * adb shell am broadcast -a com.android.internal.telephony.gsm.TOGGLE_CB_MODULE \
+     * --ez enable true
      */
-    private class GsmCbTestBroadcastReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            logd("Received test intent action=" + intent.getAction());
-            if (intent.getAction() == TEST_ACTION) {
-                byte[] smsPdu = intent.getByteArrayExtra("pdu");
-                if (smsPdu == null) {
-                    String pduString = intent.getStringExtra("pdu_string");
-                    smsPdu = decodeHexString(pduString);
-                }
-                if (smsPdu == null) {
-                    log("No pdu or pdu_string extra, ignoring CB test intent");
-                    return;
-                }
+    private class GsmCbTestBroadcastReceiver extends CbTestBroadcastReceiver {
 
-                // Return early if phone_id is explicilty included and does not match mPhone.
-                // If phone_id extra is not included, continue.
-                int phoneId = mPhone.getPhoneId();
-                if (intent.getIntExtra("phone_id", phoneId) != phoneId) {
-                    return;
-                }
-                Message m = Message.obtain();
-                AsyncResult.forMessage(m, smsPdu, null);
-                if (sEnableCbModule) {
-                    mCellBroadcastServiceManager.sendMessageToHandler(m);
-                } else {
-                    m.setWhat(GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE);
-                    mCellBroadcastHandler.sendMessage(m);
-                }
-            } else if (intent.getAction() == TOGGLE_CB_MODULE) {
-                if (intent.hasExtra("enable")) {
-                    sEnableCbModule = intent.getBooleanExtra("enable", false);
-                } else {
-                    sEnableCbModule = !sEnableCbModule;
-                }
-                if (sEnableCbModule) {
-                    log("enabling CB module");
-                    mPhone.mCi.unSetOnNewGsmBroadcastSms(mCellBroadcastHandler.getHandler());
-                    mCellBroadcastServiceManager.enable();
-                } else {
-                    log("enabling legacy platform CB handling");
-                    mCellBroadcastServiceManager.disable();
-                    if (mCellBroadcastHandler == null) {
-                        mCellBroadcastHandler =
-                                GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
-                                        mPhone);
-                    }
-                    mPhone.mCi.setOnNewGsmBroadcastSms(mCellBroadcastHandler.getHandler(),
-                            GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE, null);
-                }
+        GsmCbTestBroadcastReceiver() {
+            super(TEST_ACTION, TOGGLE_CB_MODULE);
+        }
+
+        @Override
+        protected void handleTestAction(Intent intent) {
+            byte[] smsPdu = intent.getByteArrayExtra("pdu");
+            if (smsPdu == null) {
+                String pduString = intent.getStringExtra("pdu_string");
+                smsPdu = decodeHexString(pduString);
+            }
+            if (smsPdu == null) {
+                log("No pdu or pdu_string extra, ignoring CB test intent");
+                return;
+            }
+
+            // Return early if phone_id is explicilty included and does not match mPhone.
+            // If phone_id extra is not included, continue.
+            int phoneId = mPhone.getPhoneId();
+            if (intent.getIntExtra("phone_id", phoneId) != phoneId) {
+                return;
+            }
+            Message m = Message.obtain();
+            AsyncResult.forMessage(m, smsPdu, null);
+            if (sEnableCbModule) {
+                mCellBroadcastServiceManager.sendGsmMessageToHandler(m);
+            } else {
+                m.setWhat(GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE);
+                mCellBroadcastHandler.sendMessage(m);
             }
         }
-    }
 
-    private byte[] decodeHexString(String hexString) {
-        if (hexString == null || hexString.length() % 2 == 1) {
-            return null;
+        @Override
+        protected void handleToggleEnable() {
+            mPhone.mCi.unSetOnNewGsmBroadcastSms(mCellBroadcastHandler.getHandler());
+            mCellBroadcastServiceManager.enable();
         }
-        byte[] bytes = new byte[hexString.length() / 2];
-        for (int i = 0; i < hexString.length(); i += 2) {
-            bytes[i / 2] = hexToByte(hexString.substring(i, i + 2));
-        }
-        return bytes;
-    }
 
-    private byte hexToByte(String hexString) {
-        int firstDigit = toDigit(hexString.charAt(0));
-        int secondDigit = toDigit(hexString.charAt(1));
-        return (byte) ((firstDigit << 4) + secondDigit);
-    }
-
-    private int toDigit(char hexChar) {
-        int digit = Character.digit(hexChar, 16);
-        if (digit == -1) {
-            return 0;
+        @Override
+        protected void handleToggleDisable(Context context) {
+            mCellBroadcastServiceManager.disable();
+            if (mCellBroadcastHandler == null) {
+                mCellBroadcastHandler =
+                        GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
+                                mPhone);
+            }
+            mPhone.mCi.setOnNewGsmBroadcastSms(mCellBroadcastHandler.getHandler(),
+                    GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE, null);
         }
-        return digit;
     }
 
     /**
@@ -189,7 +159,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void onQuitting() {
         mPhone.mCi.unSetOnNewGsmSms(getHandler());
-        mCellBroadcastServiceManager.disable();
         mCellBroadcastHandler.dispose();
 
         if (DBG) log("unregistered for 3GPP SMS");
@@ -337,13 +306,5 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     private void addVoicemailSmsToMetrics() {
         mMetrics.writeIncomingVoiceMailSms(mPhone.getPhoneId(),
                 android.telephony.SmsMessage.FORMAT_3GPP);
-    }
-
-    @Override
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        super.dump(fd, pw, args);
-        if (mCellBroadcastServiceManager != null) {
-            mCellBroadcastServiceManager.dump(fd, pw, args);
-        }
     }
 }
