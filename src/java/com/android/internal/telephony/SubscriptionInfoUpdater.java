@@ -75,7 +75,7 @@ import java.util.List;
 public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     @UnsupportedAppUsage
-    private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
+    private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getMaxPhoneCount();
 
     private static final boolean DBG = true;
 
@@ -224,7 +224,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
     @UnsupportedAppUsage
     private boolean isAllIccIdQueryDone() {
-        for (int i = 0; i < PROJECT_SIM_NUM; i++) {
+        for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
             if  (mIccId[i] == null || slot == null || !slot.isActive()) {
@@ -1037,7 +1037,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private boolean isNewSim(String iccId, String decIccId, String[] oldIccId) {
         boolean newSim = true;
-        for(int i = 0; i < PROJECT_SIM_NUM; i++) {
+        for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
             if(iccId.equals(oldIccId[i])) {
                 newSim = false;
                 break;
