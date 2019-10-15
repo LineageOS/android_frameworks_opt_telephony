@@ -33,4 +33,6 @@ public class SmsMessageTest {
         assertEquals(null, SmsMessage.createFromPdu(null));
         assertEquals(null, SmsMessage.newFromCMT(null));
     }
+
+    // TODO(satayev): revert this commit; testing Global Approvals flow.
 }
