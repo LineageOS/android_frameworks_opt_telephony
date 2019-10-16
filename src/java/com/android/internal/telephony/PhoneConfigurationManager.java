@@ -385,7 +385,8 @@ public class PhoneConfigurationManager {
         mMi.setMultiSimProperties(numOfActiveModems);
     }
 
-    private static void notifyMultiSimConfigChange(int numOfActiveModems) {
+    @VisibleForTesting
+    public static void notifyMultiSimConfigChange(int numOfActiveModems) {
         sMultiSimConfigChangeRegistrants.notifyResult(numOfActiveModems);
     }
 
