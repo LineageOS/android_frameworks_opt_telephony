@@ -80,6 +80,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class ImsPhoneTest extends TelephonyTest {
     @Mock
@@ -94,6 +95,13 @@ public class ImsPhoneTest extends TelephonyTest {
     Connection mConnection;
     @Mock
     ImsUtInterface mImsUtInterface;
+
+    private Executor mExecutor = new Executor() {
+        @Override
+        public void execute(Runnable r) {
+            r.run();
+        }
+    };
 
     private ImsPhone mImsPhoneUT;
     private ImsPhoneTestHandler mImsPhoneTestHandler;
@@ -126,6 +134,7 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mForegroundCall).getState();
         doReturn(Call.State.IDLE).when(mBackgroundCall).getState();
         doReturn(Call.State.IDLE).when(mRingingCall).getState();
+        doReturn(mExecutor).when(mContext).getMainExecutor();
 
         mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
 

@@ -55,8 +55,8 @@ public class FeatureConnectionTest extends TelephonyTest {
     private class TestFeatureConnection extends FeatureConnection {
         private Integer mFeatureState = ImsFeature.STATE_READY;
 
-        public boolean ImsFeatureCreatedCalled = false;
-        public boolean ImsFeatureRemovedCalled = false;
+        public boolean isFeatureCreatedCalled = false;
+        public boolean isFeatureRemovedCalled = false;
         public int mNewStatus = ImsFeature.STATE_UNAVAILABLE;
 
         TestFeatureConnection(Context context, int slotId, int featureType) {
@@ -73,12 +73,12 @@ public class FeatureConnectionTest extends TelephonyTest {
 
         @Override
         protected void handleImsFeatureCreatedCallback(int slotId, int feature) {
-            ImsFeatureCreatedCalled = true;
+            isFeatureCreatedCalled = true;
         }
 
         @Override
         protected void handleImsFeatureRemovedCallback(int slotId, int feature) {
-            ImsFeatureRemovedCalled = true;
+            isFeatureRemovedCalled = true;
         }
 
         @Override
@@ -97,7 +97,7 @@ public class FeatureConnectionTest extends TelephonyTest {
     };
 
     private int mPhoneId;
-    private TestFeatureConnection mFeatureConnection;
+    private TestFeatureConnection mTestFeatureConnection;
     @Mock IBinder mBinder;
 
     @Before
@@ -108,9 +108,10 @@ public class FeatureConnectionTest extends TelephonyTest {
         doReturn(null).when(mContext).getMainLooper();
         doReturn(true).when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
 
-        mFeatureConnection = new TestFeatureConnection(mContext, mPhoneId, ImsFeature.FEATURE_RCS);
-        mFeatureConnection.mExecutor = mSimpleExecutor;
-        mFeatureConnection.setBinder(mBinder);
+        mTestFeatureConnection = new TestFeatureConnection(
+                mContext, mPhoneId, ImsFeature.FEATURE_RCS);
+        mTestFeatureConnection.mExecutor = mSimpleExecutor;
+        mTestFeatureConnection.setBinder(mBinder);
     }
 
     @After
@@ -125,10 +126,10 @@ public class FeatureConnectionTest extends TelephonyTest {
     @SmallTest
     public void testServiceIsReady() {
         when(mBinder.isBinderAlive()).thenReturn(true);
-        mFeatureConnection.setFeatureState(ImsFeature.STATE_READY);
+        mTestFeatureConnection.setFeatureState(ImsFeature.STATE_READY);
 
         try {
-            mFeatureConnection.checkServiceIsReady();
+            mTestFeatureConnection.checkServiceIsReady();
         } catch (RemoteException e) {
             throw new AssertionFailedError("Exception in testServiceIsReady: " + e);
         }
@@ -144,7 +145,7 @@ public class FeatureConnectionTest extends TelephonyTest {
         when(mBinder.isBinderAlive()).thenReturn(false);
 
         try {
-            mFeatureConnection.checkServiceIsReady();
+            mTestFeatureConnection.checkServiceIsReady();
             throw new AssertionFailedError("testServiceIsNotReady: binder isn't alive");
         } catch (RemoteException e) {
             // expected result
@@ -152,10 +153,10 @@ public class FeatureConnectionTest extends TelephonyTest {
 
         // IMS feature status is unavailable
         when(mBinder.isBinderAlive()).thenReturn(true);
-        mFeatureConnection.setFeatureState(ImsFeature.STATE_UNAVAILABLE);
+        mTestFeatureConnection.setFeatureState(ImsFeature.STATE_UNAVAILABLE);
 
         try {
-            mFeatureConnection.checkServiceIsReady();
+            mTestFeatureConnection.checkServiceIsReady();
             throw new AssertionFailedError("testServiceIsNotReady: status unavailable");
         } catch (RemoteException e) {
             // expected result
@@ -168,25 +169,25 @@ public class FeatureConnectionTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testListenerCallback() {
-        IImsServiceFeatureCallback featureCallback = mFeatureConnection.getListener();
+        IImsServiceFeatureCallback featureCallback = mTestFeatureConnection.getListener();
 
         try {
             featureCallback.imsFeatureCreated(anyInt(), anyInt());
-            assertTrue(mFeatureConnection.ImsFeatureCreatedCalled);
+            assertTrue(mTestFeatureConnection.isFeatureCreatedCalled);
         } catch (RemoteException e) {
             throw new AssertionFailedError("testListenerCallback(Created): " + e);
         }
 
         try {
             featureCallback.imsFeatureRemoved(anyInt(), anyInt());
-            assertTrue(mFeatureConnection.ImsFeatureRemovedCalled);
+            assertTrue(mTestFeatureConnection.isFeatureRemovedCalled);
         } catch (RemoteException e) {
             throw new AssertionFailedError("testListenerCallback(Removed): " + e);
         }
 
         try {
             featureCallback.imsStatusChanged(anyInt(), anyInt(), ImsFeature.STATE_READY);
-            assertEquals(mFeatureConnection.mNewStatus, ImsFeature.STATE_READY);
+            assertEquals(mTestFeatureConnection.mNewStatus, ImsFeature.STATE_READY);
         } catch (RemoteException e) {
             throw new AssertionFailedError("testListenerCallback(Changed): " + e);
         }
