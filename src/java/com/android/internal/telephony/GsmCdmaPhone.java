@@ -1541,10 +1541,20 @@ public class GsmCdmaPhone extends Phone {
                         b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_STRING);
                 String defaultVmNumberRoaming =
                         b.getString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING);
-                if (!TextUtils.isEmpty(defaultVmNumberRoaming) && mSST.mSS.getRoaming()) {
-                    number = defaultVmNumberRoaming;
-                } else if (!TextUtils.isEmpty(defaultVmNumber)) {
-                    number = defaultVmNumber;
+                String defaultVmNumberRoamingAndImsUnregistered = b.getString(
+                        CarrierConfigManager
+                                .KEY_DEFAULT_VM_NUMBER_ROAMING_AND_IMS_UNREGISTERED_STRING);
+
+                if (!TextUtils.isEmpty(defaultVmNumber)) number = defaultVmNumber;
+                if (mSST.mSS.getRoaming()) {
+                    if (!TextUtils.isEmpty(defaultVmNumberRoamingAndImsUnregistered)
+                            && !mSST.isImsRegistered()) {
+                        // roaming and IMS unregistered case if CC configured
+                        number = defaultVmNumberRoamingAndImsUnregistered;
+                    } else if (!TextUtils.isEmpty(defaultVmNumberRoaming)) {
+                        // roaming default case if CC configured
+                        number = defaultVmNumberRoaming;
+                    }
                 }
             }
         }

@@ -496,11 +496,25 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mContextFixture.getCarrierConfigBundle()
                 .putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING,
                         voiceMailNumberForRoaming);
+
+        // voicemail number from config for roaming network and ims unregistered
+        String voiceMailNumberForImsRoamingAndUnregistered = "1234567893";
+        mContextFixture.getCarrierConfigBundle().putString(
+                CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_AND_IMS_UNREGISTERED_STRING,
+                        voiceMailNumberForImsRoamingAndUnregistered);
+
         //Verify voicemail number for home
         doReturn(false).when(mSST.mSS).getRoaming();
+        doReturn(true).when(mSST).isImsRegistered();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+        //Move to ims condition, verify voicemail number for ims unregistered
+        doReturn(false).when(mSST).isImsRegistered();
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
         //Move to roaming condition, verify voicemail number for roaming
         doReturn(true).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumberForImsRoamingAndUnregistered, mPhoneUT.getVoiceMailNumber());
+        //Move to ims condition, verify voicemail number for roaming
+        doReturn(true).when(mSST).isImsRegistered();
         assertEquals(voiceMailNumberForRoaming, mPhoneUT.getVoiceMailNumber());
         //Move to home condition, verify voicemail number for home
         doReturn(false).when(mSST.mSS).getRoaming();
@@ -540,11 +554,25 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mContextFixture.getCarrierConfigBundle()
                 .putString(CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_STRING,
                         voiceMailNumberForRoaming);
+
+        // voicemail number from config for roaming network and ims unregistered
+        String voiceMailNumberForImsRoamingAndUnregistered = "1234567893";
+        mContextFixture.getCarrierConfigBundle().putString(
+                CarrierConfigManager.KEY_DEFAULT_VM_NUMBER_ROAMING_AND_IMS_UNREGISTERED_STRING,
+                        voiceMailNumberForImsRoamingAndUnregistered);
+
         //Verify voicemail number for home
         doReturn(false).when(mSST.mSS).getRoaming();
+        doReturn(true).when(mSST).isImsRegistered();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+        //Move to ims condition, verify voicemail number for ims unregistered
+        doReturn(false).when(mSST).isImsRegistered();
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
         //Move to roaming condition, verify voicemail number for roaming
         doReturn(true).when(mSST.mSS).getRoaming();
+        assertEquals(voiceMailNumberForImsRoamingAndUnregistered, mPhoneUT.getVoiceMailNumber());
+        //Move to ims condition, verify voicemail number for roaming
+        doReturn(true).when(mSST).isImsRegistered();
         assertEquals(voiceMailNumberForRoaming, mPhoneUT.getVoiceMailNumber());
         //Move to home condition, verify voicemail number for home
         doReturn(false).when(mSST.mSS).getRoaming();
