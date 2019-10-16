@@ -81,12 +81,6 @@ public interface NitzStateMachine {
     void dumpLogs(FileDescriptor fd, IndentingPrintWriter ipw, String[] args);
 
     /**
-     * Returns the last NITZ data that was cached.
-     */
-    @Nullable
-    NitzData getCachedNitzData();
-
-    /**
      * A proxy over read-only device state that allows things like system properties, elapsed
      * realtime clock to be faked for tests.
      */

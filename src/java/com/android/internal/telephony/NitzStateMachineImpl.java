@@ -558,7 +558,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         return mNitzTimeZoneDetectionSuccessful;
     }
 
-    @Override
+    // VisibleForTesting
     public NitzData getCachedNitzData() {
         return mLatestNitzSignal != null ? mLatestNitzSignal.getValue() : null;
     }
