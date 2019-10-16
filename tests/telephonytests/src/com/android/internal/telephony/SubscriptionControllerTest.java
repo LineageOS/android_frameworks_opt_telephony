@@ -205,7 +205,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         /* Setting */
         String disName = "TESTING";
-        int nameSource = SubscriptionManager.NAME_SOURCE_SIM_SOURCE;
+        int nameSource = SubscriptionManager.NAME_SOURCE_SIM_SPN;
         mSubscriptionControllerUT.setDisplayNameUsingSrc(disName, subID, nameSource);
         SubscriptionInfo subInfo = mSubscriptionControllerUT
                 .getActiveSubscriptionInfo(subID, mCallingPackage);
@@ -468,12 +468,12 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         // Changing non-opportunistic sub1 shouldn't trigger callback.
         mSubscriptionControllerUT.setDisplayNameUsingSrc("DisplayName", 1,
-                SubscriptionManager.NAME_SOURCE_SIM_SOURCE);
+                SubscriptionManager.NAME_SOURCE_SIM_SPN);
         verify(mTelephonyRegisteryMock, times(1))
                 .notifyOpportunisticSubscriptionInfoChanged();
 
         mSubscriptionControllerUT.setDisplayNameUsingSrc("DisplayName", 2,
-                SubscriptionManager.NAME_SOURCE_SIM_SOURCE);
+                SubscriptionManager.NAME_SOURCE_SIM_SPN);
         verify(mTelephonyRegisteryMock, times(2))
                 .notifyOpportunisticSubscriptionInfoChanged();
     }
