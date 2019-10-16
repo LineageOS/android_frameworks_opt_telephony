@@ -270,6 +270,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mIsMonitoringConnectivity = false;
 
     /**
+     * A test flag which can be used to disable processing of the conference event package data
+     * received from the network.
+     */
+    private boolean mIsConferenceEventPackageEnabled = true;
+
+    /**
      * Network callback used to schedule the handover check when a wireless network connects.
      */
     private ConnectivityManager.NetworkCallback mNetworkCallback =
@@ -2821,6 +2827,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 List<ConferenceParticipant> participants) {
             if (DBG) log("onConferenceParticipantsStateChanged");
 
+            if (!mIsConferenceEventPackageEnabled) {
+                logi("onConferenceParticipantsStateChanged - CEP handling disabled");
+                return;
+            }
+
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 updateConferenceParticipantsTiming(participants);
@@ -3596,6 +3607,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mVtDataUsageUidSnapshot=" + mVtDataUsageUidSnapshot);
         pw.println(" mCallQualityMetrics=" + mCallQualityMetrics);
         pw.println(" mCallQualityMetricsHistory=" + mCallQualityMetricsHistory);
+        pw.println(" mIsConferenceEventPackageHandlingEnabled=" + mIsConferenceEventPackageEnabled);
 
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
@@ -4275,5 +4287,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @Override
     public ImsPhone getPhone() {
         return mPhone;
+    }
+
+    /**
+     * Sets whether CEP handling is enabled or disabled.
+     * @param isEnabled
+     */
+    public void setConferenceEventPackageEnabled(boolean isEnabled) {
+        log("setConferenceEventPackageEnabled isEnabled=" + isEnabled);
+        mIsConferenceEventPackageEnabled = isEnabled;
+    }
+
+    /**
+     * @return {@code true} is conference event package handling is enabled, {@code false}
+     * otherwise.
+     */
+    public boolean isConferenceEventPackageEnabled() {
+        return mIsConferenceEventPackageEnabled;
     }
 }
