@@ -34,6 +34,7 @@ public final class NitzStateMachineTestSupport {
     public static final long ARBITRARY_SYSTEM_CLOCK_TIME = createUtcTime(1977, 1, 1, 12, 0, 0);
     public static final long ARBITRARY_REALTIME_MILLIS = 123456789L;
     public static final String ARBITRARY_TIME_ZONE_ID = "Europe/Paris";
+    public static final String ARBITRARY_DEBUG_INFO = "Test debug info";
 
     // A country with a single zone : the zone can be guessed from the country.
     // The UK uses UTC for part of the year so it is not good for detecting bogus NITZ signals.
@@ -44,15 +45,37 @@ public final class NitzStateMachineTestSupport {
             .buildFrozen();
     public static final String UNITED_KINGDOM_COUNTRY_DEFAULT_ZONE_ID = "Europe/London";
 
-    // A country that has multiple zones, but there is only one matching time zone at the time :
-    // the zone cannot be guessed from the country alone, but can be guessed from the country +
-    // NITZ. The US never uses UTC so it can be used for testing bogus NITZ signal handling.
-    public static final Scenario UNIQUE_US_ZONE_SCENARIO = new Scenario.Builder()
+    // The US is a country that has multiple zones, but there is only one matching time zone at the
+    // time in this scenario: the zone cannot be guessed from the country alone, but can be guessed
+    // from the country + NITZ. The US never uses UTC so it can be used for testing bogus (zero'd
+    // values) NITZ signals.
+    public static final Scenario UNIQUE_US_ZONE_SCENARIO1 = new Scenario.Builder()
             .setTimeZone("America/Los_Angeles")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("us")
             .buildFrozen();
+
+    // An alternative US scenario which also provides a unique time zone answer.
+    public static final Scenario UNIQUE_US_ZONE_SCENARIO2 = new Scenario.Builder()
+            .setTimeZone("America/Chicago")
+            .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
+            .setCountryIso("us")
+            .buildFrozen();
     public static final String US_COUNTRY_DEFAULT_ZONE_ID = "America/New_York";
+
+    // New Zealand is a country with multiple zones, but the default zone has the "boost" modifier
+    // which means that NITZ isn't required to find the zone.
+    public static final Scenario NEW_ZEALAND_DEFAULT_SCENARIO = new Scenario.Builder()
+            .setTimeZone("Pacific/Auckland")
+            .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
+            .setCountryIso("nz")
+            .buildFrozen();
+    public static final Scenario NEW_ZEALAND_OTHER_SCENARIO = new Scenario.Builder()
+            .setTimeZone("Pacific/Chatham")
+            .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
+            .setCountryIso("nz")
+            .buildFrozen();
+    public static final String NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID = "Pacific/Auckland";
 
     // A country with a single zone: the zone can be guessed from the country alone. CZ never uses
     // UTC so it can be used for testing bogus NITZ signal handling.
