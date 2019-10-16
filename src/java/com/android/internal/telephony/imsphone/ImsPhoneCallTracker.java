@@ -72,6 +72,7 @@ import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.ims.FeatureConnector;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsConfigListener;
@@ -526,7 +527,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return PhoneNumberUtils.isEmergencyNumber(string);
     };
 
-    private final ImsManager.Connector mImsManagerConnector;
+    private final FeatureConnector<ImsManager> mImsManagerConnector;
 
     //***** Events
 
@@ -561,8 +562,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
 
         // Allow the executor to be specified for testing.
-        mImsManagerConnector = new ImsManager.Connector(phone.getContext(), phone.getPhoneId(),
-                new ImsManager.Connector.Listener() {
+        mImsManagerConnector = new FeatureConnector<ImsManager>(
+                phone.getContext(), phone.getPhoneId(),
+                new FeatureConnector.Listener<ImsManager>() {
+                    @Override
+                    public boolean isSupported() {
+                        return ImsManager.isImsSupportedOnDevice(phone.getContext());
+                    }
+
+                    @Override
+                    public ImsManager getFeatureManager() {
+                        return ImsManager.getInstance(phone.getContext(), phone.getPhoneId());
+                    }
+
                     @Override
                     public void connectionReady(ImsManager manager) throws ImsException {
                         mImsManager = manager;
@@ -600,7 +612,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * Test-only method used to set the ImsService retry timeout.
      */
     @VisibleForTesting
-    public void setRetryTimeout(ImsManager.Connector.RetryTimeout retryTimeout) {
+    public void setRetryTimeout(FeatureConnector.RetryTimeout retryTimeout) {
         mImsManagerConnector.mRetryTimeout = retryTimeout;
     }
 

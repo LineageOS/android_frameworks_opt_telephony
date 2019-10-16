@@ -33,6 +33,7 @@ import android.telephony.ims.stub.ImsSmsImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase.SendStatusResult;
 import android.util.Pair;
 
+import com.android.ims.FeatureConnector;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
@@ -62,7 +63,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private volatile boolean mIsSmsCapable;
     private volatile boolean mIsImsServiceUp;
     private volatile boolean mIsRegistered;
-    private final ImsManager.Connector mImsManagerConnector;
+    private final FeatureConnector<ImsManager> mImsManagerConnector;
     /** Telephony metrics instance for logging metrics event */
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
@@ -233,8 +234,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     public ImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController) {
         super(phone, smsDispatchersController);
 
-        mImsManagerConnector = new ImsManager.Connector(mContext, mPhone.getPhoneId(),
-                new ImsManager.Connector.Listener() {
+        mImsManagerConnector = new FeatureConnector<ImsManager>(mContext, mPhone.getPhoneId(),
+                new FeatureConnector.Listener<ImsManager>() {
+                    @Override
+                    public boolean isSupported() {
+                        return ImsManager.isImsSupportedOnDevice(mContext);
+                    }
+
+                    @Override
+                    public ImsManager getFeatureManager() {
+                        return ImsManager.getInstance(mContext, phone.getPhoneId());
+                    }
+
                     @Override
                     public void connectionReady(ImsManager manager) throws ImsException {
                         Rlog.d(TAG, "ImsManager: connection ready.");
