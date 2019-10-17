@@ -72,6 +72,7 @@ import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.ims.FeatureConnector;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsConfigListener;
@@ -267,6 +268,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * the user of an inability to handover from LTE to WIFI for video calls.
      */
     private boolean mIsMonitoringConnectivity = false;
+
+    /**
+     * A test flag which can be used to disable processing of the conference event package data
+     * received from the network.
+     */
+    private boolean mIsConferenceEventPackageEnabled = true;
 
     /**
      * Network callback used to schedule the handover check when a wireless network connects.
@@ -531,7 +538,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return PhoneNumberUtils.isEmergencyNumber(string);
     };
 
-    private final ImsManager.Connector mImsManagerConnector;
+    private final FeatureConnector<ImsManager> mImsManagerConnector;
 
     //***** Events
 
@@ -566,8 +573,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
 
         // Allow the executor to be specified for testing.
-        mImsManagerConnector = new ImsManager.Connector(phone.getContext(), phone.getPhoneId(),
-                new ImsManager.Connector.Listener() {
+        mImsManagerConnector = new FeatureConnector<ImsManager>(
+                phone.getContext(), phone.getPhoneId(),
+                new FeatureConnector.Listener<ImsManager>() {
+                    @Override
+                    public boolean isSupported() {
+                        return ImsManager.isImsSupportedOnDevice(phone.getContext());
+                    }
+
+                    @Override
+                    public ImsManager getFeatureManager() {
+                        return ImsManager.getInstance(phone.getContext(), phone.getPhoneId());
+                    }
+
                     @Override
                     public void connectionReady(ImsManager manager) throws ImsException {
                         mImsManager = manager;
@@ -605,7 +623,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * Test-only method used to set the ImsService retry timeout.
      */
     @VisibleForTesting
-    public void setRetryTimeout(ImsManager.Connector.RetryTimeout retryTimeout) {
+    public void setRetryTimeout(FeatureConnector.RetryTimeout retryTimeout) {
         mImsManagerConnector.mRetryTimeout = retryTimeout;
     }
 
@@ -2833,6 +2851,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 List<ConferenceParticipant> participants) {
             if (DBG) log("onConferenceParticipantsStateChanged");
 
+            if (!mIsConferenceEventPackageEnabled) {
+                logi("onConferenceParticipantsStateChanged - CEP handling disabled");
+                return;
+            }
+
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 updateConferenceParticipantsTiming(participants);
@@ -3632,6 +3655,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mVtDataUsageUidSnapshot=" + mVtDataUsageUidSnapshot);
         pw.println(" mCallQualityMetrics=" + mCallQualityMetrics);
         pw.println(" mCallQualityMetricsHistory=" + mCallQualityMetricsHistory);
+        pw.println(" mIsConferenceEventPackageHandlingEnabled=" + mIsConferenceEventPackageEnabled);
 
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
@@ -4313,5 +4337,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @Override
     public ImsPhone getPhone() {
         return mPhone;
+    }
+
+    /**
+     * Sets whether CEP handling is enabled or disabled.
+     * @param isEnabled
+     */
+    public void setConferenceEventPackageEnabled(boolean isEnabled) {
+        log("setConferenceEventPackageEnabled isEnabled=" + isEnabled);
+        mIsConferenceEventPackageEnabled = isEnabled;
+    }
+
+    /**
+     * @return {@code true} is conference event package handling is enabled, {@code false}
+     * otherwise.
+     */
+    public boolean isConferenceEventPackageEnabled() {
+        return mIsConferenceEventPackageEnabled;
     }
 }

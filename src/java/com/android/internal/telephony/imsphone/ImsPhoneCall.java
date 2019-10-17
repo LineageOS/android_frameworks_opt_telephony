@@ -144,6 +144,9 @@ public class ImsPhoneCall extends Call {
 
     @Override
     public List<ConferenceParticipant> getConferenceParticipants() {
+         if (!mOwner.isConferenceEventPackageEnabled()) {
+             return null;
+         }
          ImsCall call = getImsCall();
          if (call == null) {
              return null;

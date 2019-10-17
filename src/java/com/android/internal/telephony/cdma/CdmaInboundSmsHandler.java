@@ -58,13 +58,11 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
     // When TEST_MODE is on we allow the test intent to trigger an SMS CB alert
-    private static boolean sEnableCbModule = false;
     private static final boolean TEST_MODE = true; //STOPSHIP if true
     private static final String TEST_ACTION = "com.android.internal.telephony.cdma"
             + ".TEST_TRIGGER_CELL_BROADCAST";
     private static final String TOGGLE_CB_MODULE = "com.android.internal.telephony.cdma"
             + ".TOGGLE_CB_MODULE";
-
 
     /**
      * Create a new inbound SMS handler for CDMA.
@@ -447,11 +445,13 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         @Override
         protected void handleToggleEnable() {
             // sEnableCbModule is already toggled in super class
+            mCellBroadcastServiceManager.enable();
         }
 
         @Override
         protected void handleToggleDisable(Context context) {
             // sEnableCbModule is already toggled in super class
+            mCellBroadcastServiceManager.disable();
         }
     }
 }
