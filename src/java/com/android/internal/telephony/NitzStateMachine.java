@@ -134,11 +134,11 @@ public interface NitzStateMachine {
         private static final int NITZ_UPDATE_DIFF_DEFAULT = 2000;
         private final int mNitzUpdateDiff;
 
-        private final GsmCdmaPhone mPhone;
+        private final Phone mPhone;
         private final TelephonyManager mTelephonyManager;
         private final ContentResolver mCr;
 
-        public DeviceStateImpl(GsmCdmaPhone phone) {
+        public DeviceStateImpl(Phone phone) {
             mPhone = phone;
 
             Context context = phone.getContext();
