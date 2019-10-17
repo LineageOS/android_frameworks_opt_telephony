@@ -153,7 +153,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         // TimeZone.getDefault() returns a default zone (GMT) even when time zone have never
         // been set which makes it difficult to tell if it's what the user / time zone detection
         // has chosen. isTimeZoneSettingInitialized() tells us whether the time zone of the
-        // device has ever been explicit set by the user or code.
+        // device has ever been explicitly set by the user or code.
         final boolean isTimeZoneSettingInitialized =
                 mTimeServiceHelper.isTimeZoneSettingInitialized();
 
@@ -188,7 +188,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 mTimeZoneLog.log(logMsg);
 
                 zoneId = lookupResult != null ? lookupResult.getTimeZone().getID() : null;
-            } else if (isNitzSignalOffsetInfoBogus(nitzSignal, isoCountryCode)) {
+            } else if (isTimeZoneSettingInitialized
+                    && isNitzSignalOffsetInfoBogus(nitzSignal, isoCountryCode)) {
                 String logMsg = "updateTimeZoneFromCountryAndNitz: Received NITZ looks bogus, "
                         + " isoCountryCode=" + isoCountryCode
                         + " nitzSignal=" + nitzSignal;
@@ -519,12 +520,15 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     private void updateTimeZoneFromNetworkCountryCode(String iso) {
         CountryResult lookupResult = mTimeZoneLookupHelper.lookupByCountry(
                 iso, mDeviceState.currentTimeMillis());
+        boolean isTimeZoneSettingInitialized = mTimeServiceHelper.isTimeZoneSettingInitialized();
         if (lookupResult != null
-                && (lookupResult.quality == CountryResult.QUALITY_SINGLE_ZONE
+                && (!isTimeZoneSettingInitialized
+                        || lookupResult.quality == CountryResult.QUALITY_SINGLE_ZONE
                         || lookupResult.quality == CountryResult.QUALITY_DEFAULT_BOOSTED)) {
             String logMsg = "updateTimeZoneFromNetworkCountryCode: tz result found"
                     + " iso=" + iso
-                    + " lookupResult=" + lookupResult;
+                    + " lookupResult=" + lookupResult
+                    + " isTimeZoneSettingInitialized=" + isTimeZoneSettingInitialized;
 
             String zoneId = lookupResult.zoneId;
             if (mTimeServiceHelper.isTimeZoneDetectionEnabled()) {
