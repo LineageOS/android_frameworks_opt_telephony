@@ -91,7 +91,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     // Miscellaneous dependencies and helpers not related to detection state.
     private final LocalLog mTimeLog = new LocalLog(30);
     private final LocalLog mTimeZoneLog = new LocalLog(30);
-    private final GsmCdmaPhone mPhone;
+    private final Phone mPhone;
     private final DeviceState mDeviceState;
     private final TimeServiceHelper mTimeServiceHelper;
     private final TimeZoneLookupHelper mTimeZoneLookupHelper;
@@ -99,7 +99,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     private final PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "NitzStateMachine";
 
-    public NitzStateMachineImpl(GsmCdmaPhone phone) {
+    public NitzStateMachineImpl(Phone phone) {
         this(phone,
                 new TimeServiceHelperImpl(phone.getContext()),
                 new DeviceStateImpl(phone),
@@ -107,7 +107,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     }
 
     @VisibleForTesting
-    public NitzStateMachineImpl(GsmCdmaPhone phone, TimeServiceHelper timeServiceHelper,
+    public NitzStateMachineImpl(Phone phone, TimeServiceHelper timeServiceHelper,
             DeviceState deviceState, TimeZoneLookupHelper timeZoneLookupHelper) {
         mPhone = phone;
 
