@@ -25,6 +25,7 @@ import static com.android.internal.telephony.uicc.IccRecords.CARRIER_NAME_DISPLA
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -441,6 +442,14 @@ public class ServiceStateTracker extends Handler {
     private CellIdentity mNewCellIdentity;
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
     private final NitzStateMachine mNitzState;
+
+    /**
+     * Holds the last NITZ signal received. Used only for trying to determine an MCC from a CDMA
+     * SID.
+     */
+    @Nullable
+    private NitzData mLastNitzData;
+
     private final EriManager mEriManager;
     @UnsupportedAppUsage
     private final ContentResolver mCr;
@@ -1768,6 +1777,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     public void onAirplaneModeChanged(boolean isAirplaneModeOn) {
+        mLastNitzData = null;
         mNitzState.handleAirplaneModeChanged(isAirplaneModeOn);
     }
 
@@ -3716,7 +3726,7 @@ public class ServiceStateTracker extends Handler {
         int utcOffsetHours = 0;
         boolean isDst = false;
         boolean isNitzTimeZone = false;
-        NitzData lastNitzData = mNitzState.getCachedNitzData();
+        NitzData lastNitzData = mLastNitzData;
         if (lastNitzData != null) {
             utcOffsetHours = lastNitzData.getLocalOffsetMillis() / MS_PER_HOUR;
             Integer dstAdjustmentMillis = lastNitzData.getDstAdjustmentMillis();
@@ -4037,6 +4047,7 @@ public class ServiceStateTracker extends Handler {
                     + " start=" + start + " delay=" + (start - nitzReceiveTime));
         }
         NitzData newNitzData = NitzData.parse(nitzString);
+        mLastNitzData = newNitzData;
         if (newNitzData != null) {
             try {
                 TimestampedValue<NitzData> nitzSignal =
@@ -5030,6 +5041,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mEmergencyOnly=" + mEmergencyOnly);
         pw.flush();
         mNitzState.dumpState(pw);
+        pw.println(" mLastNitzData=" + mLastNitzData);
         pw.flush();
         pw.println(" mStartedGprsRegCheck=" + mStartedGprsRegCheck);
         pw.println(" mReportedGprsNoReg=" + mReportedGprsNoReg);
