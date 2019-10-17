@@ -20,6 +20,7 @@ import android.annotation.Nullable;
 import android.content.pm.ComponentInfo;
 import android.content.pm.ResolveInfo;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 
 /**
  * This class provides various util functions
@@ -41,4 +42,7 @@ public final class TelephonyUtils {
         if (resolveInfo.providerInfo != null) return resolveInfo.providerInfo;
         throw new IllegalStateException("Missing ComponentInfo!");
     }
+
+    public static boolean IS_DEBUGGABLE =
+            SystemProperties.getInt("ro.debuggable", 0) == 1;
   }
