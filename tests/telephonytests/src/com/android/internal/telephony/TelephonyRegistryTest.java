@@ -25,20 +25,24 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
-import android.os.HandlerThread;
 import android.os.ServiceManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import com.android.server.TelephonyRegistry;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class TelephonyRegistryTest extends TelephonyTest {
     @Mock
     private ISub.Stub mISubStub;
@@ -52,18 +56,15 @@ public class TelephonyRegistryTest extends TelephonyTest {
         @Override
         public void onSrvccStateChanged(int srvccState) {
             mSrvccState = srvccState;
-            setReady(true);
         }
 
         @Override
         public void onPhoneCapabilityChanged(PhoneCapability capability) {
             mPhoneCapability = capability;
-            setReady(true);
         }
         @Override
         public void onActiveDataSubscriptionIdChanged(int activeSubId) {
             mActiveSubId = activeSubId;
-            setReady(true);
         }
     }
 
@@ -71,24 +72,16 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mServiceManagerMockedServices.put("telephony.registry", mTelephonyRegistry.asBinder());
     }
 
-    private HandlerThread mHandlerThread = new HandlerThread("ListenerThread") {
-        @Override
-        public void onLooperPrepared() {
-            mTelephonyRegistry = new TelephonyRegistry(mContext);
-            addTelephonyRegistryService();
-            mPhoneStateListener = new PhoneStateListenerWrapper();
-            setReady(true);
-        }
-    };
-
     @Before
     public void setUp() throws Exception {
         super.setUp("TelephonyRegistryTest");
         // ServiceManager.getService("isub") will return this stub for any call to
         // SubscriptionManager.
         mServiceManagerMockedServices.put("isub", mISubStub);
-        mHandlerThread.start();
-        waitUntilReady();
+        mTelephonyRegistry = new TelephonyRegistry(mContext);
+        addTelephonyRegistryService();
+        mPhoneStateListener = new PhoneStateListenerWrapper();
+        processAllMessages();
         assertEquals(mTelephonyRegistry.asBinder(),
                 ServiceManager.getService("telephony.registry"));
     }
@@ -96,27 +89,24 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mTelephonyRegistry = null;
-        mHandlerThread.quit();
         super.tearDown();
     }
 
     @Test @SmallTest
     public void testPhoneCapabilityChanged() {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
-        setReady(false);
         PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         mTelephonyRegistry.listen(mContext.getOpPackageName(),
                 mPhoneStateListener.callback,
                 LISTEN_PHONE_CAPABILITY_CHANGE, true);
-        waitUntilReady();
+        processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);
 
         // notifyPhoneCapabilityChanged with a new capability. Callback should be triggered.
-        setReady(false);
         phoneCapability = new PhoneCapability(3, 2, 2, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
-        waitUntilReady();
+        processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);
     }
 
@@ -124,7 +114,6 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Test @SmallTest
     public void testActiveDataSubChanged() {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
-        setReady(false);
         int[] activeSubs = {0, 1, 2};
         when(mSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(activeSubs);
         int activeSubId = 0;
@@ -132,14 +121,13 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.listen(mContext.getOpPackageName(),
                 mPhoneStateListener.callback,
                 LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE, true);
-        waitUntilReady();
+        processAllMessages();
         assertEquals(activeSubId, mActiveSubId);
 
         // notifyPhoneCapabilityChanged with a new capability. Callback should be triggered.
-        setReady(false);
         mActiveSubId = 1;
         mTelephonyRegistry.notifyActiveDataSubIdChanged(activeSubId);
-        waitUntilReady();
+        processAllMessages();
         assertEquals(activeSubId, mActiveSubId);
     }
 
@@ -153,21 +141,19 @@ public class TelephonyRegistryTest extends TelephonyTest {
     public void testSrvccStateChanged() throws Exception {
         // Return a phone ID of 0 for all sub ids given.
         doReturn(0/*phoneId*/).when(mISubStub).getPhoneId(anyInt());
-        setReady(false);
         int srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
         mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
         // Should receive callback when listen is called that contains the latest notify result.
         mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
                 mPhoneStateListener.callback,
                 LISTEN_SRVCC_STATE_CHANGED, true);
-        waitUntilReady();
+        processAllMessages();
         assertEquals(srvccState, mSrvccState);
 
         // trigger callback
-        setReady(false);
         srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED;
         mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
-        waitUntilReady();
+        processAllMessages();
         assertEquals(srvccState, mSrvccState);
     }
 
