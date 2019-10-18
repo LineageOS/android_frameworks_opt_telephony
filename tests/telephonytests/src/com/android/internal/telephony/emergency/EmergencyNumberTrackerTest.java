@@ -21,8 +21,9 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 import android.os.AsyncResult;
-import android.os.HandlerThread;
 import android.telephony.emergency.EmergencyNumber;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -31,6 +32,7 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
@@ -40,6 +42,8 @@ import java.util.List;
 /**
  * Tests for EmergencyNumberTracker.java
  */
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class EmergencyNumberTrackerTest extends TelephonyTest {
 
     @Mock
@@ -53,23 +57,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private List<EmergencyNumber> mEmergencyNumberListTestSample = new ArrayList<>();
     private EmergencyNumber mUsEmergencyNumber;
     private String[] mEmergencyNumberPrefixTestSample = {"123", "456"};
-    private static final long TIMEOUT_MS = 500;
-
-    private class EmergencyNumberTrackerTestHandler extends HandlerThread {
-        private EmergencyNumberTrackerTestHandler(String name) {
-            super(name);
-        }
-        @Override
-        public void onLooperPrepared() {
-            mEmergencyNumberTrackerMock = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
-            mEmergencyNumberTrackerMock2 = new EmergencyNumberTracker(mPhone2, mSimulatedCommands);
-            doReturn(mEmergencyNumberTrackerMock2).when(mPhone2).getEmergencyNumberTracker();
-            mEmergencyNumberTrackerMock.DBG = true;
-            setReady(true);
-        }
-    }
-
-    private EmergencyNumberTrackerTestHandler mHandlerThread;
 
     @Before
     public void setUp() throws Exception {
@@ -82,9 +69,11 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         doReturn(1).when(mPhone2).getPhoneId();
 
         initializeEmergencyNumberListTestSamples();
-        mHandlerThread = new EmergencyNumberTrackerTestHandler("EmergencyNumberTrackerTestHandler");
-        mHandlerThread.start();
-        waitUntilReady();
+        mEmergencyNumberTrackerMock = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
+        mEmergencyNumberTrackerMock2 = new EmergencyNumberTracker(mPhone2, mSimulatedCommands);
+        doReturn(mEmergencyNumberTrackerMock2).when(mPhone2).getEmergencyNumberTracker();
+        mEmergencyNumberTrackerMock.DBG = true;
+        processAllMessages();
         logd("EmergencyNumberTrackerTest -Setup!");
     }
 
@@ -92,9 +81,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         // Set back to single sim mode
         setSinglePhone();
-
-        mHandlerThread.quit();
-        mHandlerThread.join();
         super.tearDown();
     }
 
@@ -118,19 +104,19 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 mEmergencyNumberTrackerMock.obtainMessage(
                         1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
                         new AsyncResult(null, mEmergencyNumberListTestSample, null)));
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
+        processAllMessages();
     }
 
     private void cacheEmergencyNumberListFromDatabaseByCountry(String countryIso) {
         mEmergencyNumberTrackerMock.updateEmergencyNumberDatabaseCountryChange(countryIso);
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
+        processAllMessages();
     }
 
     private void sendEmergencyNumberPrefix(EmergencyNumberTracker emergencyNumberTrackerMock) {
         emergencyNumberTrackerMock.obtainMessage(
         	4 /* EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX */,
                 mEmergencyNumberPrefixTestSample).sendToTarget();
-        waitForHandlerAction(emergencyNumberTrackerMock, TIMEOUT_MS);
+        processAllMessages();
     }
 
     private void setDsdsPhones() throws Exception {
@@ -154,7 +140,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     public void testUpdateEmergencyCountryIso() throws Exception {
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
         mEmergencyNumberTrackerMock.updateEmergencyNumberDatabaseCountryChange("us");
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
+        processAllMessages();
 
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("us"));
     }
@@ -165,8 +151,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock2);
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("jp");
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
-        waitForHandlerAction(mEmergencyNumberTrackerMock2, TIMEOUT_MS);
+        processAllMessages();
 
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("jp"));
         assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("jp"));
@@ -181,16 +166,14 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         // First, both slots have empty country iso, trigger a country change to "jp".
         // We should expect both sims have "jp" country iso.
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("jp");
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
-        waitForHandlerAction(mEmergencyNumberTrackerMock2, TIMEOUT_MS);
+        processAllMessages();
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("jp"));
         assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("jp"));
 
         // Second, both slots now have "jp" country iso, trigger a country change to "us".
         // We should expect both sims have "us" country iso.
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
-        waitForHandlerAction(mEmergencyNumberTrackerMock2, TIMEOUT_MS);
+        processAllMessages();
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("us"));
         assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("us"));
 
@@ -201,8 +184,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         // to "ca".
         mEmergencyNumberTrackerMock2.mIsCountrySetByAnotherSub = false;
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("ca");
-        waitForHandlerAction(mEmergencyNumberTrackerMock, TIMEOUT_MS);
-        waitForHandlerAction(mEmergencyNumberTrackerMock2, TIMEOUT_MS);
+        processAllMessages();
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("ca"));
         assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("us"));
     }
