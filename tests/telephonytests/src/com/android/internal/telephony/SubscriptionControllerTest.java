@@ -1025,6 +1025,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testGetEnabledSubscriptionIdDualSIM() {
         doReturn(SINGLE_SIM).when(mTelephonyManager).getSimCount();
         doReturn(SINGLE_SIM).when(mTelephonyManager).getPhoneCount();
+        doReturn(SINGLE_SIM).when(mTelephonyManager).getActiveModemCount();
         // A dual SIM device may have logical slot 0 mapped to physical slot 0
         // (i.e. logical slot 1 mapped to physical slot 1)
         UiccSlotInfo slot0 = getFakeUiccSlotInfo(true, 0);
@@ -1033,6 +1034,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         UiccSlot [] uiccSlots = {mUiccSlot, mUiccSlot};
 
         doReturn(2).when(mTelephonyManager).getPhoneCount();
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
         doReturn(uiccSlotInfos).when(mTelephonyManager).getUiccSlotsInfo();
         doReturn(uiccSlots).when(mUiccController).getUiccSlots();
         assertEquals(2, UiccController.getInstance().getUiccSlots().length);

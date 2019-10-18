@@ -123,7 +123,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
         replaceInstance(SubscriptionInfoUpdater.class, "sIccId", null, new String[1]);
         replaceInstance(SubscriptionInfoUpdater.class, "sContext", null, null);
-        replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null, 1);
+        replaceInstance(SubscriptionInfoUpdater.class, "SUPPORTED_MODEM_COUNT", null, 1);
         replaceInstance(SubscriptionInfoUpdater.class, "sSimCardState", null, new int[1]);
         replaceInstance(SubscriptionInfoUpdater.class, "sSimApplicationState", null, new int[1]);
         replaceInstance(SubscriptionInfoUpdater.class, "sIsSubInfoInitialized", null, false);
@@ -135,6 +135,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(1).when(mTelephonyManager).getSimCount();
         doReturn(1).when(mTelephonyManager).getPhoneCount();
+        doReturn(1).when(mTelephonyManager).getActiveModemCount();
 
         when(mContentProvider.update(any(), any(), any(), isNull())).thenAnswer(
                 new Answer<Integer>() {
@@ -392,7 +393,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mPhone});
         replaceInstance(SubscriptionInfoUpdater.class, "sIccId", null,
                 new String[]{null, null});
-        replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null, 2);
+        replaceInstance(SubscriptionInfoUpdater.class, "SUPPORTED_MODEM_COUNT", null, 2);
         replaceInstance(SubscriptionInfoUpdater.class, "sSimCardState", null,
                 new int[]{0, 0});
         replaceInstance(SubscriptionInfoUpdater.class, "sSimApplicationState", null,
@@ -403,6 +404,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getPhoneId(eq(FAKE_SUB_ID_1));
         doReturn(FAKE_SUB_ID_2).when(mSubscriptionController).getPhoneId(eq(FAKE_SUB_ID_2));
         doReturn(2).when(mTelephonyManager).getPhoneCount();
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
         doReturn(FAKE_MCC_MNC_1).when(mTelephonyManager).getSimOperatorNumeric(eq(FAKE_SUB_ID_1));
         doReturn(FAKE_MCC_MNC_2).when(mTelephonyManager).getSimOperatorNumeric(eq(FAKE_SUB_ID_2));
         verify(mSubscriptionController, times(0)).clearSubInfo();
