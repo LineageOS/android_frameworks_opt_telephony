@@ -633,7 +633,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return Settings.Global.getInt(
                 mContext.getContentResolver(),
                 Settings.Global.ENABLE_RADIO_BUG_DETECTION,
-                0) != 0;
+                1) != 0;
     }
 
     @Override
