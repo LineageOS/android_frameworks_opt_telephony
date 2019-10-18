@@ -427,7 +427,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
         assertTrue(mPhoneUT.isInEmergencySmsMode());
         // mTimeLastEmergencySmsSentMs uses System.currentTimeMillis()
-        waitForMs(200);
+        waitForMs(timeout + 5);
+        processAllMessages();
         assertFalse(mPhoneUT.isInEmergencySmsMode());
 
         // Feature not supported

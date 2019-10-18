@@ -15,35 +15,8 @@
  */
 package com.android.internal.telephony.imsphone;
 
-import android.os.AsyncResult;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.telephony.DisconnectCause;
-import android.telephony.PhoneNumberUtils;
-import android.telephony.ServiceState;
-import android.telephony.ims.ImsCallProfile;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
-
-import com.android.internal.telephony.Call;
-import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.GsmCdmaCall;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.TelephonyTest;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import java.lang.reflect.Field;
-
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -57,6 +30,39 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.os.AsyncResult;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.telephony.DisconnectCause;
+import android.telephony.PhoneNumberUtils;
+import android.telephony.ServiceState;
+import android.telephony.ims.ImsCallProfile;
+import android.test.suitebuilder.annotation.MediumTest;
+import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
+
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.GsmCdmaCall;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyTest;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
+import java.lang.reflect.Field;
+
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class ImsPhoneConnectionTest extends TelephonyTest {
     private ImsPhoneConnection mConnectionUT;
     private Bundle mBundle = new Bundle();
@@ -70,7 +76,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        replaceInstance(Handler.class, "mLooper", mImsCT, Looper.getMainLooper());
+        replaceInstance(Handler.class, "mLooper", mImsCT, Looper.myLooper());
         replaceInstance(ImsPhoneCallTracker.class, "mForegroundCall", mImsCT, mForeGroundCall);
         replaceInstance(ImsPhoneCallTracker.class, "mBackgroundCall", mImsCT, mBackGroundCall);
         replaceInstance(ImsPhoneCallTracker.class, "mRingingCall", mImsCT, mRingGroundCall);
@@ -178,6 +184,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testConnectionDisconnect() {
         //Mock we have an active connection
         testImsUpdateStateForeGround();
+        // tested using System.currentTimeMillis()
         waitForMs(50);
         mConnectionUT.onDisconnect(DisconnectCause.LOCAL);
         assertEquals(DisconnectCause.LOCAL, mConnectionUT.getDisconnectCause());
@@ -205,7 +212,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertEquals(Connection.PostDialState.WAIT, mConnectionUT.getPostDialState());
         mConnectionUT.proceedAfterWaitChar();
-        waitForMs(50);
+        processAllMessages();
         assertEquals(Connection.PostDialState.COMPLETE, mConnectionUT.getPostDialState());
     }
 
@@ -231,10 +238,11 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         try {
             Field field = ImsPhoneConnection.class.getDeclaredField("PAUSE_DELAY_MILLIS");
             field.setAccessible(true);
-            waitForMs((Integer) field.get(null) + 50);
+            moveTimeForward((Integer) field.get(null));
         } catch (Exception ex) {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
+        processAllMessages();
         assertEquals(Connection.PostDialState.COMPLETE, mConnectionUT.getPostDialState());
     }
 

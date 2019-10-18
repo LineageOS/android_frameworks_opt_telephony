@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony.imsphone;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -40,8 +38,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telecom.VideoProfile;
@@ -59,6 +55,8 @@ import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
@@ -78,14 +76,16 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+@RunWith(AndroidTestingRunner.class)
+@TestableLooper.RunWithLooper
 public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
-    private ImsCTHandlerThread mImsCTHandlerThread;
     private MmTelFeature.Listener mMmTelListener;
     private ImsMmTelManager.RegistrationCallback mRegistrationCallback;
     private ImsMmTelManager.CapabilityCallback mCapabilityCallback;
@@ -93,7 +93,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsCall mImsCall;
     private ImsCall mSecondImsCall;
     private Bundle mBundle = new Bundle();
-    private int mServiceId;
     @Mock
     private ImsCallSession mImsCallSession;
     @Mock
@@ -102,34 +101,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneConnection.Listener mImsPhoneConnectionListener;
     @Mock
     private ImsConfig mImsConfig;
-    private Handler mCTHander;
-
-    private class ImsCTHandlerThread extends HandlerThread {
-
-        private ImsCTHandlerThread(String name) {
-            super(name);
-        }
-        @Override
-        public void onLooperPrepared() {
-            mCTUT = new ImsPhoneCallTracker(mImsPhone, Runnable::run);
-            mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
-            mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
-                    ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
-            mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
-                    ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
-            mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, "",
-                    ImsReasonInfo.CODE_SIP_FORBIDDEN);
-            mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
-                    "emergency calls over wifi not allowed in this location",
-                    ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE);
-            mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_FORBIDDEN,
-                    "service not allowed in this location",
-                    ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION);
-            mCTUT.setDataEnabled(true);
-            mCTHander = new Handler(mCTUT.getLooper());
-            setReady(true);
-        }
-    }
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -186,7 +157,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
-        mServiceId = 0;
         mImsCallProfile.mCallExtras = mBundle;
         mImsManagerInstances.put(mImsPhone.getPhoneId(), mImsManager);
         mImsCall = spy(new ImsCall(mContext, mImsCallProfile));
@@ -241,19 +211,29 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         doNothing().when(mImsManager).addNotifyStatusChangedCallbackIfAvailable(any());
 
-        mImsCTHandlerThread = new ImsCTHandlerThread(this.getClass().getSimpleName());
-        mImsCTHandlerThread.start();
+        mCTUT = new ImsPhoneCallTracker(mImsPhone, Runnable::run);
+        mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
+        mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
+                ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+        mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
+                ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, "",
+                ImsReasonInfo.CODE_SIP_FORBIDDEN);
+        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
+                "emergency calls over wifi not allowed in this location",
+                ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE);
+        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_FORBIDDEN,
+                "service not allowed in this location",
+                ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION);
+        mCTUT.setDataEnabled(true);
 
-        waitUntilReady();
         logd("ImsPhoneCallTracker initiated");
-        /* Make sure getImsService is triggered on handler */
-        waitForHandlerAction(mCTHander, 100);
+        processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
-        mImsCTHandlerThread.quit();
         super.tearDown();
     }
 
@@ -299,7 +279,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
         caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
-        waitForHandlerAction(mCTHander, 1000);
+        processAllMessages();
 
         // Voice over IWLAN is still disabled
         assertFalse(mCTUT.isVowifiEnabled());
@@ -317,7 +297,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
         caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
-        waitForHandlerAction(mCTHander, 1000);
+        processAllMessages();
 
         // Voice over IWLAN is enabled
         assertTrue(mCTUT.isVowifiEnabled());
@@ -335,7 +315,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
         caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
-        waitForHandlerAction(mCTHander, 1000);
+        processAllMessages();
 
         assertTrue(mCTUT.isVolteEnabled());
         assertFalse(mCTUT.isVideoCallEnabled());
@@ -348,7 +328,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         capsVideo.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
         capsVideo.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
         mCapabilityCallback.onCapabilitiesStatusChanged(capsVideo);
-        waitForHandlerAction(mCTHander, 1000);
+        processAllMessages();
         assertTrue(mCTUT.isVideoCallEnabled());
         verify(mImsPhone, times(1)).notifyForVideoCapabilityChanged(eq(true));
     }
@@ -479,7 +459,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
 
-        waitForMs(100);
+        processAllMessages();
         assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertFalse(mCTUT.mRingingCall.isRinging());
         assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
@@ -596,7 +576,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(100);
+        processAllMessages();
         assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
         assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
     }
@@ -635,7 +615,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
 
-        waitForMs(100);
+        processAllMessages();
 
         mCTUT.sendDtmf(PhoneNumberUtils.WAIT, null);
         //verify trigger sendDtmf to mImsSecondCall
@@ -677,8 +657,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             Assert.fail();
         }
 
-        // wait for handler to process ImsService connection retry
-        waitForHandlerAction(mCTHander, 1000); // 1 second timeout
+        processAllMessages();
         verify(mImsManager, never()).makeCall(nullable(ImsCallProfile.class),
                 eq(new String[]{"+17005554141"}), nullable(ImsCall.Listener.class));
         // Make sure that open is called in ImsPhoneCallTracker when it was first connected and
@@ -700,8 +679,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         mCTUT.setUiTTYMode(0, new Message());
 
-        // wait for handler to process ImsService connection retry
-        waitForHandlerAction(mCTHander, 100);
+        processAllMessages();
         // Make sure that open is called in ImsPhoneCallTracker to re-establish connection to
         // ImsService
         verify(mImsManager, times(2)).open(
