@@ -62,6 +62,11 @@ public interface AppInterface {
      */
     void onCmdResponse(CatResponseMessage resMsg);
 
+    /**
+     * Dispose when the service is not longer needed.
+     */
+    void dispose();
+
     /*
      * Enumeration for representing "Type of Command" of proactive commands.
      * Those are the only commands which are supported by the Telephony. Any app
