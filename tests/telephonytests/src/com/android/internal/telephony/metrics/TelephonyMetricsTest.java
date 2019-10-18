@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.NetworkRegistrationInfo.NR_STATE_NONE;
+import static android.telephony.ServiceState.FREQUENCY_RANGE_UNKNOWN;
 import static android.telephony.ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
 import static android.telephony.ServiceState.ROAMING_TYPE_DOMESTIC;
 
@@ -67,6 +69,8 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.E
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyLog;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.FrequencyRange;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.NrState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.RoamingType;
 
 import org.junit.After;
@@ -116,6 +120,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
         doReturn("123456").when(mServiceState).getDataOperatorNumeric();
         doReturn(RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState).getRilVoiceRadioTechnology();
         doReturn(RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState).getRilDataRadioTechnology();
+        doReturn(FREQUENCY_RANGE_UNKNOWN).when(mServiceState).getNrFrequencyRange();
+        doReturn(NR_STATE_NONE).when(mServiceState).getNrState();
     }
 
     @After
@@ -686,6 +692,10 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals("datashort", state.dataOperator.alphaShort);
 
         assertEquals("123456", state.dataOperator.numeric);
+
+        assertEquals(FrequencyRange.FREQUENCY_RANGE_UNKNOWN, state.nrFrequencyRange);
+
+        assertEquals(NrState.NR_STATE_NONE, state.nrState);
     }
 
     // Test reset scenario
