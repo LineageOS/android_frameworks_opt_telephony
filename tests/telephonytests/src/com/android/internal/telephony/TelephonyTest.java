@@ -49,7 +49,7 @@ import android.os.Message;
 import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
-import android.os.telephony.TelephonyRegistryManager;
+import android.telephony.TelephonyRegistryManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -568,8 +568,10 @@ public abstract class TelephonyTest {
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
         doReturn(1).when(mTelephonyManager).getPhoneCount();
+        doReturn(1).when(mTelephonyManager).getActiveModemCount();
         // Have getMaxPhoneCount always return the same value with getPhoneCount by default.
-        doAnswer((invocation)->mTelephonyManager.getPhoneCount())
+        doAnswer((invocation)->Math.max(mTelephonyManager.getActiveModemCount(),
+                mTelephonyManager.getPhoneCount()))
                 .when(mTelephonyManager).getSupportedModemCount();
 
         //Data

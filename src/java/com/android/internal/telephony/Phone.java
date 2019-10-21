@@ -233,7 +233,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final String CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX = "cdma_non_roaming_list_";
 
     // Key used to read/write current CLIR setting
-    public static final String CLIR_KEY = "clir_key";
+    public static final String CLIR_KEY = "clir_sub_key";
 
     // Key used for storing voice mail count
     private static final String VM_COUNT = "vm_count_key";
@@ -1486,9 +1486,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         // Open the shared preferences editor, and write the value.
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(CLIR_KEY + getPhoneId(), commandInterfaceCLIRMode);
-        Rlog.i(LOG_TAG, "saveClirSetting: " + CLIR_KEY + getPhoneId() + "=" +
-                commandInterfaceCLIRMode);
+        editor.putInt(CLIR_KEY + getSubId(), commandInterfaceCLIRMode);
+        Rlog.i(LOG_TAG, "saveClirSetting: " + CLIR_KEY + getSubId() + "="
+                + commandInterfaceCLIRMode);
 
         // Commit and log the result.
         if (!editor.commit()) {

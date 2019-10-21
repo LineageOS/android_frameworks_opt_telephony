@@ -1883,7 +1883,7 @@ public class SIMRecords extends IccRecords {
                 tmpSpdi.add(plmnCode);
             }
         }
-        mSpdi = (String[]) tmpSpdi.toArray();
+        mSpdi = tmpSpdi.toArray(new String[tmpSpdi.size()]);
     }
 
     /**

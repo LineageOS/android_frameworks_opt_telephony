@@ -87,7 +87,6 @@ public class PhoneFactory {
     static private Context sContext;
     static private PhoneConfigurationManager sPhoneConfigurationManager;
     static private PhoneSwitcher sPhoneSwitcher;
-    static private SubscriptionMonitor sSubscriptionMonitor;
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
     static private ImsResolver sImsResolver;
     static private NotificationChannelController sNotificationChannelController;
@@ -250,8 +249,6 @@ public class PhoneFactory {
                 ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
                         ServiceManager.getService("telephony.registry"));
 
-                sSubscriptionMonitor = new SubscriptionMonitor(tr, sContext, sc, numPhones);
-
                 sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext);
 
                 sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
@@ -271,7 +268,7 @@ public class PhoneFactory {
 
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                            sSubscriptionMonitor, Looper.myLooper(), sPhones[i]);
+                            Looper.myLooper(), sPhones[i]);
                 }
             }
         }
@@ -532,16 +529,6 @@ public class PhoneFactory {
         pw.increaseIndent();
         try {
             if (sImsResolver != null) sImsResolver.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.decreaseIndent();
-        pw.println("++++++++++++++++++++++++++++++++");
-
-        pw.println("SubscriptionMonitor:");
-        pw.increaseIndent();
-        try {
-            sSubscriptionMonitor.dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -81,12 +81,6 @@ public interface NitzStateMachine {
     void dumpLogs(FileDescriptor fd, IndentingPrintWriter ipw, String[] args);
 
     /**
-     * Returns the last NITZ data that was cached.
-     */
-    @Nullable
-    NitzData getCachedNitzData();
-
-    /**
      * A proxy over read-only device state that allows things like system properties, elapsed
      * realtime clock to be faked for tests.
      */
@@ -134,11 +128,11 @@ public interface NitzStateMachine {
         private static final int NITZ_UPDATE_DIFF_DEFAULT = 2000;
         private final int mNitzUpdateDiff;
 
-        private final GsmCdmaPhone mPhone;
+        private final Phone mPhone;
         private final TelephonyManager mTelephonyManager;
         private final ContentResolver mCr;
 
-        public DeviceStateImpl(GsmCdmaPhone phone) {
+        public DeviceStateImpl(Phone phone) {
             mPhone = phone;
 
             Context context = phone.getContext();
