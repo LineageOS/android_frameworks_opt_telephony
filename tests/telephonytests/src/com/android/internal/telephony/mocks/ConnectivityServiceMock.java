@@ -113,6 +113,10 @@ public class ConnectivityServiceMock {
         }
     }
 
+    public HandlerThread getHandlerThread() {
+        return mHandlerThread;
+    }
+
     private class InternalHandler extends Handler {
         public InternalHandler(Looper looper) {
             super(looper);
