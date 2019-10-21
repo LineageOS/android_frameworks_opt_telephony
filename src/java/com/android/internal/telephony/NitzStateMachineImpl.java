@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.app.timedetector.PhoneTimeSuggestion;
 import android.content.Context;
 import android.os.PowerManager;
 import android.telephony.Rlog;
@@ -428,7 +429,11 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 Rlog.d(LOG_TAG, logMsg);
             }
             mTimeLog.log(logMsg);
-            mTimeServiceHelper.suggestDeviceTime(newNitzTime);
+            PhoneTimeSuggestion phoneTimeSuggestion =
+                    new PhoneTimeSuggestion(mPhone.getPhoneId(), newNitzTime);
+            phoneTimeSuggestion.addDebugInfo(logMsg);
+            mTimeServiceHelper.suggestDeviceTime(phoneTimeSuggestion);
+
             TelephonyMetrics.getInstance().writeNITZEvent(
                     mPhone.getPhoneId(), newNitzTime.getValue());
 

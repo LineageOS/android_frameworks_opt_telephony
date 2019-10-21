@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timedetector.TimeDetector;
-import android.util.TimestampedValue;
 
 /**
  * An interface to various time / time zone detection behaviors that should be centralized into a
@@ -62,8 +62,8 @@ public interface TimeServiceHelper {
     /**
      * Suggest the time to the {@link TimeDetector}.
      *
-     * @param signalTimeMillis the signal time as received from the network
+     * @param phoneTimeSuggestion the suggested time
      */
-    void suggestDeviceTime(TimestampedValue<Long> signalTimeMillis);
+    void suggestDeviceTime(PhoneTimeSuggestion phoneTimeSuggestion);
 
 }
