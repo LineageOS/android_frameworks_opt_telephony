@@ -181,6 +181,8 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             logd("Device location is outside the broadcast area "
                     + CbGeoUtils.encodeGeometriesToString(broadcastArea));
         }
+
+        sendMessage(EVENT_BROADCAST_NOT_REQUIRED);
     }
 
     /**
