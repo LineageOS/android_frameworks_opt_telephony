@@ -263,7 +263,7 @@ class DTTZResponseData extends ResponseData {
             data[7] = (byte) 0xFF;    // set FF in terminal response
         } else {
             TimeZone zone = TimeZone.getTimeZone(tz);
-            int zoneOffset = zone.getRawOffset() + zone.getDSTSavings();
+            int zoneOffset = zone.getOffset(mCalendar.getTimeInMillis());
             data[7] = getTZOffSetByte(zoneOffset);
         }
 
