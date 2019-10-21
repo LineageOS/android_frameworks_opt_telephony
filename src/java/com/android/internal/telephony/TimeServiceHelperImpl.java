@@ -17,8 +17,8 @@
 package com.android.internal.telephony;
 
 import android.app.AlarmManager;
+import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timedetector.TimeDetector;
-import android.app.timedetector.TimeSignal;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -27,7 +27,6 @@ import android.os.Handler;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
-import android.util.TimestampedValue;
 
 /**
  * An interface to various time / time zone detection behaviors that should be centralized into a
@@ -89,9 +88,8 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
     }
 
     @Override
-    public void suggestDeviceTime(TimestampedValue<Long> signalTimeMillis) {
-        TimeSignal timeSignal = new TimeSignal(TimeSignal.SOURCE_ID_NITZ, signalTimeMillis);
-        mTimeDetector.suggestTime(timeSignal);
+    public void suggestDeviceTime(PhoneTimeSuggestion phoneTimeSuggestion) {
+        mTimeDetector.suggestPhoneTime(phoneTimeSuggestion);
     }
 
     /**
