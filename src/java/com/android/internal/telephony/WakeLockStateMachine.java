@@ -51,9 +51,6 @@ public abstract class WakeLockStateMachine extends StateMachine {
     /** Release wakelock after a short timeout when returning to idle state. */
     static final int EVENT_RELEASE_WAKE_LOCK = 3;
 
-    /** Broadcast not required due to geo-fencing check */
-    static final int EVENT_BROADCAST_NOT_REQUIRED = 4;
-
     @UnsupportedAppUsage
     protected Phone mPhone;
 
@@ -155,14 +152,13 @@ public abstract class WakeLockStateMachine extends StateMachine {
         @Override
         public void exit() {
             mWakeLock.acquire();
-            if (DBG) log("Idle: acquired wakelock, leaving Idle state");
+            if (DBG) log("acquired wakelock, leaving Idle state");
         }
 
         @Override
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_NEW_SMS_MESSAGE:
-                    log("Idle: new cell broadcast message");
                     // transition to waiting state if we sent a broadcast
                     if (handleSmsMessage(msg)) {
                         transitionTo(mWaitingState);
@@ -170,12 +166,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
                     return HANDLED;
 
                 case EVENT_RELEASE_WAKE_LOCK:
-                    log("Idle: release wakelock");
                     releaseWakeLock();
-                    return HANDLED;
-
-                case EVENT_BROADCAST_NOT_REQUIRED:
-                    log("Idle: broadcast not required");
                     return HANDLED;
 
                 default:
@@ -193,25 +184,17 @@ public abstract class WakeLockStateMachine extends StateMachine {
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_NEW_SMS_MESSAGE:
-                    log("Waiting: deferring message until return to idle");
+                    log("deferring message until return to idle");
                     deferMessage(msg);
                     return HANDLED;
 
                 case EVENT_BROADCAST_COMPLETE:
-                    log("Waiting: broadcast complete, returning to idle");
+                    log("broadcast complete, returning to idle");
                     transitionTo(mIdleState);
                     return HANDLED;
 
                 case EVENT_RELEASE_WAKE_LOCK:
-                    log("Waiting: release wakelock");
                     releaseWakeLock();
-                    return HANDLED;
-
-                case EVENT_BROADCAST_NOT_REQUIRED:
-                    log("Waiting: broadcast not required");
-                    if (mReceiverCount.get() == 0) {
-                        transitionTo(mIdleState);
-                    }
                     return HANDLED;
 
                 default:
