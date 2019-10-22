@@ -50,7 +50,11 @@ public final class MccTable {
 
     static class MccEntry implements Comparable<MccEntry> {
         final int mMcc;
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
+                publicAlternatives = "There is no alternative for {@code MccTable.MccEntry.mIso}, "
+                        + "but it was included in hidden APIs due to a static analysis false "
+                        + "positive and has been made greylist-max-q. Please file a bug if you "
+                        + "still require this API.")
         final String mIso;
         final int mSmallestDigitsMnc;
 
@@ -69,7 +73,11 @@ public final class MccTable {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
+            publicAlternatives = "There is no alternative for {@code MccTable.entryForMcc}, "
+                    + "but it was included in hidden APIs due to a static analysis false positive "
+                    + "and has been made greylist-max-q. Please file a bug if you still require "
+                    + "this API.")
     private static MccEntry entryForMcc(int mcc) {
         MccEntry m = new MccEntry(mcc, "", 0);
 
@@ -87,7 +95,11 @@ public final class MccTable {
      * @param mcc Mobile Country Code
      * @return default TimeZone ID, or null if not specified
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
+            publicAlternatives = "There is no alternative for {@code MccTable.defaultTimeZoneForMcc"
+                    + "}, but it was included in hidden APIs due to a static analysis false "
+                    + "positive and has been made greylist-max-q. Please file a bug if you still "
+                    + "require this API.")
     public static String defaultTimeZoneForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
         if (entry == null) {
@@ -132,7 +144,11 @@ public final class MccTable {
      * an ISO 2-3 character language code if available.
      * Returns null if unavailable.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
+            publicAlternatives = "There is no alternative for {@code MccTable.defaultLanguageForMcc"
+                    + "}, but it was included in hidden APIs due to a static analysis false "
+                    + "positive and has been made greylist-max-q. Please file a bug if you still "
+                    + "require this API.")
     public static String defaultLanguageForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
         if (entry == null) {
@@ -160,7 +176,11 @@ public final class MccTable {
      * the smallest number of digits that M if available.
      * Returns 2 if unavailable.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
+            publicAlternatives = "There is no alternative for {@code MccTable"
+                    + ".smallestDigitsMccForMnc}, but it was included in hidden APIs due to a "
+                    + "static analysis false positive and has been made greylist-max-q. Please "
+                    + "file a bug if you still require this API.")
     public static int smallestDigitsMccForMnc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
 
@@ -264,7 +284,11 @@ public final class MccTable {
      *
      * @return Locale or null if no appropriate value
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
+            publicAlternatives = "There is no alternative for {@code MccTable"
+                    + ".getLocaleForLanguageCountry}, but it was included in hidden APIs due to a "
+                    + "static analysis false positive and has been made greylist-max-q. Please "
+                    + "file a bug if you still require this API.")
     private static Locale getLocaleForLanguageCountry(Context context, String language,
             String country) {
         if (language == null) {
