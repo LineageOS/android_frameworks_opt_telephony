@@ -262,44 +262,6 @@ message TelephonyServiceState {
     ROAMING_TYPE_INTERNATIONAL = 3;
   }
 
-  enum FrequencyRange {
-    // Unknown. The default value.
-    FREQUENCY_RANGE_UNKNOWN = -1;
-
-    // Frequency range is below 1GHz.
-    FREQUENCY_RANGE_LOW = 1;
-
-    // Frequency range is between 1GHz and 3GHz.
-    FREQUENCY_RANGE_MID = 2;
-
-    // Frequency range is between 3GHz and 6GHz.
-    FREQUENCY_RANGE_HIGH = 3;
-
-    // Frequency range is above 6GHz (millimeter wave frequency).
-    FREQUENCY_RANGE_MMWAVE = 4;
-  }
-
-  enum NrState {
-    // The device isn't camped on an LTE cell
-    // or the LTE cell doesn't support EN-DC.
-    NR_STATE_NONE = -1;
-
-    // The device is camped on an LTE cell that supports EN-DC
-    // but either DCNR is restricted
-    // or NR is not supported by the selected PLMN.
-    NR_STATE_RESTRICTED = 1;
-
-    // The device is camped on an LTE cell that supports EN-DC
-    // and both DCNR is not restricted and NR is supported
-    // by the selected PLMN.
-    NR_STATE_NOT_RESTRICTED = 2;
-
-    // The device is camped on an LTE cell that supports EN-DC
-    // and connected to at least one 5G cell
-    // as a secondary serving cell.
-    NR_STATE_CONNECTED = 3;
-  }
-
   // Current registered operator
   optional TelephonyOperator voice_operator = 1;
 
@@ -320,12 +282,6 @@ message TelephonyServiceState {
 
   // Current Channel Number
   optional int32 channel_number = 7;
-
-  // Current NR frequency range
-  optional FrequencyRange nr_frequency_range = 8;
-
-  // Current NR state
-  optional NrState nr_state = 9;
 }
 
 // Radio access families
