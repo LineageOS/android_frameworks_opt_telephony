@@ -41,14 +41,15 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.CellBroadcasts;
+import android.telephony.CbGeoUtils;
+import android.telephony.CbGeoUtils.Geometry;
+import android.telephony.CbGeoUtils.LatLng;
 import android.telephony.SmsCbMessage;
 import android.telephony.SubscriptionManager;
 import android.text.format.DateUtils;
 import android.util.LocalLog;
 import android.util.Log;
 
-import com.android.internal.telephony.CbGeoUtils.Geometry;
-import com.android.internal.telephony.CbGeoUtils.LatLng;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 
 import java.io.FileDescriptor;
@@ -142,7 +143,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
                 } else {
                     performGeoFencing(message, uri, message.getGeometries(), location);
                 }
-            }, message.getMaximumWaitingTime());
+            }, message.getMaximumWaitingDuration());
         } else {
             if (DBG) {
                 log("Broadcast the message directly because no geo-fencing required, "
