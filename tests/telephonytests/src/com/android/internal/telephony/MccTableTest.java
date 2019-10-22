@@ -30,23 +30,6 @@ public class MccTableTest extends AndroidTestCase {
 
     @SmallTest
     @Ignore
-    public void testTimeZone() throws Exception {
-        assertEquals("Europe/Paris", MccTable.defaultTimeZoneForMcc(208));
-        assertEquals("Europe/Vienna", MccTable.defaultTimeZoneForMcc(232));
-        assertEquals("Africa/Johannesburg", MccTable.defaultTimeZoneForMcc(655));
-        assertEquals("Asia/Tokyo", MccTable.defaultTimeZoneForMcc(440));
-        assertEquals("Asia/Tokyo", MccTable.defaultTimeZoneForMcc(441));
-        assertEquals("Asia/Singapore", MccTable.defaultTimeZoneForMcc(525));
-        assertEquals("Europe/Stockholm", MccTable.defaultTimeZoneForMcc(240));
-
-        /* A test for the special handling for MCC 505. http://b/33228250. */
-        assertEquals("Australia/Sydney", MccTable.defaultTimeZoneForMcc(505));
-        assertEquals(null, MccTable.defaultTimeZoneForMcc(0));    // mcc not defined, hence default
-        assertEquals(null, MccTable.defaultTimeZoneForMcc(2000)); // mcc not defined, hence default
-    }
-
-    @SmallTest
-    @Ignore
     public void testCountryCode() throws Exception {
         assertEquals("lu", MccTable.countryCodeForMcc(270));
         assertEquals("gr", MccTable.countryCodeForMcc(202));
