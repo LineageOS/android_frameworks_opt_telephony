@@ -439,14 +439,6 @@ public class TimeZoneLookupHelperTest {
     }
 
     @Test
-    public void testLookupDefaultTimeZoneIdByCountry() {
-        assertEquals("Europe/London", mTimeZoneLookupHelper.lookupDefaultTimeZoneIdByCountry("gb"));
-        assertEquals("Europe/London", mTimeZoneLookupHelper.lookupDefaultTimeZoneIdByCountry("Gb"));
-        assertEquals("Europe/London", mTimeZoneLookupHelper.lookupDefaultTimeZoneIdByCountry("GB"));
-        assertEquals("Europe/Berlin", mTimeZoneLookupHelper.lookupDefaultTimeZoneIdByCountry("DE"));
-    }
-
-    @Test
     public void testCountryUsesUtc() {
         assertFalse(mTimeZoneLookupHelper.countryUsesUtc("us", NH_SUMMER_TIME_MILLIS));
         assertFalse(mTimeZoneLookupHelper.countryUsesUtc("us", NH_WINTER_TIME_MILLIS));
