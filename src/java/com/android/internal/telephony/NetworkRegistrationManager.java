@@ -39,6 +39,7 @@ import android.telephony.INetworkServiceCallback;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import java.util.Hashtable;
@@ -107,6 +108,9 @@ public class NetworkRegistrationManager extends Handler {
         } catch (PackageManager.NameNotFoundException e) {
             loge("Package name not found: " + e.getMessage());
         }
+        PhoneConfigurationManager.registerForMultiSimConfigChange(
+                this, EVENT_BIND_NETWORK_SERVICE, null);
+
         sendEmptyMessage(EVENT_BIND_NETWORK_SERVICE);
     }
 
@@ -119,7 +123,7 @@ public class NetworkRegistrationManager extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_BIND_NETWORK_SERVICE:
-                bindService();
+                rebindService();
                 break;
             default:
                 loge("Unhandled event " + msg.what);
@@ -238,37 +242,44 @@ public class NetworkRegistrationManager extends Handler {
         }
     }
 
-    private void bindService() {
-        Intent intent = null;
-        String packageName = getPackageName();
-        String className = getClassName();
-        if (TextUtils.isEmpty(packageName)) {
-            loge("Can't find the binding package");
-            return;
-        }
-
-        if (TextUtils.isEmpty(className)) {
-            intent = new Intent(NetworkService.SERVICE_INTERFACE);
-            intent.setPackage(packageName);
-        } else {
-            ComponentName cm = new ComponentName(packageName, className);
-            intent = new Intent(NetworkService.SERVICE_INTERFACE).setComponent(cm);
-        }
-
-        if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
-            logd("Service " + packageName + " already bound or being bound.");
-            return;
-        }
-
+    private void unbindService() {
         if (mINetworkService != null && mINetworkService.asBinder().isBinderAlive()) {
+            logd("unbinding service");
             // Remove the network availability updater and then unbind the service.
             try {
                 mINetworkService.removeNetworkServiceProvider(mPhone.getPhoneId());
             } catch (RemoteException e) {
                 loge("Cannot remove data service provider. " + e);
             }
+        }
 
+        if (mServiceConnection != null) {
             mPhone.getContext().unbindService(mServiceConnection);
+        }
+        mINetworkService = null;
+        mServiceConnection = null;
+        mTargetBindingPackageName = null;
+    }
+
+    private void bindService(String packageName) {
+        if (mPhone == null || !SubscriptionManager.isValidPhoneId(mPhone.getPhoneId())) {
+            loge("can't bindService with invalid phone or phoneId.");
+            return;
+        }
+
+        if (TextUtils.isEmpty(packageName)) {
+            loge("Can't find the binding package");
+            return;
+        }
+
+        Intent intent = null;
+        String className = getClassName();
+        if (TextUtils.isEmpty(className)) {
+            intent = new Intent(NetworkService.SERVICE_INTERFACE);
+            intent.setPackage(packageName);
+        } else {
+            ComponentName cm = new ComponentName(packageName, className);
+            intent = new Intent(NetworkService.SERVICE_INTERFACE).setComponent(cm);
         }
 
         try {
@@ -286,6 +297,19 @@ public class NetworkRegistrationManager extends Handler {
         } catch (SecurityException e) {
             loge("bindService failed " + e);
         }
+    }
+
+    private void rebindService() {
+        String packageName = getPackageName();
+        // Do nothing if no need to rebind.
+        if (SubscriptionManager.isValidPhoneId(mPhone.getPhoneId())
+                && TextUtils.equals(packageName, mTargetBindingPackageName)) {
+            logd("Service " + packageName + " already bound or being bound.");
+            return;
+        }
+
+        unbindService();
+        bindService(packageName);
     }
 
     private String getPackageName() {
