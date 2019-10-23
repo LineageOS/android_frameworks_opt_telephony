@@ -214,7 +214,26 @@ public class TimeZoneLookupHelper {
      */
     @Nullable
     public OffsetResult lookupByNitz(@NonNull NitzData nitzData) {
-        return lookupByNitzStatic(nitzData);
+        int utcOffsetMillis = nitzData.getLocalOffsetMillis();
+        long timeMillis = nitzData.getCurrentTimeInMillis();
+
+        // Android NITZ time zone matching doesn't try to do a precise match using the DST offset
+        // supplied by the carrier. It only considers whether or not the carrier suggests local time
+        // is DST (if known). NITZ is limited in only being able to express DST offsets in whole
+        // hours and the DST info is optional.
+        Integer dstAdjustmentMillis = nitzData.getDstAdjustmentMillis();
+        Boolean isDst = dstAdjustmentMillis == null ? null : dstAdjustmentMillis != 0;
+
+        OffsetResult match = lookupByInstantOffsetDst(timeMillis, utcOffsetMillis, isDst);
+        if (match == null && isDst != null) {
+            // This branch is extremely unlikely and could probably be removed. The match above will
+            // have searched the entire tzdb for a zone with the same total offset and isDst state.
+            // Here we try another match but use "null" for isDst to indicate that only the total
+            // offset should be considered. If, by the end of this, there isn't a match then the
+            // current offset suggested by the carrier must be highly unusual.
+            match = lookupByInstantOffsetDst(timeMillis, utcOffsetMillis, null /* isDst */);
+        }
+        return match;
     }
 
     /**
@@ -287,45 +306,6 @@ public class TimeZoneLookupHelper {
             }
         }
         return false;
-    }
-
-    /**
-     * Returns a time zone ID for the country if possible. For counties that use a single time zone
-     * this will provide a good choice. For countries with multiple time zones, a time zone is
-     * returned but it may be appropriate for only part of the country. {@code null} can be returned
-     * if a problem occurs during lookup, e.g. if the country code is unrecognized, if the country
-     * is uninhabited, or if there is a problem with the data.
-     */
-    @Nullable
-    public String lookupDefaultTimeZoneIdByCountry(@NonNull String isoCountryCode) {
-        Objects.requireNonNull(isoCountryCode);
-        CountryTimeZones countryTimeZones =
-                TimeZoneFinder.getInstance().lookupCountryTimeZones(isoCountryCode);
-        return countryTimeZones == null ? null : countryTimeZones.getDefaultTimeZoneId();
-    }
-
-    @Nullable
-    private static OffsetResult lookupByNitzStatic(@NonNull NitzData nitzData) {
-        int utcOffsetMillis = nitzData.getLocalOffsetMillis();
-        long timeMillis = nitzData.getCurrentTimeInMillis();
-
-        // Android NITZ time zone matching doesn't try to do a precise match using the DST offset
-        // supplied by the carrier. It only considers whether or not the carrier suggests local time
-        // is DST (if known). NITZ is limited in only being able to express DST offsets in whole
-        // hours and the DST info is optional.
-        Integer dstAdjustmentMillis = nitzData.getDstAdjustmentMillis();
-        Boolean isDst = dstAdjustmentMillis == null ? null : dstAdjustmentMillis != 0;
-
-        OffsetResult match = lookupByInstantOffsetDst(timeMillis, utcOffsetMillis, isDst);
-        if (match == null && isDst != null) {
-            // This branch is extremely unlikely and could probably be removed. The match above will
-            // have searched the entire tzdb for a zone with the same total offset and isDst state.
-            // Here we try another match but use "null" for isDst to indicate that only the total
-            // offset should be considered. If, by the end of this, there isn't a match then the
-            // current offset suggested by the carrier must be highly unusual.
-            match = lookupByInstantOffsetDst(timeMillis, utcOffsetMillis, null /* isDst */);
-        }
-        return match;
     }
 
     private static OffsetResult lookupByInstantOffsetDst(long timeMillis, int utcOffsetMillis,
