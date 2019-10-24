@@ -145,6 +145,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
 
+    protected int mSmsCountOnIcc = 0;
+
     @UnsupportedAppUsage
     private String mSpn;
 
@@ -215,6 +217,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
     public static final int EVENT_REFRESH = 31; // ICC refresh occurred
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
+    protected static final int EVENT_GET_SMS_RECORD_SIZE_DONE = 28;
 
     protected static final int SYSTEM_EVENT_BASE = 0x100;
     protected static final int EVENT_APP_READY = 1 + SYSTEM_EVENT_BASE;
@@ -905,6 +908,33 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
                 break;
 
+            case EVENT_GET_SMS_RECORD_SIZE_DONE:
+                ar = (AsyncResult) msg.obj;
+
+                if (ar.exception != null) {
+                    onRecordLoaded();
+                    loge("Exception in EVENT_GET_SMS_RECORD_SIZE_DONE " + ar.exception);
+                    break;
+                }
+
+                int[] recordSize = (int[])ar.result;
+                try {
+                    // recordSize[0]  is the record length
+                    // recordSize[1]  is the total length of the EF file
+                    // recordSize[2]  is the number of records in the EF file
+                    mSmsCountOnIcc = recordSize[2];
+                    log("EVENT_GET_SMS_RECORD_SIZE_DONE Size " + recordSize[0]
+                            + " total " + recordSize[1]
+                                    + " record " + recordSize[2]);
+                } catch (ArrayIndexOutOfBoundsException exc) {
+                    mSmsCountOnIcc = -1;
+                    loge("ArrayIndexOutOfBoundsException in EVENT_GET_SMS_RECORD_SIZE_DONE: "
+                            + exc.toString());
+                } finally {
+                    onRecordLoaded();
+                }
+                break;
+
             default:
                 super.handleMessage(msg);
         }
@@ -1244,6 +1274,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
         }
 
         return carrierNameDisplayCondition;
+    }
+
+    /**
+     * Get SMS capacity count on ICC card.
+     */
+    public int getSmsCapacityOnIcc() {
+        if (DBG) log("getSmsCapacityOnIcc: " + mSmsCountOnIcc);
+        return mSmsCountOnIcc;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
