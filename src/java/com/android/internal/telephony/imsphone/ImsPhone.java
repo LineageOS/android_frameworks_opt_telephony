@@ -72,6 +72,7 @@ import android.telephony.UssdResponse;
 import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
 import android.text.TextUtils;
 
@@ -1532,10 +1533,12 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
 
             case EVENT_GET_CLIR_DONE:
-                Bundle ssInfo = (Bundle) ar.result;
+                ImsSsInfo ssInfo = (ImsSsInfo) ar.result;
                 int[] clirInfo = null;
                 if (ssInfo != null) {
-                    clirInfo = ssInfo.getIntArray(ImsPhoneMmiCode.UT_BUNDLE_KEY_CLIR);
+                    // Unfortunately callers still use the old {n,m} format of ImsSsInfo, so return
+                    // that for compatibility
+                    clirInfo = ssInfo.getCompatArray(ImsSsData.SS_CLIR);
                 }
                 sendResponse((Message) ar.userObj, clirInfo, ar.exception);
                 break;
