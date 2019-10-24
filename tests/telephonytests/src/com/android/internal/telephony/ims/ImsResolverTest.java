@@ -1013,6 +1013,8 @@ public class ImsResolverTest extends ImsTestBase {
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
         mDynamicQueryListener = queryManagerCaptor.getValue();
+        when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
+                .thenReturn(true);
         mLooper.processAllMessages();
     }
 
@@ -1037,8 +1039,6 @@ public class ImsResolverTest extends ImsTestBase {
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> features, int times) {
         mLooper.processAllMessages();
         // ensure that startQuery was called
-        when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
-                .thenReturn(true);
         verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onComplete(name, features);
         mLooper.processAllMessages();
@@ -1047,8 +1047,6 @@ public class ImsResolverTest extends ImsTestBase {
     private void setupDynamicQueryFeaturesFailure(ComponentName name, int times) {
         mLooper.processAllMessages();
         // ensure that startQuery was called
-        when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
-                .thenReturn(true);
         verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onPermanentError(name);
         mLooper.processAllMessages();
