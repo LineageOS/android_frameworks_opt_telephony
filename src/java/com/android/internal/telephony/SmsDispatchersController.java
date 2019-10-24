@@ -432,82 +432,81 @@ public class SmsDispatchersController extends Handler {
      */
     public void sendRetrySms(SMSDispatcher.SmsTracker tracker) {
         String oldFormat = tracker.mFormat;
+        boolean retryUsingImsService = false;
 
-        // newFormat will be based on voice technology
+        if (!tracker.mUsesImsServiceForIms && mImsSmsDispatcher.isAvailable()) {
+            // If this tracker has not been handled by ImsSmsDispatcher yet and IMS Service is
+            // available now, retry this failed tracker using IMS Service.
+            retryUsingImsService = true;
+        }
+
+        // If retryUsingImsService is true, newFormat will be IMS SMS format. Otherwise, newFormat
+        // will be based on voice technology.
         String newFormat =
-                (PhoneConstants.PHONE_TYPE_CDMA == mPhone.getPhoneType())
-                        ? mCdmaDispatcher.getFormat() : mGsmDispatcher.getFormat();
+                retryUsingImsService
+                        ? mImsSmsDispatcher.getFormat()
+                        : (PhoneConstants.PHONE_TYPE_CDMA == mPhone.getPhoneType())
+                                ? mCdmaDispatcher.getFormat()
+                                : mGsmDispatcher.getFormat();
 
-        // was previously sent sms format match with voice tech?
-        if (oldFormat.equals(newFormat)) {
-            if (isCdmaFormat(newFormat)) {
-                Rlog.d(TAG, "old format matched new format (cdma)");
-                mCdmaDispatcher.sendSms(tracker);
-                return;
-            } else {
-                Rlog.d(TAG, "old format matched new format (gsm)");
-                mGsmDispatcher.sendSms(tracker);
+        Rlog.d(TAG, "old format(" + oldFormat + ") ==> new format (" + newFormat + ")");
+        if (!oldFormat.equals(newFormat)) {
+            // format didn't match, need to re-encode.
+            HashMap map = tracker.getData();
+
+            // to re-encode, fields needed are: scAddr, destAddr and text if originally sent as
+            // sendText or data and destPort if originally sent as sendData.
+            if (!(map.containsKey("scAddr") && map.containsKey("destAddr")
+                    && (map.containsKey("text")
+                    || (map.containsKey("data") && map.containsKey("destPort"))))) {
+                // should never come here...
+                Rlog.e(TAG, "sendRetrySms failed to re-encode per missing fields!");
+                tracker.onFailed(mContext, SmsManager.RESULT_SMS_SEND_RETRY_FAILED, NO_ERROR_CODE);
                 return;
             }
-        }
+            String scAddr = (String) map.get("scAddr");
+            String destAddr = (String) map.get("destAddr");
 
-        // format didn't match, need to re-encode.
-        HashMap map = tracker.getData();
+            SmsMessageBase.SubmitPduBase pdu = null;
+            // figure out from tracker if this was sendText/Data
+            if (map.containsKey("text")) {
+                Rlog.d(TAG, "sms failed was text");
+                String text = (String) map.get("text");
 
-        // to re-encode, fields needed are:  scAddr, destAddr, and
-        //   text if originally sent as sendText or
-        //   data and destPort if originally sent as sendData.
-        if (!(map.containsKey("scAddr") && map.containsKey("destAddr")
-                && (map.containsKey("text")
-                || (map.containsKey("data") && map.containsKey("destPort"))))) {
-            // should never come here...
-            Rlog.e(TAG, "sendRetrySms failed to re-encode per missing fields!");
-            tracker.onFailed(mContext, SmsManager.RESULT_SMS_SEND_RETRY_FAILED, NO_ERROR_CODE);
-            return;
-        }
-        String scAddr = (String) map.get("scAddr");
-        String destAddr = (String) map.get("destAddr");
+                if (isCdmaFormat(newFormat)) {
+                    pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
+                            scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
+                } else {
+                    pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
+                            scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
+                }
+            } else if (map.containsKey("data")) {
+                Rlog.d(TAG, "sms failed was data");
+                byte[] data = (byte[]) map.get("data");
+                Integer destPort = (Integer) map.get("destPort");
 
-        SmsMessageBase.SubmitPduBase pdu = null;
-        //    figure out from tracker if this was sendText/Data
-        if (map.containsKey("text")) {
-            Rlog.d(TAG, "sms failed was text");
-            String text = (String) map.get("text");
-
-            if (isCdmaFormat(newFormat)) {
-                Rlog.d(TAG, "old format (gsm) ==> new format (cdma)");
-                pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
-                        scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
-            } else {
-                Rlog.d(TAG, "old format (cdma) ==> new format (gsm)");
-                pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
-                        scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
-            }
-        } else if (map.containsKey("data")) {
-            Rlog.d(TAG, "sms failed was data");
-            byte[] data = (byte[]) map.get("data");
-            Integer destPort = (Integer) map.get("destPort");
-
-            if (isCdmaFormat(newFormat)) {
-                Rlog.d(TAG, "old format (gsm) ==> new format (cdma)");
-                pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
+                if (isCdmaFormat(newFormat)) {
+                    pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
                             scAddr, destAddr, destPort.intValue(), data,
                             (tracker.mDeliveryIntent != null));
-            } else {
-                Rlog.d(TAG, "old format (cdma) ==> new format (gsm)");
-                pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
+                } else {
+                    pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
                             scAddr, destAddr, destPort.intValue(), data,
                             (tracker.mDeliveryIntent != null));
+                }
             }
+
+            // replace old smsc and pdu with newly encoded ones
+            map.put("smsc", pdu.encodedScAddress);
+            map.put("pdu", pdu.encodedMessage);
+            tracker.mFormat = newFormat;
         }
 
-        // replace old smsc and pdu with newly encoded ones
-        map.put("smsc", pdu.encodedScAddress);
-        map.put("pdu", pdu.encodedMessage);
+        SMSDispatcher dispatcher =
+                retryUsingImsService
+                        ? mImsSmsDispatcher
+                        : (isCdmaFormat(newFormat)) ? mCdmaDispatcher : mGsmDispatcher;
 
-        SMSDispatcher dispatcher = (isCdmaFormat(newFormat)) ? mCdmaDispatcher : mGsmDispatcher;
-
-        tracker.mFormat = dispatcher.getFormat();
         dispatcher.sendSms(tracker);
     }
 
