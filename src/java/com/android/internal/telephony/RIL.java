@@ -393,7 +393,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private void resetProxyAndRequestList() {
+    private synchronized void resetProxyAndRequestList() {
         mRadioProxy = null;
         mOemHookProxy = null;
 
