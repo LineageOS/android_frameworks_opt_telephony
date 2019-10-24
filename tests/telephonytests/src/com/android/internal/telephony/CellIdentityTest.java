@@ -54,6 +54,11 @@ public class CellIdentityTest extends AndroidTestCase {
     // Latitude ranges from -1296000 to 1296000.
     private static final int LATITUDE = 1296000;
 
+    private static final String PLMN_INVALID_SHORT = "1234";
+    private static final String PLMN_INVALID_LONG = "1234567";
+    private static final String PLMN_INVALID_NON_NUM = "12a45b";
+    private static final String PLMN_VALID = "12345";
+
     private static final int MAX_LAC = 65535;
     private static final int MAX_CID = 65535;
     private static final int MAX_ARFCN = 65535;
@@ -83,6 +88,7 @@ public class CellIdentityTest extends AndroidTestCase {
         assertEquals(CellInfo.UNAVAILABLE, gsm.getArfcn());
         assertEquals(CellInfo.UNAVAILABLE, gsm.getBsic());
     }
+
 
     @SmallTest
     public void testEquals() {
@@ -129,5 +135,17 @@ public class CellIdentityTest extends AndroidTestCase {
 
         newCi = CellIdentity.CREATOR.createFromParcel(p);
         assertEquals(ci, newCi);
+    }
+
+    @SmallTest
+    public void testIsValidPlmn() {
+        assertTrue(CellIdentity.isValidPlmn(PLMN_VALID));
+    }
+
+    @SmallTest
+    public void testIsValidPlmnInvalidPlmns() {
+        assertFalse(CellIdentity.isValidPlmn(PLMN_INVALID_SHORT));
+        assertFalse(CellIdentity.isValidPlmn(PLMN_INVALID_LONG));
+        assertFalse(CellIdentity.isValidPlmn(PLMN_INVALID_NON_NUM));
     }
 }
