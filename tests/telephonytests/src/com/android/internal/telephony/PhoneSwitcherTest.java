@@ -488,14 +488,14 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
         initialize(numPhones, maxActivePhones);
 
-        // Mark sub 2 as opportunistic.
-        doReturn(true).when(mSubscriptionController).isOpportunistic(2);
         // Phone 0 has sub 1, phone 1 has sub 2.
         // Sub 1 is default data sub.
         // Both are active subscriptions are active sub, as they are in both active slots.
         setSlotIndexToSubId(0, 1);
         setSlotIndexToSubId(1, 2);
         setDefaultDataSubId(1);
+        // Mark sub 2 as opportunistic.
+        doReturn(true).when(mSubscriptionController).isOpportunistic(2);
 
         // Phone 0 (sub 1) should be activated as it has default data sub.
         assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
