@@ -43,7 +43,8 @@ public class GsmSmsCbTest extends AndroidTestCase {
             SmsCbHeader header = new SmsCbHeader(pdu);
             byte[][] pdus = new byte[1][];
             pdus[0] = pdu;
-            return GsmSmsCbMessage.createSmsCbMessage(getContext(), header, sTestLocation, pdus);
+            return GsmSmsCbMessage.createSmsCbMessage(getContext(), header, sTestLocation, pdus,
+                    /* slotIndex */ 0);
         } catch (IllegalArgumentException e) {
             return null;
         }
