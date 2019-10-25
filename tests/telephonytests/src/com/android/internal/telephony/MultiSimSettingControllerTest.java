@@ -108,6 +108,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Sub 1 is the default sub.
         // Sub 1 is in slot 0; sub 2 is in slot 1.
         doReturn(DUAL_SIM).when(mTelephonyManager).getPhoneCount();
+        doReturn(DUAL_SIM).when(mTelephonyManager).getActiveModemCount();
         doReturn(1).when(mSubControllerMock).getDefaultDataSubId();
         doReturn(1).when(mSubControllerMock).getDefaultVoiceSubId();
         doReturn(1).when(mSubControllerMock).getDefaultSmsSubId();
