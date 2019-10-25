@@ -390,11 +390,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     @UnsupportedAppUsage
     public String getIccId() {
-        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeIccid() != null) {
-            return mCarrierTestOverride.getFakeIccid();
-        } else {
-            return mIccId;
+        if (mCarrierTestOverride.isInTestMode()) {
+            String fakeIccId = mCarrierTestOverride.getFakeIccid();
+            if (fakeIccId != null) {
+                return fakeIccId;
+            }
         }
+        return mIccId;
     }
 
     /**
@@ -563,11 +565,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     @UnsupportedAppUsage
     public String getIMSI() {
-        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeIMSI() != null) {
-            return mCarrierTestOverride.getFakeIMSI();
-        } else {
-            return mImsi;
+        if (mCarrierTestOverride.isInTestMode()) {
+            String fakeImsi = mCarrierTestOverride.getFakeIMSI();
+            if (fakeImsi != null) {
+                return fakeImsi;
+            }
         }
+        return mImsi;
     }
 
     /**
@@ -667,11 +671,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     @UnsupportedAppUsage
     public String getGid1() {
-        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeGid1() != null) {
-            return mCarrierTestOverride.getFakeGid1();
-        } else {
-            return mGid1;
+        if (mCarrierTestOverride.isInTestMode()) {
+            String fakeGid1 = mCarrierTestOverride.getFakeGid1();
+            if (fakeGid1 != null) {
+                return fakeGid1;
+            }
         }
+        return mGid1;
     }
 
     /**
@@ -679,11 +685,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready
      */
     public String getGid2() {
-        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeGid2() != null) {
-            return mCarrierTestOverride.getFakeGid2();
-        } else {
-            return mGid2;
+        if (mCarrierTestOverride.isInTestMode()) {
+            String fakeGid2 = mCarrierTestOverride.getFakeGid2();
+            if (fakeGid2 != null) {
+                return fakeGid2;
+            }
         }
+        return mGid2;
     }
 
     /**
@@ -691,12 +699,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready
      */
     public String getPnnHomeName() {
-        if (mCarrierTestOverride.isInTestMode()
-                && mCarrierTestOverride.getFakePnnHomeName() != null) {
-            return mCarrierTestOverride.getFakePnnHomeName();
-        } else {
-            return mPnnHomeName;
+        if (mCarrierTestOverride.isInTestMode()) {
+            String fakePnnHomeName = mCarrierTestOverride.getFakePnnHomeName();
+            if (fakePnnHomeName != null) {
+                return fakePnnHomeName;
+            }
         }
+        return mPnnHomeName;
     }
 
     @UnsupportedAppUsage
@@ -724,8 +733,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     @UnsupportedAppUsage
     public String getServiceProviderName() {
-        if (mCarrierTestOverride.isInTestMode() && mCarrierTestOverride.getFakeSpn() != null) {
-            return mCarrierTestOverride.getFakeSpn();
+        if (mCarrierTestOverride.isInTestMode()) {
+            String fakeSpn = mCarrierTestOverride.getFakeSpn();
+            if (fakeSpn != null) {
+                return fakeSpn;
+            }
         }
         return mSpn;
     }
