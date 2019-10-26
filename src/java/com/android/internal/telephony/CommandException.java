@@ -123,6 +123,7 @@ public class CommandException extends RuntimeException {
         OEM_ERROR_23,
         OEM_ERROR_24,
         OEM_ERROR_25,
+        REQUEST_CANCELLED,
     }
 
     @UnsupportedAppUsage
@@ -321,6 +322,8 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.OEM_ERROR_24);
             case RILConstants.OEM_ERROR_25:
                 return new CommandException(Error.OEM_ERROR_25);
+            case RILConstants.REQUEST_CANCELLED:
+                return new CommandException(Error.REQUEST_CANCELLED);
 
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);

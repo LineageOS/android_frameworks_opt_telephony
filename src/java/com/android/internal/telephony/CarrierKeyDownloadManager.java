@@ -270,8 +270,7 @@ public class CarrierKeyDownloadManager extends Handler {
         Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId);
         PendingIntent carrierKeyDownloadIntent = PendingIntent.getBroadcast(mContext, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, minExpirationDate,
-                carrierKeyDownloadIntent);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, minExpirationDate, carrierKeyDownloadIntent);
         Log.d(LOG_TAG, "setRenewelAlarm: action=" + intent.getAction() + " time="
                 + new Date(minExpirationDate));
     }

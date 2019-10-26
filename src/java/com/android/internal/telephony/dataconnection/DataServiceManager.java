@@ -44,6 +44,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -53,6 +54,7 @@ import android.telephony.data.IDataServiceCallback;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.util.HashSet;
@@ -297,6 +299,9 @@ public class DataServiceManager extends Handler {
         } catch (PackageManager.NameNotFoundException e) {
             loge("Package name not found: " + e.getMessage());
         }
+        PhoneConfigurationManager.registerForMultiSimConfigChange(
+                this, EVENT_BIND_DATA_SERVICE, null);
+
         sendEmptyMessage(EVENT_BIND_DATA_SERVICE);
     }
 
@@ -309,7 +314,7 @@ public class DataServiceManager extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_BIND_DATA_SERVICE:
-                bindDataService();
+                rebindDataService();
                 break;
             case EVENT_WATCHDOG_TIMEOUT:
                 handleRequestUnresponded((CellularDataServiceCallback) msg.obj);
@@ -330,40 +335,47 @@ public class DataServiceManager extends Handler {
                 message);
     }
 
-    private void bindDataService() {
-        Intent intent = null;
-        String packageName = getDataServicePackageName();
-        String className = getDataServiceClassName();
-        if (TextUtils.isEmpty(packageName)) {
-            loge("Can't find the binding package");
-            return;
-        }
-
-        if (TextUtils.isEmpty(className)) {
-            intent = new Intent(DataService.SERVICE_INTERFACE);
-            intent.setPackage(packageName);
-        } else {
-            ComponentName cm = new ComponentName(packageName, className);
-            intent = new Intent(DataService.SERVICE_INTERFACE).setComponent(cm);
-        }
-
-        if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
-            if (DBG) log("Service " + packageName + " already bound or being bound.");
-            return;
-        }
-
+    private void unbindDataService() {
         // Start by cleaning up all packages that *shouldn't* have permissions.
         revokePermissionsFromUnusedDataServices();
-
         if (mIDataService != null && mIDataService.asBinder().isBinderAlive()) {
+            log("unbinding service");
             // Remove the network availability updater and then unbind the service.
             try {
                 mIDataService.removeDataServiceProvider(mPhone.getPhoneId());
             } catch (RemoteException e) {
                 loge("Cannot remove data service provider. " + e);
             }
+        }
 
+        if (mServiceConnection != null) {
             mPhone.getContext().unbindService(mServiceConnection);
+        }
+        mIDataService = null;
+        mServiceConnection = null;
+        mTargetBindingPackageName = null;
+        mBound = false;
+    }
+
+    private void bindDataService(String packageName) {
+        if (mPhone == null || !SubscriptionManager.isValidPhoneId(mPhone.getPhoneId())) {
+            loge("can't bindDataService with invalid phone or phoneId.");
+            return;
+        }
+
+        if (TextUtils.isEmpty(packageName)) {
+            loge("Can't find the binding package");
+            return;
+        }
+
+        Intent intent = null;
+        String className = getDataServiceClassName();
+        if (TextUtils.isEmpty(className)) {
+            intent = new Intent(DataService.SERVICE_INTERFACE);
+            intent.setPackage(packageName);
+        } else {
+            ComponentName cm = new ComponentName(packageName, className);
+            intent = new Intent(DataService.SERVICE_INTERFACE).setComponent(cm);
         }
 
         // Then pre-emptively grant the permissions to the package we will bind.
@@ -380,6 +392,19 @@ public class DataServiceManager extends Handler {
         } catch (Exception e) {
             loge("Cannot bind to the data service. Exception: " + e);
         }
+    }
+
+    private void rebindDataService() {
+        String packageName = getDataServicePackageName();
+        // Do nothing if no need to rebind.
+        if (SubscriptionManager.isValidPhoneId(mPhone.getPhoneId())
+                && TextUtils.equals(packageName, mTargetBindingPackageName)) {
+            if (DBG) log("Service " + packageName + " already bound or being bound.");
+            return;
+        }
+
+        unbindDataService();
+        bindDataService(packageName);
     }
 
     @NonNull

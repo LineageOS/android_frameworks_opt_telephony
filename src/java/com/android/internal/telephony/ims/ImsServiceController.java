@@ -115,9 +115,11 @@ public class ImsServiceController {
                 mIsBinding = false;
                 mIsBound = false;
             }
+            if (mImsServiceConnection != null) {
+                // according to the docs, we should fully unbind before rebinding again.
+                mContext.unbindService(mImsServiceConnection);
+            }
             cleanupConnection();
-            // according to the docs, we should fully unbind before rebinding again.
-            mContext.unbindService(mImsServiceConnection);
             Log.w(LOG_TAG, "ImsService(" + name + "): onBindingDied. Starting rebind...");
             startDelayedRebindToService();
             mLocalLog.log("onBindingDied, retrying in " + mBackoff.getCurrentDelay() + " mS");

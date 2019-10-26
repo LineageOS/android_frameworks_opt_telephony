@@ -462,7 +462,7 @@ public class SmsDispatchersController extends Handler {
                 || (map.containsKey("data") && map.containsKey("destPort"))))) {
             // should never come here...
             Rlog.e(TAG, "sendRetrySms failed to re-encode per missing fields!");
-            tracker.onFailed(mContext, SmsManager.RESULT_ERROR_GENERIC_FAILURE, NO_ERROR_CODE);
+            tracker.onFailed(mContext, SmsManager.RESULT_SMS_SEND_RETRY_FAILED, NO_ERROR_CODE);
             return;
         }
         String scAddr = (String) map.get("scAddr");
