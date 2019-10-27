@@ -113,6 +113,9 @@ public class PhoneMock extends Phone {
     protected final RegistrantList mHandoverRegistrants
              = new RegistrantList();
 
+    protected final RegistrantList mRedialRegistrants
+            = new RegistrantList();
+
     protected final RegistrantList mNewRingingConnectionRegistrants
             = new RegistrantList();
 
@@ -222,6 +225,19 @@ public class PhoneMock extends Phone {
     public void notifyHandoverStateChanged(Connection cn) {
        AsyncResult ar = new AsyncResult(null, cn, null);
        mHandoverRegistrants.notifyRegistrants(ar);
+    }
+
+    public void registerForRedialConnectionChanged(Handler h, int what, Object obj) {
+        mRedialRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForRedialConnectionChanged(Handler h) {
+        mRedialRegistrants.remove(h);
+    }
+
+    public void notifyRedialConnectionChanged(Connection cn) {
+        AsyncResult ar = new AsyncResult(null, cn, null);
+        mRedialRegistrants.notifyRegistrants(ar);
     }
 
     public void migrateFrom(Phone from) {
