@@ -758,6 +758,8 @@ public class ImsPhone extends ImsPhoneBase {
                                     ResultReceiver wrappedCallback)
             throws CallStateException {
 
+        mLastDialString = dialString;
+
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 
