@@ -380,6 +380,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private final RegistrantList mCellInfoRegistrants = new RegistrantList();
 
+    private final RegistrantList mRedialRegistrants = new RegistrantList();
+
     protected Registrant mPostDialHandler;
 
     protected final LocalLog mLocalLog;
@@ -715,9 +717,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     String dialString = (String) ar.result;
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
-                        dialInternal(dialString, new DialArgs.Builder().build());
+                        Connection cn = dialInternal(dialString, new DialArgs.Builder().build());
+                        Rlog.d(LOG_TAG, "Notify redial connection changed cn: " + cn);
+                        if (mImsPhone != null) {
+                            // Don't care it is null or not.
+                            mImsPhone.notifyRedialConnectionChanged(cn);
+                        }
                     } catch (CallStateException e) {
                         Rlog.e(LOG_TAG, "silent redial failed: " + e);
+                        if (mImsPhone != null) {
+                            mImsPhone.notifyRedialConnectionChanged(null);
+                        }
                     }
                 }
                 break;
@@ -912,6 +922,30 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
        mHandoverRegistrants.notifyRegistrants(ar);
     }
 
+    /**
+     * Notifies when a Handover happens due to Silent Redial
+     */
+    public void registerForRedialConnectionChanged(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        mRedialRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for redial connection notifications
+     */
+    public void unregisterForRedialConnectionChanged(Handler h) {
+        mRedialRegistrants.remove(h);
+    }
+
+    /**
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    public void notifyRedialConnectionChanged(Connection cn) {
+        AsyncResult ar = new AsyncResult(null, cn, null);
+        mRedialRegistrants.notifyRegistrants(ar);
+    }
+
     protected void setIsInEmergencyCall() {
     }
 
@@ -983,6 +1017,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         migrate(mUnknownConnectionRegistrants, from.mUnknownConnectionRegistrants);
         migrate(mSuppServiceFailedRegistrants, from.mSuppServiceFailedRegistrants);
         migrate(mCellInfoRegistrants, from.mCellInfoRegistrants);
+        migrate(mRedialRegistrants, from.mRedialRegistrants);
         // The emergency state of IMS phone will be cleared in ImsPhone#notifySrvccState after
         // receive SRVCC completed
         if (from.isInEmergencyCall()) {
