@@ -104,8 +104,6 @@ public class SubscriptionInfoUpdater extends Handler {
     public static final String CURR_SUBID = "curr_subid";
 
     @UnsupportedAppUsage
-    private static Phone[] sPhones;
-    @UnsupportedAppUsage
     private static Context sContext = null;
     @UnsupportedAppUsage
 
@@ -140,19 +138,17 @@ public class SubscriptionInfoUpdater extends Handler {
     // TODO: The SubscriptionController instance should be passed in here from PhoneFactory
     // rather than invoking the static getter all over the place.
     public SubscriptionInfoUpdater(
-            Looper looper, Context context, Phone[] phone, CommandsInterface[] ci) {
-        this(looper, context, phone, ci,
-                IPackageManager.Stub.asInterface(ServiceManager.getService("package")));
+            Looper looper, Context context, CommandsInterface[] ci) {
+        this(looper, context, ci, IPackageManager.Stub.asInterface(
+                ServiceManager.getService("package")));
     }
 
-    @VisibleForTesting public SubscriptionInfoUpdater(
-            Looper looper, Context context, Phone[] phone,
+    @VisibleForTesting public SubscriptionInfoUpdater(Looper looper, Context context,
             CommandsInterface[] ci, IPackageManager packageMgr) {
         logd("Constructor invoked");
         mBackgroundHandler = new Handler(looper);
 
         sContext = context;
-        sPhones = phone;
         mSubscriptionManager = SubscriptionManager.from(sContext);
         mEuiccManager = (EuiccManager) sContext.getSystemService(Context.EUICC_SERVICE);
         mPackageManager = packageMgr;
@@ -256,7 +252,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 if (ar.exception == null && ar.result != null) {
                     int[] modes = (int[])ar.result;
                     if (modes[0] == 1) {  // Manual mode.
-                        sPhones[slotId].setNetworkSelectionModeAutomatic(null);
+                        PhoneFactory.getPhone(slotId).setNetworkSelectionModeAutomatic(null);
                     }
                 } else {
                     logd("EVENT_GET_NETWORK_SELECTION_MODE_DONE: error getting network mode.");
@@ -367,7 +363,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
         String iccId = sIccId[slotId];
         if (iccId == null) {
-            IccCard iccCard = sPhones[slotId].getIccCard();
+            IccCard iccCard = PhoneFactory.getPhone(slotId).getIccCard();
             if (iccCard == null) {
                 logd("handleSimLocked: IccCard null");
                 return;
@@ -414,7 +410,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private void handleSimNotReady(int slotId) {
         logd("handleSimNotReady: slotId: " + slotId);
 
-        IccCard iccCard = sPhones[slotId].getIccCard();
+        IccCard iccCard = PhoneFactory.getPhone(slotId).getIccCard();
         if (iccCard.isEmptyProfile()) {
             // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
             // phase, the subscription list is accessible. Treating NOT_READY
@@ -436,7 +432,7 @@ public class SubscriptionInfoUpdater extends Handler {
         // removed or a refresh RESET that the IccRecords could be null. The right behavior is to
         // not broadcast the SIM loaded.
         int loadedSlotId = slotId;
-        IccCard iccCard = sPhones[slotId].getIccCard();
+        IccCard iccCard = PhoneFactory.getPhone(slotId).getIccCard();
         if (iccCard == null) {  // Possibly a race condition.
             logd("handleSimLoaded: IccCard null");
             return;
@@ -506,7 +502,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
                 if (storedSubId != subId) {
                     int networkType = Settings.Global.getInt(
-                            sPhones[slotId].getContext().getContentResolver(),
+                            PhoneFactory.getPhone(slotId).getContext().getContentResolver(),
                             Settings.Global.PREFERRED_NETWORK_MODE + subId,
                             -1 /* invalid network mode */);
 
@@ -521,16 +517,16 @@ public class SubscriptionInfoUpdater extends Handler {
                                     + "Settings.Global.PREFERRED_NETWORK_MODE");
                         }
                         Settings.Global.putInt(
-                                sPhones[slotId].getContext().getContentResolver(),
+                                PhoneFactory.getPhone(slotId).getContext().getContentResolver(),
                                 Global.PREFERRED_NETWORK_MODE + subId,
                                 networkType);
                     }
 
                     // Set the modem network mode
-                    sPhones[slotId].setPreferredNetworkType(networkType, null);
+                    PhoneFactory.getPhone(slotId).setPreferredNetworkType(networkType, null);
 
                     // Only support automatic selection mode on SIM change.
-                    sPhones[slotId].getNetworkSelectionMode(
+                    PhoneFactory.getPhone(slotId).getNetworkSelectionMode(
                             obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE,
                                     new Integer(slotId)));
 
@@ -570,8 +566,8 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     private void updateSubscriptionCarrierId(int slotId, String simState) {
-        if (sPhones != null && sPhones[slotId] != null) {
-            sPhones[slotId].resolveSubscriptionCarrierId(simState);
+        if (PhoneFactory.getPhone(slotId) != null) {
+            PhoneFactory.getPhone(slotId).resolveSubscriptionCarrierId(simState);
         }
     }
 
@@ -1103,7 +1099,7 @@ public class SubscriptionInfoUpdater extends Handler {
         boolean isUnknownToNotReady =
                 (sSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN
                         && state == TelephonyManager.SIM_STATE_NOT_READY);
-        IccCard iccCard = sPhones[phoneId].getIccCard();
+        IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
         boolean emptyProfile = iccCard != null && iccCard.isEmptyProfile();
         if (state != sSimApplicationState[phoneId] && (!isUnknownToNotReady || emptyProfile)) {
             sSimApplicationState[phoneId] = state;
