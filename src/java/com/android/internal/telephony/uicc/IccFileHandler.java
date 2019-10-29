@@ -228,9 +228,10 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
      *
      * @param fileid EF id
      * @param path Path of the EF on the card
-     * @param onLoaded ((AsnyncResult)(onLoaded.obj)).result is the recordSize[] int[0] is the
-     *     record length int[1] is the total length of the EF file int[3] is the number of records
-     *     in the EF file So int[0] * int[3] = int[1]
+     * @param onLoaded ((AsnyncResult)(onLoaded.obj)).result is the recordSize[]. recordSize[0] is
+     *                 the single record length, recordSize[1] is the total length of the EF file
+     *                 and recordSize[2] is the number of records in the EF file. So recordSize[0]
+     *                 * recordSize[2] = recordSize[1].
      */
     @UnsupportedAppUsage
     public void getEFLinearRecordSize(int fileid, String path, Message onLoaded) {
@@ -246,9 +247,10 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
      * Get record size for a linear fixed EF
      *
      * @param fileid EF id
-     * @param onLoaded ((AsnyncResult)(onLoaded.obj)).result is the recordSize[] int[0] is the
-     *     record length int[1] is the total length of the EF file int[3] is the number of records
-     *     in the EF file So int[0] * int[3] = int[1]
+     * @param onLoaded ((AsnyncResult)(onLoaded.obj)).result is the recordSize[]. recordSize[0] is
+     *                 the single record length, recordSize[1] is the total length of the EF file
+     *                 and recordSize[2] is the number of records in the EF file. So recordSize[0]
+     *                 * recordSize[2] = recordSize[1].
      */
     @UnsupportedAppUsage
     public void getEFLinearRecordSize(int fileid, Message onLoaded) {
