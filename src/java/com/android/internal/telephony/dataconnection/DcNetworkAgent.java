@@ -34,6 +34,7 @@ import android.util.SparseArray;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -216,6 +217,14 @@ public class DcNetworkAgent extends NetworkAgent {
                     + ", dc=" + mDataConnection.getName();
             logd(logStr);
             mNetCapsLocalLog.log(logStr);
+            if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                // only log metrics for DataConnection with NET_CAPABILITY_INTERNET
+                if (mNetworkCapabilities == null
+                        || networkCapabilities.isMetered() != mNetworkCapabilities.isMetered()) {
+                    TelephonyMetrics.getInstance().writeNetworkCapabilitiesChangedEvent(
+                            mPhone.getPhoneId(), networkCapabilities);
+                }
+            }
             mNetworkCapabilities = networkCapabilities;
         }
         sendNetworkCapabilities(networkCapabilities);

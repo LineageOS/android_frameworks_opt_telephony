@@ -37,6 +37,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYP
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_UNSTRUCTURED;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNKNOWN;
 
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -93,6 +94,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.Carrier
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.NetworkCapabilitiesInfo;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall.DeactivateReason;
@@ -207,6 +209,12 @@ public class TelephonyMetrics {
     private final SparseArray<CarrierIdMatching> mLastCarrierId = new SparseArray<>();
 
     /**
+     * Last NetworkCapabilitiesInfo, indexed by phone id.
+     */
+    private final SparseArray<NetworkCapabilitiesInfo> mLastNetworkCapabilitiesInfos =
+            new SparseArray<>();
+
+    /**
      * Last RilDataCall Events (indexed by cid), indexed by phone id
      */
     private final SparseArray<SparseArray<RilDataCall>> mLastRilDataCallEvents =
@@ -314,6 +322,8 @@ public class TelephonyMetrics {
                 return "NITZ_TIME";
             case TelephonyEvent.Type.EMERGENCY_NUMBER_REPORT:
                 return "EMERGENCY_NUMBER_REPORT";
+            case TelephonyEvent.Type.NETWORK_CAPABILITIES_CHANGED:
+                return "NETWORK_CAPABILITIES_CHANGED";
             default:
                 return Integer.toString(event);
         }
@@ -649,6 +659,13 @@ public class TelephonyMetrics {
             final int key = mLastCarrierId.keyAt(i);
             TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
                     .setCarrierIdMatching(mLastCarrierId.get(key)).build();
+            addTelephonyEvent(event);
+        }
+
+        for (int i = 0; i < mLastNetworkCapabilitiesInfos.size(); i++) {
+            final int key = mLastNetworkCapabilitiesInfos.keyAt(i);
+            TelephonyEvent event = new TelephonyEventBuilder(mStartElapsedTimeMs, key)
+                    .setNetworkCapabilities(mLastNetworkCapabilitiesInfos.get(key)).build();
             addTelephonyEvent(event);
         }
 
@@ -2512,6 +2529,24 @@ public class TelephonyMetrics {
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setUpdatedEmergencyNumber(
                 emergencyNumberInfo).build();
+        addTelephonyEvent(event);
+    }
+
+    /**
+     * Write network capabilities changed event
+     *
+     * @param phoneId Phone id
+     * @param networkCapabilities Network capabilities
+     */
+    public void writeNetworkCapabilitiesChangedEvent(int phoneId,
+            NetworkCapabilities networkCapabilities) {
+        final NetworkCapabilitiesInfo caps = new NetworkCapabilitiesInfo();
+        caps.isNetworkUnmetered = networkCapabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+
+        TelephonyEvent event = new TelephonyEventBuilder(phoneId)
+                .setNetworkCapabilities(caps).build();
+        mLastNetworkCapabilitiesInfos.put(phoneId, caps);
         addTelephonyEvent(event);
     }
 
