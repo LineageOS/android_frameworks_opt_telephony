@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.ims;
 
-import android.app.AppGlobals;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -27,7 +26,7 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
 import android.os.UserHandle;
-import android.permission.IPermissionManager;
+import android.permission.PermissionManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
@@ -43,12 +42,14 @@ import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
 /**
@@ -197,9 +198,10 @@ public class ImsServiceController {
     private static final String LOG_TAG = "ImsServiceController";
     private static final int REBIND_START_DELAY_MS = 2 * 1000; // 2 seconds
     private static final int REBIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
+    private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * 1000; // 15 seconds
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
-    private final IPermissionManager mPermissionManager;
+    private final PermissionManager mPermissionManager;
     private ImsServiceControllerCallbacks mCallbacks;
     private ExponentialBackoff mBackoff;
 
@@ -334,7 +336,8 @@ public class ImsServiceController {
                 2, /* multiplier */
                 mHandlerThread.getLooper(),
                 mRestartImsServiceRunnable);
-        mPermissionManager = AppGlobals.getPermissionManager();
+        mPermissionManager =
+                (PermissionManager) mContext.getSystemService(Context.PERMISSION_SERVICE);
     }
 
     @VisibleForTesting
@@ -648,10 +651,19 @@ public class ImsServiceController {
         String[] pkgToGrant = {mComponentName.getPackageName()};
         try {
             if (mPermissionManager != null) {
-                mPermissionManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
-                    UserHandle.myUserId());
+                CountDownLatch latch = new CountDownLatch(1);
+                mPermissionManager.grantDefaultPermissionsToEnabledImsServices(
+                        pkgToGrant, UserHandle.of(UserHandle.myUserId()), Runnable::run,
+                        isSuccess -> {
+                            if (isSuccess) {
+                                latch.countDown();
+                            } else {
+                                Log.e(LOG_TAG, "Failed to grant permissions to service.");
+                            }
+                        });
+                TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             }
-        } catch (RemoteException e) {
+        } catch (RuntimeException e) {
             Log.w(LOG_TAG, "Unable to grant permissions, binder died.");
         }
     }
