@@ -25,9 +25,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.content.Context;
 import android.content.Intent;
-import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -66,7 +64,6 @@ public class LocaleTrackerTest extends TelephonyTest {
     private LocaleTracker mLocaleTracker;
 
     private CellInfoGsm mCellInfo;
-    private WifiManager mWifiManager;
 
     @Before
     public void setUp() throws Exception {
@@ -77,7 +74,6 @@ public class LocaleTrackerTest extends TelephonyTest {
 
         // This is a workaround to bypass setting system properties, which causes access violation.
         doReturn(-1).when(mPhone).getPhoneId();
-        mWifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
 
         mCellInfo = new CellInfoGsm();
         mCellInfo.setCellIdentity(new CellIdentityGsm(
@@ -118,17 +114,11 @@ public class LocaleTrackerTest extends TelephonyTest {
     }
 
     private void verifyCountryCodeNotified(String[] countryCodes) {
-        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mWifiManager, times(countryCodes.length)).setCountryCode(
-                stringArgumentCaptor.capture());
-        List<String> strs = stringArgumentCaptor.getAllValues();
-
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContext, times(countryCodes.length)).sendBroadcast(intentArgumentCaptor.capture());
         List<Intent> intents = intentArgumentCaptor.getAllValues();
 
         for (int i = 0; i < countryCodes.length; i++) {
-            assertEquals(countryCodes[i], strs.get(i));
             assertEquals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED,
                     intents.get(i).getAction());
             assertEquals(countryCodes[i], intents.get(i).getStringExtra(
