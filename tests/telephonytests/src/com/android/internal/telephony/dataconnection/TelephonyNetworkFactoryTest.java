@@ -16,25 +16,27 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.net.NetworkFactory.CMD_CANCEL_REQUEST;
+import static android.net.NetworkFactory.CMD_REQUEST_NETWORK;
+
+import static com.android.internal.telephony.dataconnection.TelephonyNetworkFactory.EVENT_ACTIVE_PHONE_SWITCH;
+
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.IConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.StringNetworkSpecifier;
 import android.os.AsyncResult;
-import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Messenger;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
@@ -46,14 +48,9 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RadioConfig;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams.HandoverCallback;
-import com.android.internal.telephony.mocks.ConnectivityServiceMock;
-import com.android.internal.telephony.mocks.PhoneSwitcherMock;
-import com.android.internal.telephony.mocks.SubscriptionControllerMock;
-import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 
 import org.junit.After;
 import org.junit.Before;
@@ -64,25 +61,23 @@ import org.mockito.Mock;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 
+
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private final static String LOG_TAG = "TelephonyNetworkFactoryTest";
 
     @Mock
-    private RadioConfig mMockRadioConfig;
+    PhoneSwitcher mPhoneSwitcher;
     @Mock
-    private IConnectivityManager mIConnectivityManager;
+    private RadioConfig mMockRadioConfig;
 
     private String mTestName = "";
 
-    private TelephonyRegistryMock mTelephonyRegistryMock;
-    private PhoneSwitcherMock mPhoneSwitcherMock;
-    private SubscriptionControllerMock mSubscriptionControllerMock;
-    private ConnectivityServiceMock mConnectivityServiceMock;
     private final ArrayList<NetworkRequest> mNetworkRequestList = new ArrayList<>();
 
     private TelephonyNetworkFactory mTelephonyNetworkFactoryUT;
+    private int mRequestId = 0;
 
     private void log(String str) {
         Rlog.d(LOG_TAG + " " + mTestName, str);
@@ -94,15 +89,51 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
                 addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
         netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
-        return mConnectivityServiceMock.requestNetwork(netCap, null, 0, new Binder(), -1);
+        NetworkRequest networkRequest = new NetworkRequest(netCap, -1,
+                mRequestId++, NetworkRequest.Type.REQUEST);
+        mTelephonyNetworkFactoryUT.obtainMessage(CMD_REQUEST_NETWORK, 0, 0, networkRequest)
+                .sendToTarget();
+        return networkRequest;
     }
+
+    private NetworkRequest makeDefaultInternetRequest() {
+        NetworkCapabilities netCap = (new NetworkCapabilities())
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        NetworkRequest networkRequest = new NetworkRequest(netCap, -1,
+                mRequestId++, NetworkRequest.Type.REQUEST);
+        mTelephonyNetworkFactoryUT.obtainMessage(CMD_REQUEST_NETWORK, 0, 0, networkRequest)
+                .sendToTarget();
+        return networkRequest;
+    }
+
     private NetworkRequest makeSubSpecificMmsRequest(int subId) {
         NetworkCapabilities netCap = (new NetworkCapabilities()).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_MMS).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
                 addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
         netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
-        return mConnectivityServiceMock.requestNetwork(netCap, null, 0, new Binder(), -1);
+        NetworkRequest networkRequest = new NetworkRequest(netCap, -1,
+                mRequestId++, NetworkRequest.Type.REQUEST);
+        mTelephonyNetworkFactoryUT.obtainMessage(CMD_REQUEST_NETWORK, 0, 0, networkRequest)
+                .sendToTarget();
+        return networkRequest;
+    }
+
+    private void releaseNetworkRequest(NetworkRequest networkRequest) {
+        mTelephonyNetworkFactoryUT.obtainMessage(CMD_CANCEL_REQUEST, 0, 0, networkRequest)
+                .sendToTarget();
+    }
+
+    private void activatePhoneInPhoneSwitcher(int phoneId, boolean active) {
+        doReturn(active).when(mPhoneSwitcher).shouldApplyNetworkRequest(any(), eq(phoneId));
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(EVENT_ACTIVE_PHONE_SWITCH);
+    }
+
+    private void activatePhoneInPhoneSwitcher(int phoneId, NetworkRequest nr, boolean active) {
+        doReturn(active).when(mPhoneSwitcher).shouldApplyNetworkRequest(eq(nr), eq(phoneId));
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(EVENT_ACTIVE_PHONE_SWITCH);
     }
 
     @Before
@@ -127,44 +158,19 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
             mNetworkRequestList.remove((NetworkRequest) invocation.getArguments()[0]);
             return null;
         }).when(mDcTracker).releaseNetwork(any(), anyInt());
-
-        doAnswer(invocation -> {
-            mConnectivityServiceMock.registerNetworkFactory(
-                    (Messenger) invocation.getArguments()[0],
-                    (String) invocation.getArguments()[1]);
-            return null;
-        }).when(mIConnectivityManager).registerNetworkFactory(any(), anyString());
-
-        doAnswer(invocation -> {
-            mConnectivityServiceMock.unregisterNetworkFactory(
-                    (Messenger) invocation.getArguments()[0]);
-            return null;
-        }).when(mIConnectivityManager).unregisterNetworkFactory(any());
     }
 
     @After
     public void tearDown() throws Exception {
-        mConnectivityServiceMock.die();
         super.tearDown();
     }
 
-    private void createMockedTelephonyComponents(int numberOfPhones) throws Exception {
-        mConnectivityServiceMock = new ConnectivityServiceMock(mContext);
-        mContextFixture.setSystemService(Context.CONNECTIVITY_SERVICE,
-                new ConnectivityManager(mContext, mIConnectivityManager));
-        mTelephonyRegistryMock = new TelephonyRegistryMock();
-        mSubscriptionControllerMock = new SubscriptionControllerMock(mContext,
-                mTelephonyRegistryMock, numberOfPhones);
-        mPhoneSwitcherMock = new PhoneSwitcherMock(
-                numberOfPhones, Looper.myLooper(), mSubscriptionControllerMock);
-
-        replaceInstance(SubscriptionController.class, "sInstance", null,
-                mSubscriptionControllerMock);
-        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcherMock);
+    private void createMockedTelephonyComponents() throws Exception {
+        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcher);
 
         mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone);
-        monitorTestableLooper(new TestableLooper(
-                mConnectivityServiceMock.getHandlerThread().getLooper()));
+        verify(mConnectivityManager).registerNetworkFactory(any(), anyString());
+        verify(mPhoneSwitcher).registerForActivePhoneSwitch(any(), anyInt(), any());
     }
 
     /**
@@ -175,26 +181,25 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     @SmallTest
     public void testActive() throws Exception {
         mTestName = "testActive";
-        final int numberOfPhones = 1;
         final int phoneId = 0;
         final int subId = 0;
 
-        createMockedTelephonyComponents(numberOfPhones);
+        createMockedTelephonyComponents();
 
-        mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);
-        mSubscriptionControllerMock.setDefaultDataSubId(subId);
-        mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
+        doReturn(false).when(mPhoneSwitcher).shouldApplyNetworkRequest(any(), anyInt());
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
         // fake onSubscriptionChangedListener being triggered.
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
 
         log("addDefaultRequest");
-        mConnectivityServiceMock.addDefaultRequest();
+        makeDefaultInternetRequest();
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
         log("setPhoneActive true: phoneId = " + phoneId);
-        mPhoneSwitcherMock.setPhoneActive(phoneId, true);
+
+        activatePhoneInPhoneSwitcher(phoneId, true);
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
@@ -204,7 +209,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         assertEquals(2, mNetworkRequestList.size());
 
         log("setPhoneActive false: phoneId = " + phoneId);
-        mPhoneSwitcherMock.setPhoneActive(phoneId, false);
+        activatePhoneInPhoneSwitcher(phoneId, false);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
@@ -214,27 +219,27 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         assertEquals(0, mNetworkRequestList.size());
 
         log("setPhoneActive true: phoneId = " + phoneId);
-        mPhoneSwitcherMock.setPhoneActive(phoneId, true);
+        activatePhoneInPhoneSwitcher(phoneId, true);
         processAllMessages();
         assertEquals(3, mNetworkRequestList.size());
 
         log("releaseNetworkRequest: subSpecificDefault = " + subSpecificDefault);
-        mConnectivityServiceMock.releaseNetworkRequest(subSpecificDefault);
+        releaseNetworkRequest(subSpecificDefault);
         processAllMessages();
         assertEquals(2, mNetworkRequestList.size());
 
         log("setPhoneActive false: phoneId = " + phoneId);
-        mPhoneSwitcherMock.setPhoneActive(phoneId, false);
+        activatePhoneInPhoneSwitcher(phoneId, false);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
         log("releaseNetworkRequest: subSpecificMms = " + subSpecificMms);
-        mConnectivityServiceMock.releaseNetworkRequest(subSpecificMms);
+        releaseNetworkRequest(subSpecificMms);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
         log("setPhoneActive true: phoneId = " + phoneId);
-        mPhoneSwitcherMock.setPhoneActive(phoneId, true);
+        activatePhoneInPhoneSwitcher(phoneId, true);
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
     }
@@ -253,39 +258,37 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         final int altSubId = 1;
         final int unusedSubId = 2;
 
-        createMockedTelephonyComponents(numberOfPhones);
+        createMockedTelephonyComponents();
 
-        mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);
-        mSubscriptionControllerMock.setDefaultDataSubId(subId);
-        mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
-        mPhoneSwitcherMock.setPhoneActive(phoneId, true);
+        activatePhoneInPhoneSwitcher(phoneId, true);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
-        mConnectivityServiceMock.addDefaultRequest();
+        makeDefaultInternetRequest();
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
-        mSubscriptionControllerMock.setSlotSubId(altPhoneId, altSubId);
+        doReturn(altSubId).when(mSubscriptionController).getSubIdUsingPhoneId(altPhoneId);
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
-        mPhoneSwitcherMock.setPreferredDataPhoneId(altPhoneId);
-        mSubscriptionControllerMock.setDefaultDataSubId(altSubId);
-        mPhoneSwitcherMock.notifyActivePhoneChange(phoneId);
+        activatePhoneInPhoneSwitcher(phoneId, false);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(EVENT_ACTIVE_PHONE_SWITCH);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
-        makeSubSpecificMmsRequest(subId);
+        NetworkRequest subSpecificMmsRequest = makeSubSpecificMmsRequest(subId);
+        activatePhoneInPhoneSwitcher(phoneId, subSpecificMmsRequest, true);
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
-        mSubscriptionControllerMock.setSlotSubId(phoneId, unusedSubId);
+        doReturn(unusedSubId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
@@ -295,14 +298,12 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
-        mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
 
-        mSubscriptionControllerMock.setDefaultDataSubId(subId);
-        mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);
-        mPhoneSwitcherMock.notifyActivePhoneChange(phoneId);
+        activatePhoneInPhoneSwitcher(phoneId, true);
         processAllMessages();
         assertEquals(3, mNetworkRequestList.size());
     }
@@ -313,15 +314,13 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testHandoverNoLiveData() throws Exception {
-        createMockedTelephonyComponents(1);
-        mPhoneSwitcherMock.setPreferredDataPhoneId(0);
-        mSubscriptionControllerMock.setDefaultDataSubId(0);
-        mSubscriptionControllerMock.setSlotSubId(0, 0);
+        createMockedTelephonyComponents();
+        doReturn(0).when(mSubscriptionController).getSubIdUsingPhoneId(0);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
 
-        mPhoneSwitcherMock.setPhoneActive(0, true);
-        mConnectivityServiceMock.addDefaultRequest();
+        activatePhoneInPhoneSwitcher(0, true);
+        makeDefaultInternetRequest();
 
         makeSubSpecificMmsRequest(0);
         processAllMessages();
