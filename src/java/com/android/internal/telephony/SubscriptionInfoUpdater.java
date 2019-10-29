@@ -77,7 +77,8 @@ import java.util.List;
 public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     @UnsupportedAppUsage
-    private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getMaxPhoneCount();
+    private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault()
+            .getSupportedModemCount();
 
     private static final boolean DBG = true;
 

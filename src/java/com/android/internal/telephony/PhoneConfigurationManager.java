@@ -16,7 +16,11 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
+import static android.telephony.TelephonyManager.EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED;
+
 import android.content.Context;
+import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -378,12 +382,20 @@ public class PhoneConfigurationManager {
         } else {
             log("setMultiSimProperties: Rebooting is not required to switch multi-sim config to "
                     + finalMultiSimConfig);
+            broadcastSimSlotNumChange(numOfSims);
             // Register to RIL service if needed.
             for (int i = 0; i < mPhones.length; i++) {
                 Phone phone = mPhones[i];
                 phone.mCi.onSlotActiveStatusChange(isPhoneActive(i));
             }
         }
+    }
+
+    private void broadcastSimSlotNumChange(int numOfSims) {
+        log("broadcastSimSlotNumChange numOfSims" + numOfSims);
+        Intent intent = new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED);
+        intent.putExtra(EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED, numOfSims);
+        mContext.sendBroadcast(intent);
     }
 
     private static void log(String s) {
