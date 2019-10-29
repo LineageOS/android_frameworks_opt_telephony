@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import static android.preference.PreferenceManager.getDefaultSharedPreferences;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -39,8 +40,6 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Pair;
 
-import com.android.org.bouncycastle.util.io.pem.PemReader;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,10 +47,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Matchers;
 import org.mockito.MockitoAnnotations;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -148,12 +143,9 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testParseJson() {
-        ByteArrayInputStream certBytes = new ByteArrayInputStream(CERT.getBytes());
-        Reader fRd = new BufferedReader(new InputStreamReader(certBytes));
-        PemReader reader = new PemReader(fRd);
         Pair<PublicKey, Long> keyInfo = null;
         try {
-            keyInfo = mCarrierKeyDM.getKeyInformation(reader.readPemObject().getContent());
+            keyInfo = mCarrierKeyDM.getKeyInformation(CERT.getBytes());
         } catch (Exception e) {
             fail(LOG_TAG + "exception creating public key");
         }
@@ -172,12 +164,9 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testParseJsonPublicKey() {
-        ByteArrayInputStream certBytes = new ByteArrayInputStream(CERT.getBytes());
-        Reader fRd = new BufferedReader(new InputStreamReader(certBytes));
-        PemReader reader = new PemReader(fRd);
         Pair<PublicKey, Long> keyInfo = null;
         try {
-            keyInfo = mCarrierKeyDM.getKeyInformation(reader.readPemObject().getContent());
+            keyInfo = mCarrierKeyDM.getKeyInformation(CERT.getBytes());
         } catch (Exception e) {
             fail(LOG_TAG + "exception creating public key");
         }
@@ -324,12 +313,9 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testParseJson3GppFormat() {
-        ByteArrayInputStream certBytes = new ByteArrayInputStream(CERT.getBytes());
-        Reader fRd = new BufferedReader(new InputStreamReader(certBytes));
-        PemReader reader = new PemReader(fRd);
         Pair<PublicKey, Long> keyInfo = null;
         try {
-            keyInfo = mCarrierKeyDM.getKeyInformation(reader.readPemObject().getContent());
+            keyInfo = mCarrierKeyDM.getKeyInformation(CERT.getBytes());
         } catch (Exception e) {
             fail(LOG_TAG + "exception creating public key");
         }
@@ -342,4 +328,13 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
                 (Matchers.refEq(imsiEncryptionInfo)));
     }
 
+    /**
+     * Checks if certificate string cleaning is working correctly
+     */
+    @Test
+    @SmallTest
+    public void testCleanCertString() {
+        assertEquals(CarrierKeyDownloadManager
+                .cleanCertString("Comments before" + CERT + "Comments after"), CERT);
+    }
 }
