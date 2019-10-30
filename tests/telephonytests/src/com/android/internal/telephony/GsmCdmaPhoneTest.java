@@ -612,6 +612,23 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(voiceMailNumber).when(mSimRecords).getVoiceMailNumber();
 
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number from SIM
+        voiceMailNumber = "1234567894";
+        mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
+        messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mSimRecords).setVoiceMailNumber(eq("alphaTag"), eq(voiceMailNumber),
+                messageArgumentCaptor.capture());
+
+        // successfully saved on SIM
+        msg = messageArgumentCaptor.getValue();
+        AsyncResult.forMessage(msg);
+        msg.sendToTarget();
+        waitForMs(50);
+
+        doReturn(voiceMailNumber).when(mSimRecords).getVoiceMailNumber();
+
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
     }
 
     @FlakyTest
