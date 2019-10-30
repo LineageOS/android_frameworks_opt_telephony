@@ -171,21 +171,26 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (DBG) log("onReceive : incoming call intent");
             mOperationLocalLog.log("onIncomingCall Received");
 
+            if (extras == null) extras = new Bundle();
             if (mImsManager == null) return;
 
             try {
                 // Network initiated USSD will be treated by mImsUssdListener
-                boolean isUssd = extras.getBoolean(ImsManager.EXTRA_USSD, false);
+                boolean isUssd = extras.getBoolean(MmTelFeature.EXTRA_IS_USSD, false);
+                // For compatibility purposes with older vendor implmentations.
+                isUssd |= extras.getBoolean(ImsManager.EXTRA_USSD, false);
                 if (isUssd) {
                     if (DBG) log("onReceive : USSD");
-                    mUssdSession = mImsManager.takeCall(c, extras, mImsUssdListener);
+                    mUssdSession = mImsManager.takeCall(c, mImsUssdListener);
                     if (mUssdSession != null) {
                         mUssdSession.accept(ImsCallProfile.CALL_TYPE_VOICE);
                     }
                     return;
                 }
 
-                boolean isUnknown = extras.getBoolean(ImsManager.EXTRA_IS_UNKNOWN_CALL, false);
+                boolean isUnknown = extras.getBoolean(MmTelFeature.EXTRA_IS_UNKNOWN_CALL, false);
+                // For compatibility purposes with older vendor implmentations.
+                isUnknown |= extras.getBoolean(ImsManager.EXTRA_IS_UNKNOWN_CALL, false);
                 if (DBG) {
                     log("onReceive : isUnknown = " + isUnknown
                             + " fg = " + mForegroundCall.getState()
@@ -193,7 +198,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
 
                 // Normal MT/Unknown call
-                ImsCall imsCall = mImsManager.takeCall(c, extras, mImsCallListener);
+                ImsCall imsCall = mImsManager.takeCall(c, mImsCallListener);
                 ImsPhoneConnection conn = new ImsPhoneConnection(mPhone, imsCall,
                         ImsPhoneCallTracker.this,
                         (isUnknown ? mForegroundCall : mRingingCall), isUnknown);
