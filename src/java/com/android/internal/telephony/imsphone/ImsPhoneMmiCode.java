@@ -870,14 +870,16 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 // NOTE: Since these supplementary services are accessed only
                 //       via MMI codes, methods have not been added to ImsPhone.
                 //       Only the UT interface handle is used.
-                if (isActivate()) {
+                if (isActivate()
+                        && !mPhone.getDefaultPhone().isClirActivationAndDeactivationPrevented()) {
                     try {
                         mPhone.mCT.getUtInterface().updateCLIR(CommandsInterface.CLIR_INVOCATION,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
                         Rlog.d(LOG_TAG, "processCode: Could not get UT handle for updateCLIR.");
                     }
-                } else if (isDeactivate()) {
+                } else if (isDeactivate()
+                        && !mPhone.getDefaultPhone().isClirActivationAndDeactivationPrevented()) {
                     try {
                         mPhone.mCT.getUtInterface().updateCLIR(CommandsInterface.CLIR_SUPPRESSION,
                             obtainMessage(EVENT_SET_COMPLETE, this));
