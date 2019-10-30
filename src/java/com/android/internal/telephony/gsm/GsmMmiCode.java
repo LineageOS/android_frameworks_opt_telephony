@@ -921,10 +921,10 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 }
             } else if (mSc != null && mSc.equals(SC_CLIR)) {
                 Rlog.d(LOG_TAG, "processCode: is CLIR");
-                if (isActivate()) {
+                if (isActivate() && !mPhone.isClirActivationAndDeactivationPrevented()) {
                     mPhone.mCi.setCLIR(CommandsInterface.CLIR_INVOCATION,
                         obtainMessage(EVENT_SET_COMPLETE, this));
-                } else if (isDeactivate()) {
+                } else if (isDeactivate() && !mPhone.isClirActivationAndDeactivationPrevented()) {
                     mPhone.mCi.setCLIR(CommandsInterface.CLIR_SUPPRESSION,
                         obtainMessage(EVENT_SET_COMPLETE, this));
                 } else if (isInterrogate()) {
