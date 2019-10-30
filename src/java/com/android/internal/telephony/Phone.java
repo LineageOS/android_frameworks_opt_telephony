@@ -60,6 +60,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.emergency.EmergencyNumber;
+import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -94,6 +95,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * (<em>Not for SDK use</em>)
@@ -3655,6 +3657,31 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         Rlog.d(LOG_TAG, "getImsRegistrationTechnology =" + regTech);
         return regTech;
     }
+
+    /**
+     * Get the IMS MmTel Registration technology for this Phone, defined in
+     * {@link ImsRegistrationImplBase}.
+     */
+    public void getImsRegistrationTech(Consumer<Integer> callback) {
+        Phone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.getImsRegistrationTech(callback);
+        } else {
+            callback.accept(ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
+        }
+    }
+
+    /**
+     * Asynchronously get the IMS MmTel Registration state for this Phone.
+     */
+    public void getImsRegistrationState(Consumer<Integer> callback) {
+        Phone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.getImsRegistrationState(callback);
+        }
+        callback.accept(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
+    }
+
 
     private boolean getRoamingOverrideHelper(String prefix, String key) {
         String iccId = getIccSerialNumber();
