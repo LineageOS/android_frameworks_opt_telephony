@@ -77,7 +77,7 @@ import java.util.List;
 public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     @UnsupportedAppUsage
-    private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault()
+    private static final int SUPPORTED_MODEM_COUNT = TelephonyManager.getDefault()
             .getSupportedModemCount();
 
     private static final boolean DBG = true;
@@ -94,6 +94,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_READY = 10;
     private static final int EVENT_SIM_IMSI = 11;
     private static final int EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS = 12;
+    private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 13;
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
 
@@ -107,9 +108,9 @@ public class SubscriptionInfoUpdater extends Handler {
     private static Context sContext = null;
     @UnsupportedAppUsage
 
-    private static String[] sIccId = new String[PROJECT_SIM_NUM];
-    private static int[] sSimCardState = new int[PROJECT_SIM_NUM];
-    private static int[] sSimApplicationState = new int[PROJECT_SIM_NUM];
+    private static String[] sIccId = new String[SUPPORTED_MODEM_COUNT];
+    private static int[] sSimCardState = new int[SUPPORTED_MODEM_COUNT];
+    private static int[] sSimApplicationState = new int[SUPPORTED_MODEM_COUNT];
     private static boolean sIsSubInfoInitialized = false;
     private SubscriptionManager mSubscriptionManager = null;
     private EuiccManager mEuiccManager;
@@ -156,6 +157,9 @@ public class SubscriptionInfoUpdater extends Handler {
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(sContext);
         initializeCarrierApps();
+
+        PhoneConfigurationManager.registerForMultiSimConfigChange(
+                this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
     }
 
     private void initializeCarrierApps() {
@@ -225,7 +229,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
     @UnsupportedAppUsage
     private boolean isAllIccIdQueryDone() {
-        for (int i = 0; i < TelephonyManager.getDefault().getPhoneCount(); i++) {
+        for (int i = 0; i < TelephonyManager.getDefault().getActiveModemCount(); i++) {
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
             if  (sIccId[i] == null || slot == null || !slot.isActive()) {
@@ -337,8 +341,22 @@ public class SubscriptionInfoUpdater extends Handler {
                 });
                 break;
 
+            case EVENT_MULTI_SIM_CONFIG_CHANGED:
+                onMultiSimConfigChanged();
             default:
                 logd("Unknown msg:" + msg.what);
+        }
+    }
+
+    private void onMultiSimConfigChanged() {
+        int activeModemCount = ((TelephonyManager) sContext.getSystemService(
+                Context.TELEPHONY_SERVICE)).getActiveModemCount();
+        // For inactive modems, reset its states.
+        for (int phoneId = activeModemCount; phoneId < SUPPORTED_MODEM_COUNT; phoneId++) {
+            SubscriptionController.getInstance().clearSubInfoRecord(phoneId);
+            sIccId[phoneId] = null;
+            sSimCardState[phoneId] = TelephonyManager.SIM_STATE_UNKNOWN;
+            sSimApplicationState[phoneId] = TelephonyManager.SIM_STATE_UNKNOWN;
         }
     }
 

@@ -16,12 +16,9 @@
 
 package com.android.internal.telephony.cat;
 
-import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
-        .IDLE_SCREEN_AVAILABLE_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
-        .LANGUAGE_SELECTION_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants
-        .USER_ACTIVITY_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManagerNative;
@@ -38,7 +35,6 @@ import android.os.Handler;
 import android.os.LocaleList;
 import android.os.Message;
 import android.os.RemoteException;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -252,6 +248,7 @@ public class CatService extends Handler implements AppInterface {
     }
 
     @UnsupportedAppUsage
+    @Override
     public void dispose() {
         synchronized (sInstanceLock) {
             CatLog.d(this, "Disposing CatService object");
@@ -275,7 +272,7 @@ public class CatService extends Handler implements AppInterface {
             mMsgDecoder = null;
             removeCallbacksAndMessages(null);
             if (sInstance != null) {
-                if (SubscriptionManager.isValidSlotIndex(mSlotId)) {
+                if (mSlotId >= 0 && mSlotId < sInstance.length) {
                     sInstance[mSlotId] = null;
                 } else {
                     CatLog.d(this, "error: invaild slot id: " + mSlotId);
