@@ -23,6 +23,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -48,7 +49,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
     // When TEST_MODE is on we allow the test intent to trigger an SMS CB alert
-    private static final boolean TEST_MODE = true; //STOPSHIP if true
+    private static final boolean TEST_MODE = SystemProperties.getInt("ro.debuggable", 0) == 1;
     private static final String TEST_ACTION = "com.android.internal.telephony.gsm"
             + ".TEST_TRIGGER_CELL_BROADCAST";
     private static final String TOGGLE_CB_MODULE = "com.android.internal.telephony.gsm"
