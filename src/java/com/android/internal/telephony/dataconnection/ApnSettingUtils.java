@@ -83,8 +83,8 @@ public class ApnSettingUtils {
      */
     public static boolean mvnoMatches(IccRecords r, int mvnoType, String mvnoMatchData) {
         if (mvnoType == ApnSetting.MVNO_TYPE_SPN) {
-            if ((r.getServiceProviderName() != null)
-                    && r.getServiceProviderName().equalsIgnoreCase(mvnoMatchData)) {
+            String spn = r.getServiceProviderNameWithBrandOverride();
+            if ((spn != null) && spn.equalsIgnoreCase(mvnoMatchData)) {
                 return true;
             }
         } else if (mvnoType == ApnSetting.MVNO_TYPE_IMSI) {
