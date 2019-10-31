@@ -919,6 +919,15 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param sms Sms result struct as defined by SendSmsResult in types.hal
+     */
+    public void sendCdmaSMSExpectMoreResponse(RadioResponseInfo responseInfo, SendSmsResult sms) {
+        responseSms(responseInfo, sms);
+    }
+
+    /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void acknowledgeLastIncomingCdmaSmsResponse(RadioResponseInfo responseInfo) {
