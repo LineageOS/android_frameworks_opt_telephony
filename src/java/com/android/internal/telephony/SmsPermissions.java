@@ -50,7 +50,6 @@ public class SmsPermissions {
      * Check that the caller can send text messages.
      *
      * For persisted messages, the caller just needs the SEND_SMS permission. For unpersisted
-     * For persisted messages, the caller just needs the SEND_SMS permission. For unpersisted
      * messages, the caller must either be the IMS app or a carrier-privileged app, or they must
      * have both the MODIFY_PHONE_STATE and SEND_SMS permissions.
      *
@@ -73,7 +72,6 @@ public class SmsPermissions {
         }
         return checkCallingCanSendSms(callingPackage, message);
     }
-
 
     /**
      * Enforces that the caller is one of the following apps:
@@ -101,7 +99,6 @@ public class SmsPermissions {
         TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(mPhone.getSubId(), message);
     }
 
-
     /**
      * Check that the caller has SEND_SMS permissions. Can only be called during an IPC.
      *
@@ -126,6 +123,67 @@ public class SmsPermissions {
         mContext.enforceCallingOrSelfPermission(Manifest.permission.SEND_SMS, message);
         return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage)
                 == AppOpsManager.MODE_ALLOWED;
+    }
+
+    /**
+     * Check that the caller (or self, if this is not an IPC) can get SMSC address from (U)SIM.
+     *
+     * The default SMS application can get SMSC address, otherwise the caller must have
+     * {@link android.Manifest.permission#READ_PRIVILEGED_PHONE_STATE} or carrier privileges.
+     *
+     * @return true if the caller is default SMS app or has the required permission and privileges.
+     *              Otherwise, false;
+     */
+    public boolean checkCallingOrSelfCanGetSmscAddress(String callingPackage, String message) {
+        // Allow it to the default SMS app always.
+        if (!isDefaultSmsPackage(callingPackage)) {
+            try {
+                // Allow it with READ_PRIVILEGED_PHONE_STATE or Carrier Privileges
+                TelephonyPermissions
+                        .enforeceCallingOrSelfReadPrivilegedPhoneStatePermissionOrCarrierPrivilege(
+                                mContext, mPhone.getSubId(), message);
+            } catch (SecurityException e) { // To avoid crashing applications
+                Log.e(LOG_TAG, message + ": Neither " + callingPackage + " is the default SMS app"
+                        + " nor the caller has "
+                        + android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE
+                        + ", or carrier privileges", e);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check that the caller (or self, if this is not an IPC) can set SMSC address on (U)SIM.
+     *
+     * The default SMS application can set SMSC address, otherwise the caller must have
+     * {@link android.Manifest.permission#MODIFY_PHONE_STATE} or carrier privileges.
+     *
+     * @return true if the caller is default SMS app or has the required permission and privileges.
+     *              Otherwise, false.
+     */
+    public boolean checkCallingOrSelfCanSetSmscAddress(String callingPackage, String message) {
+        // Allow it to the default SMS app always.
+        if (!isDefaultSmsPackage(callingPackage)) {
+            try {
+                // Allow it with MODIFY_PHONE_STATE or Carrier Privileges
+                TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                        mContext, mPhone.getSubId(), message);
+            } catch (SecurityException e) { // To avoid crashing applications
+                Log.e(LOG_TAG, message + ": Neither " + callingPackage + " is the default SMS app"
+                        + " nor the caller has " + android.Manifest.permission.MODIFY_PHONE_STATE
+                        + ", or carrier privileges", e);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Check if a package is default SMS app. */
+    public boolean isDefaultSmsPackage(String packageName) {
+        return SmsApplication.isDefaultSmsApplication(mContext, packageName);
     }
 
     @UnsupportedAppUsage
