@@ -495,6 +495,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 }
             };
 
+    // Used during testing, overrides the carrier services while non-empty.
+    // Array index corresponds to slot Id associated with the service package name.
+    private String[] mOverrideServices;
     // Array index corresponds to slot Id associated with the service package name.
     private String[] mCarrierServices;
     // List index corresponds to Slot Id, Maps ImsFeature.FEATURE->bound ImsServiceController
@@ -522,6 +525,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         mCarrierConfigManager = (CarrierConfigManager) mContext.getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
         mCarrierServices = new String[numSlots];
+        mOverrideServices = new String[numSlots];
         mBoundImsServicesByFeature = Stream.generate(SparseArray<ImsServiceController>::new)
                 .limit(mNumSlots).collect(Collectors.toList());
 
@@ -1126,9 +1130,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
             // not specified, replace package on all slots.
             for (int i = 0; i < mNumSlots; i++) {
+                mOverrideServices[i] = newPackageName;
                 updateBoundCarrierServices(i, newPackageName);
             }
         } else {
+            mOverrideServices[slotId] = newPackageName;
             updateBoundCarrierServices(slotId, newPackageName);
         }
 
@@ -1159,7 +1165,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      */
     private void updateBoundCarrierServices(int slotId, String newPackageName) {
         if (slotId > SubscriptionManager.INVALID_SIM_SLOT_INDEX && slotId < mNumSlots) {
+            String overridePackageName = mOverrideServices[slotId];
             String oldPackageName = mCarrierServices[slotId];
+            if (!TextUtils.isEmpty(overridePackageName)) {
+                // Do not allow carrier config changes to change the override package while it is
+                // in effect.
+                Log.i(TAG, "CarrierConfig change ignored for " + newPackageName + " while override"
+                        + " is in effect for " + overridePackageName);
+                newPackageName = overridePackageName;
+            }
             mCarrierServices[slotId] = newPackageName;
             if (!TextUtils.equals(newPackageName, oldPackageName)) {
                 Log.i(TAG, "Carrier Config updated, binding new ImsService");

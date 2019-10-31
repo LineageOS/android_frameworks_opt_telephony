@@ -60,7 +60,7 @@ public class MmTelFeatureConnectionTest extends TelephonyTest {
         List<TestCallback> mCallbacks = new ArrayList<>();
 
         CallbackManagerTest(Context context, Object lock) {
-            super(context, lock);
+            super(context, lock, 0 /*slotId*/);
         }
 
         // A callback has been registered. Register that callback with the MmTelFeature.

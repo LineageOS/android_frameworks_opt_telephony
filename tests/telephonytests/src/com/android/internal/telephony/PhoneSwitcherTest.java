@@ -53,7 +53,6 @@ import android.os.Message;
 import android.os.Messenger;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyRegistryManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -1031,6 +1030,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         }
 
         doReturn(numPhones).when(mTelephonyManager).getPhoneCount();
+        doReturn(numPhones).when(mTelephonyManager).getActiveModemCount();
         if (numPhones == 1) {
             mCommandsInterfaces = new CommandsInterface[] {mCommandsInterface0};
             mPhones = new Phone[] {mPhone};

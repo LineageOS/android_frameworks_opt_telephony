@@ -65,6 +65,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
 import android.telephony.ims.ProvisioningManager;
+import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -125,6 +126,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
@@ -171,21 +173,26 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (DBG) log("onReceive : incoming call intent");
             mOperationLocalLog.log("onIncomingCall Received");
 
+            if (extras == null) extras = new Bundle();
             if (mImsManager == null) return;
 
             try {
                 // Network initiated USSD will be treated by mImsUssdListener
-                boolean isUssd = extras.getBoolean(ImsManager.EXTRA_USSD, false);
+                boolean isUssd = extras.getBoolean(MmTelFeature.EXTRA_IS_USSD, false);
+                // For compatibility purposes with older vendor implmentations.
+                isUssd |= extras.getBoolean(ImsManager.EXTRA_USSD, false);
                 if (isUssd) {
                     if (DBG) log("onReceive : USSD");
-                    mUssdSession = mImsManager.takeCall(c, extras, mImsUssdListener);
+                    mUssdSession = mImsManager.takeCall(c, mImsUssdListener);
                     if (mUssdSession != null) {
                         mUssdSession.accept(ImsCallProfile.CALL_TYPE_VOICE);
                     }
                     return;
                 }
 
-                boolean isUnknown = extras.getBoolean(ImsManager.EXTRA_IS_UNKNOWN_CALL, false);
+                boolean isUnknown = extras.getBoolean(MmTelFeature.EXTRA_IS_UNKNOWN_CALL, false);
+                // For compatibility purposes with older vendor implmentations.
+                isUnknown |= extras.getBoolean(ImsManager.EXTRA_IS_UNKNOWN_CALL, false);
                 if (DBG) {
                     log("onReceive : isUnknown = " + isUnknown
                             + " fg = " + mForegroundCall.getState()
@@ -193,7 +200,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
 
                 // Normal MT/Unknown call
-                ImsCall imsCall = mImsManager.takeCall(c, extras, mImsCallListener);
+                ImsCall imsCall = mImsManager.takeCall(c, mImsCallListener);
                 ImsPhoneConnection conn = new ImsPhoneConnection(mPhone, imsCall,
                         ImsPhoneCallTracker.this,
                         (isUnknown ? mForegroundCall : mRingingCall), isUnknown);
@@ -3158,8 +3165,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     };
 
-    private final ImsMmTelManager.RegistrationCallback mImsRegistrationCallback =
-            new ImsMmTelManager.RegistrationCallback() {
+    private final RegistrationManager.RegistrationCallback mImsRegistrationCallback =
+            new RegistrationManager.RegistrationCallback() {
 
                 @Override
                 public void onRegistered(int imsRadioTech) {
@@ -3170,7 +3177,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mRegLocalLog.log("onImsConnected imsRadioTech="
                             + AccessNetworkConstants.transportTypeToString(imsRadioTech));
                     mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
-                    mPhone.setImsRegistered(true);
+                    mPhone.setImsRegistrationState(
+                            RegistrationManager.REGISTRATION_STATE_REGISTERED);
                     mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
                             ImsConnectionState.State.CONNECTED, null);
                 }
@@ -3184,7 +3192,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mRegLocalLog.log("onImsProgressing imsRadioTech="
                             + AccessNetworkConstants.transportTypeToString(imsRadioTech));
                     mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
-                    mPhone.setImsRegistered(false);
+                    mPhone.setImsRegistrationState(
+                            RegistrationManager.REGISTRATION_STATE_REGISTERING);
                     mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
                             ImsConnectionState.State.PROGRESSING, null);
                 }
@@ -3194,7 +3203,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
                     mRegLocalLog.log("onImsDisconnected imsRadioTech=" + imsReasonInfo);
                     mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
-                    mPhone.setImsRegistered(false);
+                    mPhone.setImsRegistrationState(
+                            RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
                     mPhone.processDisconnectReason(imsReasonInfo);
                     mMetrics.writeOnImsConnectionState(mPhone.getPhoneId(),
                             ImsConnectionState.State.DISCONNECTED, imsReasonInfo);
@@ -3785,6 +3795,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
     }
 
+    /**
+     * Asynchronously gets the IMS registration technology for MMTEL.
+     */
+    public void getImsRegistrationTech(Consumer<Integer> callback) {
+        if (mImsManager != null) {
+            mImsManager.getRegistrationTech(callback);
+        } else {
+            callback.accept(ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
+        }
+    }
+
     private void retryGetImsService() {
         // The binder connection is already up. Do not try to get it again.
         if (mImsManager.isServiceAvailable()) {
@@ -4177,7 +4198,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         log("Resetting Capabilities...");
         boolean tmpIsVideoCallEnabled = isVideoCallEnabled();
         mMmTelCapabilities = new MmTelFeature.MmTelCapabilities();
-
+        mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        mPhone.setImsRegistrationState(
+                RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
+        mPhone.processDisconnectReason(new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN,
+                ImsReasonInfo.CODE_UNSPECIFIED));
         boolean isVideoEnabled = isVideoCallEnabled();
         if (tmpIsVideoCallEnabled != isVideoEnabled) {
             mPhone.notifyForVideoCapabilityChanged(isVideoEnabled);
