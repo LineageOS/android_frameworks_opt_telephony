@@ -51,6 +51,7 @@ import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -87,7 +88,7 @@ import org.mockito.stubbing.Answer;
 public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
     private MmTelFeature.Listener mMmTelListener;
-    private ImsMmTelManager.RegistrationCallback mRegistrationCallback;
+    private RegistrationManager.RegistrationCallback mRegistrationCallback;
     private ImsMmTelManager.CapabilityCallback mCapabilityCallback;
     private ImsCall.Listener mImsCallListener;
     private ImsCall mImsCall;
@@ -199,7 +200,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             mRegistrationCallback = invocation.getArgument(0);
             return mRegistrationCallback;
         }).when(mImsManager).addRegistrationCallback(
-                any(android.telephony.ims.ImsMmTelManager.RegistrationCallback.class));
+                any(RegistrationManager.RegistrationCallback.class));
 
         doAnswer(invocation -> {
             mCapabilityCallback = (ImsMmTelManager.CapabilityCallback) invocation.getArguments()[0];
@@ -241,10 +242,11 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @SmallTest
     public void testImsRegistered() {
         // when IMS is registered
-        mRegistrationCallback.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        mRegistrationCallback.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
         // then service state should be IN_SERVICE and ImsPhone state set to registered
         verify(mImsPhone).setServiceState(eq(ServiceState.STATE_IN_SERVICE));
-        verify(mImsPhone).setImsRegistered(eq(true));
+        verify(mImsPhone).setImsRegistrationState(eq(
+                RegistrationManager.REGISTRATION_STATE_REGISTERED));
     }
 
     @Test
@@ -254,7 +256,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mRegistrationCallback.onRegistering(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
         // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
         verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
-        verify(mImsPhone).setImsRegistered(eq(false));
+        verify(mImsPhone).setImsRegistrationState(eq(
+                RegistrationManager.REGISTRATION_STATE_REGISTERING));
     }
 
     @Test
@@ -264,7 +267,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mRegistrationCallback.onUnregistered(new ImsReasonInfo());
         // then service state should be OUT_OF_SERVICE and ImsPhone state set to not registered
         verify(mImsPhone).setServiceState(eq(ServiceState.STATE_OUT_OF_SERVICE));
-        verify(mImsPhone).setImsRegistered(eq(false));
+        verify(mImsPhone).setImsRegistrationState(eq(
+                RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED));
     }
 
     @Test
