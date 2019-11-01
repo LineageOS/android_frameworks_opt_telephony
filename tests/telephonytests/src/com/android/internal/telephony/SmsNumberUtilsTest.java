@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
+
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
@@ -30,10 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.doReturn;
 
 public class SmsNumberUtilsTest extends TelephonyTest {
 
@@ -119,7 +118,7 @@ public class SmsNumberUtilsTest extends TelephonyTest {
 
         mHbpcdContentProvider = new HbpcdContentProvider();
 
-        doReturn(TMO_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
+        doReturn(TMO_MCC_MNC).when(mTelephonyManager).getNetworkOperator();
 
         ((MockContentResolver) mContextFixture.getTestDouble().getContentResolver())
                 .addProvider(HbpcdLookup.MccIdd.CONTENT_URI.getAuthority(), mHbpcdContentProvider);
@@ -138,103 +137,116 @@ public class SmsNumberUtilsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testInvalidNumberConversion() {
-        assertEquals("123", SmsNumberUtils.filterDestAddr(mPhone, "123"));
+        assertEquals("123", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(), "123"));
     }
 
     @Test
     @SmallTest
     public void testNaPcCountryCodeAreaLocalNumberConversion() {
         // NP_NANP_NBPCD_CC_AREA_LOCAL tests
-        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
-        assertEquals("18583420022", SmsNumberUtils.filterDestAddr(mPhone, "+1-858-342-0022"));
+        doReturn(TelephonyManager.PHONE_TYPE_CDMA).when(mTelephonyManager).getPhoneType();
+        assertEquals("18583420022", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "+1-858-342-0022"));
     }
 
     @Test
     @SmallTest
     public void testPcCountryCodeAreaLocalNumberConversion() {
         // NP_NBPCD_CC_AREA_LOCAL tests
-        assertEquals("01188671234567", SmsNumberUtils.filterDestAddr(mPhone, "+886-7-1234567"));
+        assertEquals("01188671234567", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "+886-7-1234567"));
     }
 
     @Test
     @SmallTest
     public void testIndiaPcCountryCodeAreaLocalNumberConversion() {
         // NP_NBPCD_CC_AREA_LOCAL tests
-        doReturn(INDIA_AIRTEL_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
-        assertEquals("0119172345678", SmsNumberUtils.filterDestAddr(mPhone, "+91-7-234-5678"));
+        doReturn(INDIA_AIRTEL_MCC_MNC).when(mTelephonyManager).getNetworkOperator();
+        assertEquals("0119172345678", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "+91-7-234-5678"));
     }
 
     @Test
     @SmallTest
     public void testPcHomeIddCountryCodeAreaLocalNumberConversion() {
         // NP_NBPCD_HOMEIDD_CC_AREA_LOCAL tests
-        assertEquals("01188671234567", SmsNumberUtils.filterDestAddr(mPhone, "+011886-7-1234567"));
+        assertEquals("01188671234567", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "+011886-7-1234567"));
     }
 
     @Test
     @SmallTest
     public void testHomeIddCountryCodeAreaLocalNumberConversion() {
         // NP_HOMEIDD_CC_AREA_LOCAL tests
-        assertEquals("01188671234567", SmsNumberUtils.filterDestAddr(mPhone, "011886-7-1234567"));
+        assertEquals("01188671234567", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "011886-7-1234567"));
     }
 
     @Test
     @SmallTest
     public void testLocalIddCountryCodeAreaLocalNumberConversion() {
         // NP_LOCALIDD_CC_AREA_LOCAL tests
-        doReturn(TAIWAN_FET_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
-        assertEquals("01118581234567", SmsNumberUtils.filterDestAddr(mPhone, "002-1-858-1234567"));
+        doReturn(TAIWAN_FET_MCC_MNC).when(mTelephonyManager).getNetworkOperator();
+        assertEquals("01118581234567", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "002-1-858-1234567"));
     }
 
     @Test
     @SmallTest
     public void testIndiaLocalIddCountryCodeAreaLocalNumberConversion() {
         // NP_LOCALIDD_CC_AREA_LOCAL tests
-        doReturn(INDIA_AIRTEL_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
-        assertEquals("01118581234567", SmsNumberUtils.filterDestAddr(mPhone, "010-1-858-1234567"));
+        doReturn(INDIA_AIRTEL_MCC_MNC).when(mTelephonyManager).getNetworkOperator();
+        assertEquals("01118581234567", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "010-1-858-1234567"));
     }
 
     @Test
     @SmallTest
     public void testJapanLocalIddCountryCodeAreaLocalNumberConversion() {
         // NP_LOCALIDD_CC_AREA_LOCAL tests
-        doReturn(JAPAN_NTTDOCOMO_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
-        assertEquals("01118581234567", SmsNumberUtils.filterDestAddr(mPhone, "010-1-858-1234567"));
+        doReturn(JAPAN_NTTDOCOMO_MCC_MNC).when(mTelephonyManager).getNetworkOperator();
+        assertEquals("01118581234567", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "010-1-858-1234567"));
     }
 
     @Test
     @SmallTest
     public void testCountryCodeAreaLocalNumberConversion() {
         // NP_CC_AREA_LOCAL tests
-        assertEquals("011886286281234", SmsNumberUtils.filterDestAddr(mPhone, "886-2-86281234"));
+        assertEquals("011886286281234", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "886-2-86281234"));
     }
 
     @Test
     @SmallTest
     public void testNaLocalNumberConversion() {
         // NP_NANP_LOCAL
-        assertEquals("2345678", SmsNumberUtils.filterDestAddr(mPhone, "234-5678"));
+        assertEquals("2345678", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "234-5678"));
     }
 
     @Test
     @SmallTest
     public void testNaAreaLocalNumberConversion() {
         // NP_NANP_AREA_LOCAL
-        assertEquals("8582345678", SmsNumberUtils.filterDestAddr(mPhone, "858-234-5678"));
+        assertEquals("8582345678", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "858-234-5678"));
     }
 
     @Test
     @SmallTest
     public void testNaNddAreaLocalNumberConversion() {
         // NP_NANP_NDD_AREA_LOCAL
-        assertEquals("18582345678", SmsNumberUtils.filterDestAddr(mPhone, "1-858-234-5678"));
+        assertEquals("18582345678", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "1-858-234-5678"));
     }
 
     @Test
     @SmallTest
     public void testNaLocalIddCcAreaLocalNumberConversion() {
         // NP_NANP_LOCALIDD_CC_AREA_LOCAL
-        assertEquals("+18582345678", SmsNumberUtils.filterDestAddr(mPhone, "011-1-858-234-5678"));
+        assertEquals("+18582345678", SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(),
+                "011-1-858-234-5678"));
     }
 
     @Test
@@ -242,6 +254,6 @@ public class SmsNumberUtilsTest extends TelephonyTest {
     public void testNaPcHomeIddCcAreaLocalNumberConversion() {
         // NP_NANP_NBPCD_HOMEIDD_CC_AREA_LOCAL
         assertEquals("01118582345678",
-                SmsNumberUtils.filterDestAddr(mPhone, "+011-1-858-234-5678"));
+                SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(), "+011-1-858-234-5678"));
     }
 }
