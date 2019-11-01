@@ -73,6 +73,7 @@ import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsSsInfo;
+import android.telephony.ims.RegistrationManager;
 import android.text.TextUtils;
 
 import com.android.ims.FeatureConnector;
@@ -110,6 +111,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * {@hide}
@@ -213,7 +215,7 @@ public class ImsPhone extends ImsPhoneBase {
 
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
-    private boolean mImsRegistered = false;
+    private int mImsRegistrationState = RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
 
     private boolean mRoaming = false;
 
@@ -1742,18 +1744,34 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void getImsRegistrationTech(Consumer<Integer> callback) {
+        mCT.getImsRegistrationTech(callback);
+    }
+
+    @Override
+    public void getImsRegistrationState(Consumer<Integer> callback) {
+        callback.accept(mImsRegistrationState);
+    }
+
+    @Override
     public Phone getDefaultPhone() {
         return mDefaultPhone;
     }
 
     @Override
     public boolean isImsRegistered() {
-        return mImsRegistered;
+        return mImsRegistrationState == RegistrationManager.REGISTRATION_STATE_REGISTERED;
     }
 
+    // Not used, but not removed due to UnsupportedAppUsage tag.
     @UnsupportedAppUsage
-    public void setImsRegistered(boolean value) {
-        mImsRegistered = value;
+    public void setImsRegistered(boolean isRegistered) {
+        mImsRegistrationState = isRegistered ? RegistrationManager.REGISTRATION_STATE_REGISTERED :
+                RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
+    }
+
+    public void setImsRegistrationState(@RegistrationManager.ImsRegistrationState int value) {
+        mImsRegistrationState = value;
     }
 
     @Override
@@ -2025,7 +2043,7 @@ public class ImsPhone extends ImsPhoneBase {
         pw.println("  mIsPhoneInEcmState = " + isInEcm());
         pw.println("  mEcmExitRespRegistrant = " + mEcmExitRespRegistrant);
         pw.println("  mSilentRedialRegistrants = " + mSilentRedialRegistrants);
-        pw.println("  mImsRegistered = " + mImsRegistered);
+        pw.println("  mImsRegistrationState = " + mImsRegistrationState);
         pw.println("  mRoaming = " + mRoaming);
         pw.println("  mSsnRegistrants = " + mSsnRegistrants);
         pw.flush();
