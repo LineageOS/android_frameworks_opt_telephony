@@ -26,6 +26,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.aidl.IImsSmsListener;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -71,12 +72,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
      * Listen to the IMS service state change
      *
      */
-    private android.telephony.ims.ImsMmTelManager.RegistrationCallback mRegistrationCallback =
-            new android.telephony.ims.ImsMmTelManager.RegistrationCallback() {
+    private RegistrationManager.RegistrationCallback mRegistrationCallback =
+            new RegistrationManager.RegistrationCallback() {
                 @Override
                 public void onRegistered(
                         @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
-                    Rlog.d(TAG, "onImsConnected imsRadioTech=" + imsRadioTech);
+                    logd("onImsConnected imsRadioTech=" + imsRadioTech);
                     synchronized (mLock) {
                         mIsRegistered = true;
                     }
@@ -85,7 +86,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 @Override
                 public void onRegistering(
                         @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
-                    Rlog.d(TAG, "onImsProgressing imsRadioTech=" + imsRadioTech);
+                    logd("onImsProgressing imsRadioTech=" + imsRadioTech);
                     synchronized (mLock) {
                         mIsRegistered = false;
                     }
@@ -93,7 +94,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
                 @Override
                 public void onUnregistered(ImsReasonInfo info) {
-                    Rlog.d(TAG, "onImsDisconnected imsReasonInfo=" + info);
+                    logd("onImsDisconnected imsReasonInfo=" + info);
                     synchronized (mLock) {
                         mIsRegistered = false;
                     }
@@ -116,7 +117,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         @Override
         public void onSendSmsResult(int token, int messageRef, @SendStatusResult int status,
                 int reason, int networkReasonCode) {
-            Rlog.d(TAG, "onSendSmsResult token=" + token + " messageRef=" + messageRef
+            logd("onSendSmsResult token=" + token + " messageRef=" + messageRef
                     + " status=" + status + " reason=" + reason + " networkReasonCode="
                     + networkReasonCode);
             // TODO integrate networkReasonCode into IMS SMS metrics.
@@ -154,7 +155,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         @Override
         public void onSmsStatusReportReceived(int token, String format, byte[] pdu)
                 throws RemoteException {
-            Rlog.d(TAG, "Status report received.");
+            logd("Status report received.");
             android.telephony.SmsMessage message =
                     android.telephony.SmsMessage.createFromPdu(pdu, format);
             if (message == null || message.mWrappedSmsMessage == null) {
@@ -177,8 +178,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             }
             Pair<Boolean, Boolean> result = mSmsDispatchersController.handleSmsStatusReport(
                     tracker, format, pdu);
-            Rlog.d(TAG, "Status report handle result, success: " + result.first +
-                    "complete: " + result.second);
+            logd("Status report handle result, success: " + result.first
+                    + " complete: " + result.second);
             try {
                 getImsManager().acknowledgeSmsReport(
                         token,
@@ -186,7 +187,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         result.first ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
                                 : ImsSmsImplBase.STATUS_REPORT_STATUS_ERROR);
             } catch (ImsException e) {
-                Rlog.e(TAG, "Failed to acknowledgeSmsReport(). Error: "
+                loge("Failed to acknowledgeSmsReport(). Error: "
                         + e.getMessage());
             }
             if (result.second) {
@@ -196,11 +197,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
         @Override
         public void onSmsReceived(int token, String format, byte[] pdu) {
-            Rlog.d(TAG, "SMS received.");
+            logd("SMS received.");
             android.telephony.SmsMessage message =
                     android.telephony.SmsMessage.createFromPdu(pdu, format);
             mSmsDispatchersController.injectSmsPdu(message, format, result -> {
-                Rlog.d(TAG, "SMS handled result: " + result);
+                logd("SMS handled result: " + result);
                 int mappedResult;
                 switch (result) {
                     case Intents.RESULT_SMS_HANDLED:
@@ -221,11 +222,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         getImsManager().acknowledgeSms(token,
                                 message.mWrappedSmsMessage.mMessageRef, mappedResult);
                     } else {
-                        Rlog.w(TAG, "SMS Received with a PDU that could not be parsed.");
+                        logw("SMS Received with a PDU that could not be parsed.");
                         getImsManager().acknowledgeSms(token, 0, mappedResult);
                     }
                 } catch (ImsException e) {
-                    Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
+                    loge("Failed to acknowledgeSms(). Error: " + e.getMessage());
                 }
             }, true);
         }
@@ -248,7 +249,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
                     @Override
                     public void connectionReady(ImsManager manager) throws ImsException {
-                        Rlog.d(TAG, "ImsManager: connection ready.");
+                        logd("ImsManager: connection ready.");
                         synchronized (mLock) {
                             setListeners();
                             mIsImsServiceUp = true;
@@ -257,7 +258,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
                     @Override
                     public void connectionUnavailable() {
-                        Rlog.d(TAG, "ImsManager: connection unavailable.");
+                        logd("ImsManager: connection unavailable.");
                         synchronized (mLock) {
                             mIsImsServiceUp = false;
                         }
@@ -292,7 +293,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         PersistableBundle b;
         boolean eSmsCarrierSupport = false;
         if (!PhoneNumberUtils.isLocalEmergencyNumber(mContext, mPhone.getSubId(), destAddr)) {
-            Rlog.e(TAG, "Emergency Sms is not supported for: " + Rlog.pii(TAG, destAddr));
+            loge("Emergency Sms is not supported for: " + Rlog.pii(TAG, destAddr));
             return false;
         }
 
@@ -301,18 +302,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                     .getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configManager == null) {
-                Rlog.e(TAG, "configManager is null");
+                loge("configManager is null");
                 return false;
             }
             b = configManager.getConfigForSubId(getSubId());
             if (b == null) {
-                Rlog.e(TAG, "PersistableBundle is null");
+                loge("PersistableBundle is null");
                 return false;
             }
             eSmsCarrierSupport = b.getBoolean(
                     CarrierConfigManager.KEY_SUPPORT_EMERGENCY_SMS_OVER_IMS_BOOL);
             boolean lteOrLimitedLte = isEmergencySmsPossible();
-            Rlog.i(TAG, "isEmergencySmsSupport emergencySmsCarrierSupport: "
+            logi("isEmergencySmsSupport emergencySmsCarrierSupport: "
                     + eSmsCarrierSupport + " destAddr: " + Rlog.pii(TAG, destAddr)
                     + " mIsImsServiceUp: " + mIsImsServiceUp + " lteOrLimitedLte: "
                     + lteOrLimitedLte);
@@ -325,7 +326,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
     public boolean isAvailable() {
         synchronized (mLock) {
-            Rlog.d(TAG, "isAvailable: up=" + mIsImsServiceUp + ", reg= " + mIsRegistered
+            logd("isAvailable: up=" + mIsImsServiceUp + ", reg= " + mIsRegistered
                     + ", cap= " + mIsSmsCapable);
             return mIsImsServiceUp && mIsRegistered && mIsSmsCapable;
         }
@@ -336,7 +337,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         try {
             return getImsManager().getSmsFormat();
         } catch (ImsException e) {
-            Rlog.e(TAG, "Failed to get sms format. Error: " + e.getMessage());
+            loge("Failed to get sms format. Error: " + e.getMessage());
             return SmsConstants.FORMAT_UNKNOWN;
         }
     }
@@ -370,7 +371,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
     @Override
     public void sendSms(SmsTracker tracker) {
-        Rlog.d(TAG, "sendSms: "
+        logd("sendSms: "
                 + " mRetryCount=" + tracker.mRetryCount
                 + " mMessageRef=" + tracker.mMessageRef
                 + " SS=" + mPhone.getServiceState().getState());
@@ -409,7 +410,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
                     ImsSmsImplBase.SEND_STATUS_OK);
         } catch (ImsException e) {
-            Rlog.e(TAG, "sendSms failed. Falling back to PSTN. Error: " + e.getMessage());
+            loge("sendSms failed. Falling back to PSTN. Error: " + e.getMessage());
             fallbackToPstn(token, tracker);
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
                     ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK);
@@ -434,5 +435,25 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     @VisibleForTesting
     public IImsSmsListener getSmsListener() {
         return mImsSmsListener;
+    }
+
+    private void logd(String s) {
+        Rlog.d(TAG + " [" + getPhoneId(mPhone) + "]", s);
+    }
+
+    private void logi(String s) {
+        Rlog.i(TAG + " [" + getPhoneId(mPhone) + "]", s);
+    }
+
+    private void logw(String s) {
+        Rlog.w(TAG + " [" + getPhoneId(mPhone) + "]", s);
+    }
+
+    private void loge(String s) {
+        Rlog.e(TAG + " [" + getPhoneId(mPhone) + "]", s);
+    }
+
+    private static String getPhoneId(Phone phone) {
+        return (phone != null) ? Integer.toString(phone.getPhoneId()) : "?";
     }
 }
