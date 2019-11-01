@@ -941,7 +941,7 @@ public class ImsResolverTest extends ImsTestBase {
         }
 
         mTestImsResolver = new ImsResolver(mMockContext, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
-                numSlots, true);
+                numSlots);
         try {
             mLooper = new TestableLooper(mTestImsResolver.getHandler().getLooper());
         } catch (Exception e) {
