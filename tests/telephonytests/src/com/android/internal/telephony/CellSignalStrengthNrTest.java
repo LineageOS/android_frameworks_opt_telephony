@@ -34,6 +34,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
     private static final int ANOTHER_CSIRSRP = -111;
     private static final int ANOTHER_CSIRSRQ = -12;
     private static final int INVALID_CSIRSRP = Integer.MAX_VALUE;
+    private static final int INVALID_SSRSRP = Integer.MAX_VALUE;
     private static final int CSISINR = 18;
     private static final int SSRSRP = -112;
     private static final int SSRSRQ = -13;
@@ -52,6 +53,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         assertThat(css.getSsRsrp()).isEqualTo(SSRSRP);
         assertThat(css.getSsRsrq()).isEqualTo(SSRSRQ);
         assertThat(css.getSsSinr()).isEqualTo(SSSINR);
+        assertThat(css.getDbm()).isEqualTo(SSRSRP);
     }
 
     @Test
@@ -93,7 +95,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
     public void testAsuLevel_invalidValue() {
         // GIVEN an instance of CellSignalStrengthNr with invalid csirsrp
         CellSignalStrengthNr css = new CellSignalStrengthNr(
-                INVALID_CSIRSRP, CSIRSRQ, CSISINR, SSRSRP, SSRSRQ, SSSINR);
+                CSIRSRP, CSIRSRQ, CSISINR, INVALID_SSRSRP, SSRSRQ, SSSINR);
 
         // THEN the asu level is unknown
         assertThat(css.getAsuLevel()).isEqualTo(CellSignalStrengthNr.UNKNOWN_ASU_LEVEL);
@@ -101,10 +103,10 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
 
     @Test
     public void testSignalLevel_validValue() {
-        for (int csiRsrp = -140; csiRsrp <= -44; csiRsrp++) {
+        for (int ssRsrp = -140; ssRsrp <= -44; ssRsrp++) {
             // GIVEN an instance of CellSignalStrengthNr with valid csirsrp
             CellSignalStrengthNr css = new CellSignalStrengthNr(
-                    csiRsrp, CSIRSRQ, CSISINR, SSRSRP, SSRSRQ, SSSINR);
+                    CSIRSRP, CSIRSRQ, CSISINR, ssRsrp, SSRSRQ, SSSINR);
 
             // THEN the signal level is valid
             assertThat(css.getLevel()).isAnyOf(
@@ -119,7 +121,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
     public void testSignalLevel_invalidValue() {
         // GIVEN an instance of CellSignalStrengthNr with invalid csirsrp
         CellSignalStrengthNr css = new CellSignalStrengthNr(
-                INVALID_CSIRSRP, CSIRSRQ, CSISINR, SSRSRP, SSRSRQ, SSSINR);
+                CSIRSRP, CSIRSRQ, CSISINR, INVALID_SSRSRP, SSRSRQ, SSSINR);
 
         // THEN the signal level is unknown
         assertThat(css.getLevel()).isEqualTo(CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN);
