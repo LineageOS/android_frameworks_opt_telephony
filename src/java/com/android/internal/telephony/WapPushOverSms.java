@@ -337,11 +337,6 @@ public class WapPushOverSms implements ServiceConnection {
             return result.statusCode;
         }
 
-        if (SmsManager.getDefault().getAutoPersisting()) {
-            // Store the wap push data in telephony
-            writeInboxMessage(result.subId, result.parsedPdu);
-        }
-
         /**
          * If the pdu has application ID, WapPushManager substitute the message
          * processing. Since WapPushManager is optional module, if WapPushManager
