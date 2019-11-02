@@ -258,7 +258,7 @@ public class PhoneFactory {
 
                 sPhoneSwitcher = PhoneSwitcher.make(maxActivePhones, sContext, Looper.myLooper());
 
-                sProxyController = ProxyController.getInstance(context, sPhones, sPhoneSwitcher);
+                sProxyController = ProxyController.getInstance(context);
 
                 sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
