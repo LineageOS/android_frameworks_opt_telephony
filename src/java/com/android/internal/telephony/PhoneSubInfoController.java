@@ -43,13 +43,10 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final boolean VDBG = false; // STOPSHIP if true
 
     @UnsupportedAppUsage
-    private final Phone[] mPhone;
-    @UnsupportedAppUsage
     private final Context mContext;
     private final AppOpsManager mAppOps;
 
-    public PhoneSubInfoController(Context context, Phone[] phone) {
-        mPhone = phone;
+    public PhoneSubInfoController(Context context) {
         if (ServiceManager.getService("iphonesubinfo") == null) {
             ServiceManager.addService("iphonesubinfo", this);
         }
@@ -222,7 +219,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             phoneId = 0;
         }
-        return mPhone[phoneId];
+        return PhoneFactory.getPhone(phoneId);
     }
 
     /**
@@ -467,7 +464,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             phoneId = 0;
         }
-        final Phone phone = mPhone[phoneId];
+        final Phone phone = PhoneFactory.getPhone(phoneId);
         if (phone == null) {
             return null;
         }

@@ -260,7 +260,7 @@ public class PhoneFactory {
                         sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
                         sPhones);
 
-                sProxyController = ProxyController.getInstance(context, sPhones, sPhoneSwitcher);
+                sProxyController = ProxyController.getInstance(context);
 
                 sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
