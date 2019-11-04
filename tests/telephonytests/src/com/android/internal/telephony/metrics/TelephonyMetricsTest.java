@@ -104,6 +104,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mMetrics = new TelephonyMetrics();
+        mMetrics.setContext(mContext);
         mUusInfo = new UUSInfo(1, 2, new byte[]{1, 2});
         doReturn("123").when(mImsCallSession).getCallId();
         mImsReasonInfo = new ImsReasonInfo();

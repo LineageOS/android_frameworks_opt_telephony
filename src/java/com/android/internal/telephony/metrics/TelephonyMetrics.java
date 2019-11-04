@@ -37,7 +37,9 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYP
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_UNSTRUCTURED;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNKNOWN;
 
+import android.content.Context;
 import android.net.NetworkCapabilities;
+import android.os.BatteryStatsManager;
 import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -229,6 +231,8 @@ public class TelephonyMetrics {
     /** Indicating if some of the telephony events are dropped in this log */
     private boolean mTelephonyEventsDropped = false;
 
+    private Context mContext;
+
     public TelephonyMetrics() {
         mStartSystemTimeMs = System.currentTimeMillis();
         mStartElapsedTimeMs = SystemClock.elapsedRealtime();
@@ -245,6 +249,16 @@ public class TelephonyMetrics {
         }
 
         return sInstance;
+    }
+
+    /**
+     * Set the context for telephony metrics.
+     *
+     * @param context Context
+     * @hide
+     */
+    public void setContext(Context context) {
+        mContext = context;
     }
 
     /**
@@ -563,7 +577,11 @@ public class TelephonyMetrics {
         pw.decreaseIndent();
         pw.println("Modem power stats:");
         pw.increaseIndent();
-        ModemPowerStats s = new ModemPowerMetrics().buildProto();
+
+        BatteryStatsManager batteryStatsManager = mContext == null ? null :
+                (BatteryStatsManager) mContext.getSystemService(Context.BATTERY_STATS_SERVICE);
+        ModemPowerStats s = new ModemPowerMetrics(batteryStatsManager).buildProto();
+
         pw.println("Power log duration (battery time) (ms): " + s.loggingDurationMs);
         pw.println("Energy consumed by modem (mAh): " + s.energyConsumedMah);
         pw.println("Number of packets sent (tx): " + s.numPacketsTx);
@@ -722,7 +740,9 @@ public class TelephonyMetrics {
         }
 
         // Build modem power metrics
-        log.modemPowerStats = new ModemPowerMetrics().buildProto();
+        BatteryStatsManager batteryStatsManager = mContext == null ? null :
+                (BatteryStatsManager) mContext.getSystemService(Context.BATTERY_STATS_SERVICE);
+        log.modemPowerStats = new ModemPowerMetrics(batteryStatsManager).buildProto();
 
         // Log the hardware revision
         log.hardwareRevision = SystemProperties.get("ro.boot.revision", "");

@@ -15,13 +15,10 @@
  */
 package com.android.internal.telephony.metrics;
 
-import android.os.BatteryStats;
-import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.os.BatteryStatsManager;
 import android.os.connectivity.CellularBatteryStats;
 import android.text.format.DateUtils;
 
-import com.android.internal.app.IBatteryStats;
 import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
 
 /**
@@ -30,12 +27,11 @@ import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
  */
 public class ModemPowerMetrics {
 
-    /* BatteryStats API */
-    private final IBatteryStats mBatteryStats;
+    /* BatteryStatsManager API */
+    private BatteryStatsManager mBatteryStatsManager;
 
-    public ModemPowerMetrics() {
-        mBatteryStats = IBatteryStats.Stub.asInterface(ServiceManager.getService(
-            BatteryStats.SERVICE_NAME));
+    public ModemPowerMetrics(BatteryStatsManager batteryStatsManager) {
+        mBatteryStatsManager = batteryStatsManager;
     }
 
     /**
@@ -46,45 +42,44 @@ public class ModemPowerMetrics {
         ModemPowerStats m = new ModemPowerStats();
         CellularBatteryStats stats = getStats();
         if (stats != null) {
-            m.loggingDurationMs = stats.getLoggingDurationMs();
-            m.energyConsumedMah = stats.getEnergyConsumedMaMs()
+            m.loggingDurationMs = stats.getLoggingDurationMillis();
+            m.energyConsumedMah = stats.getEnergyConsumedMaMillis()
                 / ((double) DateUtils.HOUR_IN_MILLIS);
             m.numPacketsTx = stats.getNumPacketsTx();
-            m.cellularKernelActiveTimeMs = stats.getKernelActiveTimeMs();
-            if (stats.getTimeInRxSignalStrengthLevelMs() != null
-                && stats.getTimeInRxSignalStrengthLevelMs().length > 0) {
-                m.timeInVeryPoorRxSignalLevelMs = stats.getTimeInRxSignalStrengthLevelMs()[0];
+            m.cellularKernelActiveTimeMs = stats.getKernelActiveTimeMillis();
+            if (stats.getTimeInRxSignalStrengthLevelMicros() != null
+                    && stats.getTimeInRxSignalStrengthLevelMicros().length > 0) {
+                m.timeInVeryPoorRxSignalLevelMs = stats.getTimeInRxSignalStrengthLevelMicros()[0];
             }
-            m.sleepTimeMs = stats.getSleepTimeMs();
-            m.idleTimeMs = stats.getIdleTimeMs();
-            m.rxTimeMs = stats.getRxTimeMs();
-            long[] t = stats.getTxTimeMs();
+            m.sleepTimeMs = stats.getSleepTimeMillis();
+            m.idleTimeMs = stats.getIdleTimeMillis();
+            m.rxTimeMs = stats.getRxTimeMillis();
+            long[] t = stats.getTxTimeMillis();
             m.txTimeMs = new long[t.length];
             System.arraycopy(t, 0, m.txTimeMs, 0, t.length);
             m.numBytesTx = stats.getNumBytesTx();
             m.numPacketsRx = stats.getNumPacketsRx();
             m.numBytesRx = stats.getNumBytesRx();
-            long[] tr = stats.getTimeInRatMs();
+            long[] tr = stats.getTimeInRatMicros();
             m.timeInRatMs = new long[tr.length];
             System.arraycopy(tr, 0, m.timeInRatMs, 0, tr.length);
-            long[] trx = stats.getTimeInRxSignalStrengthLevelMs();
+            long[] trx = stats.getTimeInRxSignalStrengthLevelMicros();
             m.timeInRxSignalStrengthLevelMs = new long[trx.length];
             System.arraycopy(trx, 0, m.timeInRxSignalStrengthLevelMs, 0, trx.length);
-            m.monitoredRailEnergyConsumedMah = stats.getMonitoredRailChargeConsumedMaMs()
+            m.monitoredRailEnergyConsumedMah = stats.getMonitoredRailChargeConsumedMaMillis()
                 / ((double) DateUtils.HOUR_IN_MILLIS);
         }
         return m;
     }
 
     /**
-     * Get cellular stats from batterystats
+     * Get cellular stats from BatteryStatsManager
      * @return CellularBatteryStats
      */
     private CellularBatteryStats getStats() {
-        try {
-            return mBatteryStats.getCellularBatteryStats();
-        } catch (RemoteException e) {
+        if (mBatteryStatsManager == null) {
+            return null;
         }
-        return null;
+        return mBatteryStatsManager.getCellularBatteryStats();
     }
 }
