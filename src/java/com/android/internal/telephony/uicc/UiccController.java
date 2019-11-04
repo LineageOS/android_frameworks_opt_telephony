@@ -19,6 +19,8 @@ package com.android.internal.telephony.uicc;
 import static android.telephony.TelephonyManager.UNINITIALIZED_CARD_ID;
 import static android.telephony.TelephonyManager.UNSUPPORTED_CARD_ID;
 
+import static java.util.Arrays.copyOf;
+
 import android.annotation.UnsupportedAppUsage;
 import android.app.BroadcastOptions;
 import android.content.Context;
@@ -42,6 +44,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
@@ -120,6 +123,7 @@ public class UiccController extends Handler {
     private static final int EVENT_RADIO_UNAVAILABLE = 7;
     private static final int EVENT_SIM_REFRESH = 8;
     private static final int EVENT_EID_READY = 9;
+    private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 10;
 
     // this needs to be here, because on bootup we dont know which index maps to which UiccSlot
     @UnsupportedAppUsage
@@ -186,20 +190,23 @@ public class UiccController extends Handler {
     // LocalLog buffer to hold important SIM related events for debugging
     static LocalLog sLocalLog = new LocalLog(100);
 
-    public static UiccController make(Context c, CommandsInterface[] ci) {
+    /**
+     * API to make UiccController singleton if not already created.
+     */
+    public static UiccController make(Context c) {
         synchronized (mLock) {
             if (mInstance != null) {
                 throw new RuntimeException("UiccController.make() should only be called once");
             }
-            mInstance = new UiccController(c, ci);
+            mInstance = new UiccController(c);
             return mInstance;
         }
     }
 
-    private UiccController(Context c, CommandsInterface []ci) {
+    private UiccController(Context c) {
         if (DBG) log("Creating UiccController");
         mContext = c;
-        mCis = ci;
+        mCis = PhoneFactory.getCommandsInterfaces();
         if (DBG) {
             String logStr = "config_num_physical_slots = " + c.getResources().getInteger(
                     com.android.internal.R.integer.config_num_physical_slots);
@@ -215,7 +222,7 @@ public class UiccController extends Handler {
         }
 
         mUiccSlots = new UiccSlot[numPhysicalSlots];
-        mPhoneIdToSlotId = new int[ci.length];
+        mPhoneIdToSlotId = new int[mCis.length];
         Arrays.fill(mPhoneIdToSlotId, INVALID_SLOT_ID);
         if (VDBG) logPhoneIdToSlotIdMapping();
         mRadioConfig = RadioConfig.getInstance(mContext);
@@ -245,6 +252,9 @@ public class UiccController extends Handler {
         mEuiccSlots = mContext.getResources()
                 .getIntArray(com.android.internal.R.array.non_removable_euicc_slots);
         mHasBuiltInEuicc = hasBuiltInEuicc();
+
+        PhoneConfigurationManager.registerForMultiSimConfigChange(
+                this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
     }
 
     /**
@@ -519,10 +529,39 @@ public class UiccController extends Handler {
                     if (DBG) log("Received EVENT_EID_READY");
                     onEidReady(ar, phoneId);
                     break;
+                case EVENT_MULTI_SIM_CONFIG_CHANGED:
+                    if (DBG) log("Received EVENT_MULTI_SIM_CONFIG_CHANGED");
+                    onMultiSimConfigChanged();
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
                     break;
             }
+        }
+    }
+
+    private void onMultiSimConfigChanged() {
+        int prevActiveModemCount = mCis.length;
+        mCis = PhoneFactory.getCommandsInterfaces();
+
+        // Resize array.
+        mPhoneIdToSlotId = copyOf(mPhoneIdToSlotId, mCis.length);
+
+        for (int i = prevActiveModemCount; i < mCis.length; i++) {
+            mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
+
+            /*
+             * To support FDE (deprecated), additional check is needed:
+             *
+             * if (!StorageManager.inCryptKeeperBounce()) {
+             *     mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
+             * } else {
+             *     mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
+             * }
+             */
+            mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
+
+            mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, i);
+            mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, i);
         }
     }
 
