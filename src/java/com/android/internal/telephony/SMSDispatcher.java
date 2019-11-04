@@ -56,16 +56,14 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
-import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms;
 import android.service.carrier.CarrierMessagingService;
-import android.service.carrier.ICarrierMessagingCallback;
-import android.service.carrier.ICarrierMessagingService;
+import android.service.carrier.CarrierMessagingServiceWrapper;
+import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallbackWrapper;
 import android.telephony.CarrierConfigManager;
-import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -363,7 +361,7 @@ public abstract class SMSDispatcher extends Handler {
     /**
      * Use the carrier messaging service to send a data or text SMS.
      */
-    protected abstract class SmsSender extends CarrierMessagingServiceManager {
+    protected abstract class SmsSender extends CarrierMessagingServiceWrapper {
         protected final SmsTracker mTracker;
         // Initialized in sendSmsByCarrierApp
         protected volatile SmsSenderCallback mSenderCallback;
@@ -402,16 +400,16 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
+        public void onServiceReady() {
             HashMap<String, Object> map = mTracker.getData();
             String text = (String) map.get(MAP_KEY_TEXT);
 
             if (text != null) {
                 try {
-                    carrierMessagingService.sendTextSms(text, getSubId(),
+                    sendTextSms(text, getSubId(),
                             mTracker.mDestAddress, getSendSmsFlag(mTracker.mDeliveryIntent),
                             mSenderCallback);
-                } catch (RemoteException e) {
+                } catch (RuntimeException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e);
                     mSenderCallback.onSendSmsComplete(
                             CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK,
@@ -434,17 +432,17 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
+        public void onServiceReady() {
             HashMap<String, Object> map = mTracker.getData();
             byte[] data = (byte[]) map.get(MAP_KEY_DATA);
             int destPort = (int) map.get(MAP_KEY_DEST_PORT);
 
             if (data != null) {
                 try {
-                    carrierMessagingService.sendDataSms(data, getSubId(),
+                    sendDataSms(data, getSubId(),
                             mTracker.mDestAddress, destPort,
                             getSendSmsFlag(mTracker.mDeliveryIntent), mSenderCallback);
-                } catch (RemoteException e) {
+                } catch (RuntimeException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e);
                     mSenderCallback.onSendSmsComplete(
                             CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK,
@@ -462,7 +460,8 @@ public abstract class SMSDispatcher extends Handler {
      * Callback for TextSmsSender and DataSmsSender from the carrier messaging service.
      * Once the result is ready, the carrier messaging service connection is disposed.
      */
-    protected final class SmsSenderCallback extends ICarrierMessagingCallback.Stub {
+    protected final class SmsSenderCallback extends
+            CarrierMessagingServiceWrapper.CarrierMessagingCallbackWrapper {
         private final SmsSender mSmsSender;
 
         public SmsSenderCallback(SmsSender smsSender) {
@@ -541,7 +540,7 @@ public abstract class SMSDispatcher extends Handler {
     /**
      * Use the carrier messaging service to send a multipart text SMS.
      */
-    private final class MultipartSmsSender extends CarrierMessagingServiceManager {
+    private final class MultipartSmsSender extends CarrierMessagingServiceWrapper {
         private final List<String> mParts;
         public final SmsTracker[] mTrackers;
         // Initialized in sendSmsByCarrierApp
@@ -567,12 +566,12 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
+        public void onServiceReady() {
             try {
-                carrierMessagingService.sendMultipartTextSms(
+                sendMultipartTextSms(
                         mParts, getSubId(), mTrackers[0].mDestAddress,
                         getSendSmsFlag(mTrackers[0].mDeliveryIntent), mSenderCallback);
-            } catch (RemoteException e) {
+            } catch (RuntimeException e) {
                 Rlog.e(TAG, "Exception sending the SMS: " + e);
                 mSenderCallback.onSendMultipartSmsComplete(
                         CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK,
@@ -585,7 +584,7 @@ public abstract class SMSDispatcher extends Handler {
      * Callback for MultipartSmsSender from the carrier messaging service.
      * Once the result is ready, the carrier messaging service connection is disposed.
      */
-    private final class MultipartSmsSenderCallback extends ICarrierMessagingCallback.Stub {
+    private final class MultipartSmsSenderCallback extends CarrierMessagingCallbackWrapper {
         private final MultipartSmsSender mSmsSender;
 
         MultipartSmsSenderCallback(MultipartSmsSender smsSender) {
