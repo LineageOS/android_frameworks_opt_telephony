@@ -218,7 +218,7 @@ public class PhoneFactory {
 
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = new SubscriptionInfoUpdater(
-                        BackgroundThread.get().getLooper(), context, sPhones, sCommandsInterfaces);
+                        BackgroundThread.get().getLooper(), context, sCommandsInterfaces);
                 sc.updatePhonesAvailability(sPhones);
 
                 // Only bring up IMS if the device supports having an IMS stack.

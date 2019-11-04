@@ -156,7 +156,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getActiveSubIdList(/*visibleOnly*/false);
         mIccRecord = mUiccProfile.getIccRecords();
 
-        mUpdater = new SubscriptionInfoUpdater(Looper.myLooper(), mContext, new Phone[]{mPhone},
+        mUpdater = new SubscriptionInfoUpdater(Looper.myLooper(), mContext,
             new CommandsInterface[]{mSimulatedCommands}, mPackageManager);
         processAllMessages();
 
@@ -387,11 +387,10 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testDualSimLoaded() throws Exception {
         // Mock there is two sim cards
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mPhone});
         replaceInstance(SubscriptionInfoUpdater.class, "sIccId", null,
                 new String[]{null, null});
         replaceInstance(SubscriptionInfoUpdater.class, "PROJECT_SIM_NUM", null, 2);
-        replaceInstance(SubscriptionInfoUpdater.class, "sPhones", null,
-                new Phone[]{mPhone, mPhone});
         replaceInstance(SubscriptionInfoUpdater.class, "sSimCardState", null,
                 new int[]{0, 0});
         replaceInstance(SubscriptionInfoUpdater.class, "sSimApplicationState", null,
