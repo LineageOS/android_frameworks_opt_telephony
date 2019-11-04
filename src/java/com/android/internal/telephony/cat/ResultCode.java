@@ -26,6 +26,7 @@ import android.annotation.UnsupportedAppUsage;
  *
  * {@hide}
  */
+@UnsupportedAppUsage(implicitMember = "values()[Lcom/android/internal/telephony/cat/ResultCode;")
 public enum ResultCode {
 
     /*

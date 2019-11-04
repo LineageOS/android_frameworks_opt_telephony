@@ -81,6 +81,10 @@ public class IccProvider extends ContentProvider {
 
     private SubscriptionManager mSubscriptionManager;
 
+    @UnsupportedAppUsage
+    public IccProvider() {
+    }
+
     @Override
     public boolean onCreate() {
         mSubscriptionManager = SubscriptionManager.from(getContext());
