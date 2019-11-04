@@ -28,9 +28,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.ApnType;
 import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnSetting.ApnType;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;

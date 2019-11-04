@@ -18,10 +18,10 @@ package com.android.internal.telephony.dataconnection;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.telephony.Annotation.ApnType;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnSetting.ApnType;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
