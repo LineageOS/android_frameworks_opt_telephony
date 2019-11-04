@@ -18,6 +18,8 @@ package com.android.internal.telephony.cdma;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
@@ -34,6 +36,7 @@ import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.WspTypeDecoder;
+import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.util.HexDump;
 
@@ -46,12 +49,22 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
     private final CdmaSMSDispatcher mSmsDispatcher;
     private final CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
+    private static CdmaCbTestBroadcastReceiver sTestBroadcastReceiver;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
 
     private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
+
+    // When TEST_MODE is on we allow the test intent to trigger an SMS CB alert
+    private static boolean sEnableCbModule = false;
+    private static final boolean TEST_MODE = true; //STOPSHIP if true
+    private static final String TEST_ACTION = "com.android.internal.telephony.cdma"
+            + ".TEST_TRIGGER_CELL_BROADCAST";
+    private static final String TOGGLE_CB_MODULE = "com.android.internal.telephony.cdma"
+            + ".TOGGLE_CB_MODULE";
+
 
     /**
      * Create a new inbound SMS handler for CDMA.
@@ -64,6 +77,17 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+
+        mCellBroadcastServiceManager.enable();
+        if (TEST_MODE) {
+            if (sTestBroadcastReceiver == null) {
+                sTestBroadcastReceiver = new CdmaCbTestBroadcastReceiver();
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(TEST_ACTION);
+                filter.addAction(TOGGLE_CB_MODULE);
+                context.registerReceiver(sTestBroadcastReceiver, filter);
+            }
+        }
     }
 
     /**
@@ -111,13 +135,10 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         // Handle CMAS emergency broadcast messages.
         if (isBroadcastType) {
             log("Broadcast type message");
-            String plmn =
-                    TelephonyManager.from(mContext).getNetworkOperatorForPhone(mPhone.getPhoneId());
-            SmsCbMessage cbMessage = sms.parseBroadcastSms(plmn, mPhone.getPhoneId());
-            if (cbMessage != null) {
-                mCellBroadcastHandler.dispatchSmsMessage(cbMessage);
+            if (sEnableCbModule) {
+                mCellBroadcastServiceManager.sendCdmaMessageToHandler(sms);
             } else {
-                loge("error trying to parse broadcast SMS");
+                legacyDispatchSmsCbMessage(sms);
             }
             return Intents.RESULT_SMS_HANDLED;
         }
@@ -182,6 +203,19 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         }
 
         return dispatchNormalMessage(smsb);
+    }
+
+    // dispatch an SMS message through the platform
+    private void legacyDispatchSmsCbMessage(SmsMessage sms) {
+        String plmn =
+                TelephonyManager.from(mContext).getNetworkOperatorForPhone(
+                        mPhone.getPhoneId());
+        SmsCbMessage cbMessage = sms.parseBroadcastSms(plmn, mPhone.getPhoneId());
+        if (cbMessage != null) {
+            mCellBroadcastHandler.dispatchSmsMessage(cbMessage);
+        } else {
+            loge("error trying to parse broadcast SMS");
+        }
     }
 
     /**
@@ -348,5 +382,76 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     private void addVoicemailSmsToMetrics() {
         mMetrics.writeIncomingVoiceMailSms(mPhone.getPhoneId(),
                 android.telephony.SmsMessage.FORMAT_3GPP2);
+    }
+
+    /**
+     * A broadcast receiver used for testing emergency cell broadcasts. To trigger test CDMA cell
+     * broadcasts with adb run e.g:
+     *
+     * adb shell am broadcast -a com.android.internal.telephony.cdma.TEST_TRIGGER_CELL_BROADCAST \
+     * --ei service_category 4097 \
+     * --es bearer_data_string 00031303900801C00D0101015C02D00002BFD1931054D208119313D3D10815D05 \
+     * 493925391C81193D48814D3D555120810D3D0D3D3925393C810D3D5539516480B481393D495120810D1539514 \
+     * 9053081054925693D390481553951253080D0C4D481413481354D500
+     *
+     * adb shell am broadcast -a com.android.internal.telephony.cdma.TEST_TRIGGER_CELL_BROADCAST \
+     * --ei service_category 4097 \
+     * --es bearer_data_string 00031303900801C00D0101015C02D00002BFD1931054D208119313D3D10815D05 \
+     * 493925391C81193D48814D3D555120810D3D0D3D3925393C810D3D5539516480B481393D495120810D1539514 \
+     * 9053081054925693D390481553951253080D0C4D481413481354D500 \
+     * --ei phone_id 0 \
+     *
+     * adb shell am broadcast -a com.android.internal.telephony.cdma.TOGGLE_CB_MODULE
+     *
+     * adb shell am broadcast -a com.android.internal.telephony.cdma.TOGGLE_CB_MODULE \
+     * --ez enable true
+     */
+    private class CdmaCbTestBroadcastReceiver extends CbTestBroadcastReceiver {
+
+        CdmaCbTestBroadcastReceiver() {
+            super(TEST_ACTION, TOGGLE_CB_MODULE);
+        }
+
+        @Override
+        protected void handleTestAction(Intent intent) {
+            SmsEnvelope envelope = new SmsEnvelope();
+            // the CdmaSmsAddress is not used for a test cell broadcast message, but needs to be
+            // supplied to avoid a null pointer exception in the platform
+            CdmaSmsAddress nonNullAddress = new CdmaSmsAddress();
+            nonNullAddress.origBytes = new byte[] { (byte) 0xFF };
+            envelope.origAddress = nonNullAddress;
+
+            // parse service category from intent
+            envelope.serviceCategory = intent.getIntExtra("service_category", -1);
+            if (envelope.serviceCategory == -1) {
+                log("No service category, ignoring CB test intent");
+                return;
+            }
+
+            // parse bearer data from intent
+            String bearerDataString = intent.getStringExtra("bearer_data_string");
+            envelope.bearerData = decodeHexString(bearerDataString);
+            if (envelope.bearerData == null) {
+                log("No bearer data, ignoring CB test intent");
+                return;
+            }
+
+            SmsMessage sms = new SmsMessage(new CdmaSmsAddress(), envelope);
+            if (sEnableCbModule) {
+                mCellBroadcastServiceManager.sendCdmaMessageToHandler(sms);
+            } else {
+                legacyDispatchSmsCbMessage(sms);
+            }
+        }
+
+        @Override
+        protected void handleToggleEnable() {
+            // sEnableCbModule is already toggled in super class
+        }
+
+        @Override
+        protected void handleToggleDisable(Context context) {
+            // sEnableCbModule is already toggled in super class
+        }
     }
 }
