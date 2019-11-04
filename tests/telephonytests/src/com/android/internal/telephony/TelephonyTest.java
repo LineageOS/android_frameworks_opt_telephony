@@ -49,6 +49,7 @@ import android.os.Message;
 import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
+import android.os.telephony.TelephonyRegistryManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -270,6 +271,7 @@ public abstract class TelephonyTest {
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
+    protected TelephonyRegistryManager mTelephonyRegistryManager;
     protected SubscriptionManager mSubscriptionManager;
     protected EuiccManager mEuiccManager;
     protected PackageManager mPackageManager;
@@ -397,6 +399,8 @@ public abstract class TelephonyTest {
         doReturn(mUiccProfile).when(mUiccCard).getUiccProfile();
 
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        mTelephonyRegistryManager = (TelephonyRegistryManager) mContext.getSystemService(
+            Context.TELEPHONY_REGISTRY_SERVICE);
         mSubscriptionManager = (SubscriptionManager) mContext.getSystemService(
                 Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         mEuiccManager = (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
