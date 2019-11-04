@@ -30,7 +30,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.storage.StorageManager;
 import android.preference.PreferenceManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
@@ -224,16 +223,17 @@ public class UiccController extends Handler {
         for (int i = 0; i < mCis.length; i++) {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
 
-            // TODO remove this once modem correctly notifies the unsols
-            // If the device is unencrypted or has been decrypted or FBE is supported,
-            // i.e. not in CryptKeeper bounce, read SIM when radio state is available.
-            // Else wait for radio to be on. This is needed for the scenario when SIM is locked --
-            // to avoid overlap of CryptKeeper and SIM unlock screen.
-            if (!StorageManager.inCryptKeeperBounce()) {
-                mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
-            } else {
-                mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
-            }
+            /*
+             * To support FDE (deprecated), additional check is needed:
+             *
+             * if (!StorageManager.inCryptKeeperBounce()) {
+             *     mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
+             * } else {
+             *     mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
+             * }
+             */
+            mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
+
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, i);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, i);
         }
