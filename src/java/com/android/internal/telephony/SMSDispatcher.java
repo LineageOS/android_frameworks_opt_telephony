@@ -1241,7 +1241,7 @@ public abstract class SMSDispatcher extends Handler {
                 if (simCountryIso == null || simCountryIso.length() != 2) {
                     Rlog.e(TAG, "Can't get SIM country Iso: trying network country Iso");
                     simCountryIso =
-                            mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+                            mTelephonyManager.getNetworkCountryIso(mPhone.getPhoneId());
                 }
 
                 smsCategory =
@@ -1251,7 +1251,7 @@ public abstract class SMSDispatcher extends Handler {
             }
             if (rule == PREMIUM_RULE_USE_NETWORK || rule == PREMIUM_RULE_USE_BOTH) {
                 String networkCountryIso =
-                        mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+                        mTelephonyManager.getNetworkCountryIso(mPhone.getPhoneId());
                 if (networkCountryIso == null || networkCountryIso.length() != 2) {
                     Rlog.e(TAG, "Can't get Network country Iso: trying SIM country Iso");
                     networkCountryIso =
