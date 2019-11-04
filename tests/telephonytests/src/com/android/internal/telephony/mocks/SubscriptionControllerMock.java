@@ -27,7 +27,6 @@ import android.os.UserHandle;
 import android.telephony.SubscriptionInfo;
 
 import com.android.internal.telephony.ITelephonyRegistry;
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
@@ -241,10 +240,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
         } else {
             return INVALID_SUBSCRIPTION_ID;
         }
-    }
-    @Override
-    public void updatePhonesAvailability(Phone[] phones) {
-        throw new RuntimeException("not implemented");
     }
     @Override
     public int[] getActiveSubIdList(boolean visibleOnly) {

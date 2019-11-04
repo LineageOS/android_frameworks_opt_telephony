@@ -19,6 +19,8 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA;
 import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA_LTE;
 
+import static java.util.Arrays.copyOf;
+
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
@@ -148,7 +150,7 @@ public class PhoneFactory {
                 /* In case of multi SIM mode two instances of Phone, RIL are created,
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
-                int numPhones = TelephonyManager.getDefault().getSupportedModemCount();
+                int numPhones = TelephonyManager.getDefault().getActiveModemCount();
 
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];
@@ -186,7 +188,7 @@ public class PhoneFactory {
                 // Set the default phone in base class.
                 // FIXME: This is a first best guess at what the defaults will be. It
                 // FIXME: needs to be done in a more controlled manner in the future.
-                sPhone = sPhones[0];
+                if (numPhones > 0) sPhone = sPhones[0];
 
                 // Ensure that we have a default SMS app. Requesting the app with
                 // updateIfNeeded set to true is enough to configure a default SMS app.
@@ -206,7 +208,6 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = new SubscriptionInfoUpdater(
                         BackgroundThread.get().getLooper(), context, sCommandsInterfaces);
-                sc.updatePhonesAvailability(sPhones);
 
                 // Only bring up IMS if the device supports having an IMS stack.
                 if (context.getPackageManager().hasSystemFeature(
@@ -258,6 +259,41 @@ public class PhoneFactory {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
                             Looper.myLooper(), sPhones[i]);
                 }
+            }
+        }
+    }
+
+    /**
+     * Upon single SIM to dual SIM switch or vice versa, we dynamically allocate or de-allocate
+     * Phone and CommandInterface objects.
+     * @param context
+     * @param activeModemCount
+     */
+    public static void onMultiSimConfigChanged(Context context, int activeModemCount) {
+        synchronized (sLockProxyPhones) {
+            int prevActiveModemCount = sPhones.length;
+            if (prevActiveModemCount == activeModemCount) return;
+
+            // TODO: clean up sPhones, sCommandsInterfaces and sTelephonyNetworkFactories objects.
+            // Currently we will not clean up the 2nd Phone object, so that it can be re-used if
+            // user switches back.
+            if (prevActiveModemCount > activeModemCount) return;
+
+            sPhones = copyOf(sPhones, activeModemCount);
+            sCommandsInterfaces = copyOf(sCommandsInterfaces, activeModemCount);
+            sTelephonyNetworkFactories = copyOf(sTelephonyNetworkFactories, activeModemCount);
+
+            int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
+            for (int i = prevActiveModemCount; i < activeModemCount; i++) {
+                sCommandsInterfaces[i] = new RIL(context, RILConstants.PREFERRED_NETWORK_MODE,
+                        cdmaSubscription, i);
+                sPhones[i] = createPhone(context, i);
+                if (context.getPackageManager().hasSystemFeature(
+                        PackageManager.FEATURE_TELEPHONY_IMS)) {
+                    sPhones[i].startMonitoringImsService();
+                }
+                sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
+                        Looper.myLooper(), sPhones[i]);
             }
         }
     }
