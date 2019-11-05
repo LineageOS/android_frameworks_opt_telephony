@@ -126,15 +126,16 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     /** {@inheritDoc} */
     @Override
     public void sendSms(SmsTracker tracker) {
+        int ss = mPhone.getServiceState().getState();
+
         Rlog.d(TAG, "sendSms: "
                 + " isIms()=" + isIms()
                 + " mRetryCount=" + tracker.mRetryCount
                 + " mImsRetry=" + tracker.mImsRetry
                 + " mMessageRef=" + tracker.mMessageRef
                 + " mUsesImsServiceForIms=" + tracker.mUsesImsServiceForIms
-                + " SS=" + mPhone.getServiceState().getState());
+                + " SS=" + ss);
 
-        int ss = mPhone.getServiceState().getState();
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
             tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
