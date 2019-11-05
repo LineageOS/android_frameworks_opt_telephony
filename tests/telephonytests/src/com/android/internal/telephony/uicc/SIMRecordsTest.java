@@ -17,6 +17,8 @@
 package com.android.internal.telephony.uicc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -31,6 +33,7 @@ import android.os.test.TestLooper;
 
 import androidx.test.runner.AndroidJUnit4;
 
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
 
@@ -170,5 +173,117 @@ public class SIMRecordsTest extends TelephonyTest {
             })
             .when(mFhMock)
             .updateEFTransparent(anyInt(), any(byte[].class), any(Message.class));
+    }
+
+    @Test
+    public void testGetForbiddenPlmns() {
+        doAnswer(
+            invocation -> {
+                Message response = invocation.getArgument(1);
+                byte[] encodedFplmn = IccUtils.encodeFplmns(SHORT_FPLMNS_LIST, EF_SIZE);
+                AsyncResult.forMessage(response, encodedFplmn, null);
+                response.sendToTarget();
+                return null;
+            })
+            .when(mFhMock)
+            .loadEFTransparent(eq(SIMRecords.EF_FPLMN), any(Message.class));
+
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.getForbiddenPlmns(message);
+        mTestLooper.dispatchAll();
+
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertNull(ar.exception);
+        assertEquals(SHORT_FPLMNS_LIST.toArray(new String[SHORT_FPLMNS_LIST.size()]),
+                (String[]) ar.result);
+    }
+
+    @Test
+    public void testGetForbiddenPlmnsException() {
+        doAnswer(
+            invocation -> {
+                Message response = invocation.getArgument(1);
+                AsyncResult.forMessage(response, null, new CommandException(
+                        CommandException.Error.OPERATION_NOT_ALLOWED));
+                response.sendToTarget();
+                return null;
+            })
+            .when(mFhMock)
+            .loadEFTransparent(eq(SIMRecords.EF_FPLMN), any(Message.class));
+
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.getForbiddenPlmns(message);
+        mTestLooper.dispatchAll();
+
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertTrue(((CommandException) ar.exception).getCommandError() ==
+                CommandException.Error.OPERATION_NOT_ALLOWED);
+        assertNull(ar.result);
+    }
+
+    @Test
+    public void testGetForbiddenPlmnsNull() {
+        doAnswer(
+            invocation -> {
+                Message response = invocation.getArgument(1);
+                AsyncResult.forMessage(response);
+                response.sendToTarget();
+                return null;
+            })
+            .when(mFhMock)
+            .loadEFTransparent(eq(SIMRecords.EF_FPLMN), any(Message.class));
+
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.getForbiddenPlmns(message);
+        mTestLooper.dispatchAll();
+
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertNull(ar.exception);
+        assertNull(ar.result);
+    }
+
+    @Test
+    public void testGetForbiddenPlmnsEmptyList() {
+        doAnswer(
+            invocation -> {
+                Message response = invocation.getArgument(1);
+                byte[] encodedFplmn = IccUtils.encodeFplmns(EMPTY_FPLMN_LIST, EF_SIZE);
+                AsyncResult.forMessage(response, encodedFplmn, null);
+                response.sendToTarget();
+                return null;
+            })
+            .when(mFhMock)
+            .loadEFTransparent(eq(SIMRecords.EF_FPLMN), any(Message.class));
+
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.getForbiddenPlmns(message);
+        mTestLooper.dispatchAll();
+
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertNull(ar.exception);
+        assertEquals(EMPTY_FPLMN_LIST.toArray(new String[EMPTY_FPLMN_LIST.size()]),
+                (String[]) ar.result);
+    }
+
+    @Test
+    public void testGetForbiddenPlmnsInvalidLength() {
+        doAnswer(
+            invocation -> {
+                Message response = invocation.getArgument(1);
+                AsyncResult.forMessage(response, new byte[] { (byte) 0xFF, (byte) 0xFF }, null);
+                response.sendToTarget();
+                return null;
+            })
+            .when(mFhMock)
+            .loadEFTransparent(eq(SIMRecords.EF_FPLMN), any(Message.class));
+
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.getForbiddenPlmns(message);
+        mTestLooper.dispatchAll();
+
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertNull(ar.exception);
+        assertNull(ar.result);
     }
 }
