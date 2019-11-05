@@ -24,7 +24,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
 import android.os.Looper;
-import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -246,9 +245,6 @@ public class PhoneFactory {
                     Rlog.i(LOG_TAG, "IMS is not supported on this device, skipping ImsResolver.");
                 }
 
-                ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
-                        ServiceManager.getService("telephony.registry"));
-
                 sPhoneConfigurationManager = PhoneConfigurationManager.init(sContext);
 
                 sCellularNetworkValidator = CellularNetworkValidator.make(sContext);
@@ -256,9 +252,7 @@ public class PhoneFactory {
                 int maxActivePhones = sPhoneConfigurationManager
                         .getNumberOfModemsWithSimultaneousDataConnections();
 
-                sPhoneSwitcher = PhoneSwitcher.make(maxActivePhones, numPhones,
-                        sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
-                        sPhones);
+                sPhoneSwitcher = PhoneSwitcher.make(maxActivePhones, sContext, Looper.myLooper());
 
                 sProxyController = ProxyController.getInstance(context, sPhones, sPhoneSwitcher);
 
