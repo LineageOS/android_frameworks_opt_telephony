@@ -86,7 +86,7 @@ import android.hardware.radio.V1_2.CellConnectionStatus;
 import android.hardware.radio.V1_4.IRadioIndication;
 import android.hardware.radio.V1_4.RadioFrequencyInfo.hidl_discriminator;
 import android.os.AsyncResult;
-import android.os.SystemProperties;
+import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.CellInfo;
 import android.telephony.PcoData;
@@ -211,8 +211,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         result[0] = nitzTime;
         result[1] = receivedTime;
 
-        boolean ignoreNitz = SystemProperties.getBoolean(
-                TelephonyProperties.PROPERTY_IGNORE_NITZ, false);
+        boolean ignoreNitz = TelephonyProperties.ignore_nitz().orElse(false);
 
         if (ignoreNitz) {
             if (RIL.RILJ_LOGD) mRil.riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");

@@ -58,8 +58,8 @@ import android.os.PowerManager.WakeLock;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.ResultReceiver;
-import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.sysprop.TelephonyProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
@@ -72,6 +72,7 @@ import android.telephony.UssdResponse;
 import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
 import android.telephony.ims.RegistrationManager;
 import android.text.TextUtils;
@@ -99,7 +100,6 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
@@ -136,7 +136,7 @@ public class ImsPhone extends ImsPhoneBase {
     static final int CANCEL_ECM_TIMER  = 1; // cancel Ecm timer
 
     // Default Emergency Callback Mode exit timer
-    private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
+    private static final long DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
     public static class ImsDialArgs extends DialArgs {
         public static class Builder extends DialArgs.Builder<ImsDialArgs.Builder> {
@@ -1534,10 +1534,12 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
 
             case EVENT_GET_CLIR_DONE:
-                Bundle ssInfo = (Bundle) ar.result;
+                ImsSsInfo ssInfo = (ImsSsInfo) ar.result;
                 int[] clirInfo = null;
                 if (ssInfo != null) {
-                    clirInfo = ssInfo.getIntArray(ImsPhoneMmiCode.UT_BUNDLE_KEY_CLIR);
+                    // Unfortunately callers still use the old {n,m} format of ImsSsInfo, so return
+                    // that for compatibility
+                    clirInfo = ssInfo.getCompatArray(ImsSsData.SS_CLIR);
                 }
                 sendResponse((Message) ar.userObj, clirInfo, ar.exception);
                 break;
@@ -1646,8 +1648,8 @@ public class ImsPhone extends ImsPhoneBase {
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
-            long delayInMillis = SystemProperties.getLong(
-                    TelephonyProperties.PROPERTY_ECM_EXIT_TIMER, DEFAULT_ECM_EXIT_TIMER_VALUE);
+            long delayInMillis = TelephonyProperties.ecm_exit_timer()
+                    .orElse(DEFAULT_ECM_EXIT_TIMER_VALUE);
             postDelayed(mExitEcmRunnable, delayInMillis);
             // We don't want to go to sleep while in Ecm
             mWakeLock.acquire();
@@ -1692,8 +1694,8 @@ public class ImsPhone extends ImsPhoneBase {
                 ((GsmCdmaPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.TRUE);
                 break;
             case RESTART_ECM_TIMER:
-                long delayInMillis = SystemProperties.getLong(
-                        TelephonyProperties.PROPERTY_ECM_EXIT_TIMER, DEFAULT_ECM_EXIT_TIMER_VALUE);
+                long delayInMillis = TelephonyProperties.ecm_exit_timer()
+                        .orElse(DEFAULT_ECM_EXIT_TIMER_VALUE);
                 postDelayed(mExitEcmRunnable, delayInMillis);
                 ((GsmCdmaPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.FALSE);
                 break;

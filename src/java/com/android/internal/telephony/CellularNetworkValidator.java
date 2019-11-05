@@ -52,7 +52,7 @@ public class CellularNetworkValidator {
 
     private int mState = STATE_IDLE;
     private int mSubId;
-    private int mTimeoutInMs;
+    private long mTimeoutInMs;
     private boolean mReleaseAfterValidation;
 
     private NetworkRequest mNetworkRequest;
@@ -114,7 +114,7 @@ public class CellularNetworkValidator {
     /**
      * API to start a validation
      */
-    public synchronized void validate(int subId, int timeoutInMs,
+    public synchronized void validate(int subId, long timeoutInMs,
             boolean releaseAfterValidation, ValidationCallback callback) {
         // If it's already validating the same subscription, do nothing.
         if (subId == mSubId) return;

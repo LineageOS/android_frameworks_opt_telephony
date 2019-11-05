@@ -27,6 +27,7 @@ import android.os.Handler;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.CallState;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
@@ -236,8 +237,7 @@ public class DataEnabledSettings {
         // User data should always be true for opportunistic subscription.
         if (isStandAloneOpportunistic(mPhone.getSubId(), mPhone.getContext())) return true;
 
-        boolean defaultVal = "true".equalsIgnoreCase(SystemProperties.get(
-                "ro.com.android.mobiledata", "true"));
+        boolean defaultVal = TelephonyProperties.mobile_data().orElse(true);
 
         return GlobalSettingsHelper.getBoolean(mPhone.getContext(),
                 Settings.Global.MOBILE_DATA, mPhone.getSubId(), defaultVal);

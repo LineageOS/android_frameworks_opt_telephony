@@ -23,7 +23,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.ResultReceiver;
-import android.os.SystemProperties;
+import android.sysprop.TelephonyProperties;
 import android.telephony.NetworkScanRequest;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -38,7 +38,6 @@ import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
-import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.ArrayList;
@@ -186,10 +185,9 @@ abstract class SipPhoneBase extends Phone {
         Rlog.v(LOG_TAG, "canDial(): serviceState = " + serviceState);
         if (serviceState == ServiceState.STATE_POWER_OFF) return false;
 
-        String disableCall = SystemProperties.get(
-                TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
+        boolean disableCall = TelephonyProperties.disable_call().orElse(false);
         Rlog.v(LOG_TAG, "canDial(): disableCall = " + disableCall);
-        if (disableCall.equals("true")) return false;
+        if (disableCall) return false;
 
         Rlog.v(LOG_TAG, "canDial(): ringingCall: " + getRingingCall().getState());
         Rlog.v(LOG_TAG, "canDial(): foregndCall: " + getForegroundCall().getState());

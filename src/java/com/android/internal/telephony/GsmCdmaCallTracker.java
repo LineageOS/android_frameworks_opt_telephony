@@ -28,7 +28,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.SystemProperties;
+import android.sysprop.TelephonyProperties;
 import android.telecom.TelecomManager;
 import android.telephony.Annotation.RilRadioTechnology;
 import android.telephony.CarrierConfigManager;
@@ -36,7 +36,6 @@ import android.telephony.CellLocation;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
-import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
@@ -657,14 +656,13 @@ public class GsmCdmaCallTracker extends CallTracker {
      * @throws CallStateException
      */
     public void checkForDialIssues(boolean isEmergencyCall) throws CallStateException {
-        String disableCall = SystemProperties.get(
-                TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
+        boolean disableCall = TelephonyProperties.disable_call().orElse(false);
 
         if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_ON) {
             throw new CallStateException(CallStateException.ERROR_POWER_OFF,
                     "Modem not powered");
         }
-        if (disableCall.equals("true")) {
+        if (disableCall) {
             throw new CallStateException(CallStateException.ERROR_CALLING_DISABLED,
                     "Calling disabled via ro.telephony.disable-call property");
         }
