@@ -87,6 +87,7 @@ import android.hardware.radio.V1_4.IRadioIndication;
 import android.hardware.radio.V1_4.RadioFrequencyInfo.hidl_discriminator;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
+import android.telephony.Annotation.RadioPowerState;
 import android.telephony.CellInfo;
 import android.telephony.PcoData;
 import android.telephony.PhysicalChannelConfig;
@@ -962,9 +963,9 @@ public class RadioIndication extends IRadioIndication.Stub {
 
     /**
      * @param stateInt
-     * @return {@link TelephonyManager.RadioPowerState RadioPowerState}
+     * @return {@link RadioPowerState RadioPowerState}
      */
-    private @TelephonyManager.RadioPowerState int getRadioStateFromInt(int stateInt) {
+    private @RadioPowerState int getRadioStateFromInt(int stateInt) {
         int state;
 
         switch(stateInt) {

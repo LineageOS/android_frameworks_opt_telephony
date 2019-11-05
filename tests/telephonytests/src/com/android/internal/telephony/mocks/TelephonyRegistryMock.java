@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.telephony.Annotation.DataFailureCause;
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.DataFailCause;
@@ -398,7 +399,7 @@ public class TelephonyRegistryMock extends ITelephonyRegistry.Stub {
     @Override
     public void notifyPreciseDataConnectionFailed(int phoneId, int subId,
                                                   String apnType, String apn,
-                                                  @DataFailCause.FailCause int failCause) {
+                                                  @DataFailureCause int failCause) {
         throw new RuntimeException("Not implemented");
     }
 

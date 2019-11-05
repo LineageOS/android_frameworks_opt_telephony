@@ -66,10 +66,12 @@ import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.DataFailureCause;
+import android.telephony.Annotation.ApnType;
+import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DataFailCause;
-import android.telephony.DataFailCause.FailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.Rlog;
@@ -80,7 +82,6 @@ import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnSetting.ApnType;
 import android.telephony.data.DataProfile;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
@@ -1871,7 +1872,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    boolean isPermanentFailure(@FailCause int dcFailCause) {
+    boolean isPermanentFailure(@DataFailureCause int dcFailCause) {
         return (DataFailCause.isPermanentFailure(mPhone.getContext(), dcFailCause,
                 mPhone.getSubId())
                 && (mAttached.get() == false || dcFailCause != DataFailCause.SIGNAL_LOST));
@@ -2229,7 +2230,7 @@ public class DcTracker extends Handler {
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
 
-    private void notifyNoData(@FailCause int lastFailCauseCode,
+    private void notifyNoData(@DataFailureCause int lastFailCauseCode,
                               ApnContext apnContext) {
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
         if (isPermanentFailure(lastFailCauseCode)
@@ -2331,7 +2332,7 @@ public class DcTracker extends Handler {
     private void sendRequestNetworkCompleteMsg(Message message, boolean success,
                                                @TransportType int transport,
                                                @RequestNetworkType int requestType,
-                                               @FailCause int cause) {
+                                               @DataFailureCause int cause) {
         if (message == null) return;
 
         Bundle b = message.getData();
