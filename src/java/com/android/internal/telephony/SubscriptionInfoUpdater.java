@@ -21,22 +21,22 @@ import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.app.AppGlobals;
-import android.app.UserSwitchObserver;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.IPackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.IRemoteCallback;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
-import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.UserHandle;
 import android.permission.IPermissionManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -168,30 +168,21 @@ public class SubscriptionInfoUpdater extends Handler {
         // -Whenever new carrier privilege rules might change (new SIM is loaded)
         // -Whenever we switch to a new user
         mCurrentlyActiveUserId = 0;
-        try {
-            ActivityManager.getService().registerUserSwitchObserver(new UserSwitchObserver() {
-                @Override
-                public void onUserSwitching(int newUserId, IRemoteCallback reply)
-                        throws RemoteException {
-                    mCurrentlyActiveUserId = newUserId;
+        sContext.registerReceiverAsUser(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                // Remove this line after testing
+                if (Intent.ACTION_USER_FOREGROUND.equals(intent.getAction())) {
+                    // If couldn't get current user ID, guess it's 0.
+                    mCurrentlyActiveUserId = intent.getIntExtra(Intent.EXTRA_USER_HANDLE, 0);
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                             mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
                             sContext.getContentResolver(), mCurrentlyActiveUserId);
-
-                    if (reply != null) {
-                        try {
-                            reply.sendResult(null);
-                        } catch (RemoteException e) {
-                        }
-                    }
                 }
-            }, LOG_TAG);
-            ActivityManager am = (ActivityManager) sContext.getSystemService(
-                Context.ACTIVITY_SERVICE);
-            mCurrentlyActiveUserId = am.getCurrentUser();
-        } catch (RemoteException e) {
-            logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
-        }
+            }
+        }, UserHandle.ALL, new IntentFilter(Intent.ACTION_USER_FOREGROUND), null, null);
+        ActivityManager am = (ActivityManager) sContext.getSystemService(Context.ACTIVITY_SERVICE);
+        mCurrentlyActiveUserId = am.getCurrentUser();
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                 mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
                 sContext.getContentResolver(), mCurrentlyActiveUserId);
