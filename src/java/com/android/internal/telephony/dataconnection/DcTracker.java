@@ -2176,13 +2176,6 @@ public class DcTracker extends Handler {
          * desired power state has changed in the interim, we don't want to
          * override it with an unconditional power on.
          */
-
-        int reset = Integer.parseInt(SystemProperties.get("net.ppp.reset-by-timeout", "0"));
-        try {
-            SystemProperties.set("net.ppp.reset-by-timeout", String.valueOf(reset + 1));
-        } catch (RuntimeException ex) {
-            log("Failed to set net.ppp.reset-by-timeout");
-        }
     }
 
     /**
