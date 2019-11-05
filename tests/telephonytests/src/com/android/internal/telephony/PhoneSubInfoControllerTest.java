@@ -53,6 +53,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(0).when(mSubscriptionController).getPhoneId(eq(0));
         doReturn(1).when(mSubscriptionController).getPhoneId(eq(1));
         doReturn(2).when(mTelephonyManager).getPhoneCount();
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
         doReturn(true).when(mSubscriptionController).isActiveSubId(0, TAG);
         doReturn(true).when(mSubscriptionController).isActiveSubId(1, TAG);
         doReturn(new int[]{0, 1}).when(mSubscriptionManager)
