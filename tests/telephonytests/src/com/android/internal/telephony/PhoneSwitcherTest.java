@@ -1040,6 +1040,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         }
 
         doReturn(numPhones).when(mTelephonyManager).getPhoneCount();
+        doReturn(numPhones).when(mTelephonyManager).getActiveModemCount();
         if (numPhones == 1) {
             mCommandsInterfaces = new CommandsInterface[] {mCommandsInterface0};
             mPhones = new Phone[] {mPhone};

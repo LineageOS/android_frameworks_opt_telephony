@@ -1332,17 +1332,12 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[clearSubInfoRecord]+ iccId:" + " slotIndex:" + slotIndex);
 
         // update simInfo db with invalid slot index
-        List<SubscriptionInfo> oldSubInfo = getSubInfoUsingSlotIndexPrivileged(slotIndex);
         ContentResolver resolver = mContext.getContentResolver();
         ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.SIM_SLOT_INDEX,
-                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-        if (oldSubInfo != null) {
-            for (int i = 0; i < oldSubInfo.size(); i++) {
-                resolver.update(SubscriptionManager.getUriForSubscriptionId(
-                        oldSubInfo.get(i).getSubscriptionId()), value, null, null);
-            }
-        }
+        value.put(SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+        String where = "(" + SubscriptionManager.SIM_SLOT_INDEX + "=" + slotIndex + ")";
+        resolver.update(SubscriptionManager.CONTENT_URI, value, where, null);
+
         // Refresh the Cache of Active Subscription Info List
         refreshCachedActiveSubscriptionInfoList();
 
