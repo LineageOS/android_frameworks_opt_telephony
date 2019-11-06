@@ -108,7 +108,8 @@ public class DcTrackerTest extends TelephonyTest {
             "mobile_supl,3,0,2,60000,true", "mobile_dun,4,0,2,60000,true",
             "mobile_hipri,5,0,3,60000,true", "mobile_fota,10,0,2,60000,true",
             "mobile_ims,11,0,2,60000,true", "mobile_cbs,12,0,2,60000,true",
-            "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"};
+            "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true",
+            "mobile_xcap,18,0,2,-1,true"};
 
     public static final String FAKE_APN1 = "FAKE APN 1";
     public static final String FAKE_APN2 = "FAKE APN 2";
@@ -1072,9 +1073,26 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
 
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(AccessNetworkType.EUTRAN), any(DataProfile.class),
-                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
-                any(Message.class));
+                eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), any(Message.class));
+    }
+
+    // Test the XCAP APN setup.
+    @Test
+    @SmallTest
+    public void testTrySetupDataXcapApn() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_XCAP, new String[]{PhoneConstants.APN_TYPE_ALL});
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), any(Message.class));
     }
 
     @Test
