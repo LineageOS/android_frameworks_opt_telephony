@@ -37,6 +37,7 @@ import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.Rlog;
+import android.telephony.SmsCbMessage;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.emergency.EmergencyNumber;
@@ -881,9 +882,9 @@ public class IccSmsInterfaceManager {
         mContext.enforceCallingPermission("android.permission.RECEIVE_EMERGENCY_BROADCAST",
                 "enabling cell broadcast range [" + startMessageId + "-" + endMessageId + "]. "
                         + "ranType=" + ranType);
-        if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM) {
+        if (ranType == SmsCbMessage.MESSAGE_FORMAT_3GPP) {
             return enableGsmBroadcastRange(startMessageId, endMessageId);
-        } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA) {
+        } else if (ranType == SmsCbMessage.MESSAGE_FORMAT_3GPP2) {
             return enableCdmaBroadcastRange(startMessageId, endMessageId);
         } else {
             throw new IllegalArgumentException("Not a supported RAN Type");
@@ -894,9 +895,9 @@ public class IccSmsInterfaceManager {
         mContext.enforceCallingPermission("android.permission.RECEIVE_EMERGENCY_BROADCAST",
                 "disabling cell broadcast range [" + startMessageId + "-" + endMessageId
                         + "]. ranType=" + ranType);
-        if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM ) {
+        if (ranType == SmsCbMessage.MESSAGE_FORMAT_3GPP) {
             return disableGsmBroadcastRange(startMessageId, endMessageId);
-        } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA)  {
+        } else if (ranType == SmsCbMessage.MESSAGE_FORMAT_3GPP2)  {
             return disableCdmaBroadcastRange(startMessageId, endMessageId);
         } else {
             throw new IllegalArgumentException("Not a supported RAN Type");
