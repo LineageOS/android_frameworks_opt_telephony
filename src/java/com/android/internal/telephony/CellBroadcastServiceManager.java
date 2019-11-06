@@ -25,11 +25,13 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.RemoteCallback;
 import android.os.RemoteException;
 import android.telephony.CellBroadcastService;
 import android.telephony.ICellBroadcastService;
 import android.util.LocalLog;
 import android.util.Log;
+import android.util.Pair;
 
 import com.android.internal.telephony.cdma.SmsMessage;
 
@@ -57,6 +59,7 @@ public class CellBroadcastServiceManager {
     /** New SMS cell broadcast received as an AsyncResult. */
     private static final int EVENT_NEW_GSM_SMS_CB = 0;
     private static final int EVENT_NEW_CDMA_SMS_CB = 1;
+    private static final int EVENT_NEW_CDMA_SCP_MESSAGE = 2;
     private boolean mEnabled;
 
     public CellBroadcastServiceManager(Context context, Phone phone) {
@@ -66,7 +69,7 @@ public class CellBroadcastServiceManager {
     }
 
     /**
-     * Send a GSM CB message to the CellBroadcastServieManager's handler.
+     * Send a GSM CB message to the CellBroadcastServiceManager's handler.
      * @param m the message
      */
     public void sendGsmMessageToHandler(Message m) {
@@ -75,13 +78,24 @@ public class CellBroadcastServiceManager {
     }
 
     /**
-     * Send a CDMA CB message to the CellBroadcastServieManager's handler.
+     * Send a CDMA CB message to the CellBroadcastServiceManager's handler.
      * @param sms the SmsMessage to forward
      */
     public void sendCdmaMessageToHandler(SmsMessage sms) {
         Message m = Message.obtain();
         m.what = EVENT_NEW_CDMA_SMS_CB;
         m.obj = sms;
+        mModuleCellBroadcastHandler.sendMessage(m);
+    }
+
+    /**
+     * Send a CDMA Service Category Program message to the CellBroadcastServiceManager's handler.
+     * @param sms the SCP message
+     */
+    public void sendCdmaScpMessageToHandler(SmsMessage sms, RemoteCallback callback) {
+        Message m = Message.obtain();
+        m.what = EVENT_NEW_CDMA_SCP_MESSAGE;
+        m.obj = Pair.create(sms, callback);
         mModuleCellBroadcastHandler.sendMessage(m);
     }
 
@@ -140,7 +154,16 @@ public class CellBroadcastServiceManager {
                             SmsMessage sms = (SmsMessage) msg.obj;
                             cellBroadcastService.handleCdmaCellBroadcastSms(mPhone.getPhoneId(),
                                     sms.getEnvelopeBearerData(), sms.getEnvelopeServiceCategory());
-
+                        } else if (msg.what == EVENT_NEW_CDMA_SCP_MESSAGE) {
+                            mLocalLog.log("CDMA SCP message for phone " + mPhone.getPhoneId());
+                            Pair<SmsMessage, RemoteCallback> smsAndCallback =
+                                    (Pair<SmsMessage, RemoteCallback>) msg.obj;
+                            SmsMessage sms = smsAndCallback.first;
+                            RemoteCallback callback = smsAndCallback.second;
+                            cellBroadcastService.handleCdmaScpMessage(mPhone.getPhoneId(),
+                                    sms.getSmsCbProgramData(),
+                                    sms.getOriginatingAddress(),
+                                    callback);
                         }
                     } catch (RemoteException e) {
                         Log.e(TAG, "Failed to connect to default app: "
