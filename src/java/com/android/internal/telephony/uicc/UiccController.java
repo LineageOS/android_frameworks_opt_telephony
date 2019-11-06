@@ -830,7 +830,17 @@ public class UiccController extends Handler {
         boolean isDefaultEuiccCardIdSet = false;
         boolean anyEuiccIsActive = false;
         mHasActiveBuiltInEuicc = false;
-        for (int i = 0; i < status.size(); i++) {
+
+        int numSlots = status.size();
+        if (mUiccSlots.length < numSlots) {
+            String logStr = "The number of the physical slots reported " + numSlots
+                    + " is greater than the expectation " + mUiccSlots.length + ".";
+            Rlog.e(LOG_TAG, logStr);
+            sLocalLog.log(logStr);
+            numSlots = mUiccSlots.length;
+        }
+
+        for (int i = 0; i < numSlots; i++) {
             IccSlotStatus iss = status.get(i);
             boolean isActive = (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_ACTIVE);
             if (isActive) {
@@ -895,7 +905,7 @@ public class UiccController extends Handler {
             // Note that on HAL<1.2, it's possible that a built-in eUICC exists, but does not
             // correspond to any slot in mUiccSlots. This logic is still safe in that case because
             // SlotStatus is only for HAL >= 1.2
-            for (int i = 0; i < status.size(); i++) {
+            for (int i = 0; i < numSlots; i++) {
                 if (mUiccSlots[i].isEuicc()) {
                     String eid = status.get(i).eid;
                     if (!TextUtils.isEmpty(eid)) {
