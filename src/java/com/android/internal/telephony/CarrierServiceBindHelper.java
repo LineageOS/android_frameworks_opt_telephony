@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
@@ -42,6 +43,7 @@ import android.util.SparseArray;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.content.PackageMonitor;
 
+import com.android.internal.telephony.util.TelephonyUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
@@ -228,8 +230,9 @@ public class CarrierServiceBindHelper {
             String candidateServiceClass = null;
             if (carrierResolveInfo != null) {
                 metadata = carrierResolveInfo.serviceInfo.metaData;
-                candidateServiceClass =
-                        carrierResolveInfo.getComponentInfo().getComponentName().getClassName();
+                ComponentInfo componentInfo = TelephonyUtils.getComponentInfo(carrierResolveInfo);
+                candidateServiceClass = new ComponentName(componentInfo.packageName,
+                    componentInfo.name).getClassName();
             }
 
             // Only bind if the service wants it
