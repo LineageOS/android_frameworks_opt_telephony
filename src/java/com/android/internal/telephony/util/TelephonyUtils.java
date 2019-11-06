@@ -16,13 +16,17 @@
 package com.android.internal.telephony.util;
 
 import android.annotation.Nullable;
+import android.os.SystemProperties;
 
 /**
  * This class provides various util functions
  */
 public final class TelephonyUtils {
-  /** {@hide} */
-  public static String emptyIfNull(@Nullable String str) {
-    return str == null ? "" : str;
+    /** {@hide} */
+    public static String emptyIfNull(@Nullable String str) {
+        return str == null ? "" : str;
+    }
+
+    public static boolean IS_DEBUGGABLE =
+            SystemProperties.getInt("ro.debuggable", 0) == 1;
   }
-}
