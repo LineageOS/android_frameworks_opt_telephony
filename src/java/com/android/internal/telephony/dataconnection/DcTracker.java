@@ -4131,6 +4131,9 @@ public class DcTracker extends Handler {
         mEmergencyApn = new ApnSetting.Builder()
                 .setEntryName("Emergency")
                 .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                .setNetworkTypeBitmask((int)(TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN))
                 .setApnName("sos")
                 .setApnTypeBitmask(ApnSetting.TYPE_EMERGENCY)
                 .build();
@@ -4792,8 +4795,8 @@ public class DcTracker extends Handler {
                 .setApn(apn.getApnName())
                 .setProtocolType(apn.getProtocol())
                 .setAuthType(apn.getAuthType())
-                .setUserName(apn.getUser())
-                .setPassword(apn.getPassword())
+                .setUserName(apn.getUser() == null ? "" : apn.getUser())
+                .setPassword(apn.getPassword() == null ? "" : apn.getPassword())
                 .setType(profileType)
                 .setMaxConnectionsTime(apn.getMaxConnsTime())
                 .setMaxConnections(apn.getMaxConns())
