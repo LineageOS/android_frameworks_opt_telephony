@@ -1562,10 +1562,11 @@ public class ServiceStateTracker extends Handler {
                         mNrStateChangedRegistrants.notifyRegistrants();
                         hasChanged = true;
                     }
+                    hasChanged |= RatRatcheter
+                            .updateBandwidths(getBandwidthsFromConfigs(list), mSS);
 
                     // Notify NR frequency, NR connection status or bandwidths changed.
-                    if (hasChanged
-                            || RatRatcheter.updateBandwidths(getBandwidthsFromConfigs(list), mSS)) {
+                    if (hasChanged) {
                         mPhone.notifyServiceStateChanged(mSS);
                     }
                 }
