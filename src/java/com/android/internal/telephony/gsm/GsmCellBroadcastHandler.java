@@ -26,6 +26,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.CellBroadcasts;
+import android.telephony.CbGeoUtils.Geometry;
 import android.telephony.CellLocation;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
@@ -33,7 +34,6 @@ import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.format.DateUtils;
 
-import com.android.internal.telephony.CbGeoUtils.Geometry;
 import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage;
@@ -138,7 +138,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
         // cell broadcasts.
         int maximumWaitTimeSec = 0;
         for (SmsCbMessage msg : cbMessages) {
-            maximumWaitTimeSec = Math.max(maximumWaitTimeSec, msg.getMaximumWaitingTime());
+            maximumWaitTimeSec = Math.max(maximumWaitTimeSec, msg.getMaximumWaitingDuration());
         }
 
         if (DBG) {
