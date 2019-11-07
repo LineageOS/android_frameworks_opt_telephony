@@ -293,7 +293,7 @@ public class TelephonyComponentFactory {
         return new EmergencyNumberTracker(phone, ci);
     }
 
-    private static final boolean USE_NEW_NITZ_STATE_MACHINE = false;
+    private static final boolean USE_NEW_NITZ_STATE_MACHINE = true;
 
     /**
      * Returns a new {@link NitzStateMachine} instance.
