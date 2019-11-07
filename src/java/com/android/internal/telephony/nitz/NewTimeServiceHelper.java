@@ -19,8 +19,8 @@ package com.android.internal.telephony.nitz;
 import android.annotation.NonNull;
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timedetector.TimeDetector;
+import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 
-import com.android.internal.telephony.nitz.service.PhoneTimeZoneSuggestion;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.PrintWriter;
