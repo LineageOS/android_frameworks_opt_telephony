@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA;
+import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA_LTE;
+
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
@@ -167,7 +170,7 @@ public class PhoneFactory {
 
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()
-                sUiccController = UiccController.make(context, sCommandsInterfaces);
+                sUiccController = UiccController.make(context);
 
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
                 SubscriptionController sc = SubscriptionController.init(context);
@@ -180,22 +183,7 @@ public class PhoneFactory {
                 }
 
                 for (int i = 0; i < numPhones; i++) {
-                    Phone phone = null;
-                    int phoneType = TelephonyManager.getPhoneType(networkModes[i]);
-                    if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
-                        phone = new GsmCdmaPhone(context,
-                                sCommandsInterfaces[i], sPhoneNotifier, i,
-                                PhoneConstants.PHONE_TYPE_GSM,
-                                TelephonyComponentFactory.getInstance());
-                    } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                        phone = new GsmCdmaPhone(context,
-                                sCommandsInterfaces[i], sPhoneNotifier, i,
-                                PhoneConstants.PHONE_TYPE_CDMA_LTE,
-                                TelephonyComponentFactory.getInstance());
-                    }
-                    Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
-
-                    sPhones[i] = phone;
+                    sPhones[i] = createPhone(context, i);
                 }
 
                 // Set the default phone in base class.
@@ -258,7 +246,7 @@ public class PhoneFactory {
 
                 sPhoneSwitcher = PhoneSwitcher.make(maxActivePhones, sContext, Looper.myLooper());
 
-                sProxyController = ProxyController.getInstance(context, sPhones, sPhoneSwitcher);
+                sProxyController = ProxyController.getInstance(context);
 
                 sIntentBroadcaster = IntentBroadcaster.getInstance(context);
 
@@ -270,6 +258,18 @@ public class PhoneFactory {
                 }
             }
         }
+    }
+
+    private static Phone createPhone(Context context, int phoneId) {
+        int phoneType = TelephonyManager.getPhoneType(RILConstants.PREFERRED_NETWORK_MODE);
+        Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " phoneId = " + phoneId);
+
+        // We always use PHONE_TYPE_CDMA_LTE now.
+        if (phoneType == PHONE_TYPE_CDMA) phoneType = PHONE_TYPE_CDMA_LTE;
+
+        return new GsmCdmaPhone(context,
+                sCommandsInterfaces[phoneId], sPhoneNotifier, phoneId, phoneType,
+                TelephonyComponentFactory.getInstance());
     }
 
     @UnsupportedAppUsage
@@ -453,6 +453,15 @@ public class PhoneFactory {
                 throw new IllegalStateException("Default phones haven't been made yet!");
             }
             return sProxyController.getSmsController();
+        }
+    }
+
+    /**
+     * Get Command Interfaces.
+     */
+    public static CommandsInterface[] getCommandsInterfaces() {
+        synchronized (sLockProxyPhones) {
+            return sCommandsInterfaces;
         }
     }
 
