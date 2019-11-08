@@ -58,10 +58,12 @@ public final class NetworkScanRequestTracker {
     private static final int EVENT_STOP_NETWORK_SCAN_DONE = 5;
     private static final int CMD_INTERRUPT_NETWORK_SCAN = 6;
     private static final int EVENT_INTERRUPT_NETWORK_SCAN_DONE = 7;
+    private static final int EVENT_MODEM_RESET = 8;
 
     private final Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
+            Log.d(TAG, "Received Event :" + msg.what);
             switch (msg.what) {
                 case CMD_START_NETWORK_SCAN:
                     mScheduler.doStartScan((NetworkScanRequestInfo) msg.obj);
@@ -89,6 +91,14 @@ public final class NetworkScanRequestTracker {
 
                 case EVENT_INTERRUPT_NETWORK_SCAN_DONE:
                     mScheduler.interruptScanDone((AsyncResult) msg.obj);
+                    break;
+
+                case EVENT_MODEM_RESET:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    mScheduler.deleteScanAndMayNotify(
+                            (NetworkScanRequestInfo) ar.userObj,
+                            NetworkScan.ERROR_MODEM_ERROR,
+                            true);
                     break;
             }
         }
@@ -486,6 +496,7 @@ public final class NetworkScanRequestTracker {
                 mLiveRequestInfo = nsri;
                 nsri.mPhone.startNetworkScan(nsri.getRequest(),
                         mHandler.obtainMessage(EVENT_START_NETWORK_SCAN_DONE, nsri));
+                nsri.mPhone.mCi.registerForModemReset(mHandler, EVENT_MODEM_RESET, nsri);
                 return true;
             }
             return false;
@@ -505,6 +516,7 @@ public final class NetworkScanRequestTracker {
                                 null);
                     }
                 }
+                mLiveRequestInfo.mPhone.mCi.unregisterForModemReset(mHandler);
                 mLiveRequestInfo = null;
                 if (mPendingRequestInfo != null) {
                     startNewScan(mPendingRequestInfo);
