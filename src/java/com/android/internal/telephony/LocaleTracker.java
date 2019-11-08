@@ -59,7 +59,6 @@ import java.util.Objects;
  */
 public class LocaleTracker extends Handler {
     private static final boolean DBG = true;
-    private static final String TAG = LocaleTracker.class.getSimpleName();
 
     /** Event for getting cell info from the modem */
     private static final int EVENT_REQUEST_CELL_INFO = 1;
@@ -125,6 +124,8 @@ public class LocaleTracker extends Handler {
 
     /** The maximum fail count to prevent delay time overflow */
     private static final int MAX_FAIL_COUNT = 30;
+
+    private String mTag;
 
     private final Phone mPhone;
 
@@ -242,6 +243,7 @@ public class LocaleTracker extends Handler {
         mPhone = phone;
         mNitzStateMachine = nitzStateMachine;
         mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
+        mTag = LocaleTracker.class.getSimpleName() + "-" + mPhone.getPhoneId();
 
         final IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
@@ -526,11 +528,11 @@ public class LocaleTracker extends Handler {
     }
 
     private void log(String msg) {
-        Rlog.d(TAG, msg);
+        Rlog.d(mTag, msg);
     }
 
     private void loge(String msg) {
-        Rlog.e(TAG, msg);
+        Rlog.e(mTag, msg);
     }
 
     /**
@@ -542,7 +544,7 @@ public class LocaleTracker extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
-        pw.println("LocaleTracker:");
+        pw.println("LocaleTracker-" + mPhone.getPhoneId() + ":");
         ipw.increaseIndent();
         ipw.println("mIsTracking = " + mIsTracking);
         ipw.println("mOperatorNumeric = " + mOperatorNumeric);
