@@ -214,7 +214,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
      */
     protected void broadcastMessage(@NonNull SmsCbMessage message, @Nullable Uri messageUri) {
         String receiverPermission;
-        int appOp;
+        String appOp;
         String msg;
         Intent intent;
         if (message.isEmergencyMessage()) {
@@ -225,7 +225,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             //Emergency alerts need to be delivered with high priority
             intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             receiverPermission = Manifest.permission.RECEIVE_EMERGENCY_BROADCAST;
-            appOp = AppOpsManager.OP_RECEIVE_EMERGECY_SMS;
+            appOp = AppOpsManager.OPSTR_RECEIVE_EMERGENCY_BROADCAST;
 
             intent.putExtra(EXTRA_MESSAGE, message);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
@@ -238,9 +238,14 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
                 if (additionalPackage != null) {
                     Intent additionalIntent = new Intent(intent);
                     additionalIntent.setPackage(additionalPackage);
-                    mContext.sendOrderedBroadcastAsUser(additionalIntent, UserHandle.ALL,
-                            receiverPermission, appOp, null, getHandler(), Activity.RESULT_OK,
-                            null, null);
+                    try {
+                        mContext.createPackageContextAsUser(
+                                mContext.getPackageName(), 0, UserHandle.ALL)
+                                .sendOrderedBroadcast(additionalIntent, receiverPermission, appOp,
+                                        null /* resultReceiver */, getHandler(), Activity.RESULT_OK,
+                                        null /* initialData */, null /* initialExtras */);
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                    }
                 }
             }
 
@@ -250,8 +255,14 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             for (String pkg : pkgs) {
                 // Explicitly send the intent to all the configured cell broadcast receivers.
                 intent.setPackage(pkg);
-                mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission,
-                        appOp, mReceiver, getHandler(), Activity.RESULT_OK, null, null);
+                try {
+                    mContext.createPackageContextAsUser(
+                            mContext.getPackageName(), 0, UserHandle.ALL)
+                            .sendOrderedBroadcast(intent, receiverPermission, appOp, mReceiver,
+                                    getHandler(), Activity.RESULT_OK, null /* initialData */,
+                                    null /* initialExtras */);
+                } catch (PackageManager.NameNotFoundException ignored) {
+                }
             }
         } else {
             msg = "Dispatching SMS CB, SmsCbMessage is: " + message;
@@ -262,14 +273,19 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             // this intent.
             intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             receiverPermission = Manifest.permission.RECEIVE_SMS;
-            appOp = AppOpsManager.OP_RECEIVE_SMS;
+            appOp = AppOpsManager.OPSTR_RECEIVE_SMS;
 
             intent.putExtra(EXTRA_MESSAGE, message);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
 
             mReceiverCount.incrementAndGet();
-            mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
-                    mReceiver, getHandler(), Activity.RESULT_OK, null, null);
+            try {
+                mContext.createPackageContextAsUser(mContext.getPackageName(), 0, UserHandle.ALL)
+                        .sendOrderedBroadcast(intent, receiverPermission, appOp, mReceiver,
+                                getHandler(), Activity.RESULT_OK, null /* initialData */,
+                                null /* initialExtras */);
+            } catch (PackageManager.NameNotFoundException ignored) {
+            }
         }
 
         if (messageUri != null) {

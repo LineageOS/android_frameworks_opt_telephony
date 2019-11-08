@@ -461,6 +461,20 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendOrderedBroadcast(Intent intent, String receiverPermission,
+                String receiverAppOp, Bundle options, BroadcastReceiver resultReceiver,
+                Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+            logd("sendOrderedBroadcast called for " + intent.getAction());
+            mLastBroadcastOptions = options;
+            sendBroadcast(intent);
+            if (resultReceiver != null) {
+                synchronized (mOrderedBroadcastReceivers) {
+                    mOrderedBroadcastReceivers.put(intent, resultReceiver);
+                }
+            }
+        }
+
+        @Override
         public void sendStickyBroadcast(Intent intent) {
             logd("sendStickyBroadcast called for " + intent.getAction());
             synchronized (mBroadcastReceiversByAction) {
