@@ -17,7 +17,13 @@ package com.android.internal.telephony;
 
 import static android.telephony.PhoneStateListener.LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE;
 import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANGE;
+import static android.telephony.PhoneStateListener.LISTEN_RADIO_POWER_STATE_CHANGED;
 import static android.telephony.PhoneStateListener.LISTEN_SRVCC_STATE_CHANGED;
+import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
+import static android.telephony.TelephonyManager.MODEM_COUNT_DUAL_MODEM;
+import static android.telephony.TelephonyManager.RADIO_POWER_OFF;
+import static android.telephony.TelephonyManager.RADIO_POWER_ON;
+import static android.telephony.TelephonyManager.RADIO_POWER_UNAVAILABLE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -25,7 +31,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
+import android.content.Intent;
 import android.os.ServiceManager;
+import android.telephony.Annotation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
@@ -51,6 +59,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private PhoneCapability mPhoneCapability;
     private int mActiveSubId;
     private int mSrvccState = -1;
+    private int mRadioPowerState = RADIO_POWER_UNAVAILABLE;
 
     public class PhoneStateListenerWrapper extends PhoneStateListener {
         @Override
@@ -66,10 +75,15 @@ public class TelephonyRegistryTest extends TelephonyTest {
         public void onActiveDataSubscriptionIdChanged(int activeSubId) {
             mActiveSubId = activeSubId;
         }
+        @Override
+        public void onRadioPowerStateChanged(@Annotation.RadioPowerState int state) {
+            mRadioPowerState = state;
+        }
     }
 
     private void addTelephonyRegistryService() {
         mServiceManagerMockedServices.put("telephony.registry", mTelephonyRegistry.asBinder());
+        mTelephonyRegistry.systemRunning();
     }
 
     @Before
@@ -176,5 +190,36 @@ public class TelephonyRegistryTest extends TelephonyTest {
         } catch (SecurityException e) {
             // pass test!
         }
+    }
+
+    /**
+     * Test multi sim config change.
+     */
+    @Test
+    public void testMultiSimConfigChange() {
+        mTelephonyRegistry.listenForSubscriber(1, mContext.getOpPackageName(),
+                mPhoneStateListener.callback,
+                LISTEN_RADIO_POWER_STATE_CHANGED, true);
+        processAllMessages();
+        assertEquals(RADIO_POWER_UNAVAILABLE, mRadioPowerState);
+
+        // Notify RADIO_POWER_ON on invalid phoneId. Shouldn't go through.
+        mTelephonyRegistry.notifyRadioPowerStateChanged(1, 1, RADIO_POWER_ON);
+        processAllMessages();
+        assertEquals(RADIO_POWER_UNAVAILABLE, mRadioPowerState);
+
+        // Switch to DSDS and re-send RADIO_POWER_ON on phone 1. This time it should be notified.
+        doReturn(MODEM_COUNT_DUAL_MODEM).when(mTelephonyManager).getActiveModemCount();
+        mContext.sendBroadcast(new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED));
+        mTelephonyRegistry.notifyRadioPowerStateChanged(1, 1, RADIO_POWER_ON);
+        processAllMessages();
+        assertEquals(RADIO_POWER_ON, mRadioPowerState);
+
+        // Switch back to single SIM mode and re-send on phone 0. This time it should be notified.
+        doReturn(MODEM_COUNT_DUAL_MODEM).when(mTelephonyManager).getActiveModemCount();
+        mContext.sendBroadcast(new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED));
+        mTelephonyRegistry.notifyRadioPowerStateChanged(0, 1, RADIO_POWER_OFF);
+        processAllMessages();
+        assertEquals(RADIO_POWER_OFF, mRadioPowerState);
     }
 }
