@@ -420,7 +420,7 @@ public class WapPushOverSms implements ServiceConnection {
         }
 
         handler.dispatchIntent(intent, getPermissionForType(result.mimeType),
-                getAppOpsPermissionForIntent(result.mimeType), options, receiver,
+                getAppOpsStringPermissionForIntent(result.mimeType), options, receiver,
                 UserHandle.SYSTEM, subId);
         return Activity.RESULT_OK;
     }
@@ -611,12 +611,17 @@ public class WapPushOverSms implements ServiceConnection {
         return permission;
     }
 
-    public static int getAppOpsPermissionForIntent(String mimeType) {
-        int appOp;
+    /**
+     * Return a appOps String for the given MIME type.
+     * @param mimeType MIME type of the Intent
+     * @return The appOps String
+     */
+    public static String getAppOpsStringPermissionForIntent(String mimeType) {
+        String appOp;
         if (WspTypeDecoder.CONTENT_TYPE_B_MMS.equals(mimeType)) {
-            appOp = AppOpsManager.OP_RECEIVE_MMS;
+            appOp = AppOpsManager.OPSTR_RECEIVE_MMS;
         } else {
-            appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
+            appOp = AppOpsManager.OPSTR_RECEIVE_WAP_PUSH;
         }
         return appOp;
     }
