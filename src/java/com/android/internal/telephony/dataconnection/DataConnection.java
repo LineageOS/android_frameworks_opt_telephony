@@ -2093,7 +2093,7 @@ public class DataConnection extends StateMachine {
 
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
 
-                mNetworkAgent = DcNetworkAgent.createDcNetworkAgent(DataConnection.this,
+                mNetworkAgent = new DcNetworkAgent(DataConnection.this,
                         mPhone, mNetworkInfo, mScore, misc, factorySerialNumber, mTransportType);
             }
 
