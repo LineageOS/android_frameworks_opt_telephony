@@ -66,8 +66,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         mAppOsMgr = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
 
-        mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext,
-                new Phone[]{mPhone, mSecondPhone});
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mSecondPhone});
+        mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext);
 
         setupMocksForTelephonyPermissions();
         // TelephonyPermissions will query the READ_DEVICE_IDENTIFIERS op from AppOpManager to

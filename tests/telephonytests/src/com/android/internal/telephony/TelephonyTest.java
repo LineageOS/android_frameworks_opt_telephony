@@ -49,7 +49,6 @@ import android.os.Message;
 import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
-import android.telephony.TelephonyRegistryManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -58,6 +57,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.euicc.EuiccManager;
 import android.telephony.ims.ImsCallProfile;
@@ -620,6 +620,8 @@ public abstract class TelephonyTest {
         replaceInstance(MultiSimSettingController.class, "sInstance", null,
                 mMultiSimSettingController);
         replaceInstance(SubscriptionInfoUpdater.class, "sIsSubInfoInitialized", null, true);
+        replaceInstance(PhoneFactory.class, "sCommandsInterfaces", null,
+                new CommandsInterface[] {mSimulatedCommands});
 
         assertNotNull("Failed to set up SubscriptionController singleton",
                 SubscriptionController.getInstance());
