@@ -35,8 +35,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.IPackageManager;
-import android.content.pm.UserInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -48,7 +46,6 @@ import android.os.IDeviceIdleController;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
@@ -665,18 +662,18 @@ public abstract class InboundSmsHandler extends StateMachine {
             return Intents.RESULT_SMS_HANDLED;
         }
 
-        // onlyCore indicates if the device is in cryptkeeper
-        boolean onlyCore = false;
-        try {
-            onlyCore = IPackageManager.Stub.asInterface(ServiceManager.getService("package")).
-                    isOnlyCoreApps();
-        } catch (RemoteException e) {
-        }
-        if (onlyCore) {
-            // Device is unable to receive SMS in encrypted state
-            log("Received a short message in encrypted state. Rejecting.");
-            return Intents.RESULT_SMS_GENERIC_ERROR;
-        }
+//        // onlyCore indicates if the device is in cryptkeeper
+//        boolean onlyCore = false;
+//        try {
+//            onlyCore = IPackageManager.Stub.asInterface(ServiceManager.getService("package")).
+//                    isOnlyCoreApps();
+//        } catch (RemoteException e) {
+//        }
+//        if (onlyCore) {
+//            // Device is unable to receive SMS in encrypted state
+//            log("Received a short message in encrypted state. Rejecting.");
+//            return Intents.RESULT_SMS_GENERIC_ERROR;
+//        }
 
         int result = dispatchMessageRadioSpecific(smsb);
 
