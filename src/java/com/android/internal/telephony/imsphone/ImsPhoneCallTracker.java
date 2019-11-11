@@ -399,7 +399,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
     @UnsupportedAppUsage
     private Object mSyncHold = new Object();
-
+    @UnsupportedAppUsage
     private ImsCall mUssdSession = null;
     @UnsupportedAppUsage
     private Message mPendingUssd = null;
@@ -415,6 +415,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
+    @UnsupportedAppUsage
     private ImsManager mImsManager;
     private ImsUtInterface mUtInterface;
 
@@ -429,6 +430,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean pendingCallInEcm = false;
     @UnsupportedAppUsage
     private boolean mSwitchingFgAndBgCalls = false;
+    @UnsupportedAppUsage
     private ImsCall mCallExpectedToResume = null;
     @UnsupportedAppUsage
     private boolean mAllowEmergencyVideoCalls = false;
@@ -1898,6 +1900,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mUssdSession.terminate(ImsReasonInfo.CODE_USER_TERMINATED);
     }
 
+    @UnsupportedAppUsage
     private synchronized ImsPhoneConnection findConnection(final ImsCall imsCall) {
         for (ImsPhoneConnection conn : mConnections) {
             if (conn.getImsCall() == imsCall) {
@@ -1937,6 +1940,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    @UnsupportedAppUsage
     private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause) {
         if (DBG) log("processCallStateChange " + imsCall + " state=" + state + " cause=" + cause);
         // This method is called on onCallUpdate() where there is not necessarily a call state
@@ -1946,6 +1950,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         processCallStateChange(imsCall, state, cause, false /* do not ignore state update */);
     }
 
+    @UnsupportedAppUsage
     private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause,
             boolean ignoreState) {
         if (DBG) {
@@ -2260,6 +2265,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /**
      * Listen to the IMS call state change
      */
+    @UnsupportedAppUsage
     private ImsCall.Listener mImsCallListener = new ImsCall.Listener() {
         @Override
         public void onCallProgressing(ImsCall imsCall) {
@@ -3728,6 +3734,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /* package */
+    @UnsupportedAppUsage
     ImsEcbm getEcbmInterface() throws ImsException {
         if (mImsManager == null) {
             throw getImsManagerIsNullException();
@@ -3814,6 +3821,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mImsManagerConnector.connect();
     }
 
+    @UnsupportedAppUsage
     private void setVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall)
             throws RemoteException {
         IImsVideoCallProvider imsVideoCallProvider =

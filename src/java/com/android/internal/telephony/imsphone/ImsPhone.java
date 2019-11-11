@@ -237,6 +237,18 @@ public class ImsPhone extends ImsPhoneBase {
         this.mCurrentSubscriberUris = currentSubscriberUris;
     }
 
+    @UnsupportedAppUsage
+    @Override
+    public void notifyCallForwardingIndicator() {
+        super.notifyCallForwardingIndicator();
+    }
+
+    @UnsupportedAppUsage
+    @Override
+    public void notifyPreciseCallStateChanged() {
+        super.notifyPreciseCallStateChanged();
+    }
+
     @Override
     public Uri[] getCurrentSubscriberUris() {
         return mCurrentSubscriberUris;
