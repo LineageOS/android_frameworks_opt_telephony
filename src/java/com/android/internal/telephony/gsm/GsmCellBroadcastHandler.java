@@ -39,6 +39,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage.CellBroadcastIdentity;
 
+import dalvik.annotation.compat.UnsupportedAppUsage;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,6 +56,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
     private static final String MESSAGE_NOT_BROADCASTED = "0";
 
     /** This map holds incomplete concatenated messages waiting for assembly. */
+    @UnsupportedAppUsage
     private final HashMap<SmsCbConcatInfo, byte[][]> mSmsCbPageMap =
             new HashMap<SmsCbConcatInfo, byte[][]>(4);
 
@@ -334,6 +337,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
         private final SmsCbHeader mHeader;
         private final SmsCbLocation mLocation;
 
+        @UnsupportedAppUsage
         SmsCbConcatInfo(SmsCbHeader header, SmsCbLocation location) {
             mHeader = header;
             mLocation = location;
@@ -369,6 +373,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
          * @param cid the current Cell ID
          * @return true if this message is valid for the current location; false otherwise
          */
+        @UnsupportedAppUsage
         public boolean matchesLocation(String plmn, int lac, int cid) {
             return mLocation.isInLocationArea(plmn, lac, cid);
         }
