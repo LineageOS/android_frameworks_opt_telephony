@@ -17,7 +17,8 @@
 package com.android.internal.telephony.imsphone;
 
 import android.annotation.UnsupportedAppUsage;
-import android.telecom.ConferenceParticipant;
+import com.android.ims.internal.ConferenceParticipant;
+import android.telephony.Rlog;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ims.ImsStreamMediaProfile;
