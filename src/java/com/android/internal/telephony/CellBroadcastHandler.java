@@ -221,7 +221,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             msg = "Dispatching emergency SMS CB, SmsCbMessage is: " + message;
             log(msg);
             mLocalLog.log(msg);
-            intent = new Intent(Telephony.Sms.Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
+            intent = new Intent(Telephony.Sms.Intents.ACTION_SMS_EMERGENCY_CB_RECEIVED);
             //Emergency alerts need to be delivered with high priority
             intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             receiverPermission = Manifest.permission.RECEIVE_EMERGENCY_BROADCAST;
