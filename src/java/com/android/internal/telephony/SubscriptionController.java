@@ -378,7 +378,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " carrierConfigAccessRules: " + Arrays.toString(carrierConfigAccessRules)
                     + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
-                    + " profileClass:" + profileClass + " subscriptionType: " + subType);
+                    + " profileClass:" + profileClass + " subscriptionType: " + subType
+                    + " carrierConfigAccessRules:" + carrierConfigAccessRules);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -3276,7 +3277,7 @@ public class SubscriptionController extends ISub.Stub {
             int subId = info.getSubscriptionId();
             return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
                     callingPackage, "getSubscriptionsInGroup")
-                    || (info.isEmbedded() && info.canManageSubscription(mContext, callingPackage));
+                    || info.canManageSubscription(mContext, callingPackage);
         }).collect(Collectors.toList());
     }
 
