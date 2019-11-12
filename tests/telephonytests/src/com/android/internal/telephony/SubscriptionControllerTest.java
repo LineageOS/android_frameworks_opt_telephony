@@ -98,8 +98,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         doReturn(1).when(mProxyController).getMaxRafSupported();
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[]{5});
-
-        mSubscriptionControllerUT.updatePhonesAvailability(new Phone[] {mPhone});
     }
 
     @After

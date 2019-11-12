@@ -168,6 +168,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
         // Verify set system property being called.
         verify(mMi).setMultiSimProperties(MODEM_COUNT_DUAL_MODEM);
+        verify(mMi).notifyPhoneFactoryOnMultiSimConfigChanged(any(), eq(MODEM_COUNT_DUAL_MODEM));
 
         // Capture and verify registration notification.
         verify(mHandler).sendMessageAtTime(captor.capture(), anyLong());

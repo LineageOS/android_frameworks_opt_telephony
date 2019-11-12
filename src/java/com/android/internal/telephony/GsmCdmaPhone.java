@@ -4022,7 +4022,7 @@ public class GsmCdmaPhone extends Phone {
      */
     private void loadTtyMode() {
         int ttyMode = TelecomManager.TTY_MODE_OFF;
-        TelecomManager telecomManager = TelecomManager.from(mContext);
+        TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
         if (telecomManager != null) {
             ttyMode = telecomManager.getCurrentTtyMode();
         }

@@ -209,7 +209,7 @@ public class ProxyController {
      */
     public boolean setRadioCapability(RadioAccessFamily[] rafs) {
         if (rafs.length != mPhones.length) {
-            throw new RuntimeException("Length of input rafs must equal to total phone count");
+            return false;
         }
         // Check if there is any ongoing transaction and throw an exception if there
         // is one as this is a programming error.
