@@ -45,7 +45,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.telecom.ConferenceParticipant;
+import com.android.ims.internal.ConferenceParticipant;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;

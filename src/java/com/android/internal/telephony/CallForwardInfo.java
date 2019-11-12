@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.UnsupportedAppUsage;
-import android.telecom.Log;
+import android.telephony.Rlog;
 
 /**
  * See also RIL_CallForwardInfo in include/telephony/ril.h
@@ -49,6 +49,6 @@ public class CallForwardInfo {
         return "[CallForwardInfo: status=" + (status == 0 ? " not active " : " active ")
                 + ", reason= " + reason
                 + ", serviceClass= " + serviceClass + ", timeSec= " + timeSeconds + " seconds"
-                + ", number=" + Log.pii(number) + "]";
+                + ", number=" + Rlog.pii(TAG, number) + "]";
     }
 }
