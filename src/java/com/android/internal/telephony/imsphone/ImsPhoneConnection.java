@@ -483,6 +483,9 @@ public class ImsPhoneConnection extends Connection implements
                 }
                 if (mImsCall != null) mImsCall.close();
                 mImsCall = null;
+                if (mImsVideoCallProviderWrapper != null) {
+                    mImsVideoCallProviderWrapper.tearDown();
+                }
             }
         }
         releaseWakeLock();
