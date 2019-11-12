@@ -1146,8 +1146,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         }
 
         Script countryReceived(String countryIsoCode) {
-            mFakeDeviceState.networkCountryIsoForPhone = countryIsoCode;
-            mNitzStateMachine.handleNetworkCountryCodeSet(true);
+            mNitzStateMachine.handleCountryDetected(countryIsoCode);
             return this;
         }
 
