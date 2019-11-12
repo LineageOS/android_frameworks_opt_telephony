@@ -86,13 +86,13 @@ public class IntentBroadcaster {
      * Wrapper for ActivityManager.broadcastStickyIntent() that also stores intent to be rebroadcast
      * on USER_UNLOCKED
      */
-    public void broadcastStickyIntent(Intent intent, int slotId) {
+    public void broadcastStickyIntent(Intent intent, int phoneId) {
         logd("Broadcasting and adding intent for rebroadcast: " + intent.getAction() + " "
                 + intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE)
-                + " for slotId " + slotId);
+                + " for phoneId " + phoneId);
         synchronized (mRebroadcastIntents) {
             ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
-            mRebroadcastIntents.put(slotId, intent);
+            mRebroadcastIntents.put(phoneId, intent);
         }
     }
 
