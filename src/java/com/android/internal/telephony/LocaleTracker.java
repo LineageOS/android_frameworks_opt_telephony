@@ -42,6 +42,7 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.MccTable.MccMnc;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -282,23 +283,16 @@ public class LocaleTracker extends Handler {
     private String getMccFromCellInfo() {
         String selectedMcc = null;
         if (mCellInfoList != null) {
-            Map<String, Integer> countryCodeMap = new HashMap<>();
+            Map<String, Integer> mccMap = new HashMap<>();
             int maxCount = 0;
             for (CellInfo cellInfo : mCellInfoList) {
-                String mcc = null;
-                if (cellInfo instanceof CellInfoGsm) {
-                    mcc = ((CellInfoGsm) cellInfo).getCellIdentity().getMccString();
-                } else if (cellInfo instanceof CellInfoLte) {
-                    mcc = ((CellInfoLte) cellInfo).getCellIdentity().getMccString();
-                } else if (cellInfo instanceof CellInfoWcdma) {
-                    mcc = ((CellInfoWcdma) cellInfo).getCellIdentity().getMccString();
-                }
+                String mcc = getNetworkMcc(cellInfo);
                 if (mcc != null) {
                     int count = 1;
-                    if (countryCodeMap.containsKey(mcc)) {
-                        count = countryCodeMap.get(mcc) + 1;
+                    if (mccMap.containsKey(mcc)) {
+                        count = mccMap.get(mcc) + 1;
                     }
-                    countryCodeMap.put(mcc, count);
+                    mccMap.put(mcc, count);
                     // This is unlikely, but if MCC from cell info looks different, we choose the
                     // MCC that occurs most.
                     if (count > maxCount) {
@@ -309,6 +303,67 @@ public class LocaleTracker extends Handler {
             }
         }
         return selectedMcc;
+    }
+
+    /**
+     * Get the most frequent MCC + MNC combination with the specified MCC using cell tower
+     * information. If no one combination is more frequent than any other an arbitrary MCC + MNC is
+     * returned with the matching MCC. The MNC value returned can be null if it is not provided by
+     * the cell tower information.
+     *
+     * @param mccToMatch the MCC to match
+     * @return a matching {@link MccMnc}. Null if the information is not available.
+     */
+    @Nullable
+    private MccMnc getMccMncFromCellInfo(String mccToMatch) {
+        MccMnc selectedMccMnc = null;
+        if (mCellInfoList != null) {
+            Map<MccMnc, Integer> mccMncMap = new HashMap<>();
+            int maxCount = 0;
+            for (CellInfo cellInfo : mCellInfoList) {
+                String mcc = getNetworkMcc(cellInfo);
+                if (Objects.equals(mcc, mccToMatch)) {
+                    String mnc = getNetworkMnc(cellInfo);
+                    MccMnc mccMnc = new MccMnc(mcc, mnc);
+                    int count = 1;
+                    if (mccMncMap.containsKey(mccMnc)) {
+                        count = mccMncMap.get(mccMnc) + 1;
+                    }
+                    mccMncMap.put(mccMnc, count);
+                    // This is unlikely, but if MCC from cell info looks different, we choose the
+                    // MCC that occurs most.
+                    if (count > maxCount) {
+                        maxCount = count;
+                        selectedMccMnc = mccMnc;
+                    }
+                }
+            }
+        }
+        return selectedMccMnc;
+    }
+
+    private static String getNetworkMcc(CellInfo cellInfo) {
+        String mccString = null;
+        if (cellInfo instanceof CellInfoGsm) {
+            mccString = ((CellInfoGsm) cellInfo).getCellIdentity().getMccString();
+        } else if (cellInfo instanceof CellInfoLte) {
+            mccString = ((CellInfoLte) cellInfo).getCellIdentity().getMccString();
+        } else if (cellInfo instanceof CellInfoWcdma) {
+            mccString = ((CellInfoWcdma) cellInfo).getCellIdentity().getMccString();
+        }
+        return mccString;
+    }
+
+    private static String getNetworkMnc(CellInfo cellInfo) {
+        String mccString = null;
+        if (cellInfo instanceof CellInfoGsm) {
+            mccString = ((CellInfoGsm) cellInfo).getCellIdentity().getMncString();
+        } else if (cellInfo instanceof CellInfoLte) {
+            mccString = ((CellInfoLte) cellInfo).getCellIdentity().getMncString();
+        } else if (cellInfo instanceof CellInfoWcdma) {
+            mccString = ((CellInfoWcdma) cellInfo).getCellIdentity().getMncString();
+        }
+        return mccString;
     }
 
     /**
@@ -457,15 +512,23 @@ public class LocaleTracker extends Handler {
         String countryIso = getCarrierCountry();
         String countryIsoDebugInfo = "getCarrierCountry()";
 
+        // For time zone detection we want the best geographical match we can get, which may differ
+        // from the countryIso.
+        String timeZoneCountryIso = null;
+        String timeZoneCountryIsoDebugInfo = null;
+
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
-            try {
-                String mcc = mOperatorNumeric.substring(0, 3);
-                countryIso = MccTable.countryCodeForMcc(mcc);
+            MccMnc mccMnc = MccMnc.fromOperatorNumeric(mOperatorNumeric);
+            if (mccMnc != null) {
+                countryIso = MccTable.countryCodeForMcc(mccMnc.mcc);
                 countryIsoDebugInfo = "OperatorNumeric(" + mOperatorNumeric
-                        + "): MccTable.countryCodeForMcc(\"" + mcc + "\")";
-            } catch (StringIndexOutOfBoundsException ex) {
+                        + "): MccTable.countryCodeForMcc(\"" + mccMnc.mcc + "\")";
+                timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
+                timeZoneCountryIsoDebugInfo =
+                        "OperatorNumeric: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+            } else {
                 loge("updateLocale: Can't get country from operator numeric. mOperatorNumeric = "
-                        + mOperatorNumeric + ". ex=" + ex);
+                        + mOperatorNumeric);
             }
         }
 
@@ -475,19 +538,27 @@ public class LocaleTracker extends Handler {
             String mcc = getMccFromCellInfo();
             countryIso = MccTable.countryCodeForMcc(mcc);
             countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
+
+            MccMnc mccMnc = getMccMncFromCellInfo(mcc);
+            if (mccMnc != null) {
+                timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
+                timeZoneCountryIsoDebugInfo =
+                        "CellInfo: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+            }
         }
 
         if (mCountryOverride != null) {
             countryIso = mCountryOverride;
             countryIsoDebugInfo = "mCountryOverride = \"" + mCountryOverride + "\"";
-            log("Override current country to " + mCountryOverride);
+            timeZoneCountryIso = countryIso;
+            timeZoneCountryIsoDebugInfo = countryIsoDebugInfo;
         }
 
         log("updateLocale: countryIso = " + countryIso
                 + ", countryIsoDebugInfo = " + countryIsoDebugInfo);
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
-            String msg = "updateLocale: Change the current country to \"" + countryIso
-                    + "\", countryIsoDebugInfo = " + countryIsoDebugInfo
+            String msg = "updateLocale: Change the current country to \"" + countryIso + "\""
+                    + ", countryIsoDebugInfo = " + countryIsoDebugInfo
                     + ", mCellInfoList = " + mCellInfoList;
             log(msg);
             mLocalLog.log(msg);
@@ -502,19 +573,30 @@ public class LocaleTracker extends Handler {
             mPhone.getContext().sendBroadcast(intent);
         }
 
-        // For a test cell, the NitzStateMachine requires handleCountryDetected("") to pass
-        // compliance tests. http://b/142840879
+        // Pass the geographical country information to the telephony time zone detection code.
+
         boolean isTestMcc = false;
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
+            // For a test cell (MCC 001), the NitzStateMachine requires handleCountryDetected("") in
+            // order to pass compliance tests. http://b/142840879
             if (mOperatorNumeric.startsWith("001")) {
                 isTestMcc = true;
-                countryIso = "";
+                timeZoneCountryIso = "";
+                timeZoneCountryIsoDebugInfo = "Test cell: " + mOperatorNumeric;
             }
         }
-        if (TextUtils.isEmpty(countryIso) && !isTestMcc) {
+        if (timeZoneCountryIso == null) {
+            // After this timeZoneCountryIso may still be null.
+            timeZoneCountryIso = countryIso;
+            timeZoneCountryIsoDebugInfo = "Defaulted: " + countryIsoDebugInfo;
+        }
+        log("updateLocale: timeZoneCountryIso = " + timeZoneCountryIso
+                + ", timeZoneCountryIsoDebugInfo = " + timeZoneCountryIsoDebugInfo);
+
+        if (TextUtils.isEmpty(timeZoneCountryIso) && !isTestMcc) {
             mNitzStateMachine.handleCountryUnavailable();
         } else {
-            mNitzStateMachine.handleCountryDetected(countryIso);
+            mNitzStateMachine.handleCountryDetected(timeZoneCountryIso);
         }
     }
 
