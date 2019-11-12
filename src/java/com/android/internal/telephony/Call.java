@@ -16,12 +16,13 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.UnsupportedAppUsage;
-import android.telecom.ConferenceParticipant;
-import android.telephony.Rlog;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import android.annotation.UnsupportedAppUsage;
+import android.telephony.Rlog;
+
+import com.android.ims.internal.ConferenceParticipant;
 
 /**
  * {@hide}
