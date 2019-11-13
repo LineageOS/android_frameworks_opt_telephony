@@ -26,6 +26,7 @@ import android.content.res.Resources;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.UserHandle;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -319,7 +320,7 @@ public class UiccSlot extends Handler {
                         dialogComponent)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         .putExtra(EXTRA_ICC_CARD_ADDED, isAdded);
                 try {
-                    mContext.startActivity(intent);
+                    mContext.startActivityAsUser(intent, UserHandle.CURRENT);
                     return;
                 } catch (ActivityNotFoundException e) {
                     loge("Unable to find ICC hotswap prompt for restart activity: " + e);
