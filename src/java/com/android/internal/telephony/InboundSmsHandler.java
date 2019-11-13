@@ -51,7 +51,6 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.os.storage.StorageManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
@@ -1046,9 +1045,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     @UnsupportedAppUsage
     private void showNewMessageNotification() {
         // Do not show the notification on non-FBE devices.
-        if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
-            return;
-        }
+        // if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
+        //     return;
+        // }
         log("Show new message notification.");
         PendingIntent intent = PendingIntent.getBroadcast(
             mContext,
