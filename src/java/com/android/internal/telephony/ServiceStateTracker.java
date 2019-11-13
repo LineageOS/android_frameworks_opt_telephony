@@ -3320,6 +3320,7 @@ public class ServiceStateTracker extends Handler {
 
         if (hasDeregistered) {
             mNetworkDetachedRegistrants.notifyRegistrants();
+            mNitzState.handleNetworkUnavailable();
         }
 
         if (hasRejectCauseChanged) {
