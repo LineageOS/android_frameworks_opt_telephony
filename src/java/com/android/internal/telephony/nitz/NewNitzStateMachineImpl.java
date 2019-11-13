@@ -166,6 +166,17 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
 
     @Override
     public void handleNetworkAvailable() {
+        // We no longer do any useful work here: we assume handleNetworkUnavailable() is reliable.
+        // TODO: Remove this method when all implementations do nothing.
+    }
+
+    @Override
+    public void handleNetworkUnavailable() {
+        String reason = "handleNetworkUnavailable()";
+        clearNetworkStateAndRerunDetection(reason);
+    }
+
+    private void clearNetworkStateAndRerunDetection(String reason) {
         // Assume any previous NITZ signals received are now invalid.
         mLatestNitzSignal = null;
 
@@ -173,11 +184,8 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
                 mGotCountryCode ? mDeviceState.getNetworkCountryIsoForPhone() : null;
 
         if (DBG) {
-            Rlog.d(LOG_TAG, "handleNetworkAvailable: countryIsoCode=" + countryIsoCode
-                    + ", mLatestNitzSignal=" + mLatestNitzSignal);
+            Rlog.d(LOG_TAG, reason + ": countryIsoCode=" + countryIsoCode);
         }
-
-        String reason = "handleNetworkAvailable()";
 
         // Generate a new time zone suggestion and update the service as needed.
         doTimeZoneDetection(countryIsoCode, null /* nitzSignal */, reason);
@@ -192,7 +200,6 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
             Rlog.d(LOG_TAG, "handleNetworkCountryCodeSet: countryChanged=" + countryChanged
                     + ", mLatestNitzSignal=" + mLatestNitzSignal);
         }
-
         mGotCountryCode = true;
 
         // Generate a new time zone suggestion and update the service as needed.
@@ -243,10 +250,6 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
 
     @Override
     public void handleAirplaneModeChanged(boolean on) {
-        if (DBG) {
-            Rlog.d(LOG_TAG, "handleAirplaneModeChanged: on=" + on);
-        }
-
         // Treat entry / exit from airplane mode as a strong signal that the user wants to clear
         // cached state. If the user really is boarding a plane they won't want cached state from
         // before their flight influencing behavior.
@@ -260,20 +263,11 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         // will be made after airplane mode is re-enabled as the device re-establishes network
         // connectivity.
 
-        // Clear shared state.
-        mLatestNitzSignal = null;
-
         // Clear time zone detection state.
         mGotCountryCode = false;
 
         String reason = "handleAirplaneModeChanged(" + on + ")";
-
-        // Generate a new time zone suggestion and update the service as needed.
-        doTimeZoneDetection(null /* countryIsoCode */, null /* nitzSignal */,
-                reason);
-
-        // Generate a new time suggestion and update the service as needed.
-        doTimeDetection(null /* nitzSignal */, reason);
+        clearNetworkStateAndRerunDetection(reason);
     }
 
     /**

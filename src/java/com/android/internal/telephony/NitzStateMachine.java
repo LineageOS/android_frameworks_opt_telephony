@@ -54,6 +54,11 @@ public interface NitzStateMachine {
     void handleNetworkAvailable();
 
     /**
+     * Informs the {@link NitzStateMachine} that the network has become unavailable.
+     */
+    void handleNetworkUnavailable();
+
+    /**
      * Informs the {@link NitzStateMachine} that the country code from network has become
      * unavailable.
      */
