@@ -66,7 +66,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
 
     private final LocalLog mLocalLog = new LocalLog(100);
 
-    protected static final Uri CELL_BROADCAST_URI = Uri.parse("content://cellbroadcasts_fwk");
+    protected static final Uri CELL_BROADCAST_URI = Uri.parse("content://cellbroadcasts");
 
     /** Uses to request the location update. */
     public final LocationRequester mLocationRequester;
