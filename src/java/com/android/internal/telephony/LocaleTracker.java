@@ -485,7 +485,6 @@ public class LocaleTracker extends Handler {
 
         log("updateLocale: countryIso = " + countryIso
                 + ", countryIsoDebugInfo = " + countryIsoDebugInfo);
-        boolean countryChanged = false;
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
             String msg = "updateLocale: Change the current country to \"" + countryIso
                     + "\", countryIsoDebugInfo = " + countryIsoDebugInfo
@@ -501,24 +500,21 @@ public class LocaleTracker extends Handler {
             intent.putExtra(TelephonyManager.EXTRA_NETWORK_COUNTRY, countryIso);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendBroadcast(intent);
-
-            countryChanged = true;
         }
 
-        // For a test cell, the NitzStateMachine requires handleNetworkCountryCodeSet(true) to pass
+        // For a test cell, the NitzStateMachine requires handleCountryDetected("") to pass
         // compliance tests. http://b/142840879
         boolean isTestMcc = false;
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             if (mOperatorNumeric.startsWith("001")) {
                 isTestMcc = true;
                 countryIso = "";
-                countryChanged = true;
             }
         }
         if (TextUtils.isEmpty(countryIso) && !isTestMcc) {
-            mNitzStateMachine.handleNetworkCountryCodeUnavailable();
+            mNitzStateMachine.handleCountryUnavailable();
         } else {
-            mNitzStateMachine.handleNetworkCountryCodeSet(countryChanged);
+            mNitzStateMachine.handleCountryDetected(countryIso);
         }
     }
 
