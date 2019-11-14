@@ -55,8 +55,8 @@ public class CarrierActionAgentTest extends TelephonyTest {
 
     private class FakeContentResolver extends MockContentResolver {
         @Override
-        public void notifyChange(Uri uri, ContentObserver observer, boolean syncToNetwork) {
-            super.notifyChange(uri, observer, syncToNetwork);
+        public void notifyChange(Uri uri, ContentObserver observer) {
+            super.notifyChange(uri, observer);
             logd("onChanged(uri=" + uri + ")" + observer);
             if (observer != null) {
                 observer.dispatchChange(false, uri);
