@@ -17,13 +17,11 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
-import android.annotation.Nullable;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
-import android.telephony.TelephonyManager;
 import android.util.TimestampedValue;
 
 import com.android.internal.util.IndentingPrintWriter;
@@ -40,13 +38,12 @@ import java.io.PrintWriter;
 public interface NitzStateMachine {
 
     /**
-     * Called when the network country is set on the Phone. Although set, the network country code
-     * may be invalid.
+     * Called when the country suitable for time zone detection is detected.
      *
-     * @param countryChanged true when the country code is known to have changed, false if it
-     *     probably hasn't
+     * @param countryIsoCode the countryIsoCode to use for time zone detection, may be "" for test
+     *     cells only, otherwise {@link #handleCountryUnavailable()} should be called
      */
-    void handleNetworkCountryCodeSet(boolean countryChanged);
+    void handleCountryDetected(@NonNull String countryIsoCode);
 
     /**
      * Informs the {@link NitzStateMachine} that the network has become available.
@@ -59,10 +56,10 @@ public interface NitzStateMachine {
     void handleNetworkUnavailable();
 
     /**
-     * Informs the {@link NitzStateMachine} that the country code from network has become
-     * unavailable.
+     * Informs the {@link NitzStateMachine} that any previously detected country supplied via
+     * {@link #handleCountryDetected(String)} is no longer valid.
      */
-    void handleNetworkCountryCodeUnavailable();
+    void handleCountryUnavailable();
 
     /**
      * Handle a new NITZ signal being received.
@@ -108,8 +105,6 @@ public interface NitzStateMachine {
          */
         boolean getIgnoreNitz();
 
-        @Nullable String getNetworkCountryIsoForPhone();
-
         /**
          * Returns the same value as {@link SystemClock#elapsedRealtime()}.
          */
@@ -133,16 +128,10 @@ public interface NitzStateMachine {
         private static final int NITZ_UPDATE_DIFF_DEFAULT = 2000;
         private final int mNitzUpdateDiff;
 
-        private final Phone mPhone;
-        private final TelephonyManager mTelephonyManager;
         private final ContentResolver mCr;
 
         public DeviceStateImpl(Phone phone) {
-            mPhone = phone;
-
             Context context = phone.getContext();
-            mTelephonyManager =
-                    (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
             mCr = context.getContentResolver();
             mNitzUpdateSpacing =
                     SystemProperties.getInt("ro.nitz_update_spacing", NITZ_UPDATE_SPACING_DEFAULT);
@@ -165,12 +154,6 @@ public interface NitzStateMachine {
         public boolean getIgnoreNitz() {
             String ignoreNitz = SystemProperties.get("gsm.ignore-nitz");
             return ignoreNitz != null && ignoreNitz.equals("yes");
-        }
-
-        @Override
-        @Nullable
-        public String getNetworkCountryIsoForPhone() {
-            return mTelephonyManager.getNetworkCountryIso(mPhone.getPhoneId());
         }
 
         @Override
