@@ -1,6 +1,7 @@
 rule android.os.RegistrantList* com.android.internal.telephony.RegistrantList@1
 rule android.os.Registrant* com.android.internal.telephony.Registrant@1
 rule android.hidl.** android.internal.hidl.@1
+rule android.sysprop.** android.internal.telephony.sysprop.@1
 rule android.util.LocalLog* com.android.internal.telephony.LocalLog@1
 rule android.util.Slog* com.android.internal.telephony.Slog@1
 rule android.util.TimeUtils* com.android.internal.telephony.TimeUtils@1
