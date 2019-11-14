@@ -242,6 +242,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public int getEmergencyNumberDbVersion() {
+        return getEmergencyNumberTracker().getEmergencyNumberDbVersion();
+    }
+
+    @Override
     public EmergencyNumberTracker getEmergencyNumberTracker() {
         return mDefaultPhone.getEmergencyNumberTracker();
     }
