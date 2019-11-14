@@ -1732,6 +1732,11 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public int getEmergencyNumberDbVersion() {
+        return getEmergencyNumberTracker().getEmergencyNumberDbVersion();
+    }
+
+    @Override
     public void resetCarrierKeysForImsiEncryption() {
         mCIM.resetCarrierKeysForImsiEncryption(mContext, mPhoneId);
     }
