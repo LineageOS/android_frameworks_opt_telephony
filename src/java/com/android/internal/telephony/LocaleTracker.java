@@ -454,41 +454,42 @@ public class LocaleTracker extends Handler {
      */
     private synchronized void updateLocale() {
         // If MCC is available from network service state, use it first.
-        String mcc = null;
         String countryIso = getCarrierCountry();
-        boolean isBogusMcc = false;
+        String countryIsoDebugInfo = "getCarrierCountry()";
 
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             try {
-                mcc = mOperatorNumeric.substring(0, 3);
+                String mcc = mOperatorNumeric.substring(0, 3);
                 countryIso = MccTable.countryCodeForMcc(mcc);
-                if (!TextUtils.isEmpty(mcc) && TextUtils.isEmpty(countryIso)) {
-                    isBogusMcc = true;
-                }
+                countryIsoDebugInfo = "OperatorNumeric(" + mOperatorNumeric
+                        + "): MccTable.countryCodeForMcc(\"" + mcc + "\")";
             } catch (StringIndexOutOfBoundsException ex) {
-                loge("updateLocale: Can't get country from operator numeric. mcc = "
-                        + mcc + ". ex=" + ex);
+                loge("updateLocale: Can't get country from operator numeric. mOperatorNumeric = "
+                        + mOperatorNumeric + ". ex=" + ex);
             }
         }
 
         // If for any reason we can't get country from operator numeric, try to get it from cell
         // info.
         if (TextUtils.isEmpty(countryIso)) {
-            mcc = getMccFromCellInfo();
+            String mcc = getMccFromCellInfo();
             countryIso = MccTable.countryCodeForMcc(mcc);
+            countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
         }
 
         if (mCountryOverride != null) {
             countryIso = mCountryOverride;
+            countryIsoDebugInfo = "mCountryOverride = \"" + mCountryOverride + "\"";
             log("Override current country to " + mCountryOverride);
         }
 
-        log("updateLocale: mcc = " + mcc + ", country = " + countryIso
-                + ", isBogusMcc = " + isBogusMcc);
+        log("updateLocale: countryIso = " + countryIso
+                + ", countryIsoDebugInfo = " + countryIsoDebugInfo);
         boolean countryChanged = false;
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
             String msg = "updateLocale: Change the current country to \"" + countryIso
-                    + "\", mcc = " + mcc + ", mCellInfoList = " + mCellInfoList;
+                    + "\", countryIsoDebugInfo = " + countryIsoDebugInfo
+                    + ", mCellInfoList = " + mCellInfoList;
             log(msg);
             mLocalLog.log(msg);
             mCurrentCountryIso = countryIso;
@@ -504,8 +505,17 @@ public class LocaleTracker extends Handler {
             countryChanged = true;
         }
 
-        // For bogus mcc, the countryIso is always empty, it should be marked as available.
-        if (TextUtils.isEmpty(countryIso) && !isBogusMcc) {
+        // For a test cell, the NitzStateMachine requires handleNetworkCountryCodeSet(true) to pass
+        // compliance tests. http://b/142840879
+        boolean isTestMcc = false;
+        if (!TextUtils.isEmpty(mOperatorNumeric)) {
+            if (mOperatorNumeric.startsWith("001")) {
+                isTestMcc = true;
+                countryIso = "";
+                countryChanged = true;
+            }
+        }
+        if (TextUtils.isEmpty(countryIso) && !isTestMcc) {
             mNitzStateMachine.handleNetworkCountryCodeUnavailable();
         } else {
             mNitzStateMachine.handleNetworkCountryCodeSet(countryChanged);
