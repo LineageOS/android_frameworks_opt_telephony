@@ -64,6 +64,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.util.ArrayUtils;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -331,8 +332,9 @@ public class SubscriptionController extends ISub.Stub {
         int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.DATA_ROAMING));
         // Get the blank bitmap for this SubInfoRecord
-        Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
-                com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
+        Bitmap iconBitmap = BitmapFactory.decodeResource(TelephonyResourceUtils
+                        .getTelephonyResources(mContext),
+                com.android.telephony.resources.R.drawable.ic_sim_card_multi_24px_clr);
         String mcc = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.MCC_STRING));
         String mnc = cursor.getString(cursor.getColumnIndexOrThrow(
@@ -1488,8 +1490,10 @@ public class SubscriptionController extends ISub.Stub {
                 if (showSpn) {
                     // Need to show both plmn and spn if both are not same.
                     if(!Objects.equals(spn, plmn)) {
-                        String separator = mContext.getString(
-                                com.android.internal.R.string.kg_text_message_separator).toString();
+                        String separator = TelephonyResourceUtils
+                                .getTelephonyResourceContext(mContext).getString(
+                                com.android.telephony.resources.R.string.kg_text_message_separator)
+                                .toString();
                         carrierText = new StringBuilder().append(carrierText).append(separator)
                                 .append(spn).toString();
                     }
@@ -1628,7 +1632,8 @@ public class SubscriptionController extends ISub.Stub {
                             && SubscriptionManager.isValidSlotIndex(getSlotIndex(subId))) {
                         nameToSet = "CARD " + (getSlotIndex(subId) + 1);
                     } else {
-                        nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+                        nameToSet = TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getString(SubscriptionManager.DEFAULT_NAME_RES);
                     }
                 }
             } else {

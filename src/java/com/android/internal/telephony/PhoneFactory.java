@@ -34,7 +34,6 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.AnomalyReporter;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
@@ -51,6 +50,7 @@ import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -113,7 +113,7 @@ public class PhoneFactory {
             if (!sMadeDefaults) {
                 sContext = context;
                 // create the telephony device controller.
-                TelephonyDevController.create();
+                TelephonyDevController.create(context);
 
                 TelephonyMetrics metrics = TelephonyMetrics.getInstance();
                 metrics.setContext(context);

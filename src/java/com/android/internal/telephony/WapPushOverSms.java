@@ -46,6 +46,7 @@ import android.telephony.WapPushManagerConnector;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import com.google.android.mms.MmsException;
@@ -140,8 +141,8 @@ public class WapPushOverSms {
 
             if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH) &&
                     (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
-                index = mContext.getResources().getInteger(
-                        com.android.internal.R.integer.config_valid_wappush_index);
+                index = TelephonyResourceUtils.getTelephonyResources(mContext).getInteger(
+                        com.android.telephony.resources.R.integer.config_valid_wappush_index);
                 if (index != -1) {
                     transactionId = pdu[index++] & 0xff;
                     pduType = pdu[index++] & 0xff;

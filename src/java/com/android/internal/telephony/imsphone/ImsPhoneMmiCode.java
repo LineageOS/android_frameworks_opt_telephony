@@ -29,13 +29,11 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOI
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
-import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ResultReceiver;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsSsData;
@@ -53,6 +51,8 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
 
 import java.util.Arrays;
 import java.util.List;
@@ -463,12 +463,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 || sc.equals(SC_CF_All_Conditional));
     }
 
-    static boolean
+    boolean
     isServiceCodeCallBarring(String sc) {
-        Resources resource = Resources.getSystem();
         if (sc != null) {
-            String[] barringMMI = resource.getStringArray(
-                com.android.internal.R.array.config_callBarringMMI_for_ims);
+            String[] barringMMI = TelephonyResourceUtils.getTelephonyResources(mContext)
+                    .getStringArray(
+                            com.android.telephony.resources.R.array.config_callBarringMMI_for_ims);
             if (barringMMI != null) {
                 for (String match : barringMMI) {
                     if (sc.equals(match)) return true;
@@ -591,8 +591,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         if (dialString == null || dialString.length() > 2) return false;
 
         if (sTwoDigitNumberPattern == null) {
-            sTwoDigitNumberPattern = context.getResources().getStringArray(
-                    com.android.internal.R.array.config_twoDigitNumberPattern);
+            sTwoDigitNumberPattern = TelephonyResourceUtils.getTelephonyResources(context)
+                    .getStringArray(
+                            com.android.telephony.resources.R.array.config_twoDigitNumberPattern);
         }
 
         for (String dialnumber : sTwoDigitNumberPattern) {
@@ -1032,7 +1033,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             }
         } catch (RuntimeException exc) {
             mState = State.FAILED;
-            mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            mMessage = TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                    .getText(com.android.telephony.resources.R.string.mmiError);
             Rlog.d(LOG_TAG, "processCode: RuntimeException = " + exc);
             mPhone.onMMIDone(this);
         }
@@ -1051,7 +1053,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     onUssdFinished(String ussdMessage, boolean isUssdRequest) {
         if (mState == State.PENDING) {
             if (TextUtils.isEmpty(ussdMessage)) {
-                mMessage = mContext.getText(com.android.internal.R.string.mmiComplete);
+                mMessage = TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.mmiComplete);
                 Rlog.v(LOG_TAG, "onUssdFinished: no message; using: " + mMessage);
             } else {
                 Rlog.v(LOG_TAG, "onUssdFinished: message: " + ussdMessage);
@@ -1076,7 +1079,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     onUssdFinishedError() {
         if (mState == State.PENDING) {
             mState = State.FAILED;
-            mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            mMessage = TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                    .getText(com.android.telephony.resources.R.string.mmiError);
             Rlog.d(LOG_TAG, "onUssdFinishedError: mmi=" + this);
             mPhone.onMMIDone(this);
         }
@@ -1204,37 +1208,48 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     private CharSequence getErrorMessage(AsyncResult ar) {
         CharSequence errorMessage;
         return ((errorMessage = getMmiErrorMessage(ar)) != null) ? errorMessage :
-                mContext.getText(com.android.internal.R.string.mmiError);
+                TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.mmiError);
     }
 
     private CharSequence getMmiErrorMessage(AsyncResult ar) {
         if (ar.exception instanceof ImsException) {
             switch (((ImsException) ar.exception).getCode()) {
                 case ImsReasonInfo.CODE_FDN_BLOCKED:
-                    return mContext.getText(com.android.internal.R.string.mmiFdnError);
+                    return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                            .getText(com.android.telephony.resources.R.string.mmiFdnError);
                 case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_DIAL:
-                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial);
+                    return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.stk_cc_ss_to_dial);
                 case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_USSD:
-                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ussd);
+                    return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.stk_cc_ss_to_ussd);
                 case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_SS:
-                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ss);
+                    return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.stk_cc_ss_to_ss);
                 case ImsReasonInfo.CODE_UT_SS_MODIFIED_TO_DIAL_VIDEO:
-                    return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial_video);
+                    return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.stk_cc_ss_to_dial_video);
                 default:
                     return null;
             }
         } else if (ar.exception instanceof CommandException) {
             CommandException err = (CommandException) ar.exception;
             if (err.getCommandError() == CommandException.Error.FDN_CHECK_FAILURE) {
-                return mContext.getText(com.android.internal.R.string.mmiFdnError);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.mmiFdnError);
             } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_DIAL) {
-                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.stk_cc_ss_to_dial);
             } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_USSD) {
-                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ussd);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.stk_cc_ss_to_ussd);
             } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_SS) {
-                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_ss);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.stk_cc_ss_to_ss);
             } else if (err.getCommandError() == CommandException.Error.SS_MODIFIED_TO_DIAL_VIDEO) {
-                return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial_video);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.stk_cc_ss_to_dial_video);
             }
         }
         return null;
@@ -1244,21 +1259,29 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     private CharSequence getScString() {
         if (mSc != null) {
             if (isServiceCodeCallBarring(mSc)) {
-                return mContext.getText(com.android.internal.R.string.BaMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.BaMmi);
             } else if (isServiceCodeCallForwarding(mSc)) {
-                return mContext.getText(com.android.internal.R.string.CfMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.CfMmi);
             } else if (mSc.equals(SC_PWD)) {
-                return mContext.getText(com.android.internal.R.string.PwdMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.PwdMmi);
             } else if (mSc.equals(SC_WAIT)) {
-                return mContext.getText(com.android.internal.R.string.CwMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.CwMmi);
             } else if (mSc.equals(SC_CLIP)) {
-                return mContext.getText(com.android.internal.R.string.ClipMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.ClipMmi);
             } else if (mSc.equals(SC_CLIR)) {
-                return mContext.getText(com.android.internal.R.string.ClirMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.ClirMmi);
             } else if (mSc.equals(SC_COLP)) {
-                return mContext.getText(com.android.internal.R.string.ColpMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.ColpMmi);
             } else if (mSc.equals(SC_COLR)) {
-                return mContext.getText(com.android.internal.R.string.ColrMmi);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.ColrMmi);
             } else if (mSc.equals(SC_BS_MT)) {
                 return IcbDnMmi;
             } else if (mSc.equals(SC_BAICa)) {
@@ -1281,14 +1304,15 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 CommandException err = (CommandException) ar.exception;
                 CharSequence errorMessage;
                 if (err.getCommandError() == CommandException.Error.PASSWORD_INCORRECT) {
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.passwordIncorrect));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.passwordIncorrect));
                 } else if ((errorMessage = getMmiErrorMessage(ar)) != null) {
                     sb.append(errorMessage);
                 } else if (err.getMessage() != null) {
                     sb.append(err.getMessage());
                 } else {
-                    sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                            .getText(com.android.telephony.resources.R.string.mmiError));
                 }
             } else if (ar.exception instanceof ImsException) {
                 sb.append(getImsErrorMessage(ar));
@@ -1296,11 +1320,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         } else if (isActivate()) {
             mState = State.COMPLETE;
             if (mIsCallFwdReg) {
-                sb.append(mContext.getText(
-                        com.android.internal.R.string.serviceRegistered));
+                sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceRegistered));
             } else {
-                sb.append(mContext.getText(
-                        com.android.internal.R.string.serviceEnabled));
+                sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceEnabled));
             }
             // Record CLIR setting
             if (mSc.equals(SC_CLIR)) {
@@ -1308,24 +1332,24 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             }
         } else if (isDeactivate()) {
             mState = State.COMPLETE;
-            sb.append(mContext.getText(
-                    com.android.internal.R.string.serviceDisabled));
+            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                    com.android.telephony.resources.R.string.serviceDisabled));
             // Record CLIR setting
             if (mSc.equals(SC_CLIR)) {
                 mPhone.saveClirSetting(CommandsInterface.CLIR_SUPPRESSION);
             }
         } else if (isRegister()) {
             mState = State.COMPLETE;
-            sb.append(mContext.getText(
-                    com.android.internal.R.string.serviceRegistered));
+            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                    com.android.telephony.resources.R.string.serviceRegistered));
         } else if (isErasure()) {
             mState = State.COMPLETE;
-            sb.append(mContext.getText(
-                    com.android.internal.R.string.serviceErased));
+            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                    com.android.telephony.resources.R.string.serviceErased));
         } else {
             mState = State.FAILED;
-            sb.append(mContext.getText(
-                    com.android.internal.R.string.mmiError));
+            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                    com.android.telephony.resources.R.string.mmiError));
         }
 
         mMessage = sb;
@@ -1344,21 +1368,29 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     serviceClassToCFString (int serviceClass) {
         switch (serviceClass) {
             case SERVICE_CLASS_VOICE:
-                return mContext.getText(com.android.internal.R.string.serviceClassVoice);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassVoice);
             case SERVICE_CLASS_DATA:
-                return mContext.getText(com.android.internal.R.string.serviceClassData);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassData);
             case SERVICE_CLASS_FAX:
-                return mContext.getText(com.android.internal.R.string.serviceClassFAX);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassFAX);
             case SERVICE_CLASS_SMS:
-                return mContext.getText(com.android.internal.R.string.serviceClassSMS);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassSMS);
             case SERVICE_CLASS_DATA_SYNC:
-                return mContext.getText(com.android.internal.R.string.serviceClassDataSync);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassDataSync);
             case SERVICE_CLASS_DATA_ASYNC:
-                return mContext.getText(com.android.internal.R.string.serviceClassDataAsync);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassDataAsync);
             case SERVICE_CLASS_PACKET:
-                return mContext.getText(com.android.internal.R.string.serviceClassPacket);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassPacket);
             case SERVICE_CLASS_PAD:
-                return mContext.getText(com.android.internal.R.string.serviceClassPAD);
+                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceClassPAD);
             default:
                 return null;
         }
@@ -1380,25 +1412,25 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
         if (info.status == 1) {
             if (needTimeTemplate) {
-                template = mContext.getText(
-                        com.android.internal.R.string.cfTemplateForwardedTime);
+                template = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.cfTemplateForwardedTime);
             } else {
-                template = mContext.getText(
-                        com.android.internal.R.string.cfTemplateForwarded);
+                template = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.cfTemplateForwarded);
             }
         } else if (info.status == 0 && isEmptyOrNull(info.number)) {
-            template = mContext.getText(
-                        com.android.internal.R.string.cfTemplateNotForwarded);
+            template = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.cfTemplateNotForwarded);
         } else { /* (info.status == 0) && !isEmptyOrNull(info.number) */
             // A call forward record that is not active but contains
             // a phone number is considered "registered"
 
             if (needTimeTemplate) {
-                template = mContext.getText(
-                        com.android.internal.R.string.cfTemplateRegisteredTime);
+                template = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.cfTemplateRegisteredTime);
             } else {
-                template = mContext.getText(
-                        com.android.internal.R.string.cfTemplateRegistered);
+                template = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.cfTemplateRegistered);
             }
         }
 
@@ -1445,7 +1477,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
             if (infos == null || infos.length == 0) {
                 // Assume the default is not active
-                sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceDisabled));
 
                 // Set unconditional CFF in SIM to false
                 if (mIccRecords != null) {
@@ -1505,20 +1538,25 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     Rlog.d(LOG_TAG,
                             "onSuppSvcQueryComplete: ImsSsInfo mStatus = " + ssInfo.getStatus());
                     if (ssInfo.getProvisionStatus() == ImsSsInfo.SERVICE_NOT_PROVISIONED) {
-                        sb.append(mContext.getText(
-                                com.android.internal.R.string.serviceNotProvisioned));
+                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getText(
+                                com.android.telephony.resources.R.string.serviceNotProvisioned));
                         mState = State.COMPLETE;
                     } else if (ssInfo.getStatus() == ImsSsInfo.DISABLED) {
-                        sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getText(com.android.telephony.resources.R.string.serviceDisabled));
                         mState = State.COMPLETE;
                     } else if (ssInfo.getStatus() == ImsSsInfo.ENABLED) {
-                        sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getText(com.android.telephony.resources.R.string.serviceEnabled));
                         mState = State.COMPLETE;
                     } else {
-                        sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getText(com.android.telephony.resources.R.string.mmiError));
                     }
                 } else {
-                    sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.mmiError));
                 }
 
             } else {
@@ -1526,10 +1564,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 // Response for Call Barring queries.
                 int[] cbInfos = (int[]) ar.result;
                 if (cbInfos[0] == 1) {
-                    sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.serviceEnabled));
                     mState = State.COMPLETE;
                 } else {
-                    sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.serviceDisabled));
                     mState = State.COMPLETE;
                 }
             }
@@ -1562,7 +1602,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 infos = Arrays.asList((ImsSsInfo[]) ar.result);
             }
             if (infos == null || infos.size() == 0) {
-                sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                        com.android.telephony.resources.R.string.serviceDisabled));
             } else {
                 ImsSsInfo info;
                 for (int i = 0, s = infos.size(); i < s; i++) {
@@ -1571,11 +1612,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         sb.append("Num: " + info.getIncomingCommunicationBarringNumber()
                                 + " status: " + info.getStatus() + "\n");
                     } else if (info.getStatus() == 1) {
-                        sb.append(mContext.getText(com.android.internal
-                                .R.string.serviceEnabled));
+                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getText(
+                                com.android.telephony.resources.R.string.serviceEnabled));
                     } else {
-                        sb.append(mContext.getText(com.android.internal
-                                .R.string.serviceDisabled));
+                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                .getText(com.android.telephony.resources.R.string.serviceDisabled));
                     }
                 }
             }
@@ -1604,36 +1646,39 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             // 'm' parameter.
             switch (ssInfo.getClirInterrogationStatus()) {
                 case ImsSsInfo.CLIR_STATUS_NOT_PROVISIONED:
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.serviceNotProvisioned));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.serviceNotProvisioned));
                     mState = State.COMPLETE;
                     break;
                 case ImsSsInfo.CLIR_STATUS_PROVISIONED_PERMANENT:
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.CLIRPermanent));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.CLIRPermanent));
                     mState = State.COMPLETE;
                     break;
                 case ImsSsInfo.CLIR_STATUS_TEMPORARILY_RESTRICTED:
                     // 'n' parameter.
                     switch (ssInfo.getClirOutgoingState()) {
                         case ImsSsInfo.CLIR_OUTGOING_DEFAULT:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.CLIRDefaultOnNextCallOn));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string
+                                        .CLIRDefaultOnNextCallOn));
                             mState = State.COMPLETE;
                             break;
                         case ImsSsInfo.CLIR_OUTGOING_INVOCATION:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.CLIRDefaultOnNextCallOn));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string
+                                        .CLIRDefaultOnNextCallOn));
                             mState = State.COMPLETE;
                             break;
                         case ImsSsInfo.CLIR_OUTGOING_SUPPRESSION:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.CLIRDefaultOnNextCallOff));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string
+                                        .CLIRDefaultOnNextCallOff));
                             mState = State.COMPLETE;
                             break;
                         default:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.mmiError));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string.mmiError));
                             mState = State.FAILED;
                     }
                     break;
@@ -1641,29 +1686,32 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     // 'n' parameter.
                     switch (ssInfo.getClirOutgoingState()) {
                         case ImsSsInfo.CLIR_OUTGOING_DEFAULT:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.CLIRDefaultOffNextCallOff));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string
+                                        .CLIRDefaultOffNextCallOff));
                             mState = State.COMPLETE;
                             break;
                         case ImsSsInfo.CLIR_OUTGOING_INVOCATION:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.CLIRDefaultOffNextCallOn));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string
+                                        .CLIRDefaultOffNextCallOn));
                             mState = State.COMPLETE;
                             break;
                         case ImsSsInfo.CLIR_OUTGOING_SUPPRESSION:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.CLIRDefaultOffNextCallOff));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string
+                                        .CLIRDefaultOffNextCallOff));
                             mState = State.COMPLETE;
                             break;
                         default:
-                            sb.append(mContext.getText(
-                                    com.android.internal.R.string.mmiError));
+                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                                    .getText(com.android.telephony.resources.R.string.mmiError));
                             mState = State.FAILED;
                     }
                     break;
                 default:
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.mmiError));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.mmiError));
                     mState = State.FAILED;
             }
         }
@@ -1691,7 +1739,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
             if (ints.length != 0) {
                 if (ints[0] == 0) {
-                    sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                            .getText(com.android.telephony.resources.R.string.serviceDisabled));
                     mState = State.COMPLETE;
                 } else if (mSc.equals(SC_WAIT)) {
                     // Call Waiting includes additional data in the response.
@@ -1699,13 +1748,16 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     mState = State.COMPLETE;
                 } else if (ints[0] == 1) {
                     // for all other services, treat it as a boolean
-                    sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                            .getText(com.android.telephony.resources.R.string.serviceEnabled));
                     mState = State.COMPLETE;
                 } else {
-                    sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                            com.android.telephony.resources.R.string.mmiError));
                 }
             } else {
-                sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.mmiError));
             }
         }
 
@@ -1717,7 +1769,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     private CharSequence
     createQueryCallWaitingResultMessage(int serviceClass) {
         StringBuilder sb = new StringBuilder(
-                mContext.getText(com.android.internal.R.string.serviceEnabledFor));
+                TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                        .getText(com.android.telephony.resources.R.string.serviceEnabledFor));
 
         for (int classMask = 1
                     ; classMask <= SERVICE_CLASS_MAX

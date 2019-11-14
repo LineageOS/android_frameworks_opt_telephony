@@ -112,6 +112,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.ArrayUtils;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.AsyncChannel;
 import com.android.telephony.Rlog;
@@ -978,7 +979,8 @@ public class DcTracker extends Handler {
             mProvisioningSpinner.setTitle(mNetworkOperator);
             mProvisioningSpinner.setMessage(
                     // TODO: Don't borrow "Connecting..." i18n string; give Telephony a version.
-                    context.getText(com.android.internal.R.string.media_route_status_connecting));
+                    context.getText(com.android.telephony.resources.R.string
+                            .media_route_status_connecting));
             mProvisioningSpinner.setIndeterminate(true);
             mProvisioningSpinner.setCancelable(true);
             // Allow non-Activity Service Context to create a View.
@@ -2224,8 +2226,9 @@ public class DcTracker extends Handler {
         if (DBG) log("onRecordsLoadedOrSubIdChanged: createAllApnList");
         if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
             // Auto attach is for cellular only.
-            mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
-                    .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
+            mAutoAttachOnCreationConfig = TelephonyResourceUtils.getTelephonyResources(
+                    mPhone.getContext()).getBoolean(
+                    com.android.telephony.resources.R.bool.config_auto_attach_data_on_creation);
         }
 
         createAllApnList();
@@ -2976,8 +2979,9 @@ public class DcTracker extends Handler {
                 startReconnect(delay, apnContext);
             }
         } else {
-            boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
-                    com.android.internal.R.bool.config_restartRadioAfterProvisioning);
+            boolean restartRadioAfterProvisioning = TelephonyResourceUtils.getTelephonyResources(
+                    mPhone.getContext()).getBoolean(
+                    com.android.telephony.resources.R.bool.config_restartRadioAfterProvisioning);
 
             if (apnContext.isProvisioningApn() && restartRadioAfterProvisioning) {
                 log("onDisconnectDone: restartRadio after provisioning");
@@ -3238,8 +3242,8 @@ public class DcTracker extends Handler {
         // to say they don't want to use preferred at all.
         boolean usePreferred = true;
         try {
-            usePreferred = ! mPhone.getContext().getResources().getBoolean(com.android.
-                    internal.R.bool.config_dontPreferApn);
+            usePreferred = !TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                    .getBoolean(com.android.telephony.resources.R.bool.config_dontPreferApn);
         } catch (Resources.NotFoundException e) {
             if (DBG) log("buildWaitingApns: usePreferred NotFoundException set to true");
             usePreferred = true;

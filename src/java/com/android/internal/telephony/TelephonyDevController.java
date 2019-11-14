@@ -16,21 +16,16 @@
 
 package com.android.internal.telephony;
 
-import android.content.res.Resources;
-import com.android.internal.telephony.*;
-import android.telephony.TelephonyManager;
-
+import android.content.Context;
 import android.os.AsyncResult;
-import com.android.telephony.Rlog;
-import java.util.BitSet;
-import java.util.List;
-import java.util.ArrayList;
-import android.text.TextUtils;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
-import android.os.RegistrantList;
-import android.telephony.ServiceState;
+
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * TelephonyDevController - provides a unified view of the
@@ -59,12 +54,13 @@ public class TelephonyDevController extends Handler {
         Rlog.e(LOG_TAG, s);
     }
 
-    public static TelephonyDevController create() {
+    /** Creates an instance of TelephonyDevController. */
+    public static TelephonyDevController create(Context context) {
         synchronized (mLock) {
             if (sTelephonyDevController != null) {
                 throw new RuntimeException("TelephonyDevController already created!?!");
             }
-            sTelephonyDevController = new TelephonyDevController();
+            sTelephonyDevController = new TelephonyDevController(context);
             return sTelephonyDevController;
         }
     }
@@ -78,10 +74,9 @@ public class TelephonyDevController extends Handler {
         }
     }
 
-    private void initFromResource() {
-        Resources resource = Resources.getSystem();
-        String[] hwStrings = resource.getStringArray(
-            com.android.internal.R.array.config_telephonyHardware);
+    private void initFromResource(Context context) {
+        String[] hwStrings = TelephonyResourceUtils.getTelephonyResources(context).getStringArray(
+                com.android.telephony.resources.R.array.config_telephonyHardware);
         if (hwStrings != null) {
             for (String hwString : hwStrings) {
                 HardwareConfig hw = new HardwareConfig(hwString);
@@ -96,8 +91,8 @@ public class TelephonyDevController extends Handler {
         }
     }
 
-    private TelephonyDevController() {
-        initFromResource();
+    private TelephonyDevController(Context context) {
+        initFromResource(context);
 
         mModems.trimToSize();
         mSims.trimToSize();

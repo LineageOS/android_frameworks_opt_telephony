@@ -17,6 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.SubscriptionManager;
@@ -61,7 +62,7 @@ class RilMessageDecoder extends StateMachine {
      */
     @UnsupportedAppUsage
     public static synchronized RilMessageDecoder getInstance(Handler caller, IccFileHandler fh,
-            int slotId) {
+            Context context, int slotId) {
         if (null == mInstance) {
             mSimCount = TelephonyManager.getDefault().getSupportedModemCount();
             mInstance = new RilMessageDecoder[mSimCount];
@@ -72,7 +73,7 @@ class RilMessageDecoder extends StateMachine {
 
         if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX && slotId < mSimCount) {
             if (null == mInstance[slotId]) {
-                mInstance[slotId] = new RilMessageDecoder(caller, fh);
+                mInstance[slotId] = new RilMessageDecoder(caller, fh, context);
             }
         } else {
             CatLog.d("RilMessageDecoder", "invaild slot id: " + slotId);
@@ -115,7 +116,7 @@ class RilMessageDecoder extends StateMachine {
         msg.sendToTarget();
     }
 
-    private RilMessageDecoder(Handler caller, IccFileHandler fh) {
+    private RilMessageDecoder(Handler caller, IccFileHandler fh, Context context) {
         super("RilMessageDecoder");
 
         addState(mStateStart);
@@ -123,7 +124,7 @@ class RilMessageDecoder extends StateMachine {
         setInitialState(mStateStart);
 
         mCaller = caller;
-        mCmdParamsFactory = CommandParamsFactory.getInstance(this, fh);
+        mCmdParamsFactory = CommandParamsFactory.getInstance(this, fh, context);
     }
 
     private RilMessageDecoder() {
