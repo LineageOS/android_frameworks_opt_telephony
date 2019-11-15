@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -121,7 +122,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(2).when(mPhoneMock2).getSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1, mSubInfo2);
         doReturn(infoList).when(mSubControllerMock)
-                .getActiveSubscriptionInfoList(anyString());
+                .getActiveSubscriptionInfoList(anyString(), nullable(String.class));
         doReturn(new int[]{1, 2}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mPhones = new Phone[] {mPhoneMock1, mPhoneMock2};
@@ -163,7 +164,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(2);
         doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mPhoneMock2).getSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         // Mark subscription ready as false. The below sub info change should be ignored.
@@ -200,7 +202,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(2);
         doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mPhoneMock2).getSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
@@ -215,7 +218,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(1);
         doReturn(2).when(mPhoneMock1).getSubId();
         infoList = Arrays.asList(mSubInfo2);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{2}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
@@ -238,7 +242,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(2);
         doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mPhoneMock2).getSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
@@ -258,7 +263,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(1).when(mSubControllerMock).getPhoneId(2);
         doReturn(2).when(mPhoneMock2).getSubId();
         infoList = Arrays.asList(mSubInfo1, mSubInfo2);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1, 2}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
@@ -280,7 +286,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(1).when(mSubControllerMock).getPhoneId(3);
         doReturn(3).when(mPhoneMock2).getSubId();
         infoList = Arrays.asList(mSubInfo1, mSubInfo3);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1, 3}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
@@ -325,7 +332,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         clearInvocations(mSubControllerMock);
         doReturn(false).when(mSubControllerMock).isActiveSubId(1);
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo2);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{2}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
         mMultiSimSettingControllerUT.notifyCarrierConfigChanged(
@@ -361,7 +369,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(mGroupUuid1).when(mSubControllerMock).getGroupUuid(3);
         doReturn(mGroupUuid1).when(mSubControllerMock).getGroupUuid(4);
         doReturn(Arrays.asList(mSubInfo2, mSubInfo3, mSubInfo4)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(any(), anyString());
+                .getSubscriptionsInGroup(any(), anyString(), nullable(String.class));
         mMultiSimSettingControllerUT.notifySubscriptionGroupChanged(mGroupUuid1);
         processAllMessages();
         // This should result in setting sync.
@@ -398,7 +406,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(2).when(mSubControllerMock).getDefaultSmsSubId();
         doReturn(1).when(mSubControllerMock).getDefaultVoiceSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1, mSubInfo3);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1, 3}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
@@ -475,7 +484,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         GlobalSettingsHelper.setBoolean(mContext, Settings.Global.MOBILE_DATA, 2, false);
         // Group sub 1 with sub 2.
         doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(any(), anyString());
+                .getSubscriptionsInGroup(any(), anyString(), nullable(String.class));
         mMultiSimSettingControllerUT.notifySubscriptionGroupChanged(mGroupUuid1);
         processAllMessages();
         // This should result in setting sync.
@@ -515,7 +524,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Create subscription grouping.
         replaceInstance(SubscriptionInfo.class, "mGroupUUID", mSubInfo1, mGroupUuid1);
         doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(any(), anyString());
+                .getSubscriptionsInGroup(any(), anyString(), nullable(String.class));
         mMultiSimSettingControllerUT.notifySubscriptionGroupChanged(mGroupUuid1);
         processAllMessages();
         // This should result in setting sync.
@@ -556,7 +565,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(1).when(mSubControllerMock).getPhoneId(3);
         doReturn(3).when(mPhoneMock2).getSubId();
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1, mSubInfo3);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString());
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
         doReturn(new int[]{1, 3}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
 
         // Nothing should happen until carrier config change is notified on sub 3.
