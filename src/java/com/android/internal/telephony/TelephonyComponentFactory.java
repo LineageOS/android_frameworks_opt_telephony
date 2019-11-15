@@ -296,7 +296,7 @@ public class TelephonyComponentFactory {
      * Returns a new {@link NitzStateMachine} instance.
      */
     public NitzStateMachine makeNitzStateMachine(GsmCdmaPhone phone) {
-        return new NewNitzStateMachine(phone);
+        return new NitzStateMachineImpl(phone);
     }
 
     public SimActivationTracker makeSimActivationTracker(Phone phone) {
