@@ -18,13 +18,18 @@ package com.android.internal.telephony.gsm;
 
 import static com.android.internal.telephony.gsm.SmsCbConstants.MESSAGE_ID_CMAS_GEO_FENCING_TRIGGER;
 
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.SystemClock;
 import android.provider.Telephony.CellBroadcasts;
 import android.telephony.CellLocation;
 import android.telephony.SmsCbLocation;
@@ -39,6 +44,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage.CellBroadcastIdentity;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -57,9 +63,29 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
     private final HashMap<SmsCbConcatInfo, byte[][]> mSmsCbPageMap =
             new HashMap<SmsCbConcatInfo, byte[][]>(4);
 
+    private long mLastAirplaneModeTime = 0;
+
     protected GsmCellBroadcastHandler(Context context, Phone phone) {
         super("GsmCellBroadcastHandler", context, phone);
         phone.mCi.setOnNewGsmBroadcastSms(getHandler(), EVENT_NEW_SMS_MESSAGE, null);
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
+        mContext.registerReceiver(
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        switch (intent.getAction()) {
+                            case Intent.ACTION_AIRPLANE_MODE_CHANGED:
+                                boolean airplaneModeOn = intent.getBooleanExtra("state", false);
+                                if (airplaneModeOn) {
+                                    mLastAirplaneModeTime = System.currentTimeMillis();
+                                }
+                                break;
+                        }
+
+                    }
+                }, intentFilter);
     }
 
     @Override
@@ -92,8 +118,15 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
         final List<SmsCbMessage> cbMessages = new ArrayList<>();
         final List<Uri> cbMessageUris = new ArrayList<>();
 
-        // Only consider the cell broadcast received within 24 hours.
         long lastReceivedTime = System.currentTimeMillis() - DateUtils.DAY_IN_MILLIS;
+        Resources res = mContext.getResources();
+        if (res.getBoolean(com.android.internal.R.bool.reset_geo_fencing_check_after_boot_or_apm)) {
+            // Check last airplane mode time
+            lastReceivedTime = Long.max(lastReceivedTime, mLastAirplaneModeTime);
+            // Check last boot up time
+            lastReceivedTime = Long.max(lastReceivedTime,
+                    System.currentTimeMillis() - SystemClock.elapsedRealtime());
+        }
 
         // Find the cell broadcast message identify by the message identifier and serial number
         // and is not broadcasted.
@@ -120,6 +153,9 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                 }
             }
         }
+
+        log("Found " + cbMessages.size() + " messages since "
+                + DateFormat.getDateTimeInstance().format(lastReceivedTime));
 
         List<Geometry> commonBroadcastArea = new ArrayList<>();
         if (geoFencingTriggerMessage.shouldShareBroadcastArea()) {
