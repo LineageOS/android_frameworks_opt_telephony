@@ -214,7 +214,6 @@ public final class NitzStateMachineTestSupport {
         public boolean ignoreNitz;
         public int nitzUpdateDiffMillis;
         public int nitzUpdateSpacingMillis;
-        public String networkCountryIsoForPhone;
         public long elapsedRealtime;
         public long currentTimeMillis;
 
@@ -239,11 +238,6 @@ public final class NitzStateMachineTestSupport {
         @Override
         public boolean getIgnoreNitz() {
             return ignoreNitz;
-        }
-
-        @Override
-        public String getNetworkCountryIsoForPhone() {
-            return networkCountryIsoForPhone;
         }
 
         @Override

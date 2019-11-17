@@ -21,6 +21,7 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
 import android.annotation.UnsupportedAppUsage;
+import android.app.ActivityManager;
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.app.backup.BackupManager;
@@ -1182,8 +1183,7 @@ public class CatService extends Handler implements AppInterface {
         for (int i = 0; i < defaultLocaleList.size(); i++) {
             locales[i+1] = defaultLocaleList.get(i);
         }
-        config.setLocales(new LocaleList(locales));
-        config.userSetLocale = true;
+        mContext.getSystemService(ActivityManager.class).setDeviceLocales(new LocaleList(locales));
         am.updatePersistentConfiguration(config);
         BackupManager.dataChanged("com.android.providers.settings");
     }

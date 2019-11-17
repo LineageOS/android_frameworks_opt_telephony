@@ -111,7 +111,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
         PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
-        mTelephonyRegistry.listen(mContext.getOpPackageName(),
+        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), mContext.getFeatureId(),
                 mPhoneStateListener.callback,
                 LISTEN_PHONE_CAPABILITY_CHANGE, true);
         processAllMessages();
@@ -132,7 +132,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         when(mSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(activeSubs);
         int activeSubId = 0;
         mTelephonyRegistry.notifyActiveDataSubIdChanged(activeSubId);
-        mTelephonyRegistry.listen(mContext.getOpPackageName(),
+        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), mContext.getFeatureId(),
                 mPhoneStateListener.callback,
                 LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE, true);
         processAllMessages();
@@ -159,7 +159,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
         // Should receive callback when listen is called that contains the latest notify result.
         mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
-                mPhoneStateListener.callback,
+                mContext.getFeatureId(), mPhoneStateListener.callback,
                 LISTEN_SRVCC_STATE_CHANGED, true);
         processAllMessages();
         assertEquals(srvccState, mSrvccState);
@@ -184,7 +184,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
         try {
             mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
-                    mPhoneStateListener.callback,
+                    mContext.getFeatureId(), mPhoneStateListener.callback,
                     LISTEN_SRVCC_STATE_CHANGED, true);
             fail();
         } catch (SecurityException e) {
@@ -198,7 +198,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Test
     public void testMultiSimConfigChange() {
         mTelephonyRegistry.listenForSubscriber(1, mContext.getOpPackageName(),
-                mPhoneStateListener.callback,
+                mContext.getFeatureId(), mPhoneStateListener.callback,
                 LISTEN_RADIO_POWER_STATE_CHANGED, true);
         processAllMessages();
         assertEquals(RADIO_POWER_UNAVAILABLE, mRadioPowerState);

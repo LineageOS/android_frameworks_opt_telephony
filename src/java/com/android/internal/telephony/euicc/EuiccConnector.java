@@ -56,6 +56,7 @@ import android.service.euicc.IOtaStatusChangedCallback;
 import android.service.euicc.IRetainSubscriptionsForFactoryResetCallback;
 import android.service.euicc.ISwitchToSubscriptionCallback;
 import android.service.euicc.IUpdateSubscriptionNicknameCallback;
+import android.telephony.PackageChangeReceiver;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccCardInfo;
@@ -68,7 +69,6 @@ import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.content.PackageMonitor;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
@@ -327,7 +327,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private TelephonyManager mTm;
     private SubscriptionManager mSm;
 
-    private final PackageMonitor mPackageMonitor = new EuiccPackageMonitor();
+    private final PackageChangeReceiver mPackageMonitor = new EuiccPackageMonitor();
     private final BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -393,7 +393,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         mSelectedComponent = findBestComponent();
         setInitialState(mSelectedComponent != null ? mAvailableState : mUnavailableState);
 
-        mPackageMonitor.register(mContext, null /* thread */, false /* externalStorage */);
+        mPackageMonitor.register(mContext, null /* thread */, null /* user */);
         mContext.registerReceiver(
                 mUserUnlockedReceiver, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
 
@@ -1124,19 +1124,19 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         sendMessage(CMD_SERVICE_DISCONNECTED);
     }
 
-    private class EuiccPackageMonitor extends PackageMonitor {
+    private class EuiccPackageMonitor extends PackageChangeReceiver {
         @Override
-        public void onPackageAdded(String packageName, int reason) {
+        public void onPackageAdded(String packageName) {
             sendPackageChange(packageName, true /* forceUnbindForThisPackage */);
         }
 
         @Override
-        public void onPackageRemoved(String packageName, int reason) {
+        public void onPackageRemoved(String packageName) {
             sendPackageChange(packageName, true /* forceUnbindForThisPackage */);
         }
 
         @Override
-        public void onPackageUpdateFinished(String packageName, int uid) {
+        public void onPackageUpdateFinished(String packageName) {
             sendPackageChange(packageName, true /* forceUnbindForThisPackage */);
         }
 
@@ -1146,13 +1146,12 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         }
 
         @Override
-        public boolean onHandleForceStop(Intent intent, String[] packages, int uid, boolean doit) {
+        public void onHandleForceStop(String[] packages, boolean doit) {
             if (doit) {
                 for (String packageName : packages) {
                     sendPackageChange(packageName, true /* forceUnbindForThisPackage */);
                 }
             }
-            return super.onHandleForceStop(intent, packages, uid, doit);
         }
 
         private void sendPackageChange(String packageName, boolean forceUnbindForThisPackage) {

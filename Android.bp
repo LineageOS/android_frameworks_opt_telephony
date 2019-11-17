@@ -35,6 +35,7 @@ filegroup {
     ],
     path: "src/java",
 }
+
 filegroup {
     name: "jarjar-rules-shared",
     srcs: ["jarjar-rules-shared.txt"],
@@ -71,8 +72,9 @@ java_library {
         "android.hardware.radio.config-V1.1-java-shallow",
         "android.hardware.radio.config-V1.2-java-shallow",
         "android.hardware.radio.deprecated-V1.0-java-shallow",
-        "telephony-protos",
         "ecc-protos-lite",
+        "PlatformProperties",
+        "telephony-protos",
     ],
 
     product_variables: {
@@ -82,4 +84,3 @@ java_library {
         },
     },
 }
-
