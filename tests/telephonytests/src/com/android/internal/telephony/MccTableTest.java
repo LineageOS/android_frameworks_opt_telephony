@@ -16,33 +16,51 @@
 
 package com.android.internal.telephony;
 
-import android.test.AndroidTestCase;
+import static org.junit.Assert.assertEquals;
+
+import android.content.Context;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import org.junit.Ignore;
+import androidx.test.InstrumentationRegistry;
+
+import com.android.internal.telephony.MccTable.MccMnc;
+
+import org.junit.Test;
 
 import java.util.Locale;
 
-// TODO try using InstrumentationRegistry.getContext() instead of the default
-// AndroidTestCase context
-public class MccTableTest extends AndroidTestCase {
-    private final static String LOG_TAG = "GSM";
+public class MccTableTest {
 
     @SmallTest
-    @Ignore
-    public void testCountryCode() throws Exception {
-        assertEquals("lu", MccTable.countryCodeForMcc(270));
-        assertEquals("gr", MccTable.countryCodeForMcc(202));
-        assertEquals("fk", MccTable.countryCodeForMcc(750));
-        assertEquals("mg", MccTable.countryCodeForMcc(646));
-        assertEquals("us", MccTable.countryCodeForMcc(314));
-        assertEquals("", MccTable.countryCodeForMcc(300));  // mcc not defined, hence default
-        assertEquals("", MccTable.countryCodeForMcc(0));    // mcc not defined, hence default
-        assertEquals("", MccTable.countryCodeForMcc(2000)); // mcc not defined, hence default
+    @Test
+    public void testCountryCodeForMcc() throws Exception {
+        checkMccLookupWithNoMnc("lu", 270);
+        checkMccLookupWithNoMnc("gr", 202);
+        checkMccLookupWithNoMnc("fk", 750);
+        checkMccLookupWithNoMnc("mg", 646);
+        checkMccLookupWithNoMnc("us", 314);
+        checkMccLookupWithNoMnc("", 300);  // mcc not defined, hence default
+        checkMccLookupWithNoMnc("", 0);    // mcc not defined, hence default
+        checkMccLookupWithNoMnc("", 2000); // mcc not defined, hence default
+    }
+
+    private void checkMccLookupWithNoMnc(String expectedCountryIsoCode, int mcc) {
+        assertEquals(expectedCountryIsoCode, MccTable.countryCodeForMcc(mcc));
+        assertEquals(expectedCountryIsoCode, MccTable.countryCodeForMcc(mcc));
+        assertEquals(expectedCountryIsoCode, MccTable.countryCodeForMcc("" + mcc));
+        assertEquals(expectedCountryIsoCode,
+                MccTable.geoCountryCodeForMccMnc(new MccMnc("" + mcc, "999")));
     }
 
     @SmallTest
-    @Ignore
+    @Test
+    public void testGeoCountryCodeForMccMnc() throws Exception {
+        // This test is possibly fragile as this data is configurable.
+        assertEquals("gu", MccTable.geoCountryCodeForMccMnc(new MccMnc("310", "370")));
+    }
+
+    @SmallTest
+    @Test
     public void testLang() throws Exception {
         assertEquals("en", MccTable.defaultLanguageForMcc(311));
         assertEquals("de", MccTable.defaultLanguageForMcc(232));
@@ -54,7 +72,7 @@ public class MccTableTest extends AndroidTestCase {
     }
 
     @SmallTest
-    @Ignore
+    @Test
     public void testLang_India() throws Exception {
         assertEquals("en", MccTable.defaultLanguageForMcc(404));
         assertEquals("en", MccTable.defaultLanguageForMcc(405));
@@ -62,7 +80,7 @@ public class MccTableTest extends AndroidTestCase {
     }
 
     @SmallTest
-    @Ignore
+    @Test
     public void testLocale() throws Exception {
         assertEquals(Locale.forLanguageTag("en-CA"),
                 MccTable.getLocaleFromMcc(getContext(), 302, null));
@@ -78,8 +96,12 @@ public class MccTableTest extends AndroidTestCase {
                 MccTable.getLocaleFromMcc(getContext(), 466, null));
     }
 
+    private Context getContext() {
+        return InstrumentationRegistry.getContext();
+    }
+
     @SmallTest
-    @Ignore
+    @Test
     public void testSmDigits() throws Exception {
         assertEquals(3, MccTable.smallestDigitsMccForMnc(312));
         assertEquals(2, MccTable.smallestDigitsMccForMnc(430));
