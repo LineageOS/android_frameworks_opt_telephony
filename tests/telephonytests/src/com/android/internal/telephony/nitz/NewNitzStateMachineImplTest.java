@@ -322,8 +322,8 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // Simulate airplane mode being turned off.
         script.toggleAirplaneMode(false);
 
-        // Verify the time zone suggestion was withdrawn.
-        script.verifyOnlyTimeZoneWasSuggestedAndReset(EMPTY_TIME_ZONE_SUGGESTION);
+        // Verify nothing was suggested: The last suggestion was empty so nothing has changed.
+        script.verifyNothingWasSuggested();
 
         // Check the state that NitzStateMachine must expose.
         assertNull(mNitzStateMachineImpl.getCachedNitzData());
