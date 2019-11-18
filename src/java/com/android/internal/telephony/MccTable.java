@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.content.Context;
@@ -27,8 +29,14 @@ import android.os.SystemProperties;
 import android.text.TextUtils;
 import android.util.Slog;
 
+import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.app.LocaleStore;
 import com.android.internal.app.LocaleStore.LocaleInfo;
+
+import libcore.timezone.TelephonyLookup;
+import libcore.timezone.TelephonyNetwork;
+import libcore.timezone.TelephonyNetworkFinder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Mobile Country Code
@@ -45,6 +54,9 @@ import java.util.Map;
  */
 public final class MccTable {
     static final String LOG_TAG = "MccTable";
+
+    @GuardedBy("MccTable.class")
+    private static TelephonyNetworkFinder sTelephonyNetworkFinder;
 
     static ArrayList<MccEntry> sTable;
 
@@ -58,11 +70,11 @@ public final class MccTable {
         final String mIso;
         final int mSmallestDigitsMnc;
 
-        MccEntry(int mnc, String iso, int smallestDigitsMCC) {
+        MccEntry(int mcc, String iso, int smallestDigitsMCC) {
             if (iso == null) {
                 throw new NullPointerException();
             }
-            mMcc = mnc;
+            mMcc = mcc;
             mIso = iso;
             mSmallestDigitsMnc = smallestDigitsMCC;
         }
@@ -70,6 +82,77 @@ public final class MccTable {
         @Override
         public int compareTo(MccEntry o) {
             return mMcc - o.mMcc;
+        }
+    }
+
+    /**
+     * A combination of MCC and MNC. The MNC is optional and may be null.
+     *
+     * @hide
+     */
+    @VisibleForTesting
+    public static class MccMnc {
+        @NonNull
+        public final String mcc;
+
+        @Nullable
+        public final String mnc;
+
+        /**
+         * Splits the supplied String in two: the first three characters are treated as the MCC,
+         * the remaining characters are treated as the MNC.
+         */
+        @Nullable
+        public static MccMnc fromOperatorNumeric(@NonNull String operatorNumeric) {
+            Objects.requireNonNull(operatorNumeric);
+            String mcc;
+            try {
+                mcc = operatorNumeric.substring(0, 3);
+            } catch (StringIndexOutOfBoundsException e) {
+                return null;
+            }
+
+            String mnc;
+            try {
+                mnc = operatorNumeric.substring(3);
+            } catch (StringIndexOutOfBoundsException e) {
+                mnc = null;
+            }
+            return new MccMnc(mcc, mnc);
+        }
+
+        /**
+         * Creates an MccMnc using the supplied values.
+         */
+        public MccMnc(@NonNull String mcc, @Nullable String mnc) {
+            this.mcc = Objects.requireNonNull(mcc);
+            this.mnc = mnc;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            MccMnc mccMnc = (MccMnc) o;
+            return mcc.equals(mccMnc.mcc)
+                    && Objects.equals(mnc, mccMnc.mnc);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(mcc, mnc);
+        }
+
+        @Override
+        public String toString() {
+            return "MccMnc{"
+                    + "mcc='" + mcc + '\''
+                    + ", mnc='" + mnc + '\''
+                    + '}';
         }
     }
 
@@ -91,11 +174,11 @@ public final class MccTable {
     }
 
     /**
-     * Given a GSM Mobile Country Code, returns
-     * an ISO two-character country code if available.
-     * Returns "" if unavailable.
+     * Given a GSM Mobile Country Code, returns a lower-case ISO 3166 alpha-2 country code if
+     * available. Returns empty string if unavailable.
      */
     @UnsupportedAppUsage
+    @NonNull
     public static String countryCodeForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
 
@@ -107,16 +190,61 @@ public final class MccTable {
     }
 
     /**
-     * Given a GSM Mobile Country Code, returns
-     * an ISO two-character country code if available.
-     * Returns empty string if unavailable.
+     * Given a GSM Mobile Country Code, returns a lower-case ISO 3166 alpha-2 country code if
+     * available. Returns empty string if unavailable.
      */
-    public static String countryCodeForMcc(String mcc) {
+    @NonNull
+    public static String countryCodeForMcc(@NonNull String mcc) {
         try {
             return countryCodeForMcc(Integer.parseInt(mcc));
         } catch (NumberFormatException ex) {
             return "";
         }
+    }
+
+    /**
+     * Given a combination of MCC and MNC, returns a lower case ISO 3166 alpha-2 country code for
+     * the device's geographical location.
+     *
+     * <p>This can give a better geographical result than {@link #countryCodeForMcc(String)}
+     * (which provides the official "which country is the MCC assigned to?" answer) for cases when
+     * MNC is also available: Sometimes an MCC can be used by multiple countries and the MNC can
+     * help distinguish, or the MCC assigned to a country isn't used for geopolitical reasons.
+     * When the geographical country is needed  (e.g. time zone detection) this version can provide
+     * more pragmatic results than the official MCC-only answer. This method falls back to calling
+     * {@link #countryCodeForMcc(int)} if no special MCC+MNC cases are found.
+     * Returns empty string if no code can be determined.
+     */
+    @NonNull
+    public static String geoCountryCodeForMccMnc(@NonNull MccMnc mccMnc) {
+        String countryCode = null;
+        if (mccMnc.mnc != null) {
+            countryCode = countryCodeForMccMncNoFallback(mccMnc);
+        }
+        if (TextUtils.isEmpty(countryCode)) {
+            // Try the MCC-only fallback.
+            countryCode = MccTable.countryCodeForMcc(mccMnc.mcc);
+        }
+        return countryCode;
+    }
+
+    @Nullable
+    private static String countryCodeForMccMncNoFallback(MccMnc mccMnc) {
+        synchronized (MccTable.class) {
+            if (sTelephonyNetworkFinder == null) {
+                sTelephonyNetworkFinder = TelephonyLookup.getInstance().getTelephonyNetworkFinder();
+            }
+        }
+        if (sTelephonyNetworkFinder == null) {
+            // This should not happen under normal circumstances, only when the data is missing.
+            return null;
+        }
+        TelephonyNetwork network =
+                sTelephonyNetworkFinder.findNetworkByMccMnc(mccMnc.mcc, mccMnc.mnc);
+        if (network == null) {
+            return null;
+        }
+        return network.getCountryIsoCode();
     }
 
     /**
