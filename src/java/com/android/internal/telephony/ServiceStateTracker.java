@@ -728,7 +728,8 @@ public class ServiceStateTracker extends Handler {
         mMin = null;
         mPrlVersion = null;
         mIsMinInfoReady = false;
-        mNitzState.handleCountryUnavailable();
+        mLastNitzData = null;
+        mNitzState.handleNetworkUnavailable();
         mCellIdentity = null;
         mNewCellIdentity = null;
         mSignalStrengthUpdatedTime = System.currentTimeMillis();
@@ -3014,7 +3015,8 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setStateOutOfService();
                 mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
-                mNitzState.handleCountryUnavailable();
+                mLastNitzData = null;
+                mNitzState.handleNetworkUnavailable();
                 pollStateDone();
                 break;
 
@@ -3022,7 +3024,8 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.setStateOff();
                 mNewCellIdentity = null;
                 setSignalStrengthDefaultValues();
-                mNitzState.handleCountryUnavailable();
+                mLastNitzData = null;
+                mNitzState.handleNetworkUnavailable();
                 // don't poll when device is shutting down or the poll was not modemTrigged
                 // (they sent us new radio data) and current network is not IWLAN
                 if (mDeviceShuttingDown ||

@@ -172,16 +172,26 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
     }
 
     private void clearNetworkStateAndRerunDetection(String reason) {
-        // Assume any previous NITZ signals received are now invalid.
+        if (mLatestNitzSignal == null) {
+            // The network state is already empty so there's no need to do anything.
+            if (DBG) {
+                Rlog.d(LOG_TAG, reason + ": mLatestNitzSignal was already null. Nothing to do.");
+            }
+            return;
+        }
+
+        // The previous NITZ signal received is now invalid so clear it.
         mLatestNitzSignal = null;
 
+        // countryIsoCode can be assigned null here, in which case the doTimeZoneDetection() call
+        // below will do nothing, which is ok as nothing will have changed.
         String countryIsoCode = mCountryIsoCode;
-
         if (DBG) {
             Rlog.d(LOG_TAG, reason + ": countryIsoCode=" + countryIsoCode);
         }
 
-        // Generate a new time zone suggestion and update the service as needed.
+        // Generate a new time zone suggestion (which could be an empty suggestion) and update the
+        // service as needed.
         doTimeZoneDetection(countryIsoCode, null /* nitzSignal */, reason);
 
         // Generate a new time suggestion and update the service as needed.
@@ -258,7 +268,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         // will be made after airplane mode is re-enabled as the device re-establishes network
         // connectivity.
 
-        // Clear time zone detection state.
+        // Clear country detection state.
         mCountryIsoCode = null;
 
         String reason = "handleAirplaneModeChanged(" + on + ")";
