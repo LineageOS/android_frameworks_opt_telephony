@@ -551,9 +551,6 @@ public class SmsController extends ISmsImplBase {
         }
     }
 
-    /**
-     * Triggered by `adb shell dumpsys isms`
-     */
     @Override
     public String getSmscAddressFromIccEfForSubscriber(int subId, String callingPackage) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
@@ -579,6 +576,9 @@ public class SmsController extends ISmsImplBase {
         }
     }
 
+    /**
+     * Triggered by `adb shell dumpsys isms`
+     */
     @Override
     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (!checkDumpPermission(mContext, LOG_TAG, pw)) {
