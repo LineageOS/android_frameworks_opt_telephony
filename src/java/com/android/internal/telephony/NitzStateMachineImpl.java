@@ -319,18 +319,26 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         mSavedNitzTime = null;
         mTimeLog.log("handleNetworkUnavailable: NITZ state cleared.");
 
+        TimestampedValue<NitzData> oldNitzSignal = mLatestNitzSignal;
         mLatestNitzSignal = null;
         mNitzTimeZoneDetectionSuccessful = false;
         mSavedTimeZoneId = null;
         mTimeZoneLog.log("handleNetworkUnavailable: NITZ state cleared.");
 
-        // mSavedTimeZoneId has been cleared but it might be sufficient to detect the time zone
-        // using only the country information that is left.
+        // Avoid doing country-only detection work unnecessarily: if the mLatestNitzSignal was
+        // already null we have nothing to do as it will have been done last time the
+        // mLatestNitzSignal was cleared.
+        if (oldNitzSignal == null) {
+            return;
+        }
+
+        // mSavedTimeZoneId has been cleared but using only the country information that is left
+        // might be sufficient to detect the time zone.
         String isoCountryCode = mCountryIsoCode;
-        if (isoCountryCode != null) {
-            if (!TextUtils.isEmpty(isoCountryCode)) {
-                updateTimeZoneFromNetworkCountryCode(isoCountryCode);
-            }
+        // We don't need to do country-based time zone detection if the isoCountryCode is null
+        // (unknown) or empty (test cell). TextUtils.isEmpty() does both checks in one.
+        if (!TextUtils.isEmpty(isoCountryCode)) {
+            updateTimeZoneFromNetworkCountryCode(isoCountryCode);
         }
     }
 
@@ -348,7 +356,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     @Override
     public void handleNitzReceived(TimestampedValue<NitzData> nitzSignal) {
         // Always store the latest NITZ signal received.
-        mLatestNitzSignal = nitzSignal;
+        mLatestNitzSignal = Objects.requireNonNull(nitzSignal);
 
         updateTimeZoneFromCountryAndNitz();
         updateTimeFromNitz();
