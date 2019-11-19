@@ -16,6 +16,11 @@
 
 package com.android.internal.telephony;
 
+import static android.provider.Telephony.Sms.Intents.RESULT_SMS_DATABASE_ERROR;
+import static android.provider.Telephony.Sms.Intents.RESULT_SMS_DISPATCH_FAILURE;
+import static android.provider.Telephony.Sms.Intents.RESULT_SMS_INVALID_URI;
+import static android.provider.Telephony.Sms.Intents.RESULT_SMS_NULL_MESSAGE;
+import static android.provider.Telephony.Sms.Intents.RESULT_SMS_NULL_PDU;
 import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE;
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
@@ -602,7 +607,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             result = dispatchMessage(sms.mWrappedSmsMessage);
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
-            result = Intents.RESULT_SMS_GENERIC_ERROR;
+            result = RESULT_SMS_DISPATCH_FAILURE;
         }
 
         // RESULT_OK means that the SMS will be acknowledged by special handling,
@@ -625,14 +630,15 @@ public abstract class InboundSmsHandler extends StateMachine {
             callback = (SmsDispatchersController.SmsInjectionCallback) ar.userObj;
             SmsMessage sms = (SmsMessage) ar.result;
             if (sms == null) {
-                result = Intents.RESULT_SMS_GENERIC_ERROR;
+                loge("Null injected sms");
+                result = RESULT_SMS_NULL_PDU;
             } else {
                 mLastSmsWasInjected = true;
                 result = dispatchMessage(sms.mWrappedSmsMessage);
             }
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
-            result = Intents.RESULT_SMS_GENERIC_ERROR;
+            result = RESULT_SMS_DISPATCH_FAILURE;
         }
 
         if (callback != null) {
@@ -652,7 +658,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         // If sms is null, there was a parsing error.
         if (smsb == null) {
             loge("dispatchSmsMessage: message is null");
-            return Intents.RESULT_SMS_GENERIC_ERROR;
+            return RESULT_SMS_NULL_MESSAGE;
         }
 
         if (mSmsReceiveDisabled) {
@@ -672,7 +678,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 //        if (onlyCore) {
 //            // Device is unable to receive SMS in encrypted state
 //            log("Received a short message in encrypted state. Rejecting.");
-//            return Intents.RESULT_SMS_GENERIC_ERROR;
+//            return Intents.RESULT_SMS_RECEIVED_WHILE_ENCRYPTED;
 //        }
 
         int result = dispatchMessageRadioSpecific(smsb);
@@ -719,6 +725,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             // broadcast SMS_REJECTED_ACTION intent
             Intent intent = new Intent(Intents.SMS_REJECTED_ACTION);
             intent.putExtra("result", result);
+            intent.putExtra("subId", mPhone.getSubId());
             // Allow registered broadcast receivers to get this intent even
             // when they are in the background.
             intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
@@ -788,21 +795,28 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Helper to add the tracker to the raw table and then send a message to broadcast it, if
      * successful. Returns the SMS intent status to return to the SMSC.
      * @param tracker the tracker to save to the raw table and then deliver
-     * @return {@link Intents#RESULT_SMS_HANDLED} or {@link Intents#RESULT_SMS_GENERIC_ERROR}
-     * or {@link Intents#RESULT_SMS_DUPLICATED}
+     * @return {@link Intents#RESULT_SMS_HANDLED} or one of these errors:<br>
+     * <code>RESULT_SMS_UNSUPPORTED</code><br>
+     * <code>RESULT_SMS_DUPLICATED</code><br>
+     * <code>RESULT_SMS_DISPATCH_FAILURE</code><br>
+     * <code>RESULT_SMS_NULL_PDU</code><br>
+     * <code>RESULT_SMS_NULL_MESSAGE</code><br>
+     * <code>RESULT_SMS_RECEIVED_WHILE_ENCRYPTED</code><br>
+     * <code>RESULT_SMS_DATABASE_ERROR</code><br>
+     * <code>RESULT_SMS_INVALID_URI</code><br>
      */
     protected int addTrackerToRawTableAndSendMessage(InboundSmsTracker tracker, boolean deDup) {
-        switch(addTrackerToRawTable(tracker, deDup)) {
-        case Intents.RESULT_SMS_HANDLED:
-            sendMessage(EVENT_BROADCAST_SMS, tracker);
-            return Intents.RESULT_SMS_HANDLED;
+        int result = addTrackerToRawTable(tracker, deDup);
+        switch(result) {
+            case Intents.RESULT_SMS_HANDLED:
+                sendMessage(EVENT_BROADCAST_SMS, tracker);
+                return Intents.RESULT_SMS_HANDLED;
 
-        case Intents.RESULT_SMS_DUPLICATED:
-            return Intents.RESULT_SMS_HANDLED;
+            case Intents.RESULT_SMS_DUPLICATED:
+                return Intents.RESULT_SMS_HANDLED;
 
-        case Intents.RESULT_SMS_GENERIC_ERROR:
-        default:
-            return Intents.RESULT_SMS_GENERIC_ERROR;
+            default:
+                return result;
         }
     }
 
@@ -1391,7 +1405,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 }
             } catch (SQLException e) {
                 loge("Can't access SMS database", e);
-                return Intents.RESULT_SMS_GENERIC_ERROR;    // reject message
+                return RESULT_SMS_DATABASE_ERROR;    // reject message
             }
         } else {
             logd("Skipped message de-duping logic");
@@ -1419,7 +1433,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             return Intents.RESULT_SMS_HANDLED;
         } catch (Exception e) {
             loge("error parsing URI for new row: " + newUri, e);
-            return Intents.RESULT_SMS_GENERIC_ERROR;
+            return RESULT_SMS_INVALID_URI;
         }
     }
 
