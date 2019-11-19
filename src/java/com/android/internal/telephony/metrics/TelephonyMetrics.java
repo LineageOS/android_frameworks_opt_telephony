@@ -923,31 +923,20 @@ public class TelephonyMetrics {
         ssProto.dataRoamingType = serviceState.getDataRoamingType();
 
         ssProto.voiceOperator = new TelephonyServiceState.TelephonyOperator();
-
-        if (serviceState.getVoiceOperatorAlphaLong() != null) {
-            ssProto.voiceOperator.alphaLong = serviceState.getVoiceOperatorAlphaLong();
-        }
-
-        if (serviceState.getVoiceOperatorAlphaShort() != null) {
-            ssProto.voiceOperator.alphaShort = serviceState.getVoiceOperatorAlphaShort();
-        }
-
-        if (serviceState.getVoiceOperatorNumeric() != null) {
-            ssProto.voiceOperator.numeric = serviceState.getVoiceOperatorNumeric();
-        }
-
         ssProto.dataOperator = new TelephonyServiceState.TelephonyOperator();
-
-        if (serviceState.getDataOperatorAlphaLong() != null) {
-            ssProto.dataOperator.alphaLong = serviceState.getDataOperatorAlphaLong();
+        if (serviceState.getOperatorAlphaLong() != null) {
+            ssProto.voiceOperator.alphaLong = serviceState.getOperatorAlphaLong();
+            ssProto.dataOperator.alphaLong = serviceState.getOperatorAlphaLong();
         }
 
-        if (serviceState.getDataOperatorAlphaShort() != null) {
-            ssProto.dataOperator.alphaShort = serviceState.getDataOperatorAlphaShort();
+        if (serviceState.getOperatorAlphaShort() != null) {
+            ssProto.voiceOperator.alphaShort = serviceState.getOperatorAlphaShort();
+            ssProto.dataOperator.alphaShort = serviceState.getOperatorAlphaShort();
         }
 
-        if (serviceState.getDataOperatorNumeric() != null) {
-            ssProto.dataOperator.numeric = serviceState.getDataOperatorNumeric();
+        if (serviceState.getOperatorNumeric() != null) {
+            ssProto.voiceOperator.numeric = serviceState.getOperatorNumeric();
+            ssProto.dataOperator.numeric = serviceState.getOperatorNumeric();
         }
 
         ssProto.voiceRat = serviceState.getRilVoiceRadioTechnology();
