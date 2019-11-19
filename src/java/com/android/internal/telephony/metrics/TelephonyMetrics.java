@@ -72,7 +72,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
-import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
@@ -105,6 +104,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings;
 import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
 import com.android.internal.telephony.protobuf.nano.MessageNano;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -882,31 +882,20 @@ public class TelephonyMetrics {
         ssProto.dataRoamingType = serviceState.getDataRoamingType();
 
         ssProto.voiceOperator = new TelephonyServiceState.TelephonyOperator();
-
-        if (serviceState.getVoiceOperatorAlphaLong() != null) {
-            ssProto.voiceOperator.alphaLong = serviceState.getVoiceOperatorAlphaLong();
-        }
-
-        if (serviceState.getVoiceOperatorAlphaShort() != null) {
-            ssProto.voiceOperator.alphaShort = serviceState.getVoiceOperatorAlphaShort();
-        }
-
-        if (serviceState.getVoiceOperatorNumeric() != null) {
-            ssProto.voiceOperator.numeric = serviceState.getVoiceOperatorNumeric();
-        }
-
         ssProto.dataOperator = new TelephonyServiceState.TelephonyOperator();
-
-        if (serviceState.getDataOperatorAlphaLong() != null) {
-            ssProto.dataOperator.alphaLong = serviceState.getDataOperatorAlphaLong();
+        if (serviceState.getOperatorAlphaLong() != null) {
+            ssProto.voiceOperator.alphaLong = serviceState.getOperatorAlphaLong();
+            ssProto.dataOperator.alphaLong = serviceState.getOperatorAlphaLong();
         }
 
-        if (serviceState.getDataOperatorAlphaShort() != null) {
-            ssProto.dataOperator.alphaShort = serviceState.getDataOperatorAlphaShort();
+        if (serviceState.getOperatorAlphaShort() != null) {
+            ssProto.voiceOperator.alphaShort = serviceState.getOperatorAlphaShort();
+            ssProto.dataOperator.alphaShort = serviceState.getOperatorAlphaShort();
         }
 
-        if (serviceState.getDataOperatorNumeric() != null) {
-            ssProto.dataOperator.numeric = serviceState.getDataOperatorNumeric();
+        if (serviceState.getOperatorNumeric() != null) {
+            ssProto.voiceOperator.numeric = serviceState.getOperatorNumeric();
+            ssProto.dataOperator.numeric = serviceState.getOperatorNumeric();
         }
 
         ssProto.voiceRat = serviceState.getRilVoiceRadioTechnology();

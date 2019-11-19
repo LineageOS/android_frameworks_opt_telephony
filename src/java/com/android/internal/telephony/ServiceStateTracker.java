@@ -5211,7 +5211,7 @@ public class ServiceStateTracker extends Handler {
             if (currentServiceState.getVoiceRoaming()) {
                 if (mPhone.isPhoneTypeGsm()) {
                     // check roaming type by MCC
-                    if (inSameCountry(currentServiceState.getVoiceOperatorNumeric())) {
+                    if (inSameCountry(currentServiceState.getOperatorNumeric())) {
                         currentServiceState.setVoiceRoamingType(
                                 ServiceState.ROAMING_TYPE_DOMESTIC);
                     } else {
@@ -5235,7 +5235,7 @@ public class ServiceStateTracker extends Handler {
                         }
                     } else {
                         // check roaming type by MCC
-                        if (inSameCountry(currentServiceState.getVoiceOperatorNumeric())) {
+                        if (inSameCountry(currentServiceState.getOperatorNumeric())) {
                             currentServiceState.setVoiceRoamingType(
                                     ServiceState.ROAMING_TYPE_DOMESTIC);
                         } else {
@@ -5282,7 +5282,7 @@ public class ServiceStateTracker extends Handler {
                         }
                     } else {
                         // take it as 3GPP roaming
-                        if (inSameCountry(currentServiceState.getDataOperatorNumeric())) {
+                        if (inSameCountry(currentServiceState.getOperatorNumeric())) {
                             currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
                         } else {
                             currentServiceState.setDataRoamingType(
