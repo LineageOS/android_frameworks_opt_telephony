@@ -267,6 +267,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                     logMsg += " [Not setting device time zone (zoneId == null)]";
                     Rlog.d(LOG_TAG, logMsg);
                 }
+                mSavedTimeZoneId = null;
+                mNitzTimeZoneDetectionSuccessful = false;
             }
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "updateTimeZoneFromCountryAndNitz: Processing NITZ data"
@@ -584,6 +586,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                         + " iso=" + iso
                         + " lookupResult=" + lookupResult);
             }
+            mSavedTimeZoneId = null;
         }
     }
 
@@ -595,5 +598,10 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     // VisibleForTesting
     public NitzData getCachedNitzData() {
         return mLatestNitzSignal != null ? mLatestNitzSignal.getValue() : null;
+    }
+
+    // VisibleForTesting
+    public String getSavedTimeZoneId() {
+        return mSavedTimeZoneId;
     }
 }
