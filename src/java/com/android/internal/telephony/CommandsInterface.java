@@ -73,6 +73,7 @@ public interface CommandsInterface {
     static final String CB_FACILITY_BA_MT        = "AC";
     static final String CB_FACILITY_BA_SIM       = "SC";
     static final String CB_FACILITY_BA_FD        = "FD";
+    static final String CB_FACILITY_BIC_ACR      = "AR";
 
 
     // Used for various supp services apis
