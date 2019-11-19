@@ -754,7 +754,6 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void registerForNetworkScanResult(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
         mRilNetworkScanResultRegistrants.addUnique(h, what, obj);
     }
 
@@ -983,8 +982,6 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void registerForNattKeepaliveStatus(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-
         synchronized (mStateMonitor) {
             mNattKeepaliveStatusRegistrants.addUnique(h, what, obj);
         }

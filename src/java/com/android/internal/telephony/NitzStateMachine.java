@@ -51,7 +51,8 @@ public interface NitzStateMachine {
     void handleNetworkAvailable();
 
     /**
-     * Informs the {@link NitzStateMachine} that the network has become unavailable.
+     * Informs the {@link NitzStateMachine} that the network has become unavailable. Any network
+     * state, i.e. NITZ, should be cleared.
      */
     void handleNetworkUnavailable();
 
