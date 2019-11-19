@@ -53,6 +53,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 
@@ -63,6 +64,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.util.IndentingPrintWriter;
+
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -293,7 +295,7 @@ public class PhoneSwitcher extends Handler {
             CommandsInterface[] cis, Phone[] phones) {
         if (sPhoneSwitcher == null) {
             sPhoneSwitcher = new PhoneSwitcher(maxActivePhones, numPhones, context,
-                    subscriptionController, looper, tr, cis, phones);
+                    subscriptionController, looper, cis, phones);
         }
 
         return sPhoneSwitcher;
@@ -346,7 +348,7 @@ public class PhoneSwitcher extends Handler {
 
     @VisibleForTesting
     public PhoneSwitcher(int maxActivePhones, int numPhones, Context context,
-            SubscriptionController subscriptionController, Looper looper, ITelephonyRegistry tr,
+            SubscriptionController subscriptionController, Looper looper,
             CommandsInterface[] cis, Phone[] phones) {
         super(looper);
         mContext = context;
@@ -392,11 +394,10 @@ public class PhoneSwitcher extends Handler {
             mCommandsInterfaces[0].registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         }
 
-        try {
-            tr.addOnSubscriptionsChangedListener(context.getOpPackageName(),
-                    mSubscriptionsChangedListener);
-        } catch (RemoteException e) {
-        }
+        TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager)
+                context.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
+        telephonyRegistryManager.addOnSubscriptionsChangedListener(
+                mSubscriptionsChangedListener, mSubscriptionsChangedListener.getHandlerExecutor());
 
         mConnectivityManager =
             (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -438,8 +439,8 @@ public class PhoneSwitcher extends Handler {
         }
     };
 
-    private final IOnSubscriptionsChangedListener mSubscriptionsChangedListener =
-            new IOnSubscriptionsChangedListener.Stub() {
+    private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener =
+            new SubscriptionManager.OnSubscriptionsChangedListener() {
         @Override
         public void onSubscriptionsChanged() {
             Message msg = PhoneSwitcher.this.obtainMessage(EVENT_SUBSCRIPTION_CHANGED);
@@ -1301,14 +1302,10 @@ public class PhoneSwitcher extends Handler {
      * See {@link PhoneStateListener#LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE}.
      */
     private void notifyPreferredDataSubIdChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
-        try {
-            log("notifyPreferredDataSubIdChanged to " + mPreferredDataSubId);
-            tr.notifyActiveDataSubIdChanged(mPreferredDataSubId);
-        } catch (RemoteException ex) {
-            // Should never happen because its always available.
-        }
+        TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager) mContext
+                .getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
+        log("notifyPreferredDataSubIdChanged to " + mPreferredDataSubId);
+        telephonyRegistryManager.notifyActiveDataSubIdChanged(mPreferredDataSubId);
     }
 
     /**

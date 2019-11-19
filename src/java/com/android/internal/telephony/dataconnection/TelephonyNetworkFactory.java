@@ -30,13 +30,15 @@ import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.SubscriptionController;
-import com.android.internal.telephony.SubscriptionMonitor;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
@@ -60,7 +62,8 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private static final int TELEPHONY_NETWORK_SCORE = 50;
 
     private static final int EVENT_ACTIVE_PHONE_SWITCH              = 1;
-    private static final int EVENT_SUBSCRIPTION_CHANGED             = 2;
+    @VisibleForTesting
+    public static final int EVENT_SUBSCRIPTION_CHANGED              = 2;
     private static final int EVENT_NETWORK_REQUEST                  = 3;
     private static final int EVENT_NETWORK_RELEASE                  = 4;
     private static final int EVENT_DATA_HANDOVER_NEEDED             = 5;
@@ -68,7 +71,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private final PhoneSwitcher mPhoneSwitcher;
     private final SubscriptionController mSubscriptionController;
-    private final SubscriptionMonitor mSubscriptionMonitor;
     private final LocalLog mLocalLog = new LocalLog(REQUEST_LOG_SIZE);
 
     // Key: network request. Value: the transport of DcTracker it applies to,
@@ -83,11 +85,11 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private int mSubscriptionId;
 
-    private final Handler mInternalHandler;
+    @VisibleForTesting
+    public final Handler mInternalHandler;
 
 
-    public TelephonyNetworkFactory(SubscriptionMonitor subscriptionMonitor, Looper looper,
-                                   Phone phone) {
+    public TelephonyNetworkFactory(Looper looper, Phone phone) {
         super(looper, phone.getContext(), "TelephonyNetworkFactory[" + phone.getPhoneId()
                 + "]", null);
         mPhone = phone;
@@ -100,7 +102,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         setScoreFilter(TELEPHONY_NETWORK_SCORE);
 
         mPhoneSwitcher = PhoneSwitcher.getInstance();
-        mSubscriptionMonitor = subscriptionMonitor;
         LOG_TAG = "TelephonyNetworkFactory[" + mPhone.getPhoneId() + "]";
 
         mPhoneSwitcher.registerForActivePhoneSwitch(mInternalHandler, EVENT_ACTIVE_PHONE_SWITCH,
@@ -109,11 +110,19 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 EVENT_DATA_HANDOVER_NEEDED);
 
         mSubscriptionId = INVALID_SUBSCRIPTION_ID;
-        mSubscriptionMonitor.registerForSubscriptionChanged(mPhone.getPhoneId(), mInternalHandler,
-                EVENT_SUBSCRIPTION_CHANGED, null);
+        SubscriptionManager.from(mPhone.getContext()).addOnSubscriptionsChangedListener(
+                mSubscriptionsChangedListener);
 
         register();
     }
+
+    private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener =
+            new SubscriptionManager.OnSubscriptionsChangedListener() {
+                @Override
+                public void onSubscriptionsChanged() {
+                    mInternalHandler.sendEmptyMessage(EVENT_SUBSCRIPTION_CHANGED);
+                }
+            };
 
     private NetworkCapabilities makeNetworkFilter(SubscriptionController subscriptionController,
             int phoneId) {

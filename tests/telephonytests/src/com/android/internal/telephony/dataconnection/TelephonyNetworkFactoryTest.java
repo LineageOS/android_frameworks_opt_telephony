@@ -53,7 +53,6 @@ import com.android.internal.telephony.dataconnection.TransportManager.HandoverPa
 import com.android.internal.telephony.mocks.ConnectivityServiceMock;
 import com.android.internal.telephony.mocks.PhoneSwitcherMock;
 import com.android.internal.telephony.mocks.SubscriptionControllerMock;
-import com.android.internal.telephony.mocks.SubscriptionMonitorMock;
 import com.android.internal.telephony.mocks.TelephonyRegistryMock;
 
 import org.junit.After;
@@ -80,7 +79,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private TelephonyRegistryMock mTelephonyRegistryMock;
     private PhoneSwitcherMock mPhoneSwitcherMock;
     private SubscriptionControllerMock mSubscriptionControllerMock;
-    private SubscriptionMonitorMock mSubscriptionMonitorMock;
     private ConnectivityServiceMock mConnectivityServiceMock;
     private final ArrayList<NetworkRequest> mNetworkRequestList = new ArrayList<>();
 
@@ -157,17 +155,14 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mTelephonyRegistryMock = new TelephonyRegistryMock();
         mSubscriptionControllerMock = new SubscriptionControllerMock(mContext,
                 mTelephonyRegistryMock, numberOfPhones);
-        mSubscriptionMonitorMock = new SubscriptionMonitorMock(numberOfPhones);
         mPhoneSwitcherMock = new PhoneSwitcherMock(
                 numberOfPhones, Looper.myLooper(), mSubscriptionControllerMock);
-        mSubscriptionMonitorMock = new SubscriptionMonitorMock(numberOfPhones);
 
         replaceInstance(SubscriptionController.class, "sInstance", null,
                 mSubscriptionControllerMock);
         replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcherMock);
 
-        mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(mSubscriptionMonitorMock,
-                Looper.myLooper(), mPhone);
+        mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone);
         monitorTestableLooper(new TestableLooper(
                 mConnectivityServiceMock.getHandlerThread().getLooper()));
     }
@@ -189,7 +184,9 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);
         mSubscriptionControllerMock.setDefaultDataSubId(subId);
         mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
-        mSubscriptionMonitorMock.notifySubscriptionChanged(phoneId);
+        // fake onSubscriptionChangedListener being triggered.
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
 
         log("addDefaultRequest");
         mConnectivityServiceMock.addDefaultRequest();
@@ -261,7 +258,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mPhoneSwitcherMock.setPreferredDataPhoneId(phoneId);
         mSubscriptionControllerMock.setDefaultDataSubId(subId);
         mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
-        mSubscriptionMonitorMock.notifySubscriptionChanged(phoneId);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
@@ -288,7 +286,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         assertEquals(1, mNetworkRequestList.size());
 
         mSubscriptionControllerMock.setSlotSubId(phoneId, unusedSubId);
-        mSubscriptionMonitorMock.notifySubscriptionChanged(phoneId);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
@@ -297,7 +296,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         assertEquals(0, mNetworkRequestList.size());
 
         mSubscriptionControllerMock.setSlotSubId(phoneId, subId);
-        mSubscriptionMonitorMock.notifySubscriptionChanged(phoneId);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
 
         mSubscriptionControllerMock.setDefaultDataSubId(subId);
@@ -317,7 +317,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         mPhoneSwitcherMock.setPreferredDataPhoneId(0);
         mSubscriptionControllerMock.setDefaultDataSubId(0);
         mSubscriptionControllerMock.setSlotSubId(0, 0);
-        mSubscriptionMonitorMock.notifySubscriptionChanged(0);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
 
         mPhoneSwitcherMock.setPhoneActive(0, true);
         mConnectivityServiceMock.addDefaultRequest();
