@@ -18,10 +18,11 @@ package com.android.internal.telephony;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.android.internal.telephony.CbGeoUtils.Circle;
-import com.android.internal.telephony.CbGeoUtils.Geometry;
-import com.android.internal.telephony.CbGeoUtils.LatLng;
-import com.android.internal.telephony.CbGeoUtils.Polygon;
+import android.telephony.CbGeoUtils;
+import android.telephony.CbGeoUtils.Circle;
+import android.telephony.CbGeoUtils.Geometry;
+import android.telephony.CbGeoUtils.LatLng;
+import android.telephony.CbGeoUtils.Polygon;
 
 import org.junit.Test;
 
