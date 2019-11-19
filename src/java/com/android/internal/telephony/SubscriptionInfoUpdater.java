@@ -36,7 +36,6 @@ import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.ServiceManager;
-import android.os.UserHandle;
 import android.permission.IPermissionManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -168,7 +167,7 @@ public class SubscriptionInfoUpdater extends Handler {
         // -Whenever new carrier privilege rules might change (new SIM is loaded)
         // -Whenever we switch to a new user
         mCurrentlyActiveUserId = 0;
-        sContext.registerReceiverAsUser(new BroadcastReceiver() {
+        sContext.registerReceiverForAllUsers(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 // Remove this line after testing
@@ -180,7 +179,7 @@ public class SubscriptionInfoUpdater extends Handler {
                             sContext.getContentResolver(), mCurrentlyActiveUserId);
                 }
             }
-        }, UserHandle.ALL, new IntentFilter(Intent.ACTION_USER_FOREGROUND), null, null);
+        }, new IntentFilter(Intent.ACTION_USER_FOREGROUND), null, null);
         ActivityManager am = (ActivityManager) sContext.getSystemService(Context.ACTIVITY_SERVICE);
         mCurrentlyActiveUserId = am.getCurrentUser();
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
