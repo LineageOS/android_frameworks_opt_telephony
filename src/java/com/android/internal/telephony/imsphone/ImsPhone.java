@@ -24,6 +24,7 @@ import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOIC
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_ALL;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MO;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MT;
+import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BIC_ACR;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ERASURE;
@@ -1115,6 +1116,8 @@ public class ImsPhone extends ImsPhoneBase {
             return ImsUtInterface.CB_BA_MO;
         } else if (CB_FACILITY_BA_MT.equals(facility)) {
             return ImsUtInterface.CB_BA_MT;
+        } else if (CB_FACILITY_BIC_ACR.equals(facility)) {
+            return ImsUtInterface.CB_BIC_ACR;
         }
 
         return 0;
