@@ -102,6 +102,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -221,6 +222,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -254,6 +256,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
             // Check NitzStateMachine state.
             assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
             assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+            assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
         }
 
         // A valid NITZ signal for the non-default zone should still be correctly detected.
@@ -268,6 +271,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
             // Check NitzStateMachine state.
             assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
             assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+            assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
         }
 
         // Demonstrate what happens with a bogus NITZ for NZ: because the default zone is boosted
@@ -285,6 +289,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
             // Check NitzStateMachine state.
             assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
             assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+            assertEquals(expectedTimeZoneId, mNitzStateMachine.getSavedTimeZoneId());
         }
     }
 
@@ -318,6 +323,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
             // Check NitzStateMachine state.
             assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
             assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+            assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
         }
 
         // A valid NITZ signal for a different zone should also be correctly detected.
@@ -332,6 +338,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
             // Check NitzStateMachine state.
             assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
             assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+            assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
         }
 
         // Demonstrate what happens with a bogus NITZ for US: because the default zone is not
@@ -346,8 +353,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                     .verifyNothingWasSetAndReset();
 
             // Check NitzStateMachine state.
-            assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
+            assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
             assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+            assertNull(mNitzStateMachine.getSavedTimeZoneId());
         }
     }
 
@@ -374,6 +382,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -399,6 +408,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -423,6 +433,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the country code becoming known.
         script.countryReceived(scenario.getNetworkCountryIsoCode())
@@ -432,6 +443,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -455,6 +467,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the country code becoming known.
         script.countryReceived(scenario.getNetworkCountryIsoCode());
@@ -465,6 +478,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -490,6 +504,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(goodNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the country code becoming known.
         script.countryReceived(scenario.getNetworkCountryIsoCode())
@@ -498,6 +513,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(goodNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -520,6 +536,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate receiving an NITZ signal.
         script.nitzReceived(goodNitzSignal);
@@ -534,6 +551,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(goodNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -568,6 +586,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(badNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the country code becoming known.
         script.countryReceived(scenario.getNetworkCountryIsoCode())
@@ -576,6 +595,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(badNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -606,6 +626,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate receiving an NITZ signal.
         script.nitzReceived(badNitzSignal);
@@ -618,6 +639,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(badNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -651,6 +673,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(badNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the country code becoming known.
         script.countryReceived(scenario.getNetworkCountryIsoCode())
@@ -661,6 +684,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(badNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -692,6 +716,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate receiving an NITZ signal.
         script.nitzReceived(badNitzSignal);
@@ -704,6 +729,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(badNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -740,6 +766,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(emulatorNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(emulatorTimeZoneId, mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -759,6 +786,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate receiving the NITZ signal.
         TimestampedValue<NitzData> nitzSignal =
@@ -772,6 +800,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(expectedZoneId, mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -797,6 +826,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // The time zone should be set (but the country is not valid so it's unlikely to be
         // correct).
@@ -805,6 +835,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Check NitzStateMachine state.
         assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(nitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(expectedZoneId, mNitzStateMachine.getSavedTimeZoneId());
     }
 
     @Test
@@ -842,7 +873,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
 
         // Check state that NitzStateMachine must expose.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(preflightNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Boarded flight: Airplane mode turned on / time zone detection still enabled.
         // The NitzStateMachineImpl must lose all state and stop having an opinion about time zone.
@@ -854,7 +887,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.toggleAirplaneMode(true);
 
         // Check state that NitzStateMachine must expose.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Verify there's no time zone opinion by toggling auto time zone off and on.
         script.toggleTimeZoneDetectionEnabled(false)
@@ -878,7 +913,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 .verifyNothingWasSetAndReset();
 
         // Check the state that NitzStateMachine must expose.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Post flight: Device has moved and receives new signals.
 
@@ -903,7 +940,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                         scenario.getTimeZoneId());
 
         // Check state that NitzStateMachine must expose.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(postFlightNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     /**
@@ -944,7 +983,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
 
         // Check state that NitzStateMachine must expose.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(initialNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate losing the network. The NitzStateMachineImpl must lose all NITZ state and stop
         // having an opinion about time zone.
@@ -956,7 +997,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.incrementTime(timeStepMillis);
 
         // Check state that NitzStateMachine must expose.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Verify there's no time zone opinion by toggling auto time zone off and on.
         script.toggleTimeZoneDetectionEnabled(false)
@@ -978,7 +1021,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 .verifyNothingWasSetAndReset();
 
         // Check the state that NitzStateMachine must expose.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the passage of time and update the device realtime clock.
         scenario.incrementTime(timeStepMillis);
@@ -996,7 +1041,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                         scenario.getTimeZoneId());
 
         // Check state that NitzStateMachine must expose.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(finalNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     /**
@@ -1037,7 +1084,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
 
         // Check state that NitzStateMachine must expose.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(initialNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate losing the network. The NitzStateMachineImpl must lose all NITZ state but should
         // retain country knowledge and so remain opinionated about time zone ID because the country
@@ -1050,7 +1099,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.incrementTime(timeStepMillis);
 
         // Check state that NitzStateMachine must expose.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Verify there's a time zone opinion by toggling auto time zone off and on.
         script.toggleTimeZoneDetectionEnabled(false)
@@ -1072,7 +1123,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
 
         // Check the state that NitzStateMachine must expose.
+        assertFalse(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertNull(mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
 
         // Simulate the passage of time and update the device realtime clock.
         scenario.incrementTime(timeStepMillis);
@@ -1090,7 +1143,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                         scenario.getTimeZoneId());
 
         // Check state that NitzStateMachine must expose.
+        assertTrue(mNitzStateMachine.getNitzTimeZoneDetectionSuccessful());
         assertEquals(finalNitzSignal.getValue(), mNitzStateMachine.getCachedNitzData());
+        assertEquals(scenario.getTimeZoneId(), mNitzStateMachine.getSavedTimeZoneId());
     }
 
     /**
