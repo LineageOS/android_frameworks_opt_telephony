@@ -116,4 +116,10 @@ public class SmsSessionEventBuilder {
         mEvent.smsType = type;
         return this;
     }
+
+    /** Set message id */
+    public SmsSessionEventBuilder setMessageId(long messageId) {
+        mEvent.messageId = messageId;
+        return this;
+    }
 }
