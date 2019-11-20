@@ -92,7 +92,7 @@ public class SmsPermissions {
             }
         } catch (PackageManager.NameNotFoundException e) {
             if (Rlog.isLoggable("SMS", Log.DEBUG)) {
-                log("Cannot find configured carrier ims package");
+                loge("Cannot find configured carrier ims package");
             }
         }
 
@@ -143,7 +143,7 @@ public class SmsPermissions {
                         .enforeceCallingOrSelfReadPrivilegedPhoneStatePermissionOrCarrierPrivilege(
                                 mContext, mPhone.getSubId(), message);
             } catch (SecurityException e) { // To avoid crashing applications
-                Log.e(LOG_TAG, message + ": Neither " + callingPackage + " is the default SMS app"
+                loge(message + ": Neither " + callingPackage + " is the default SMS app"
                         + " nor the caller has "
                         + android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE
                         + ", or carrier privileges", e);
@@ -171,7 +171,7 @@ public class SmsPermissions {
                 TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
                         mContext, mPhone.getSubId(), message);
             } catch (SecurityException e) { // To avoid crashing applications
-                Log.e(LOG_TAG, message + ": Neither " + callingPackage + " is the default SMS app"
+                loge(message + ": Neither " + callingPackage + " is the default SMS app"
                         + " nor the caller has " + android.Manifest.permission.MODIFY_PHONE_STATE
                         + ", or carrier privileges", e);
                 return false;
@@ -188,6 +188,14 @@ public class SmsPermissions {
 
     @UnsupportedAppUsage
     protected void log(String msg) {
-        Log.d(LOG_TAG, "[IccSmsInterfaceManager] " + msg);
+        Rlog.d(LOG_TAG, msg);
+    }
+
+    protected void loge(String msg) {
+        Rlog.e(LOG_TAG, msg);
+    }
+
+    protected void loge(String msg, Throwable e) {
+        Rlog.e(LOG_TAG, msg, e);
     }
 }
