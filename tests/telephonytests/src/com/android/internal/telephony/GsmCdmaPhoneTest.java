@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.Phone.EVENT_ICC_CHANGED;
+import static com.android.internal.telephony.Phone.EVENT_SRVCC_STATE_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_CHANGED;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
@@ -871,7 +872,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testEmergencyCallbackMessages() {
+    public void testEmergencyCallbackMessages() throws Exception {
         verify(mSimulatedCommandsVerifier).setEmergencyCallbackMode(eq(mPhoneUT), anyInt(),
                 nullable(Object.class));
         verify(mSimulatedCommandsVerifier).registerForExitEmergencyCallbackMode(eq(mPhoneUT),
@@ -881,34 +882,11 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mSimulatedCommands.notifyEmergencyCallbackMode();
         processAllMessages();
 
-        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        try {
-            verify(mIActivityManager, atLeast(1)).broadcastIntent(eq((IApplicationThread) null),
-                    intentArgumentCaptor.capture(),
-                    eq((String) null),
-                    eq((IIntentReceiver) null),
-                    eq(Activity.RESULT_OK),
-                    eq((String) null),
-                    eq((Bundle) null),
-                    eq((String[]) null),
-                    anyInt(),
-                    eq((Bundle) null),
-                    eq(false),
-                    eq(true),
-                    anyInt());
-        } catch(Exception e) {
-            fail("Unexpected exception: " + e.getStackTrace());
-        }
-
-        Intent intent = intentArgumentCaptor.getValue();
-        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(true, intent.getBooleanExtra(
-                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
-        assertEquals(true, mPhoneUT.isInEcm());
+        verifyEcbmIntentSent(1 /*times*/, true /*isInEcm*/);
+        assertTrue(mPhoneUT.isInEcm());
 
         // verify that wakeLock is acquired in ECM
-        assertEquals(true, mPhoneUT.getWakeLock().isHeld());
+        assertTrue(mPhoneUT.getWakeLock().isHeld());
 
         mPhoneUT.setOnEcbModeExitResponse(mTestHandler, EVENT_EMERGENCY_CALLBACK_MODE_EXIT, null);
         mPhoneUT.registerForEmergencyCallToggle(mTestHandler, EVENT_EMERGENCY_CALL_TOGGLE, null);
@@ -917,30 +895,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mSimulatedCommands.notifyExitEmergencyCallbackMode();
         processAllMessages();
 
-        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
-        try {
-            verify(mIActivityManager, atLeast(2)).broadcastIntent(eq((IApplicationThread) null),
-                    intentArgumentCaptor.capture(),
-                    eq((String) null),
-                    eq((IIntentReceiver) null),
-                    eq(Activity.RESULT_OK),
-                    eq((String) null),
-                    eq((Bundle) null),
-                    eq((String[]) null),
-                    anyInt(),
-                    eq((Bundle) null),
-                    eq(false),
-                    eq(true),
-                    anyInt());
-        } catch(Exception e) {
-            fail("Unexpected exception: " + e.getStackTrace());
-        }
-
-        intent = intentArgumentCaptor.getValue();
-        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(false, intent.getBooleanExtra(
-                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, true));
-        assertEquals(false, mPhoneUT.isInEcm());
+        verifyEcbmIntentSent(2 /*times*/, false /*isInEcm*/);
+        assertFalse(mPhoneUT.isInEcm());
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
 
@@ -955,7 +911,51 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mDataEnabledSettings).setInternalDataEnabled(true);
 
         // verify wakeLock released
-        assertEquals(false, mPhoneUT.getWakeLock().isHeld());
+        assertFalse(mPhoneUT.getWakeLock().isHeld());
+    }
+
+    private void verifyEcbmIntentSent(int times, boolean isInEcm) throws Exception {
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mIActivityManager, atLeast(times)).broadcastIntent(eq((IApplicationThread) null),
+                intentArgumentCaptor.capture(),
+                eq((String) null),
+                eq((IIntentReceiver) null),
+                eq(Activity.RESULT_OK),
+                eq((String) null),
+                eq((Bundle) null),
+                eq((String[]) null),
+                anyInt(),
+                eq((Bundle) null),
+                eq(false),
+                eq(true),
+                anyInt());
+
+        Intent intent = intentArgumentCaptor.getValue();
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(isInEcm, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
+    }
+
+    @Test
+    @SmallTest
+    public void testEcmCancelledPreservedThroughSrvcc() throws Exception {
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+        assertFalse(mPhoneUT.isEcmCanceledForEmergency());
+        // Set ECM cancelled state on ImsPhone to be transferred via migrateFrom
+        doReturn(true).when(mImsPhone).isEcmCanceledForEmergency();
+        verify(mSimulatedCommandsVerifier).registerForSrvccStateChanged(any(),
+                eq(EVENT_SRVCC_STATE_CHANGED), any());
+
+        // Start SRVCC
+        Message msg = Message.obtain();
+        msg.what = EVENT_SRVCC_STATE_CHANGED;
+        msg.obj = new AsyncResult(null, new int[]{TelephonyManager.SRVCC_STATE_HANDOVER_STARTED},
+                null);
+        mPhoneUT.sendMessage(msg);
+        processAllMessages();
+
+        // verify ECM cancelled is transferred correctly.
+        assertTrue(mPhoneUT.isEcmCanceledForEmergency());
     }
 
     @Test
