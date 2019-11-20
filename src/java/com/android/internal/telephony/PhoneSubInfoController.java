@@ -79,7 +79,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
 
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int subId, int keyType,
                                                               String callingPackage) {
-        return callPhoneMethodForSubIdWithReadCheck(subId, callingPackage,
+        return callPhoneMethodForSubIdWithPrivilegedCheck(subId,
                 "getCarrierInfoForImsiEncryption",
                 (phone)-> phone.getCarrierInfoForImsiEncryption(keyType));
     }
@@ -103,13 +103,12 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
      */
     public void resetCarrierKeysForImsiEncryption(int subId, String callingPackage) {
         callPhoneMethodForSubIdWithModifyCheck(subId, callingPackage,
-                "setCarrierInfoForImsiEncryption",
+                "resetCarrierKeysForImsiEncryption",
                 (phone)-> {
                     phone.resetCarrierKeysForImsiEncryption();
                     return null;
                 });
     }
-
 
     public String getDeviceSvn(String callingPackage) {
         return getDeviceSvnUsingSubId(getDefaultSubscription(), callingPackage);
@@ -433,7 +432,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                         TelephonyPermissions.checkCallingOrSelfReadSubscriberIdentifiers(
                                 aContext, aSubId, aCallingPackage, aMessage));
     }
-
 
     private <T> T callPhoneMethodForSubIdWithPrivilegedCheck(
             int subId, String message, CallPhoneMethodHelper<T> callMethodHelper) {
