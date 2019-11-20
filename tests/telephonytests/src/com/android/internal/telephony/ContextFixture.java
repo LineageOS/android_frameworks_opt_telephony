@@ -328,6 +328,13 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public Intent registerReceiverForAllUsers(BroadcastReceiver receiver,
+                IntentFilter filter, String broadcastPermission, Handler scheduler) {
+            return registerReceiverAsUser(
+                    receiver, UserHandle.ALL, filter, broadcastPermission, scheduler);
+        }
+
+        @Override
         public Intent registerReceiverAsUser(BroadcastReceiver receiver, UserHandle user,
                 IntentFilter filter, String broadcastPermission, Handler scheduler) {
             Intent result = null;
