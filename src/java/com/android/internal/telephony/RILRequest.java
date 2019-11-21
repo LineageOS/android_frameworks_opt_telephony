@@ -24,7 +24,7 @@ import android.os.WorkSource;
 import android.os.WorkSource.WorkChain;
 import android.telephony.Rlog;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -142,10 +142,10 @@ public class RILRequest {
         }
 
         if (mWorkSource.size() > 0) {
-            return mWorkSource.get(0) + ":" + mWorkSource.getName(0);
+            return mWorkSource.getUid(0) + ":" + mWorkSource.getPackageName(0);
         }
 
-        final ArrayList<WorkChain> workChains = mWorkSource.getWorkChains();
+        final List<WorkChain> workChains = mWorkSource.getWorkChains();
         if (workChains != null && !workChains.isEmpty()) {
             final WorkChain workChain = workChains.get(0);
             return workChain.getAttributionUid() + ":" + workChain.getTags()[0];
