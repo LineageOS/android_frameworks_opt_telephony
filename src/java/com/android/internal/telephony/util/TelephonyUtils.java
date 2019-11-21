@@ -25,6 +25,8 @@ import android.content.pm.ResolveInfo;
  * This class provides various util functions
  */
 public final class TelephonyUtils {
+    public static boolean IS_USER = "user".equals(android.os.Build.TYPE);
+
     /** {@hide} */
     public static String emptyIfNull(@Nullable String str) {
         return str == null ? "" : str;
