@@ -58,6 +58,7 @@ import android.provider.Telephony;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.RilRadioTechnology;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ImsiEncryptionInfo;
@@ -3839,7 +3840,7 @@ public class GsmCdmaPhone extends Phone {
      * @return the RIL voice radio technology used for CS calls,
      *         see {@code RIL_RADIO_TECHNOLOGY_*} in {@link android.telephony.ServiceState}.
      */
-    public @ServiceState.RilRadioTechnology int getCsCallRadioTech() {
+    public @RilRadioTechnology int getCsCallRadioTech() {
         int calcVrat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
         if (mSST != null) {
             calcVrat = getCsCallRadioTech(mSST.mSS.getVoiceRegState(),
@@ -3868,7 +3869,7 @@ public class GsmCdmaPhone extends Phone {
      * @return the RIL voice radio technology used for CS calls,
      *         see {@code RIL_RADIO_TECHNOLOGY_*} in {@link android.telephony.ServiceState}.
      */
-    private @ServiceState.RilRadioTechnology int getCsCallRadioTech(int vrs, int vrat) {
+    private @RilRadioTechnology int getCsCallRadioTech(int vrs, int vrat) {
         logd("getCsCallRadioTech, current vrs=" + vrs + ", vrat=" + vrat);
         int calcVrat = vrat;
         if (vrs != ServiceState.STATE_IN_SERVICE
