@@ -288,7 +288,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         String plmn =
                 TelephonyManager.from(mContext).getNetworkOperatorForPhone(
                         mPhone.getPhoneId());
-        SmsCbMessage cbMessage = sms.parseBroadcastSms(plmn, mPhone.getPhoneId());
+        SmsCbMessage cbMessage = sms.parseBroadcastSms(plmn, mPhone.getPhoneId(),
+                mPhone.getSubId());
         if (cbMessage != null) {
             mCellBroadcastHandler.dispatchSmsMessage(cbMessage);
         } else {
