@@ -162,7 +162,7 @@ public class DcNetworkAgent extends NetworkAgent {
         DcTracker dct = mPhone.getDcTracker(mTransportType);
         if (dct != null) {
             Message msg = dct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                    status, 0, redirectUrl);
+                    status, mDataConnection.getCid(), redirectUrl);
             msg.sendToTarget();
         }
     }
