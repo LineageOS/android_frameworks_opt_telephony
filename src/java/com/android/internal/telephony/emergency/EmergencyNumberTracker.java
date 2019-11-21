@@ -225,7 +225,7 @@ public class EmergencyNumberTracker extends Handler {
                 }
                 break;
             case EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE:
-                if (msg.obj == null) {
+                if (msg.obj == null && msg.arg1 != RESET_EMERGENCY_NUMBER_TEST_MODE) {
                     loge("EVENT_UPDATE_EMERGENCY_NUMBER_TEST_MODE: Result from"
                             + " executeEmergencyNumberTestModeCommand is null.");
                 } else {
