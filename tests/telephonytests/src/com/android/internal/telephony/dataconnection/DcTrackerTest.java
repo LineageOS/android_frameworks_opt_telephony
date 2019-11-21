@@ -736,21 +736,14 @@ public class DcTrackerTest extends TelephonyTest {
                 any(Message.class));
         verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0, 21, 1, NETWORK_TYPE_LTE_BITMASK);
 
-        // Verify the retry manger schedule another data call setup.
-        verify(mAlarmManager, times(1)).setExact(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),
-                anyLong(), any(PendingIntent.class));
-
         // This time we'll let RIL command succeed.
         mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
 
-        // Simulate the timer expires.
-        Intent intent = new Intent("com.android.internal.telephony.data-reconnect.default");
-        intent.putExtra("reconnect_alarm_extra_type", PhoneConstants.APN_TYPE_DEFAULT);
-        intent.putExtra("reconnect_alarm_extra_transport_type",
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, 0);
-        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        mContext.sendBroadcast(intent);
+        //Send event for reconnecting data
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
+                        mPhone.getPhoneId(), AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        mApnContext));
         waitForMs(200);
 
         dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
@@ -1377,14 +1370,11 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mAlarmManager, times(1)).setExact(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),
                 anyLong(), any(PendingIntent.class));
 
-        // Simulate the timer expires.
-        Intent intent = new Intent("com.android.internal.telephony.data-reconnect.default");
-        intent.putExtra("reconnect_alarm_extra_type", PhoneConstants.APN_TYPE_DEFAULT);
-        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, 0);
-        intent.putExtra("reconnect_alarm_extra_transport_type",
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        mContext.sendBroadcast(intent);
+        //Send event for reconnecting data
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
+                        mPhone.getPhoneId(), AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        mApnContext));
         waitForMs(200);
 
         // Verify if RIL command was sent properly.
