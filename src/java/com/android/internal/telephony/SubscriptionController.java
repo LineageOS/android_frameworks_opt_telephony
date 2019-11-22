@@ -3764,4 +3764,20 @@ public class SubscriptionController extends ISub.Stub {
             Binder.restoreCallingIdentity(token);
         }
     }
+
+    /**
+     * Whether it's supported to disable / re-enable a subscription on a physical (non-euicc) SIM.
+     */
+    @Override
+    public boolean canDisablePhysicalSubscription() {
+        enforceReadPrivilegedPhoneState("canToggleUiccApplicationsEnablement");
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            // TODO: b/133379187
+            return false;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
 }
