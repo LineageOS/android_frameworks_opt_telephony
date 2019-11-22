@@ -158,14 +158,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void testGetMergedServiceState() throws Exception {
         ServiceState imsServiceState = new ServiceState();
 
-        NetworkRegistrationInfo imsCsWwanRegInfo = new NetworkRegistrationInfo.Builder()
-                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
-                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
-                .setRegistrationState(
-                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
-                .build();
-
         NetworkRegistrationInfo imsPsWwanRegInfo = new NetworkRegistrationInfo.Builder()
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
@@ -182,10 +174,11 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                         NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
                 .build();
 
-        imsServiceState.addNetworkRegistrationInfo(imsCsWwanRegInfo);
+        // Only PS states are tracked for IMS.
         imsServiceState.addNetworkRegistrationInfo(imsPsWwanRegInfo);
         imsServiceState.addNetworkRegistrationInfo(imsPsWlanRegInfo);
 
+        // Voice reg state in this case is whether or not IMS is registered.
         imsServiceState.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
         imsServiceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
         imsServiceState.setIwlanPreferred(true);
@@ -234,6 +227,88 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getVoiceRegState());
         assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegState());
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, mergedServiceState.getDataNetworkType());
+    }
+
+    /**
+     * Some vendors do not provide a voice registration for LTE when attached to LTE only (no CSFB
+     * available). In this case, we should still get IN_SERVICE for voice service state, since
+     * IMS is registered.
+     */
+    @Test
+    @SmallTest
+    public void testGetMergedServiceStateNoCsfb() throws Exception {
+        ServiceState imsServiceState = new ServiceState();
+
+        NetworkRegistrationInfo imsPsWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+
+        NetworkRegistrationInfo imsPsWlanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                .build();
+
+        // Only PS states are tracked for IMS.
+        imsServiceState.addNetworkRegistrationInfo(imsPsWwanRegInfo);
+        imsServiceState.addNetworkRegistrationInfo(imsPsWlanRegInfo);
+
+        // Voice reg state in this case is whether or not IMS is registered.
+        imsServiceState.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        imsServiceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        imsServiceState.setIwlanPreferred(true);
+        doReturn(imsServiceState).when(mImsPhone).getServiceState();
+
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        ServiceState serviceState = new ServiceState();
+
+        NetworkRegistrationInfo csWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UNKNOWN)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                .build();
+
+        NetworkRegistrationInfo psWwanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+
+        NetworkRegistrationInfo psWlanRegInfo = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                .setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
+                .build();
+
+        serviceState.addNetworkRegistrationInfo(csWwanRegInfo);
+        serviceState.addNetworkRegistrationInfo(psWwanRegInfo);
+        serviceState.addNetworkRegistrationInfo(psWlanRegInfo);
+        // No CSFB, voice is OOS for LTE only attach
+        serviceState.setVoiceRegState(ServiceState.STATE_OUT_OF_SERVICE);
+        serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        serviceState.setIwlanPreferred(true);
+
+        mSST.mSS = serviceState;
+        mPhoneUT.mSST = mSST;
+
+        ServiceState mergedServiceState = mPhoneUT.getServiceState();
+
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getVoiceRegState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegState());
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mergedServiceState.getDataNetworkType());
     }
 
     @Test
