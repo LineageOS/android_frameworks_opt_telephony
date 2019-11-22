@@ -949,27 +949,27 @@ public class GsmCdmaPhone extends Phone {
     /**
      * ImsService reports "IN_SERVICE" for its voice registration state even if the device
      * has lost the physical link to the tower. This helper method merges the IMS and modem
-     * ServiceState, only overriding the voice registration state when we are registered to IMS over
-     * IWLAN. In this case the voice registration state will always be "OUT_OF_SERVICE", so override
-     * the voice registration state with the data registration state.
+     * ServiceState, only overriding the voice registration state when we are registered to IMS. In
+     * this case the voice registration state may be "OUT_OF_SERVICE", so override the voice
+     * registration state with the data registration state.
      */
     private ServiceState mergeServiceStates(ServiceState baseSs, ServiceState imsSs) {
+        // No need to merge states if the baseSs is IN_SERVICE.
+        if (baseSs.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+            return baseSs;
+        }
         // "IN_SERVICE" in this case means IMS is registered.
         if (imsSs.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) {
             return baseSs;
         }
 
-        if (imsSs.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
-            ServiceState newSs = new ServiceState(baseSs);
-            // Voice override for IWLAN. In this case, voice registration is OUT_OF_SERVICE, but
-            // the data RAT is IWLAN, so use that as a basis for determining whether or not the
-            // physical link is available.
-            newSs.setVoiceRegState(baseSs.getDataRegState());
-            newSs.setEmergencyOnly(false); // only get here if voice is IN_SERVICE
-            return newSs;
-        }
-
-        return baseSs;
+        ServiceState newSs = new ServiceState(baseSs);
+        // Voice override for IMS case. In this case, voice registration is OUT_OF_SERVICE, but
+        // IMS is available, so use data registration state as a basis for determining
+        // whether or not the physical link is available.
+        newSs.setVoiceRegState(baseSs.getDataRegState());
+        newSs.setEmergencyOnly(false); // only get here if voice is IN_SERVICE
+        return newSs;
     }
 
     private boolean handleCallDeflectionIncallSupplementaryService(
