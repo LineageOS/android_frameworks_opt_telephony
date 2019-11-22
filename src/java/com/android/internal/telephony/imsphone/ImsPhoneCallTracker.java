@@ -1467,6 +1467,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             fgImsCall.merge(bgImsCall);
         } catch (ImsException e) {
             log("conference " + e.getMessage());
+            handleConferenceFailed(foregroundConnection, backgroundConnection);
         }
     }
 
@@ -4275,5 +4276,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @Override
     public ImsPhone getPhone() {
         return mPhone;
+    }
+
+    private void handleConferenceFailed(ImsPhoneConnection fgConnection,
+            ImsPhoneConnection bgConnection) {
+        if (fgConnection != null) {
+            fgConnection.handleMergeComplete();
+        }
+        if (bgConnection != null) {
+            bgConnection.handleMergeComplete();
+        }
+        mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
     }
 }
