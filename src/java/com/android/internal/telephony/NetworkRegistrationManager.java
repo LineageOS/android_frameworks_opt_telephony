@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IBinder;
@@ -99,8 +100,14 @@ public class NetworkRegistrationManager extends Handler {
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        phone.getContext().registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL,
-                intentFilter, null, null);
+        try {
+            Context contextAsUser = phone.getContext().createPackageContextAsUser(
+                    phone.getContext().getPackageName(), 0, UserHandle.ALL);
+            contextAsUser.registerReceiver(mBroadcastReceiver, intentFilter,
+                    null /* broadcastPermission */, null);
+        } catch (PackageManager.NameNotFoundException e) {
+            loge("Package name not found: " + e.getMessage());
+        }
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_BIND_NETWORK_SERVICE, null);
 

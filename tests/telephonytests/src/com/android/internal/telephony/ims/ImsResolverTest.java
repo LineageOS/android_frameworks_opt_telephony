@@ -925,11 +925,9 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     private void setupResolver(int numSlots) {
-        // all tests call setupResolver before running
         when(mMockContext.getPackageManager()).thenReturn(mMockPM);
         when(mMockContext.getSystemService(eq(Context.CARRIER_CONFIG_SERVICE))).thenReturn(
                 mMockCarrierConfigManager);
-        when(mMockContext.getPackageManager()).thenReturn(mMockPM);
         mCarrierConfigs = new PersistableBundle[numSlots];
         for (int i = 0; i < numSlots; i++) {
             mCarrierConfigs[i] = new PersistableBundle();
