@@ -35,6 +35,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -63,9 +64,11 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
+import com.android.ims.FeatureConnector;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsUtInterface;
+import com.android.ims.RcsFeatureManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
@@ -829,6 +832,19 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testNonNullTrackersInImsPhone() throws Exception {
         assertNotNull(mImsPhoneUT.getEmergencyNumberTracker());
         assertNotNull(mImsPhoneUT.getServiceStateTracker());
+    }
+
+    @Test
+    @SmallTest
+    public void testRcsFeatureManagerInitialization() throws Exception {
+        FeatureConnector<RcsFeatureManager> mockRcsManagerConnector =
+                (FeatureConnector<RcsFeatureManager>) mock(FeatureConnector.class);
+        mImsPhoneUT.mRcsManagerConnector = mockRcsManagerConnector;
+
+        mImsPhoneUT.initRcsFeatureManager();
+
+        verify(mockRcsManagerConnector).disconnect();
+        assertNotNull(mImsPhoneUT.mRcsManagerConnector);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {
