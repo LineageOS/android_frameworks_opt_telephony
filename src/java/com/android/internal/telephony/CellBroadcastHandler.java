@@ -398,8 +398,8 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
         }
 
         private boolean hasPermission(String permission) {
-            return PermissionChecker.checkCallingOrSelfPermissionForDataDelivery(mContext, permission)
-                    == PERMISSION_GRANTED;
+            return PermissionChecker.checkCallingOrSelfPermissionForDataDelivery(mContext,
+                    permission) == PERMISSION_GRANTED;
         }
 
         private final LocationListener mLocationListener = new LocationListener() {
