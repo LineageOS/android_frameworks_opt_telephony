@@ -27,6 +27,7 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.UserHandle;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
@@ -639,7 +640,7 @@ public class ImsServiceController {
         try {
             if (mPackageManager != null) {
                 mPackageManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
-                        mContext.getUserId());
+                        UserHandle.myUserId());
             }
         } catch (RemoteException e) {
             Log.w(LOG_TAG, "Unable to grant permissions, binder died.");

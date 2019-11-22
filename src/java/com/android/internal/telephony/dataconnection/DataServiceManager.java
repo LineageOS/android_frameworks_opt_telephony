@@ -133,9 +133,9 @@ public class DataServiceManager extends Handler {
         final String[] pkgToGrant = {packageName};
         try {
             mPackageManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
-                    pkgToGrant, mPhone.getContext().getUserId());
+                    pkgToGrant, UserHandle.myUserId());
             mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
-                mPhone.getContext().getUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
+                UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
         } catch (RemoteException e) {
             loge("Binder to package manager died, permission grant for DataService failed.");
             throw e.rethrowAsRuntimeException();
@@ -157,10 +157,9 @@ public class DataServiceManager extends Handler {
             String[] dataServicesArray = new String[dataServices.size()];
             dataServices.toArray(dataServicesArray);
             mPackageManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
-                    dataServicesArray, mPhone.getContext().getUserId());
+                    dataServicesArray, UserHandle.myUserId());
             for (String pkg : dataServices) {
-                mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
-                        mPhone.getContext().getUserId(),
+                mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS, UserHandle.myUserId(),
                         pkg, AppOpsManager.MODE_ERRORED);
             }
         } catch (RemoteException e) {
@@ -287,7 +286,14 @@ public class DataServiceManager extends Handler {
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-
+        try {
+            Context contextAsUser = phone.getContext().createPackageContextAsUser(
+                    phone.getContext().getPackageName(), 0, UserHandle.ALL);
+            contextAsUser.registerReceiver(mBroadcastReceiver, intentFilter,
+                    null /* broadcastPermission */, null);
+        } catch (PackageManager.NameNotFoundException e) {
+            loge("Package name not found: " + e.getMessage());
+        }
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_BIND_DATA_SERVICE, null);
 

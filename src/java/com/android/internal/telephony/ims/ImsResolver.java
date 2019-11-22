@@ -539,7 +539,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             context.registerReceiverAsUser(mAppChangedReceiver, UserHandle.ALL, appChangedFilter,
                     null,
                     null);
-
             context.registerReceiver(mConfigChangedReceiver, new IntentFilter(
                     CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
             context.registerReceiver(mBootCompleted, new IntentFilter(
@@ -1363,7 +1362,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         for (ResolveInfo entry : packageManager.queryIntentServicesAsUser(
                 serviceIntent,
                 PackageManager.GET_META_DATA,
-                UserHandle.getUserHandleForUid(mContext.getUserId()))) {
+                UserHandle.getUserHandleForUid(UserHandle.myUserId()))) {
             ServiceInfo serviceInfo = entry.serviceInfo;
 
             if (serviceInfo != null) {
