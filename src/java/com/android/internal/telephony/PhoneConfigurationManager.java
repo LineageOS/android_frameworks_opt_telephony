@@ -30,6 +30,7 @@ import android.os.SystemProperties;
 import android.os.storage.StorageManager;
 import android.telephony.PhoneCapability;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -127,19 +128,6 @@ public class PhoneConfigurationManager {
         }
 
         return sInstance;
-    }
-
-    /**
-     * Whether the phoneId has a corresponding active slot / logical modem. If a DSDS capable
-     * device is in single SIM mode, phoneId=1 is valid but not active.
-     *
-     * TODO: b/139642279 combine with SubscriptionManager#isValidPhoneId when phone objects
-     * are dynamically allocated instead of always based on getMaxPhoneCount.
-     * @hide
-     */
-    public static boolean isPhoneActive(int phoneId) {
-        // Currently it simply depends on getPhoneCount. In future it can be generalized.
-        return phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount();
     }
 
     /**
@@ -366,11 +354,12 @@ public class PhoneConfigurationManager {
             pm.reboot("Multi-SIM config changed.");
         } else {
             log("onMultiSimConfigChanged: Rebooting is not required.");
+            mMi.notifyPhoneFactoryOnMultiSimConfigChanged(mContext, numOfActiveModems);
             broadcastMultiSimConfigChange(numOfActiveModems);
             // Register to RIL service if needed.
             for (int i = 0; i < mPhones.length; i++) {
                 Phone phone = mPhones[i];
-                phone.mCi.onSlotActiveStatusChange(isPhoneActive(i));
+                phone.mCi.onSlotActiveStatusChange(SubscriptionManager.isValidPhoneId(i));
             }
         }
     }
@@ -426,6 +415,9 @@ public class PhoneConfigurationManager {
      */
     @VisibleForTesting
     public static class MockableInterface {
+        /**
+         * Wrapper function to decide whether reboot is required for modem config change.
+         */
         @VisibleForTesting
         public boolean isRebootRequiredForModemConfigChange() {
             String rebootRequired = SystemProperties.get(
@@ -434,6 +426,9 @@ public class PhoneConfigurationManager {
             return !rebootRequired.equals("false");
         }
 
+        /**
+         * Wrapper function to call setMultiSimProperties.
+         */
         @VisibleForTesting
         public void setMultiSimProperties(int numOfActiveModems) {
             String multiSimConfig;
@@ -450,6 +445,15 @@ public class PhoneConfigurationManager {
 
             log("setMultiSimProperties to " + multiSimConfig);
             SystemProperties.set(TelephonyProperties.PROPERTY_MULTI_SIM_CONFIG, multiSimConfig);
+        }
+
+        /**
+         * Wrapper function to call PhoneFactory.onMultiSimConfigChanged.
+         */
+        @VisibleForTesting
+        public void notifyPhoneFactoryOnMultiSimConfigChanged(
+                Context context, int numOfActiveModems) {
+            PhoneFactory.onMultiSimConfigChanged(context, numOfActiveModems);
         }
     }
 

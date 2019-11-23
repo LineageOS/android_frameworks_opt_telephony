@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static java.util.Arrays.copyOf;
+
 import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +32,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ims.RcsMessageController;
 
 import java.util.ArrayList;
@@ -40,11 +43,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ProxyController {
     static final String LOG_TAG = "ProxyController";
 
-    private static final int EVENT_NOTIFICATION_RC_CHANGED        = 1;
+    private static final int EVENT_NOTIFICATION_RC_CHANGED  = 1;
     private static final int EVENT_START_RC_RESPONSE        = 2;
     private static final int EVENT_APPLY_RC_RESPONSE        = 3;
     private static final int EVENT_FINISH_RC_RESPONSE       = 4;
     private static final int EVENT_TIMEOUT                  = 5;
+    @VisibleForTesting
+    public static final int EVENT_MULTI_SIM_CONFIG_CHANGED  = 6;
 
     private static final int SET_RC_STATUS_IDLE             = 0;
     private static final int SET_RC_STATUS_STARTING         = 1;
@@ -105,9 +110,9 @@ public class ProxyController {
 
 
     //***** Class Methods
-    public static ProxyController getInstance(Context context, Phone[] phone, PhoneSwitcher ps) {
+    public static ProxyController getInstance(Context context) {
         if (sProxyController == null) {
-            sProxyController = new ProxyController(context, phone, ps);
+            sProxyController = new ProxyController(context);
         }
         return sProxyController;
     }
@@ -117,17 +122,17 @@ public class ProxyController {
         return sProxyController;
     }
 
-    private ProxyController(Context context, Phone[] phone, PhoneSwitcher phoneSwitcher) {
+    private ProxyController(Context context) {
         logd("Constructor - Enter");
 
         mContext = context;
-        mPhones = phone;
-        mPhoneSwitcher = phoneSwitcher;
+        mPhones = PhoneFactory.getPhones();
+        mPhoneSwitcher = PhoneSwitcher.getInstance();
 
         RcsMessageController.init(context);
 
-        mUiccPhoneBookController = new UiccPhoneBookController(mPhones);
-        mPhoneSubInfoController = new PhoneSubInfoController(mContext, mPhones);
+        mUiccPhoneBookController = new UiccPhoneBookController();
+        mPhoneSubInfoController = new PhoneSubInfoController(mContext);
         mSmsController = new SmsController(mContext);
         mSetRadioAccessFamilyStatus = new int[mPhones.length];
         mNewRadioAccessFamily = new int[mPhones.length];
@@ -146,6 +151,9 @@ public class ProxyController {
             mPhones[i].registerForRadioCapabilityChanged(
                     mHandler, EVENT_NOTIFICATION_RC_CHANGED, null);
         }
+
+        PhoneConfigurationManager.registerForMultiSimConfigChange(
+                mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
         logd("Constructor - Exit");
     }
 
@@ -201,7 +209,7 @@ public class ProxyController {
      */
     public boolean setRadioCapability(RadioAccessFamily[] rafs) {
         if (rafs.length != mPhones.length) {
-            throw new RuntimeException("Length of input rafs must equal to total phone count");
+            return false;
         }
         // Check if there is any ongoing transaction and throw an exception if there
         // is one as this is a programming error.
@@ -291,7 +299,8 @@ public class ProxyController {
         return true;
     }
 
-    private Handler mHandler = new Handler() {
+    @VisibleForTesting
+    public final Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             logd("handleMessage msg.what=" + msg.what);
@@ -316,11 +325,36 @@ public class ProxyController {
                     onTimeoutRadioCapability(msg);
                     break;
 
+                case EVENT_MULTI_SIM_CONFIG_CHANGED:
+                    onMultiSimConfigChanged();
+                    break;
+
                 default:
                     break;
             }
         }
     };
+
+    private void onMultiSimConfigChanged() {
+        int oldPhoneCount = mPhones.length;
+        mPhones = PhoneFactory.getPhones();
+
+        // Re-size arrays.
+        mSetRadioAccessFamilyStatus = copyOf(mSetRadioAccessFamilyStatus, mPhones.length);
+        mNewRadioAccessFamily = copyOf(mNewRadioAccessFamily, mPhones.length);
+        mOldRadioAccessFamily = copyOf(mOldRadioAccessFamily, mPhones.length);
+        mCurrentLogicalModemIds = copyOf(mCurrentLogicalModemIds, mPhones.length);
+        mNewLogicalModemIds = copyOf(mNewLogicalModemIds, mPhones.length);
+
+        // Clear to be sure we're in the initial state
+        clearTransaction();
+
+        // Register radio cap change for new phones.
+        for (int i = oldPhoneCount; i < mPhones.length; i++) {
+            mPhones[i].registerForRadioCapabilityChanged(
+                    mHandler, EVENT_NOTIFICATION_RC_CHANGED, null);
+        }
+    }
 
     /**
      * Handle START response
