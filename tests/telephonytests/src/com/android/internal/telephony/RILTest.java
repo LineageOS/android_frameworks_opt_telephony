@@ -119,12 +119,14 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
+import android.telephony.CellInfoNr;
 import android.telephony.CellInfoTdscdma;
 import android.telephony.CellInfoWcdma;
 import android.telephony.CellSignalStrengthCdma;
@@ -205,6 +207,7 @@ public class RILTest extends TelephonyTest {
     private static final int MNC = 260;
     private static final String MNC_STR = "260";
     private static final int NETWORK_ID = 65534;
+    private static final int NRARFCN = 3279165;
     private static final int PCI = 503;
     private static final int PSC = 500;
     private static final int RIL_TIMESTAMP_TYPE_OEM_RIL = 3;
@@ -1560,6 +1563,47 @@ public class RILTest extends TelephonyTest {
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
         cellInfoCdma.setTimeStamp(TIMESTAMP); // override the timestamp
         assertEquals(expected, cellInfoCdma);
+    }
+
+    @Test
+    public void testConvertHalCellInfoList_1_4ForNr() {
+        android.hardware.radio.V1_4.CellInfoNr cellinfo =
+                new android.hardware.radio.V1_4.CellInfoNr();
+        cellinfo.cellidentity.nci = CI;
+        cellinfo.cellidentity.pci = PCI;
+        cellinfo.cellidentity.tac = TAC;
+        cellinfo.cellidentity.nrarfcn = NRARFCN;
+        cellinfo.cellidentity.mcc = MCC_STR;
+        cellinfo.cellidentity.mnc = MNC_STR;
+        cellinfo.cellidentity.operatorNames.alphaLong = ALPHA_LONG;
+        cellinfo.cellidentity.operatorNames.alphaShort = ALPHA_SHORT;
+        cellinfo.signalStrength.ssRsrp = -RSRP;
+        cellinfo.signalStrength.ssRsrq = -RSRQ;
+        cellinfo.signalStrength.ssSinr = SIGNAL_NOISE_RATIO;
+        cellinfo.signalStrength.csiRsrp = -RSRP;
+        cellinfo.signalStrength.csiRsrq = -RSRQ;
+        cellinfo.signalStrength.csiSinr = SIGNAL_NOISE_RATIO;
+
+        android.hardware.radio.V1_4.CellInfo record = new android.hardware.radio.V1_4.CellInfo();
+        record.info.nr(cellinfo);
+
+        ArrayList<android.hardware.radio.V1_4.CellInfo> records = new ArrayList<>();
+        records.add(record);
+
+        ArrayList<CellInfo> ret = RIL.convertHalCellInfoList_1_4(records);
+
+        CellInfoNr cellInfoNr = (CellInfoNr) ret.get(0);
+        CellIdentityNr cellIdentityNr = (CellIdentityNr) cellInfoNr.getCellIdentity();
+        CellSignalStrengthNr signalStrengthNr =
+                (CellSignalStrengthNr) cellInfoNr.getCellSignalStrength();
+
+        CellIdentityNr expectedCellIdentity = new CellIdentityNr(PCI, TAC, NRARFCN, MCC_STR,
+                MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT);
+        CellSignalStrengthNr expectedSignalStrength = new CellSignalStrengthNr(-RSRP, -RSRQ,
+                SIGNAL_NOISE_RATIO, -RSRP, -RSRQ, SIGNAL_NOISE_RATIO);
+
+        assertEquals(expectedCellIdentity, cellIdentityNr);
+        assertEquals(expectedSignalStrength, signalStrengthNr);
     }
 
     @Test
