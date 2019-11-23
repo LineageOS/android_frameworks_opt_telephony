@@ -914,6 +914,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
                 pendingCallClirMode = clirMode;
                 mPendingCallVideoState = videoState;
+                mPendingIntentExtras = dialArgs.intentExtras;
                 pendingCallInEcm = true;
             }
         }
