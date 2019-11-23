@@ -39,7 +39,6 @@ import android.testing.TestableLooper;
 import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.SmallTest;
 
-import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
 
@@ -51,6 +50,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
+
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -109,8 +109,7 @@ public class UiccControllerTest extends TelephonyTest {
         // for testing we pretend slotIndex is set. In reality it would be invalid on older versions
         // (before 1.2) of hal
         mIccCardStatus.physicalSlotIndex = 0;
-        mUiccControllerUT = UiccController.make(mContext,
-            new CommandsInterface[]{mSimulatedCommands});
+        mUiccControllerUT = UiccController.make(mContext);
         // reset sLastSlotStatus so that onGetSlotStatusDone always sees a change in the slot status
         mUiccControllerUT.sLastSlotStatus = null;
         processAllMessages();
@@ -131,8 +130,7 @@ public class UiccControllerTest extends TelephonyTest {
                 com.android.internal.R.array.non_removable_euicc_slots,
                 nonRemovableEuiccSlots);
         replaceInstance(UiccController.class, "mInstance", null, null);
-        mUiccControllerUT = UiccController.make(mContext,
-            new CommandsInterface[]{mSimulatedCommands});
+        mUiccControllerUT = UiccController.make(mContext);
         processAllMessages();
     }
 
