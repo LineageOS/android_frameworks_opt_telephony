@@ -14,4 +14,3 @@ rule com.android.internal.util.Preconditions* com.android.internal.telephony.Pre
 rule com.android.internal.util.State* com.android.internal.telephony.State@1
 rule com.android.internal.util.StateMachine* com.android.internal.telephony.StateMachine@1
 rule com.android.internal.util.UserIcons* com.android.internal.telephony.UserIcons@1
-rule com.android.internal.util.XmlUtils* com.android.internal.telephony.XmlUtils@1
