@@ -258,14 +258,6 @@ public class DcTracker extends Handler {
     private static final boolean DATA_STALL_SUSPECTED = true;
     private static final boolean DATA_STALL_NOT_SUSPECTED = false;
 
-    private static final String INTENT_RECONNECT_ALARM =
-            "com.android.internal.telephony.data-reconnect";
-    private static final String INTENT_RECONNECT_ALARM_EXTRA_TYPE = "reconnect_alarm_extra_type";
-    private static final String INTENT_RECONNECT_ALARM_EXTRA_REASON =
-            "reconnect_alarm_extra_reason";
-    private static final String INTENT_RECONNECT_ALARM_EXTRA_TRANSPORT_TYPE =
-            "reconnect_alarm_extra_transport_type";
-
     private static final String INTENT_DATA_STALL_ALARM =
             "com.android.internal.telephony.data-stall";
     // Tag for tracking stale alarms
@@ -376,8 +368,6 @@ public class DcTracker extends Handler {
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
-            } else if (action.startsWith(INTENT_RECONNECT_ALARM)) {
-                onActionIntentReconnectAlarm(intent);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 onActionIntentDataStallAlarm(intent);
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
@@ -541,28 +531,13 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void onActionIntentReconnectAlarm(Intent intent) {
-        Message msg = obtainMessage(DctConstants.EVENT_DATA_RECONNECT);
-        msg.setData(intent.getExtras());
-        sendMessage(msg);
-    }
-
-    private void onDataReconnect(Bundle bundle) {
-        String reason = bundle.getString(INTENT_RECONNECT_ALARM_EXTRA_REASON);
-        String apnType = bundle.getString(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
-
+    private void onDataReconnect(ApnContext apnContextforRetry, int subId) {
         int phoneSubId = mPhone.getSubId();
-        int currSubId = bundle.getInt(PhoneConstants.SUBSCRIPTION_KEY,
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        String apnType = apnContextforRetry.getApnType();
+        String reason =  apnContextforRetry.getReason();
 
-        // Stop reconnect if not current subId is not correct.
-        // FIXME STOPSHIP - phoneSubId is coming up as -1 way after boot and failing this?
-        if (!SubscriptionManager.isValidSubscriptionId(currSubId) || (currSubId != phoneSubId)) {
-            return;
-        }
-
-        int transportType = bundle.getInt(INTENT_RECONNECT_ALARM_EXTRA_TRANSPORT_TYPE, 0);
-        if (transportType != mTransportType) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId) || (subId != phoneSubId)) {
+            log("onDataReconnect: invalid subId");
             return;
         }
 
@@ -590,8 +565,6 @@ public class DcTracker extends Handler {
             }
             // TODO: IF already associated should we send the EVENT_TRY_SETUP_DATA???
             sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
-
-            apnContext.setReconnectIntent(null);
         }
     }
 
@@ -796,13 +769,6 @@ public class DcTracker extends Handler {
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
         initApnContexts();
-
-        for (ApnContext apnContext : mApnContexts.values()) {
-            // Register the reconnect and restart actions.
-            filter = new IntentFilter();
-            filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
-            mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
-        }
 
         initEmergencyApnSetting();
         addEmergencyApnSetting();
@@ -1805,7 +1771,7 @@ public class DcTracker extends Handler {
         // Make sure reconnection alarm is cleaned up if there is no ApnContext
         // associated to the connection.
         if (dataConnection != null) {
-            cancelReconnectAlarm(apnContext);
+            cancelReconnect(apnContext);
         }
         str = "cleanUpConnectionInternal: X detach=" + detach + " reason="
                 + apnContext.getReason();
@@ -1902,24 +1868,6 @@ public class DcTracker extends Handler {
             return apnContext.getDataConnection();
         }
         return null;
-    }
-
-    /**
-     * Cancels the alarm associated with apnContext.
-     *
-     * @param apnContext on which the alarm should be stopped.
-     */
-    private void cancelReconnectAlarm(ApnContext apnContext) {
-        if (apnContext == null) return;
-
-        PendingIntent intent = apnContext.getReconnectIntent();
-
-        if (intent != null) {
-                AlarmManager am =
-                    (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
-                am.cancel(intent);
-                apnContext.setReconnectIntent(null);
-        }
     }
 
     boolean isPermanentFailure(@DataFailureCause int dcFailCause) {
@@ -2246,31 +2194,31 @@ public class DcTracker extends Handler {
         return retry;
     }
 
-    private void startAlarmForReconnect(long delay, ApnContext apnContext) {
-        String apnType = apnContext.getApnType();
-
-        Intent intent = new Intent(INTENT_RECONNECT_ALARM + "." + apnType);
-        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, apnContext.getReason());
-        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, apnType);
-        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TRANSPORT_TYPE, mTransportType);
-        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+    private void startReconnect(long delay, ApnContext apnContext) {
+        Message msg = obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
+                       mPhone.getSubId(), mTransportType, apnContext);
+        cancelReconnect(apnContext);
+        sendMessageDelayed(msg, delay);
 
         if (DBG) {
-            log("startAlarmForReconnect: delay=" + delay + " action=" + intent.getAction()
-                    + " apn=" + apnContext);
+            log("startReconnect: delay=" + delay + " apn="
+                    + apnContext + "reason: " + apnContext.getReason()
+                    + " subId: " + mPhone.getSubId());
         }
+    }
 
-        PendingIntent alarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0,
-                                        intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        apnContext.setReconnectIntent(alarmIntent);
+    /**
+     * Cancels the alarm associated with apnContext.
+     *
+     * @param apnContext on which the alarm should be stopped.
+     */
+    private void cancelReconnect(ApnContext apnContext) {
+        if (apnContext == null) return;
 
-        // Use the exact timer instead of the inexact one to provide better user experience.
-        // In some extreme cases, we saw the retry was delayed for few minutes.
-        // Note that if the stated trigger time is in the past, the alarm will be triggered
-        // immediately.
-        mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + delay, alarmIntent);
+        if (DBG) {
+            log("cancelReconnect: apn=" + apnContext);
+        }
+        removeMessages(DctConstants.EVENT_DATA_RECONNECT, apnContext);
     }
 
     private void notifyNoData(@DataFailureCause int lastFailCauseCode,
@@ -2822,7 +2770,8 @@ public class DcTracker extends Handler {
                 checkDataRoamingStatus(false);
 
                 boolean isProvApn = apnContext.isProvisioningApn();
-                final ConnectivityManager cm = ConnectivityManager.from(mPhone.getContext());
+                final ConnectivityManager cm = (ConnectivityManager) mPhone.getContext()
+                        .getSystemService(Context.CONNECTIVITY_SERVICE);
                 if (mProvisionBroadcastReceiver != null) {
                     mPhone.getContext().unregisterReceiver(mProvisionBroadcastReceiver);
                     mProvisionBroadcastReceiver = null;
@@ -2939,7 +2888,7 @@ public class DcTracker extends Handler {
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
 
-            startAlarmForReconnect(delay, apnContext);
+            startReconnect(delay, apnContext);
         } else {
             // If we are not going to retry any APN, set this APN context to failed state.
             // This would be the final state of a data connection.
@@ -2956,10 +2905,11 @@ public class DcTracker extends Handler {
      *
      * @param status One of {@code NetworkAgent.VALID_NETWORK} or
      * {@code NetworkAgent.INVALID_NETWORK}.
+     * @param cid context id {@code cid}
      * @param redirectUrl If the Internet probe was redirected, this
      * is the destination it was redirected to, otherwise {@code null}
      */
-    private void onNetworkStatusChanged(int status, String redirectUrl) {
+    private void onNetworkStatusChanged(int status, int cid, String redirectUrl) {
         if (!TextUtils.isEmpty(redirectUrl)) {
             Intent intent = new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED);
             intent.putExtra(TelephonyIntents.EXTRA_REDIRECTION_URL_KEY, redirectUrl);
@@ -2967,6 +2917,7 @@ public class DcTracker extends Handler {
             log("Notify carrier signal receivers with redirectUrl: " + redirectUrl);
         } else {
             final boolean isValid = status == NetworkAgent.VALID_NETWORK;
+            final DataConnection dc = getDataConnectionByContextId(cid);
             if (!mDsRecoveryHandler.isRecoveryOnBadNetworkEnabled()) {
                 if (DBG) log("Skip data stall recovery on network status change with in threshold");
                 return;
@@ -2975,7 +2926,9 @@ public class DcTracker extends Handler {
                 if (DBG) log("Skip data stall recovery on non WWAN");
                 return;
             }
-            mDsRecoveryHandler.processNetworkStatusChanged(isValid);
+            if (dc != null && dc.isValidationRequired()) {
+                mDsRecoveryHandler.processNetworkStatusChanged(isValid);
+            }
         }
     }
 
@@ -3027,7 +2980,7 @@ public class DcTracker extends Handler {
             if (delay > 0) {
                 // Data connection is in IDLE state, so when we reconnect later, we'll rebuild
                 // the waiting APN list, which will also reset/reconfigure the retry manager.
-                startAlarmForReconnect(delay, apnContext);
+                startReconnect(delay, apnContext);
             }
         } else {
             boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
@@ -3614,8 +3567,9 @@ public class DcTracker extends Handler {
 
             case DctConstants.EVENT_NETWORK_STATUS_CHANGED:
                 int status = msg.arg1;
+                int cid = msg.arg2;
                 String url = (String) msg.obj;
-                onNetworkStatusChanged(status, url);
+                onNetworkStatusChanged(status, cid, url);
                 break;
 
             case DctConstants.EVENT_RADIO_AVAILABLE:
@@ -3806,7 +3760,8 @@ public class DcTracker extends Handler {
                 break;
             }
             case DctConstants.EVENT_DATA_RECONNECT:
-                onDataReconnect(msg.getData());
+                if (DBG) log("EVENT_DATA_RECONNECT: subId=" + msg.arg1);
+                onDataReconnect((ApnContext) msg.obj, msg.arg1);
                 break;
             case DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED:
                 onDataServiceBindingChanged((Boolean) ((AsyncResult) msg.obj).result);

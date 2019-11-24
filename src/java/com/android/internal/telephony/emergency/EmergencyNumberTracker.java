@@ -75,7 +75,8 @@ public class EmergencyNumberTracker extends Handler {
     private static final String EMERGENCY_NUMBER_DB_OTA_FILE_NAME = "emergency_number_db";
     private static final String EMERGENCY_NUMBER_DB_OTA_FILE_PATH =
             "misc/emergencynumberdb/" + EMERGENCY_NUMBER_DB_OTA_FILE_NAME;
-
+    private File mEmergencyNumberDbOtaFilePath = new File(Environment.getDataDirectory(),
+            EMERGENCY_NUMBER_DB_OTA_FILE_PATH);
 
     /** @hide */
     public static boolean DBG = false;
@@ -124,6 +125,8 @@ public class EmergencyNumberTracker extends Handler {
     private static final int EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX = 4;
     /** Event indicating the update for the OTA emergency number database. */
     private static final int EVENT_UPDATE_OTA_EMERGENCY_NUMBER_DB = 5;
+    /** Event indicating the override for the test OTA emergency number database. */
+    private static final int EVENT_OVERRIDE_TEST_OTA_EMERGENCY_NUMBER_DB_FILE_PATH = 6;
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -153,11 +156,6 @@ public class EmergencyNumberTracker extends Handler {
                     updateEmergencyCountryIsoAllPhones(countryIso);
                 }
                 return;
-            } else if (intent.getAction().equals(
-                    TelephonyManager.ACTION_OTA_EMERGENCY_NUMBER_DB_INSTALLED)) {
-                logd("ACTION_OTA_EMERGENCY_NUMBER_DB_INSTALLED: triggered");
-                updateOtaEmergencyNumberDatabase();
-                return;
             }
         }
     };
@@ -183,8 +181,6 @@ public class EmergencyNumberTracker extends Handler {
                     CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
             // Receive Telephony Network Country Changes
             filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
-            // Receive Emergency Number OTA Update Changes
-            filter.addAction(TelephonyManager.ACTION_OTA_EMERGENCY_NUMBER_DB_INSTALLED);
 
             mPhone.getContext().registerReceiver(mIntentReceiver, filter);
         } else {
@@ -243,6 +239,14 @@ public class EmergencyNumberTracker extends Handler {
                 break;
             case EVENT_UPDATE_OTA_EMERGENCY_NUMBER_DB:
                 updateOtaEmergencyNumberListDatabaseAndNotify();
+                break;
+            case EVENT_OVERRIDE_TEST_OTA_EMERGENCY_NUMBER_DB_FILE_PATH:
+                if (msg.obj == null) {
+                    loge("EVENT_OVERRIDE_TEST_OTA_EMERGENCY_NUMBER_DB_FILE_PATH:"
+                            + " Result from otaFilePath is null.");
+                } else {
+                    overrideTestOtaEmergencyNumberDbFilePath((String) msg.obj);
+                }
                 break;
         }
     }
@@ -339,6 +343,16 @@ public class EmergencyNumberTracker extends Handler {
      */
     public void updateOtaEmergencyNumberDatabase() {
         this.obtainMessage(EVENT_UPDATE_OTA_EMERGENCY_NUMBER_DB).sendToTarget();
+    }
+
+    /**
+     * Override the test OTA Emergency Number database file path.
+     *
+     * @hide
+     */
+    public void updateTestOtaEmergencyNumberDbFilePath(String otaFilePath) {
+        this.obtainMessage(
+                EVENT_OVERRIDE_TEST_OTA_EMERGENCY_NUMBER_DB_FILE_PATH, otaFilePath).sendToTarget();
     }
 
     private EmergencyNumber convertEmergencyNumberFromEccInfo(EccInfo eccInfo, String countryIso) {
@@ -441,8 +455,7 @@ public class EmergencyNumberTracker extends Handler {
         List<EmergencyNumber> updatedOtaEmergencyNumberList = new ArrayList<>();
         try {
             inputStream = new BufferedInputStream(
-                    new FileInputStream(new File(Environment.getDataDirectory(),
-                            EMERGENCY_NUMBER_DB_OTA_FILE_PATH)));
+                    new FileInputStream(mEmergencyNumberDbOtaFilePath));
             allEccMessages = ProtobufEccData.AllInfo.parseFrom(readInputStreamToByteArray(
                     new GZIPInputStream(inputStream)));
             logd(mCountryIso + " ota emergency database is loaded. Ver: " + otaDatabaseVersion);
@@ -537,6 +550,26 @@ public class EmergencyNumberTracker extends Handler {
                     + mEmergencyNumberList);
         }
         notifyEmergencyNumberList();
+    }
+
+    private void overrideTestOtaEmergencyNumberDbFilePath(String otaFilePath) {
+        logd("overrideTestOtaEmergencyNumberDbFilePath:" + otaFilePath);
+        if (otaFilePath.equals("RESET")) {
+            mEmergencyNumberDbOtaFilePath = new File(Environment.getDataDirectory(),
+                    EMERGENCY_NUMBER_DB_OTA_FILE_PATH);
+            return;
+        }
+        String[] otaFilePathParts = otaFilePath.split("@");
+        if (otaFilePathParts.length != 2) {
+            loge("overrideTestOtaEmergencyNumberDbFilePath: otaFilePath length error");
+            return;
+        }
+        if (otaFilePathParts[0].equals("sdcard")) {
+            mEmergencyNumberDbOtaFilePath = new File(
+                    Environment.getExternalStorageDirectory(), otaFilePathParts[1]);
+        } else {
+            loge("overrideTestOtaEmergencyNumberDbFilePath: otaFilePath prefix error");
+        }
     }
 
     private void updateOtaEmergencyNumberListDatabaseAndNotify() {
@@ -722,6 +755,10 @@ public class EmergencyNumberTracker extends Handler {
 
     public String getEmergencyCountryIso() {
         return mCountryIso;
+    }
+
+    public int getEmergencyNumberDbVersion() {
+        return mCurrentDatabaseVersion;
     }
 
     private synchronized void updateEmergencyCountryIso(String countryIso) {

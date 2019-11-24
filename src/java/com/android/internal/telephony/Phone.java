@@ -3434,6 +3434,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
     }
 
+    public int getEmergencyNumberDbVersion() {
+        return TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION;
+    }
+
     public void resolveSubscriptionCarrierId(String simState) {
     }
 

@@ -88,6 +88,8 @@ import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
+import libcore.net.InetAddressUtils;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -1349,6 +1351,16 @@ public class DataConnection extends StateMachine {
         return result;
     }
 
+    /** @return {@code true} if validation is required, {@code false} otherwise. */
+    public boolean isValidationRequired() {
+        final NetworkCapabilities nc = getNetworkCapabilities();
+        return nc != null
+                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
+    }
+
     /**
      * @return {@code True} if 464xlat should be skipped.
      */
@@ -1377,7 +1389,11 @@ public class DataConnection extends StateMachine {
     public static boolean isIpAddress(String address) {
         if (address == null) return false;
 
-        return InetAddress.isNumeric(address);
+        // Accept IPv6 addresses (only) in square brackets for compatibility.
+        if (address.startsWith("[") && address.endsWith("]") && address.indexOf(':') != -1) {
+            address = address.substring(1, address.length() - 1);
+        }
+        return InetAddressUtils.isNumericAddress(address);
     }
 
     private SetupResult setLinkProperties(DataCallResponse response,
@@ -1451,7 +1467,8 @@ public class DataConnection extends StateMachine {
                 for (InetAddress gateway : response.getGatewayAddresses()) {
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
-                    linkProperties.addRoute(new RouteInfo(gateway));
+                    linkProperties.addRoute(new RouteInfo(null, gateway, null,
+                            RouteInfo.RTN_UNICAST));
                 }
 
                 // set interface MTU
