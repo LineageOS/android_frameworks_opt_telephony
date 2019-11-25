@@ -79,9 +79,6 @@ public class GsmCdmaConnection extends Connection {
     // The cached delay to be used between DTMF tones fetched from carrier config.
     private int mDtmfToneDelay = 0;
 
-    // Store the current audio codec
-    private int mAudioCodec = DriverCall.AUDIO_QUALITY_UNSPECIFIED;
-
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
     //***** Event Constants
