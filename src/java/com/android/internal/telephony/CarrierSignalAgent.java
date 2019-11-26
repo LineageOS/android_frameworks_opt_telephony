@@ -36,7 +36,7 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
 
-import com.android.internal.util.ArrayUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;

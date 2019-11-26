@@ -38,7 +38,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager.QualifiedNetworks;
-import com.android.internal.util.ArrayUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
