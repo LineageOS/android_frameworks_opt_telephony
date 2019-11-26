@@ -4716,6 +4716,9 @@ public class ServiceStateTracker extends Handler {
         mPhone.setSignalStrengthReportingCriteria(
                 config.getIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY),
                 AccessNetworkType.UTRAN);
+        mPhone.setSignalStrengthReportingCriteria(
+                config.getIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY),
+                AccessNetworkType.GERAN);
     }
 
     private void updateServiceStateLteEarfcnBoost(ServiceState serviceState, int lteEarfcn) {
