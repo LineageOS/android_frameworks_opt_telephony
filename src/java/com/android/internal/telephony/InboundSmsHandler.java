@@ -47,9 +47,9 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IDeviceIdleController;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.PowerWhitelistManager;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -238,8 +238,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     private LocalLog mLocalLog = new LocalLog(64);
 
-    @UnsupportedAppUsage
-    IDeviceIdleController mDeviceIdleController;
+    PowerWhitelistManager mPowerWhitelistManager;
 
     protected static boolean sEnableCbModule = false;
 
@@ -286,8 +285,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, name);
         mWakeLock.acquire();    // wake lock released after we enter idle state
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
-        mDeviceIdleController = TelephonyComponentFactory.getInstance()
-                .inject(IDeviceIdleController.class.getName()).getIDeviceIdleController();
+        mPowerWhitelistManager =
+                (PowerWhitelistManager) mContext.getSystemService(Context.POWER_WHITELIST_MANAGER);
         mCellBroadcastServiceManager = new CellBroadcastServiceManager(context, phone);
 
         addState(mDefaultState);
@@ -1237,14 +1236,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             bopts.setBackgroundActivityStartsAllowed(true);
             bundle = bopts.toBundle();
         }
-        try {
-            long duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForSms(
-                    pkgName, 0, reason);
-            if (bopts == null) bopts = BroadcastOptions.makeBasic();
-            bopts.setTemporaryAppWhitelistDuration(duration);
-            bundle = bopts.toBundle();
-        } catch (RemoteException e) {
-        }
+        long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
+                pkgName, PowerWhitelistManager.EVENT_SMS, reason);
+        if (bopts == null) bopts = BroadcastOptions.makeBasic();
+        bopts.setTemporaryAppWhitelistDuration(duration);
+        bundle = bopts.toBundle();
 
         return bundle;
     }
@@ -1496,15 +1492,13 @@ public abstract class InboundSmsHandler extends StateMachine {
                 intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
                 // Only the primary user will receive notification of incoming mms.
                 // That app will do the actual downloading of the mms.
-                Bundle options = null;
-                try {
-                    long duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
-                            mContext.getPackageName(), 0, "mms-broadcast");
-                    BroadcastOptions bopts = BroadcastOptions.makeBasic();
-                    bopts.setTemporaryAppWhitelistDuration(duration);
-                    options = bopts.toBundle();
-                } catch (RemoteException e) {
-                }
+                long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
+                        mContext.getPackageName(),
+                        PowerWhitelistManager.EVENT_MMS,
+                        "mms-broadcast");
+                BroadcastOptions bopts = BroadcastOptions.makeBasic();
+                bopts.setTemporaryAppWhitelistDuration(duration);
+                Bundle options = bopts.toBundle();
 
                 String mimeType = intent.getType();
                 dispatchIntent(intent, WapPushOverSms.getPermissionForType(mimeType),

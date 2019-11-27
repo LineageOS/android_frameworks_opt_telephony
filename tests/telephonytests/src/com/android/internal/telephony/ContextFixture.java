@@ -60,6 +60,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IInterface;
 import android.os.PersistableBundle;
+import android.os.PowerWhitelistManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
@@ -258,6 +259,8 @@ public class ContextFixture implements TestFixture<Context> {
                     // PowerManager and DisplayManager are final classes so cannot be mocked,
                     // return real services.
                     return TestApplication.getAppContext().getSystemService(name);
+                case Context.POWER_WHITELIST_MANAGER:
+                    return mPowerWhitelistManager;
                 default:
                     return null;
             }
@@ -585,6 +588,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final TelephonyRegistryManager mTelephonyRegistryManager =
         mock(TelephonyRegistryManager.class);
     private final BatteryStatsManager mBatteryStatsManager = mock(BatteryStatsManager.class);
+    private final PowerWhitelistManager mPowerWhitelistManager = mock(PowerWhitelistManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
