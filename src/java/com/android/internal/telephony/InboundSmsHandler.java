@@ -1179,7 +1179,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 UserHandle targetUser = UserHandle.of(users[i]);
                 if (users[i] != UserHandle.USER_SYSTEM) {
                     // Is the user not allowed to use SMS?
-                    if (mUserManager.hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
+                    if (hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
                         continue;
                     }
                     // Skip unknown users and managed profiles as well
@@ -1196,6 +1196,12 @@ public abstract class InboundSmsHandler extends StateMachine {
             mContext.sendOrderedBroadcastAsUser(intent, user, permission, appOp, opts,
                     resultReceiver, getHandler(), Activity.RESULT_OK, null, null);
         }
+    }
+
+    private boolean hasUserRestriction(String restrictionKey, UserHandle userHandle) {
+        final List<UserManager.EnforcingUser> sources = mUserManager
+                .getUserRestrictionSources(restrictionKey, userHandle);
+        return (sources != null && !sources.isEmpty());
     }
 
     /**
