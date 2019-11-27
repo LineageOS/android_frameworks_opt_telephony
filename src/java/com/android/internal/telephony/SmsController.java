@@ -18,7 +18,7 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.util.DumpUtils.checkDumpPermission;
+import static com.android.internal.telephony.util.TelephonyUtils.checkDumpPermission;
 
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
