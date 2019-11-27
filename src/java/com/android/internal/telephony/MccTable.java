@@ -26,8 +26,8 @@ import android.icu.util.ULocale;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.telephony.Rlog;
 import android.text.TextUtils;
-import android.util.Slog;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -260,7 +260,7 @@ public final class MccTable {
     public static String defaultLanguageForMcc(int mcc) {
         MccEntry entry = entryForMcc(mcc);
         if (entry == null) {
-            Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): no country for mcc");
+            Rlog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): no country for mcc");
             return null;
         }
 
@@ -274,8 +274,8 @@ public final class MccTable {
         // Ask CLDR for the language this country uses...
         ULocale likelyLocale = ULocale.addLikelySubtags(new ULocale("und", country));
         String likelyLanguage = likelyLocale.getLanguage();
-        Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + country + " uses " +
-               likelyLanguage);
+        Rlog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + country + " uses "
+                + likelyLanguage);
         return likelyLanguage;
     }
 
@@ -306,13 +306,13 @@ public final class MccTable {
      * @param mccmnc truncated imsi with just the MCC and MNC - MNC assumed to be from 4th to end
      */
     public static void updateMccMncConfiguration(Context context, String mccmnc) {
-        Slog.d(LOG_TAG, "updateMccMncConfiguration mccmnc='" + mccmnc);
+        Rlog.d(LOG_TAG, "updateMccMncConfiguration mccmnc='" + mccmnc);
 
         if (Build.IS_DEBUGGABLE) {
             String overrideMcc = SystemProperties.get("persist.sys.override_mcc");
             if (!TextUtils.isEmpty(overrideMcc)) {
                 mccmnc = overrideMcc;
-                Slog.d(LOG_TAG, "updateMccMncConfiguration overriding mccmnc='" + mccmnc + "'");
+                Rlog.d(LOG_TAG, "updateMccMncConfiguration overriding mccmnc='" + mccmnc + "'");
             }
         }
 
@@ -323,11 +323,11 @@ public final class MccTable {
                 mcc = Integer.parseInt(mccmnc.substring(0, 3));
                 mnc = Integer.parseInt(mccmnc.substring(3));
             } catch (NumberFormatException | StringIndexOutOfBoundsException ex) {
-                Slog.e(LOG_TAG, "Error parsing IMSI: " + mccmnc + ". ex=" + ex);
+                Rlog.e(LOG_TAG, "Error parsing IMSI: " + mccmnc + ". ex=" + ex);
                 return;
             }
 
-            Slog.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
+            Rlog.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
 
             try {
                 Configuration config = new Configuration();
@@ -339,13 +339,13 @@ public final class MccTable {
                 }
 
                 if (updateConfig) {
-                    Slog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
+                    Rlog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
                     ActivityManager.getService().updateConfiguration(config);
                 } else {
-                    Slog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
+                    Rlog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
                 }
             } catch (RemoteException e) {
-                Slog.e(LOG_TAG, "Can't update configuration", e);
+                Rlog.e(LOG_TAG, "Can't update configuration", e);
             }
         }
     }
@@ -400,7 +400,7 @@ public final class MccTable {
     private static Locale getLocaleForLanguageCountry(Context context, String language,
             String country) {
         if (language == null) {
-            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping no language");
+            Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping no language");
             return null; // no match possible
         }
         if (country == null) {
@@ -428,8 +428,8 @@ public final class MccTable {
                 if (l.getLanguage().equals(target.getLanguage())) {
                     // If we got a perfect match, we're done.
                     if (l.getCountry().equals(target.getCountry())) {
-                        Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got perfect match: " +
-                               l.toLanguageTag());
+                        Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: got perfect match: "
+                                + l.toLanguageTag());
                         return l;
                     }
 
@@ -439,13 +439,13 @@ public final class MccTable {
             }
 
             if (languageMatches.isEmpty()) {
-                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: no locales for language " + language);
+                Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: no locales for language " + language);
                 return null;
             }
 
             Locale bestMatch = lookupFallback(target, languageMatches);
             if (bestMatch != null) {
-                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got a fallback match: "
+                Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: got a fallback match: "
                         + bestMatch.toLanguageTag());
                 return bestMatch;
             } else {
@@ -459,7 +459,7 @@ public final class MccTable {
                     LocaleStore.fillCache(context);
                     LocaleInfo targetInfo = LocaleStore.getLocaleInfo(target);
                     if (targetInfo.isTranslated()) {
-                        Slog.d(LOG_TAG, "getLocaleForLanguageCountry: "
+                        Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: "
                                 + "target locale is translated: " + target);
                         return target;
                     }
@@ -469,12 +469,12 @@ public final class MccTable {
                 // unless we get a perfect match later. Note that these come back in no
                 // particular order, so there's no reason to think the first match is
                 // a particularly good match.
-                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got language-only match: "
+                Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: got language-only match: "
                         + language);
                 return languageMatches.get(0);
             }
         } catch (Exception e) {
-            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: exception", e);
+            Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: exception", e);
         }
 
         return null;
@@ -494,14 +494,14 @@ public final class MccTable {
         String language = hasSimLanguage ? simLanguage : MccTable.defaultLanguageForMcc(mcc);
         String country = MccTable.countryCodeForMcc(mcc);
 
-        Slog.d(LOG_TAG, "getLocaleFromMcc(" + language + ", " + country + ", " + mcc);
+        Rlog.d(LOG_TAG, "getLocaleFromMcc(" + language + ", " + country + ", " + mcc);
         final Locale locale = getLocaleForLanguageCountry(context, language, country);
 
         // If we couldn't find a locale that matches the SIM language, give it a go again
         // with the "likely" language for the given country.
         if (locale == null && hasSimLanguage) {
             language = MccTable.defaultLanguageForMcc(mcc);
-            Slog.d(LOG_TAG, "[retry ] getLocaleFromMcc(" + language + ", " + country + ", " + mcc);
+            Rlog.d(LOG_TAG, "[retry ] getLocaleFromMcc(" + language + ", " + country + ", " + mcc);
             return getLocaleForLanguageCountry(context, language, country);
         }
 

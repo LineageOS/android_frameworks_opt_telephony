@@ -62,7 +62,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.TelephonyUtils;
-import com.android.internal.util.ArrayUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -3793,6 +3793,22 @@ public class SubscriptionController extends ISub.Stub {
             return getDefaultDataSubId();
         } finally {
             Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
+     * Whether it's supported to disable / re-enable a subscription on a physical (non-euicc) SIM.
+     */
+    @Override
+    public boolean canDisablePhysicalSubscription() {
+        enforceReadPrivilegedPhoneState("canToggleUiccApplicationsEnablement");
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            // TODO: b/133379187
+            return false;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
     }
 }
