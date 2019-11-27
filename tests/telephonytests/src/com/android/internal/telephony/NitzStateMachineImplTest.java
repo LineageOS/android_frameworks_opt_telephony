@@ -25,6 +25,7 @@ import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_
 import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO2;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.US_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.NitzStateMachineTestSupport.createEmptyTimeSuggestion;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.createTimeSuggestionFromNitzSignal;
 
 import static org.junit.Assert.assertEquals;
@@ -892,8 +893,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         assertNull(mNitzStateMachine.getSavedTimeZoneId());
 
         // Verify there's no time zone opinion by toggling auto time zone off and on.
+        PhoneTimeSuggestion emptyTimeSuggestion = createEmptyTimeSuggestion(mPhone.getPhoneId());
         script.toggleTimeZoneDetectionEnabled(false)
-                .verifyNothingWasSetAndReset()
+                .verifyOnlyTimeWasSuggestedAndReset(emptyTimeSuggestion)
                 .toggleTimeZoneDetectionEnabled(true)
                 .verifyNothingWasSetAndReset();
 
@@ -989,8 +991,10 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
         // Simulate losing the network. The NitzStateMachineImpl must lose all NITZ state and stop
         // having an opinion about time zone.
-        script.networkUnavailable()
-                .verifyNothingWasSetAndReset();
+        script.networkUnavailable();
+
+        PhoneTimeSuggestion emptyTimeSuggestion = createEmptyTimeSuggestion(mPhone.getPhoneId());
+        script.verifyOnlyTimeWasSuggestedAndReset(emptyTimeSuggestion);
 
         // Simulate the passage of time and update the device realtime clock.
         scenario.incrementTime(timeStepMillis);
@@ -1091,8 +1095,10 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Simulate losing the network. The NitzStateMachineImpl must lose all NITZ state but should
         // retain country knowledge and so remain opinionated about time zone ID because the country
         // is sufficient to detect time zone in the UK.
-        script.networkUnavailable()
-                .verifyOnlyTimeZoneWasSetAndReset(scenario.getTimeZoneId());
+        script.networkUnavailable();
+
+        PhoneTimeSuggestion emptyTimeSuggestion = createEmptyTimeSuggestion(mPhone.getPhoneId());
+        script.verifyTimeSuggestedAndZoneSetAndReset(emptyTimeSuggestion, scenario.getTimeZoneId());
 
         // Simulate the passage of time and update the device realtime clock.
         scenario.incrementTime(timeStepMillis);
@@ -1372,8 +1378,10 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         @Override
         public void suggestDeviceTime(PhoneTimeSuggestion phoneTimeSuggestion) {
             suggestedTime.set(phoneTimeSuggestion);
-            // The fake time service just uses the latest suggestion.
-            mFakeDeviceState.currentTimeMillis = phoneTimeSuggestion.getUtcTime().getValue();
+            if (phoneTimeSuggestion.getUtcTime() != null) {
+                // The fake time service just uses the latest suggestion.
+                mFakeDeviceState.currentTimeMillis = phoneTimeSuggestion.getUtcTime().getValue();
+            }
         }
 
         void commitState() {
