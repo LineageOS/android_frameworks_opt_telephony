@@ -62,13 +62,14 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
 
     @Override
     public void suggestDeviceTime(@NonNull PhoneTimeSuggestion phoneTimeSuggestion) {
-        mTimeLog.log("Suggesting system clock update: " + phoneTimeSuggestion);
+        mTimeLog.log("Sending time suggestion: " + phoneTimeSuggestion);
 
-        // 3 nullness assertions in 1 line
-        Objects.requireNonNull(phoneTimeSuggestion.getUtcTime().getValue());
+        Objects.requireNonNull(phoneTimeSuggestion);
 
-        TimestampedValue<Long> utcTime = phoneTimeSuggestion.getUtcTime();
-        TelephonyMetrics.getInstance().writeNITZEvent(mPhoneId, utcTime.getValue());
+        if (phoneTimeSuggestion.getUtcTime() != null) {
+            TimestampedValue<Long> utcTime = phoneTimeSuggestion.getUtcTime();
+            TelephonyMetrics.getInstance().writeNITZEvent(mPhoneId, utcTime.getValue());
+        }
         mTimeDetector.suggestPhoneTime(phoneTimeSuggestion);
     }
 
