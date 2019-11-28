@@ -143,6 +143,7 @@ public class VisualVoicemailSmsFilter {
             return false;
         }
 
+        String clientPrefix = settings.clientPrefix;
         FullMessage fullMessage = getFullMessage(pdus, format);
 
         if (fullMessage == null) {
@@ -152,6 +153,10 @@ public class VisualVoicemailSmsFilter {
             String asciiMessage = parseAsciiPduMessage(pdus);
             WrappedMessageData messageData = VisualVoicemailSmsParser
                     .parseAlternativeFormat(asciiMessage);
+            if (messageData == null) {
+                Log.i(TAG, "Attempt to parse ascii PDU");
+                messageData = VisualVoicemailSmsParser.parse(clientPrefix, asciiMessage);
+            }
             if (messageData != null) {
                 sendVvmSmsBroadcast(context, settings, phoneAccountHandle, messageData, null);
             }
@@ -161,7 +166,6 @@ public class VisualVoicemailSmsFilter {
         }
 
         String messageBody = fullMessage.fullMessageBody;
-        String clientPrefix = settings.clientPrefix;
         WrappedMessageData messageData = VisualVoicemailSmsParser
                 .parse(clientPrefix, messageBody);
         if (messageData != null) {
