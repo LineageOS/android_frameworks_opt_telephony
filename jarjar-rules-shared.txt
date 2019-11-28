@@ -5,7 +5,6 @@ rule android.sysprop.** android.internal.telephony.sysprop.@1
 rule android.util.LocalLog* com.android.internal.telephony.LocalLog@1
 rule android.util.TimeUtils* com.android.internal.telephony.TimeUtils@1
 rule com.android.internal.os.SomeArgs* com.android.internal.telephony.SomeArgs@1
-rule com.android.internal.util.ArrayUtils* com.android.internal.telephony.ArrayUtils@1
 rule com.android.internal.util.FastXmlSerializer* com.android.internal.telephony.FastXmlSerializer@1
 rule com.android.internal.util.HexDump* com.android.internal.telephony.HexDump@1
 rule com.android.internal.util.IndentingPrintWriter* com.android.internal.telephony.IndentingPrintWriter@1
