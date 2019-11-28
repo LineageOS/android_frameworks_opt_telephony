@@ -327,9 +327,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         mSavedTimeZoneId = null;
         mTimeZoneLog.log("handleNetworkUnavailable: NITZ state cleared.");
 
-        // Avoid doing country-only detection work unnecessarily: if the mLatestNitzSignal was
-        // already null we have nothing to do as it will have been done last time the
-        // mLatestNitzSignal was cleared.
+        // Avoid doing work unnecessarily: if the mLatestNitzSignal was already null we have nothing
+        // to do as it will have been done last time the mLatestNitzSignal was cleared.
         if (oldNitzSignal == null) {
             return;
         }
@@ -342,6 +341,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         if (!TextUtils.isEmpty(isoCountryCode)) {
             updateTimeZoneFromNetworkCountryCode(isoCountryCode);
         }
+        sendEmptyTimeSuggestion("handleNetworkUnavailable");
     }
 
     @Override
@@ -386,14 +386,29 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         mTimeLog.log("handleAirplaneModeChanged(" + on + "): Time state cleared.");
 
         mCountryIsoCode = null;
+
+        TimestampedValue<NitzData> oldNitzSignal = mLatestNitzSignal;
         mLatestNitzSignal = null;
         mNitzTimeZoneDetectionSuccessful = false;
         mSavedTimeZoneId = null;
+
+        if (oldNitzSignal == null) {
+            // No work to do - terminate early.
+            return;
+        }
+
         mTimeZoneLog.log("handleAirplaneModeChanged(" + on + "): Time zone state cleared.");
+        sendEmptyTimeSuggestion("handleAirplaneModeChanged(" + on + ")");
+    }
+
+    private void sendEmptyTimeSuggestion(String reason) {
+        PhoneTimeSuggestion timeSuggestion = new PhoneTimeSuggestion(mPhone.getPhoneId());
+        timeSuggestion.addDebugInfo("Empty suggestion, reason=" + reason);
+        mTimeServiceHelper.suggestDeviceTime(timeSuggestion);
     }
 
     private void updateTimeFromNitz() {
-        TimestampedValue<NitzData> nitzSignal = mLatestNitzSignal;
+        TimestampedValue<NitzData> nitzSignal = Objects.requireNonNull(mLatestNitzSignal);
         try {
             boolean ignoreNitz = mDeviceState.getIgnoreNitz();
             if (ignoreNitz) {
@@ -469,8 +484,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 Rlog.d(LOG_TAG, logMsg);
             }
             mTimeLog.log(logMsg);
-            PhoneTimeSuggestion phoneTimeSuggestion =
-                    new PhoneTimeSuggestion(mPhone.getPhoneId(), newNitzTime);
+            PhoneTimeSuggestion phoneTimeSuggestion = new PhoneTimeSuggestion(mPhone.getPhoneId());
+            phoneTimeSuggestion.setUtcTime(newNitzTime);
             phoneTimeSuggestion.addDebugInfo(logMsg);
             mTimeServiceHelper.suggestDeviceTime(phoneTimeSuggestion);
 
