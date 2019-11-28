@@ -19,13 +19,13 @@ package com.android.internal.telephony;
 import static org.junit.Assert.fail;
 
 import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 import android.util.TimestampedValue;
 
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
-import com.android.internal.telephony.nitz.service.PhoneTimeZoneSuggestion;
 
 /**
  * An assortment of methods and classes for testing {@link NitzStateMachine} implementations.
@@ -272,9 +272,9 @@ public final class NitzStateMachineTestSupport {
     }
 
     public static PhoneTimeZoneSuggestion createEmptyTimeZoneSuggestion(int phoneId) {
-        PhoneTimeZoneSuggestion timeZoneSuggestion = new PhoneTimeZoneSuggestion(phoneId);
-        timeZoneSuggestion.addDebugInfo("Test");
-        return timeZoneSuggestion;
+        return new PhoneTimeZoneSuggestion.Builder(phoneId)
+                .addDebugInfo("Test")
+                .build();
     }
 
     public static PhoneTimeSuggestion createEmptyTimeSuggestion(int phoneId) {

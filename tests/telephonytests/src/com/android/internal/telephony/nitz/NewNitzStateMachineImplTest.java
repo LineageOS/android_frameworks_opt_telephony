@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.nitz;
 
+import static android.app.timezonedetector.PhoneTimeZoneSuggestion.MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY;
+import static android.app.timezonedetector.PhoneTimeZoneSuggestion.QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET;
+
 import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
 import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
@@ -31,6 +34,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.util.TimestampedValue;
 
 import com.android.internal.telephony.IndentingPrintWriter;
@@ -40,7 +44,6 @@ import com.android.internal.telephony.NitzStateMachineTestSupport.Scenario;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TimeZoneLookupHelper;
 import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.NitzSignalInputFilterPredicate;
-import com.android.internal.telephony.nitz.service.PhoneTimeZoneSuggestion;
 
 import org.junit.After;
 import org.junit.Before;
@@ -212,9 +215,9 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
                         PHONE_ID, "" /* countryIsoCode */, nitzSignal);
-        assertEquals(PhoneTimeZoneSuggestion.TEST_NETWORK_OFFSET_ONLY,
+        assertEquals(MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY,
                 expectedTimeZoneSuggestion.getMatchType());
-        assertEquals(PhoneTimeZoneSuggestion.MULTIPLE_ZONES_WITH_SAME_OFFSET,
+        assertEquals(QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET,
                 expectedTimeZoneSuggestion.getQuality());
 
         // Verify the state machine did the right thing.
@@ -256,9 +259,9 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
                         PHONE_ID, "" /* countryIsoCode */, nitzSignal);
-        assertEquals(PhoneTimeZoneSuggestion.TEST_NETWORK_OFFSET_ONLY,
+        assertEquals(MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY,
                 expectedTimeZoneSuggestion.getMatchType());
-        assertEquals(PhoneTimeZoneSuggestion.MULTIPLE_ZONES_WITH_SAME_OFFSET,
+        assertEquals(QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET,
                 expectedTimeZoneSuggestion.getQuality());
 
         // Verify the state machine did the right thing.
