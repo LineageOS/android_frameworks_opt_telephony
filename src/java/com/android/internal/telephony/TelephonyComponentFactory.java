@@ -22,9 +22,7 @@ import android.content.Context;
 import android.content.res.XmlResourceParser;
 import android.database.Cursor;
 import android.os.Handler;
-import android.os.IDeviceIdleController;
 import android.os.Looper;
-import android.os.ServiceManager;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
@@ -407,11 +405,6 @@ public class TelephonyComponentFactory {
     getCdmaSubscriptionSourceManagerInstance(Context context, CommandsInterface ci, Handler h,
                                              int what, Object obj) {
         return CdmaSubscriptionSourceManager.getInstance(context, ci, h, what, obj);
-    }
-
-    public IDeviceIdleController getIDeviceIdleController() {
-        return IDeviceIdleController.Stub.asInterface(
-                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
     }
 
     public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,

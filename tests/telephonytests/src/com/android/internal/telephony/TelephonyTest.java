@@ -43,7 +43,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.IDeviceIdleController;
 import android.os.Looper;
 import android.os.Message;
 import android.os.MessageQueue;
@@ -188,8 +187,6 @@ public abstract class TelephonyTest {
             .build();
     @Mock
     protected SimulatedCommandsVerifier mSimulatedCommandsVerifier;
-    @Mock
-    protected IDeviceIdleController mIDeviceIdleController;
     @Mock
     protected InboundSmsHandler mInboundSmsHandler;
     @Mock
@@ -436,8 +433,6 @@ public abstract class TelephonyTest {
                 .getCdmaSubscriptionSourceManagerInstance(nullable(Context.class),
                         nullable(CommandsInterface.class), nullable(Handler.class),
                         anyInt(), nullable(Object.class));
-        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
-                .getIDeviceIdleController();
         doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
                 .makeImsExternalCallTracker(nullable(ImsPhone.class));
         doReturn(mAppSmsManager).when(mTelephonyComponentFactory)
