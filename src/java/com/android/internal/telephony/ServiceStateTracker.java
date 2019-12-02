@@ -812,6 +812,10 @@ public class ServiceStateTracker extends Handler {
     }
     public boolean getPowerStateFromCarrier() { return !mRadioDisabledByCarrier; }
 
+    public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
+        return mLastPhysicalChannelConfigList;
+    }
+
     private SignalStrength mLastSignalStrength = null;
     @UnsupportedAppUsage
     protected boolean notifySignalStrength() {
