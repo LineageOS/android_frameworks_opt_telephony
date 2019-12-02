@@ -326,7 +326,7 @@ public class RuimRecords extends IccRecords {
                     // SPN is checked to have characters in printable ASCII
                     // range. If not, they are decoded with
                     // ENCODING_GSM_7BIT_ALPHABET scheme.
-                    if (TextUtils.isPrintableAsciiOnly(spn)) {
+                    if (isPrintableAsciiOnly(spn)) {
                         setServiceProviderName(spn);
                     } else {
                         if (DBG) log("Some corruption in SPN decoding = " + spn);
@@ -349,6 +349,22 @@ public class RuimRecords extends IccRecords {
             mTelephonyManager.setSimOperatorNameForPhone(
                     mParentApp.getPhoneId(), getServiceProviderName());
         }
+    }
+
+    private static boolean isPrintableAsciiOnly(final CharSequence str) {
+        final int len = str.length();
+        for (int i = 0; i < len; i++) {
+            if (!isPrintableAscii(str.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isPrintableAscii(final char c) {
+        final int asciiFirst = 0x20;
+        final int asciiLast = 0x7E;  // included
+        return (asciiFirst <= c && c <= asciiLast) || c == '\r' || c == '\n';
     }
 
     private class EfCsimMdnLoaded implements IccRecordLoaded {
