@@ -35,6 +35,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -1124,7 +1125,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param user user to deliver the intent to
      */
     @UnsupportedAppUsage
-    public void dispatchIntent(Intent intent, String permission, int appOp,
+    public void dispatchIntent(Intent intent, String permission, String appOp,
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user, int subId) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         final String action = intent.getAction();
@@ -1174,13 +1175,23 @@ public abstract class InboundSmsHandler extends StateMachine {
                     }
                 }
                 // Only pass in the resultReceiver when the USER_SYSTEM is processed.
-                mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp, opts,
-                        users[i] == UserHandle.USER_SYSTEM ? resultReceiver : null,
-                        getHandler(), Activity.RESULT_OK, null, null);
+                try {
+                    mContext.createPackageContextAsUser(mContext.getPackageName(), 0, targetUser)
+                            .sendOrderedBroadcast(intent, permission, appOp, opts,
+                                    users[i] == UserHandle.USER_SYSTEM ? resultReceiver : null,
+                                    getHandler(), Activity.RESULT_OK, null /* initialData */,
+                                    null /* initialExtras */);
+                } catch (PackageManager.NameNotFoundException ignored) {
+                }
             }
         } else {
-            mContext.sendOrderedBroadcastAsUser(intent, user, permission, appOp, opts,
-                    resultReceiver, getHandler(), Activity.RESULT_OK, null, null);
+            try {
+                mContext.createPackageContextAsUser(mContext.getPackageName(), 0, user)
+                        .sendOrderedBroadcast(intent, permission, appOp, opts, resultReceiver,
+                                getHandler(), Activity.RESULT_OK, null /* initialData */,
+                                null /* initialExtras */);
+            } catch (PackageManager.NameNotFoundException ignored) {
+            }
         }
     }
 
@@ -1278,7 +1289,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         Bundle options = handleSmsWhitelisting(intent.getComponent(), isClass0);
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM, subId);
+                AppOpsManager.OPSTR_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM, subId);
     }
 
     /**
@@ -1465,7 +1476,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 Bundle options = handleSmsWhitelisting(null, false /* bgActivityStartAllowed */);
 
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS,
+                        AppOpsManager.OPSTR_RECEIVE_SMS,
                         options, this, UserHandle.ALL, subId);
             } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
@@ -1488,7 +1499,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 String mimeType = intent.getType();
                 dispatchIntent(intent, WapPushOverSms.getPermissionForType(mimeType),
-                        WapPushOverSms.getAppOpsPermissionForIntent(mimeType), options, this,
+                        WapPushOverSms.getAppOpsStringPermissionForIntent(mimeType), options, this,
                         UserHandle.SYSTEM, subId);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.

@@ -61,7 +61,6 @@ import android.os.IInterface;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.telephony.TelephonyRegistryManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony.ServiceStateTable;
@@ -69,6 +68,7 @@ import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.euicc.EuiccManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -441,6 +441,20 @@ public class ContextFixture implements TestFixture<Context> {
                 BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
                 String initialData, Bundle initialExtras) {
             logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
+            mLastBroadcastOptions = options;
+            sendBroadcast(intent);
+            if (resultReceiver != null) {
+                synchronized (mOrderedBroadcastReceivers) {
+                    mOrderedBroadcastReceivers.put(intent, resultReceiver);
+                }
+            }
+        }
+
+        @Override
+        public void sendOrderedBroadcast(Intent intent, String receiverPermission,
+                String receiverAppOp, Bundle options, BroadcastReceiver resultReceiver,
+                Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+            logd("sendOrderedBroadcast called for " + intent.getAction());
             mLastBroadcastOptions = options;
             sendBroadcast(intent);
             if (resultReceiver != null) {
