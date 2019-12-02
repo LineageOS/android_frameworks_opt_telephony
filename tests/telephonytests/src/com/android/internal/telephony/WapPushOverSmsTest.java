@@ -89,7 +89,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mInboundSmsHandler).dispatchIntent(intentArgumentCaptor.capture(),
                 eq(android.Manifest.permission.RECEIVE_WAP_PUSH),
-                eq(AppOpsManager.OP_RECEIVE_WAP_PUSH),
+                eq(AppOpsManager.OPSTR_RECEIVE_WAP_PUSH),
                 nullable(Bundle.class),
                 isNull(BroadcastReceiver.class),
                 eq(UserHandle.SYSTEM),
@@ -143,7 +143,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
         verify(mInboundSmsHandler, never()).dispatchIntent(
                 any(Intent.class),
                 any(String.class),
-                anyInt(),
+                any(String.class),
                 any(Bundle.class),
                 any(BroadcastReceiver.class),
                 any(UserHandle.class),
