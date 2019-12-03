@@ -20,14 +20,14 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timedetector.TimeDetector;
+import android.app.timezonedetector.PhoneTimeZoneSuggestion;
+import android.app.timezonedetector.TimeZoneDetector;
 import android.content.Context;
 import android.util.LocalLog;
 import android.util.TimestampedValue;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
-import com.android.internal.telephony.nitz.service.PhoneTimeZoneSuggestion;
-import com.android.internal.telephony.nitz.service.TimeZoneDetectionService;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.PrintWriter;
@@ -40,7 +40,7 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
 
     private final int mPhoneId;
     private final TimeDetector mTimeDetector;
-    private final TimeZoneDetectionService mTimeZoneDetector;
+    private final TimeZoneDetector mTimeZoneDetector;
 
     private final LocalLog mTimeZoneLog = new LocalLog(30);
     private final LocalLog mTimeLog = new LocalLog(30);
@@ -57,7 +57,8 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
         mPhoneId = phone.getPhoneId();
         Context context = Objects.requireNonNull(phone.getContext());
         mTimeDetector = Objects.requireNonNull(context.getSystemService(TimeDetector.class));
-        mTimeZoneDetector = Objects.requireNonNull(TimeZoneDetectionService.getInstance(context));
+        mTimeZoneDetector =
+                Objects.requireNonNull(context.getSystemService(TimeZoneDetector.class));
     }
 
     @Override
@@ -110,14 +111,10 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
         mTimeZoneLog.dump(ipw);
         ipw.decreaseIndent();
         ipw.decreaseIndent();
-
-        // TODO Remove this line when the service moves to the system server.
-        mTimeZoneDetector.dumpLogs(ipw);
     }
 
     @Override
     public void dumpState(PrintWriter pw) {
         pw.println(" NewTimeServiceHelperImpl.mLastSuggestedTimeZone=" + mLastSuggestedTimeZone);
-        mTimeZoneDetector.dumpState(pw);
     }
 }
