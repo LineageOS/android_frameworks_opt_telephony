@@ -169,8 +169,9 @@ public class PhoneFactory {
                 sUiccController = UiccController.make(context);
 
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
-                SubscriptionController sc = SubscriptionController.init(context);
-                MultiSimSettingController.init(context, sc);
+                TelephonyComponentFactory.getInstance().inject(SubscriptionController.class.
+                        getName()).initSubscriptionController(context);
+                MultiSimSettingController.init(context, SubscriptionController.getInstance());
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
@@ -228,7 +229,9 @@ public class PhoneFactory {
                 int maxActivePhones = sPhoneConfigurationManager
                         .getNumberOfModemsWithSimultaneousDataConnections();
 
-                sPhoneSwitcher = PhoneSwitcher.make(maxActivePhones, sContext, Looper.myLooper());
+                sPhoneSwitcher = TelephonyComponentFactory.getInstance().inject(
+                        PhoneSwitcher.class.getName()).
+                        makePhoneSwitcher(maxActivePhones, sContext, Looper.myLooper());
 
                 sProxyController = ProxyController.getInstance(context);
 
@@ -285,8 +288,10 @@ public class PhoneFactory {
 
         // We always use PHONE_TYPE_CDMA_LTE now.
         if (phoneType == PHONE_TYPE_CDMA) phoneType = PHONE_TYPE_CDMA_LTE;
+        TelephonyComponentFactory injectedComponentFactory =
+                TelephonyComponentFactory.getInstance().inject(GsmCdmaPhone.class.getName());
 
-        return new GsmCdmaPhone(context,
+        return injectedComponentFactory.makePhone(context,
                 sCommandsInterfaces[phoneId], sPhoneNotifier, phoneId, phoneType,
                 TelephonyComponentFactory.getInstance());
     }
