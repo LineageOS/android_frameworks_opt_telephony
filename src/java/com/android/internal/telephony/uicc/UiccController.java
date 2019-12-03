@@ -546,7 +546,11 @@ public class UiccController extends Handler {
         // Resize array.
         mPhoneIdToSlotId = copyOf(mPhoneIdToSlotId, mCis.length);
 
+        // Register for new active modem for ss -> ds switch.
+        // For ds -> ss switch, there's no need to unregister as the mCis should unregister
+        // everything itself.
         for (int i = prevActiveModemCount; i < mCis.length; i++) {
+            mPhoneIdToSlotId[i] = INVALID_SLOT_ID;
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
 
             /*
