@@ -966,6 +966,23 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testMergeComplete() {
+        boolean[] result = new boolean[1];
+        // Place a call.
+        ImsPhoneConnection connection = placeCallAndMakeActive();
+        connection.addListener(new Connection.ListenerBase() {
+            @Override
+            public void onConnectionEvent(String event, Bundle extras) {
+                result[0] = android.telecom.Connection.EVENT_MERGE_COMPLETE.equals(event);
+            }
+        });
+        ImsCall call = connection.getImsCall();
+        call.getListener().onCallMerged(call, null, false);
+        assertTrue(result[0]);
+    }
+
+    @Test
+    @SmallTest
     public void testNumericOnlyRemap() {
         assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN, mCTUT.maybeRemapReasonCode(
                 new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0)));
@@ -1005,7 +1022,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                                 "SERVICE not allowed in this location")));
     }
 
-    private void placeCallAndMakeActive() {
+    private ImsPhoneConnection placeCallAndMakeActive() {
         try {
             doAnswer(new Answer<ImsCall>() {
                 @Override
@@ -1038,6 +1055,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 new ImsStreamMediaProfile());
         imsCall.getImsCallSessionListenerProxy().callSessionStarted(imsCall.getSession(),
                 new ImsCallProfile());
+        return connection;
     }
 }
 
