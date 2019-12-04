@@ -87,19 +87,19 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
-            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null);
+            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true);
 
     private SubscriptionInfo mSubInfo3 = new SubscriptionInfo(3, "subInfo3 IccId", -1, "T-mobile",
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
-            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null);
+            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true);
 
     private SubscriptionInfo mSubInfo4 = new SubscriptionInfo(4, "subInfo4 IccId", -1, "T-mobile",
             "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
-            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null);
+            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true);
 
     @Before
     public void setUp() throws Exception {

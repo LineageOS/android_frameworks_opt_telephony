@@ -160,7 +160,8 @@ public class SubscriptionController extends ISub.Stub {
             SubscriptionManager.WFC_IMS_ROAMING_ENABLED,
             SubscriptionManager.DATA_ROAMING,
             SubscriptionManager.DISPLAY_NAME,
-            SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES));
+            SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES,
+            SubscriptionManager.UICC_APPLICATIONS_ENABLED));
 
     public static SubscriptionController init(Context c) {
         synchronized (SubscriptionController.class) {
@@ -364,6 +365,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.SUBSCRIPTION_TYPE));
         String groupOwner = getOptionalStringFromCursor(cursor, SubscriptionManager.GROUP_OWNER,
                 /*defaultVal*/ null);
+        boolean areUiccApplicationsEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.UICC_APPLICATIONS_ENABLED)) == 1;
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -378,7 +381,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
                     + " profileClass:" + profileClass + " subscriptionType: " + subType
-                    + " carrierConfigAccessRules:" + carrierConfigAccessRules);
+                    + " carrierConfigAccessRules:" + carrierConfigAccessRules
+                    + " areUiccApplicationsEnabled: " + areUiccApplicationsEnabled);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -390,7 +394,7 @@ public class SubscriptionController extends ISub.Stub {
                 carrierName, nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc,
                 countryIso, isEmbedded, accessRules, cardId, publicCardId, isOpportunistic,
                 groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType,
-                groupOwner, carrierConfigAccessRules);
+                groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
     }
@@ -399,6 +403,17 @@ public class SubscriptionController extends ISub.Stub {
         // Return defaultVal if the column doesn't exist.
         int columnIndex = cursor.getColumnIndex(column);
         return (columnIndex == -1) ? defaultVal : cursor.getString(columnIndex);
+    }
+
+    /**
+     * Get a subscription that matches IccId.
+     * @return null if there isn't a match, or subscription info if there is one.
+     */
+    public SubscriptionInfo getSubInfoForIccId(String iccId) {
+        List<SubscriptionInfo> info = getSubInfo(SubscriptionManager.ICC_ID + "=" + iccId, null);
+        if (info == null || info.size() == 0) return null;
+        // Should be at most one subscription with the iccid.
+        return info.get(0);
     }
 
     /**
@@ -1896,6 +1911,33 @@ public class SubscriptionController extends ISub.Stub {
         refreshCachedActiveSubscriptionInfoList();
 
         notifySubscriptionInfoChanged();
+
+        return result;
+    }
+
+    /**
+     * Set uicc applications being enabled or disabled.
+     * @param enabled whether uicc applications are enabled or disabled.
+     * @return the number of records updated
+     */
+    public int setUiccApplicationsEnabled(boolean enabled, int subId) {
+        if (DBG) logd("[setUiccApplicationsEnabled]+ enabled:" + enabled + " subId:" + subId);
+
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
+
+        int result = mContext.getContentResolver().update(
+                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        notifySubscriptionInfoChanged();
+
+        if (isActiveSubId(subId)) {
+            Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+            phone.enableUiccApplications(enabled, null);
+        }
 
         return result;
     }
@@ -3423,9 +3465,7 @@ public class SubscriptionController extends ISub.Stub {
             return true;
         } else {
             // Enable / disable uicc applications.
-            Phone phone = PhoneFactory.getPhone(slotInfo.getLogicalSlotIdx());
-            if (phone == null) return false;
-            phone.enableUiccApplications(enable, null);
+            setUiccApplicationsEnabled(enable, subId);
             return true;
         }
     }
