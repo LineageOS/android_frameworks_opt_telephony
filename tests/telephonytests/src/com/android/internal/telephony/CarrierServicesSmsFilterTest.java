@@ -39,8 +39,8 @@ import android.service.carrier.ICarrierMessagingCallback;
 import android.service.carrier.ICarrierMessagingService;
 import android.service.carrier.MessagePdu;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.LocalLog;
 
+import com.android.internal.telephony.LocalLog;
 import com.android.internal.telephony.uicc.UiccCard;
 
 import org.junit.After;
