@@ -926,6 +926,7 @@ public class ImsResolverTest extends ImsTestBase {
 
     private void setupResolver(int numSlots) {
         when(mMockContext.getPackageManager()).thenReturn(mMockPM);
+        when(mMockContext.createContextAsUser(any(), eq(0))).thenReturn(mMockContext);
         when(mMockContext.getSystemService(eq(Context.CARRIER_CONFIG_SERVICE))).thenReturn(
                 mMockCarrierConfigManager);
         mCarrierConfigs = new PersistableBundle[numSlots];
@@ -947,16 +948,12 @@ public class ImsResolverTest extends ImsTestBase {
             fail("Unable to create looper from handler.");
         }
 
-        ArgumentCaptor<BroadcastReceiver> packageBroadcastCaptor =
-                ArgumentCaptor.forClass(BroadcastReceiver.class);
         ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
-        verify(mMockContext).registerReceiverAsUser(packageBroadcastCaptor.capture(), any(),
-                any(), any(), any());
-        mTestPackageBroadcastReceiver = packageBroadcastCaptor.getValue();
-        verify(mMockContext, times(2)).registerReceiver(receiversCaptor.capture(), any());
-        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(0);
-        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(1);
+        verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
+        mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
+        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
         mTestImsResolver.setSubscriptionManagerProxy(mTestSubscriptionManagerProxy);
         mTestImsResolver.setTelephonyManagerProxy(mTestTelephonyManagerProxy);
         when(mMockQueryManagerFactory.create(any(Context.class),
