@@ -379,6 +379,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final Context mContext;
+    // Special context created only for registering receivers for all users using UserHandle.ALL.
+    // The lifetime of a registered receiver is bounded by the lifetime of the context it's
+    // registered through, so we must retain the Context as long as we need the receiver to be
+    // active.
+    private final Context mReceiverContext;
     // Locks mBoundImsServicesByFeature only. Be careful to avoid deadlocks from
     // ImsServiceController callbacks.
     private final Object mBoundServicesLock = new Object();
@@ -514,6 +519,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     public ImsResolver(Context context, String defaultImsPackageName, int numSlots,
             boolean isDynamicBinding) {
         mContext = context;
+        mReceiverContext = context.createContextAsUser(UserHandle.ALL, 0 /*flags*/);
         mDeviceService = defaultImsPackageName;
         mNumSlots = numSlots;
         mIsDynamicBinding = isDynamicBinding;
@@ -536,12 +542,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             appChangedFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
             appChangedFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
             appChangedFilter.addDataScheme("package");
-            context.registerReceiverAsUser(mAppChangedReceiver, UserHandle.ALL, appChangedFilter,
-                    null,
-                    null);
-            context.registerReceiver(mConfigChangedReceiver, new IntentFilter(
+            mReceiverContext.registerReceiver(mAppChangedReceiver, appChangedFilter);
+            mReceiverContext.registerReceiver(mConfigChangedReceiver, new IntentFilter(
                     CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-            context.registerReceiver(mBootCompleted, new IntentFilter(
+            mReceiverContext.registerReceiver(mBootCompleted, new IntentFilter(
                     Intent.ACTION_BOOT_COMPLETED));
         }
     }
