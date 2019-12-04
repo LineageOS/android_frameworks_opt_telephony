@@ -35,6 +35,10 @@ filegroup {
     ],
     path: "src/java",
 }
+filegroup {
+    name: "jarjar-rules-shared",
+    srcs: ["jarjar-rules-shared.txt"],
+}
 
 java_library {
     name: "telephony-common",
@@ -50,7 +54,7 @@ java_library {
         "src/java/**/*.logtags",
     ],
 
-    jarjar_rules: "jarjar-rules-shared.txt",
+    jarjar_rules: ":jarjar-rules-shared",
 
     libs: [
         "android.hardware.radio-V1.0-java",
