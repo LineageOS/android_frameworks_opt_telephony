@@ -1443,4 +1443,10 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void stopNattKeepalive(int sessionHandle, Message result)  {
     }
+
+    @Override
+    public void registerUiccApplicationEnablementChanged(Handler h, int what, Object obj) {}
+
+    @Override
+    public void unregisterUiccApplicationEnablementChanged(Handler h) {}
 }

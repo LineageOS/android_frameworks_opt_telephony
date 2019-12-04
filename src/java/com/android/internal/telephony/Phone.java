@@ -225,7 +225,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE = 50;
     protected static final int EVENT_GET_AVAILABLE_NETWORKS_DONE    = 51;
 
-    private static final int EVENT_ALL_DATA_DISCONNECTED         = 52;
+    private static final int EVENT_ALL_DATA_DISCONNECTED            = 52;
+    protected static final int EVENT_UICC_APPS_ENABLEMENT_CHANGED   = 53;
+    protected static final int EVENT_GET_UICC_APPS_ENABLEMENT_DONE  = 54;
 
     protected static final int EVENT_LAST = EVENT_ALL_DATA_DISCONNECTED;
 
@@ -4166,6 +4168,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     // Return true if either CSIM or RUIM app is present. By default it returns false.
     public boolean isCdmaSubscriptionAppPresent() {
+        return false;
+    }
+
+    /**
+     * Enable or disable uicc applications.
+     * @param enable whether to enable or disable uicc applications.
+     * @param onCompleteMessage callback for async operation. Ignored if blockingCall is true.
+     */
+    public void enableUiccApplications(boolean enable, Message onCompleteMessage) {}
+
+    /**
+     * Whether disabling a physical subscription is supported or not.
+     */
+    public boolean canDisablePhysicalSubscription() {
         return false;
     }
 

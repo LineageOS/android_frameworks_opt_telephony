@@ -89,6 +89,7 @@ import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
@@ -153,6 +154,7 @@ public class GsmCdmaPhone extends Phone {
     private String mMeid;
     // string to define how the carrier specifies its own ota sp number
     private String mCarrierOtaSpNumSchema;
+    private boolean mUiccApplicationsEnabled = true;
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -325,6 +327,8 @@ public class GsmCdmaPhone extends Phone {
         mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
+        mCi.registerUiccApplicationEnablementChanged(this, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
+                null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
 
         //GSM
@@ -2408,6 +2412,8 @@ public class GsmCdmaPhone extends Phone {
 
         mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
         mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
+        mCi.areUiccApplicationsEnabled(obtainMessage(EVENT_GET_UICC_APPS_ENABLEMENT_DONE));
+
         startLceAfterRadioIsAvailable();
     }
 
@@ -2847,6 +2853,18 @@ public class GsmCdmaPhone extends Phone {
                     onComplete.sendToTarget();
                 }
                 break;
+            case EVENT_GET_UICC_APPS_ENABLEMENT_DONE:
+            case EVENT_UICC_APPS_ENABLEMENT_CHANGED: {
+                ar = (AsyncResult) msg.obj;
+                if (ar == null) return;
+                if (ar.exception != null) {
+                    logd("Received exception on event" + msg.what + " : " + ar.exception);
+                    return;
+                }
+
+                mUiccApplicationsEnabled = (boolean) ar.result;
+                break;
+            }
             default:
                 super.handleMessage(msg);
         }
@@ -4042,5 +4060,31 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
         return mSST.getPhysicalChannelConfigList();
+    }
+
+    // Enable or disable uicc applications.
+    @Override
+    public void enableUiccApplications(boolean enable, Message onCompleteMessage) {
+        // First check if card is present. Otherwise mUiccApplicationsDisabled doesn't make
+        // any sense.
+        UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
+        if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT) {
+            if (onCompleteMessage != null) {
+                AsyncResult.forMessage(onCompleteMessage, null,
+                        new IllegalStateException("No SIM card is present"));
+                onCompleteMessage.sendToTarget();
+            }
+            return;
+        }
+
+        mCi.enableUiccApplications(enable, onCompleteMessage);
+    }
+
+    /**
+     * Whether disabling a physical subscription is supported or not.
+     */
+    @Override
+    public boolean canDisablePhysicalSubscription() {
+        return mCi.canToggleUiccApplicationsEnablement();
     }
 }

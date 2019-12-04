@@ -2356,4 +2356,27 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void setSystemSelectionChannelsResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     */
+    public void enableUiccApplicationsResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     * @param enabled whether Uicc applications are enabled.
+     */
+    public void areUiccApplicationsEnabledResponse(RadioResponseInfo responseInfo,
+            boolean enabled) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, enabled);
+            }
+            mRil.processResponseDone(rr, responseInfo, enabled);
+        }
+    }
 }
