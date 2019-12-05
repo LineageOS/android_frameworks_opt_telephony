@@ -39,7 +39,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class SmsPermissionsTest {
+public class SmsPermissionsTest extends TelephonyTest {
     private static final String PACKAGE = "com.example.package";
     private static final String MESSAGE = "msg";
 
@@ -59,6 +59,8 @@ public class SmsPermissionsTest {
 
     @Before
     public void setUp() throws Exception {
+        super.setUp("SmsPermissionsTest");
+
         MockitoAnnotations.initMocks(this);
         mHandlerThread = new HandlerThread("IccSmsInterfaceManagerTest");
         mHandlerThread.start();
@@ -90,6 +92,7 @@ public class SmsPermissionsTest {
     public void tearDown() throws Exception {
         mHandlerThread.quit();
         mHandlerThread.join();
+        super.tearDown();
     }
 
     @Test
@@ -197,6 +200,8 @@ public class SmsPermissionsTest {
 
     @Test
     public void testCheckCallingOrSelfCanGetSmscAddressPermissions_noPermissions() {
+        Mockito.when(mMockContext.getSystemService(Context.TELEPHONY_SERVICE)).thenReturn(
+                mTelephonyManager);
         Mockito.when(mMockContext.checkCallingOrSelfPermission(
                     Manifest.permission.READ_PRIVILEGED_PHONE_STATE))
                 .thenReturn(PERMISSION_DENIED);
@@ -222,9 +227,10 @@ public class SmsPermissionsTest {
 
     @Test
     public void testCheckCallingOrSelfCanSetSmscAddressPermissions_noPermissions() {
+        Mockito.when(mMockContext.getSystemService(Context.TELEPHONY_SERVICE)).thenReturn(
+                mTelephonyManager);
         Mockito.when(mMockContext.checkCallingOrSelfPermission(
-                    Manifest.permission.MODIFY_PHONE_STATE))
-                .thenReturn(PERMISSION_DENIED);
+                Manifest.permission.MODIFY_PHONE_STATE)).thenReturn(PERMISSION_DENIED);
         assertFalse(mSmsPermissionsTest.checkCallingOrSelfCanSetSmscAddress(PACKAGE, MESSAGE));
     }
 }
