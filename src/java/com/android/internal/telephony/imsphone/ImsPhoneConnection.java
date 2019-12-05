@@ -132,9 +132,6 @@ public class ImsPhoneConnection extends Connection implements
      */
     private boolean mIsLocalVideoCapable = true;
 
-    // Store the current audio codec
-    private int mAudioCodec = ImsStreamMediaProfile.AUDIO_QUALITY_NONE;
-
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
