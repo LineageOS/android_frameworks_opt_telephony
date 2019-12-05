@@ -43,7 +43,6 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccCardController;
 import com.android.internal.telephony.euicc.EuiccController;
-import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
@@ -92,7 +91,6 @@ public class PhoneFactory {
     static private PhoneConfigurationManager sPhoneConfigurationManager;
     static private PhoneSwitcher sPhoneSwitcher;
     static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
-    static private ImsResolver sImsResolver;
     static private NotificationChannelController sNotificationChannelController;
     static private CellularNetworkValidator sCellularNetworkValidator;
 
@@ -213,17 +211,9 @@ public class PhoneFactory {
                 // Only bring up IMS if the device supports having an IMS stack.
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_IMS)) {
-                    // Get the package name of the default IMS implementation.
-                    String defaultImsPackage = sContext.getResources().getString(
-                            com.android.internal.R.string.config_ims_package);
-                    // Start ImsResolver and bind to ImsServices.
-                    Rlog.i(LOG_TAG, "ImsResolver: defaultImsPackage: " + defaultImsPackage);
-                    sImsResolver = new ImsResolver(sContext, defaultImsPackage, numPhones);
-                    sImsResolver.initialize();
                     // Start monitoring after defaults have been made.
                     // Default phone must be ready before ImsPhone is created because ImsService
-                    // might need it when it is being opened. This should initialize multiple
-                    // ImsPhones for ImsResolver implementations of ImsService.
+                    // might need it when it is being opened.
                     for (int i = 0; i < numPhones; i++) {
                         sPhones[i].createImsPhone();
                     }
@@ -352,14 +342,6 @@ public class PhoneFactory {
 
     public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
         return sSubInfoRecordUpdater;
-    }
-
-    /**
-     * @return The ImsResolver instance or null if IMS is not supported
-     * (FEATURE_TELEPHONY_IMS is not defined).
-     */
-    public static @Nullable ImsResolver getImsResolver() {
-        return sImsResolver;
     }
 
     /**
@@ -560,16 +542,6 @@ public class PhoneFactory {
             pw.decreaseIndent();
             pw.println("++++++++++++++++++++++++++++++++");
         }
-
-        pw.println("ImsResolver:");
-        pw.increaseIndent();
-        try {
-            if (sImsResolver != null) sImsResolver.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.decreaseIndent();
-        pw.println("++++++++++++++++++++++++++++++++");
 
         pw.println("UiccController:");
         pw.increaseIndent();
