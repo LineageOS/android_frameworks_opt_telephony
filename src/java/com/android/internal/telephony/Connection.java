@@ -217,6 +217,9 @@ public abstract class Connection {
     protected int mCause = DisconnectCause.NOT_DISCONNECTED;
     protected PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
+    // Store the current audio code
+    protected int mAudioCodec;
+
     @UnsupportedAppUsage
     private static String LOG_TAG = "Connection";
 
@@ -1354,5 +1357,13 @@ public abstract class Connection {
                 .append(" state: " + getState())
                 .append(" post dial state: " + getPostDialState());
         return str.toString();
+    }
+
+    /**
+     * Get current audio codec.
+     * @return current audio codec.
+     */
+    public int getAudioCodec() {
+        return mAudioCodec;
     }
 }
