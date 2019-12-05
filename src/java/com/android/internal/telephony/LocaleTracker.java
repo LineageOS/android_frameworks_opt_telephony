@@ -334,8 +334,9 @@ public class LocaleTracker extends Handler {
                         count = mccMncMap.get(mccMnc) + 1;
                     }
                     mccMncMap.put(mccMnc, count);
-                    // This is unlikely, but if MCC from cell info looks different, we choose the
-                    // MCC that occurs most.
+                    // We keep track of the MCC+MNC combination that occurs most frequently, if
+                    // there is one. A null MNC is treated like any other distinct MCC+MNC
+                    // combination.
                     if (count > maxCount) {
                         maxCount = count;
                         selectedMccMnc = mccMnc;
@@ -359,6 +360,7 @@ public class LocaleTracker extends Handler {
         return mccString;
     }
 
+    @Nullable
     private static String getNetworkMnc(CellInfo cellInfo) {
         String mccString = null;
         if (cellInfo instanceof CellInfoGsm) {
