@@ -319,7 +319,7 @@ public class LocaleTracker extends Handler {
      * @return a matching {@link MccMnc}. Null if the information is not available.
      */
     @Nullable
-    private MccMnc getMccMncFromCellInfo(String mccToMatch) {
+    private MccMnc getMccMncFromCellInfo(@NonNull String mccToMatch) {
         MccMnc selectedMccMnc = null;
         if (mCellInfoList != null) {
             Map<MccMnc, Integer> mccMncMap = new HashMap<>();
@@ -346,6 +346,7 @@ public class LocaleTracker extends Handler {
         return selectedMccMnc;
     }
 
+    @Nullable
     private static String getNetworkMcc(CellInfo cellInfo) {
         String mccString = null;
         if (cellInfo instanceof CellInfoGsm) {
@@ -540,14 +541,16 @@ public class LocaleTracker extends Handler {
         // info.
         if (TextUtils.isEmpty(countryIso)) {
             String mcc = getMccFromCellInfo();
-            countryIso = MccTable.countryCodeForMcc(mcc);
-            countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
+            if (mcc != null) {
+                countryIso = MccTable.countryCodeForMcc(mcc);
+                countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
 
-            MccMnc mccMnc = getMccMncFromCellInfo(mcc);
-            if (mccMnc != null) {
-                timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
-                timeZoneCountryIsoDebugInfo =
-                        "CellInfo: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+                MccMnc mccMnc = getMccMncFromCellInfo(mcc);
+                if (mccMnc != null) {
+                    timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
+                    timeZoneCountryIsoDebugInfo =
+                            "CellInfo: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+                }
             }
         }
 
