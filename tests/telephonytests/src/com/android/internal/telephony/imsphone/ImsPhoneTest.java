@@ -223,11 +223,25 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(Phone.SuppService.SEPARATE,
                 ((AsyncResult) messageArgumentCaptor.getValue().obj).result);
 
-        // ringing call is idle
+        // ringing call is idle, only an active call present
+        doReturn(Call.State.ACTIVE).when(mForegroundCall).getState();
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
         verify(mImsCT).holdActiveCall();
 
+        // background call is holding
+        doReturn(Call.State.HOLDING).when(mBackgroundCall).getState();
+        doReturn(Call.State.IDLE).when(mForegroundCall).getState();
+        assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
+        verify(mImsCT).unholdHeldCall();
+
+        // background call is holding and there's an active foreground call
+        doReturn(Call.State.ACTIVE).when(mForegroundCall).getState();
+        assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
+        verify(mImsCT, times(2)).holdActiveCall();
+
         // ringing call is not idle
+        doReturn(Call.State.IDLE).when(mForegroundCall).getState();
+        doReturn(Call.State.IDLE).when(mBackgroundCall).getState();
         doReturn(Call.State.INCOMING).when(mRingingCall).getState();
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("2"));
         verify(mImsCT).acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
