@@ -82,7 +82,6 @@ import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkTyp
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.util.AsyncChannel;
-import com.android.internal.util.CollectionUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -713,8 +712,7 @@ public class DataConnection extends StateMachine {
             }
 
             linkProperties = dc.getLinkProperties();
-            if (linkProperties == null || CollectionUtils.isEmpty(
-                    linkProperties.getLinkAddresses())) {
+            if (linkProperties == null || linkProperties.getLinkAddresses().isEmpty()) {
                 loge("connect: Can't find link properties of handover data connection. dc="
                         + dc);
                 return DataFailCause.HANDOVER_FAILED;
