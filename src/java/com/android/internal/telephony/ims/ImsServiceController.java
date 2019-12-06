@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Manages the Binding lifecycle of one ImsService as well as the relevant ImsFeatures that the
@@ -205,7 +206,7 @@ public class ImsServiceController {
     private boolean mIsBound = false;
     private boolean mIsBinding = false;
     // Set of a pair of slotId->feature
-    private HashSet<ImsFeatureConfiguration.FeatureSlotPair> mImsFeatures;
+    private Set<ImsFeatureConfiguration.FeatureSlotPair> mImsFeatures;
     // Binder interfaces to the features set in mImsFeatures;
     private HashSet<ImsFeatureContainer> mImsFeatureBinders = new HashSet<>();
     private IImsServiceController mIImsServiceController;
@@ -362,10 +363,11 @@ public class ImsServiceController {
      * @return {@link true} if the service is in the process of being bound, {@link false} if it
      * has failed.
      */
-    public boolean bind(HashSet<ImsFeatureConfiguration.FeatureSlotPair> imsFeatureSet) {
+    public boolean bind(Set<ImsFeatureConfiguration.FeatureSlotPair> imsFeatureSet) {
         synchronized (mLock) {
             if (!mIsBound && !mIsBinding) {
                 mIsBinding = true;
+                sanitizeFeatureConfig(imsFeatureSet);
                 mImsFeatures = imsFeatureSet;
                 grantPermissionsToService();
                 Intent imsServiceIntent = new Intent(getServiceInterface()).setComponent(
@@ -376,7 +378,7 @@ public class ImsServiceController {
                 mLocalLog.log("binding " + imsFeatureSet);
                 Log.i(LOG_TAG, "Binding ImsService:" + mComponentName);
                 try {
-                    boolean bindSucceeded = startBindToService(imsServiceIntent,
+                    boolean bindSucceeded = mContext.bindService(imsServiceIntent,
                             mImsServiceConnection, serviceFlags);
                     if (!bindSucceeded) {
                         mLocalLog.log("    binding failed, retrying in "
@@ -401,12 +403,18 @@ public class ImsServiceController {
     }
 
     /**
-     * Starts the bind to the ImsService. Overridden by subclasses that need to access the service
-     * in a different fashion.
+     * Ensure the feature includes MMTEL when it supports EMERGENCY_MMTEL, if not, remove.
      */
-    protected boolean startBindToService(Intent intent, ImsServiceConnection connection,
-            int flags) {
-        return mContext.bindService(intent, connection, flags);
+    private void sanitizeFeatureConfig(Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
+        Set<ImsFeatureConfiguration.FeatureSlotPair> emergencyMmtelFeatures = features.stream()
+                .filter(feature -> feature.featureType == ImsFeature.FEATURE_EMERGENCY_MMTEL)
+                .collect(Collectors.toSet());
+        for (ImsFeatureConfiguration.FeatureSlotPair feature : emergencyMmtelFeatures) {
+            if (!features.contains(new ImsFeatureConfiguration.FeatureSlotPair(feature.slotId,
+                    ImsFeature.FEATURE_MMTEL))) {
+                features.remove(feature);
+            }
+        }
     }
 
     /**
@@ -436,8 +444,9 @@ public class ImsServiceController {
      * ImsFeature that is removed, {@link IImsServiceController#removeImsFeature} is called.
      */
     public void changeImsServiceFeatures(
-            HashSet<ImsFeatureConfiguration.FeatureSlotPair> newImsFeatures)
+            Set<ImsFeatureConfiguration.FeatureSlotPair> newImsFeatures)
             throws RemoteException {
+        sanitizeFeatureConfig(newImsFeatures);
         synchronized (mLock) {
             if (mImsFeatures.equals(newImsFeatures)) {
                 return;
@@ -706,12 +715,12 @@ public class ImsServiceController {
             IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType,
                     c.getCallback());
             addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f);
-            // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
-            mCallbacks.imsServiceFeatureCreated(featurePair.slotId, featurePair.featureType, this);
         } else {
             // Don't update ImsService for emergency MMTEL feature.
             Log.i(LOG_TAG, "supports emergency calling on slot " + featurePair.slotId);
         }
+        // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
+        mCallbacks.imsServiceFeatureCreated(featurePair.slotId, featurePair.featureType, this);
         // Send callback to ImsServiceProxy to change supported ImsFeatures including emergency
         // MMTEL state.
         sendImsFeatureCreatedCallback(featurePair.slotId, featurePair.featureType);
@@ -723,6 +732,8 @@ public class ImsServiceController {
             Log.w(LOG_TAG, "removeImsServiceFeature called with null values.");
             return;
         }
+        // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
+        mCallbacks.imsServiceFeatureRemoved(featurePair.slotId, featurePair.featureType, this);
         if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
             ImsFeatureStatusCallback callbackToRemove = mFeatureStatusCallbacks.stream().filter(c ->
                     c.mSlotId == featurePair.slotId && c.mFeatureType == featurePair.featureType)
@@ -732,8 +743,6 @@ public class ImsServiceController {
                 mFeatureStatusCallbacks.remove(callbackToRemove);
             }
             removeImsFeatureBinder(featurePair.slotId, featurePair.featureType);
-            // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
-            mCallbacks.imsServiceFeatureRemoved(featurePair.slotId, featurePair.featureType, this);
             try {
                 removeImsFeature(featurePair.slotId, featurePair.featureType,
                         (callbackToRemove != null ? callbackToRemove.getCallback() : null));

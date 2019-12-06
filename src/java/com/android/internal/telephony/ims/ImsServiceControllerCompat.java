@@ -171,7 +171,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
         return mServiceController != null;
     }
 
-    protected MmTelInterfaceAdapter getInterface(int slotId, IImsFeatureStatusCallback c)
+    private MmTelInterfaceAdapter getInterface(int slotId, IImsFeatureStatusCallback c)
             throws RemoteException {
         IImsMMTelFeature feature = mServiceController.createMMTelFeature(slotId, c);
         if (feature == null) {
