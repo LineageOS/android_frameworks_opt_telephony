@@ -67,6 +67,7 @@ import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -169,7 +170,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // other
     protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 28;
     protected static final int EVENT_ICC_RECORD_EVENTS              = 29;
-    private static final int EVENT_ICC_CHANGED                      = 30;
+    @VisibleForTesting
+    protected static final int EVENT_ICC_CHANGED                    = 30;
     // Single Radio Voice Call Continuity
     private static final int EVENT_SRVCC_STATE_CHANGED              = 31;
     private static final int EVENT_INITIATE_SILENT_REDIAL           = 32;
@@ -198,6 +200,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final int EVENT_ALL_DATA_DISCONNECTED            = 52;
     protected static final int EVENT_UICC_APPS_ENABLEMENT_CHANGED   = 53;
     protected static final int EVENT_GET_UICC_APPS_ENABLEMENT_DONE  = 54;
+    protected static final int EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE = 55;
 
     protected static final int EVENT_LAST = EVENT_ALL_DATA_DISCONNECTED;
 

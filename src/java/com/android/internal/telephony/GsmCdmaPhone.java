@@ -154,7 +154,7 @@ public class GsmCdmaPhone extends Phone {
     private String mMeid;
     // string to define how the carrier specifies its own ota sp number
     private String mCarrierOtaSpNumSchema;
-    private boolean mUiccApplicationsEnabled = true;
+    private Boolean mUiccApplicationsEnabled = null;
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -2859,8 +2859,25 @@ public class GsmCdmaPhone extends Phone {
                     return;
                 }
 
-                mUiccApplicationsEnabled = (boolean) ar.result;
+                mUiccApplicationsEnabled = (Boolean) ar.result;
+                reapplyUiccAppsEnablementIfNeeded();
                 break;
+            }
+            case EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE: {
+                ar = (AsyncResult) msg.obj;
+                if (ar == null || ar.exception == null) return;
+                // TODO: b/146181737 don't throw exception and uncomment the retry below.
+                boolean expectedValue = (boolean) ar.userObj;
+                CommandException.Error error = ((CommandException) ar.exception).getCommandError();
+                throw new RuntimeException("Error received when re-applying uicc application"
+                        + " setting to " +  expectedValue + " on phone " + mPhoneId
+                        + " Error code: " + error);
+//                if (error == INTERNAL_ERR || error == SIM_BUSY) {
+//                    // Retry for certain errors, but not for others like RADIO_NOT_AVAILABLE or
+//                    // SIM_ABSENT, as they will trigger it whey they become available.
+//                    postDelayed(()->reapplyUiccAppsEnablementIfNeeded(), 1000);
+//                }
+//                break;
             }
             default:
                 super.handleMessage(msg);
@@ -2959,6 +2976,8 @@ public class GsmCdmaPhone extends Phone {
                 updateDataConnectionTracker();
             }
         }
+
+        reapplyUiccAppsEnablementIfNeeded();
     }
 
     private void processIccRecordEvents(int eventCode) {
@@ -4054,6 +4073,31 @@ public class GsmCdmaPhone extends Phone {
         ttyMode = Settings.Secure.getInt(mContext.getContentResolver(),
                 Settings.Secure.PREFERRED_TTY_MODE, TelecomManager.TTY_MODE_OFF);
         updateUiTtyMode(ttyMode);
+    }
+
+    private void reapplyUiccAppsEnablementIfNeeded() {
+        UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
+
+        // If no card is present or we don't have mUiccApplicationsEnabled yet, do nothing.
+        if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT
+                || mUiccApplicationsEnabled == null) {
+            return;
+        }
+
+        String iccId = slot.getIccId();
+        if (iccId == null) return;
+
+        SubscriptionInfo info = SubscriptionController.getInstance().getSubInfoForIccId(iccId);
+
+        // If info is null, it could be a new subscription. By default we enable it.
+        boolean expectedValue = info == null ? true : info.areUiccApplicationsEnabled();
+
+        // If for any reason current state is different from configured state, re-apply the
+        // configured state.
+        if (expectedValue != mUiccApplicationsEnabled) {
+            mCi.enableUiccApplications(expectedValue, Message.obtain(
+                    this, EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE, expectedValue));
+        }
     }
 
     // Enable or disable uicc applications.
