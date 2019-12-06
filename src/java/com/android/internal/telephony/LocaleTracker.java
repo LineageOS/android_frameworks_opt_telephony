@@ -319,7 +319,7 @@ public class LocaleTracker extends Handler {
      * @return a matching {@link MccMnc}. Null if the information is not available.
      */
     @Nullable
-    private MccMnc getMccMncFromCellInfo(String mccToMatch) {
+    private MccMnc getMccMncFromCellInfo(@NonNull String mccToMatch) {
         MccMnc selectedMccMnc = null;
         if (mCellInfoList != null) {
             Map<MccMnc, Integer> mccMncMap = new HashMap<>();
@@ -334,8 +334,9 @@ public class LocaleTracker extends Handler {
                         count = mccMncMap.get(mccMnc) + 1;
                     }
                     mccMncMap.put(mccMnc, count);
-                    // This is unlikely, but if MCC from cell info looks different, we choose the
-                    // MCC that occurs most.
+                    // We keep track of the MCC+MNC combination that occurs most frequently, if
+                    // there is one. A null MNC is treated like any other distinct MCC+MNC
+                    // combination.
                     if (count > maxCount) {
                         maxCount = count;
                         selectedMccMnc = mccMnc;
@@ -346,6 +347,7 @@ public class LocaleTracker extends Handler {
         return selectedMccMnc;
     }
 
+    @Nullable
     private static String getNetworkMcc(CellInfo cellInfo) {
         String mccString = null;
         if (cellInfo instanceof CellInfoGsm) {
@@ -358,6 +360,7 @@ public class LocaleTracker extends Handler {
         return mccString;
     }
 
+    @Nullable
     private static String getNetworkMnc(CellInfo cellInfo) {
         String mccString = null;
         if (cellInfo instanceof CellInfoGsm) {
@@ -540,14 +543,16 @@ public class LocaleTracker extends Handler {
         // info.
         if (TextUtils.isEmpty(countryIso)) {
             String mcc = getMccFromCellInfo();
-            countryIso = MccTable.countryCodeForMcc(mcc);
-            countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
+            if (mcc != null) {
+                countryIso = MccTable.countryCodeForMcc(mcc);
+                countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
 
-            MccMnc mccMnc = getMccMncFromCellInfo(mcc);
-            if (mccMnc != null) {
-                timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
-                timeZoneCountryIsoDebugInfo =
-                        "CellInfo: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+                MccMnc mccMnc = getMccMncFromCellInfo(mcc);
+                if (mccMnc != null) {
+                    timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
+                    timeZoneCountryIsoDebugInfo =
+                            "CellInfo: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+                }
             }
         }
 

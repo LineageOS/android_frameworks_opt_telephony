@@ -24,8 +24,11 @@ import android.Manifest;
 import android.annotation.UnsupportedAppUsage;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
@@ -36,10 +39,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SmsCbMessage;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
+import android.telephony.SubscriptionManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.util.LocalLog;
 import android.util.Log;
@@ -182,6 +187,21 @@ public class IccSmsInterfaceManager {
         mAppOps = appOps;
         mDispatchersController = dispatchersController;
         mSmsPermissions = new SmsPermissions(phone, context, appOps);
+
+        mContext.registerReceiver(
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED
+                                .equals(intent.getAction())) {
+                            if (mPhone.getPhoneId() == intent.getIntExtra(
+                                    CarrierConfigManager.EXTRA_SLOT_INDEX,
+                                    SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
+                                mCellBroadcastRangeManager.updateRanges();
+                            }
+                        }
+                    }
+                }, new IntentFilter(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
     }
 
     protected void markMessagesAsRead(ArrayList<byte[]> messages) {

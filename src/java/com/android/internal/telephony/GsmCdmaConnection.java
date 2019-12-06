@@ -22,7 +22,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
 import android.telephony.CarrierConfigManager;
@@ -74,13 +73,8 @@ public class GsmCdmaConnection extends Connection {
 
     Handler mHandler;
 
-    private PowerManager.WakeLock mPartialWakeLock;
-
     // The cached delay to be used between DTMF tones fetched from carrier config.
     private int mDtmfToneDelay = 0;
-
-    // Store the current audio codec
-    private int mAudioCodec = DriverCall.AUDIO_QUALITY_UNSPECIFIED;
 
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
@@ -88,13 +82,11 @@ public class GsmCdmaConnection extends Connection {
     static final int EVENT_DTMF_DONE = 1;
     static final int EVENT_PAUSE_DONE = 2;
     static final int EVENT_NEXT_POST_DIAL = 3;
-    static final int EVENT_WAKE_LOCK_TIMEOUT = 4;
     static final int EVENT_DTMF_DELAY_DONE = 5;
 
     //***** Constants
     static final int PAUSE_DELAY_MILLIS_GSM = 3 * 1000;
     static final int PAUSE_DELAY_MILLIS_CDMA = 2 * 1000;
-    static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
 
     //***** Inner Classes
 
@@ -111,9 +103,6 @@ public class GsmCdmaConnection extends Connection {
                 case EVENT_PAUSE_DONE:
                     processNextPostDialChar();
                     break;
-                case EVENT_WAKE_LOCK_TIMEOUT:
-                    releaseWakeLock();
-                    break;
                 case EVENT_DTMF_DONE:
                     // We may need to add a delay specified by carrier between DTMF tones that are
                     // sent out.
@@ -129,8 +118,6 @@ public class GsmCdmaConnection extends Connection {
     /** This is probably an MT call that we first saw in a CLCC response or a hand over. */
     public GsmCdmaConnection (GsmCdmaPhone phone, DriverCall dc, GsmCdmaCallTracker ct, int index) {
         super(phone.getPhoneType());
-        createWakeLock(phone.getContext());
-        acquireWakeLock();
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
@@ -161,8 +148,6 @@ public class GsmCdmaConnection extends Connection {
     public GsmCdmaConnection (GsmCdmaPhone phone, String dialString, GsmCdmaCallTracker ct,
                               GsmCdmaCall parent, boolean isEmergencyCall) {
         super(phone.getPhoneType());
-        createWakeLock(phone.getContext());
-        acquireWakeLock();
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
@@ -217,8 +202,6 @@ public class GsmCdmaConnection extends Connection {
     public GsmCdmaConnection(Context context, CdmaCallWaitingNotification cw, GsmCdmaCallTracker ct,
                              GsmCdmaCall parent) {
         super(parent.getPhone().getPhoneType());
-        createWakeLock(context);
-        acquireWakeLock();
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
@@ -242,7 +225,6 @@ public class GsmCdmaConnection extends Connection {
         if (mParent != null) {
             mParent.detach(this);
         }
-        releaseAllWakeLocks();
     }
 
     static boolean equalsHandlesNulls(Object a, Object b) {
@@ -623,7 +605,6 @@ public class GsmCdmaConnection extends Connection {
             mOrigConnection = null;
         }
         clearPostDialListeners();
-        releaseWakeLock();
         return changed;
     }
 
@@ -639,7 +620,6 @@ public class GsmCdmaConnection extends Connection {
                 mParent.detach(this);
             }
         }
-        releaseWakeLock();
     }
 
     // Returns true if state has changed, false if nothing changed
@@ -780,21 +760,7 @@ public class GsmCdmaConnection extends Connection {
         if (!mIsIncoming) {
             // outgoing calls only
             processNextPostDialChar();
-        } else {
-            // Only release wake lock for incoming calls, for outgoing calls the wake lock
-            // will be released after any pause-dial is completed
-            releaseWakeLock();
         }
-    }
-
-    /**
-     * We have completed the migration of another connection to this GsmCdmaConnection (for example,
-     * in the case of SRVCC) and not still DIALING/ALERTING/INCOMING/WAITING.
-     */
-    void onConnectedConnectionMigrated() {
-        // We can release the wakelock in this case, the migrated call is not still
-        // DIALING/ALERTING/INCOMING/WAITING.
-        releaseWakeLock();
     }
 
     private void
@@ -881,17 +847,7 @@ public class GsmCdmaConnection extends Connection {
     @Override
     protected void finalize()
     {
-        /**
-         * It is understood that This finalizer is not guaranteed
-         * to be called and the release lock call is here just in
-         * case there is some path that doesn't call onDisconnect
-         * and or onConnectedInOrOut.
-         */
-        if (mPartialWakeLock != null && mPartialWakeLock.isHeld()) {
-            Rlog.e(LOG_TAG, "UNEXPECTED; mPartialWakeLock is held when finalizing.");
-        }
         clearPostDialListeners();
-        releaseWakeLock();
     }
 
     private void
@@ -900,16 +856,12 @@ public class GsmCdmaConnection extends Connection {
         Registrant postDialHandler;
 
         if (mPostDialState == PostDialState.CANCELLED) {
-            releaseWakeLock();
             return;
         }
 
         if (mPostDialString == null ||
                 mPostDialString.length() <= mNextPostDialChar) {
             setPostDialState(PostDialState.COMPLETE);
-
-            // We were holding a wake lock until pause-dial was complete, so give it up now
-            releaseWakeLock();
 
             // notifyMessage.arg1 is 0 on complete
             c = 0;
@@ -1004,60 +956,18 @@ public class GsmCdmaConnection extends Connection {
      * @param s new PostDialState
      */
     private void setPostDialState(PostDialState s) {
-        if (s == PostDialState.STARTED ||
-                s == PostDialState.PAUSE) {
-            synchronized (mPartialWakeLock) {
-                if (mPartialWakeLock.isHeld()) {
-                    mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-                } else {
-                    acquireWakeLock();
-                }
-                Message msg = mHandler.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
-                mHandler.sendMessageDelayed(msg, WAKE_LOCK_TIMEOUT_MILLIS);
-            }
-        } else {
-            mHandler.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-            releaseWakeLock();
-        }
         mPostDialState = s;
         notifyPostDialListeners();
     }
 
     @UnsupportedAppUsage
     private void createWakeLock(Context context) {
-        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        mPartialWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
+        // no-op
     }
 
     @UnsupportedAppUsage
     private void acquireWakeLock() {
-        if (mPartialWakeLock != null) {
-            synchronized (mPartialWakeLock) {
-                log("acquireWakeLock");
-                mPartialWakeLock.acquire();
-            }
-        }
-    }
-
-    private void releaseWakeLock() {
-        if (mPartialWakeLock != null) {
-            synchronized (mPartialWakeLock) {
-                if (mPartialWakeLock.isHeld()) {
-                    log("releaseWakeLock");
-                    mPartialWakeLock.release();
-                }
-            }
-        }
-    }
-
-    private void releaseAllWakeLocks() {
-        if (mPartialWakeLock != null) {
-            synchronized (mPartialWakeLock) {
-                while (mPartialWakeLock.isHeld()) {
-                    mPartialWakeLock.release();
-                }
-            }
-        }
+        // no-op
     }
 
     @UnsupportedAppUsage
