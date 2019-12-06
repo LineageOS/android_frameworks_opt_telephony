@@ -376,7 +376,7 @@ public class ImsServiceController {
                 mLocalLog.log("binding " + imsFeatureSet);
                 Log.i(LOG_TAG, "Binding ImsService:" + mComponentName);
                 try {
-                    boolean bindSucceeded = startBindToService(imsServiceIntent,
+                    boolean bindSucceeded = mContext.bindService(imsServiceIntent,
                             mImsServiceConnection, serviceFlags);
                     if (!bindSucceeded) {
                         mLocalLog.log("    binding failed, retrying in "
@@ -398,15 +398,6 @@ public class ImsServiceController {
                 return false;
             }
         }
-    }
-
-    /**
-     * Starts the bind to the ImsService. Overridden by subclasses that need to access the service
-     * in a different fashion.
-     */
-    protected boolean startBindToService(Intent intent, ImsServiceConnection connection,
-            int flags) {
-        return mContext.bindService(intent, connection, flags);
     }
 
     /**

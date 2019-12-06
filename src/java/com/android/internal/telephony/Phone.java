@@ -19,10 +19,8 @@ package com.android.internal.telephony;
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.BroadcastOptions;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
@@ -116,33 +114,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected final static Object lockForRadioTechnologyChange = new Object();
 
     protected final int USSD_MAX_QUEUE = 10;
-
-    private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Rlog.d(LOG_TAG, "mImsIntentReceiver: action " + intent.getAction());
-            if (intent.hasExtra(ImsManager.EXTRA_PHONE_ID)) {
-                int extraPhoneId = intent.getIntExtra(ImsManager.EXTRA_PHONE_ID,
-                        SubscriptionManager.INVALID_PHONE_INDEX);
-                Rlog.d(LOG_TAG, "mImsIntentReceiver: extraPhoneId = " + extraPhoneId);
-                if (extraPhoneId == SubscriptionManager.INVALID_PHONE_INDEX ||
-                        extraPhoneId != getPhoneId()) {
-                    return;
-                }
-            }
-
-            synchronized (Phone.lockForRadioTechnologyChange) {
-                if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
-                    mImsServiceReady = true;
-                    updateImsPhone();
-                    ImsManager.getInstance(mContext, mPhoneId).updateImsServiceConfig(false);
-                } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
-                    mImsServiceReady = false;
-                    updateImsPhone();
-                }
-            }
-        }
-    };
 
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
@@ -324,7 +295,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @UnsupportedAppUsage
     protected int mPhoneId;
 
-    private boolean mImsServiceReady = false;
     @UnsupportedAppUsage
     protected Phone mImsPhone = null;
 
@@ -588,34 +558,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Start listening for IMS service UP/DOWN events. If using the new ImsResolver APIs, we should
-     * always be setting up ImsPhones.
+     * Start setup of ImsPhone, which will start trying to connect to the ImsResolver. Will not be
+     * called if this device does not support FEATURE_IMS_TELEPHONY.
      */
-    public void startMonitoringImsService() {
+    public void createImsPhone() {
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_SIP) {
             return;
         }
 
         synchronized(Phone.lockForRadioTechnologyChange) {
-            IntentFilter filter = new IntentFilter();
-            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
-            // Don't listen to deprecated intents using the new dynamic binding.
-            if (imsManager != null && !imsManager.isDynamicBinding()) {
-                filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
-                filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
-                mContext.registerReceiver(mImsIntentReceiver, filter);
-            }
-
-            // Monitor IMS service - but first poll to see if already up (could miss
-            // intent). Also, when using new ImsResolver APIs, the service will be available soon,
-            // so start trying to bind.
-            if (imsManager != null) {
-                // If it is dynamic binding, kick off ImsPhone creation now instead of waiting for
-                // the service to be available.
-                if (imsManager.isDynamicBinding() || imsManager.isServiceAvailable()) {
-                    mImsServiceReady = true;
-                    updateImsPhone();
-                }
+            if (mImsPhone == null) {
+                mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
+                CallManager.getInstance().registerPhone(mImsPhone);
+                mImsPhone.registerForSilentRedial(
+                        this, EVENT_INITIATE_SILENT_REDIAL, null);
             }
         }
     }
@@ -3490,28 +3446,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     @UnsupportedAppUsage
     public void dispose() {
-    }
-
-    private void updateImsPhone() {
-        Rlog.d(LOG_TAG, "updateImsPhone"
-                + " mImsServiceReady=" + mImsServiceReady);
-
-        if (mImsServiceReady && (mImsPhone == null)) {
-            mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
-            CallManager.getInstance().registerPhone(mImsPhone);
-            mImsPhone.registerForSilentRedial(
-                    this, EVENT_INITIATE_SILENT_REDIAL, null);
-        } else if (!mImsServiceReady && (mImsPhone != null)) {
-            CallManager.getInstance().unregisterPhone(mImsPhone);
-            mImsPhone.unregisterForSilentRedial(this);
-
-            mImsPhone.dispose();
-            // Potential GC issue if someone keeps a reference to ImsPhone.
-            // However: this change will make sure that such a reference does
-            // not access functions through NULL pointer.
-            //mImsPhone.removeReferences();
-            mImsPhone = null;
-        }
     }
 
     /**
