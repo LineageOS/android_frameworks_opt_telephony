@@ -312,20 +312,20 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         try {
             Objects.requireNonNull(reason);
 
-            PhoneTimeSuggestion timeSuggestion = new PhoneTimeSuggestion(mPhoneId);
+            PhoneTimeSuggestion.Builder builder = new PhoneTimeSuggestion.Builder(mPhoneId);
             if (nitzSignal == null) {
-                timeSuggestion.addDebugInfo("Clearing time zone suggestion"
+                builder.addDebugInfo("Clearing time zone suggestion"
                         + " reason=" + reason);
             } else {
                 TimestampedValue<Long> newNitzTime = new TimestampedValue<>(
                         nitzSignal.getReferenceTimeMillis(),
                         nitzSignal.getValue().getCurrentTimeInMillis());
-                timeSuggestion.setUtcTime(newNitzTime);
-                timeSuggestion.addDebugInfo("Sending new time zone suggestion"
+                builder.setUtcTime(newNitzTime);
+                builder.addDebugInfo("Sending new time zone suggestion"
                         + " nitzSignal=" + nitzSignal
                         + ", reason=" + reason);
             }
-            mNewTimeServiceHelper.suggestDeviceTime(timeSuggestion);
+            mNewTimeServiceHelper.suggestDeviceTime(builder.build());
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "doTimeDetection: Exception thrown"
                     + " mPhoneId=" + mPhoneId
