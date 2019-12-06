@@ -278,17 +278,17 @@ public final class NitzStateMachineTestSupport {
     }
 
     public static PhoneTimeSuggestion createEmptyTimeSuggestion(int phoneId) {
-        PhoneTimeSuggestion timeSuggestion = new PhoneTimeSuggestion(phoneId);
-        timeSuggestion.addDebugInfo("Test");
-        return timeSuggestion;
+        return new PhoneTimeSuggestion.Builder(phoneId)
+                .addDebugInfo("Test")
+                .build();
     }
 
     public static PhoneTimeSuggestion createTimeSuggestionFromNitzSignal(
             int phoneId, TimestampedValue<NitzData> nitzSignal) {
-        PhoneTimeSuggestion timeSuggestion = new PhoneTimeSuggestion(phoneId);
-        timeSuggestion.setUtcTime(createTimeSignalFromNitzSignal(nitzSignal));
-        timeSuggestion.addDebugInfo("Test");
-        return timeSuggestion;
+        return new PhoneTimeSuggestion.Builder(phoneId)
+                .setUtcTime(createTimeSignalFromNitzSignal(nitzSignal))
+                .addDebugInfo("Test")
+                .build();
     }
 
     public static TimestampedValue<Long> createTimeSignalFromNitzSignal(
