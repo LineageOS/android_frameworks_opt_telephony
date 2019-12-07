@@ -402,7 +402,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     }
 
     private void sendEmptyTimeSuggestion(String reason) {
-        PhoneTimeSuggestion timeSuggestion = new PhoneTimeSuggestion(mPhone.getPhoneId());
+        PhoneTimeSuggestion timeSuggestion =
+                new PhoneTimeSuggestion.Builder(mPhone.getPhoneId()).build();
         timeSuggestion.addDebugInfo("Empty suggestion, reason=" + reason);
         mTimeServiceHelper.suggestDeviceTime(timeSuggestion);
     }
@@ -484,9 +485,11 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 Rlog.d(LOG_TAG, logMsg);
             }
             mTimeLog.log(logMsg);
-            PhoneTimeSuggestion phoneTimeSuggestion = new PhoneTimeSuggestion(mPhone.getPhoneId());
-            phoneTimeSuggestion.setUtcTime(newNitzTime);
-            phoneTimeSuggestion.addDebugInfo(logMsg);
+            PhoneTimeSuggestion phoneTimeSuggestion =
+                    new PhoneTimeSuggestion.Builder(mPhone.getPhoneId())
+                            .setUtcTime(newNitzTime)
+                            .addDebugInfo(logMsg)
+                            .build();
             mTimeServiceHelper.suggestDeviceTime(phoneTimeSuggestion);
 
             TelephonyMetrics.getInstance().writeNITZEvent(

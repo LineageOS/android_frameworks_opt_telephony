@@ -668,8 +668,18 @@ public class ImsPhone extends ImsPhoneBase {
                 if (getRingingCall().getState() != ImsPhoneCall.State.IDLE) {
                     if (DBG) logd("MmiCode 2: accept ringing call");
                     mCT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
-                } else {
-                    if (DBG) logd("MmiCode 2: holdActiveCall");
+                } else if (getBackgroundCall().getState() == ImsPhoneCall.State.HOLDING) {
+                    // If there's an active ongoing call as well, hold it and the background one
+                    // should automatically unhold. Otherwise just unhold the background call.
+                    if (getForegroundCall().getState() != ImsPhoneCall.State.IDLE) {
+                        if (DBG) logd("MmiCode 2: switch holding and active");
+                        mCT.holdActiveCall();
+                    } else {
+                        if (DBG) logd("MmiCode 2: unhold held call");
+                        mCT.unholdHeldCall();
+                    }
+                } else if (getForegroundCall().getState() != ImsPhoneCall.State.IDLE) {
+                    if (DBG) logd("MmiCode 2: hold active call");
                     mCT.holdActiveCall();
                 }
             } catch (CallStateException e) {

@@ -124,7 +124,7 @@ public class CarrierServiceBindHelper {
 
         updateBindingsAndSimStates();
 
-        PhoneConfigurationManager.getInstance().registerForMultiSimConfigChange(
+        PhoneConfigurationManager.registerForMultiSimConfigChange(
                 mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
 
         mPackageMonitor.register(

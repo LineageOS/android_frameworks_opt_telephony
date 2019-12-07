@@ -38,6 +38,7 @@ import android.os.Looper;
 import android.os.RemoteException;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsServiceController;
+import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -59,6 +60,9 @@ import java.util.HashSet;
  */
 @RunWith(AndroidJUnit4.class)
 public class ImsServiceControllerTest extends ImsTestBase {
+
+    private static final int SLOT_0 = 0;
+    private static final int SLOT_1 = 1;
 
     private static final ImsServiceController.RebindRetry REBIND_RETRY =
             new ImsServiceController.RebindRetry() {
@@ -110,10 +114,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindService() {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ArgumentCaptor<Intent> intentCaptor =
                 ArgumentCaptor.forClass(Intent.class);
 
@@ -134,8 +138,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindFailureWhenBound() {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
 
         // already bound, should return false
@@ -152,21 +156,21 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndConnected() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
 
         bindAndConnectService(testFeatures);
 
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(1), any());
-        verify(mMockServiceControllerBinder).createRcsFeature(eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(1),
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(2),
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(2));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
     }
 
     /**
@@ -177,24 +181,56 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindEmergencyMmTel() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, Emergency MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 0));
-        // Slot 1, MmTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_EMERGENCY_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
 
         bindAndConnectService(testFeatures);
 
-        // We do not want this callback to happen for emergency MMTEL
-        verify(mMockServiceControllerBinder, never()).createMmTelFeature(eq(0), any());
-        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(1), eq(0),
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(1),
-                eq(mTestImsServiceController));
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_EMERGENCY_MMTEL), eq(mTestImsServiceController));
         // Make sure this callback happens, which will notify the framework of emergency calling
         // availability.
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(0));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_EMERGENCY_MMTEL));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+    }
+
+    /**
+     * Tests to make sure that if EMERGENCY_MMTEL is specified, but not MMTEL, we do not bind to
+     * MMTEL.
+     */
+    @SmallTest
+    @Test
+    public void testBindEmergencyMmTelButNotMmTel() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_EMERGENCY_MMTEL));
+        // did not add FEATURE_MMTEL
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
+
+        bindAndConnectService(testFeatures);
+
+        // Verify no MMTEL or EMERGENCY_MMTEL features are created
+        verify(mMockServiceControllerBinder, never()).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), eq(mTestImsServiceController));
+        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_EMERGENCY_MMTEL), eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_EMERGENCY_MMTEL));
+        verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL));
+        // verify RCS feature is created
+        verify(mMockServiceControllerBinder).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
+                eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
     }
 
     /**
@@ -205,10 +241,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testCallbacksHappenWhenAddedAfterBind() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, Emergency MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 0));
-        // Slot 1, MmTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_EMERGENCY_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
         mTestImsServiceController.removeImsServiceFeatureCallbacks();
 
         bindAndConnectService(testFeatures);
@@ -216,8 +252,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         mTestImsServiceController.addImsServiceFeatureCallback(mMockProxyCallbacks);
 
         // Make sure this callback happens for Emergency MMTEL and MMTEL
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(0));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_EMERGENCY_MMTEL));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
     }
 
     /**
@@ -228,20 +265,20 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndConnectedDisconnected() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
 
         conn.onServiceDisconnected(mTestComponentName);
 
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(1),
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(2),
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(1));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(2));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
     }
 
     /**
@@ -252,23 +289,25 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceBindUnbind() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
 
         mTestImsServiceController.unbind();
 
         verify(mMockContext).unbindService(eq(conn));
-        verify(mMockServiceControllerBinder).removeImsFeature(eq(1), eq(1), any());
-        verify(mMockServiceControllerBinder).removeImsFeature(eq(1), eq(2), any());
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(1),
+        verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), any());
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(2),
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(1));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(2));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
     }
 
     /**
@@ -278,20 +317,20 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
 
         conn.onBindingDied(null /*null*/);
 
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(1),
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(2),
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(1));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(2));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
     }
 
     /**
@@ -301,10 +340,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndReturnedNull() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
 
         bindAndNullServiceError(testFeatures);
 
@@ -321,24 +360,85 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndAddFeature() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(1),
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
         // Create a new list with an additional item
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeaturesWithAddition = new HashSet<>(
                 testFeatures);
-        testFeaturesWithAddition.add(new ImsFeatureConfiguration.FeatureSlotPair(2, 1));
+        testFeaturesWithAddition.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
+                ImsFeature.FEATURE_MMTEL));
 
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithAddition);
 
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(2), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(2), eq(1),
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(2), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
+    }
+
+    /**
+     * Ensures that the when EMERGENCY_MMTEL_FEATURE is defined but not MMTEL_FEATURE when the
+     * features are changed, we do not bind to MMTEL.
+     */
+    @SmallTest
+    @Test
+    public void testBindServiceAndAddEmergencyButNotMmtel() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
+        bindAndConnectService(testFeatures);
+        verify(mMockServiceControllerBinder).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
+                eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
+        // Add FEATURE_EMERGENCY_MMTEL and ensure it doesn't cause MMTEL bind
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeaturesWithAddition = new HashSet<>(
+                testFeatures);
+        testFeaturesWithAddition.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
+                ImsFeature.FEATURE_EMERGENCY_MMTEL));
+
+        mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithAddition);
+
+        verify(mMockServiceControllerBinder, never()).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL),
+                eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL));
+    }
+
+    /**
+     * Ensures ImsServiceController disregards changes to features that result in the same feature
+     * set.
+     */
+    @SmallTest
+    @Test
+    public void testBindServiceCallChangeWithNoNewFeatures() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        bindAndConnectService(testFeatures);
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
+                eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+
+        // Call change with the same features and make sure it is disregarded
+        mTestImsServiceController.changeImsServiceFeatures(testFeatures);
+
+        verify(mMockServiceControllerBinder, times(1)).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder, never()).removeImsFeature(anyInt(), anyInt(), any());
+        verify(mMockCallbacks, times(1)).imsServiceFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), eq(mTestImsServiceController));
+        verify(mMockCallbacks, never()).imsServiceFeatureRemoved(anyInt(), anyInt(), any());
+        verify(mMockProxyCallbacks, times(1)).imsFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockProxyCallbacks, never()).imsFeatureRemoved(anyInt(), anyInt());
     }
 
     /**
@@ -348,30 +448,32 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndRemoveFeature() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 2, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(2, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
+                ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(1),
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(2), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(2), eq(1),
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(2), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
         // Create a new list with one less item
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeaturesWithSubtraction =
                 new HashSet<>(testFeatures);
-        testFeaturesWithSubtraction.remove(new ImsFeatureConfiguration.FeatureSlotPair(2, 1));
+        testFeaturesWithSubtraction.remove(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
+                ImsFeature.FEATURE_MMTEL));
 
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithSubtraction);
 
-        verify(mMockServiceControllerBinder).removeImsFeature(eq(2), eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(2), eq(1),
+        verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(2), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
     }
 
     /**
@@ -381,31 +483,33 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindServiceAndRemoveAllFeatures() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // slot 2, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(2, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
+                ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(1), eq(1),
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(1), eq(1));
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(2), any());
-        verify(mMockCallbacks).imsServiceFeatureCreated(eq(2), eq(1),
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureCreated(eq(2), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
 
         // Create a new empty list
         mTestImsServiceController.changeImsServiceFeatures(new HashSet<>());
 
-        verify(mMockServiceControllerBinder).removeImsFeature(eq(1), eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(1), eq(1),
+        verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(1), eq(1));
-        verify(mMockServiceControllerBinder).removeImsFeature(eq(2), eq(1), any());
-        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(2), eq(1),
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(2), eq(1));
+        verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
     }
 
     /**
@@ -415,22 +519,24 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindUnbindServiceAndAddFeature() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
         mTestImsServiceController.unbind();
         // Create a new list with an additional item
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeaturesWithAddition = new HashSet<>(
                 testFeatures);
         // Try to create an RCS feature
-        testFeaturesWithAddition.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeaturesWithAddition.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
 
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithAddition);
 
-        verify(mMockServiceControllerBinder, never()).createRcsFeature(eq(1), any());
-        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(1), eq(2),
-                eq(mTestImsServiceController));
-        verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(1), eq(2));
+        verify(mMockServiceControllerBinder, never()).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), eq(mTestImsServiceController));
+        verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS));
     }
 
     /**
@@ -441,10 +547,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testAutoBindAfterBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
 
         conn.onBindingDied(null /*null*/);
@@ -462,10 +568,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testNoAutoBindBeforeTimeout() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
 
         conn.onBindingDied(null /*null*/);
@@ -481,10 +587,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testUnbindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
 
         conn.onBindingDied(null /*null*/);
@@ -505,10 +611,10 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Test
     public void testBindCauseAutoBindCancelAfterBinderDied() throws RemoteException {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
-        // Slot 1, MMTel
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 1));
-        // Slot 1, RCS
-        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, 2));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
         ServiceConnection conn = bindAndConnectService(testFeatures);
         conn.onBindingDied(null /*null*/);
         mTestImsServiceController.bind(testFeatures);
