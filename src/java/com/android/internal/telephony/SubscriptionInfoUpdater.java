@@ -418,11 +418,15 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private void handleSimNotReady(int phoneId) {
         logd("handleSimNotReady: phoneId: " + phoneId);
+        boolean isFinalState = false;
 
         IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
-        if (iccCard.isEmptyProfile()) {
-            // ICC_NOT_READY is a terminal state for an eSIM on the boot profile. At this
-            // phase, the subscription list is accessible. Treating NOT_READY
+        if (iccCard.isEmptyProfile() || areUiccAppsDisabledOnCard(phoneId)) {
+            isFinalState = true;
+            // ICC_NOT_READY is a terminal state for
+            // 1) It's an empty profile as there's no uicc applications. Or
+            // 2) Its uicc applications are set to be disabled.
+            // At this phase, the subscription list is accessible. Treating NOT_READY
             // as equivalent to ABSENT, once the rest of the system can handle it.
             sIccId[phoneId] = ICCID_STRING_FOR_NO_SIM;
             updateSubscriptionInfoByIccId(phoneId, false /* updateEmbeddedSubs */);
@@ -432,6 +436,20 @@ public class SubscriptionInfoUpdater extends Handler {
                 null);
         broadcastSimCardStateChanged(phoneId, TelephonyManager.SIM_STATE_PRESENT);
         broadcastSimApplicationStateChanged(phoneId, TelephonyManager.SIM_STATE_NOT_READY);
+        if (isFinalState) {
+            updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_NOT_READY);
+        }
+    }
+
+    private boolean areUiccAppsDisabledOnCard(int phoneId) {
+        // When uicc apps are disabled(supported in IRadio 1.5), we will still get IccId from
+        // cardStatus (since IRadio 1.2). Amd upon cardStatus change we'll receive another
+        // handleSimNotReady so this will be evaluated again.
+        UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
+        if (slot == null || slot.getIccId() == null) return false;
+        SubscriptionInfo info = SubscriptionController.getInstance()
+                .getSubInfoForIccId(slot.getIccId());
+        return info != null && !info.areUiccApplicationsEnabled();
     }
 
     private void handleSimLoaded(int phoneId) {
