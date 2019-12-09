@@ -66,7 +66,6 @@ import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
-import android.telephony.CellLocation;
 import android.telephony.CellSignalStrengthNr;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -80,8 +79,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.VoiceSpecificRegistrationInfo;
-import android.telephony.cdma.CdmaCellLocation;
-import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.LocalLog;
@@ -1253,7 +1250,7 @@ public class ServiceStateTracker extends Handler {
                             .getCellIdentity();
                     updateOperatorNameForCellIdentity(cellIdentity);
                     mCellIdentity = cellIdentity;
-                    mPhone.notifyLocationChanged(getCellLocation());
+                    mPhone.notifyLocationChanged(getCellIdentity());
                 }
 
                 // Release any temporary cell lock, which could have been
@@ -1593,15 +1590,15 @@ public class ServiceStateTracker extends Handler {
             case EVENT_CELL_LOCATION_RESPONSE:
                 ar = (AsyncResult) msg.obj;
                 if (ar == null) {
-                    loge("Invalid null response to getCellLocation!");
+                    loge("Invalid null response to getCellIdentity!");
                     break;
                 }
                 // This response means that the correct CellInfo is already cached; thus we
                 // can rely on the last cell info to already contain any cell info that is
                 // available, which means that we can return the result of the existing
-                // getCellLocation() function without any additional processing here.
+                // getCellIdentity() function without any additional processing here.
                 Message rspRspMsg = (Message) ar.userObj;
-                AsyncResult.forMessage(rspRspMsg, getCellLocation(), ar.exception);
+                AsyncResult.forMessage(rspRspMsg, getCellIdentity(), ar.exception);
                 rspRspMsg.sendToTarget();
                 break;
 
@@ -3502,7 +3499,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (hasLocationChanged) {
-            mPhone.notifyLocationChanged(getCellLocation());
+            mPhone.notifyLocationChanged(getCellIdentity());
         }
 
         if (mPhone.isPhoneTypeGsm()) {
@@ -3979,9 +3976,9 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Get CellLocation from the ServiceState if available or guess from cached CellInfo
+     * Get CellIdentity from the ServiceState if available or guess from cached
      *
-     * Get the CellLocation by first checking if ServiceState has a current CID. If so
+     * Get the CellIdentity by first checking if ServiceState has a current CID. If so
      * then return that info. Otherwise, check the latest List<CellInfo> and return the first GSM or
      * WCDMA result that appears. If no GSM or WCDMA results, then return an LTE result. The
      * behavior is kept consistent for backwards compatibility; (do not apply logic to determine
@@ -3989,18 +3986,19 @@ public class ServiceStateTracker extends Handler {
      *
      * @return the current cell location if known or a non-null "empty" cell location
      */
-    public CellLocation getCellLocation() {
-        if (mCellIdentity != null) return mCellIdentity.asCellLocation();
+    @NonNull
+    public CellIdentity getCellIdentity() {
+        if (mCellIdentity != null) return mCellIdentity;
 
-        CellLocation cl = getCellLocationFromCellInfo(getAllCellInfo());
-        if (cl != null) return cl;
+        CellIdentity ci = getCellIdentityFromCellInfo(getAllCellInfo());
+        if (ci != null) return ci;
 
         return mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA
-                ? new CdmaCellLocation() : new GsmCellLocation();
+                ? new CellIdentityCdma() : new CellIdentityGsm();
     }
 
     /**
-     * Get CellLocation from the ServiceState if available or guess from CellInfo
+     * Get CellIdentity from the ServiceState if available or guess from CellInfo
      *
      * Get the CellLocation by first checking if ServiceState has a current CID. If so
      * then return that info. Otherwise, query AllCellInfo and return the first GSM or
@@ -4011,9 +4009,9 @@ public class ServiceStateTracker extends Handler {
      * @param workSource calling WorkSource
      * @param rspMsg the response message which must be non-null
      */
-    public void requestCellLocation(WorkSource workSource, Message rspMsg) {
+    public void requestCellIdentity(WorkSource workSource, Message rspMsg) {
         if (mCellIdentity != null) {
-            AsyncResult.forMessage(rspMsg, mCellIdentity.asCellLocation(), null);
+            AsyncResult.forMessage(rspMsg, mCellIdentity, null);
             rspMsg.sendToTarget();
             return;
         }
@@ -4022,16 +4020,16 @@ public class ServiceStateTracker extends Handler {
         requestAllCellInfo(workSource, cellLocRsp);
     }
 
-    /* Find and return a CellLocation from CellInfo
+    /* Find and return a CellIdentity from CellInfo
      *
      * This method returns the first GSM or WCDMA result that appears in List<CellInfo>. If no GSM
      * or  WCDMA results are found, then it returns an LTE result. The behavior is kept consistent
      * for backwards compatibility; (do not apply logic to determine why the behavior is this way).
      *
-     * @return the current cell location from CellInfo or null
+     * @return the current CellIdentity from CellInfo or null
      */
-    private static CellLocation getCellLocationFromCellInfo(List<CellInfo> info) {
-        CellLocation cl = null;
+    private static CellIdentity getCellIdentityFromCellInfo(List<CellInfo> info) {
+        CellIdentity cl = null;
         if (info != null && info.size() > 0) {
             CellIdentity fallbackLteCid = null; // We prefer not to use LTE
             for (CellInfo ci : info) {
@@ -4041,12 +4039,12 @@ public class ServiceStateTracker extends Handler {
                     continue;
                 }
                 if (getCidFromCellIdentity(c) != -1) {
-                    cl = c.asCellLocation();
+                    cl = c;
                     break;
                 }
             }
             if (cl == null && fallbackLteCid != null) {
-                cl = fallbackLteCid.asCellLocation();
+                cl = fallbackLteCid;
             }
         }
         return cl;
