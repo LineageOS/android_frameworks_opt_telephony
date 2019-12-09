@@ -234,7 +234,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
                     mPhone.getPhoneId());
             int lac = -1;
             int cid = -1;
-            CellLocation cl = mPhone.getCellLocation();
+            CellLocation cl = mPhone.getCellIdentity().asCellLocation();
             // Check if cell location is GsmCellLocation.  This is required to support
             // dual-mode devices such as CDMA/LTE devices that require support for
             // both 3GPP and 3GPP2 format messages

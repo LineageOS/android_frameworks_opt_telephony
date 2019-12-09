@@ -45,8 +45,8 @@ import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
+import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
-import android.telephony.CellLocation;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
@@ -1864,17 +1864,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * @return the current cell location if known
      */
-    @UnsupportedAppUsage
-    public CellLocation getCellLocation() {
-        return getServiceStateTracker().getCellLocation();
+    public CellIdentity getCellIdentity() {
+        return getServiceStateTracker().getCellIdentity();
     }
 
     /**
      * @param workSource calling WorkSource
      * @param rspMsg the response message containing the cell location
      */
-    public void getCellLocation(WorkSource workSource, Message rspMsg) {
-        getServiceStateTracker().requestCellLocation(workSource, rspMsg);
+    public void getCellIdentity(WorkSource workSource, Message rspMsg) {
+        getServiceStateTracker().requestCellIdentity(workSource, rspMsg);
     }
 
     /**
