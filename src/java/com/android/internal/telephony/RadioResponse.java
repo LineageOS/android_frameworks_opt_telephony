@@ -1452,6 +1452,13 @@ public class RadioResponse extends IRadioResponse.Stub {
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
+    public void setSignalStrengthReportingCriteriaResponse_1_5(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
     public void setLinkCapacityReportingCriteriaResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
