@@ -18,23 +18,23 @@ package com.android.internal.telephony.cdma;
 
 import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Pair;
 
+import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.SmsHeader;
-import com.android.internal.telephony.util.SMSDispatcherUtil;
-import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.util.SMSDispatcherUtil;
 
 
 public class CdmaSMSDispatcher extends SMSDispatcher {

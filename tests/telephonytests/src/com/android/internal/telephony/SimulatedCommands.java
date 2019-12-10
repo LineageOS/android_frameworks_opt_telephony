@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.test;
 
+import android.compat.annotation.UnsupportedAppUsage;
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
@@ -70,8 +71,6 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccSlotStatus;
-
-import dalvik.annotation.compat.UnsupportedAppUsage;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.test;
 
+import android.compat.annotation.UnsupportedAppUsage;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
 import android.os.Handler;
@@ -32,8 +33,6 @@ import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
-
-import dalvik.annotation.compat.UnsupportedAppUsage;
 
 public class SimulatedCommandsVerifier implements CommandsInterface {
     private static SimulatedCommandsVerifier sInstance;

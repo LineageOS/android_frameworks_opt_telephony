@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import static java.util.Arrays.copyOf;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
