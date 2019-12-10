@@ -3878,7 +3878,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /** Sets the SignalStrength reporting criteria. */
-    public void setSignalStrengthReportingCriteria(int[] thresholds, int ran) {
+    public void setSignalStrengthReportingCriteria(
+            int signalStrengthMeasure, int[] thresholds, int ran, boolean isEnabled) {
         // no-op default implementation
     }
 

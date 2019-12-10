@@ -302,6 +302,27 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 com.android.internal.R.array.config_display_no_service_when_sim_unready,
                 new String[0]);
 
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
+                new int[] {
+                    -125, /* SIGNAL_STRENGTH_POOR */
+                    -115, /* SIGNAL_STRENGTH_MODERATE */
+                    -105, /* SIGNAL_STRENGTH_GOOD */
+                    -95,  /* SIGNAL_STRENGTH_GREAT */
+                });
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY,
+                new int[] {
+                    -14, /* SIGNAL_STRENGTH_POOR */
+                    -12, /* SIGNAL_STRENGTH_MODERATE */
+                    -10, /* SIGNAL_STRENGTH_GOOD */
+                    -8  /* SIGNAL_STRENGTH_GREAT */
+                });
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSSINR_THRESHOLDS_INT_ARRAY,
+                new int[] {
+                    -8, /* SIGNAL_STRENGTH_POOR */
+                    0, /* SIGNAL_STRENGTH_MODERATE */
+                    8, /* SIGNAL_STRENGTH_GOOD */
+                    16  /* SIGNAL_STRENGTH_GREAT */
+                });
         logd("ServiceStateTrackerTest -Setup!");
     }
 
@@ -679,6 +700,105 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertEquals(sst.getSignalStrength().getLevel(),
                 CellSignalStrength.SIGNAL_STRENGTH_MODERATE);
+    }
+
+    @Test
+    public void test5gNrSignalStrengthReportingCriteria_UseSsRsrp() {
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr(
+                    -139, /** csiRsrp NONE */
+                    -20, /** csiRsrq NONE */
+                    -23, /** CsiSinr NONE */
+                    -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
+                    -20, /** SsRsrq NONE */
+                    -23) /** SsSinr NONE */
+         );
+
+        // SSRSRP = 1 << 0
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
+                CellSignalStrengthNr.USE_SSRSRP);
+        sendCarrierConfigUpdate();
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_GREAT, sst.getSignalStrength().getLevel());
+    }
+
+    @Test
+    public void test5gNrSignalStrengthReportingCriteria_UseSsRsrpAndSsRsrq() {
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr(
+                    -139, /** csiRsrp NONE */
+                    -20, /** csiRsrq NONE */
+                    -23, /** CsiSinr NONE */
+                    -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
+                    -20, /** SsRsrq NONE */
+                    -23) /** SsSinr NONE */
+        );
+
+        // SSRSRP = 1 << 0 | SSSINR = 1 << 2
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
+                CellSignalStrengthNr.USE_SSRSRP | CellSignalStrengthNr.USE_SSRSRQ);
+        sendCarrierConfigUpdate();
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                sst.getSignalStrength().getLevel());
+    }
+
+    @Test
+    public void test5gNrSignalStrengthReportingCriteria_ConfiguredThresholds() {
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(),
+                new CellSignalStrengthNr(
+                    -139, /** csiRsrp NONE */
+                    -20, /** csiRsrq NONE */
+                    -23, /** CsiSinr NONE */
+                    -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
+                    -20, /** SsRsrq NONE */
+                    -23) /** SsSinr NONE */
+        );
+
+        // SSRSRP = 1 << 0
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
+                CellSignalStrengthNr.USE_SSRSRP);
+        sendCarrierConfigUpdate();
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_GREAT, sst.getSignalStrength().getLevel());
+
+        int[] nrSsRsrpThresholds = {
+                -45, // SIGNAL_STRENGTH_POOR
+                -40, // SIGNAL_STRENGTH_MODERATE
+                -37, // SIGNAL_STRENGTH_GOOD
+                -34,  // SIGNAL_STRENGTH_GREAT
+        };
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
+                nrSsRsrpThresholds);
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
+                CellSignalStrengthNr.USE_SSRSRP);
+        sendCarrierConfigUpdate();
+        mSimulatedCommands.setSignalStrength(ss);
+        mSimulatedCommands.notifySignalStrength();
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_POOR,
+                sst.getSignalStrength().getLevel());
     }
 
     @Test

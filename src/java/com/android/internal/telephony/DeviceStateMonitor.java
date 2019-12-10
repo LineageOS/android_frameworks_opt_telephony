@@ -37,6 +37,7 @@ import android.os.PowerManager;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
+import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.SparseIntArray;
@@ -587,14 +588,23 @@ public class DeviceStateMonitor extends Handler {
     }
 
     private void setSignalStrengthReportingCriteria() {
-        mPhone.setSignalStrengthReportingCriteria(
-                AccessNetworkThresholds.GERAN, AccessNetworkType.GERAN);
-        mPhone.setSignalStrengthReportingCriteria(
-                AccessNetworkThresholds.UTRAN, AccessNetworkType.UTRAN);
-        mPhone.setSignalStrengthReportingCriteria(
-                AccessNetworkThresholds.EUTRAN, AccessNetworkType.EUTRAN);
-        mPhone.setSignalStrengthReportingCriteria(
-                AccessNetworkThresholds.CDMA2000, AccessNetworkType.CDMA2000);
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSI,
+                AccessNetworkThresholds.GERAN, AccessNetworkType.GERAN, true);
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSCP,
+                AccessNetworkThresholds.UTRAN, AccessNetworkType.UTRAN, true);
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSRP,
+                AccessNetworkThresholds.EUTRAN_RSRP, AccessNetworkType.EUTRAN, true);
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSI,
+                AccessNetworkThresholds.CDMA2000, AccessNetworkType.CDMA2000, true);
+        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+            // Defaultly we only need SSRSRP for NGRAN signal criterial reporting
+            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRP,
+                    AccessNetworkThresholds.NGRAN_RSRSRP, AccessNetworkType.NGRAN, true);
+            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRQ,
+                    AccessNetworkThresholds.NGRAN_RSRSRQ, AccessNetworkType.NGRAN, false);
+            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSSINR,
+                    AccessNetworkThresholds.NGRAN_SSSINR, AccessNetworkType.NGRAN, false);
+        }
     }
 
     private void setLinkCapacityReportingCriteria() {
@@ -730,16 +740,18 @@ public class DeviceStateMonitor extends Handler {
         };
 
         /**
-         * List of default dBm thresholds for EUTRAN {@link AccessNetworkType}.
+         * List of default dBm RSRP thresholds for EUTRAN {@link AccessNetworkType}.
          *
          * These thresholds are taken from the LTE RSRP defaults in {@link CarrierConfigManager}.
          */
-        public static final int[] EUTRAN = new int[] {
+        public static final int[] EUTRAN_RSRP = new int[] {
             -128, /* SIGNAL_STRENGTH_POOR */
             -118, /* SIGNAL_STRENGTH_MODERATE */
             -108, /* SIGNAL_STRENGTH_GOOD */
             -98,  /* SIGNAL_STRENGTH_GREAT */
         };
+
+        // TODO Add EUTRAN_RSRQ and EUTRAN_RSSNI
 
         /**
          * List of dBm thresholds for CDMA2000 {@link AccessNetworkType}.
@@ -751,6 +763,36 @@ public class DeviceStateMonitor extends Handler {
             -90,
             -75,
             -65
+        };
+
+        /**
+         * List of dB thresholds for NGRAN {@link AccessNetworkType} RSRSRP
+         */
+        public static final int[] NGRAN_RSRSRP = new int[] {
+            -125, /* SIGNAL_STRENGTH_POOR */
+            -115, /* SIGNAL_STRENGTH_MODERATE */
+            -105, /* SIGNAL_STRENGTH_GOOD */
+            -95,  /* SIGNAL_STRENGTH_GREAT */
+        };
+
+        /**
+         * List of dB thresholds for NGRAN {@link AccessNetworkType} RSRSRP
+         */
+        public static final int[] NGRAN_RSRSRQ = new int[] {
+            -14, /* SIGNAL_STRENGTH_POOR */
+            -12, /* SIGNAL_STRENGTH_MODERATE */
+            -10, /* SIGNAL_STRENGTH_GOOD */
+            -8  /* SIGNAL_STRENGTH_GREAT */
+        };
+
+        /**
+         * List of dB thresholds for NGRAN {@link AccessNetworkType} SSSINR
+         */
+        public static final int[] NGRAN_SSSINR = new int[] {
+            -8, /* SIGNAL_STRENGTH_POOR */
+            0, /* SIGNAL_STRENGTH_MODERATE */
+            8, /* SIGNAL_STRENGTH_GOOD */
+            16  /* SIGNAL_STRENGTH_GREAT */
         };
     }
 
