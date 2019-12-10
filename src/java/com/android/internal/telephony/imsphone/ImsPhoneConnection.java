@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncResult;

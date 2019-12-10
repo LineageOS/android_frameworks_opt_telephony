@@ -22,7 +22,7 @@ import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA_LTE;
 import static java.util.Arrays.copyOf;
 
 import android.annotation.Nullable;
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;

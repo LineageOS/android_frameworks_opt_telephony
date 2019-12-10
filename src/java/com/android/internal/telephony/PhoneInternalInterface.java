@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;

@@ -8,6 +8,7 @@ android_test {
         "android.test.mock",
         "android.test.runner",
         "ims-common",
+        "unsupportedappusage",
     ],
 
     static_libs: [

@@ -30,12 +30,12 @@ import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_
 import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
 import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
-import android.annotation.UnsupportedAppUsage;
 import android.annotation.UserIdInt;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;

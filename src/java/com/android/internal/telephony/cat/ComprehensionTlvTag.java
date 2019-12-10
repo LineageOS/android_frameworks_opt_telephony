@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 
 /**
  * Enumeration for representing the tag value of COMPREHENSION-TLV objects. If

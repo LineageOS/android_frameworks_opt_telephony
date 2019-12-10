@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.gsm;
 
-import dalvik.annotation.compat.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 
 /**
  * SIM Tag-Length-Value record

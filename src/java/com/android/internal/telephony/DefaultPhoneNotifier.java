@@ -17,14 +17,13 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.telephony.TelephonyRegistryManager;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
@@ -37,11 +36,13 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
+
 import java.util.List;
 
 /**
