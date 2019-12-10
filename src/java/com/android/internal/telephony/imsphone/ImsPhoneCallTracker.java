@@ -218,6 +218,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
                 conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
+                conn.setAllowHoldingVideoCall(mAllowHoldingVideoCall);
                 addConnection(conn);
 
                 setVideoCallProvider(conn, imsCall);
@@ -466,6 +467,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * should be allowed.
      */
     private boolean mAllowAddCallDuringVideoCall = true;
+
+    /**
+     * Carrier configuration option which determines whether holding a video call
+     * should be allowed.
+     */
+    private boolean mAllowHoldingVideoCall = true;
 
     /**
      * Carrier configuration option which determines whether to notify the connection if a handover
@@ -828,6 +835,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // if there is.
         checkForDialIssues();
 
+        if (!canAddVideoCallDuringImsAudioCall(videoState)) {
+            throw new CallStateException("cannot dial in current state");
+        }
+
         if (isPhoneInEcmMode && isEmergencyNumber) {
             handleEcmTimer(ImsPhone.CANCEL_ECM_TIMER);
         }
@@ -1013,6 +1024,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mAllowAddCallDuringVideoCall =
                 carrierConfig.getBoolean(
                         CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
+        mAllowHoldingVideoCall =
+                carrierConfig.getBoolean(
+                        CarrierConfigManager.KEY_ALLOW_HOLDING_VIDEO_CALL_BOOL);
         mNotifyVtHandoverToWifiFail = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
         mSupportDowngradeVtToAudio = carrierConfig.getBoolean(
@@ -1154,6 +1168,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             setVideoCallProvider(conn, imsCall);
             conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
+            conn.setAllowHoldingVideoCall(mAllowHoldingVideoCall);
         } catch (ImsException e) {
             loge("dialInternal : " + e);
             mOperationLocalLog.log("dialInternal exception: " + e);
@@ -1557,6 +1572,25 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             && mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING
             && !mBackgroundCall.isFull()
             && !mForegroundCall.isFull();
+    }
+
+    private boolean canAddVideoCallDuringImsAudioCall(int videoState) {
+        if (mAllowHoldingVideoCall) {
+            return true;
+        }
+
+        ImsCall call = mForegroundCall.getImsCall();
+        if (call == null) {
+            call = mBackgroundCall.getImsCall();
+        }
+
+        boolean isImsAudioCallActiveOrHolding = (mForegroundCall.getState() == Call.State.ACTIVE ||
+               mBackgroundCall.getState() == Call.State.HOLDING) && call != null &&
+               !call.isVideoCall();
+
+        /* return TRUE if there doesn't exist ims audio call in either active
+           or hold states */
+        return !isImsAudioCallActiveOrHolding || !VideoProfile.isVideo(videoState);
     }
 
     /**
