@@ -109,11 +109,9 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
                     CSIRSRP, CSIRSRQ, CSISINR, ssRsrp, SSRSRQ, SSSINR);
 
             // THEN the signal level is valid
-            assertThat(css.getLevel()).isAnyOf(
-                    CellSignalStrength.SIGNAL_STRENGTH_GREAT,
-                    CellSignalStrength.SIGNAL_STRENGTH_GOOD,
-                    CellSignalStrength.SIGNAL_STRENGTH_MODERATE,
-                    CellSignalStrength.SIGNAL_STRENGTH_POOR);
+            assertThat(css.getLevel()).isIn(Range.range(
+                    CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN, BoundType.CLOSED,
+                    CellSignalStrength.SIGNAL_STRENGTH_GREAT, BoundType.CLOSED));
         }
     }
 
