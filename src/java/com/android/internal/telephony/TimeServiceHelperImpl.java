@@ -21,11 +21,9 @@ import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timedetector.TimeDetector;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.os.SystemProperties;
-import android.os.UserHandle;
 import android.provider.Settings;
 
 /**
@@ -95,10 +93,6 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
     public void setDeviceTimeZone(String zoneId) {
         AlarmManager alarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
         alarmManager.setTimeZone(zoneId);
-        Intent intent = new Intent(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra("time-zone", zoneId);
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
     @Override
