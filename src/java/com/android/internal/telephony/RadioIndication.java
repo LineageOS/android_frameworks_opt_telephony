@@ -63,6 +63,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_EVENT_NO
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_PROACTIVE_COMMAND;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_END;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
@@ -758,6 +759,17 @@ public class RadioIndication extends IRadioIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
 
         mRil.mRilCellInfoListRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    /** Get unsolicited message for uicc applications enablement changes. */
+    public void uiccApplicationsEnablementChanged(int indicationType, boolean enabled) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) {
+            mRil.unsljLogRet(RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED, enabled);
+        }
+
+        mRil.mUiccApplicationsEnablementRegistrants.notifyResult(enabled);
     }
 
     /** Incremental network scan results */
