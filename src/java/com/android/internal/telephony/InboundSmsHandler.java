@@ -230,9 +230,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected Phone mPhone;
 
     @UnsupportedAppUsage
-    protected CellBroadcastHandler mCellBroadcastHandler;
-
-    @UnsupportedAppUsage
     private UserManager mUserManager;
 
     protected TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
@@ -240,8 +237,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     private LocalLog mLocalLog = new LocalLog(64);
 
     PowerWhitelistManager mPowerWhitelistManager;
-
-    protected static boolean sEnableCbModule = true;
 
     protected CellBroadcastServiceManager mCellBroadcastServiceManager;
 
@@ -267,13 +262,12 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param storageMonitor the SmsStorageMonitor to check for storage availability
      */
     protected InboundSmsHandler(String name, Context context, SmsStorageMonitor storageMonitor,
-            Phone phone, CellBroadcastHandler cellBroadcastHandler) {
+            Phone phone) {
         super(name);
 
         mContext = context;
         mStorageMonitor = storageMonitor;
         mPhone = phone;
-        mCellBroadcastHandler = cellBroadcastHandler;
         mResolver = context.getContentResolver();
         mWapPush = new WapPushOverSms(context);
 
@@ -1726,9 +1720,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         super.dump(fd, pw, args);
-        if (mCellBroadcastHandler != null) {
-            mCellBroadcastHandler.dump(fd, pw, args);
-        }
         if (mCellBroadcastServiceManager != null) {
             mCellBroadcastServiceManager.dump(fd, pw, args);
         }
@@ -1815,15 +1806,11 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected abstract class CbTestBroadcastReceiver extends BroadcastReceiver {
 
         protected abstract void handleTestAction(Intent intent);
-        protected abstract void handleToggleEnable();
-        protected abstract void handleToggleDisable(Context context);
 
         protected final String mTestAction;
-        protected final String mToggleAction;
 
-        public CbTestBroadcastReceiver(String testAction, String toggleAction) {
+        public CbTestBroadcastReceiver(String testAction) {
             mTestAction = testAction;
-            mToggleAction = toggleAction;
         }
 
         @Override
@@ -1837,19 +1824,6 @@ public abstract class InboundSmsHandler extends StateMachine {
                     return;
                 }
                 handleTestAction(intent);
-            } else if (intent.getAction().equals(mToggleAction)) {
-                if (intent.hasExtra("enable")) {
-                    sEnableCbModule = intent.getBooleanExtra("enable", false);
-                } else {
-                    sEnableCbModule = !sEnableCbModule;
-                }
-                if (sEnableCbModule) {
-                    log("enabling CB module");
-                    handleToggleEnable();
-                } else {
-                    log("enabling legacy platform CB handling");
-                    handleToggleDisable(context);
-                }
             }
         }
     }

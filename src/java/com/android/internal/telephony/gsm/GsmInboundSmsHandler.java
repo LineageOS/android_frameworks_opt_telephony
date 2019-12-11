@@ -51,30 +51,22 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     private static final boolean TEST_MODE = SystemProperties.getInt("ro.debuggable", 0) == 1;
     private static final String TEST_ACTION = "com.android.internal.telephony.gsm"
             + ".TEST_TRIGGER_CELL_BROADCAST";
-    private static final String TOGGLE_CB_MODULE = "com.android.internal.telephony.gsm"
-            + ".TOGGLE_CB_MODULE";
 
     /**
      * Create a new GSM inbound SMS handler.
      */
     private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             Phone phone) {
-        super("GsmInboundSmsHandler", context, storageMonitor, phone, null);
+        super("GsmInboundSmsHandler", context, storageMonitor, phone);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi, phone.getPhoneId());
-        if (sEnableCbModule) {
-            mCellBroadcastServiceManager.enable();
-        } else {
-            mCellBroadcastHandler = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
-                    phone);
-        }
+        mCellBroadcastServiceManager.enable();
 
         if (TEST_MODE) {
             if (sTestBroadcastReceiver == null) {
                 sTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(TEST_ACTION);
-                filter.addAction(TOGGLE_CB_MODULE);
                 context.registerReceiver(sTestBroadcastReceiver, filter);
             }
         }
@@ -94,16 +86,11 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * --es pdu_string  0000110011010D0A5BAE57CE770C531790E85C716CBF3044573065B9306757309707767 \
      * A751F30025F37304463FA308C306B5099304830664E0B30553044FF086C178C615E81FF09000000000000000 \
      * 0000000000000 --ei phone_id 0
-     *
-     * adb shell am broadcast -a com.android.internal.telephony.gsm.TOGGLE_CB_MODULE
-     *
-     * adb shell am broadcast -a com.android.internal.telephony.gsm.TOGGLE_CB_MODULE \
-     * --ez enable true
      */
     private class GsmCbTestBroadcastReceiver extends CbTestBroadcastReceiver {
 
         GsmCbTestBroadcastReceiver() {
-            super(TEST_ACTION, TOGGLE_CB_MODULE);
+            super(TEST_ACTION);
         }
 
         @Override
@@ -126,30 +113,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             }
             Message m = Message.obtain();
             AsyncResult.forMessage(m, smsPdu, null);
-            if (sEnableCbModule) {
-                mCellBroadcastServiceManager.sendGsmMessageToHandler(m);
-            } else {
-                m.what = GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE;
-                mCellBroadcastHandler.sendMessage(m);
-            }
-        }
-
-        @Override
-        protected void handleToggleEnable() {
-            mPhone.mCi.unSetOnNewGsmBroadcastSms(mCellBroadcastHandler.getHandler());
-            mCellBroadcastServiceManager.enable();
-        }
-
-        @Override
-        protected void handleToggleDisable(Context context) {
-            mCellBroadcastServiceManager.disable();
-            if (mCellBroadcastHandler == null) {
-                mCellBroadcastHandler =
-                        GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
-                                mPhone);
-            }
-            mPhone.mCi.setOnNewGsmBroadcastSms(mCellBroadcastHandler.getHandler(),
-                    GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE, null);
+            mCellBroadcastServiceManager.sendGsmMessageToHandler(m);
         }
     }
 
@@ -159,7 +123,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void onQuitting() {
         mPhone.mCi.unSetOnNewGsmSms(getHandler());
-        mCellBroadcastHandler.dispose();
 
         if (DBG) log("unregistered for 3GPP SMS");
         super.onQuitting();     // release wakelock
