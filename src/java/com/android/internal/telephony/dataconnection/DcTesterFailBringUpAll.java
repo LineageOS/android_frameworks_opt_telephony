@@ -20,12 +20,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
 import android.os.Handler;
 import android.telephony.DataFailCause;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 /**
  * A package level call that causes all DataConnection bringUp calls to fail a specific
@@ -77,7 +77,7 @@ public class DcTesterFailBringUpAll {
 
     DcTesterFailBringUpAll(Phone phone, Handler handler) {
         mPhone = phone;
-        if (Build.IS_DEBUGGABLE) {
+        if (TelephonyUtils.IS_DEBUGGABLE) {
             IntentFilter filter = new IntentFilter();
 
             filter.addAction(mActionFailBringUp);
@@ -94,7 +94,7 @@ public class DcTesterFailBringUpAll {
     }
 
     void dispose() {
-        if (Build.IS_DEBUGGABLE) {
+        if (TelephonyUtils.IS_DEBUGGABLE) {
             mPhone.getContext().unregisterReceiver(mIntentReceiver);
         }
     }
