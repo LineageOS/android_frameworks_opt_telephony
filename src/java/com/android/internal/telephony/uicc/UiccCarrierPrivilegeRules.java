@@ -114,6 +114,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
     // Max number of retries for open logical channel, interval is 10s.
     private static final int MAX_RETRY = 1;
     private static final int RETRY_INTERVAL_MS = 10000;
+    private static final int STATUS_CODE_CONDITION_NOT_SATISFIED = 0x6985;
+    private static final int STATUS_CODE_APPLET_SELECT_FAILED = 0x6999;
 
     // Used for parsing the data from the UICC.
     public static class TLV {
@@ -426,6 +428,30 @@ public class UiccCarrierPrivilegeRules extends Handler {
         return null;
     }
 
+    /**
+     * The following three situations could be due to logical channels temporarily unavailable, so
+     * we retry up to MAX_RETRY times, with an interval of RETRY_INTERVAL_MS: 1. MISSING_RESOURCE,
+     * 2. NO_SUCH_ELEMENT and the status code is 6985, 3. INTERNAL_ERR and the status code is 6999.
+     */
+    public static boolean shouldRetry(AsyncResult ar, int retryCount) {
+        if (ar.exception instanceof CommandException && retryCount < MAX_RETRY) {
+            CommandException.Error error = ((CommandException) (ar.exception)).getCommandError();
+            int[] results = (int[]) ar.result;
+            int statusCode = 0;
+            if (results.length == 3) {
+                byte[] bytes = new byte[]{(byte) results[1], (byte) results[2]};
+                statusCode = Integer.parseInt(IccUtils.bytesToHexString(bytes), 16);
+                log("status code: " + String.valueOf(statusCode));
+            }
+            return (error == CommandException.Error.MISSING_RESOURCE)
+                            || (error == CommandException.Error.NO_SUCH_ELEMENT
+                    && statusCode == STATUS_CODE_CONDITION_NOT_SATISFIED)
+                            || (error == CommandException.Error.INTERNAL_ERR
+                    && statusCode == STATUS_CODE_APPLET_SELECT_FAILED);
+        }
+        return false;
+    }
+
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
@@ -442,11 +468,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
                             DATA, obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, mChannelId,
                                     mAIDInUse));
                 } else {
-                    // MISSING_RESOURCE could be due to logical channels temporarily unavailable,
-                    // so we retry up to MAX_RETRY times, with an interval of RETRY_INTERVAL_MS.
-                    if (ar.exception instanceof CommandException && mRetryCount < MAX_RETRY
-                            && ((CommandException) (ar.exception)).getCommandError()
-                            == CommandException.Error.MISSING_RESOURCE) {
+                    if (shouldRetry(ar, mRetryCount)) {
+                        log("should retry");
                         mRetryCount++;
                         removeCallbacks(mRetryRunnable);
                         postDelayed(mRetryRunnable, RETRY_INTERVAL_MS);
