@@ -31,7 +31,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -51,6 +50,7 @@ import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -230,7 +230,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
             intent.putExtra(EXTRA_MESSAGE, message);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
 
-            if (Build.IS_DEBUGGABLE) {
+            if (TelephonyUtils.IS_DEBUGGABLE) {
                 // Send additional broadcast intent to the specified package. This is only for sl4a
                 // automation tests.
                 final String additionalPackage = Settings.Secure.getString(

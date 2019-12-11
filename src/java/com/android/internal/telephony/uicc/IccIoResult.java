@@ -17,7 +17,8 @@
 package com.android.internal.telephony.uicc;
 
 import android.annotation.UnsupportedAppUsage;
-import android.os.Build;
+
+import com.android.internal.telephony.util.TelephonyUtils;
 
 /**
  * {@hide}
@@ -201,7 +202,7 @@ IccIoResult {
                 + " sw2:0x"
                 + Integer.toHexString(sw2)
                 + " Payload: "
-                + (Build.IS_DEBUGGABLE ? IccUtils.bytesToHexString(payload) : "*******")
+                + (TelephonyUtils.IS_DEBUGGABLE ? IccUtils.bytesToHexString(payload) : "*******")
                 + ((!success()) ? " Error: " + getErrorString() : "");
     }
 
