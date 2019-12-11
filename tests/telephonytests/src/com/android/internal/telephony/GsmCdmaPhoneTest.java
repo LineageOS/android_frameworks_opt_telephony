@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyBoolean;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -66,6 +68,7 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
 import com.android.internal.telephony.uicc.UiccController;
@@ -89,6 +92,10 @@ import java.util.List;
 public class GsmCdmaPhoneTest extends TelephonyTest {
     @Mock
     private Handler mTestHandler;
+    @Mock
+    private UiccSlot mUiccSlot;
+    @Mock
+    private CommandsInterface mMockCi;
 
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
@@ -1197,5 +1204,24 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 CarrierConfigManager.KEY_USE_USIM_BOOL, true);
         assertEquals(msisdn, mPhoneUT.getLine1Number());
     }
-}
 
+    @Test
+    @SmallTest
+    public void testEnableUiccApplications() throws Exception {
+        mPhoneUT.mCi = mMockCi;
+        // UiccSlot is null. Doing nothing.
+        mPhoneUT.enableUiccApplications(true, null);
+        verify(mMockCi, never()).enableUiccApplications(anyBoolean(), any());
+
+        // Card state is not PRESENT. Doing nothing.
+        doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
+        doReturn(IccCardStatus.CardState.CARDSTATE_ABSENT).when(mUiccSlot).getCardState();
+        mPhoneUT.enableUiccApplications(true, null);
+        verify(mMockCi, never()).enableUiccApplications(anyBoolean(), any());
+
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+        Message message = Message.obtain();
+        mPhoneUT.enableUiccApplications(true, message);
+        verify(mMockCi).enableUiccApplications(eq(true), eq(message));
+    }
+}

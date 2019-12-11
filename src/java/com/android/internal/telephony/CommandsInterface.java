@@ -656,6 +656,22 @@ public interface CommandsInterface {
      void unregisterForRilConnected(Handler h);
 
     /**
+     * Registers the handler for RIL_UNSOL_SIM_DETACH_FROM_NETWORK_CONFIG_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerUiccApplicationEnablementChanged(Handler h, int what, Object obj) {};
+
+    /**
+     * Unregisters the handler for RIL_UNSOL_SIM_DETACH_FROM_NETWORK_CONFIG_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     */
+    default void unregisterUiccApplicationEnablementChanged(Handler h) {};
+
+    /**
      * Supply the ICC PIN to the ICC card
      *
      *  returned message
@@ -2392,6 +2408,28 @@ public interface CommandsInterface {
      * @param result a Message to return to the requester
      */
     default void getModemStatus(Message result) {};
+
+    /**
+     * Enable or disable uicc applications on the SIM.
+     *
+     * @param enable enable or disable UiccApplications on the SIM.
+     * @param onCompleteMessage a Message to return to the requester
+     */
+    default void enableUiccApplications(boolean enable, Message onCompleteMessage) {}
+
+    /**
+     * Whether uicc applications are enabled or not.
+     *
+     * @param onCompleteMessage a Message to return to the requester
+     */
+    default void areUiccApplicationsEnabled(Message onCompleteMessage) {}
+
+    /**
+     * Whether {@link #enableUiccApplications} is supported, based on IRadio version.
+     */
+    default boolean canToggleUiccApplicationsEnablement() {
+        return false;
+    }
 
     default List<ClientRequestStats> getClientRequestStats() {
         return null;

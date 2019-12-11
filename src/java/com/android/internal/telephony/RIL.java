@@ -4759,6 +4759,98 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
+     * Enable or disable uicc applications on the SIM.
+     *
+     * @param enable whether to enable or disable uicc applications.
+     * @param onCompleteMessage a Message to return to the requester
+     */
+    @Override
+    public void enableUiccApplications(boolean enable, Message onCompleteMessage) {
+        IRadio radioProxy = getRadioProxy(onCompleteMessage);
+        if (radioProxy == null) {
+            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
+            if (onCompleteMessage != null) {
+                AsyncResult.forMessage(onCompleteMessage, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                onCompleteMessage.sendToTarget();
+            }
+        }
+
+        if (mRadioVersion.less(RADIO_HAL_VERSION_1_5)) {
+            if (onCompleteMessage != null) {
+                AsyncResult.forMessage(onCompleteMessage, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                onCompleteMessage.sendToTarget();
+            }
+            return;
+        }
+
+        android.hardware.radio.V1_5.IRadio radioProxy15 =
+                (android.hardware.radio.V1_5.IRadio) radioProxy;
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_ENABLE_UICC_APPLICATIONS,
+                onCompleteMessage, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        try {
+            radioProxy15.enableUiccApplications(rr.mSerial, enable);
+        } catch (RemoteException | RuntimeException e) {
+            handleRadioProxyExceptionForRR(rr, "enableUiccApplications", e);
+        }
+    }
+
+    /**
+     * Whether uicc applications are enabled or not.
+     *
+     * @param onCompleteMessage a Message to return to the requester
+     */
+    @Override
+    public void areUiccApplicationsEnabled(Message onCompleteMessage) {
+        IRadio radioProxy = getRadioProxy(onCompleteMessage);
+        if (radioProxy == null) {
+            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
+            if (onCompleteMessage != null) {
+                AsyncResult.forMessage(onCompleteMessage, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                onCompleteMessage.sendToTarget();
+            }
+        }
+
+        if (mRadioVersion.less(RADIO_HAL_VERSION_1_5)) {
+            if (onCompleteMessage != null) {
+                AsyncResult.forMessage(onCompleteMessage, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                onCompleteMessage.sendToTarget();
+            }
+            return;
+        }
+
+        android.hardware.radio.V1_5.IRadio radioProxy15 =
+                (android.hardware.radio.V1_5.IRadio) radioProxy;
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT,
+                onCompleteMessage, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        try {
+            radioProxy15.areUiccApplicationsEnabled(rr.mSerial);
+        } catch (RemoteException | RuntimeException e) {
+            handleRadioProxyExceptionForRR(rr, "areUiccApplicationsEnabled", e);
+        }
+    }
+
+    /**
+     * Whether {@link #enableUiccApplications} is supported, which is supported in 1.5 version.
+     */
+    @Override
+    public boolean canToggleUiccApplicationsEnablement() {
+        return getRadioProxy(null) != null && mRadioVersion
+                .greaterOrEqual(RADIO_HAL_VERSION_1_5);
+    }
+
+    /**
      *  Translates EF_SMS status bits to a status value compatible with
      *  SMS AT commands.  See TS 27.005 3.1.
      */
@@ -5680,6 +5772,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_ENABLE_MODEM";
             case RIL_REQUEST_GET_MODEM_STATUS:
                 return "RIL_REQUEST_GET_MODEM_STATUS";
+            case RIL_REQUEST_ENABLE_UICC_APPLICATIONS:
+                return "RIL_REQUEST_ENABLE_UICC_APPLICATIONS";
+            case RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT:
+                return "RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT";
             default: return "<unknown request>";
         }
     }
@@ -5793,6 +5889,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG";
             case RIL_UNSOL_EMERGENCY_NUMBER_LIST:
                 return "RIL_UNSOL_EMERGENCY_NUMBER_LIST";
+            case RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED:
+                return "RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED";
             default:
                 return "<unknown response>";
         }

@@ -101,6 +101,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mPhysicalChannelConfigurationRegistrants = new RegistrantList();
     protected RegistrantList mLceInfoRegistrants = new RegistrantList();
     protected RegistrantList mEmergencyNumberListRegistrants = new RegistrantList();
+    protected RegistrantList mUiccApplicationsEnablementRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -952,7 +953,7 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void registerForModemReset(Handler h, int what, Object obj) {
-        mModemResetRegistrants.add(new Registrant(h, what, obj));
+        mModemResetRegistrants.addUnique(h, what, obj);
     }
 
     @Override
@@ -962,7 +963,7 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void registerForPcoData(Handler h, int what, Object obj) {
-        mPcoDataRegistrants.add(new Registrant(h, what, obj));
+        mPcoDataRegistrants.addUnique(h, what, obj);
     }
 
     @Override
@@ -972,7 +973,7 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void registerForCarrierInfoForImsiEncryption(Handler h, int what, Object obj) {
-        mCarrierInfoForImsiEncryptionRegistrants.add(new Registrant(h, what, obj));
+        mCarrierInfoForImsiEncryptionRegistrants.addUnique(h, what, obj);
     }
 
     @Override
@@ -992,5 +993,27 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mNattKeepaliveStatusRegistrants.remove(h);
         }
+    }
+
+    /**
+     * Registers the handler for RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    @Override
+    public void registerUiccApplicationEnablementChanged(Handler h, int what, Object obj) {
+        mUiccApplicationsEnablementRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters the handler for RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     */
+    @Override
+    public void unregisterUiccApplicationEnablementChanged(Handler h) {
+        mUiccApplicationsEnablementRegistrants.remove(h);
     }
 }

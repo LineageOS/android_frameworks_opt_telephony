@@ -138,9 +138,7 @@ public class DataFailCauseTest extends TelephonyTest {
         mFailCauseDataList.add(new DcFailCauseData(0x10000, false, false));
         mFailCauseDataList.add(new DcFailCauseData(0x10001, true, false));
         mFailCauseDataList.add(new DcFailCauseData(0x10002, true, true));
-        mFailCauseDataList.add(new DcFailCauseData(0x10003, false, false));
         mFailCauseDataList.add(new DcFailCauseData(0x10004, false, false));
-        mFailCauseDataList.add(new DcFailCauseData(0x10005, false, false));
 
         CarrierConfigManager configManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
