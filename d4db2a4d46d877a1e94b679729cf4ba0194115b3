@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "af72cc3c_373d39e8",
+        "filename": "src/java/com/android/internal/telephony/PhoneSwitcher.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1257,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2019-12-11T23:37:11Z",
+      "side": 0,
+      "message": "This method being removed was added by CAF in https://github.com/LineageOS/android_frameworks_opt_telephony/commit/c0d0d1e68b47cf7af1e71231ff4f2740955417d8#diff-c0bc0791f2592e53a0f207c7f947aca8R1251",
+      "revId": "d4db2a4d46d877a1e94b679729cf4ba0194115b3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
