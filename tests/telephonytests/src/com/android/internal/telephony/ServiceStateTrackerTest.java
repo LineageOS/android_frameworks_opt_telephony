@@ -1913,6 +1913,26 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
     }
 
+    @Test
+    public void testPollStateOperatorWhileNotRegistered() {
+        final String[] oldOpNamesResult = new String[] { "Old carrier long", "Old carrier", "" };
+        final String[] badOpNamesResult = null;
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, oldOpNamesResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(oldOpNamesResult[0], sst.getServiceState().getOperatorAlpha());
+
+        // if the device is not registered, the modem returns an invalid operator
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, badOpNamesResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(null, sst.getServiceState().getOperatorAlpha());
+    }
+
     // Edge and GPRS are grouped under the same family and Edge has higher rate than GPRS.
     // Expect no rat update when move from E to G.
     @Test
