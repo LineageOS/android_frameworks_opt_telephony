@@ -2205,8 +2205,6 @@ public class ServiceStateTracker extends Handler {
             }
 
             case EVENT_POLL_STATE_OPERATOR: {
-                String brandOverride = getOperatorBrandOverride();
-                mCdnr.updateEfForBrandOverride(brandOverride);
                 if (mPhone.isPhoneTypeGsm()) {
                     String opNames[] = (String[]) ar.result;
 
@@ -2214,6 +2212,8 @@ public class ServiceStateTracker extends Handler {
                         mNewSS.setOperatorAlphaLongRaw(opNames[0]);
                         mNewSS.setOperatorAlphaShortRaw(opNames[1]);
                         // FIXME: Giving brandOverride higher precedence, is this desired?
+                        String brandOverride = getOperatorBrandOverride();
+                        mCdnr.updateEfForBrandOverride(brandOverride);
                         if (brandOverride != null) {
                             log("EVENT_POLL_STATE_OPERATOR: use brandOverride=" + brandOverride);
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
@@ -2243,6 +2243,8 @@ public class ServiceStateTracker extends Handler {
                             // NV device (as opposed to CSIM)
                             mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                         } else {
+                            String brandOverride = getOperatorBrandOverride();
+                            mCdnr.updateEfForBrandOverride(brandOverride);
                             if (brandOverride != null) {
                                 mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
                             } else {
