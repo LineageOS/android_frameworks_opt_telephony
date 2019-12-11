@@ -1543,14 +1543,13 @@ public class SubscriptionController extends ISub.Stub {
      * @return int representing the priority. Higher value means higher priority.
      */
     public static int getNameSourcePriority(@SimDisplayNameSource int nameSource) {
-        int index = Arrays.binarySearch(
-                new int[] {
-                        SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE,
-                        SubscriptionManager.NAME_SOURCE_SIM_PNN,
-                        SubscriptionManager.NAME_SOURCE_SIM_SPN,
-                        SubscriptionManager.NAME_SOURCE_CARRIER,
-                        SubscriptionManager.NAME_SOURCE_USER_INPUT // user has highest priority.
-                }, nameSource);
+        int index = Arrays.asList(
+                SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE,
+                SubscriptionManager.NAME_SOURCE_SIM_PNN,
+                SubscriptionManager.NAME_SOURCE_SIM_SPN,
+                SubscriptionManager.NAME_SOURCE_CARRIER,
+                SubscriptionManager.NAME_SOURCE_USER_INPUT // user has highest priority.
+        ).indexOf(nameSource);
         return (index < 0) ? 0 : index;
     }
 
@@ -1583,6 +1582,10 @@ public class SubscriptionController extends ISub.Stub {
                         && (getNameSourcePriority(subInfo.getNameSource())
                                 > getNameSourcePriority(nameSource)
                         || (displayName != null && displayName.equals(subInfo.getDisplayName())))) {
+                    logd("Name source " + subInfo.getNameSource() + "'s priority "
+                            + getNameSourcePriority(subInfo.getNameSource()) + " is greater than "
+                            + "name source " + nameSource + "'s priority "
+                            + getNameSourcePriority(nameSource) + ", return now.");
                     return 0;
                 }
             }

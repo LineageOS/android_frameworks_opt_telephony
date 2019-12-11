@@ -1005,4 +1005,28 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.setAlwaysAllowMmsData(0, false);
         verify(mDataEnabledSettings).setAlwaysAllowMmsData(eq(false));
     }
+
+    @Test
+    @SmallTest
+    public void testNameSourcePriority() throws Exception {
+        assertTrue(mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_USER_INPUT)
+                > mSubscriptionControllerUT.getNameSourcePriority(
+                        SubscriptionManager.NAME_SOURCE_CARRIER));
+
+        assertTrue(mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_CARRIER)
+                > mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_SIM_SPN));
+
+        assertTrue(mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_SIM_SPN)
+                > mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_SIM_PNN));
+
+        assertTrue(mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_SIM_PNN)
+                > mSubscriptionControllerUT.getNameSourcePriority(
+                SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE));
+    }
 }
