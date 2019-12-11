@@ -1320,6 +1320,7 @@ public class DcTrackerTest extends TelephonyTest {
 
     // Test update waiting apn list when on data rat change
     @FlakyTest /* flakes 0.86% of the time */
+    @Ignore
     @Test
     @SmallTest
     public void testUpdateWaitingApnListOnDataRatChange() throws Exception {
