@@ -25,6 +25,7 @@ import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierIdMatching;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.CarrierKeyChange;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.ModemRestart;
+import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.NetworkCapabilitiesInfo;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilDeactivateDataCall;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCall;
 import static com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.RilSetupDataCallResponse;
@@ -207,6 +208,14 @@ public class TelephonyEventBuilder {
     public TelephonyEventBuilder setOnDemandDataSwitch(OnDemandDataSwitch onDemandDataSwitch) {
         mEvent.type = TelephonyEvent.Type.ON_DEMAND_DATA_SWITCH;
         mEvent.onDemandDataSwitch = onDemandDataSwitch;
+        return this;
+    }
+
+    /** Set and build network capabilities changed event. */
+    public TelephonyEventBuilder setNetworkCapabilities(
+            NetworkCapabilitiesInfo networkCapabilities) {
+        mEvent.type = TelephonyEvent.Type.NETWORK_CAPABILITIES_CHANGED;
+        mEvent.networkCapabilities = networkCapabilities;
         return this;
     }
 }

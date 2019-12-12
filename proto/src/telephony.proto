@@ -795,6 +795,9 @@ message TelephonyEvent {
 
     // Emergency Number update event (Device HAL >= 1.4).
     EMERGENCY_NUMBER_REPORT = 21;
+
+    // Network capabilities change event.
+    NETWORK_CAPABILITIES_CHANGED = 22;
   }
 
   enum ApnType {
@@ -1697,6 +1700,11 @@ message TelephonyEvent {
     optional string preferApn = 12;
   }
 
+  message NetworkCapabilitiesInfo {
+    // Is network unmetered
+    optional bool is_network_unmetered = 1;
+  }
+
   // Time when event happened on device, in milliseconds since epoch
   optional int64 timestamp_millis = 1;
 
@@ -1769,6 +1777,9 @@ message TelephonyEvent {
 
   // Updated Emergency Call info.
   optional EmergencyNumberInfo updated_emergency_number = 25;
+
+  // NetworkCapabilities changed info.
+  optional NetworkCapabilitiesInfo network_capabilities = 26;
 }
 
 message ActiveSubscriptionInfo {
