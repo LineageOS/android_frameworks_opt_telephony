@@ -1579,6 +1579,8 @@ public class ServiceStateTracker extends Handler {
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged) {
                         mPhone.notifyServiceStateChanged(mSS);
+                        TelephonyMetrics.getInstance().writeServiceStateChanged(
+                                mPhone.getPhoneId(), mSS);
                     }
                 }
                 break;
@@ -2153,6 +2155,7 @@ public class ServiceStateTracker extends Handler {
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
+                boolean nrHasChanged = false;
 
                 if (DBG) {
                     log("handlePollStateResultMessage: PS cellular. " + networkRegState);
@@ -2163,10 +2166,16 @@ public class ServiceStateTracker extends Handler {
                 // (2 or more cells) to a new cell if they camp for emergency service only.
                 if (serviceState == ServiceState.STATE_OUT_OF_SERVICE) {
                     mLastPhysicalChannelConfigList = null;
-                    updateNrFrequencyRangeFromPhysicalChannelConfigs(null, mNewSS);
+                    nrHasChanged |= updateNrFrequencyRangeFromPhysicalChannelConfigs(null, mNewSS);
                 }
-                updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+                nrHasChanged |= updateNrStateFromPhysicalChannelConfigs(
+                        mLastPhysicalChannelConfigList, mNewSS);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
+
+                if (nrHasChanged) {
+                    TelephonyMetrics.getInstance().writeServiceStateChanged(
+                            mPhone.getPhoneId(), mSS);
+                }
 
                 if (mPhone.isPhoneTypeGsm()) {
 
@@ -3405,7 +3414,9 @@ public class ServiceStateTracker extends Handler {
             mPhone.getContext().getContentResolver()
                     .insert(getUriForSubscriptionId(mPhone.getSubId()),
                             getContentValuesForServiceState(mSS));
+        }
 
+        if (hasChanged || hasNrStateChanged) {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
         }
 
