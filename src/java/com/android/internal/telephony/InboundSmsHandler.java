@@ -237,7 +237,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     @UnsupportedAppUsage
     IDeviceIdleController mDeviceIdleController;
 
-    protected static boolean sEnableCbModule = false;
+    protected static boolean sEnableCbModule = true;
 
     protected CellBroadcastServiceManager mCellBroadcastServiceManager;
 
