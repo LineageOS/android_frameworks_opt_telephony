@@ -152,8 +152,9 @@ public class DcTracker extends Handler {
     private static final int NETWORK_TYPE_CBS = ConnectivityManager.TYPE_MOBILE_CBS;
     private static final int NETWORK_TYPE_IA = ConnectivityManager.TYPE_MOBILE_IA;
     private static final int NETWORK_TYPE_EMERGENCY = ConnectivityManager.TYPE_MOBILE_EMERGENCY;
-    private static final int NETWORK_TYPE_MCX = 1001;  // far away from ConnectivityManager.TYPE_xxx
-                                                       // constants as MCX isn't defined there.
+    // far away from ConnectivityManager.TYPE_xxx constants as the APNs below aren't defined there.
+    private static final int NETWORK_TYPE_MCX = 1001;
+    private static final int NETWORK_TYPE_XCAP = 1002;
 
     @IntDef(value = {
             REQUEST_TYPE_NORMAL,
@@ -1005,6 +1006,9 @@ public class DcTracker extends Handler {
                     break;
                 case NETWORK_TYPE_MCX:
                     apnContext = addApnContext(PhoneConstants.APN_TYPE_MCX, networkConfig);
+                    break;
+                case NETWORK_TYPE_XCAP:
+                    apnContext = addApnContext(PhoneConstants.APN_TYPE_XCAP, networkConfig);
                     break;
                 default:
                     log("initApnContexts: skipping unknown type=" + networkConfig.type);
