@@ -60,7 +60,7 @@ public class CellBroadcastServiceManager {
     private static final int EVENT_NEW_GSM_SMS_CB = 0;
     private static final int EVENT_NEW_CDMA_SMS_CB = 1;
     private static final int EVENT_NEW_CDMA_SCP_MESSAGE = 2;
-    private boolean mEnabled;
+    private boolean mEnabled = false;
 
     public CellBroadcastServiceManager(Context context, Phone phone) {
         Log.d(TAG, "CellBroadcastServiceManager created for phone " + phone.getPhoneId());
@@ -111,6 +111,9 @@ public class CellBroadcastServiceManager {
      * Disable the CB module. The manager's handler will no longer receive CB messages from the RIL.
      */
     public void disable() {
+        if (mEnabled == false) {
+            return;
+        }
         mEnabled = false;
         mPhone.mCi.unSetOnNewGsmBroadcastSms(mModuleCellBroadcastHandler);
         if (sServiceConnection.mService != null) {
