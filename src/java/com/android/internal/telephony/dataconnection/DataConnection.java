@@ -1264,6 +1264,10 @@ public class DataConnection extends StateMachine {
                         result.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
                         break;
                     }
+                    case PhoneConstants.APN_TYPE_XCAP: {
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
+                        break;
+                    }
                     default:
                 }
             }
