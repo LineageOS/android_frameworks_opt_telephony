@@ -17,12 +17,11 @@
 
 package com.android.internal.telephony;
 
-import android.app.ActivityThread;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothMapClient;
 import android.bluetooth.BluetoothProfile;
+import android.content.Context;
 import android.net.Uri;
 import android.telecom.PhoneAccount;
 import android.telephony.SmsManager;
@@ -40,7 +39,7 @@ public class BtSmsInterfaceManager {
     /**
      * Sends text through connected Bluetooth device
      */
-    public void sendText(String destAddr, String text, PendingIntent sentIntent,
+    public void sendText(Context context, String destAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, SubscriptionInfo info) {
         BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter == null) {
@@ -54,7 +53,7 @@ public class BtSmsInterfaceManager {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS);
             return;
         }
-        btAdapter.getProfileProxy(ActivityThread.currentApplication().getApplicationContext(),
+        btAdapter.getProfileProxy(context.getApplicationContext(),
                 new MapMessageSender(destAddr, text, device, sentIntent, deliveryIntent),
                 BluetoothProfile.MAP_CLIENT);
     }
@@ -99,14 +98,19 @@ public class BtSmsInterfaceManager {
             if (profile != BluetoothProfile.MAP_CLIENT) {
                 return;
             }
-            BluetoothMapClient mapProfile = (BluetoothMapClient) proxy;
+            // Comment out the method for mainline (b/143848423). The profile is not for a phone,
+            // so it will not be enabled.
+/*            BluetoothMapClient mapProfile = (BluetoothMapClient) proxy;
             if (mMessage != null) {
                 Log.d(LOG_TAG, "Sending message thru bluetooth");
                 mapProfile.sendMessage(mDevice, mDestAddr, mMessage, mSentIntent, mDeliveryIntent);
                 mMessage = null;
             }
             BluetoothAdapter.getDefaultAdapter()
-                    .closeProfileProxy(BluetoothProfile.MAP_CLIENT, mapProfile);
+                    .closeProfileProxy(BluetoothProfile.MAP_CLIENT, mapProfile);*/
+            if (mMessage != null) {
+                throw new RuntimeException("Can't send message through BluetoothMapClient");
+            }
         }
 
         @Override
