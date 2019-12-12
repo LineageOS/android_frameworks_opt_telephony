@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.TelephonyNetworkSpecifier;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -95,7 +96,8 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         NetworkRequest expectedRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .setNetworkSpecifier(String.valueOf(subId))
+                .setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                        .setSubscriptionId(subId).build())
                 .build();
 
         mValidatorUT.validate(subId, timeout, true, mCallback);
@@ -128,7 +130,8 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         NetworkRequest expectedRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .setNetworkSpecifier(String.valueOf(subId))
+                .setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                        .setSubscriptionId(subId).build())
                 .build();
 
         mValidatorUT.validate(subId, timeout, true, mCallback);
@@ -162,7 +165,8 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         NetworkRequest expectedRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .setNetworkSpecifier(String.valueOf(subId))
+                .setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                        .setSubscriptionId(subId).build())
                 .build();
 
         mValidatorUT.validate(subId, timeout, true, mCallback);
@@ -194,7 +198,8 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         NetworkRequest expectedRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                .setNetworkSpecifier(String.valueOf(subId))
+                .setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                        .setSubscriptionId(subId).build())
                 .build();
 
         mValidatorUT.validate(subId, timeout, true, mCallback);
