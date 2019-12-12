@@ -262,9 +262,10 @@ message TelephonyServiceState {
     ROAMING_TYPE_INTERNATIONAL = 3;
   }
 
+  // Frequency range
   enum FrequencyRange {
     // Unknown. The default value.
-    FREQUENCY_RANGE_UNKNOWN = -1;
+    FREQUENCY_RANGE_UNKNOWN = 0;
 
     // Frequency range is below 1GHz.
     FREQUENCY_RANGE_LOW = 1;
@@ -279,10 +280,11 @@ message TelephonyServiceState {
     FREQUENCY_RANGE_MMWAVE = 4;
   }
 
+  // NR (5G) state
   enum NrState {
     // The device isn't camped on an LTE cell
     // or the LTE cell doesn't support EN-DC.
-    NR_STATE_NONE = -1;
+    NR_STATE_NONE = 0;
 
     // The device is camped on an LTE cell that supports EN-DC
     // but either DCNR is restricted
