@@ -38,6 +38,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 import android.net.LinkAddress;
+import android.net.NetworkCapabilities;
 import android.net.NetworkUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -304,6 +305,32 @@ public class TelephonyMetricsTest extends TelephonyTest {
                 log.events[0].updatedEmergencyNumber.numberSourcesBitmask);
         assertEquals(EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL,
                 log.events[0].updatedEmergencyNumber.routing);
+    }
+
+    // Test write Network Capabilities changed event
+    @Test
+    @SmallTest
+    public void testWriteNetworkCapabilitiesChangedEvent() throws Exception {
+        NetworkCapabilities caps = new NetworkCapabilities();
+        caps.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        mMetrics.writeNetworkCapabilitiesChangedEvent(mPhone.getPhoneId(), caps);
+
+        caps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        mMetrics.writeNetworkCapabilitiesChangedEvent(mPhone.getPhoneId(), caps);
+
+        TelephonyLog log = buildProto();
+
+        assertEquals(2, log.events.length);
+        assertEquals(0, log.callSessions.length);
+        assertEquals(0, log.smsSessions.length);
+
+        assertEquals(mPhone.getPhoneId(), log.events[0].phoneId);
+        assertEquals(TelephonyEvent.Type.NETWORK_CAPABILITIES_CHANGED, log.events[0].type);
+        assertTrue(log.events[0].networkCapabilities.isNetworkUnmetered);
+
+        assertEquals(mPhone.getPhoneId(), log.events[1].phoneId);
+        assertEquals(TelephonyEvent.Type.NETWORK_CAPABILITIES_CHANGED, log.events[1].type);
+        assertFalse(log.events[1].networkCapabilities.isNetworkUnmetered);
     }
 
     // Test write on IMS call start
