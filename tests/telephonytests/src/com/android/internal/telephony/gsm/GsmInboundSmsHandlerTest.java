@@ -27,6 +27,7 @@ import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
@@ -806,8 +807,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         SmsBroadcastUndelivered.initialize(mContext, mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
 
         // verify that a broadcast receiver is registered for current user (user == null) based on
-        // implementation in ContextFixture
-        verify(mContext, times(1)).registerReceiver(any(BroadcastReceiver.class),
+        // implementation in ContextFixture. registerReceiver may be called more than once (for
+        // example by GsmInboundSmsHandler if TEST_MODE is true)
+        verify(mContext, atLeastOnce()).registerReceiver(any(BroadcastReceiver.class),
                 any(IntentFilter.class), eq((String) null), eq((Handler) null));
 
         // wait for ScanRawTableThread
