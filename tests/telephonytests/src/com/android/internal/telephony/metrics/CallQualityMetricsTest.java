@@ -27,7 +27,6 @@ import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.SignalStrength;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.CallQualitySummary;
@@ -68,7 +67,6 @@ public class CallQualityMetricsTest extends TelephonyTest {
      * Verify that good/bad quality and total duration stats are correct.
      */
     @Test
-    @SmallTest
     public void testTotalDurations() {
         // Call quality in the following sequence:
         //
@@ -106,11 +104,108 @@ public class CallQualityMetricsTest extends TelephonyTest {
     }
 
     /**
+     * Verify that good/bad quality and total duration stats are correct.
+     *
+     * Similar to testTotalDurations, but getCallQualitySummaryUl/Dl will be called multiple times,
+     * so verify that it continues to work after the first call.
+     */
+    @Test
+    public void testTotalDurations_MultipleChecks() {
+        // Call quality in the following sequence:
+        //
+        // DL: GOOD       GOOD      BAD
+        // UL: GOOD       BAD       GOOD
+        // |----------|----------|--------|
+        // 0          5          10       14
+        //
+        // 0s = Start of call. Assumed to be good quality
+        // 5s = Switches to UL bad quality
+        // 10s = Switches to UL good quality, DL bad quality
+        // 14s = End of call. Switches to UL bad quality, DL good quality
+        CallQuality cq1 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
+                CallQuality.CALL_QUALITY_BAD, 5000);
+        CallQuality cq2 = constructCallQuality(CallQuality.CALL_QUALITY_BAD,
+                CallQuality.CALL_QUALITY_EXCELLENT, 10000);
+        CallQuality cq3 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
+                CallQuality.CALL_QUALITY_BAD, 14000);
+
+        mCallQualityMetrics.saveCallQuality(cq1);
+        mCallQualityMetrics.saveCallQuality(cq2);
+        mCallQualityMetrics.saveCallQuality(cq3);
+
+        // verify UL quality durations
+        CallQualitySummary dlSummary = mCallQualityMetrics.getCallQualitySummaryDl();
+        assertEquals(9, dlSummary.totalGoodQualityDurationInSeconds);
+        assertEquals(5, dlSummary.totalBadQualityDurationInSeconds);
+        assertEquals(14, dlSummary.totalDurationWithQualityInformationInSeconds);
+
+        // verify DL quality durations
+        CallQualitySummary ulSummary = mCallQualityMetrics.getCallQualitySummaryUl();
+        assertEquals(5, ulSummary.totalGoodQualityDurationInSeconds);
+        assertEquals(9, ulSummary.totalBadQualityDurationInSeconds);
+        assertEquals(14, ulSummary.totalDurationWithQualityInformationInSeconds);
+
+        // verify UL quality durations
+        dlSummary = mCallQualityMetrics.getCallQualitySummaryDl();
+        assertEquals(9, dlSummary.totalGoodQualityDurationInSeconds);
+        assertEquals(5, dlSummary.totalBadQualityDurationInSeconds);
+        assertEquals(14, dlSummary.totalDurationWithQualityInformationInSeconds);
+
+        // verify DL quality durations
+        ulSummary = mCallQualityMetrics.getCallQualitySummaryUl();
+        assertEquals(5, ulSummary.totalGoodQualityDurationInSeconds);
+        assertEquals(9, ulSummary.totalBadQualityDurationInSeconds);
+        assertEquals(14, ulSummary.totalDurationWithQualityInformationInSeconds);
+    }
+
+
+    /**
+     * Verify that good/bad quality and total duration stats are correct.
+     *
+     * Similar to testTotalDurations but we report the call quality out of order.
+     */
+    @Test
+    public void testTotalDurations_ReportedOutOfOrder() {
+        // Call quality in the following sequence:
+        //
+        // DL: GOOD       GOOD      BAD
+        // UL: GOOD       BAD       GOOD
+        // |----------|----------|--------|
+        // 0          5          10       14
+        //
+        // 0s = Start of call. Assumed to be good quality
+        // 5s = Switches to UL bad quality
+        // 10s = Switches to UL good quality, DL bad quality
+        // 14s = End of call. Switches to UL bad quality, DL good quality
+        CallQuality cq1 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
+                CallQuality.CALL_QUALITY_BAD, 5000);
+        CallQuality cq2 = constructCallQuality(CallQuality.CALL_QUALITY_BAD,
+                CallQuality.CALL_QUALITY_EXCELLENT, 10000);
+        CallQuality cq3 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
+                CallQuality.CALL_QUALITY_BAD, 14000);
+
+        mCallQualityMetrics.saveCallQuality(cq1);
+        mCallQualityMetrics.saveCallQuality(cq3);
+        mCallQualityMetrics.saveCallQuality(cq2);
+
+        // verify UL quality durations
+        CallQualitySummary dlSummary = mCallQualityMetrics.getCallQualitySummaryDl();
+        assertEquals(9, dlSummary.totalGoodQualityDurationInSeconds);
+        assertEquals(5, dlSummary.totalBadQualityDurationInSeconds);
+        assertEquals(14, dlSummary.totalDurationWithQualityInformationInSeconds);
+
+        // verify DL quality durations
+        CallQualitySummary ulSummary = mCallQualityMetrics.getCallQualitySummaryUl();
+        assertEquals(5, ulSummary.totalGoodQualityDurationInSeconds);
+        assertEquals(9, ulSummary.totalBadQualityDurationInSeconds);
+        assertEquals(14, ulSummary.totalDurationWithQualityInformationInSeconds);
+    }
+
+    /**
      * Verify that a new CallQualityMetrics object is able to return empty summaries if no
      * CallQuality is reported for the duration of a call.
      */
     @Test
-    @SmallTest
     public void testNoQualityReported() {
         // getting the summary for a new CallQualityMetrics object should not fail, and all
         // durations should be 0
@@ -129,7 +224,6 @@ public class CallQualityMetricsTest extends TelephonyTest {
      * ignored.
      */
     @Test
-    @SmallTest
     public void testNotAvailableIsIgnored() {
         // CallQuality updates from the IMS service with CALL_QUALITY_NOT_AVAILABLE should be
         // ignored
@@ -156,7 +250,6 @@ public class CallQualityMetricsTest extends TelephonyTest {
      * this just tests for good quality since the logic is the same.
      */
     @Test
-    @SmallTest
     public void testBestAndWorstSs() {
         // save good quality with high rssnr
         CallQuality cq1 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
@@ -201,7 +294,6 @@ public class CallQualityMetricsTest extends TelephonyTest {
      * likely that one field would be preserved and others would be lost.
      */
     @Test
-    @SmallTest
     public void testSnapshotOfEndDuration() {
         CallQuality cq1 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
                 CallQuality.CALL_QUALITY_BAD, 5000);
@@ -213,6 +305,33 @@ public class CallQualityMetricsTest extends TelephonyTest {
         mCallQualityMetrics.saveCallQuality(cq1);
         mCallQualityMetrics.saveCallQuality(cq2);
         mCallQualityMetrics.saveCallQuality(cq3);
+
+        // verify snapshot of end
+        CallQualitySummary dlSummary = mCallQualityMetrics.getCallQualitySummaryDl();
+        assertEquals(14, dlSummary.snapshotOfEnd.durationInSeconds);
+        CallQualitySummary ulSummary = mCallQualityMetrics.getCallQualitySummaryUl();
+        assertEquals(14, ulSummary.snapshotOfEnd.durationInSeconds);
+    }
+
+    /**
+     * Verifies that the snapshot of the end (the last reported call quality) is correct.
+     * Currently this just checks the duration since the logic is all the same and it doesn't seem
+     * likely that one field would be preserved and others would be lost.
+     *
+     * Similar to testSnapshotOfEndDuration but we report the call quality out of order
+     */
+    @Test
+    public void testSnapshotOfEndDuration_ReportedOutOfOrder() {
+        CallQuality cq1 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
+                CallQuality.CALL_QUALITY_BAD, 5000);
+        CallQuality cq2 = constructCallQuality(CallQuality.CALL_QUALITY_BAD,
+                CallQuality.CALL_QUALITY_EXCELLENT, 10000);
+        CallQuality cq3 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
+                CallQuality.CALL_QUALITY_BAD, 14000);
+
+        mCallQualityMetrics.saveCallQuality(cq1);
+        mCallQualityMetrics.saveCallQuality(cq3);
+        mCallQualityMetrics.saveCallQuality(cq2);
 
         // verify snapshot of end
         CallQualitySummary dlSummary = mCallQualityMetrics.getCallQualitySummaryDl();
