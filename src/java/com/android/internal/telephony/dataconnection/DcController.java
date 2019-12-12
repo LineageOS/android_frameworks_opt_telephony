@@ -22,7 +22,6 @@ import android.net.LinkAddress;
 import android.net.LinkProperties.CompareResult;
 import android.net.NetworkUtils;
 import android.os.AsyncResult;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
@@ -35,6 +34,7 @@ import android.telephony.data.DataCallResponse;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
@@ -105,7 +105,7 @@ public class DcController extends StateMachine {
         mTelephonyManager = (TelephonyManager) phone.getContext()
                 .getSystemService(Context.TELEPHONY_SERVICE);
 
-        mDcTesterDeactivateAll = (Build.IS_DEBUGGABLE)
+        mDcTesterDeactivateAll = (TelephonyUtils.IS_DEBUGGABLE)
                 ? new DcTesterDeactivateAll(mPhone, DcController.this, getHandler())
                 : null;
 

@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
-import android.os.Build;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
@@ -26,6 +25,8 @@ import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.Pair;
+
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -332,7 +333,7 @@ public class RetryManager {
         String otherConfigString = null;
 
         try {
-            if (Build.IS_DEBUGGABLE) {
+            if (TelephonyUtils.IS_DEBUGGABLE) {
                 // Using system properties is easier for testing from command line.
                 String config = SystemProperties.get("test.data_retry_config");
                 if (!TextUtils.isEmpty(config)) {

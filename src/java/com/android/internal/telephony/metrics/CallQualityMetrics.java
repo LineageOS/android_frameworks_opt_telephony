@@ -18,7 +18,6 @@ package com.android.internal.telephony.metrics;
 
 import static com.android.internal.telephony.metrics.TelephonyMetrics.toCallQualityProto;
 
-import android.os.Build;
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthLte;
@@ -29,6 +28,7 @@ import android.util.Pair;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.util.ArrayList;
 
@@ -42,7 +42,7 @@ public class CallQualityMetrics {
     private static final String TAG = CallQualityMetrics.class.getSimpleName();
 
     // certain metrics are only logged on userdebug
-    private static final boolean USERDEBUG_MODE = Build.IS_USERDEBUG;
+    private static final boolean IS_DEBUGGABLE = TelephonyUtils.IS_DEBUGGABLE;
 
     // We only log the first MAX_SNAPSHOTS changes to CallQuality
     private static final int MAX_SNAPSHOTS = 5;
@@ -116,7 +116,7 @@ public class CallQualityMetrics {
             newDlCallQualityState = GOOD_QUALITY;
         }
 
-        if (USERDEBUG_MODE) {
+        if (IS_DEBUGGABLE) {
             if (newUlCallQualityState != mUlCallQualityState) {
                 mUlSnapshots = addSnapshot(cq, mUlSnapshots);
             }
