@@ -665,6 +665,17 @@ public abstract class Connection {
     public abstract void deflect(String number) throws CallStateException;
 
     /**
+     * Transfer individual Connection
+     */
+    public abstract void transfer(String number, boolean isConfirmationRequired)
+            throws CallStateException;
+
+    /**
+     * Transfer individual Connection for consultative transfer
+     */
+    public abstract void consultativeTransfer(Connection other) throws CallStateException;
+
+    /**
      * Hangup individual Connection
      */
     @UnsupportedAppUsage

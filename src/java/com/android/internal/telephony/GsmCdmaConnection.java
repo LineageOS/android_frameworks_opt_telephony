@@ -366,6 +366,18 @@ public class GsmCdmaConnection extends Connection {
     }
 
     @Override
+    public void transfer(String number, boolean isConfirmationRequired) throws CallStateException {
+        // Transfer is not supported.
+        throw new CallStateException("Transfer is not supported for CS");
+    }
+
+    @Override
+    public void consultativeTransfer(Connection other) throws CallStateException {
+        // Transfer is not supported.
+        throw new CallStateException("Transfer is not supported for CS");
+    }
+
+    @Override
     public void separate() throws CallStateException {
         if (!mDisconnected) {
             mOwner.separate(this);

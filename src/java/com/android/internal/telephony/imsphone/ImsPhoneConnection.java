@@ -414,6 +414,32 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     @Override
+    public void transfer(String number, boolean isConfirmationRequired) throws CallStateException {
+        try {
+            if (mImsCall != null) {
+                mImsCall.transfer(number, isConfirmationRequired);
+            } else {
+                throw new CallStateException("no valid ims call to transfer");
+            }
+        } catch (ImsException e) {
+            throw new CallStateException("cannot transfer call");
+        }
+    }
+
+    @Override
+    public void consultativeTransfer(Connection other) throws CallStateException {
+        try {
+            if (mImsCall != null) {
+                mImsCall.consultativeTransfer(((ImsPhoneConnection) other).getImsCall());
+            } else {
+                throw new CallStateException("no valid ims call to transfer");
+            }
+        } catch (ImsException e) {
+            throw new CallStateException("cannot transfer call");
+        }
+    }
+
+    @Override
     public void hangup() throws CallStateException {
         if (!mDisconnected) {
             mOwner.hangup(this);
