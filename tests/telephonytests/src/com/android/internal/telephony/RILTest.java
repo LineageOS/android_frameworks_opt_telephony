@@ -26,6 +26,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DATA_REGIS
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DELETE_SMS_ON_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEVICE_IDENTITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DTMF;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_UICC_APPLICATIONS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PIN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PIN2;
@@ -40,6 +41,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMSI;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_RADIO_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SMSC_ADDRESS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND;
@@ -82,11 +84,14 @@ import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertTrue;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -97,13 +102,13 @@ import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.hardware.radio.V1_0.DataProfileInfo;
 import android.hardware.radio.V1_0.GsmSmsMessage;
-import android.hardware.radio.V1_0.IRadio;
 import android.hardware.radio.V1_0.ImsSmsMessage;
 import android.hardware.radio.V1_0.NvWriteItem;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.SmsWriteArgs;
+import android.hardware.radio.V1_5.IRadio;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.net.LinkAddress;
@@ -177,7 +182,12 @@ public class RILTest extends TelephonyTest {
     @Mock
     private IOemHook mOemHookProxy;
 
-    private HalVersion mRadioVersion = new HalVersion(1, 0);
+    private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
+    private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
+    private HalVersion mRadioVersionV12 = new HalVersion(1, 2);
+    private HalVersion mRadioVersionV13 = new HalVersion(1, 3);
+    private HalVersion mRadioVersionV14 = new HalVersion(1, 4);
+    private HalVersion mRadioVersionV15 = new HalVersion(1, 5);
 
     private RIL mRILInstance;
     private RIL mRILUnderTest;
@@ -273,7 +283,7 @@ public class RILTest extends TelephonyTest {
         doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
 
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersion);
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
         } catch (Exception e) {
         }
     }
@@ -1999,5 +2009,39 @@ public class RILTest extends TelephonyTest {
         ArrayList<Carrier> result = RIL.createCarrierRestrictionList(carriers);
 
         assertTrue(result.equals(expected));
+    }
+
+    @Test
+    public void testEnableUiccApplications() throws Exception {
+        // Not supported on Radio 1.0.
+        mRILUnderTest.enableUiccApplications(false, obtainMessage());
+        verify(mRadioProxy, never()).enableUiccApplications(anyInt(), anyBoolean());
+
+        // Make radio version 1.5 to support the operation.
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+        mRILUnderTest.enableUiccApplications(false, obtainMessage());
+        verify(mRadioProxy).enableUiccApplications(mSerialNumberCaptor.capture(), anyBoolean());
+        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_ENABLE_UICC_APPLICATIONS);
+    }
+
+    @Test
+    public void testAreUiccApplicationsEnabled() throws Exception {
+        // Not supported on Radio 1.0.
+        mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
+        verify(mRadioProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+
+        // Make radio version 1.5 to support the operation.
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+        mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
+        verify(mRadioProxy).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT);
     }
 }
