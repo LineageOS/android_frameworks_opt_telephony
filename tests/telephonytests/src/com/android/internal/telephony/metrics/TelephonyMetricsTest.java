@@ -113,12 +113,9 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         doReturn(ROAMING_TYPE_DOMESTIC).when(mServiceState).getVoiceRoamingType();
         doReturn(ROAMING_TYPE_DOMESTIC).when(mServiceState).getDataRoamingType();
-        doReturn("voiceshort").when(mServiceState).getVoiceOperatorAlphaShort();
-        doReturn("voicelong").when(mServiceState).getVoiceOperatorAlphaLong();
-        doReturn("datashort").when(mServiceState).getDataOperatorAlphaShort();
-        doReturn("datalong").when(mServiceState).getDataOperatorAlphaLong();
-        doReturn("123456").when(mServiceState).getVoiceOperatorNumeric();
-        doReturn("123456").when(mServiceState).getDataOperatorNumeric();
+        doReturn("short").when(mServiceState).getOperatorAlphaShort();
+        doReturn("long").when(mServiceState).getOperatorAlphaLong();
+        doReturn("123456").when(mServiceState).getOperatorNumeric();
         doReturn(RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState).getRilVoiceRadioTechnology();
         doReturn(RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState).getRilDataRadioTechnology();
         doReturn(FREQUENCY_RANGE_UNKNOWN).when(mServiceState).getNrFrequencyRange();
@@ -708,15 +705,15 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         assertEquals(RoamingType.ROAMING_TYPE_DOMESTIC, state.dataRoamingType);
 
-        assertEquals("voicelong", state.voiceOperator.alphaLong);
+        assertEquals("long", state.voiceOperator.alphaLong);
 
-        assertEquals("voiceshort", state.voiceOperator.alphaShort);
+        assertEquals("short", state.voiceOperator.alphaShort);
 
         assertEquals("123456", state.voiceOperator.numeric);
 
-        assertEquals("datalong", state.dataOperator.alphaLong);
+        assertEquals("long", state.dataOperator.alphaLong);
 
-        assertEquals("datashort", state.dataOperator.alphaShort);
+        assertEquals("short", state.dataOperator.alphaShort);
 
         assertEquals("123456", state.dataOperator.numeric);
 
@@ -756,15 +753,15 @@ public class TelephonyMetricsTest extends TelephonyTest {
 
         assertEquals(RoamingType.ROAMING_TYPE_DOMESTIC, state.dataRoamingType);
 
-        assertEquals("voicelong", state.voiceOperator.alphaLong);
+        assertEquals("long", state.voiceOperator.alphaLong);
 
-        assertEquals("voiceshort", state.voiceOperator.alphaShort);
+        assertEquals("short", state.voiceOperator.alphaShort);
 
         assertEquals("123456", state.voiceOperator.numeric);
 
-        assertEquals("datalong", state.dataOperator.alphaLong);
+        assertEquals("long", state.dataOperator.alphaLong);
 
-        assertEquals("datashort", state.dataOperator.alphaShort);
+        assertEquals("short", state.dataOperator.alphaShort);
 
         assertEquals("123456", state.dataOperator.numeric);
     }
