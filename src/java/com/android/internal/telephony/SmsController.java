@@ -23,7 +23,6 @@ import static com.android.internal.util.DumpUtils.checkDumpPermission;
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
-import android.app.ActivityThread;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -189,7 +188,7 @@ public class SmsController extends ISmsImplBase {
     private void sendBluetoothText(SubscriptionInfo info, String destAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         BtSmsInterfaceManager btSmsInterfaceManager = new BtSmsInterfaceManager();
-        btSmsInterfaceManager.sendText(destAddr, text, sentIntent, deliveryIntent, info);
+        btSmsInterfaceManager.sendText(mContext, destAddr, text, sentIntent, deliveryIntent, info);
     }
 
     private void sendIccText(int subId, String callingPackage, String destAddr,
@@ -367,7 +366,7 @@ public class SmsController extends ISmsImplBase {
 
     @Override
     public boolean isSmsSimPickActivityNeeded(int subId) {
-        final Context context = ActivityThread.currentApplication().getApplicationContext();
+        final Context context = mContext.getApplicationContext();
         ActivityManager am = context.getSystemService(ActivityManager.class);
         // Don't show the SMS SIM Pick activity if it is not foreground.
         boolean isCallingProcessForeground = am != null
