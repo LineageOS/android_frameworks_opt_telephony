@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.Phone.EVENT_ICC_CHANGED;
+import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_CHANGED;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
@@ -1224,4 +1226,100 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.enableUiccApplications(true, message);
         verify(mMockCi).enableUiccApplications(eq(true), eq(message));
     }
+
+    @Test
+    @SmallTest
+    public void testReapplyUiccApplicationEnablementNotNeeded() throws Exception {
+        mPhoneUT.mCi = mMockCi;
+        // UiccSlot is null, or not present, or mUiccApplicationsEnabled is not available, or IccId
+        // is not available, Doing nothing.
+        doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
+        Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
+        processAllMessages();
+        doReturn(IccCardStatus.CardState.CARDSTATE_ABSENT).when(mUiccSlot).getCardState();
+        Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
+        processAllMessages();
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+        Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
+        Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
+                new AsyncResult(null, true, null)).sendToTarget();
+        processAllMessages();
+        verify(mSubscriptionController, never()).getSubInfoForIccId(any());
+
+        // Have IccId defined. But expected value and current value are the same. So no RIL command
+        // should be sent.
+        String iccId = "Fake iccId";
+        doReturn(iccId).when(mUiccSlot).getIccId();
+        Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
+        processAllMessages();
+        verify(mSubscriptionController).getSubInfoForIccId(iccId);
+        verify(mMockCi, never()).enableUiccApplications(anyBoolean(), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testReapplyUiccApplicationEnablementSuccess() throws Exception {
+        mPhoneUT.mCi = mMockCi;
+        // Set SIM to be present, with a fake iccId, and notify enablement being false.
+        doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+        String iccId = "Fake iccId";
+        doReturn(iccId).when(mUiccSlot).getIccId();
+        Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
+                new AsyncResult(null, false, null)).sendToTarget();
+        processAllMessages();
+
+        // Should try to enable uicc applications as by default hey are expected to be true.
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi, times(1)).enableUiccApplications(eq(true), messageCaptor.capture());
+        // Send message back with no exception.
+        AsyncResult.forMessage(messageCaptor.getValue(), null, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+
+        // There shouldn't be any retry message.
+        moveTimeForward(5000);
+        processAllMessages();
+        verify(mMockCi, times(1)).enableUiccApplications(eq(true), any());
+    }
+
+    // TODO: b/146181737 uncomment below test.
+//    @Test
+//    @SmallTest
+//    public void testReapplyUiccApplicationEnablementRetry() throws Exception {
+//        mPhoneUT.mCi = mMockCi;
+//        // Set SIM to be present, with a fake iccId, and notify enablement being false.
+//        doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
+//        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+//        String iccId = "Fake iccId";
+//        doReturn(iccId).when(mUiccSlot).getIccId();
+//        Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
+//                new AsyncResult(null, false, null)).sendToTarget();
+//        processAllMessages();
+//
+//        // Should try to enable uicc applications as by default hey are expected to be true.
+//        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+//        verify(mMockCi).enableUiccApplications(eq(true), messageCaptor.capture());
+//        clearInvocations(mMockCi);
+//        // Send message back with SIM_BUSY exception. Should retry.
+//        AsyncResult.forMessage(messageCaptor.getValue(), null, new CommandException(
+//                CommandException.Error.SIM_BUSY));
+//        messageCaptor.getValue().sendToTarget();
+//        processAllMessages();
+//        // There should be a retry message.
+//        moveTimeForward(5000);
+//        processAllMessages();
+//        verify(mMockCi).enableUiccApplications(eq(true), messageCaptor.capture());
+//        clearInvocations(mMockCi);
+//
+//        // Send message back with NOT_SUPPORTED exception. Should retry.
+//        AsyncResult.forMessage(messageCaptor.getValue(), null, new CommandException(
+//                CommandException.Error.REQUEST_NOT_SUPPORTED));
+//        messageCaptor.getValue().sendToTarget();
+//        processAllMessages();
+//        // There should not be a retry message.
+//        moveTimeForward(5000);
+//        processAllMessages();
+//        verify(mMockCi, never()).enableUiccApplications(eq(true), messageCaptor.capture());
+//    }
 }
