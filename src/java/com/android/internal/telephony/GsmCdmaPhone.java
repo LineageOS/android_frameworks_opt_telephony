@@ -786,13 +786,11 @@ public class GsmCdmaPhone extends Phone {
     public void registerForSuppServiceNotification(
             Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
-        if (mSsnRegistrants.size() == 1) mCi.setSuppServiceNotifications(true, null);
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         mSsnRegistrants.remove(h);
-        if (mSsnRegistrants.size() == 0) mCi.setSuppServiceNotifications(false, null);
     }
 
     @Override
