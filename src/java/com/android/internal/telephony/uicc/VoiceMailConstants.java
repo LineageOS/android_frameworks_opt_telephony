@@ -18,19 +18,19 @@ package com.android.internal.telephony.uicc;
 
 import android.annotation.UnsupportedAppUsage;
 import android.os.Environment;
-import android.util.Xml;
 import android.telephony.Rlog;
+import android.util.Xml;
 
-import java.util.HashMap;
-import java.io.FileReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import com.android.internal.telephony.util.XmlUtils;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import com.android.internal.util.XmlUtils;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * {@hide}
