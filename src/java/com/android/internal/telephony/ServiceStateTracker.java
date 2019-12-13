@@ -42,7 +42,6 @@ import android.hardware.radio.V1_0.CellInfoType;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -113,6 +112,7 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.NotificationChannelController;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -1142,20 +1142,24 @@ public class ServiceStateTracker extends Handler {
                         }
                     }
                 } else {
-                    // If we receive an empty message, it's probably a timeout; if there is no
-                    // pending request, drop it.
-                    if (!mIsPendingCellInfoRequest) break;
-                    // If there is a request pending, we still need to check whether it's a timeout
-                    // for the current request of whether it's leftover from a previous request.
-                    final long curTime = SystemClock.elapsedRealtime();
-                    if ((curTime - mLastCellInfoReqTime) <  CELL_INFO_LIST_QUERY_TIMEOUT) {
-                        break;
+                    synchronized (mPendingCellInfoRequests) {
+                        // If we receive an empty message, it's probably a timeout; if there is no
+                        // pending request, drop it.
+                        if (!mIsPendingCellInfoRequest) break;
+                        // If there is a request pending, we still need to check whether it's a
+                        // timeout for the current request of whether it's leftover from a
+                        // previous request.
+                        final long curTime = SystemClock.elapsedRealtime();
+                        if ((curTime - mLastCellInfoReqTime) <  CELL_INFO_LIST_QUERY_TIMEOUT) {
+                            break;
+                        }
+                        // We've received a legitimate timeout, so something has gone terribly
+                        // wrong.
+                        loge("Timeout waiting for CellInfo; (everybody panic)!");
+                        mLastCellInfoList = null;
+                        // Since the timeout is applicable, fall through and update all synchronous
+                        // callers with the failure.
                     }
-                    // We've received a legitimate timeout, so something has gone terribly wrong.
-                    loge("Timeout waiting for CellInfo; (everybody panic)!");
-                    mLastCellInfoList = null;
-                    // Since the timeout is applicable, fall through and update all synchronous
-                    // callers with the failure.
                 }
                 synchronized (mPendingCellInfoRequests) {
                     // If we have pending requests, then service them. Note that in case of a
@@ -2480,7 +2484,8 @@ public class ServiceStateTracker extends Handler {
                 setRoamingOn();
             }
 
-            if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+            if (TelephonyUtils.IS_DEBUGGABLE
+                    && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
                 mNewSS.setVoiceRoaming(true);
                 mNewSS.setDataRoaming(true);
             }
@@ -3084,14 +3089,15 @@ public class ServiceStateTracker extends Handler {
             updateRoamingState();
         }
 
-        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+        if (TelephonyUtils.IS_DEBUGGABLE
+                && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
             mNewSS.setVoiceRoaming(true);
             mNewSS.setDataRoaming(true);
         }
         useDataRegStateForDataOnlyDevices();
         processIwlanRegistrationInfo();
 
-        if (Build.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
+        if (TelephonyUtils.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
             mPhone.mTelephonyTester.overrideServiceState(mNewSS);
         }
 

@@ -46,7 +46,6 @@ import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
@@ -70,6 +69,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SmsConstants.MessageClass;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.NotificationChannelController;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -337,7 +337,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 default: {
                     String errorText = "processMessage: unhandled message type " + msg.what +
                         " currState=" + getCurrentState().getName();
-                    if (Build.IS_DEBUGGABLE) {
+                    if (TelephonyUtils.IS_DEBUGGABLE) {
                         loge("---- Dumping InboundSmsHandler ----");
                         loge("Total records=" + getLogRecCount());
                         for (int i = Math.max(getLogRecSize() - 20, 0); i < getLogRecSize(); i++) {

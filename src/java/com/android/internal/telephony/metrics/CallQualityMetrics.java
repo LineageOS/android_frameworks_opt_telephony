@@ -18,7 +18,6 @@ package com.android.internal.telephony.metrics;
 
 import static com.android.internal.telephony.metrics.TelephonyMetrics.toCallQualityProto;
 
-import android.os.Build;
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthLte;
@@ -29,8 +28,10 @@ import android.util.Pair;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * CallQualityMetrics is a utility for tracking the CallQuality during an ongoing call session. It
@@ -42,7 +43,7 @@ public class CallQualityMetrics {
     private static final String TAG = CallQualityMetrics.class.getSimpleName();
 
     // certain metrics are only logged on userdebug
-    private static final boolean USERDEBUG_MODE = Build.IS_USERDEBUG;
+    private static final boolean IS_DEBUGGABLE = TelephonyUtils.IS_DEBUGGABLE;
 
     // We only log the first MAX_SNAPSHOTS changes to CallQuality
     private static final int MAX_SNAPSHOTS = 5;
@@ -63,6 +64,12 @@ public class CallQualityMetrics {
     // the first MAX_SNAPSHOTS transitions between good and bad quality
     private ArrayList<Pair<CallQuality, Integer>> mDlSnapshots = new ArrayList<>();
 
+    // holds lightweight history of call quality and durations, used for calculating total time
+    // spent with bad and good quality for metrics and bugreports. This is separate from the
+    // snapshots because those are capped at MAX_SNAPSHOTS to avoid excessive memory use.
+    private ArrayList<TimestampedQualitySnapshot> mFullUplinkQuality = new ArrayList<>();
+    private ArrayList<TimestampedQualitySnapshot> mFullDownlinkQuality = new ArrayList<>();
+
     // Current downlink call quality
     private int mDlCallQualityState = GOOD_QUALITY;
 
@@ -72,7 +79,7 @@ public class CallQualityMetrics {
     // The last logged CallQuality
     private CallQuality mLastCallQuality;
 
-    /** Snapshots taken at best and worst SignalStrengths*/
+    /** Snapshots taken at best and worst SignalStrengths */
     private Pair<CallQuality, Integer> mWorstSsWithGoodDlQuality;
     private Pair<CallQuality, Integer> mBestSsWithGoodDlQuality;
     private Pair<CallQuality, Integer> mWorstSsWithBadDlQuality;
@@ -81,12 +88,6 @@ public class CallQualityMetrics {
     private Pair<CallQuality, Integer> mBestSsWithGoodUlQuality;
     private Pair<CallQuality, Integer> mWorstSsWithBadUlQuality;
     private Pair<CallQuality, Integer> mBestSsWithBadUlQuality;
-
-    /** Total durations of good and bad quality time for uplink and downlink */
-    private int mTotalDlGoodQualityTimeMs = 0;
-    private int mTotalDlBadQualityTimeMs = 0;
-    private int mTotalUlGoodQualityTimeMs = 0;
-    private int mTotalUlBadQualityTimeMs = 0;
 
     /**
      * Construct a CallQualityMetrics object to be used to keep track of call quality for a single
@@ -116,22 +117,32 @@ public class CallQualityMetrics {
             newDlCallQualityState = GOOD_QUALITY;
         }
 
-        if (USERDEBUG_MODE) {
+        if (IS_DEBUGGABLE) {
             if (newUlCallQualityState != mUlCallQualityState) {
-                mUlSnapshots = addSnapshot(cq, mUlSnapshots);
+                addSnapshot(cq, mUlSnapshots);
             }
             if (newDlCallQualityState != mDlCallQualityState) {
-                mDlSnapshots = addSnapshot(cq, mDlSnapshots);
+                addSnapshot(cq, mDlSnapshots);
             }
         }
 
-        updateTotalDurations(newDlCallQualityState, newUlCallQualityState, cq);
+        updateTotalDurations(cq);
 
         updateMinAndMaxSignalStrengthSnapshots(newDlCallQualityState, newUlCallQualityState, cq);
 
         mUlCallQualityState = newUlCallQualityState;
         mDlCallQualityState = newDlCallQualityState;
-        mLastCallQuality = cq;
+        // call duration updates sometimes come out of order
+        if (cq.getCallDuration() > mLastCallQuality.getCallDuration()) {
+            mLastCallQuality = cq;
+        }
+    }
+
+    private void updateTotalDurations(CallQuality cq) {
+        mFullDownlinkQuality.add(new TimestampedQualitySnapshot(cq.getCallDuration(),
+                cq.getDownlinkCallQualityLevel()));
+        mFullUplinkQuality.add(new TimestampedQualitySnapshot(cq.getCallDuration(),
+                cq.getUplinkCallQualityLevel()));
     }
 
     private static boolean isGoodQuality(int callQualityLevel) {
@@ -142,31 +153,10 @@ public class CallQualityMetrics {
      * Save a snapshot of the call quality and signal strength. This can be called with uplink or
      * downlink call quality level.
      */
-    private ArrayList<Pair<CallQuality, Integer>> addSnapshot(CallQuality cq,
-            ArrayList<Pair<CallQuality, Integer>> snapshots) {
+    private void addSnapshot(CallQuality cq, ArrayList<Pair<CallQuality, Integer>> snapshots) {
         if (snapshots.size() < MAX_SNAPSHOTS) {
             Integer ss = getLteSnr();
             snapshots.add(Pair.create(cq, ss));
-        }
-        return snapshots;
-    }
-
-    /**
-     * Updates the running total duration of good and bad call quality for uplink and downlink.
-     */
-    private void updateTotalDurations(int newDlCallQualityState, int newUlCallQualityState,
-            CallQuality cq) {
-        int timePassed = cq.getCallDuration() - mLastCallQuality.getCallDuration();
-        if (newDlCallQualityState == GOOD_QUALITY) {
-            mTotalDlGoodQualityTimeMs += timePassed;
-        } else {
-            mTotalDlBadQualityTimeMs += timePassed;
-        }
-
-        if (newUlCallQualityState == GOOD_QUALITY) {
-            mTotalUlGoodQualityTimeMs += timePassed;
-        } else {
-            mTotalUlBadQualityTimeMs += timePassed;
         }
     }
 
@@ -261,8 +251,10 @@ public class CallQualityMetrics {
     public TelephonyCallSession.Event.CallQualitySummary getCallQualitySummaryDl() {
         TelephonyCallSession.Event.CallQualitySummary summary =
                 new TelephonyCallSession.Event.CallQualitySummary();
-        summary.totalGoodQualityDurationInSeconds = mTotalDlGoodQualityTimeMs / 1000;
-        summary.totalBadQualityDurationInSeconds = mTotalDlBadQualityTimeMs / 1000;
+        Pair<Integer, Integer> totalGoodAndBadDurations = getTotalGoodAndBadQualityTimeMs(
+                mFullDownlinkQuality);
+        summary.totalGoodQualityDurationInSeconds = totalGoodAndBadDurations.first / 1000;
+        summary.totalBadQualityDurationInSeconds = totalGoodAndBadDurations.second / 1000;
         // This value could be different from mLastCallQuality.getCallDuration if we support
         // handover from IMS->CS->IMS, but this is currently not possible
         // TODO(b/130302396) this also may be possible when we put a call on hold and continue with
@@ -299,8 +291,10 @@ public class CallQualityMetrics {
     public TelephonyCallSession.Event.CallQualitySummary getCallQualitySummaryUl() {
         TelephonyCallSession.Event.CallQualitySummary summary =
                 new TelephonyCallSession.Event.CallQualitySummary();
-        summary.totalGoodQualityDurationInSeconds = mTotalUlGoodQualityTimeMs / 1000;
-        summary.totalBadQualityDurationInSeconds = mTotalUlBadQualityTimeMs / 1000;
+        Pair<Integer, Integer> totalGoodAndBadDurations = getTotalGoodAndBadQualityTimeMs(
+                mFullUplinkQuality);
+        summary.totalGoodQualityDurationInSeconds = totalGoodAndBadDurations.first / 1000;
+        summary.totalBadQualityDurationInSeconds = totalGoodAndBadDurations.second / 1000;
         // This value could be different from mLastCallQuality.getCallDuration if we support
         // handover from IMS->CS->IMS, but this is currently not possible
         // TODO(b/130302396) this also may be possible when we put a call on hold and continue with
@@ -331,6 +325,60 @@ public class CallQualityMetrics {
         return summary;
     }
 
+
+    /**
+     * Container class for call quality level and signal strength at the time of snapshot. This
+     * class implements compareTo so that it can be sorted by timestamp
+     */
+    private class TimestampedQualitySnapshot implements Comparable<TimestampedQualitySnapshot> {
+        int mTimestampMs;
+        int mCallQualityLevel;
+
+        TimestampedQualitySnapshot(int timestamp, int cq) {
+            mTimestampMs = timestamp;
+            mCallQualityLevel = cq;
+        }
+
+        @Override
+        public int compareTo(TimestampedQualitySnapshot o) {
+            return this.mTimestampMs - o.mTimestampMs;
+        }
+
+        @Override
+        public String toString() {
+            return "mTimestampMs=" + mTimestampMs + " mCallQualityLevel=" + mCallQualityLevel;
+        }
+    }
+
+    /**
+     * Use a list of snapshots to calculate and return the total time spent in a call with good
+     * quality and bad quality.
+     * This is slightly expensive since it involves sorting the snapshots by timestamp.
+     *
+     * @param snapshots a list of uplink or downlink snapshots
+     * @return a pair where the first element is the total good quality time and the second element
+     * is the total bad quality time
+     */
+    private Pair<Integer, Integer> getTotalGoodAndBadQualityTimeMs(
+            ArrayList<TimestampedQualitySnapshot> snapshots) {
+        int totalGoodQualityTime = 0;
+        int totalBadQualityTime = 0;
+        int lastTimestamp = 0;
+        // sort by timestamp using TimestampedQualitySnapshot.compareTo
+        Collections.sort(snapshots);
+        for (TimestampedQualitySnapshot snapshot : snapshots) {
+            int timeSinceLastSnapshot = snapshot.mTimestampMs - lastTimestamp;
+            if (isGoodQuality(snapshot.mCallQualityLevel)) {
+                totalGoodQualityTime += timeSinceLastSnapshot;
+            } else {
+                totalBadQualityTime += timeSinceLastSnapshot;
+            }
+            lastTimestamp = snapshot.mTimestampMs;
+        }
+
+        return Pair.create(totalGoodQualityTime, totalBadQualityTime);
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -355,14 +403,16 @@ public class CallQualityMetrics {
         }
         sb.append("}");
         sb.append(" ");
-        sb.append(" mTotalDlGoodQualityTimeMs: ");
-        sb.append(mTotalDlGoodQualityTimeMs);
-        sb.append(" mTotalDlBadQualityTimeMs: ");
-        sb.append(mTotalDlBadQualityTimeMs);
-        sb.append(" mTotalUlGoodQualityTimeMs: ");
-        sb.append(mTotalUlGoodQualityTimeMs);
-        sb.append(" mTotalUlBadQualityTimeMs: ");
-        sb.append(mTotalUlBadQualityTimeMs);
+        Pair<Integer, Integer> dlTotals = getTotalGoodAndBadQualityTimeMs(mFullDownlinkQuality);
+        Pair<Integer, Integer> ulTotals = getTotalGoodAndBadQualityTimeMs(mFullUplinkQuality);
+        sb.append(" TotalDlGoodQualityTimeMs: ");
+        sb.append(dlTotals.first);
+        sb.append(" TotalDlBadQualityTimeMs: ");
+        sb.append(dlTotals.second);
+        sb.append(" TotalUlGoodQualityTimeMs: ");
+        sb.append(ulTotals.first);
+        sb.append(" TotalUlBadQualityTimeMs: ");
+        sb.append(ulTotals.second);
         sb.append("]");
         return sb.toString();
     }

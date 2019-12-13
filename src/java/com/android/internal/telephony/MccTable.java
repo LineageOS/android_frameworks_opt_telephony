@@ -33,6 +33,7 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.app.LocaleStore;
 import com.android.internal.app.LocaleStore.LocaleInfo;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import libcore.timezone.TelephonyLookup;
 import libcore.timezone.TelephonyNetwork;
@@ -308,7 +309,7 @@ public final class MccTable {
     public static void updateMccMncConfiguration(Context context, String mccmnc) {
         Rlog.d(LOG_TAG, "updateMccMncConfiguration mccmnc='" + mccmnc);
 
-        if (Build.IS_DEBUGGABLE) {
+        if (TelephonyUtils.IS_DEBUGGABLE) {
             String overrideMcc = SystemProperties.get("persist.sys.override_mcc");
             if (!TextUtils.isEmpty(overrideMcc)) {
                 mccmnc = overrideMcc;

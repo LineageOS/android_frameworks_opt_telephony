@@ -27,7 +27,6 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkStats;
 import android.net.Uri;
 import android.os.AsyncResult;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -84,6 +83,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -501,7 +501,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 .makeAppSmsManager(context);
         mLocalLog = new LocalLog(64);
 
-        if (Build.IS_DEBUGGABLE) {
+        if (TelephonyUtils.IS_DEBUGGABLE) {
             mTelephonyTester = new TelephonyTester(this);
         }
 
