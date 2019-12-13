@@ -111,7 +111,8 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + SubscriptionManager.GROUP_OWNER + " TEXT,"
                     + SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES + " TEXT,"
                     + SubscriptionManager.IMSI + " TEXT,"
-                    + SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS + " BLOB"
+                    + SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS + " BLOB,"
+                    + SubscriptionManager.UICC_APPLICATIONS_ENABLED + " INTEGER DEFAULT 1"
                     + ");";
         }
 
