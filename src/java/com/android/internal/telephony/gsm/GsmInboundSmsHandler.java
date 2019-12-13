@@ -130,7 +130,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             if (sEnableCbModule) {
                 mCellBroadcastServiceManager.sendGsmMessageToHandler(m);
             } else {
-                m.setWhat(GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE);
+                m.what = GsmCellBroadcastHandler.EVENT_NEW_SMS_MESSAGE;
                 mCellBroadcastHandler.sendMessage(m);
             }
         }
