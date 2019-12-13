@@ -33,7 +33,7 @@ import android.util.Pair;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.util.ArrayUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

@@ -108,7 +108,7 @@ import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEna
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.util.ArrayUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.AsyncChannel;
 
 import java.io.FileDescriptor;
