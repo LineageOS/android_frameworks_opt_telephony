@@ -4,11 +4,14 @@ rule android.hidl.** android.internal.hidl.@1
 rule android.util.LocalLog* com.android.internal.telephony.LocalLog@1
 rule android.util.Slog* com.android.internal.telephony.Slog@1
 rule android.util.TimeUtils* com.android.internal.telephony.TimeUtils@1
-rule com.android.internal.util.Preconditions* com.android.internal.telephony.Preconditions@1
 rule com.android.internal.os.SomeArgs* com.android.internal.telephony.SomeArgs@1
+rule com.android.internal.util.ArrayUtils* com.android.internal.telephony.ArrayUtils@1
 rule com.android.internal.util.DumpUtils* com.android.internal.telephony.DumpUtils@1
-rule com.android.internal.util.XmlUtils* com.android.internal.telephony.XmlUtils@1
+rule com.android.internal.util.FastXmlSerializer* com.android.internal.telephony.FastXmlSerializer@1
 rule com.android.internal.util.HexDump* com.android.internal.telephony.HexDump@1
+rule com.android.internal.util.IndentingPrintWriter* com.android.internal.telephony.IndentingPrintWriter@1
+rule com.android.internal.util.Preconditions* com.android.internal.telephony.Preconditions@1
 rule com.android.internal.util.State* com.android.internal.telephony.State@1
 rule com.android.internal.util.StateMachine* com.android.internal.telephony.StateMachine@1
-rule com.android.internal.util.IndentingPrintWriter* com.android.internal.telephony.IndentingPrintWriter@1
+rule com.android.internal.util.UserIcons* com.android.internal.telephony.UserIcons@1
+rule com.android.internal.util.XmlUtils* com.android.internal.telephony.XmlUtils@1
