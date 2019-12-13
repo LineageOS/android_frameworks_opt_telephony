@@ -17,10 +17,15 @@ package com.android.internal.telephony.util;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.content.Context;
 import android.content.pm.ComponentInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Binder;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+
+import java.io.PrintWriter;
 
 /**
  * This class provides various util functions
@@ -28,13 +33,27 @@ import android.os.SystemProperties;
 public final class TelephonyUtils {
     public static boolean IS_USER = "user".equals(android.os.Build.TYPE);
 
+    /**
+     * Verify that caller holds {@link android.Manifest.permission#DUMP}.
+     *
+     * @return true if access should be granted.
+     */
+    public static boolean checkDumpPermission(Context context, String tag, PrintWriter pw) {
+        if (context.checkCallingOrSelfPermission(android.Manifest.permission.DUMP)
+                != PackageManager.PERMISSION_GRANTED) {
+            pw.println("Permission Denial: can't dump " + tag + " from from pid="
+                    + Binder.getCallingPid() + ", uid=" + Binder.getCallingUid()
+                    + " due to missing android.permission.DUMP permission");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     /** {@hide} */
     public static String emptyIfNull(@Nullable String str) {
         return str == null ? "" : str;
     }
-
-    public static boolean IS_DEBUGGABLE =
-            SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     /** {@hide} */
     public static RuntimeException rethrowAsRuntimeException(RemoteException remoteException) {
@@ -47,4 +66,7 @@ public final class TelephonyUtils {
         if (resolveInfo.providerInfo != null) return resolveInfo.providerInfo;
         throw new IllegalStateException("Missing ComponentInfo!");
     }
-  }
+
+    public static boolean IS_DEBUGGABLE =
+            SystemProperties.getInt("ro.debuggable", 0) == 1;
+}
