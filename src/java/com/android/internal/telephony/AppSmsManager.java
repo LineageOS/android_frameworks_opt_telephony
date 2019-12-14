@@ -20,16 +20,10 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
-import android.app.role.IRoleManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Bundle;
-import android.os.RemoteException;
-import android.os.ServiceManager;
-import android.os.ServiceManager.ServiceNotFoundException;
 import android.provider.Telephony.Sms.Intents;
-import android.telephony.IFinancialSmsCallback;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
@@ -144,24 +138,6 @@ public class AppSmsManager {
             }
         }
         return token;
-    }
-
-    /**
-     * Get filtered SMS messages for financial app.
-     */
-    public void getSmsMessagesForFinancialApp(
-            String callingPkg, Bundle params, final IFinancialSmsCallback callback) {
-        try {
-            IRoleManager roleManager = IRoleManager.Stub.asInterface(
-                    ServiceManager.getServiceOrThrow(Context.ROLE_SERVICE));
-            roleManager.getSmsMessagesForFinancialApp(callingPkg, params, callback);
-        } catch (RemoteException e) {
-            Log.e(LOG_TAG, "Receive RemoteException.");
-            // do nothing
-        } catch (ServiceNotFoundException e) {
-            Log.e(LOG_TAG, "Service not found.");
-            // do nothing
-        }
     }
 
     /**
