@@ -375,14 +375,16 @@ public class SubscriptionController extends ISub.Stub {
         int carrierId = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARRIER_ID));
         UiccAccessRule[] accessRules;
+        UiccAccessRule[] carrierConfigAccessRules;
         if (isEmbedded) {
             accessRules = UiccAccessRule.decodeRules(cursor.getBlob(
                     cursor.getColumnIndexOrThrow(SubscriptionManager.ACCESS_RULES)));
+            carrierConfigAccessRules = UiccAccessRule.decodeRules(cursor.getBlob(
+                    cursor.getColumnIndexOrThrow(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS)));
         } else {
             accessRules = null;
+            carrierConfigAccessRules = null;
         }
-        UiccAccessRule[] carrierConfigAccessRules = UiccAccessRule.decodeRules(cursor.getBlob(
-            cursor.getColumnIndexOrThrow(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS)));
         boolean isOpportunistic = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.IS_OPPORTUNISTIC)) == 1;
         String groupUUID = cursor.getString(cursor.getColumnIndexOrThrow(
