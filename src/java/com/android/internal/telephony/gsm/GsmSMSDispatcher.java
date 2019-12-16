@@ -185,8 +185,12 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
 
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-            tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
-            return;
+        //In 5G case only Data Rat is reported.
+            if(mPhone.getServiceState().getRilDataRadioTechnology()
+                    != ServiceState.RIL_RADIO_TECHNOLOGY_NR) {
+                tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
+                return;
+            }
         }
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
