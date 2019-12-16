@@ -16,12 +16,7 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-
-import android.os.Build;
-import android.util.Log;
-import android.telephony.Rlog;
-import android.telephony.TelephonyHistogram;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
@@ -87,7 +82,7 @@ public class ClientWakelockAccountantTest extends TestCase {
     }
 
     public void testStartAttributingWithZeroConcurrentRequests() throws Exception {
-        if(Build.IS_DEBUGGABLE) {
+        if (TelephonyUtils.IS_DEBUGGABLE) {
             try {
                 mClient.startAttributingWakelock(15, 25, 0, 100);
                 fail("Expecting an illegal argument Exception to be thrown");
