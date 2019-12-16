@@ -64,6 +64,7 @@ import android.telephony.CellLocation;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalThresholdInfo;
@@ -4079,5 +4080,10 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean canDisablePhysicalSubscription() {
         return mCi.canToggleUiccApplicationsEnablement();
+    }
+
+    @Override
+    public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
+        return mSST.getPhysicalChannelConfigList();
     }
 }

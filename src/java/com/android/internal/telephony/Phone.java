@@ -354,6 +354,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private final RegistrantList mRedialRegistrants = new RegistrantList();
 
+    private final RegistrantList mPhysicalChannelConfigRegistrants = new RegistrantList();
+
     protected Registrant mPostDialHandler;
 
     protected final LocalLog mLocalLog;
@@ -2388,9 +2390,34 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyCellInfo(this, cellInfo);
     }
 
+    /**
+     * Registration point for PhysicalChannelConfig change.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj.userObj
+     */
+    public void registerForPhysicalChannelConfig(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        Registrant registrant = new Registrant(h, what, obj);
+        mPhysicalChannelConfigRegistrants.add(registrant);
+        // notify first
+        List<PhysicalChannelConfig> physicalChannelConfigs = getPhysicalChannelConfigList();
+        if (physicalChannelConfigs != null) {
+            registrant.notifyRegistrant(new AsyncResult(null, physicalChannelConfigs, null));
+        }
+    }
+
+    public void unregisterForPhysicalChannelConfig(Handler h) {
+        mPhysicalChannelConfigRegistrants.remove(h);
+    }
+
     /** Notify {@link PhysicalChannelConfig} changes. */
     public void notifyPhysicalChannelConfiguration(List<PhysicalChannelConfig> configs) {
-        mNotifier.notifyPhysicalChannelConfiguration(this, configs);
+        mPhysicalChannelConfigRegistrants.notifyRegistrants(new AsyncResult(null, configs, null));
+    }
+
+    public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
+        return null;
     }
 
     /**

@@ -16,12 +16,10 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 
 import android.telephony.PhoneStateListener;
-import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -30,8 +28,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.Executor;
 
 public class PhoneStateListenerExecutorTest extends TelephonyTest {
@@ -46,7 +42,6 @@ public class PhoneStateListenerExecutorTest extends TelephonyTest {
     private PhoneStateListener mPhoneStateListenerUT;
 
     private boolean mUserMobileDataState = false;
-    private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
 
     @Before
     public void setUp() throws Exception {
@@ -64,13 +59,6 @@ public class PhoneStateListenerExecutorTest extends TelephonyTest {
             public void onUserMobileDataStateChanged(boolean state) {
                 logd("User Mobile Data State Changed");
                 mUserMobileDataState = true;
-            }
-
-            @Override
-            public void onPhysicalChannelConfigurationChanged(
-                    List<PhysicalChannelConfig> configs) {
-                logd("PhysicalChannelConfig Changed");
-                mPhysicalChannelConfigs = configs;
             }
         };
     }
@@ -105,25 +93,5 @@ public class PhoneStateListenerExecutorTest extends TelephonyTest {
         ((IPhoneStateListener) field.get(mPhoneStateListenerUT)).onUserMobileDataStateChanged(true);
 
         assertTrue(mUserMobileDataState);
-    }
-
-    @Test @SmallTest
-    public void testTriggerPhysicalChannelConfigurationChanged() throws Exception {
-        Field field = PhoneStateListener.class.getDeclaredField("callback");
-        field.setAccessible(true);
-
-        assertNull(mPhysicalChannelConfigs);
-
-        PhysicalChannelConfig config = new PhysicalChannelConfig.Builder()
-                .setCellConnectionStatus(PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING)
-                .setCellBandwidthDownlinkKhz(2000 /* bandwidth */)
-                .build();
-
-        List<PhysicalChannelConfig> configs = Collections.singletonList(config);
-
-        ((IPhoneStateListener) field.get(mPhoneStateListenerUT))
-            .onPhysicalChannelConfigurationChanged(configs);
-
-        assertTrue(mPhysicalChannelConfigs.equals(configs));
     }
 }
