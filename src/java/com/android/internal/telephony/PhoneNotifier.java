@@ -24,7 +24,6 @@ import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
-import android.telephony.PhysicalChannelConfig;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -59,9 +58,6 @@ public interface PhoneNotifier {
     void notifyOtaspChanged(Phone sender, int otaspMode);
 
     void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
-
-    /** Notify of change to PhysicalChannelConfiguration. */
-    void notifyPhysicalChannelConfiguration(Phone sender, List<PhysicalChannelConfig> configs);
 
     void notifyPreciseCallState(Phone sender);
 
