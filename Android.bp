@@ -99,6 +99,7 @@ java_library {
         "ecc-protos-lite",
         "libphonenumber-nogeocoder",
         "PlatformProperties",
+        "net-utils-framework-common",
         "telephony-protos",
     ],
 
