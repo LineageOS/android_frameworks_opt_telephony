@@ -32,7 +32,6 @@ import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
-import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseCallState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -193,20 +192,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo) {
         int subId = sender.getSubId();
         mTelephonyRegistryMgr.notifyCellInfoChanged(subId, cellInfo);
-    }
-
-    @Override
-    public void notifyPhysicalChannelConfiguration(Phone sender,
-        List<PhysicalChannelConfig> configs) {
-        int subId = sender.getSubId();
-        int phoneId = sender.getPhoneId();
-        try {
-            if (mRegistry != null) {
-                mRegistry.notifyPhysicalChannelConfigurationForSubscriber(phoneId, subId, configs);
-            }
-        } catch (RemoteException ex) {
-            // system process is dead
-        }
     }
 
     @Override
