@@ -372,6 +372,11 @@ public class ImsPhone extends ImsPhoneBase {
             mRcsManagerConnector.disconnect();
             mRcsManagerConnector = null;
         }
+
+        if (mRcsManager != null) {
+            mRcsManager.release();
+            mRcsManager = null;
+        }
     }
 
     private BroadcastReceiver mCarrierConfigChangedReceiver = new BroadcastReceiver() {
@@ -416,18 +421,19 @@ public class ImsPhone extends ImsPhoneBase {
 
             @Override
             public RcsFeatureManager getFeatureManager() {
+                logd("Create RcsFeatureManager instance");
                 return new RcsFeatureManager(mContext, mPhoneId);
             }
 
             @Override
             public void connectionReady(RcsFeatureManager manager) throws ImsException {
-                logd("RcsFeatureManager is ready");
+                logi("RcsFeatureManager is ready");
                 mRcsManager = manager;
             }
 
             @Override
             public void connectionUnavailable() {
-                logd("RcsFeatureManager is unavailable");
+                logi("RcsFeatureManager is unavailable");
                 mRcsManager = null;
             }
         };
@@ -435,6 +441,10 @@ public class ImsPhone extends ImsPhoneBase {
         mRcsManagerConnector = new FeatureConnector<>(mContext, mPhoneId,
                 mRcsFeatureConnectorListener, mContext.getMainExecutor(), LOG_TAG);
         mRcsManagerConnector.connect();
+    }
+
+    public RcsFeatureManager getRcsManager() {
+        return mRcsManager;
     }
 
     @UnsupportedAppUsage
@@ -1657,6 +1667,8 @@ public class ImsPhone extends ImsPhoneBase {
                 if (DBG) logd("EVENT_CARRIER_CONFIG_CHANGED");
                 if (mRcsManager == null) {
                     initRcsFeatureManager();
+                } else {
+                    mRcsManager.updateCapabilities();
                 }
                 break;
 
