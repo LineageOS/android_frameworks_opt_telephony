@@ -1151,12 +1151,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return null;
     }
 
-    protected void setSystemProperty(String key, String val) {
-        TelephonyManager.getDefault().setTelephonyProperty(mParentApp.getPhoneId(), key, val);
-
-        log("[key, value]=" + key + ", " +  val);
-    }
-
     /**
      * Returns the response of the SIM application on the UICC to authentication
      * challenge/response algorithm. The data string and challenge response are
