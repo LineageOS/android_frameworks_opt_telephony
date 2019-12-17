@@ -2625,10 +2625,8 @@ public class DcTracker extends Handler {
                     mProvisioningSpinner));
         }
 
-        // Notify data is connected except for handover case.
-        if (type != REQUEST_TYPE_HANDOVER) {
-            mPhone.notifyDataConnection(apnContext.getApnType());
-        }
+        mPhone.notifyDataConnection(apnContext.getApnType());
+
         startNetStatPoll();
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
     }
