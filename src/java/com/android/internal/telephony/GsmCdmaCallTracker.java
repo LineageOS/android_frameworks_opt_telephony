@@ -1465,6 +1465,13 @@ public class GsmCdmaCallTracker extends CallTracker {
                 if (isPhoneTypeGsm()) {
                     ar = (AsyncResult) msg.obj;
                     if (ar.exception != null) {
+                        if (msg.what == EVENT_SWITCH_RESULT) {
+                            Connection connection = mForegroundCall.getLatestConnection();
+                            if (connection != null) {
+                                connection.onConnectionEvent(
+                                        android.telecom.Connection.EVENT_CALL_SWITCH_FAILED, null);
+                            }
+                        }
                         mPhone.notifySuppServiceFailed(getFailedService(msg.what));
                     }
                     operationComplete();
