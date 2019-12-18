@@ -141,6 +141,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected Registrant mCatCcAlphaRegistrant;
     @UnsupportedAppUsage
     protected Registrant mSsRegistrant;
+    protected Registrant mRegistrationFailedRegistrant;
 
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
@@ -557,6 +558,16 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unSetOnCatCcAlphaNotify(Handler h) {
         mCatCcAlphaRegistrant.clear();
+    }
+
+    @Override
+    public void setOnRegistrationFailed(Handler h, int what, Object obj) {
+        mRegistrationFailedRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unSetOnRegistrationFailed(Handler h) {
+        mRegistrationFailedRegistrant.clear();
     }
 
     @Override

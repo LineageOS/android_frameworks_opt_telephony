@@ -332,6 +332,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.registerUiccApplicationEnablementChanged(this, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
                 null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
+        mCi.setOnRegistrationFailed(this, EVENT_REGISTRATION_FAILED, null);
 
         //GSM
         mCi.setOnUSSD(this, EVENT_USSD, null);
@@ -2756,6 +2757,14 @@ public class GsmCdmaPhone extends Phone {
                     SuppServiceNotification not = (SuppServiceNotification) ar.result;
                     mSsnRegistrants.notifyRegistrants(ar);
                 }
+                break;
+
+            case EVENT_REGISTRATION_FAILED:
+                logd("Event RegistrationFailed Received");
+                ar = (AsyncResult) msg.obj;
+                RegistrationFailedEvent rfe = (RegistrationFailedEvent) ar.result;
+                mNotifier.notifyRegistrationFailed(this, rfe.cellIdentity, rfe.chosenPlmn,
+                        rfe.domain, rfe.causeCode, rfe.additionalCauseCode);
                 break;
 
             case EVENT_SET_CALL_FORWARD_DONE:
