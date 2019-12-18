@@ -625,4 +625,19 @@ public class SmsController extends ISmsImplBase {
                 .getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         return manager.getActiveSubscriptionInfo(subId);
     }
+
+    /**
+     * Get the capacity count of sms on Icc card.
+     */
+    @Override
+    public int getSmsCapacityOnIccForSubscriber(int subId) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+
+        if (iccSmsIntMgr != null ) {
+            return iccSmsIntMgr.getSmsCapacityOnIcc();
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return 0;
+        }
+    }
 }
