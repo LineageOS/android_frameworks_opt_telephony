@@ -254,6 +254,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         public String operatorAlphaShort;
     }
 
+    public static class SilentRedialParam {
+        public String dialString;
+        public int causeCode;
+        public DialArgs dialArgs;
+
+        public SilentRedialParam(String dialString, int causeCode, DialArgs dialArgs) {
+            this.dialString = dialString;
+            this.causeCode = causeCode;
+            this.dialArgs = dialArgs;
+        }
+    }
+
     /* Instance Variables */
     @UnsupportedAppUsage
     public CommandsInterface mCi;
@@ -742,6 +754,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void unregisterForSilentRedial(Handler h) {
+    }
+
+    public void registerForVolteSilentRedial(Handler h, int what, Object obj) {
+    }
+
+    public void unregisterForVolteSilentRedial(Handler h) {
     }
 
     private void handleSrvccStateChanged(int[] ret) {
