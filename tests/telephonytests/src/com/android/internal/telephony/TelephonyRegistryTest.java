@@ -38,6 +38,7 @@ import android.telephony.Annotation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.PreciseDataConnectionState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -57,7 +58,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @TestableLooper.RunWithLooper
 public class TelephonyRegistryTest extends TelephonyTest {
     @Mock
-    private ISub.Stub mISubStub;
+    private SubscriptionInfo mMockSubInfo;
     private PhoneStateListenerWrapper mPhoneStateListener;
     private TelephonyRegistry mTelephonyRegistry;
     private PhoneCapability mPhoneCapability;
@@ -105,9 +106,6 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("TelephonyRegistryTest");
-        // ServiceManager.getService("isub") will return this stub for any call to
-        // SubscriptionManager.
-        mServiceManagerMockedServices.put("isub", mISubStub);
         mTelephonyRegistry = new TelephonyRegistry(mContext);
         addTelephonyRegistryService();
         mPhoneStateListener = new PhoneStateListenerWrapper();
@@ -124,6 +122,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testPhoneCapabilityChanged() {
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
         PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
@@ -169,12 +169,13 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSrvccStateChanged() throws Exception {
-        // Return a phone ID of 0 for all sub ids given.
-        doReturn(0/*phoneId*/).when(mISubStub).getPhoneId(anyInt());
+        // Return a slotIndex / phoneId of 0 for all sub ids given.
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         int srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
-        mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
+        mTelephonyRegistry.notifySrvccStateChanged(1 /*subId*/, srvccState);
         // Should receive callback when listen is called that contains the latest notify result.
-        mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
+        mTelephonyRegistry.listenForSubscriber(1 /*subId*/, mContext.getOpPackageName(),
                 mContext.getFeatureId(), mPhoneStateListener.callback,
                 LISTEN_SRVCC_STATE_CHANGED, true);
         processAllMessages();
@@ -182,7 +183,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         // trigger callback
         srvccState = TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED;
-        mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
+        mTelephonyRegistry.notifySrvccStateChanged(1 /*subId*/, srvccState);
         processAllMessages();
         assertEquals(srvccState, mSrvccState);
     }
@@ -244,7 +245,9 @@ public class TelephonyRegistryTest extends TelephonyTest {
      */
     @Test
     public void testPreciseDataConnectionStateChanged() {
-        final int subId = 0;
+        final int subId = 1;
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         // Initialize the PSL with a PreciseDataConnection
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, "default",
