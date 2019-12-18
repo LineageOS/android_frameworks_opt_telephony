@@ -66,6 +66,7 @@ java_library {
         "voip-common",
         "ims-common",
         "services",
+        "unsupportedappusage",
     ],
     static_libs: [
         "android.hardware.radio.config-V1.0-java-shallow",
