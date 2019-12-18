@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -242,6 +242,7 @@ public abstract class Connection {
     private int mPhoneType;
     private boolean mAnsweringDisconnectsActiveCall;
     private boolean mAllowAddCallDuringVideoCall;
+    private boolean mAllowHoldingVideoCall;
 
     private boolean mIsEmergencyCall;
 
@@ -1077,6 +1078,14 @@ public abstract class Connection {
 
     public void setAllowAddCallDuringVideoCall(boolean allowAddCallDuringVideoCall) {
         mAllowAddCallDuringVideoCall = allowAddCallDuringVideoCall;
+    }
+
+    public boolean shouldAllowHoldingVideoCall() {
+        return mAllowHoldingVideoCall;
+    }
+
+    public void setAllowHoldingVideoCall(boolean allowHoldingVideoCall) {
+        mAllowHoldingVideoCall = allowHoldingVideoCall;
     }
 
     /**

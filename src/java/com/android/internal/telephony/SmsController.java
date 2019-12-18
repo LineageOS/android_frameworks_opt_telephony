@@ -21,10 +21,10 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.util.TelephonyUtils.checkDumpPermission;
 
 import android.annotation.Nullable;
-import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Binder;
@@ -624,5 +624,20 @@ public class SmsController extends ISmsImplBase {
         SubscriptionManager manager = (SubscriptionManager) mContext
                 .getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
         return manager.getActiveSubscriptionInfo(subId);
+    }
+
+    /**
+     * Get the capacity count of sms on Icc card.
+     */
+    @Override
+    public int getSmsCapacityOnIccForSubscriber(int subId) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+
+        if (iccSmsIntMgr != null ) {
+            return iccSmsIntMgr.getSmsCapacityOnIcc();
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return 0;
+        }
     }
 }

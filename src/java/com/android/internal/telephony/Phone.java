@@ -16,9 +16,10 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.annotation.UnsupportedAppUsage;
 import android.app.BroadcastOptions;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -50,6 +51,7 @@ import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -359,6 +361,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private final RegistrantList mRedialRegistrants = new RegistrantList();
 
     private final RegistrantList mPhysicalChannelConfigRegistrants = new RegistrantList();
+
+    private final RegistrantList mOtaspRegistrants = new RegistrantList();
 
     protected Registrant mPostDialHandler;
 
@@ -2326,23 +2330,22 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyMessageWaitingChanged(this);
     }
 
+    /** Send notification with an updated PreciseDataConnectionState to a single data connection */
     public void notifyDataConnection(String apnType) {
-        mNotifier.notifyDataConnection(this, apnType, getDataConnectionState(apnType));
+        mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
     }
 
-    public void notifyDataConnection() {
+    /** Send notification with an updated PreciseDataConnectionState to all data connections */
+    public void notifyAllActiveDataConnections() {
         String types[] = getActiveApnTypes();
-        if (types != null) {
-            for (String apnType : types) {
-                mNotifier.notifyDataConnection(this, apnType,
-                        getDataConnectionState(apnType));
-            }
+        for (String apnType : types) {
+            mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
         }
     }
 
     @UnsupportedAppUsage
     public void notifyOtaspChanged(int otaspMode) {
-        mNotifier.notifyOtaspChanged(this, otaspMode);
+        mOtaspRegistrants.notifyRegistrants(new AsyncResult(null, otaspMode, null));
     }
 
     public void notifyVoiceActivationStateChanged(int state) {
@@ -2363,6 +2366,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public PhoneConstants.DataState getDataConnectionState(String apnType) {
         return PhoneConstants.DataState.DISCONNECTED;
+    }
+
+    /** Default implementation to get the PreciseDataConnectionState */
+    public @Nullable PreciseDataConnectionState getPreciseDataConnectionState(String apnType) {
+        return null;
     }
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
@@ -2779,6 +2787,42 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Register for notifications when OTA Service Provisioning mode has changed.
+     *
+     * <p>The mode is integer. {@link TelephonyManager#OTASP_UNKNOWN}
+     * means the value is currently unknown and the system should wait until
+     * {@link TelephonyManager#OTASP_NEEDED} or {@link TelephonyManager#OTASP_NOT_NEEDED} is
+     * received before making the decision to perform OTASP or not.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForOtaspChange(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        mOtaspRegistrants.addUnique(h, what, obj);
+        // notify first
+        new Registrant(h, what, obj).notifyRegistrant(new AsyncResult(null, getOtasp(), null));
+    }
+
+    /**
+     * Unegister for notifications when OTA Service Provisioning mode has changed.
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForOtaspChange(Handler h) {
+        mOtaspRegistrants.remove(h);
+    }
+
+    /**
+     * Returns the current OTA Service Provisioning mode.
+     *
+     * @see registerForOtaspChange
+     */
+    public int getOtasp() {
+        return TelephonyManager.OTASP_UNKNOWN;
+    }
+
+    /**
      * Register for notifications when CDMA call waiting comes
      *
      * @param h Handler that receives the notification message.
@@ -3025,26 +3069,26 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Returns an array of string identifiers for the APN types serviced by the
-     * currently active.
+     * currently active subscription.
      *
      * @return The string array of APN types. Return null if no active APN types.
      */
     @UnsupportedAppUsage
-    @Nullable
+    @NonNull
     public String[] getActiveApnTypes() {
-        if (mTransportManager != null) {
-            List<String> typesList = new ArrayList<>();
-            for (int transportType : mTransportManager.getAvailableTransports()) {
-                if (getDcTracker(transportType) != null) {
-                    typesList.addAll(Arrays.asList(
-                            getDcTracker(transportType).getActiveApnTypes()));
-                }
-            }
-
-            return typesList.toArray(new String[typesList.size()]);
+        if (mTransportManager == null || mDcTrackers == null)  {
+            Rlog.e(LOG_TAG, "Invalid state for Transport/DcTrackers");
+            return new String[0];
         }
 
-        return null;
+        Set<String> activeApnTypes = new HashSet<String>();
+        for (int transportType : mTransportManager.getAvailableTransports()) {
+            DcTracker dct = getDcTracker(transportType);
+            if (dct == null) continue; // TODO: should this ever happen?
+            activeApnTypes.addAll(Arrays.asList(dct.getActiveApnTypes()));
+        }
+
+        return activeApnTypes.toArray(new String[activeApnTypes.size()]);
     }
 
     /**
@@ -3274,13 +3318,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void notifyCallForwardingIndicator() {
     }
 
-    public void notifyDataConnectionFailed(String apnType) {
-        mNotifier.notifyDataConnectionFailed(this, apnType);
-    }
-
-    public void notifyPreciseDataConnectionFailed(String apnType, String apn,
-                                                  @DataFailureCause int failCause) {
-        mNotifier.notifyPreciseDataConnectionFailed(this, apnType, apn, failCause);
+    /** Send a notification that a particular data connection has failed with specified cause. */
+    public void notifyDataConnectionFailed(
+            String apnType, String apn, @DataFailureCause int failCause) {
+        mNotifier.notifyDataConnectionFailed(this, apnType, apn, failCause);
     }
 
     /**

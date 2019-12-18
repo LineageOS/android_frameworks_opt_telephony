@@ -16,8 +16,9 @@
 
 package com.android.internal.telephony.cdma;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.Rlog;
+
 import com.android.internal.telephony.PhoneConstants;
 
 /**

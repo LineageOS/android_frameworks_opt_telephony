@@ -27,7 +27,7 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATIO
 
 import static java.util.Arrays.copyOf;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;

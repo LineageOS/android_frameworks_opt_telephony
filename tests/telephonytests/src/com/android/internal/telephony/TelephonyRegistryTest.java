@@ -32,10 +32,12 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import android.content.Intent;
+import android.net.LinkProperties;
 import android.os.ServiceManager;
 import android.telephony.Annotation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -49,12 +51,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class TelephonyRegistryTest extends TelephonyTest {
     @Mock
     private ISub.Stub mISubStub;
-    private PhoneStateListener mPhoneStateListener;
+    private PhoneStateListenerWrapper mPhoneStateListener;
     private TelephonyRegistry mTelephonyRegistry;
     private PhoneCapability mPhoneCapability;
     private int mActiveSubId;
@@ -62,22 +66,34 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private int mRadioPowerState = RADIO_POWER_UNAVAILABLE;
 
     public class PhoneStateListenerWrapper extends PhoneStateListener {
+        // This class isn't mockable to get invocation counts because the IBinder is null and
+        // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
+        public AtomicInteger invocationCount = new AtomicInteger(0);
+
         @Override
         public void onSrvccStateChanged(int srvccState) {
+            invocationCount.incrementAndGet();
             mSrvccState = srvccState;
         }
 
         @Override
         public void onPhoneCapabilityChanged(PhoneCapability capability) {
+            invocationCount.incrementAndGet();
             mPhoneCapability = capability;
         }
         @Override
         public void onActiveDataSubscriptionIdChanged(int activeSubId) {
+            invocationCount.incrementAndGet();
             mActiveSubId = activeSubId;
         }
         @Override
         public void onRadioPowerStateChanged(@Annotation.RadioPowerState int state) {
+            invocationCount.incrementAndGet();
             mRadioPowerState = state;
+        }
+        @Override
+        public void onPreciseDataConnectionStateChanged(PreciseDataConnectionState preciseState) {
+            invocationCount.incrementAndGet();
         }
     }
 
@@ -221,5 +237,55 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyRadioPowerStateChanged(0, 1, RADIO_POWER_OFF);
         processAllMessages();
         assertEquals(RADIO_POWER_OFF, mRadioPowerState);
+    }
+
+    /**
+     * Test multi sim config change.
+     */
+    @Test
+    public void testPreciseDataConnectionStateChanged() {
+        final int subId = 0;
+        // Initialize the PSL with a PreciseDataConnection
+        mTelephonyRegistry.notifyDataConnectionForSubscriber(
+                /*phoneId*/ 0, subId, "default",
+                new PreciseDataConnectionState(
+                    0, 0, 0, "default", new LinkProperties(), 0, null));
+        mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
+                mContext.getFeatureId(), mPhoneStateListener.callback,
+                PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
+        processAllMessages();
+        // Verify that the PDCS is reported for the only APN
+        assertEquals(mPhoneStateListener.invocationCount.get(), 1);
+
+        // Add IMS APN and verify that the listener is invoked for the IMS APN
+        mTelephonyRegistry.notifyDataConnectionForSubscriber(
+                /*phoneId*/ 0, subId, "ims",
+                new PreciseDataConnectionState(
+                    0, 0, 0, "ims", new LinkProperties(), 0, null));
+        processAllMessages();
+
+        assertEquals(mPhoneStateListener.invocationCount.get(), 2);
+
+        // Unregister the listener
+        mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
+                mContext.getFeatureId(), mPhoneStateListener.callback,
+                PhoneStateListener.LISTEN_NONE, true);
+        processAllMessages();
+
+        // Re-register the listener and ensure that both APN types are reported
+        mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
+                mContext.getFeatureId(), mPhoneStateListener.callback,
+                PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
+        processAllMessages();
+        assertEquals(mPhoneStateListener.invocationCount.get(), 4);
+
+        // Send a duplicate event to the TelephonyRegistry and verify that the listener isn't
+        // invoked.
+        mTelephonyRegistry.notifyDataConnectionForSubscriber(
+                /*phoneId*/ 0, subId, "ims",
+                new PreciseDataConnectionState(
+                    0, 0, 0, "ims", new LinkProperties(), 0, null));
+        processAllMessages();
+        assertEquals(mPhoneStateListener.invocationCount.get(), 4);
     }
 }

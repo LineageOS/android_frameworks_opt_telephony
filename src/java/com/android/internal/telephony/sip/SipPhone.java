@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.sip;
 
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.media.AudioManager;
 import android.net.rtp.AudioGroup;
@@ -39,8 +40,6 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
-
-import dalvik.annotation.compat.UnsupportedAppUsage;
 
 import java.text.ParseException;
 import java.util.List;

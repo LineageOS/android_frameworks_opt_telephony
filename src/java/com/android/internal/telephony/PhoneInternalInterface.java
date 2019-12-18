@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -25,6 +25,7 @@ import android.os.ResultReceiver;
 import android.telecom.VideoProfile;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
@@ -235,6 +236,16 @@ public interface PhoneInternalInterface {
      * @param apnType specify for which apn to get connection state info.
      */
     DataState getDataConnectionState(String apnType);
+
+    /**
+     * Get the current Precise DataState. No change notification exists at this
+     * interface -- use
+     * {@link android.telephony.PhoneStateListener} instead.
+     *
+     * @param apnType specify for which apn to get connection state info.
+     * @return the PreciseDataConnectionState for the data connection supporting apnType
+     */
+    PreciseDataConnectionState getPreciseDataConnectionState(String apnType);
 
     /**
      * Get the current DataActivityState. No change notification exists at this

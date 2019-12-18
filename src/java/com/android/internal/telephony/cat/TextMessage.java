@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;

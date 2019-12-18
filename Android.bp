@@ -66,14 +66,16 @@ java_library {
         "voip-common",
         "ims-common",
         "services",
+        "unsupportedappusage",
     ],
     static_libs: [
         "android.hardware.radio.config-V1.0-java-shallow",
         "android.hardware.radio.config-V1.1-java-shallow",
         "android.hardware.radio.config-V1.2-java-shallow",
         "android.hardware.radio.deprecated-V1.0-java-shallow",
-        "telephony-protos",
         "ecc-protos-lite",
+        "libphonenumber-nogeocoder",
+        "telephony-protos",
     ],
 
     product_variables: {
