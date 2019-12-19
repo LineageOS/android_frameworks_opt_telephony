@@ -43,7 +43,6 @@ import android.telephony.IccOpenLogicalChannelResponse;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkScanRequest;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
@@ -71,6 +70,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -1406,8 +1406,9 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void exitEmergencyCallbackMode(Message result) {unimplemented(result);}
     @Override
-    public void setNetworkSelectionModeManual(
-            String operatorNumeric, Message result) {unimplemented(result);}
+    public void setNetworkSelectionModeManual(String operatorNumeric, int ran, Message result) {
+        unimplemented(result);
+    }
 
     /**
      * Queries whether the current network selection mode is automatic
