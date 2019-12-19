@@ -26,11 +26,8 @@ import android.os.RemoteCallback;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.SmsCbMessage;
-import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaSmsCbProgramResults;
 
-import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
@@ -57,7 +54,6 @@ import java.util.Arrays;
 public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
     private final CdmaSMSDispatcher mSmsDispatcher;
-    private final CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
     private static CdmaCbTestBroadcastReceiver sTestBroadcastReceiver;
     private static CdmaScpTestBroadcastReceiver sTestScpBroadcastReceiver;
 
@@ -76,19 +72,14 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             + ".TEST_TRIGGER_CELL_BROADCAST";
     private static final String SCP_TEST_ACTION = "com.android.internal.telephony.cdma"
             + ".TEST_TRIGGER_SCP_MESSAGE";
-    private static final String TOGGLE_CB_MODULE = "com.android.internal.telephony.cdma"
-            + ".TOGGLE_CB_MODULE";
 
     /**
      * Create a new inbound SMS handler for CDMA.
      */
     private CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             Phone phone, CdmaSMSDispatcher smsDispatcher) {
-        super("CdmaInboundSmsHandler", context, storageMonitor, phone,
-                CellBroadcastHandler.makeCellBroadcastHandler(context, phone));
+        super("CdmaInboundSmsHandler", context, storageMonitor, phone);
         mSmsDispatcher = smsDispatcher;
-        mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
-                phone.mCi, phone);
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
 
         mCellBroadcastServiceManager.enable();
@@ -150,7 +141,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
                 sTestBroadcastReceiver = new CdmaCbTestBroadcastReceiver();
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(TEST_ACTION);
-                filter.addAction(TOGGLE_CB_MODULE);
                 context.registerReceiver(sTestBroadcastReceiver, filter);
             }
             if (sTestScpBroadcastReceiver == null) {
@@ -168,7 +158,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void onQuitting() {
         mPhone.mCi.unSetOnNewCdmaSms(getHandler());
-        mCellBroadcastHandler.dispose();
 
         if (DBG) log("unregistered for 3GPP2 SMS");
         super.onQuitting();
@@ -209,11 +198,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         // Handle CMAS emergency broadcast messages.
         if (isBroadcastType) {
             log("Broadcast type message");
-            if (sEnableCbModule) {
-                mCellBroadcastServiceManager.sendCdmaMessageToHandler(sms);
-            } else {
-                legacyDispatchSmsCbMessage(sms);
-            }
+            mCellBroadcastServiceManager.sendCdmaMessageToHandler(sms);
             return Intents.RESULT_SMS_HANDLED;
         }
 
@@ -244,11 +229,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
                 break;
 
             case SmsEnvelope.TELESERVICE_SCPT:
-                if (sEnableCbModule) {
-                    mCellBroadcastServiceManager.sendCdmaScpMessageToHandler(sms, mScpCallback);
-                } else {
-                    mServiceCategoryProgramHandler.dispatchSmsMessage(sms);
-                }
+                mCellBroadcastServiceManager.sendCdmaScpMessageToHandler(sms, mScpCallback);
                 return Intents.RESULT_SMS_HANDLED;
 
             case SmsEnvelope.TELESERVICE_FDEA_WAP:
@@ -281,20 +262,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         }
 
         return dispatchNormalMessage(smsb);
-    }
-
-    // dispatch an SMS message through the platform
-    private void legacyDispatchSmsCbMessage(SmsMessage sms) {
-        String plmn =
-                TelephonyManager.from(mContext).getNetworkOperatorForPhone(
-                        mPhone.getPhoneId());
-        SmsCbMessage cbMessage = sms.parseBroadcastSms(plmn, mPhone.getPhoneId(),
-                mPhone.getSubId());
-        if (cbMessage != null) {
-            mCellBroadcastHandler.dispatchSmsMessage(cbMessage);
-        } else {
-            loge("error trying to parse broadcast SMS");
-        }
     }
 
     /**
@@ -485,16 +452,11 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * 493925391C81193D48814D3D555120810D3D0D3D3925393C810D3D5539516480B481393D495120810D1539514 \
      * 9053081054925693D390481553951253080D0C4D481413481354D500 \
      * --ei phone_id 0 \
-     *
-     * adb shell am broadcast -a com.android.internal.telephony.cdma.TOGGLE_CB_MODULE
-     *
-     * adb shell am broadcast -a com.android.internal.telephony.cdma.TOGGLE_CB_MODULE \
-     * --ez enable true
      */
     private class CdmaCbTestBroadcastReceiver extends CbTestBroadcastReceiver {
 
         CdmaCbTestBroadcastReceiver() {
-            super(TEST_ACTION, TOGGLE_CB_MODULE);
+            super(TEST_ACTION);
         }
 
         @Override
@@ -522,23 +484,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             }
 
             SmsMessage sms = new SmsMessage(new CdmaSmsAddress(), envelope);
-            if (sEnableCbModule) {
                 mCellBroadcastServiceManager.sendCdmaMessageToHandler(sms);
-            } else {
-                legacyDispatchSmsCbMessage(sms);
-            }
-        }
-
-        @Override
-        protected void handleToggleEnable() {
-            // sEnableCbModule is already toggled in super class
-            mCellBroadcastServiceManager.enable();
-        }
-
-        @Override
-        protected void handleToggleDisable(Context context) {
-            // sEnableCbModule is already toggled in super class
-            mCellBroadcastServiceManager.disable();
         }
     }
 
@@ -550,13 +496,11 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * --es originating_address_string 1234567890 \
      * --es bearer_data_string 00031007B0122610880080B2091C5F1D3965DB95054D1CB2E1E883A6F41334E \
      * 6CA830EEC882872DFC32F2E9E40
-     *
-     * To toggle use the CDMA CB test broadcast receiver.
      */
     private class CdmaScpTestBroadcastReceiver extends CbTestBroadcastReceiver {
 
         CdmaScpTestBroadcastReceiver() {
-            super(SCP_TEST_ACTION, null);
+            super(SCP_TEST_ACTION);
         }
 
         @Override
@@ -585,21 +529,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             }
             SmsMessage sms = new SmsMessage(origAddr, envelope);
             sms.parseSms();
-            if (sEnableCbModule) {
-                mCellBroadcastServiceManager.sendCdmaScpMessageToHandler(sms, mScpCallback);
-            } else {
-                mServiceCategoryProgramHandler.dispatchSmsMessage(sms);
-            }
-        }
-
-        @Override
-        protected void handleToggleEnable() {
-            // noop
-        }
-
-        @Override
-        protected void handleToggleDisable(Context context) {
-            // noop
+            mCellBroadcastServiceManager.sendCdmaScpMessageToHandler(sms, mScpCallback);
         }
     }
 }
