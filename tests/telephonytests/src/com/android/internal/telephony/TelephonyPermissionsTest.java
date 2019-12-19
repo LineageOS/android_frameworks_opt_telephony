@@ -113,7 +113,7 @@ public class TelephonyPermissionsTest {
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         when(mMockContext.checkPermission(android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
                 PID, UID)).thenReturn(PackageManager.PERMISSION_DENIED);
-        when(mMockDevicePolicyManager.checkDeviceIdentifierAccess(eq(PACKAGE), eq(PID),
+        when(mMockDevicePolicyManager.hasDeviceIdentifierAccess(eq(PACKAGE), eq(PID),
                 eq(UID))).thenReturn(false);
         setTelephonyMockAsService();
     }
@@ -292,7 +292,7 @@ public class TelephonyPermissionsTest {
 
     @Test
     public void testCheckReadDeviceIdentifiers_hasDPMDeviceIDAccess() {
-        when(mMockDevicePolicyManager.checkDeviceIdentifierAccess(eq(PACKAGE), eq(PID),
+        when(mMockDevicePolicyManager.hasDeviceIdentifierAccess(eq(PACKAGE), eq(PID),
                 eq(UID))).thenReturn(true);
         assertTrue(
                 TelephonyPermissions.checkCallingOrSelfReadDeviceIdentifiers(mMockContext,
@@ -395,7 +395,7 @@ public class TelephonyPermissionsTest {
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
         when(mMockAppOps.noteOpNoThrow(anyString(), anyInt(), eq(PACKAGE))).thenReturn(
                 AppOpsManager.MODE_ERRORED);
-        when(mMockDevicePolicyManager.checkDeviceIdentifierAccess(eq(PACKAGE), anyInt(),
+        when(mMockDevicePolicyManager.hasDeviceIdentifierAccess(eq(PACKAGE), anyInt(),
                 anyInt())).thenReturn(false);
         try {
             TelephonyPermissions.checkCallingOrSelfReadSubscriberIdentifiers(mMockContext,
