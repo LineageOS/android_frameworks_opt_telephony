@@ -62,7 +62,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         super.tearDown();
     }
 
-    @FlakyTest
+    @Test @FlakyTest
     public void testTethering() {
         // Turn tethering on
         Intent intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
@@ -86,7 +86,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
                 eq(true), nullable(Message.class));
     }
 
-    @FlakyTest
+    @Test @FlakyTest
     public void testCharging() {
         // Charging
         Intent intent = new Intent(BatteryManager.ACTION_CHARGING);
@@ -111,7 +111,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
                 eq(false), nullable(Message.class));
     }
 
-    @FlakyTest
+    @Test @FlakyTest
     public void testReset() {
         mDSM.obtainMessage(6).sendToTarget();
 
