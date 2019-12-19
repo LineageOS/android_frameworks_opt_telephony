@@ -83,6 +83,21 @@ public class ImsServiceFeatureQueryManager {
             Log.w(LOG_TAG, "onServiceDisconnected for component: " + name);
         }
 
+        @Override
+        public void onBindingDied(ComponentName name) {
+            Log.w(LOG_TAG, "onBindingDied: " + name);
+            cleanup();
+            // retry again!
+            mListener.onError(name);
+        }
+
+        @Override
+        public void onNullBinding(ComponentName name) {
+            Log.w(LOG_TAG, "onNullBinding: " + name);
+            cleanup();
+            mListener.onPermanentError(name);
+        }
+
         private void queryImsFeatures(IImsServiceController controller) {
             ImsFeatureConfiguration config;
             try {
@@ -90,6 +105,7 @@ public class ImsServiceFeatureQueryManager {
             } catch (Exception e) {
                 Log.w(LOG_TAG, "queryImsFeatures - error: " + e);
                 cleanup();
+                // Retry again!
                 mListener.onError(mName);
                 return;
             }
