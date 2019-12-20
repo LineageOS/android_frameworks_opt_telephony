@@ -29,6 +29,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.sysprop.TelephonyProperties;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
@@ -47,6 +48,7 @@ import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -571,8 +573,14 @@ public class LocaleTracker extends Handler {
             mLocalLog.log(msg);
             mCurrentCountryIso = countryIso;
 
-            TelephonyManager.setTelephonyProperty(mPhone.getPhoneId(),
-                    TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, mCurrentCountryIso);
+            int phoneId = mPhone.getPhoneId();
+            if (SubscriptionManager.isValidPhoneId(phoneId)) {
+                List<String> newProp = new ArrayList<>(
+                        TelephonyProperties.operator_iso_country());
+                while (newProp.size() <= phoneId) newProp.add(null);
+                newProp.set(phoneId, mCurrentCountryIso);
+                TelephonyProperties.operator_iso_country(newProp);
+            }
 
             Intent intent = new Intent(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
             intent.putExtra(TelephonyManager.EXTRA_NETWORK_COUNTRY, countryIso);
