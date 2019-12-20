@@ -835,6 +835,9 @@ message TelephonyEvent {
 
     // Network capabilities change event.
     NETWORK_CAPABILITIES_CHANGED = 22;
+
+    // Signal strength
+    SIGNAL_STRENGTH = 23;
   }
 
   enum ApnType {
@@ -1817,6 +1820,9 @@ message TelephonyEvent {
 
   // NetworkCapabilities changed info.
   optional NetworkCapabilitiesInfo network_capabilities = 26;
+
+  // Signal strength
+  optional int32 signal_strength = 27;
 }
 
 message ActiveSubscriptionInfo {
