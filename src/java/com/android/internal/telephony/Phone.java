@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.BroadcastOptions;
@@ -50,7 +49,6 @@ import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
-import android.telephony.PreciseDataConnectionState;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -2351,16 +2349,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyMessageWaitingChanged(this);
     }
 
-    /** Send notification with an updated PreciseDataConnectionState to a single data connection */
     public void notifyDataConnection(String apnType) {
-        mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
+        mNotifier.notifyDataConnection(this, apnType, getDataConnectionState(apnType));
     }
 
-    /** Send notification with an updated PreciseDataConnectionState to all data connections */
-    public void notifyAllActiveDataConnections() {
+    public void notifyDataConnection() {
         String types[] = getActiveApnTypes();
-        for (String apnType : types) {
-            mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
+        if (types != null) {
+            for (String apnType : types) {
+                mNotifier.notifyDataConnection(this, apnType,
+                        getDataConnectionState(apnType));
+            }
         }
     }
 
@@ -2387,11 +2386,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public PhoneConstants.DataState getDataConnectionState(String apnType) {
         return PhoneConstants.DataState.DISCONNECTED;
-    }
-
-    /** Default implementation to get the PreciseDataConnectionState */
-    public @Nullable PreciseDataConnectionState getPreciseDataConnectionState(String apnType) {
-        return null;
     }
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
@@ -3088,26 +3082,26 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Returns an array of string identifiers for the APN types serviced by the
-     * currently active subscription.
+     * currently active.
      *
      * @return The string array of APN types. Return null if no active APN types.
      */
     @UnsupportedAppUsage
-    @NonNull
+    @Nullable
     public String[] getActiveApnTypes() {
-        if (mTransportManager == null || mDcTrackers == null)  {
-            Rlog.e(LOG_TAG, "Invalid state for Transport/DcTrackers");
-            return new String[0];
+        if (mTransportManager != null) {
+            List<String> typesList = new ArrayList<>();
+            for (int transportType : mTransportManager.getAvailableTransports()) {
+                if (getDcTracker(transportType) != null) {
+                    typesList.addAll(Arrays.asList(
+                            getDcTracker(transportType).getActiveApnTypes()));
+                }
+            }
+
+            return typesList.toArray(new String[typesList.size()]);
         }
 
-        Set<String> activeApnTypes = new HashSet<String>();
-        for (int transportType : mTransportManager.getAvailableTransports()) {
-            DcTracker dct = getDcTracker(transportType);
-            if (dct == null) continue; // TODO: should this ever happen?
-            activeApnTypes.addAll(Arrays.asList(dct.getActiveApnTypes()));
-        }
-
-        return activeApnTypes.toArray(new String[activeApnTypes.size()]);
+        return null;
     }
 
     /**
@@ -3337,10 +3331,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void notifyCallForwardingIndicator() {
     }
 
-    /** Send a notification that a particular data connection has failed with specified cause. */
-    public void notifyDataConnectionFailed(
-            String apnType, String apn, @DataFailureCause int failCause) {
-        mNotifier.notifyDataConnectionFailed(this, apnType, apn, failCause);
+    public void notifyDataConnectionFailed(String apnType) {
+        mNotifier.notifyDataConnectionFailed(this, apnType);
+    }
+
+    public void notifyPreciseDataConnectionFailed(String apnType, String apn,
+                                                  @DataFailureCause int failCause) {
+        mNotifier.notifyPreciseDataConnectionFailed(this, apnType, apn, failCause);
     }
 
     /**

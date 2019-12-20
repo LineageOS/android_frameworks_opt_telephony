@@ -73,7 +73,6 @@ import android.telephony.CellLocation;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
-import android.telephony.PreciseDataConnectionState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -1063,18 +1062,17 @@ public class DcTracker extends Handler {
         return result.toArray(new String[0]);
     }
 
-    /** Return active ApnSetting of a specific apnType */
-    public ApnSetting getActiveApnSetting(String apnType) {
-        if (VDBG) log("get active ApnSetting for type:" + apnType);
-        ApnContext apnContext = mApnContexts.get(apnType);
-        return (apnContext != null) ? apnContext.getApnSetting() : null;
-    }
-
     // Return active apn of specific apn type
     public String getActiveApnString(String apnType) {
         if (VDBG) log( "get active apn string for type:" + apnType);
-        ApnSetting setting = getActiveApnSetting(apnType);
-        return (setting != null) ? setting.getApnName() : null;
+        ApnContext apnContext = mApnContexts.get(apnType);
+        if (apnContext != null) {
+            ApnSetting apnSetting = apnContext.getApnSetting();
+            if (apnSetting != null) {
+                return apnSetting.getApnName();
+            }
+        }
+        return null;
     }
 
     /**
@@ -1102,50 +1100,6 @@ public class DcTracker extends Handler {
             }
         }
         return state;
-    }
-
-    /** Convert the internal DctConstants enum state to the TelephonyManager DATA_*  state.
-     * @param state the DctConstants.State
-     * @return a corresponding TelephonyManager.DataState
-     */
-    @TelephonyManager.DataState
-    public static int convertDctStateToTelephonyDataState(DctConstants.State state) {
-        switch(state) {
-            case CONNECTING: // fall through
-            case RETRYING:
-                return TelephonyManager.DATA_CONNECTING;
-            case CONNECTED:
-                return TelephonyManager.DATA_CONNECTED;
-            case DISCONNECTING:
-                return TelephonyManager.DATA_DISCONNECTING;
-            case IDLE: // fall through
-            case FAILED: // fall through
-            default:
-                return TelephonyManager.DATA_DISCONNECTED;
-        }
-    }
-
-    /** Return the Precise Data Connection State information */
-    public @NonNull PreciseDataConnectionState getPreciseDataConnectionState(
-            String apnType, boolean isSuspended, int networkType) {
-
-        int telState = convertDctStateToTelephonyDataState(getState(apnType));
-        // Since suspended isn't actually reported by the DCT, do a fixup based on current
-        // voice call state and device + rat capability
-        if ((telState == TelephonyManager.DATA_CONNECTED
-                || telState == TelephonyManager.DATA_DISCONNECTING)
-                && isSuspended) {
-            telState = TelephonyManager.DATA_SUSPENDED;
-        }
-
-        ApnSetting apnSetting = getActiveApnSetting(apnType);
-        int apnTypesBitmask = ApnSetting.getApnTypesBitmaskFromString(apnType);
-
-        // TODO: should the data fail cause be populated?
-        return new PreciseDataConnectionState(
-                telState, networkType, apnTypesBitmask, apnType,
-                getLinkProperties(apnType),
-                DataFailCause.NONE, apnSetting);
     }
 
     /**
@@ -1228,7 +1182,7 @@ public class DcTracker extends Handler {
         if (DBG) log ("onDataConnectionDetached: stop polling and notify detached");
         stopNetStatPoll();
         stopDataStallAlarm();
-        mPhone.notifyAllActiveDataConnections();
+        mPhone.notifyDataConnection();
         mAttached.set(false);
     }
 
@@ -1239,7 +1193,7 @@ public class DcTracker extends Handler {
             if (DBG) log("onDataConnectionAttached: start polling notify attached");
             startNetStatPoll();
             startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
-            mPhone.notifyAllActiveDataConnections();
+            mPhone.notifyDataConnection();
         }
         if (mAutoAttachOnCreationConfig) {
             mAutoAttachEnabled.set(true);
@@ -1530,10 +1484,7 @@ public class DcTracker extends Handler {
                 ArrayList<ApnSetting> waitingApns =
                         buildWaitingApns(apnContext.getApnType(), radioTech);
                 if (waitingApns.isEmpty()) {
-                    ApnSetting apn = apnContext != null ? apnContext.getApnSetting() : null;
-                    mPhone.notifyDataConnectionFailed(apnContext.getApnType(),
-                            apn != null ? apn.getApnName() : null,
-                            DataFailCause.MISSING_UNKNOWN_APN);
+                    notifyNoData(DataFailCause.MISSING_UNKNOWN_APN, apnContext);
                     String str = "trySetupData: X No APN found retValue=false";
                     if (DBG) log(str);
                     apnContext.requestLog(str);
@@ -2208,6 +2159,15 @@ public class DcTracker extends Handler {
         removeMessages(DctConstants.EVENT_DATA_RECONNECT, apnContext);
     }
 
+    private void notifyNoData(@DataFailureCause int lastFailCauseCode,
+                              ApnContext apnContext) {
+        if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
+        if (isPermanentFailure(lastFailCauseCode)
+            && (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT))) {
+            mPhone.notifyDataConnectionFailed(apnContext.getApnType());
+        }
+    }
+
     private void onRecordsLoadedOrSubIdChanged() {
         if (DBG) log("onRecordsLoadedOrSubIdChanged: createAllApnList");
         if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
@@ -2219,7 +2179,7 @@ public class DcTracker extends Handler {
         createAllApnList();
         setDataProfilesAsNeeded();
         setInitialAttachApn();
-        mPhone.notifyAllActiveDataConnections();
+        mPhone.notifyDataConnection();
         setupDataOnAllConnectableApns(Phone.REASON_SIM_LOADED, RetryFailures.ALWAYS);
     }
 
@@ -2546,7 +2506,7 @@ public class DcTracker extends Handler {
 
             setupDataOnAllConnectableApns(Phone.REASON_ROAMING_OFF, RetryFailures.ALWAYS);
         } else {
-            mPhone.notifyAllActiveDataConnections();
+            mPhone.notifyDataConnection();
         }
     }
 
@@ -2577,7 +2537,7 @@ public class DcTracker extends Handler {
             if (DBG) log("onDataRoamingOnOrSettingsChanged: setup data on roaming");
 
             setupDataOnAllConnectableApns(Phone.REASON_ROAMING_ON, RetryFailures.ALWAYS);
-            mPhone.notifyAllActiveDataConnections();
+            mPhone.notifyDataConnection();
         } else {
             // If the user does not turn on data roaming, when we transit from non-roaming to
             // roaming, we need to tear down the data connection otherwise the user might be
@@ -2609,7 +2569,7 @@ public class DcTracker extends Handler {
             // Assume data is connected on the simulator
             // FIXME  this can be improved
             // setState(DctConstants.State.CONNECTED);
-            mPhone.notifyAllActiveDataConnections();
+            mPhone.notifyDataConnection();
 
             log("onRadioAvailable: We're on the simulator; assuming data is connected");
         }
@@ -2820,7 +2780,7 @@ public class DcTracker extends Handler {
                         cause, cid, mTelephonyManager.getNetworkType());
             }
             ApnSetting apn = apnContext.getApnSetting();
-            mPhone.notifyDataConnectionFailed(apnContext.getApnType(),
+            mPhone.notifyPreciseDataConnectionFailed(apnContext.getApnType(),
                     apn != null ? apn.getApnName() : null, cause);
 
             // Compose broadcast intent send to the specific carrier signaling receivers
@@ -2995,7 +2955,7 @@ public class DcTracker extends Handler {
             if (DBG) log("onVoiceCallStarted stop polling");
             stopNetStatPoll();
             stopDataStallAlarm();
-            mPhone.notifyAllActiveDataConnections();
+            mPhone.notifyDataConnection();
         }
     }
 
@@ -3006,7 +2966,7 @@ public class DcTracker extends Handler {
             if (!mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                 startNetStatPoll();
                 startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
-                mPhone.notifyAllActiveDataConnections();
+                mPhone.notifyDataConnection();
             } else {
                 // clean slate after call end.
                 resetPollStats();
@@ -3099,8 +3059,8 @@ public class DcTracker extends Handler {
             mApnSettingsInitializationLog.log("no APN found for carrier, operator: "
                     + operator);
             mPreferredApn = null;
-            // Notify that there are no APN Settings,
-            mPhone.notifyDataConnectionFailed(null, null, DataFailCause.MISSING_UNKNOWN_APN);
+            // TODO: What is the right behavior?
+            //notifyNoData(DataConnection.FailCause.MISSING_UNKNOWN_APN);
         } else {
             mPreferredApn = getPreferredApn();
             if (mPreferredApn != null && !mPreferredApn.getOperatorNumeric().equals(operator)) {

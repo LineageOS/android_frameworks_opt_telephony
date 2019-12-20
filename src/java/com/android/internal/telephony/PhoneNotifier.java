@@ -24,7 +24,6 @@ import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
-import android.telephony.PreciseDataConnectionState;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -50,9 +49,9 @@ public interface PhoneNotifier {
 
     void notifyCallForwardingChanged(Phone sender);
 
-    /** Send a notification that the Data Connection for a particular apnType has changed */
-    void notifyDataConnection(
-            Phone sender, String apnType, PreciseDataConnectionState preciseState);
+    void notifyDataConnection(Phone sender, String apnType, PhoneConstants.DataState state);
+
+    void notifyDataConnectionFailed(Phone sender, String apnType);
 
     void notifyDataActivity(Phone sender);
 
@@ -64,27 +63,21 @@ public interface PhoneNotifier {
 
     void notifyImsDisconnectCause(Phone sender, ImsReasonInfo imsReasonInfo);
 
-    /** Send a notification that a particular data connection has failed with specified cause. */
-    void notifyDataConnectionFailed(Phone sender, String apnType, String apn,
+    public void notifyPreciseDataConnectionFailed(Phone sender, String apnType, String apn,
                                                   @DataFailureCause int failCause);
 
-    /** Send a notification that the SRVCC state has changed.*/
+    /** send a notification that the SRVCC state has changed.*/
     void notifySrvccStateChanged(Phone sender, @SrvccState int state);
 
-    /** Send a notification that the voice activation state has changed */
-    void notifyVoiceActivationStateChanged(Phone sender, int activationState);
+    public void notifyVoiceActivationStateChanged(Phone sender, int activationState);
 
-    /** Send a notification that the data activation state has changed */
-    void notifyDataActivationStateChanged(Phone sender, int activationState);
+    public void notifyDataActivationStateChanged(Phone sender, int activationState);
 
-    /** Send a notification that the users mobile data setting has changed */
-    void notifyUserMobileDataStateChanged(Phone sender, boolean state);
+    public void notifyUserMobileDataStateChanged(Phone sender, boolean state);
 
-    /** Send a notification with an OEM hook payload */
-    void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData);
+    public void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData);
 
-    /** Send a notification that the phone capability has changed */
-    void notifyPhoneCapabilityChanged(PhoneCapability capability);
+    public void notifyPhoneCapabilityChanged(PhoneCapability capability);
 
     void notifyRadioPowerStateChanged(Phone sender, @RadioPowerState int state);
 

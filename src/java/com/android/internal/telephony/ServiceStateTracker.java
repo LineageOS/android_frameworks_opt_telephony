@@ -3304,7 +3304,7 @@ public class ServiceStateTracker extends Handler {
             }
 
             if (hasCssIndicatorChanged) {
-                mPhone.notifyAllActiveDataConnections();
+                mPhone.notifyDataConnection();
             }
 
             mReasonDataDenied = mNewReasonDataDenied;
@@ -3460,7 +3460,7 @@ public class ServiceStateTracker extends Handler {
                     // that ServiceState#getRilDataRadioTechnology has changed.
                     || hasDataTransportPreferenceChanged) {
                 notifyDataRegStateRilRadioTechnologyChanged(transport);
-                mPhone.notifyAllActiveDataConnections();
+                mPhone.notifyDataConnection();
             }
 
             if (hasDataAttached.get(transport)) {

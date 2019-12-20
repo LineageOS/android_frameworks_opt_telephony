@@ -61,11 +61,10 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.RilRadioTechnology;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
-import android.telephony.DataFailCause;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.PreciseDataConnectionState;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalThresholdInfo;
@@ -503,7 +502,6 @@ public class GsmCdmaPhone extends Phone {
 
     @UnsupportedAppUsage
     @Override
-    @NonNull
     public ServiceState getServiceState() {
         if (mSST == null || mSST.mSS.getState() != ServiceState.STATE_IN_SERVICE) {
             if (mImsPhone != null) {
@@ -595,53 +593,12 @@ public class GsmCdmaPhone extends Phone {
         return mPendingMMIs;
     }
 
-    private @NonNull DcTracker getActiveDcTrackerForApn(@NonNull String apnType) {
-        int currentTransport = mTransportManager.getCurrentTransport(
-                ApnSetting.getApnTypesBitmaskFromString(apnType));
-        return getDcTracker(currentTransport);
-    }
-
-    @Override
-    public PreciseDataConnectionState getPreciseDataConnectionState(String apnType) {
-        // If we are OOS, then all data connections are null.
-        // FIXME: we need to figure out how to report the EIMS PDN connectivity here, which
-        // should imply emergency attach - today emergency attach is unknown at the AP,
-        // so, we take a guess.
-        boolean isEmergencyData = isPhoneTypeGsm()
-                && apnType.equals(PhoneConstants.APN_TYPE_EMERGENCY);
-
-        if (mSST == null
-                || ((mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE)
-                        && !isEmergencyData)) {
-            return new PreciseDataConnectionState(TelephonyManager.DATA_DISCONNECTED,
-                    TelephonyManager.NETWORK_TYPE_UNKNOWN,
-                    ApnSetting.getApnTypesBitmaskFromString(apnType),
-                    apnType, null, DataFailCause.NONE, null);
-        }
-
-        // must never be null
-        final DcTracker dctForApn = getActiveDcTrackerForApn(apnType);
-
-        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        // Always non-null
-        ServiceState ss = getServiceState();
-        if (ss != null) {
-            networkType = ss.getDataNetworkType();
-        }
-
-        return dctForApn.getPreciseDataConnectionState(apnType, isDataSuspended(), networkType);
-    }
-
-    boolean isDataSuspended() {
-        return mCT.mState != PhoneConstants.State.IDLE && !mSST.isConcurrentVoiceAndDataAllowed();
-    }
-
     @Override
     public PhoneConstants.DataState getDataConnectionState(String apnType) {
         PhoneConstants.DataState ret = PhoneConstants.DataState.DISCONNECTED;
 
         if (mSST == null) {
-            // Radio Technology Change is ongoing, dispose() and removeReferences() have
+            // Radio Technology Change is ongoning, dispose() and removeReferences() have
             // already been called
 
             ret = PhoneConstants.DataState.DISCONNECTED;
@@ -662,7 +619,8 @@ public class GsmCdmaPhone extends Phone {
                 switch (getDcTracker(currentTransport).getState(apnType)) {
                     case CONNECTED:
                     case DISCONNECTING:
-                        if (isDataSuspended()) {
+                        if (mCT.mState != PhoneConstants.State.IDLE
+                                && !mSST.isConcurrentVoiceAndDataAllowed()) {
                             ret = PhoneConstants.DataState.SUSPENDED;
                         } else {
                             ret = PhoneConstants.DataState.CONNECTED;
@@ -4171,5 +4129,10 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean canDisablePhysicalSubscription() {
         return mCi.canToggleUiccApplicationsEnablement();
+    }
+
+    @Override
+    public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
+        return mSST.getPhysicalChannelConfigList();
     }
 }
