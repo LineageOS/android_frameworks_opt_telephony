@@ -37,6 +37,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.ApnType;
@@ -534,12 +535,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
          * the RIL_UNSOL_CALL_RING so the default if there is no property is
          * true.
          */
-        mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
-                TelephonyProperties.PROPERTY_RIL_SENDS_MULTIPLE_CALL_RING, true);
+        mDoesRilSendMultipleCallRing = TelephonyProperties.ril_sends_multiple_call_ring()
+                .orElse(true);
         Rlog.d(LOG_TAG, "mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
 
-        mCallRingDelay = SystemProperties.getInt(
-                TelephonyProperties.PROPERTY_CALL_RING_DELAY, 3000);
+        mCallRingDelay = TelephonyProperties.call_ring_delay().orElse(3000);
         Rlog.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
@@ -2457,7 +2457,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // This property is used to handle phone process crashes, and is the same for CDMA and IMS
     // phones
     protected static boolean getInEcmMode() {
-        return SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false);
+        return TelephonyProperties.in_ecm_mode().orElse(false);
     }
 
     /**
@@ -2470,7 +2470,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void setIsInEcm(boolean isInEcm) {
-        setGlobalSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, String.valueOf(isInEcm));
+        if (!getUnitTestMode()) {
+            TelephonyProperties.in_ecm_mode(isInEcm);
+        }
         mIsPhoneInEcmState = isInEcm;
     }
 
