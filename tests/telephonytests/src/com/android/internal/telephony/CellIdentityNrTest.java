@@ -93,7 +93,7 @@ public class CellIdentityNrTest extends AndroidTestCase {
         CellIdentityNr anotherCellIdentityNr = CellIdentityNr.CREATOR.createFromParcel(parcel);
 
         // THEN the new object is equal to the old one
-        assertThat(anotherCellIdentityNr).isEqualTo(anotherCellIdentityNr);
+        assertThat(anotherCellIdentityNr).isEqualTo(cellIdentityNr);
         assertThat(anotherCellIdentityNr.getType()).isEqualTo(CellInfo.TYPE_NR);
         assertThat(anotherCellIdentityNr.getNrarfcn()).isEqualTo(NRARFCN);
         assertThat(anotherCellIdentityNr.getPci()).isEqualTo(PCI);
