@@ -707,6 +707,8 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED, regResult.intValue());
     }
 
+    @Test
+    @SmallTest
     public void testGetImsRegistrationTech() throws Exception {
         LinkedBlockingQueue<Integer> queue = new LinkedBlockingQueue<>(1);
         Consumer<Integer> regTechCallback = queue::offer;

@@ -61,7 +61,7 @@ import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.RilRadioTechnology;
 import android.telephony.CarrierConfigManager;
-import android.telephony.CellLocation;
+import android.telephony.CellIdentity;
 import android.telephony.DataFailCause;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
@@ -522,8 +522,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void getCellLocation(WorkSource workSource, Message rspMsg) {
-        mSST.requestCellLocation(workSource, rspMsg);
+    public void getCellIdentity(WorkSource workSource, Message rspMsg) {
+        mSST.requestCellIdentity(workSource, rspMsg);
     }
 
     @UnsupportedAppUsage
@@ -811,12 +811,12 @@ public class GsmCdmaPhone extends Phone {
     }
 
     /**
-     * Notify that the CellLocation has changed.
+     * Notify that the cell location has changed.
      *
-     * @param cl the new CellLocation
+     * @param cellIdentity the new CellIdentity
      */
-    public void notifyLocationChanged(CellLocation cl) {
-        mNotifier.notifyCellLocation(this, cl);
+    public void notifyLocationChanged(CellIdentity cellIdentity) {
+        mNotifier.notifyCellLocation(this, cellIdentity);
     }
 
     @Override

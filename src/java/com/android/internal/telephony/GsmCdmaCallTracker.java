@@ -1538,7 +1538,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                     causeCode == CallFailCause.BEARER_NOT_AVAIL ||
                     causeCode == CallFailCause.ERROR_UNSPECIFIED) {
 
-                    CellLocation loc = mPhone.getCellLocation();
+                    CellLocation loc = mPhone.getCellIdentity().asCellLocation();
                     int cid = -1;
                     if (loc != null) {
                         if (loc instanceof GsmCellLocation) {
