@@ -1165,6 +1165,17 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write SignalStrength event
+     *
+     * @param phoneId Phone id
+     * @param signalStrength Signal strength at the time of data stall recovery
+     */
+    public void writeSignalStrengthEvent(int phoneId, int signalStrength) {
+        addTelephonyEvent(new TelephonyEventBuilder(phoneId)
+                .setSignalStrength(signalStrength).build());
+    }
+
+    /**
      * Write IMS feature settings changed event
      *
      * @param phoneId Phone id

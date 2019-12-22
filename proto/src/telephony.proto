@@ -786,6 +786,9 @@ message TelephonyEvent {
 
     // Emergency Number update event (Device HAL >= 1.4).
     EMERGENCY_NUMBER_REPORT = 21;
+
+    // Signal strength
+    SIGNAL_STRENGTH = 23;
   }
 
   enum ApnType {
@@ -1760,6 +1763,9 @@ message TelephonyEvent {
 
   // Updated Emergency Call info.
   optional EmergencyNumberInfo updated_emergency_number = 25;
+
+  // Signal strength
+  optional int32 signal_strength = 27;
 }
 
 message ActiveSubscriptionInfo {
