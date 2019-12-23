@@ -597,6 +597,11 @@ public class DeviceStateMonitor extends Handler {
         mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSI,
                 AccessNetworkThresholds.CDMA2000, AccessNetworkType.CDMA2000, true);
         if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSRQ,
+                    AccessNetworkThresholds.EUTRAN_RSRQ, AccessNetworkType.EUTRAN, false);
+            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSNR,
+                    AccessNetworkThresholds.EUTRAN_RSSNR, AccessNetworkType.EUTRAN, true);
+
             // Defaultly we only need SSRSRP for NGRAN signal criterial reporting
             mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRP,
                     AccessNetworkThresholds.NGRAN_RSRSRP, AccessNetworkType.NGRAN, true);
@@ -751,7 +756,29 @@ public class DeviceStateMonitor extends Handler {
             -98,  /* SIGNAL_STRENGTH_GREAT */
         };
 
-        // TODO Add EUTRAN_RSRQ and EUTRAN_RSSNI
+        /**
+         * List of default dB RSRQ thresholds for EUTRAN {@link AccessNetworkType}.
+         *
+         * These thresholds are taken from the LTE RSRQ defaults in {@link CarrierConfigManager}.
+         */
+        public static final int[] EUTRAN_RSRQ = new int[] {
+            -19,  /* SIGNAL_STRENGTH_POOR */
+            -17,  /* SIGNAL_STRENGTH_MODERATE */
+            -14,  /* SIGNAL_STRENGTH_GOOD */
+            -12   /* SIGNAL_STRENGTH_GREAT */
+        };
+
+        /**
+         * List of default 10*dB RSSNR thresholds for EUTRAN {@link AccessNetworkType}.
+         *
+         * These thresholds are taken from the LTE RSSNR defaults in {@link CarrierConfigManager}.
+         */
+        public static final int[] EUTRAN_RSSNR = new int[] {
+            -30,  /* SIGNAL_STRENGTH_POOR */
+            10,   /* SIGNAL_STRENGTH_MODERATE */
+            45,   /* SIGNAL_STRENGTH_GOOD */
+            130   /* SIGNAL_STRENGTH_GREAT */
+        };
 
         /**
          * List of dBm thresholds for CDMA2000 {@link AccessNetworkType}.
