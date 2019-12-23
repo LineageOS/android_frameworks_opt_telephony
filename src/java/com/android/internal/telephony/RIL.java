@@ -56,7 +56,6 @@ import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
-import android.net.NetworkUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HwBinder;
@@ -115,6 +114,8 @@ import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 
+import libcore.net.InetAddressUtils;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.FileDescriptor;
@@ -131,6 +132,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * RIL implementation of the CommandsInterface.
@@ -1573,16 +1575,29 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     android.hardware.radio.V1_5.DataProfileInfo dpi =
                             convertToHalDataProfile15(dataProfile);
 
+                    ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 =
+                            new ArrayList<>();
+                    if (linkProperties != null) {
+                        for (LinkAddress la : linkProperties.getAllLinkAddresses()) {
+                            android.hardware.radio.V1_5.LinkAddress linkAddress =
+                                    new android.hardware.radio.V1_5.LinkAddress();
+                            linkAddress.address = la.getAddress().getHostAddress();
+                            linkAddress.properties = la.getFlags();
+                            // TODO: Add deprecated time and expired time support here.
+                            addresses15.add(linkAddress);
+                        }
+                    }
+
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                                 + ",accessNetworkType="
                                 + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
-                                + ",addresses=" + addresses + ",dnses=" + dnses);
+                                + ",addresses=" + addresses15 + ",dnses=" + dnses);
                     }
 
                     radioProxy15.setupDataCall_1_5(rr.mSerial, accessNetworkType, dpi, allowRoaming,
-                            reason, addresses, dnses);
+                            reason, addresses15, dnses);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
                     // IRadio V1.4
                     android.hardware.radio.V1_4.IRadio radioProxy14 =
@@ -6291,6 +6306,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
         String[] dnses = null;
         String[] gateways = null;
         String[] pcscfs = null;
+
+        List<LinkAddress> laList = new ArrayList<>();
+        int version = 0;
+
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
                     (android.hardware.radio.V1_0.SetupDataCallResult) dcResult;
@@ -6313,6 +6332,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 pcscfs = result.pcscf.split("\\s+");
             }
             mtu = result.mtu;
+            version = 0;
         } else if (dcResult instanceof android.hardware.radio.V1_4.SetupDataCallResult) {
             final android.hardware.radio.V1_4.SetupDataCallResult result =
                     (android.hardware.radio.V1_4.SetupDataCallResult) dcResult;
@@ -6327,32 +6347,52 @@ public class RIL extends BaseCommands implements CommandsInterface {
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
             mtu = result.mtu;
+            version = 4;
+        } else if (dcResult instanceof android.hardware.radio.V1_5.SetupDataCallResult) {
+            final android.hardware.radio.V1_5.SetupDataCallResult result =
+                    (android.hardware.radio.V1_5.SetupDataCallResult) dcResult;
+            cause = result.cause;
+            suggestedRetryTime = result.suggestedRetryTime;
+            cid = result.cid;
+            active = result.active;
+            protocolType = result.type;
+            ifname = result.ifname;
+            //addresses = result.addresses.stream().toArray(String[]::new);
+            laList = result.addresses.stream().map(a -> new LinkAddress(
+                    InetAddressUtils.parseNumericAddress(a.address), 0, a.properties, 0))
+                    .collect(Collectors.toList());
+            dnses = result.dnses.stream().toArray(String[]::new);
+            gateways = result.gateways.stream().toArray(String[]::new);
+            pcscfs = result.pcscf.stream().toArray(String[]::new);
+            mtu = result.mtu;
+            version = 5;
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
         }
 
-        // Process address
-        List<LinkAddress> laList = new ArrayList<>();
-        if (addresses != null) {
-            for (String address : addresses) {
-                address = address.trim();
-                if (address.isEmpty()) continue;
+        if (version < 5) {
+            // Process address
+            if (addresses != null) {
+                for (String address : addresses) {
+                    address = address.trim();
+                    if (address.isEmpty()) continue;
 
-                try {
-                    LinkAddress la;
-                    // Check if the address contains prefix length. If yes, LinkAddress
-                    // can parse that.
-                    if (address.split("/").length == 2) {
-                        la = new LinkAddress(address);
-                    } else {
-                        InetAddress ia = NetworkUtils.numericToInetAddress(address);
-                        la = new LinkAddress(ia, (ia instanceof Inet4Address) ? 32 : 128);
+                    try {
+                        LinkAddress la;
+                        // Check if the address contains prefix length. If yes, LinkAddress
+                        // can parse that.
+                        if (address.split("/").length == 2) {
+                            la = new LinkAddress(address);
+                        } else {
+                            InetAddress ia = InetAddressUtils.parseNumericAddress(address);
+                            la = new LinkAddress(ia, (ia instanceof Inet4Address) ? 32 : 128);
+                        }
+
+                        laList.add(la);
+                    } catch (IllegalArgumentException e) {
+                        Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address, e);
                     }
-
-                    laList.add(la);
-                } catch (IllegalArgumentException e) {
-                    Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address, e);
                 }
             }
         }
@@ -6364,7 +6404,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 dns = dns.trim();
                 InetAddress ia;
                 try {
-                    ia = NetworkUtils.numericToInetAddress(dns);
+                    ia = InetAddressUtils.parseNumericAddress(dns);
                     dnsList.add(ia);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(RILJ_LOG_TAG, "Unknown dns: " + dns, e);
@@ -6379,7 +6419,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 gateway = gateway.trim();
                 InetAddress ia;
                 try {
-                    ia = NetworkUtils.numericToInetAddress(gateway);
+                    ia = InetAddressUtils.parseNumericAddress(gateway);
                     gatewayList.add(ia);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(RILJ_LOG_TAG, "Unknown gateway: " + gateway, e);
@@ -6394,7 +6434,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 pcscf = pcscf.trim();
                 InetAddress ia;
                 try {
-                    ia = NetworkUtils.numericToInetAddress(pcscf);
+                    ia = InetAddressUtils.parseNumericAddress(pcscf);
                     pcscfList.add(ia);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(RILJ_LOG_TAG, "Unknown pcscf: " + pcscf, e);
