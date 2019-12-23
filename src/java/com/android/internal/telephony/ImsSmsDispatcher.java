@@ -277,7 +277,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private boolean isLteService() {
         return ((mPhone.getServiceState().getRilDataRadioTechnology() ==
             ServiceState.RIL_RADIO_TECHNOLOGY_LTE) && (mPhone.getServiceState().
-                getDataRegState() == ServiceState.STATE_IN_SERVICE));
+                getDataRegistrationState() == ServiceState.STATE_IN_SERVICE));
     }
 
     private boolean isLimitedLteService() {

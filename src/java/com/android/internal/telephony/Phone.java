@@ -4105,7 +4105,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 ServiceState ss = phone.getServiceStateTracker().getServiceState();
                 // One of the phone is in service, hence the device is not emergency call only.
                 if (ss.getState() == ServiceState.STATE_IN_SERVICE
-                        || ss.getDataRegState() == ServiceState.STATE_IN_SERVICE) {
+                        || ss.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE) {
                     return false;
                 }
                 isEmergencyCallOnly |= ss.isEmergencyOnly();

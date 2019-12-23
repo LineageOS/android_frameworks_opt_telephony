@@ -337,7 +337,7 @@ public class CarrierDisplayNameResolver {
         if (useRootLocale) r.getConfiguration().setLocale(Locale.ROOT);
         String[] wfcSpnFormats = r.getStringArray(com.android.internal.R.array.wfcSpnFormats);
         WfcCarrierNameFormatter wfcFormatter = new WfcCarrierNameFormatter(config, wfcSpnFormats,
-                getServiceState().getVoiceRegState() == ServiceState.STATE_POWER_OFF);
+                getServiceState().getState() == ServiceState.STATE_POWER_OFF);
 
         // Override the spn, data spn, plmn by wifi-calling
         String wfcSpn = wfcFormatter.formatVoiceName(rawCarrierDisplayNameData.getSpn());
@@ -380,7 +380,7 @@ public class CarrierDisplayNameResolver {
         boolean forceDisplayNoService =
                 mPhone.getServiceStateTracker().shouldForceDisplayNoService() && !isSimReady;
         ServiceState ss = getServiceState();
-        if (ss.getVoiceRegState() == ServiceState.STATE_POWER_OFF
+        if (ss.getState() == ServiceState.STATE_POWER_OFF
                 || forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
             plmn = mContext.getResources().getString(
                     com.android.internal.R.string.lockscreen_carrier_default);
@@ -545,7 +545,7 @@ public class CarrierDisplayNameResolver {
      * @param ss service state.
      */
     private static int getCombinedRegState(ServiceState ss) {
-        if (ss.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) return ss.getDataRegState();
-        return ss.getVoiceRegState();
+        if (ss.getState() != ServiceState.STATE_IN_SERVICE) return ss.getDataRegistrationState();
+        return ss.getState();
     }
 }
