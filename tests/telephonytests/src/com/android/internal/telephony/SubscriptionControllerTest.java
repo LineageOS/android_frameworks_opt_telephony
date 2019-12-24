@@ -24,7 +24,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -1052,18 +1051,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private UiccSlotInfo getFakeUiccSlotInfo(boolean active, int logicalSlotIndex) {
         return new UiccSlotInfo(active, false, "fake card Id",
                 UiccSlotInfo.CARD_STATE_INFO_PRESENT, logicalSlotIndex, true, true);
-    }
-
-    // TODO: Move this test once SubscriptionManager.setAlwaysAllowMmsData is moved to telephony
-    // manager.
-    @Test
-    @SmallTest
-    public void testSetAlwaysAllowMmsData() throws Exception {
-        mSubscriptionControllerUT.setAlwaysAllowMmsData(0, true);
-        verify(mDataEnabledSettings).setAlwaysAllowMmsData(eq(true));
-        clearInvocations(mDataEnabledSettings);
-        mSubscriptionControllerUT.setAlwaysAllowMmsData(0, false);
-        verify(mDataEnabledSettings).setAlwaysAllowMmsData(eq(false));
     }
 
     @Test
