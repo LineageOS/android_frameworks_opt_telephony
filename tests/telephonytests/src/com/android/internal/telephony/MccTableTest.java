@@ -24,6 +24,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.telephony.MccTable.MccMnc;
+import com.android.internal.telephony.util.LocaleUtils;
 
 import org.junit.Test;
 
@@ -62,38 +63,40 @@ public class MccTableTest {
     @SmallTest
     @Test
     public void testLang() throws Exception {
-        assertEquals("en", MccTable.defaultLanguageForMcc(311));
-        assertEquals("de", MccTable.defaultLanguageForMcc(232));
-        assertEquals("cs", MccTable.defaultLanguageForMcc(230));
-        assertEquals("nl", MccTable.defaultLanguageForMcc(204));
-        assertEquals("is", MccTable.defaultLanguageForMcc(274));
-        assertEquals(null, MccTable.defaultLanguageForMcc(0));    // mcc not defined, hence default
-        assertEquals(null, MccTable.defaultLanguageForMcc(2000)); // mcc not defined, hence default
+        assertEquals("en", LocaleUtils.defaultLanguageForMcc(311));
+        assertEquals("de", LocaleUtils.defaultLanguageForMcc(232));
+        assertEquals("cs", LocaleUtils.defaultLanguageForMcc(230));
+        assertEquals("nl", LocaleUtils.defaultLanguageForMcc(204));
+        assertEquals("is", LocaleUtils.defaultLanguageForMcc(274));
+        // mcc not defined, hence default
+        assertEquals(null, LocaleUtils.defaultLanguageForMcc(0));
+        // mcc not defined, hence default
+        assertEquals(null, LocaleUtils.defaultLanguageForMcc(2000));
     }
 
     @SmallTest
     @Test
     public void testLang_India() throws Exception {
-        assertEquals("en", MccTable.defaultLanguageForMcc(404));
-        assertEquals("en", MccTable.defaultLanguageForMcc(405));
-        assertEquals("en", MccTable.defaultLanguageForMcc(406));
+        assertEquals("en", LocaleUtils.defaultLanguageForMcc(404));
+        assertEquals("en", LocaleUtils.defaultLanguageForMcc(405));
+        assertEquals("en", LocaleUtils.defaultLanguageForMcc(406));
     }
 
     @SmallTest
     @Test
     public void testLocale() throws Exception {
         assertEquals(Locale.forLanguageTag("en-CA"),
-                MccTable.getLocaleFromMcc(getContext(), 302, null));
+                LocaleUtils.getLocaleFromMcc(getContext(), 302, null));
         assertEquals(Locale.forLanguageTag("en-GB"),
-                MccTable.getLocaleFromMcc(getContext(), 234, null));
+                LocaleUtils.getLocaleFromMcc(getContext(), 234, null));
         assertEquals(Locale.forLanguageTag("en-US"),
-                MccTable.getLocaleFromMcc(getContext(), 0, "en"));
+                LocaleUtils.getLocaleFromMcc(getContext(), 0, "en"));
         assertEquals(Locale.forLanguageTag("zh-HK"),
-                MccTable.getLocaleFromMcc(getContext(), 454, null));
+                LocaleUtils.getLocaleFromMcc(getContext(), 454, null));
         assertEquals(Locale.forLanguageTag("en-HK"),
-                MccTable.getLocaleFromMcc(getContext(), 454, "en"));
+                LocaleUtils.getLocaleFromMcc(getContext(), 454, "en"));
         assertEquals(Locale.forLanguageTag("zh-TW"),
-                MccTable.getLocaleFromMcc(getContext(), 466, null));
+                LocaleUtils.getLocaleFromMcc(getContext(), 466, null));
     }
 
     private Context getContext() {
@@ -107,8 +110,11 @@ public class MccTableTest {
         assertEquals(2, MccTable.smallestDigitsMccForMnc(430));
         assertEquals(3, MccTable.smallestDigitsMccForMnc(365));
         assertEquals(2, MccTable.smallestDigitsMccForMnc(536));
-        assertEquals(2, MccTable.smallestDigitsMccForMnc(352));  // sd not defined, hence default
-        assertEquals(2, MccTable.smallestDigitsMccForMnc(0));    // mcc not defined, hence default
-        assertEquals(2, MccTable.smallestDigitsMccForMnc(2000)); // mcc not defined, hence default
+        // sd not defined, hence default
+        assertEquals(2, MccTable.smallestDigitsMccForMnc(352));
+        // mcc not defined, hence default
+        assertEquals(2, MccTable.smallestDigitsMccForMnc(0));
+        // mcc not defined, hence default
+        assertEquals(2, MccTable.smallestDigitsMccForMnc(2000));
     }
 }

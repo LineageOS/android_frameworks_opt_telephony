@@ -22,7 +22,6 @@ import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.icu.util.ULocale;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.SystemProperties;
@@ -31,8 +30,6 @@ import android.text.TextUtils;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.app.LocaleStore;
-import com.android.internal.app.LocaleStore.LocaleInfo;
 import com.android.internal.telephony.util.TelephonyUtils;
 
 import libcore.timezone.TelephonyLookup;
@@ -40,10 +37,8 @@ import libcore.timezone.TelephonyNetwork;
 import libcore.timezone.TelephonyNetworkFinder;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -61,14 +56,18 @@ public final class MccTable {
 
     static ArrayList<MccEntry> sTable;
 
-    static class MccEntry implements Comparable<MccEntry> {
+    /**
+     * Container class for mcc and iso. This class implements compareTo so that it can be sorted
+     * by mcc.
+     */
+    public static class MccEntry implements Comparable<MccEntry> {
         final int mMcc;
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
                 publicAlternatives = "There is no alternative for {@code MccTable.MccEntry.mIso}, "
                         + "but it was included in hidden APIs due to a static analysis false "
                         + "positive and has been made greylist-max-q. Please file a bug if you "
                         + "still require this API.")
-        final String mIso;
+        public final String mIso;
         final int mSmallestDigitsMnc;
 
         MccEntry(int mcc, String iso, int smallestDigitsMCC) {
@@ -162,7 +161,7 @@ public final class MccTable {
                     + "but it was included in hidden APIs due to a static analysis false positive "
                     + "and has been made greylist-max-q. Please file a bug if you still require "
                     + "this API.")
-    private static MccEntry entryForMcc(int mcc) {
+    public static MccEntry entryForMcc(int mcc) {
         MccEntry m = new MccEntry(mcc, "", 0);
 
         int index = Collections.binarySearch(sTable, m);
@@ -248,37 +247,6 @@ public final class MccTable {
         return network.getCountryIsoCode();
     }
 
-    /**
-     * Given a GSM Mobile Country Code, returns
-     * an ISO 2-3 character language code if available.
-     * Returns null if unavailable.
-     */
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
-            publicAlternatives = "There is no alternative for {@code MccTable.defaultLanguageForMcc"
-                    + "}, but it was included in hidden APIs due to a static analysis false "
-                    + "positive and has been made greylist-max-q. Please file a bug if you still "
-                    + "require this API.")
-    public static String defaultLanguageForMcc(int mcc) {
-        MccEntry entry = entryForMcc(mcc);
-        if (entry == null) {
-            Rlog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): no country for mcc");
-            return null;
-        }
-
-        final String country = entry.mIso;
-
-        // Choose English as the default language for India.
-        if ("in".equals(country)) {
-            return "en";
-        }
-
-        // Ask CLDR for the language this country uses...
-        ULocale likelyLocale = ULocale.addLikelySubtags(new ULocale("und", country));
-        String likelyLanguage = likelyLocale.getLanguage();
-        Rlog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + country + " uses "
-                + likelyLanguage);
-        return likelyLanguage;
-    }
 
     /**
      * Given a GSM Mobile Country Code, returns
@@ -354,159 +322,11 @@ public final class MccTable {
     /**
      * Maps a given locale to a fallback locale that approximates it. This is a hack.
      */
-    private static final Map<Locale, Locale> FALLBACKS = new HashMap<Locale, Locale>();
+    public static final Map<Locale, Locale> FALLBACKS = new HashMap<Locale, Locale>();
 
     static {
         // If we have English (without a country) explicitly prioritize en_US. http://b/28998094
         FALLBACKS.put(Locale.ENGLISH, Locale.US);
-    }
-
-    /**
-     * Finds a suitable locale among {@code candidates} to use as the fallback locale for
-     * {@code target}. This looks through the list of {@link #FALLBACKS}, and follows the chain
-     * until a locale in {@code candidates} is found.
-     * This function assumes that {@code target} is not in {@code candidates}.
-     *
-     * TODO: This should really follow the CLDR chain of parent locales! That might be a bit
-     * of a problem because we don't really have an en-001 locale on android.
-     *
-     * @return The fallback locale or {@code null} if there is no suitable fallback defined in the
-     *         lookup.
-     */
-    private static Locale lookupFallback(Locale target, List<Locale> candidates) {
-        Locale fallback = target;
-        while ((fallback = FALLBACKS.get(fallback)) != null) {
-            if (candidates.contains(fallback)) {
-                return fallback;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Return Locale for the language and country or null if no good match.
-     *
-     * @param context Context to act on.
-     * @param language Two character language code desired
-     * @param country Two character country code desired
-     *
-     * @return Locale or null if no appropriate value
-     */
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
-            publicAlternatives = "There is no alternative for {@code MccTable"
-                    + ".getLocaleForLanguageCountry}, but it was included in hidden APIs due to a "
-                    + "static analysis false positive and has been made greylist-max-q. Please "
-                    + "file a bug if you still require this API.")
-    private static Locale getLocaleForLanguageCountry(Context context, String language,
-            String country) {
-        if (language == null) {
-            Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping no language");
-            return null; // no match possible
-        }
-        if (country == null) {
-            country = ""; // The Locale constructor throws if passed null.
-        }
-
-        final Locale target = new Locale(language, country);
-        try {
-            String[] localeArray = context.getAssets().getLocales();
-            List<String> locales = new ArrayList<>(Arrays.asList(localeArray));
-
-            // Even in developer mode, you don't want the pseudolocales.
-            locales.remove("ar-XB");
-            locales.remove("en-XA");
-
-            List<Locale> languageMatches = new ArrayList<>();
-            for (String locale : locales) {
-                final Locale l = Locale.forLanguageTag(locale.replace('_', '-'));
-
-                // Only consider locales with both language and country.
-                if (l == null || "und".equals(l.getLanguage()) ||
-                        l.getLanguage().isEmpty() || l.getCountry().isEmpty()) {
-                    continue;
-                }
-                if (l.getLanguage().equals(target.getLanguage())) {
-                    // If we got a perfect match, we're done.
-                    if (l.getCountry().equals(target.getCountry())) {
-                        Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: got perfect match: "
-                                + l.toLanguageTag());
-                        return l;
-                    }
-
-                    // We've only matched the language, not the country.
-                    languageMatches.add(l);
-                }
-            }
-
-            if (languageMatches.isEmpty()) {
-                Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: no locales for language " + language);
-                return null;
-            }
-
-            Locale bestMatch = lookupFallback(target, languageMatches);
-            if (bestMatch != null) {
-                Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: got a fallback match: "
-                        + bestMatch.toLanguageTag());
-                return bestMatch;
-            } else {
-                // Ask {@link LocaleStore} whether this locale is considered "translated".
-                // LocaleStore has a broader definition of translated than just the asset locales
-                // above: a locale is "translated" if it has translation assets, or another locale
-                // with the same language and script has translation assets.
-                // If a locale is "translated", it is selectable in setup wizard, and can therefore
-                // be considerd a valid result for this method.
-                if (!TextUtils.isEmpty(target.getCountry())) {
-                    LocaleStore.fillCache(context);
-                    LocaleInfo targetInfo = LocaleStore.getLocaleInfo(target);
-                    if (targetInfo.isTranslated()) {
-                        Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: "
-                                + "target locale is translated: " + target);
-                        return target;
-                    }
-                }
-
-                // Somewhat arbitrarily take the first locale for the language,
-                // unless we get a perfect match later. Note that these come back in no
-                // particular order, so there's no reason to think the first match is
-                // a particularly good match.
-                Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: got language-only match: "
-                        + language);
-                return languageMatches.get(0);
-            }
-        } catch (Exception e) {
-            Rlog.d(LOG_TAG, "getLocaleForLanguageCountry: exception", e);
-        }
-
-        return null;
-    }
-
-    /**
-     * Get Locale based on the MCC of the SIM.
-     *
-     * @param context Context to act on.
-     * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
-     * @param simLanguage (nullable) the language from the SIM records (if present).
-     *
-     * @return locale for the mcc or null if none
-     */
-    public static Locale getLocaleFromMcc(Context context, int mcc, String simLanguage) {
-        boolean hasSimLanguage = !TextUtils.isEmpty(simLanguage);
-        String language = hasSimLanguage ? simLanguage : MccTable.defaultLanguageForMcc(mcc);
-        String country = MccTable.countryCodeForMcc(mcc);
-
-        Rlog.d(LOG_TAG, "getLocaleFromMcc(" + language + ", " + country + ", " + mcc);
-        final Locale locale = getLocaleForLanguageCountry(context, language, country);
-
-        // If we couldn't find a locale that matches the SIM language, give it a go again
-        // with the "likely" language for the given country.
-        if (locale == null && hasSimLanguage) {
-            language = MccTable.defaultLanguageForMcc(mcc);
-            Rlog.d(LOG_TAG, "[retry ] getLocaleFromMcc(" + language + ", " + country + ", " + mcc);
-            return getLocaleForLanguageCountry(context, language, country);
-        }
-
-        return locale;
     }
 
     static {
