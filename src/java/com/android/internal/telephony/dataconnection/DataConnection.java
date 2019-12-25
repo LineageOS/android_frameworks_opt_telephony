@@ -595,7 +595,7 @@ public class DataConnection extends StateMachine {
         mId = id;
         mCid = -1;
         ServiceState ss = mPhone.getServiceState();
-        mDataRegState = mPhone.getServiceState().getDataRegState();
+        mDataRegState = mPhone.getServiceState().getDataRegistrationState();
         int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
 
         NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
