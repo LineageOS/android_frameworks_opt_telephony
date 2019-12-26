@@ -19,12 +19,9 @@ package com.android.internal.telephony;
 import android.annotation.NonNull;
 import android.annotation.UnsupportedAppUsage;
 import android.content.Context;
-import android.net.LinkProperties;
-import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.telephony.TelephonyRegistryManager;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
@@ -33,15 +30,16 @@ import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseCallState;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.data.ApnSetting;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
+
 import java.util.List;
 
 /**
@@ -83,7 +81,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         int phoneId = sender.getPhoneId();
         int subId = sender.getSubId();
 
-        Rlog.d(LOG_TAG, "nofityServiceState: mRegistry=" + mRegistry + " ss=" + ss
+        Rlog.d(LOG_TAG, "notifyServiceState: mRegistry=" + mRegistry + " ss=" + ss
             + " sender=" + sender + " phondId=" + phoneId + " subId=" + subId);
         if (ss == null) {
             ss = new ServiceState();
@@ -133,51 +131,14 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDataConnection(Phone sender, String apnType,
-        PhoneConstants.DataState state) {
-        doNotifyDataConnection(sender, apnType, state);
-    }
+    public void notifyDataConnection(
+            Phone sender, String apnType, PreciseDataConnectionState preciseState) {
 
-    private void doNotifyDataConnection(Phone sender, String apnType,
-        PhoneConstants.DataState state) {
         int subId = sender.getSubId();
         int phoneId = sender.getPhoneId();
-        long dds = SubscriptionManager.getDefaultDataSubscriptionId();
-        if (DBG) {
-            log("subId = " + subId + ", DDS = " + dds);
-        }
 
-        // TODO
-        // use apnType as the key to which connection we're talking about.
-        // pass apnType back up to fetch particular for this one.
-        TelephonyManager telephony = TelephonyManager.getDefault();
-        LinkProperties linkProperties = null;
-        NetworkCapabilities networkCapabilities = null;
-        boolean roaming = false;
-
-        if (state == PhoneConstants.DataState.CONNECTED) {
-            linkProperties = sender.getLinkProperties(apnType);
-            networkCapabilities = sender.getNetworkCapabilities(apnType);
-        }
-        ServiceState ss = sender.getServiceState();
-        if (ss != null) {
-            roaming = ss.getDataRoaming();
-        }
-        mTelephonyRegistryMgr.notifyDataConnectionForSubscriber(phoneId, subId,
-            PhoneConstantConversions.convertDataState(state),
-            sender.isDataAllowed(ApnSetting.getApnTypesBitmaskFromString(apnType)),
-            sender.getActiveApnHost(apnType),
-            apnType,
-            linkProperties,
-            networkCapabilities,
-            ((telephony != null) ? telephony.getDataNetworkType(subId) :
-                TelephonyManager.NETWORK_TYPE_UNKNOWN), roaming);
-    }
-
-    @Override
-    public void notifyDataConnectionFailed(Phone sender, String apnType) {
-        mTelephonyRegistryMgr.notifyDataConnectionFailed(sender.getSubId(), sender.getPhoneId(),
-            apnType);
+        mTelephonyRegistryMgr.notifyDataConnectionForSubscriber(
+                phoneId, subId, apnType, preciseState);
     }
 
     @Override
@@ -216,7 +177,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         mTelephonyRegistryMgr.notifyImsDisconnectCause(sender.getSubId(), imsReasonInfo);
     }
 
-    public void notifyPreciseDataConnectionFailed(Phone sender, String apnType,
+    @Override
+    /** Notify the TelephonyRegistry that a data connection has failed with a specified cause */
+    public void notifyDataConnectionFailed(Phone sender, String apnType,
         String apn, @DataFailureCause int failCause) {
         mTelephonyRegistryMgr.notifyPreciseDataConnectionFailed(sender.getSubId(),
             sender.getPhoneId(), apnType, apn, failCause);
