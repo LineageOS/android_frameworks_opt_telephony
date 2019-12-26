@@ -74,6 +74,7 @@ import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
@@ -1554,6 +1555,10 @@ public class TelephonyMetrics {
                 call.isEmergencyCall = conn.isEmergencyCall();
                 call.emergencyNumberInfo = convertEmergencyNumberToEmergencyNumberInfo(
                         conn.getEmergencyNumberInfo());
+                EmergencyNumberTracker emergencyNumberTracker = conn.getEmergencyNumberTracker();
+                call.emergencyNumberDatabaseVersion = emergencyNumberTracker != null
+                        ? emergencyNumberTracker.getEmergencyNumberDbVersion()
+                        : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION;
             }
         }
     }
@@ -2105,10 +2110,15 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param session IMS call session
      * @param reasonInfo Call end reason
+     * @param cqm Call Quality Metrics
+     * @param emergencyNumber Emergency Number Info
+     * @param countryIso Network country iso
+     * @param emergencyNumberDatabaseVersion Emergency Number Database Version
      */
     public void writeOnImsCallTerminated(int phoneId, ImsCallSession session,
                                          ImsReasonInfo reasonInfo, CallQualityMetrics cqm,
-                                         EmergencyNumber emergencyNumber, String countryIso) {
+                                         EmergencyNumber emergencyNumber, String countryIso,
+                                         int emergencyNumberDatabaseVersion) {
         InProgressCallSession callSession = mInProgressCallSessions.get(phoneId);
         if (callSession == null) {
             Rlog.e(TAG, "Call session is missing");
@@ -2130,6 +2140,8 @@ public class TelephonyMetrics {
                     callSessionEvent.setIsImsEmergencyCall(true);
                     callSessionEvent.setImsEmergencyNumberInfo(
                             convertEmergencyNumberToEmergencyNumberInfo(emergencyNumber));
+                    callSessionEvent.setEmergencyNumberDatabaseVersion(
+                            emergencyNumberDatabaseVersion);
                 }
             }
             callSession.addEvent(callSessionEvent);
@@ -2520,7 +2532,8 @@ public class TelephonyMetrics {
      *
      * @param emergencyNumber Updated emergency number
      */
-    public void writeEmergencyNumberUpdateEvent(int phoneId, EmergencyNumber emergencyNumber) {
+    public void writeEmergencyNumberUpdateEvent(int phoneId, EmergencyNumber emergencyNumber,
+            int emergencyNumberDatabaseVersion) {
         if (emergencyNumber == null) {
             return;
         }
@@ -2528,7 +2541,7 @@ public class TelephonyMetrics {
                 convertEmergencyNumberToEmergencyNumberInfo(emergencyNumber);
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId).setUpdatedEmergencyNumber(
-                emergencyNumberInfo).build();
+                emergencyNumberInfo, emergencyNumberDatabaseVersion).build();
         addTelephonyEvent(event);
     }
 
