@@ -20,7 +20,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Resources;
 import android.os.Message;
 import android.os.RemoteCallback;
 import android.os.SystemProperties;
@@ -43,6 +42,7 @@ import com.android.internal.telephony.WspTypeDecoder;
 import com.android.internal.telephony.cdma.sms.BearerData;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.HexDump;
 
 import java.io.ByteArrayOutputStream;
@@ -67,8 +67,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     // Callback used to process the result of an SCP message
     private RemoteCallback mScpCallback;
 
-    private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
-            com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
+    private boolean mCheckForDuplicatePortsInOmadmWapPush = false;
 
     // When TEST_MODE is on we allow the test intent to trigger an SMS CB alert
     private static final boolean TEST_MODE = SystemProperties.getInt("ro.debuggable", 0) == 1;
@@ -89,8 +88,11 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         mSmsDispatcher = smsDispatcher;
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi, phone);
-        phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+        mCheckForDuplicatePortsInOmadmWapPush = TelephonyResourceUtils
+                .getTelephonyResources(context).getBoolean(
+                        com.android.telephony.resources.R.bool.config_duplicate_port_omadm_wappush);
 
+        phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
         mCellBroadcastServiceManager.enable();
         mScpCallback = new RemoteCallback(result -> {
             if (result == null) {
