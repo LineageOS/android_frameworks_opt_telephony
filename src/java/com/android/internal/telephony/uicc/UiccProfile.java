@@ -590,6 +590,12 @@ public class UiccProfile extends IccCard {
                 }
                 setExternalState(IccCardConstants.State.NOT_READY);
                 break;
+            case APPSTATE_DETECTED:
+                if (VDBG) {
+                    log("updateExternalState: app state is detected; setting state to NOT_READY");
+                }
+                setExternalState(IccCardConstants.State.NOT_READY);
+                break;
             case APPSTATE_READY:
                 checkAndUpdateIfAnyAppToBeIgnored();
                 if (areAllApplicationsReady()) {
