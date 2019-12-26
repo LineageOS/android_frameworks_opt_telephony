@@ -103,6 +103,7 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.ImsDialArgs;
 import com.android.internal.telephony.metrics.CallQualityMetrics;
@@ -2471,9 +2472,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
 
             String callId = imsCall.getSession().getCallId();
+            EmergencyNumberTracker emergencyNumberTracker = conn.getEmergencyNumberTracker();
             mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
                     reasonInfo, mCallQualityMetrics.get(callId), conn.getEmergencyNumberInfo(),
-                    getNetworkCountryIso());
+                    getNetworkCountryIso(), emergencyNumberTracker != null
+                    ? emergencyNumberTracker.getEmergencyNumberDbVersion()
+                    : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
             // Remove info for the callId from the current calls and add it to the history
             CallQualityMetrics lastCallMetrics = mCallQualityMetrics.remove(callId);
             if (lastCallMetrics != null) {
