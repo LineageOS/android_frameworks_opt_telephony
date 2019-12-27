@@ -265,6 +265,8 @@ public abstract class TelephonyTest {
     protected UiccCard mUiccCard;
     @Mock
     protected MultiSimSettingController mMultiSimSettingController;
+    @Mock
+    protected IccCard mIccCard;
 
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
