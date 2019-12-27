@@ -21,6 +21,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
+import android.telephony.BarringInfo;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
@@ -105,7 +106,10 @@ public interface PhoneNotifier {
     /** Notify of a change to the call quality of an active foreground call. */
     void notifyCallQualityChanged(Phone sender, CallQuality callQuality, int callNetworkType);
 
-    /** Notify registration failed*/
+    /** Notify registration failed */
     void notifyRegistrationFailed(Phone sender, @NonNull CellIdentity cellIdentity,
             @NonNull String chosenPlmn, int domain, int causeCode, int additionalCauseCode);
+
+    /** Notify barring info has changed */
+    void notifyBarringInfoChanged(Phone sender, @NonNull BarringInfo barringInfo);
 }
