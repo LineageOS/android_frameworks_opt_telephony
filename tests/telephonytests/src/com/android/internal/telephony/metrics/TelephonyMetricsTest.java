@@ -285,7 +285,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        mMetrics.writeEmergencyNumberUpdateEvent(mPhone.getPhoneId(), number);
+        mMetrics.writeEmergencyNumberUpdateEvent(mPhone.getPhoneId(), number,
+                TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
         TelephonyLog log = buildProto();
 
         assertEquals(1, log.events.length);
@@ -303,6 +304,8 @@ public class TelephonyMetricsTest extends TelephonyTest {
                 log.events[0].updatedEmergencyNumber.numberSourcesBitmask);
         assertEquals(EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL,
                 log.events[0].updatedEmergencyNumber.routing);
+        assertEquals(TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION,
+                log.events[0].emergencyNumberDatabaseVersion);
     }
 
     // Test write Network Capabilities changed event

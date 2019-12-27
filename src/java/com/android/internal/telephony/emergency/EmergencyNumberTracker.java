@@ -1051,7 +1051,7 @@ public class EmergencyNumberTracker extends Handler {
         }
         for (EmergencyNumber num : updatedEmergencyNumberList) {
             TelephonyMetrics.getInstance().writeEmergencyNumberUpdateEvent(
-                    mPhone.getPhoneId(), num);
+                    mPhone.getPhoneId(), num, getEmergencyNumberDbVersion());
         }
     }
 

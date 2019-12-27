@@ -1823,6 +1823,13 @@ message TelephonyEvent {
 
   // Signal strength
   optional int32 signal_strength = 27;
+
+  // Indicate the version of emergency number database in Android platform
+  optional int32 emergency_number_database_version = 28;
+  // [
+  //  (datapol.semantic_type) = ST_SOFTWARE_ID,
+  //  (datapol.qualifier) = { is_public: true }
+  //]
 }
 
 message ActiveSubscriptionInfo {
@@ -2132,6 +2139,13 @@ message TelephonyCallSession {
 
       // Indicate the emergency call information dialed from the CS call
       optional EmergencyNumberInfo emergency_number_info = 8;
+
+      // Indicate the version of emergency number database in Android platform
+      optional int32 emergency_number_database_version = 9;
+      // [
+      //  (datapol.semantic_type) = ST_SOFTWARE_ID,
+      //  (datapol.qualifier) = { is_public: true }
+      //]
     }
 
     // Single Radio Voice Call Continuity(SRVCC) progress state
@@ -2358,6 +2372,13 @@ message TelephonyCallSession {
 
     // Emergency call info
     optional EmergencyNumberInfo ims_emergency_number_info = 27;
+
+    // Indicate the version of emergency number database in Android platform
+    optional int32 emergency_number_database_version = 28;
+    // [
+    //  (datapol.semantic_type) = ST_SOFTWARE_ID,
+    //  (datapol.qualifier) = { is_public: true }
+    //]
   }
 
   // Time when call has started, in minutes since epoch,
