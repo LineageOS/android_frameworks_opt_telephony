@@ -155,9 +155,11 @@ public class TelephonyEventBuilder {
      * Set and build EMERGENCY_NUMBER_REPORT event
      */
     public TelephonyEventBuilder setUpdatedEmergencyNumber(
-            EmergencyNumberInfo emergencyNumberInfo) {
+            EmergencyNumberInfo emergencyNumberInfo,
+            int emergencyNumberDbVersion) {
         mEvent.type = TelephonyEvent.Type.EMERGENCY_NUMBER_REPORT;
         mEvent.updatedEmergencyNumber = emergencyNumberInfo;
+        mEvent.emergencyNumberDatabaseVersion = emergencyNumberDbVersion;
         return this;
     }
 
