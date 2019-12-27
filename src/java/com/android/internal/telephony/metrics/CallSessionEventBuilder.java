@@ -164,6 +164,13 @@ public class CallSessionEventBuilder {
         return this;
     }
 
+    /** Set the emergency number database version in Ims emergency call information. */
+    public CallSessionEventBuilder setEmergencyNumberDatabaseVersion(
+            int emergencyNumberDatabaseVersion) {
+        mEvent.emergencyNumberDatabaseVersion = emergencyNumberDatabaseVersion;
+        return this;
+    }
+
     /** Set the Ims emergency call information. */
     public CallSessionEventBuilder setImsEmergencyNumberInfo(
             EmergencyNumberInfo imsEmergencyNumberInfo) {
