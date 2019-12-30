@@ -18,7 +18,9 @@ package com.android.internal.telephony;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import android.hardware.radio.V1_4.NrSignalStrength;
 import android.os.Parcel;
+import android.telephony.CellInfo;
 import android.telephony.CellSignalStrength;
 import android.telephony.CellSignalStrengthNr;
 import android.test.AndroidTestCase;
@@ -54,6 +56,50 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         assertThat(css.getSsRsrq()).isEqualTo(SSRSRQ);
         assertThat(css.getSsSinr()).isEqualTo(SSSINR);
         assertThat(css.getDbm()).isEqualTo(SSRSRP);
+    }
+
+    @Test
+    public void testGetMethodWithHal() {
+        // GIVEN an instance of NrSignalStrength with some positive values
+        NrSignalStrength nrSignalStrength = new NrSignalStrength();
+        nrSignalStrength.csiRsrp = -CSIRSRP;
+        nrSignalStrength.csiRsrq = -CSIRSRQ;
+        nrSignalStrength.csiSinr = CSISINR;
+        nrSignalStrength.ssRsrp = -SSRSRP;
+        nrSignalStrength.ssRsrq = -SSRSRQ;
+        nrSignalStrength.ssSinr = SSSINR;
+
+        // THEN the get method should return the correct value
+        CellSignalStrengthNr css = new CellSignalStrengthNr(nrSignalStrength);
+        assertThat(css.getCsiRsrp()).isEqualTo(CSIRSRP);
+        assertThat(css.getCsiRsrq()).isEqualTo(CSIRSRQ);
+        assertThat(css.getCsiSinr()).isEqualTo(CSISINR);
+        assertThat(css.getSsRsrp()).isEqualTo(SSRSRP);
+        assertThat(css.getSsRsrq()).isEqualTo(SSRSRQ);
+        assertThat(css.getSsSinr()).isEqualTo(SSSINR);
+        assertThat(css.getDbm()).isEqualTo(SSRSRP);
+    }
+
+    @Test
+    public void testUnavailableValueWithHal() {
+        // GIVEN an instance of NrSignalStrength
+        NrSignalStrength nrSignalStrength = new NrSignalStrength();
+        nrSignalStrength.csiRsrp = CellInfo.UNAVAILABLE;
+        nrSignalStrength.csiRsrq = CellInfo.UNAVAILABLE;
+        nrSignalStrength.csiSinr = CellInfo.UNAVAILABLE;
+        nrSignalStrength.ssRsrp = CellInfo.UNAVAILABLE;
+        nrSignalStrength.ssRsrq = CellInfo.UNAVAILABLE;
+        nrSignalStrength.ssSinr = CellInfo.UNAVAILABLE;
+
+        // THEN the get method should return unavailable value
+        CellSignalStrengthNr css = new CellSignalStrengthNr(nrSignalStrength);
+        assertThat(css.getCsiRsrp()).isEqualTo(CellInfo.UNAVAILABLE);
+        assertThat(css.getCsiRsrq()).isEqualTo(CellInfo.UNAVAILABLE);
+        assertThat(css.getCsiSinr()).isEqualTo(CellInfo.UNAVAILABLE);
+        assertThat(css.getSsRsrp()).isEqualTo(CellInfo.UNAVAILABLE);
+        assertThat(css.getSsRsrq()).isEqualTo(CellInfo.UNAVAILABLE);
+        assertThat(css.getSsSinr()).isEqualTo(CellInfo.UNAVAILABLE);
+        assertThat(css.getDbm()).isEqualTo(CellInfo.UNAVAILABLE);
     }
 
     @Test
