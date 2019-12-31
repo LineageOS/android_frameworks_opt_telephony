@@ -35,7 +35,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
-import android.os.ServiceManager;
 import android.permission.IPermissionManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -50,6 +49,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
@@ -140,7 +140,11 @@ public class SubscriptionInfoUpdater extends Handler {
     // rather than invoking the static getter all over the place.
     public SubscriptionInfoUpdater(Looper looper, Context context, CommandsInterface[] ci) {
         this(looper, context, ci, IPackageManager.Stub.asInterface(
-                ServiceManager.getService("package")), AppGlobals.getPermissionManager());
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getPackageManagerServiceRegisterer()
+                        .get()),
+                AppGlobals.getPermissionManager());
     }
 
     @VisibleForTesting public SubscriptionInfoUpdater(Looper looper, Context context,

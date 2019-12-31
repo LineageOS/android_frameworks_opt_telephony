@@ -30,13 +30,14 @@ import android.net.Uri;
 import android.os.BaseBundle;
 import android.os.Binder;
 import android.os.Bundle;
-import android.os.ServiceManager;
+import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.util.IndentingPrintWriter;
@@ -56,8 +57,11 @@ public class SmsController extends ISmsImplBase {
 
     protected SmsController(Context context) {
         mContext = context;
-        if (ServiceManager.getService("isms") == null) {
-            ServiceManager.addService("isms", this);
+        ServiceRegisterer smsServiceRegisterer = TelephonyFrameworkInitializer
+                .getTelephonyServiceManager()
+                .getSmsServiceRegisterer();
+        if (smsServiceRegisterer.get() == null) {
+            smsServiceRegisterer.register(this);
         }
     }
 

@@ -36,7 +36,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.permission.IPermissionManager;
 import android.telephony.AccessNetworkConstants;
@@ -45,6 +44,7 @@ import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -286,7 +286,11 @@ public class DataServiceManager extends Handler {
         // caches the service instance, but we need to explicitly request a new service
         // so it can be mocked out for tests
         mPermissionManager =
-                IPermissionManager.Stub.asInterface(ServiceManager.getService("permissionmgr"));
+                IPermissionManager.Stub.asInterface(
+                        TelephonyFrameworkInitializer
+                                .getTelephonyServiceManager()
+                                .getPermissionManagerServiceRegisterer()
+                                .get());
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
 
         IntentFilter intentFilter = new IntentFilter();
