@@ -56,6 +56,15 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    public void testIsEmailAddress() throws Exception {
+        assertTrue(SmsMessage.isEmailAddress("\"First Last\" <name@example.com>"));
+        assertTrue(SmsMessage.isEmailAddress("FirstLast <name@sub.example.com>"));
+        assertFalse(SmsMessage.isEmailAddress("FirstLast 1112223333"));
+        assertFalse(SmsMessage.isEmailAddress(""));
+        assertFalse(SmsMessage.isEmailAddress("nmg5gj945j"));
+    }
+
+    @SmallTest
     public void testUdh() throws Exception {
         String pdu = "07914140279510F6440A8111110301003BF56080207130138A8C0B05040B8423F"
                 + "000032A02010106276170706C69636174696F6E2F766E642E7761702E6D6D732D"
