@@ -24,6 +24,7 @@ import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.net.ConnectivityManager;
+import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -32,7 +33,6 @@ import android.net.NetworkFactory;
 import android.net.NetworkInfo;
 import android.net.NetworkMisc;
 import android.net.NetworkRequest;
-import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.SocketKeepalive;
@@ -1428,7 +1428,7 @@ public class DataConnection extends StateMachine {
                         if (dnsAddr.isEmpty()) continue;
                         InetAddress ia;
                         try {
-                            ia = NetworkUtils.numericToInetAddress(dnsAddr);
+                            ia = InetAddresses.parseNumericAddress(dnsAddr);
                         } catch (IllegalArgumentException e) {
                             throw new UnknownHostException("Non-numeric dns addr=" + dnsAddr);
                         }
