@@ -179,6 +179,8 @@ public class RILTest extends TelephonyTest {
     @Mock
     private ConnectivityManager mConnectionManager;
     @Mock
+    private TelephonyManager mTelephonyManager;
+    @Mock
     private IRadio mRadioProxy;
     @Mock
     private IOemHook mOemHookProxy;
@@ -272,6 +274,9 @@ public class RILTest extends TelephonyTest {
             .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
         doReturn(mConnectionManager).when(context)
             .getSystemService(Context.CONNECTIVITY_SERVICE);
+        doReturn(mTelephonyManager).when(context)
+                .getSystemService(Context.TELEPHONY_SERVICE);
+        doReturn(true).when(mTelephonyManager).isDataCapable();
         PowerManager powerManager = new PowerManager(context, mock(IPowerManager.class),
                 new Handler(Looper.myLooper()));
         doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
