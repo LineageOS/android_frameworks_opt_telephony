@@ -55,9 +55,9 @@ public class IccPhoneBookInterfaceManager {
     protected static final int EVENT_LOAD_DONE = 2;
     protected static final int EVENT_UPDATE_DONE = 3;
 
-    private static final class Request {
+    public static final class Request {
         AtomicBoolean mStatus = new AtomicBoolean(false);
-        Object mResult = null;
+        public Object mResult = null;
     }
 
     @UnsupportedAppUsage
