@@ -22,8 +22,8 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_G
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 
+import android.net.InetAddresses;
 import android.net.LinkAddress;
-import android.net.NetworkUtils;
 import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -38,10 +38,10 @@ public class DataCallResponseTest extends AndroidTestCase {
     public void testParcel() throws Exception {
         DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
                 ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS)),
+                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
                 1440);
 
         Parcel p = Parcel.obtain();
@@ -56,18 +56,18 @@ public class DataCallResponseTest extends AndroidTestCase {
     public void testEquals() throws Exception {
         DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
                 ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS)),
+                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
                 1440);
 
         DataCallResponse response1 = new DataCallResponse(0, -1, 1, 2,
                 ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS)),
+                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
                 1440);
 
         assertEquals(response, response);
@@ -75,12 +75,12 @@ public class DataCallResponseTest extends AndroidTestCase {
 
         DataCallResponse response2 = new DataCallResponse(1, -1, 1, 3,
                 ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS),
-                        NetworkUtils.numericToInetAddress(FAKE_DNS)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)),
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS),
-                        NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS)),
+                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS),
+                        InetAddresses.parseNumericAddress(FAKE_DNS)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS),
+                        InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
                 1441);
         assertNotSame(response1, response2);
         assertNotSame(response1, null);
