@@ -111,8 +111,8 @@ import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_5.IRadio;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
+import android.net.InetAddresses;
 import android.net.LinkAddress;
-import android.net.NetworkUtils;
 import android.os.Handler;
 import android.os.IPowerManager;
 import android.os.Looper;
@@ -1635,15 +1635,15 @@ public class RILTest extends TelephonyTest {
 
         DataCallResponse response = new DataCallResponse(0, -1, 0, 2, ApnSetting.PROTOCOL_IPV4V6,
                 "ifname",
-                Arrays.asList(new LinkAddress(NetworkUtils.numericToInetAddress("10.0.2.15"), 32),
+                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress("10.0.2.15"), 32),
                         new LinkAddress("2607:fb90:a620:651d:eabe:f8da:c107:44be/64")),
-                Arrays.asList(NetworkUtils.numericToInetAddress("10.0.2.3"),
-                        NetworkUtils.numericToInetAddress("fd00:976a::9")),
-                Arrays.asList(NetworkUtils.numericToInetAddress("10.0.2.15"),
-                        NetworkUtils.numericToInetAddress("fe80::2")),
-                Arrays.asList(NetworkUtils.numericToInetAddress("fd00:976a:c206:20::6"),
-                        NetworkUtils.numericToInetAddress("fd00:976a:c206:20::9"),
-                        NetworkUtils.numericToInetAddress("fd00:976a:c202:1d::9")), 1500);
+                Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")),
+                Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")),
+                Arrays.asList(InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")), 1500);
 
         assertEquals(response, RIL.convertDataCallResult(result10));
 
