@@ -37,9 +37,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
+import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.NetworkCapabilities;
-import android.net.NetworkUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
@@ -512,10 +512,10 @@ public class TelephonyMetricsTest extends TelephonyTest {
                 ApnSetting.PROTOCOL_IPV4V6, /* protocolType */
                 FAKE_IFNAME, /* ifname */
                 Arrays.asList(new LinkAddress(
-                       NetworkUtils.numericToInetAddress(FAKE_ADDRESS), 0)), /* addresses */
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_DNS)), /* dnses */
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_GATEWAY)), /* gateways */
-                Arrays.asList(NetworkUtils.numericToInetAddress(FAKE_PCSCF_ADDRESS)), /* pcscfs */
+                       InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)), /* addresses */
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)), /* dnses */
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)), /* gateways */
+                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)), /* pcscfs */
                 1440 /* mtu */);
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
