@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -622,7 +623,7 @@ public class ContextFixture implements TestFixture<Context> {
         }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), any());
 
         try {
-            doReturn(mPackageInfo).when(mPackageManager).getPackageInfoAsUser(any(), anyInt(),
+            doReturn(mPackageInfo).when(mPackageManager).getPackageInfo(nullable(String.class),
                     anyInt());
         } catch (NameNotFoundException e) {
         }
