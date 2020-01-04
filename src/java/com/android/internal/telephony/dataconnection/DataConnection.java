@@ -2941,7 +2941,7 @@ public class DataConnection extends StateMachine {
         for (ApnContext apnContext : mApnContexts.keySet()) {
             for (NetworkRequest networkRequest : apnContext.getNetworkRequests()) {
                 if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        && networkRequest.networkCapabilities.getNetworkSpecifier() == null) {
+                        && networkRequest.getNetworkSpecifier() == null) {
                     score = DEFAULT_INTERNET_CONNECTION_SCORE;
                     break;
                 }
