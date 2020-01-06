@@ -2490,8 +2490,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
                     && mAutoRetryFailedWifiEmergencyCall) {
                 Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
-                mPhone.getDefaultPhone().getServiceStateTracker().registerForNetworkAttached(
-                        ImsPhoneCallTracker.this, EVENT_REDIAL_WIFI_E911_CALL, callInfo);
+                mPhone.getDefaultPhone().mCi.registerForOn(ImsPhoneCallTracker.this,
+                        EVENT_REDIAL_WIFI_E911_CALL, callInfo);
                 sendMessageDelayed(obtainMessage(EVENT_REDIAL_WIFI_E911_TIMEOUT, callInfo),
                         TIMEOUT_REDIAL_WIFI_E911_MS);
                 final ConnectivityManager mgr = (ConnectivityManager) mPhone.getContext()
@@ -3544,8 +3544,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 Pair<ImsCall, ImsReasonInfo> callInfo =
                         (Pair<ImsCall, ImsReasonInfo>) ((AsyncResult) msg.obj).userObj;
                 removeMessages(EVENT_REDIAL_WIFI_E911_TIMEOUT);
-                mPhone.getDefaultPhone().getServiceStateTracker()
-                        .unregisterForNetworkAttached(this);
+                mPhone.getDefaultPhone().mCi.unregisterForOn(this);
                 ImsPhoneConnection oldConnection = findConnection(callInfo.first);
                 if (oldConnection == null) {
                     sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
@@ -3573,8 +3572,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             case EVENT_REDIAL_WIFI_E911_TIMEOUT: {
                 Pair<ImsCall, ImsReasonInfo> callInfo = (Pair<ImsCall, ImsReasonInfo>) msg.obj;
-                mPhone.getDefaultPhone().getServiceStateTracker()
-                        .unregisterForNetworkAttached(this);
+                mPhone.getDefaultPhone().mCi.unregisterForOn(this);
                 removeMessages(EVENT_REDIAL_WIFI_E911_CALL);
                 sendCallStartFailedDisconnect(callInfo.first, callInfo.second);
                 break;
