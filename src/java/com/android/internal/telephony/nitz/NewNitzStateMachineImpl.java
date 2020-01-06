@@ -314,14 +314,14 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
 
             PhoneTimeSuggestion.Builder builder = new PhoneTimeSuggestion.Builder(mPhoneId);
             if (nitzSignal == null) {
-                builder.addDebugInfo("Clearing time zone suggestion"
+                builder.addDebugInfo("Clearing time suggestion"
                         + " reason=" + reason);
             } else {
                 TimestampedValue<Long> newNitzTime = new TimestampedValue<>(
                         nitzSignal.getReferenceTimeMillis(),
                         nitzSignal.getValue().getCurrentTimeInMillis());
                 builder.setUtcTime(newNitzTime);
-                builder.addDebugInfo("Sending new time zone suggestion"
+                builder.addDebugInfo("Sending new time suggestion"
                         + " nitzSignal=" + nitzSignal
                         + ", reason=" + reason);
             }
