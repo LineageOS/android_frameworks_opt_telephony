@@ -64,6 +64,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
+import com.android.internal.telephony.util.HandlerExecutor;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -337,7 +338,7 @@ public class PhoneSwitcher extends Handler {
         mSubscriptionController = SubscriptionController.getInstance();
         mRadioConfig = RadioConfig.getInstance(mContext);
 
-        mPhoneStateListener = new PhoneStateListener(looper) {
+        mPhoneStateListener = new PhoneStateListener(new HandlerExecutor(this)) {
             @Override
             public void onPhoneCapabilityChanged(PhoneCapability capability) {
                 onPhoneCapabilityChangedInternal(capability);

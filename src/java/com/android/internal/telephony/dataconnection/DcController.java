@@ -34,6 +34,7 @@ import android.telephony.data.DataCallResponse;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
+import com.android.internal.telephony.util.HandlerExecutor;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -95,7 +96,7 @@ public class DcController extends StateMachine {
         setInitialState(mDccDefaultState);
         log("X ctor");
 
-        mPhoneStateListener = new PhoneStateListener(handler.getLooper()) {
+        mPhoneStateListener = new PhoneStateListener(new HandlerExecutor(handler)) {
             @Override
             public void onCarrierNetworkChange(boolean active) {
                 mExecutingCarrierChange = active;
