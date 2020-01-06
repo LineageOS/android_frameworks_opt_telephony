@@ -55,7 +55,6 @@ import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.util.Pair;
 
-import com.android.telephony.Rlog;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -64,6 +63,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -174,7 +174,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     mCurrentlyActiveUserId = newUserId;
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                             mPackageManager, TelephonyManager.getDefault(),
-                            sContext.getContentResolver(), mCurrentlyActiveUserId);
+                            mCurrentlyActiveUserId, sContext);
 
                     if (reply != null) {
                         try {
@@ -191,8 +191,8 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
         }
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(), sContext.getContentResolver(),
-                mCurrentlyActiveUserId);
+                mPackageManager, TelephonyManager.getDefault(),
+                mCurrentlyActiveUserId, sContext);
     }
 
     /**
@@ -587,7 +587,7 @@ public class SubscriptionInfoUpdater extends Handler {
         // Update set of enabled carrier apps now that the privilege rules may have changed.
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                 mPackageManager, TelephonyManager.getDefault(),
-                sContext.getContentResolver(), mCurrentlyActiveUserId);
+                mCurrentlyActiveUserId, sContext);
 
         /**
          * The sim loading sequence will be
