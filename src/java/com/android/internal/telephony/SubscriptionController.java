@@ -546,18 +546,8 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public SubscriptionInfo getActiveSubscriptionInfoForIccId(String iccId, String callingPackage) {
-        // Query the subscriptions unconditionally, and then check whether the caller has access to
-        // the given subscription.
-        final SubscriptionInfo si = getActiveSubscriptionInfoForIccIdInternal(iccId);
-
-        final int subId = si != null
-                ? si.getSubscriptionId() : SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                mContext, subId, callingPackage, "getActiveSubscriptionInfoForIccId")) {
-            return null;
-        }
-
-        return si;
+        enforceReadPrivilegedPhoneState("getActiveSubscriptionInfoForIccId");
+        return getActiveSubscriptionInfoForIccIdInternal(iccId);
     }
 
     /**
