@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.EUTRAN;
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.GERAN;
+import static android.telephony.AccessNetworkConstants.AccessNetworkType.NGRAN;
 import static android.telephony.AccessNetworkConstants.AccessNetworkType.UTRAN;
 
 import android.content.Context;
@@ -133,7 +134,8 @@ public final class NetworkScanRequestTracker {
         }
         for (RadioAccessSpecifier ras : nsri.mRequest.getSpecifiers()) {
             if (ras.getRadioAccessNetwork() != GERAN && ras.getRadioAccessNetwork() != UTRAN
-                    && ras.getRadioAccessNetwork() != EUTRAN) {
+                    && ras.getRadioAccessNetwork() != EUTRAN
+                    && ras.getRadioAccessNetwork() != NGRAN) {
                 return false;
             }
             if (ras.getBands() != null && ras.getBands().length > NetworkScanRequest.MAX_BANDS) {
