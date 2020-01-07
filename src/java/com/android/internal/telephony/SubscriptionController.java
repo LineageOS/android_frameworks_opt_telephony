@@ -3755,26 +3755,6 @@ public class SubscriptionController extends ISub.Stub {
         return true;
     }
 
-    // TODO: This method should belong to Telephony manager like other data enabled settings and
-    // override APIs. Remove this once TelephonyManager API is added.
-    @Override
-    public boolean setAlwaysAllowMmsData(int subId, boolean alwaysAllow) {
-        if (DBG) logd("[setAlwaysAllowMmsData]+ alwaysAllow:" + alwaysAllow + " subId:" + subId);
-
-        enforceModifyPhoneState("setAlwaysAllowMmsData");
-
-        // Now that all security checks passes, perform the operation as ourselves.
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            validateSubId(subId);
-            Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
-            if (phone == null) return false;
-            return phone.getDataEnabledSettings().setAlwaysAllowMmsData(alwaysAllow);
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-    }
-
     /**
      * Set allowing mobile data during voice call.
      *
