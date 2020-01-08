@@ -26,7 +26,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import android.util.TimestampedValue;
+import android.os.TimestampedValue;
 
 import com.android.internal.telephony.NitzData;
 import com.android.internal.telephony.NitzStateMachineTestSupport.FakeDeviceState;

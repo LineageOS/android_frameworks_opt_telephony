@@ -35,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.icu.util.TimeZone;
-import android.util.TimestampedValue;
+import android.os.TimestampedValue;
 
 import com.android.internal.telephony.NitzStateMachineTestSupport.FakeDeviceState;
 import com.android.internal.telephony.NitzStateMachineTestSupport.Scenario;

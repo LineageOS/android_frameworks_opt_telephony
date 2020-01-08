@@ -56,6 +56,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.SystemClock;
+import android.os.TimestampedValue;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.telephony.AccessNetworkConstants;
@@ -88,7 +89,6 @@ import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
-import android.util.TimestampedValue;
 
 import androidx.test.filters.FlakyTest;
 

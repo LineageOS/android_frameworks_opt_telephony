@@ -35,7 +35,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
-import android.util.TimestampedValue;
+import android.os.TimestampedValue;
 
 import com.android.internal.telephony.IndentingPrintWriter;
 import com.android.internal.telephony.NitzData;
