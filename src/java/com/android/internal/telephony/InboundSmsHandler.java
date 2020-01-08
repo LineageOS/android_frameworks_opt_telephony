@@ -665,7 +665,11 @@ public abstract class InboundSmsHandler extends StateMachine {
 //        // onlyCore indicates if the device is in cryptkeeper
 //        boolean onlyCore = false;
 //        try {
-//            onlyCore = IPackageManager.Stub.asInterface(ServiceManager.getService("package")).
+//            onlyCore = IPackageManager.Stub.asInterface(
+//                    TelephonyFrameworkInitializer
+//                            .getTelephonyServiceManager()
+//                            .getPackageManagerServiceRegisterer()
+//                            .get()).
 //                    isOnlyCoreApps();
 //        } catch (RemoteException e) {
 //        }

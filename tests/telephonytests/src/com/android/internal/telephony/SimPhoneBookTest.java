@@ -16,22 +16,26 @@
 
 package com.android.internal.telephony;
 
-import android.os.ServiceManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.test.suitebuilder.annotation.Suppress;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccConstants;
 
-import java.util.List;
-
 import junit.framework.TestCase;
+
+import java.util.List;
 
 @Suppress
 public class SimPhoneBookTest extends TestCase {
 
     public void testBasic() throws Exception {
         IIccPhoneBook simPhoneBook =
-                IIccPhoneBook.Stub.asInterface(ServiceManager.getService("simphonebook"));
+                IIccPhoneBook.Stub.asInterface(
+                        TelephonyFrameworkInitializer
+                                .getTelephonyServiceManager()
+                                .getIccPhoneBookServiceRegisterer()
+                                .get());
         assertNotNull(simPhoneBook);
 
         int size[] = simPhoneBook.getAdnRecordsSize(IccConstants.EF_ADN);
@@ -50,7 +54,7 @@ public class SimPhoneBookTest extends TestCase {
         AdnRecord originalAdn = null;
         // We need to maintain the state of the SIM before and after the test.
         // Since this test doesn't mock the SIM we try to get a valid ADN record,
-        // for 3 tries and if this fails, we bail out. 
+        // for 3 tries and if this fails, we bail out.
         for (adnIndex = 3 ; adnIndex >= 1; adnIndex--) {
             listIndex = adnIndex - 1; // listIndex is zero based.
             originalAdn = adnRecordList.get(listIndex);

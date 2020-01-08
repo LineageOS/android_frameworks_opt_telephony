@@ -86,9 +86,10 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.provider.Telephony;
 import android.telephony.Rlog;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.ims.RcsEventQueryParams;
 import android.telephony.ims.RcsEventQueryResultDescriptor;
 import android.telephony.ims.RcsFileTransferCreationParams;
@@ -115,7 +116,6 @@ import com.android.internal.util.FunctionalUtils.ThrowingSupplier;
 public class RcsMessageController extends IRcsMessage.Stub {
 
     static final String TAG = "RcsMsgController";
-    private static final String RCS_SERVICE_NAME = Context.TELEPHONY_RCS_MESSAGE_SERVICE;
 
     private static RcsMessageController sInstance;
 
@@ -134,8 +134,11 @@ public class RcsMessageController extends IRcsMessage.Stub {
         synchronized (RcsMessageController.class) {
             if (sInstance == null) {
                 sInstance = new RcsMessageController(context);
-                if (ServiceManager.getService(RCS_SERVICE_NAME) == null) {
-                    ServiceManager.addService(RCS_SERVICE_NAME, sInstance);
+                ServiceRegisterer telephonyRcsMessageService = TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getTelephonyRcsMessageServiceRegisterer();
+                if (telephonyRcsMessageService.get() == null) {
+                    telephonyRcsMessageService.register(sInstance);
                 }
             } else {
                 Rlog.e(TAG, "init() called multiple times! sInstance = " + sInstance);

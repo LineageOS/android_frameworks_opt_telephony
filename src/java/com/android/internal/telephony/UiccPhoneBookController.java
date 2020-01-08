@@ -19,8 +19,9 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
-import android.os.ServiceManager;
+import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.Rlog;
+import android.telephony.TelephonyFrameworkInitializer;
 
 import com.android.internal.telephony.IIccPhoneBook;
 import com.android.internal.telephony.uicc.AdnRecord;
@@ -33,8 +34,11 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     /* only one UiccPhoneBookController exists */
     @UnsupportedAppUsage
     public UiccPhoneBookController() {
-        if (ServiceManager.getService("simphonebook") == null) {
-               ServiceManager.addService("simphonebook", this);
+        ServiceRegisterer iccPhoneBookServiceRegisterer = TelephonyFrameworkInitializer
+                .getTelephonyServiceManager()
+                .getIccPhoneBookServiceRegisterer();
+        if (iccPhoneBookServiceRegisterer.get() == null) {
+            iccPhoneBookServiceRegisterer.register(this);
         }
     }
 

@@ -20,7 +20,6 @@ import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
@@ -32,6 +31,7 @@ import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
@@ -56,8 +56,11 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
 
     public DefaultPhoneNotifier(Context context) {
-        mRegistry = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-            "telephony.registry"));
+        mRegistry = ITelephonyRegistry.Stub.asInterface(
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getTelephonyRegistryServiceRegisterer()
+                        .get());
         mTelephonyRegistryMgr = (TelephonyRegistryManager) context.getSystemService(
             Context.TELEPHONY_REGISTRY_SERVICE);
     }
