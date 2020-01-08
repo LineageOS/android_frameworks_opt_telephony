@@ -23,8 +23,8 @@ import android.app.timedetector.TimeDetector;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.app.timezonedetector.TimeZoneDetector;
 import android.content.Context;
+import android.os.TimestampedValue;
 import android.util.LocalLog;
-import android.util.TimestampedValue;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.TelephonyMetrics;

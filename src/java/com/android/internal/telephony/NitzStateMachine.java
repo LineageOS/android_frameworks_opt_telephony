@@ -21,8 +21,8 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.TimestampedValue;
 import android.provider.Settings;
-import android.util.TimestampedValue;
 
 import com.android.internal.util.IndentingPrintWriter;
 
