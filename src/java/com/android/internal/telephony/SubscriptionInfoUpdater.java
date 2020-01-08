@@ -1092,7 +1092,7 @@ public class SubscriptionInfoUpdater extends Handler {
         SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
                 " for phone: " + phoneId);
-        IntentBroadcaster.getInstance().broadcastStickyIntent(i, phoneId);
+        IntentBroadcaster.getInstance().broadcastStickyIntent(sContext, i, phoneId);
     }
 
     private void broadcastSimCardStateChanged(int phoneId, int state) {
