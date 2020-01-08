@@ -30,6 +30,7 @@ import android.telephony.PreciseCallState;
 import android.telephony.PreciseDisconnectCause;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
@@ -168,18 +169,21 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "default", "APN_0",
                 DataFailCause.INSUFFICIENT_RESOURCES);
         verify(mTelephonyRegistryManager).notifyPreciseDataConnectionFailed(
-                eq(0), eq(0), eq("default"), eq("APN_0"), eq(DataFailCause.INSUFFICIENT_RESOURCES));
+                eq(0), eq(0), eq(ApnSetting.TYPE_DEFAULT), eq("APN_0"),
+                eq(DataFailCause.INSUFFICIENT_RESOURCES));
 
         mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "default", "APN_1",
                 DataFailCause.INSUFFICIENT_RESOURCES);
         verify(mTelephonyRegistryManager).notifyPreciseDataConnectionFailed(
-                eq(0), eq(0), eq("default"), eq("APN_1"), eq(DataFailCause.INSUFFICIENT_RESOURCES));
+                eq(0), eq(0), eq(ApnSetting.TYPE_DEFAULT), eq("APN_1"),
+                eq(DataFailCause.INSUFFICIENT_RESOURCES));
 
         doReturn(1).when(mPhone).getSubId();
         mDefaultPhoneNotifierUT.notifyDataConnectionFailed(mPhone, "default", "APN_1",
                 DataFailCause.INSUFFICIENT_RESOURCES);
         verify(mTelephonyRegistryManager).notifyPreciseDataConnectionFailed(
-                eq(1), eq(0), eq("default"), eq("APN_1"), eq(DataFailCause.INSUFFICIENT_RESOURCES));
+                eq(1), eq(0), eq(ApnSetting.TYPE_DEFAULT), eq("APN_1"),
+                eq(DataFailCause.INSUFFICIENT_RESOURCES));
     }
 
     @Test @SmallTest

@@ -40,6 +40,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -250,7 +251,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         // Initialize the PSL with a PreciseDataConnection
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
-                /*phoneId*/ 0, subId, "default",
+                /*phoneId*/ 0, subId, ApnSetting.TYPE_DEFAULT,
                 new PreciseDataConnectionState(
                     0, 0, 0, "default", new LinkProperties(), 0, null));
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
@@ -262,7 +263,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         // Add IMS APN and verify that the listener is invoked for the IMS APN
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
-                /*phoneId*/ 0, subId, "ims",
+                /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
                 new PreciseDataConnectionState(
                     0, 0, 0, "ims", new LinkProperties(), 0, null));
         processAllMessages();
@@ -285,7 +286,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // Send a duplicate event to the TelephonyRegistry and verify that the listener isn't
         // invoked.
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
-                /*phoneId*/ 0, subId, "ims",
+                /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
                 new PreciseDataConnectionState(
                     0, 0, 0, "ims", new LinkProperties(), 0, null));
         processAllMessages();
