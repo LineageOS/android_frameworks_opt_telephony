@@ -20,6 +20,8 @@ import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_DELIVERY_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.Activity;
 import android.app.AppOpsManager;
@@ -31,6 +33,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteException;
@@ -61,6 +65,7 @@ import com.google.android.mms.pdu.PduPersister;
 import com.google.android.mms.pdu.ReadOrigInd;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * WAP push handler class.
@@ -110,7 +115,7 @@ public class WapPushOverSms implements ServiceConnection {
 
     private void bindWapPushManagerService(Context context) {
         Intent intent = new Intent(IWapPushManager.class.getName());
-        ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
+        ComponentName comp = resolveSystemService(context.getPackageManager(), intent);
         intent.setComponent(comp);
         if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
             Rlog.e(TAG, "bindService() for wappush manager failed");
@@ -120,6 +125,33 @@ public class WapPushOverSms implements ServiceConnection {
             }
             if (DBG) Rlog.v(TAG, "bindService() for wappush manager succeeded");
         }
+    }
+
+    /**
+     * Special function for use by the system to resolve service
+     * intents to system apps.  Throws an exception if there are
+     * multiple potential matches to the Intent.  Returns null if
+     * there are no matches.
+     */
+    private static @Nullable ComponentName resolveSystemService(@NonNull PackageManager pm,
+            @NonNull Intent intent) {
+        List<ResolveInfo> results = pm.queryIntentServices(
+                intent, PackageManager.MATCH_SYSTEM_ONLY);
+        if (results == null) {
+            return null;
+        }
+        ComponentName comp = null;
+        for (int i = 0; i < results.size(); i++) {
+            ResolveInfo ri = results.get(i);
+            ComponentName foundComp = new ComponentName(ri.serviceInfo.applicationInfo.packageName,
+                    ri.serviceInfo.name);
+            if (comp != null) {
+                throw new IllegalStateException("Multiple system services handle " + intent
+                    + ": " + comp + ", " + foundComp);
+            }
+            comp = foundComp;
+        }
+        return comp;
     }
 
     @Override
