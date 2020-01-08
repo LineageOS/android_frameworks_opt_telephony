@@ -15,6 +15,9 @@
  */
 package com.android.internal.telephony;
 
+import static android.telephony.CarrierConfigManager.KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY;
+import static android.telephony.CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY;
+
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -32,6 +35,7 @@ import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
@@ -46,9 +50,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import static android.telephony.CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY;
-import static android.telephony.CarrierConfigManager.KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY;
 
 /**
  * This class act as an CarrierSignalling Agent.
@@ -98,11 +99,11 @@ public class CarrierSignalAgent extends Handler {
      * This is a list of supported signals from CarrierSignalAgent
      */
     private final Set<String> mCarrierSignalList = new HashSet<>(Arrays.asList(
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE,
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED,
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET,
-            TelephonyIntents.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE));
+            TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_REDIRECTED,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_RESET,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE));
 
     private final LocalLog mErrorLocalLog = new LocalLog(20);
 
@@ -148,10 +149,10 @@ public class CarrierSignalAgent extends Handler {
                             // an optimization to avoid signaling on every default network switch.
                             if (!mDefaultNetworkAvail) {
                                 if (DBG) log("Default network available: " + network);
-                                Intent intent = new Intent(TelephonyIntents
+                                Intent intent = new Intent(TelephonyManager
                                         .ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
                                 intent.putExtra(
-                                        TelephonyIntents.EXTRA_DEFAULT_NETWORK_AVAILABLE_KEY, true);
+                                        TelephonyManager.EXTRA_DEFAULT_NETWORK_AVAILABLE, true);
                                 notifyCarrierSignalReceivers(intent);
                                 mDefaultNetworkAvail = true;
                             }
@@ -159,10 +160,10 @@ public class CarrierSignalAgent extends Handler {
                         @Override
                         public void onLost(Network network) {
                             if (DBG) log("Default network lost: " + network);
-                            Intent intent = new Intent(TelephonyIntents
+                            Intent intent = new Intent(TelephonyManager
                                     .ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
                             intent.putExtra(
-                                    TelephonyIntents.EXTRA_DEFAULT_NETWORK_AVAILABLE_KEY, false);
+                                    TelephonyManager.EXTRA_DEFAULT_NETWORK_AVAILABLE, false);
                             notifyCarrierSignalReceivers(intent);
                             mDefaultNetworkAvail = false;
                         }

@@ -76,7 +76,6 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -2058,7 +2057,7 @@ public class DataConnection extends StateMachine {
 
             final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
-            if (carrierSignalAgent.hasRegisteredReceivers(TelephonyIntents
+            if (carrierSignalAgent.hasRegisteredReceivers(TelephonyManager
                     .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
                 // carrierSignal Receivers will place the carrier-specific provisioning notification
                 configBuilder.disableProvisioningNotification();

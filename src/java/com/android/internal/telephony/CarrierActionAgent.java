@@ -227,7 +227,7 @@ public class CarrierActionAgent extends Handler {
         carrierActionSetRadioEnabled(true);
         // notify configured carrier apps for reset
         mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(
-                new Intent(TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET));
+                new Intent(TelephonyManager.ACTION_CARRIER_SIGNAL_RESET));
     }
 
     private RegistrantList getRegistrantsFromAction(int action) {
