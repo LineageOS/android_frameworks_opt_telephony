@@ -39,6 +39,7 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NON
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -1697,7 +1698,7 @@ public class ImsPhone extends ImsPhoneBase {
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
         if (DBG) logd("sendEmergencyCallbackModeChange: isInEcm=" + isInEcm());
     }
 

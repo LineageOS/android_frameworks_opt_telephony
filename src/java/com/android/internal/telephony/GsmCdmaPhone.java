@@ -30,6 +30,7 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOI
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.ActivityManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -776,7 +777,7 @@ public class GsmCdmaPhone extends Phone {
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
         logi("sendEmergencyCallbackModeChange");
     }
 
@@ -791,7 +792,7 @@ public class GsmCdmaPhone extends Phone {
             Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
             intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-            mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
             if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: callActive " + callActive);
         }
     }
@@ -3729,7 +3730,7 @@ public class GsmCdmaPhone extends Phone {
         Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
     }
 
     private void switchVoiceRadioTech(int newVoiceRadioTech) {

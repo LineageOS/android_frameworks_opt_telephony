@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -55,7 +56,7 @@ public class IntentBroadcaster {
                         logd("Rebroadcasting intent " + i.getAction() + " "
                                 + i.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE)
                                 + " for slotId " + pair.getKey());
-                        context.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                        ActivityManager.broadcastStickyIntent(i, UserHandle.USER_ALL);
                     }
                 }
             }
@@ -85,12 +86,12 @@ public class IntentBroadcaster {
      * Wrapper for ActivityManager.broadcastStickyIntent() that also stores intent to be rebroadcast
      * on USER_UNLOCKED
      */
-    public void broadcastStickyIntent(Context context, Intent intent, int phoneId) {
+    public void broadcastStickyIntent(Intent intent, int phoneId) {
         logd("Broadcasting and adding intent for rebroadcast: " + intent.getAction() + " "
                 + intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE)
                 + " for phoneId " + phoneId);
         synchronized (mRebroadcastIntents) {
-            context.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
             mRebroadcastIntents.put(phoneId, intent);
         }
     }
