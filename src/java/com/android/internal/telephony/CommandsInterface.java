@@ -482,6 +482,20 @@ public interface CommandsInterface {
     void unSetOnSs(Handler h);
 
     /**
+     * Register for unsolicited NATT Keepalive Status Indications
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void setOnRegistrationFailed(Handler h, int what, Object obj) {}
+
+    /**
+     * @param h Handler for notification message.
+     */
+    default void unSetOnRegistrationFailed(Handler h) {}
+
+    /**
      * Sets the handler for Event Notifications for CDMA Display Info.
      * Unlike the register* methods, there's only one notification handler
      *

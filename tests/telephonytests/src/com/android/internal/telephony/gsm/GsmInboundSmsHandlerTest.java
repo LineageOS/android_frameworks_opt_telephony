@@ -29,7 +29,6 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,7 +42,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -810,7 +808,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // implementation in ContextFixture. registerReceiver may be called more than once (for
         // example by GsmInboundSmsHandler if TEST_MODE is true)
         verify(mContext, atLeastOnce()).registerReceiver(any(BroadcastReceiver.class),
-                any(IntentFilter.class), eq((String) null), eq((Handler) null));
+                any(IntentFilter.class));
 
         // wait for ScanRawTableThread
         waitForMs(100);

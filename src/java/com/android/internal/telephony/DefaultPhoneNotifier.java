@@ -34,6 +34,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -135,9 +136,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
         int subId = sender.getSubId();
         int phoneId = sender.getPhoneId();
+        int apnTypeBitmask = ApnSetting.getApnTypesBitmaskFromString(apnType);
 
         mTelephonyRegistryMgr.notifyDataConnectionForSubscriber(
-                phoneId, subId, apnType, preciseState);
+                phoneId, subId, apnTypeBitmask, preciseState);
     }
 
     @Override
@@ -178,8 +180,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     /** Notify the TelephonyRegistry that a data connection has failed with a specified cause */
     public void notifyDataConnectionFailed(Phone sender, String apnType,
         String apn, @DataFailureCause int failCause) {
-        mTelephonyRegistryMgr.notifyPreciseDataConnectionFailed(sender.getSubId(),
-            sender.getPhoneId(), apnType, apn, failCause);
+        mTelephonyRegistryMgr.notifyPreciseDataConnectionFailed(
+                sender.getSubId(), sender.getPhoneId(),
+                ApnSetting.getApnTypesBitmaskFromString(apnType), apn, failCause);
     }
 
     @Override
@@ -256,6 +259,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         int callNetworkType) {
         mTelephonyRegistryMgr.notifyCallQualityChanged(sender.getSubId(), sender.getPhoneId(),
             callQuality, callNetworkType);
+    }
+
+    @Override
+    public void notifyRegistrationFailed(Phone sender, @NonNull CellIdentity cellIdentity,
+            @NonNull String chosenPlmn, int domain, int causeCode, int additionalCauseCode) {
+        mTelephonyRegistryMgr.notifyRegistrationFailed(sender.getPhoneId(), sender.getSubId(),
+                cellIdentity, chosenPlmn, domain, causeCode, additionalCauseCode);
     }
 
     /**

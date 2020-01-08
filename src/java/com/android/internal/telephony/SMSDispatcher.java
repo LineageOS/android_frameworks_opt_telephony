@@ -1239,15 +1239,15 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             if (error == RESULT_ERROR_NONE) {
-                PackageManager pm = mContext.getPackageManager();
+                UserHandle userHandle = UserHandle.of(trackers[0].mUserId);
+                PackageManager pm = mContext.createContextAsUser(userHandle, 0).getPackageManager();
 
                 try {
                     // Get package info via packagemanager
                     appInfo =
-                            pm.getPackageInfoAsUser(
+                            pm.getPackageInfo(
                                     trackers[0].getAppPackageName(),
-                                    PackageManager.GET_SIGNATURES,
-                                    trackers[0].mUserId);
+                                    PackageManager.GET_SIGNATURES);
                 } catch (PackageManager.NameNotFoundException e) {
                     Rlog.e(TAG, "Can't get calling app package info: refusing to send SMS");
                     error = RESULT_ERROR_GENERIC_FAILURE;
@@ -1840,15 +1840,14 @@ public abstract class SMSDispatcher extends Handler {
             AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
             SmsHeader smsHeader, boolean expectMore, String fullMessageText, boolean isText,
             boolean persistMessage, int priority, int validityPeriod, boolean isForVvm) {
-        // Get calling app package name via UID from Binder call
-        PackageManager pm = mContext.getPackageManager();
 
         // Get package info via packagemanager
-        final int userId = UserHandle.getUserHandleForUid(Binder.getCallingUid()).getIdentifier();
+        UserHandle callingUser = UserHandle.getUserHandleForUid(Binder.getCallingUid());
+        final int userId = callingUser.getIdentifier();
+        PackageManager pm = mContext.createContextAsUser(callingUser, 0).getPackageManager();
         PackageInfo appInfo = null;
         try {
-            appInfo = pm.getPackageInfoAsUser(
-                    callingPackage, PackageManager.GET_SIGNATURES, userId);
+            appInfo = pm.getPackageInfo(callingPackage, PackageManager.GET_SIGNATURES);
         } catch (PackageManager.NameNotFoundException e) {
             // error will be logged in sendRawPdu
         }

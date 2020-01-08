@@ -41,13 +41,9 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.app.Activity;
-import android.app.IApplicationThread;
-import android.content.IIntentReceiver;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Process;
@@ -880,19 +876,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         try {
-            verify(mIActivityManager, atLeast(1)).broadcastIntent(eq((IApplicationThread) null),
-                    intentArgumentCaptor.capture(),
-                    eq((String) null),
-                    eq((IIntentReceiver) null),
-                    eq(Activity.RESULT_OK),
-                    eq((String) null),
-                    eq((Bundle) null),
-                    eq((String[]) null),
-                    anyInt(),
-                    eq((Bundle) null),
-                    eq(false),
-                    eq(true),
-                    anyInt());
+            verify(mContext, atLeast(1)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                    any());
         } catch(Exception e) {
             fail("Unexpected exception: " + e.getStackTrace());
         }
@@ -914,19 +899,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
         try {
-            verify(mIActivityManager, atLeast(2)).broadcastIntent(eq((IApplicationThread) null),
-                    intentArgumentCaptor.capture(),
-                    eq((String) null),
-                    eq((IIntentReceiver) null),
-                    eq(Activity.RESULT_OK),
-                    eq((String) null),
-                    eq((Bundle) null),
-                    eq((String[]) null),
-                    anyInt(),
-                    eq((Bundle) null),
-                    eq(false),
-                    eq(true),
-                    anyInt());
+            verify(mContext, atLeast(2)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                    any());
         } catch(Exception e) {
             fail("Unexpected exception: " + e.getStackTrace());
         }
@@ -968,19 +942,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         try {
-            verify(mIActivityManager, atLeast(1)).broadcastIntent(eq((IApplicationThread) null),
-                    intentArgumentCaptor.capture(),
-                    eq((String) null),
-                    eq((IIntentReceiver) null),
-                    eq(Activity.RESULT_OK),
-                    eq((String) null),
-                    eq((Bundle) null),
-                    eq((String[]) null),
-                    anyInt(),
-                    eq((Bundle) null),
-                    eq(false),
-                    eq(true),
-                    anyInt());
+            verify(mContext, atLeast(1)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                    any());
         } catch (Exception e) {
             fail("Unexpected exception: " + e.getStackTrace());
         }
@@ -1002,19 +965,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
         try {
-            verify(mIActivityManager, atLeast(2)).broadcastIntent(eq((IApplicationThread) null),
-                    intentArgumentCaptor.capture(),
-                    eq((String) null),
-                    eq((IIntentReceiver) null),
-                    eq(Activity.RESULT_OK),
-                    eq((String) null),
-                    eq((Bundle) null),
-                    eq((String[]) null),
-                    anyInt(),
-                    eq((Bundle) null),
-                    eq(false),
-                    eq(true),
-                    anyInt());
+            verify(mContext, atLeast(2)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                    any());
         } catch (Exception e) {
             fail("Unexpected exception: " + e.getStackTrace());
         }
