@@ -58,7 +58,6 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
-import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
@@ -82,6 +81,7 @@ import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.SubscriptionPlan;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.data.ApnSetting;
@@ -950,7 +950,11 @@ public class DcTracker extends Handler {
 
     // Turn telephony radio on or off.
     private void setRadio(boolean on) {
-        final ITelephony phone = ITelephony.Stub.asInterface(ServiceManager.checkService("phone"));
+        final ITelephony phone = ITelephony.Stub.asInterface(
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getTelephonyServiceRegisterer()
+                        .get());
         try {
             phone.setRadio(on);
         } catch (Exception e) {
