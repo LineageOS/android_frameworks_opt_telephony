@@ -35,7 +35,6 @@ import android.os.RegistrantList;
 import android.os.storage.StorageManager;
 import android.preference.PreferenceManager;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccCardInfo;
 import android.text.TextUtils;
@@ -51,6 +50,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
