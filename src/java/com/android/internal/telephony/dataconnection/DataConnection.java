@@ -32,6 +32,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkInfo;
 import android.net.NetworkMisc;
+import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
@@ -2106,13 +2107,13 @@ public class DataConnection extends StateMachine {
                 mScore = calculateScore();
                 final NetworkFactory factory = PhoneFactory.getNetworkFactory(
                         mPhone.getPhoneId());
-                final int factorySerialNumber = (null == factory)
-                        ? NetworkFactory.SerialNumber.NONE : factory.getSerialNumber();
+                final int providerId = (null == factory)
+                        ? NetworkProvider.ID_NONE : factory.getProviderId();
 
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
 
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this,
-                        mPhone, mNetworkInfo, mScore, misc, factorySerialNumber, mTransportType);
+                        mPhone, mNetworkInfo, mScore, misc, providerId, mTransportType);
             }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
