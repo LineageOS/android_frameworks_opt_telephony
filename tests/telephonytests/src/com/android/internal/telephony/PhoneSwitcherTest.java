@@ -76,13 +76,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class PhoneSwitcherTest extends TelephonyTest {
-    private static final String[] sNetworkAttributes = new String[] {
-            "mobile,0,0,0,-1,true", "mobile_mms,2,0,2,60000,true",
-            "mobile_supl,3,0,2,60000,true", "mobile_dun,4,0,2,60000,true",
-            "mobile_hipri,5,0,3,60000,true", "mobile_fota,10,0,2,60000,true",
-            "mobile_ims,11,0,2,60000,true", "mobile_cbs,12,0,2,60000,true",
-            "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"};
-
     private static final int ACTIVE_PHONE_SWITCH = 1;
 
     @Mock
@@ -333,7 +326,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         assertTrue("data not allowed", mDataAllowed[0]);
         assertFalse("data allowed", mDataAllowed[1]);
 
-        // now start a higher priority conneciton on the other sub
+        // now start a higher priority connection on the other sub
         addMmsNetworkRequest(1);
 
         // After gain of network request, mActivePhoneSwitchHandler should be notified 2 times.
@@ -1012,9 +1005,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     private void initialize() throws Exception {
-        mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
-                sNetworkAttributes);
-
         setNumPhones(mActiveModemCount, mSupportedModemCount);
 
         initializeSubControllerMock();
