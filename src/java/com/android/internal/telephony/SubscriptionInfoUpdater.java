@@ -65,6 +65,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  *@hide
@@ -119,6 +120,28 @@ public class SubscriptionInfoUpdater extends Handler {
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
 
+    private volatile boolean shouldRetryUpdateEmbeddedSubscriptions = false;
+    private final CopyOnWriteArraySet<Integer> retryUpdateEmbeddedSubscriptionCards =
+        new CopyOnWriteArraySet<>();
+    private final BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
+                // The LPA may not have been ready before user unlock, and so previous attempts
+                // to refresh the list of embedded subscriptions may have failed. This retries
+                // the refresh operation after user unlock.
+                if (shouldRetryUpdateEmbeddedSubscriptions) {
+                    logd("Retrying refresh embedded subscriptions after user unlock.");
+                    for (int cardId : retryUpdateEmbeddedSubscriptionCards){
+                        requestEmbeddedSubscriptionInfoListRefresh(cardId, null);
+                    }
+                    retryUpdateEmbeddedSubscriptionCards.clear();
+                    sContext.unregisterReceiver(mUserUnlockedReceiver);
+                }
+            }
+        }
+    };
+
     /**
      * Runnable with a boolean parameter. This is used in
      * updateEmbeddedSubscriptions(List<Integer> cardIds, @Nullable UpdateEmbeddedSubsCallback).
@@ -143,6 +166,10 @@ public class SubscriptionInfoUpdater extends Handler {
         mEuiccManager = (EuiccManager) sContext.getSystemService(Context.EUICC_SERVICE);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(sContext);
+
+        sContext.registerReceiver(
+                mUserUnlockedReceiver, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
+
         initializeCarrierApps();
 
         PhoneConfigurationManager.registerForMultiSimConfigChange(
@@ -815,6 +842,7 @@ public class SubscriptionInfoUpdater extends Handler {
         // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but they
         // are filtered out of list calls as long as EuiccManager.isEnabled returns false).
         if (!mEuiccManager.isEnabled()) {
+            if (DBG) logd("updateEmbeddedSubscriptions: eUICC not enabled");
             callback.run(false /* hasChanges */);
             return;
         }
@@ -859,7 +887,9 @@ public class SubscriptionInfoUpdater extends Handler {
         if (DBG) logd("updateEmbeddedSubscriptionsCache");
 
         if (result == null) {
-            // IPC to the eUICC controller failed.
+            if (DBG) logd("updateEmbeddedSubscriptionsCache: IPC to the eUICC controller failed");
+            retryUpdateEmbeddedSubscriptionCards.add(cardId);
+            shouldRetryUpdateEmbeddedSubscriptions = true;
             return false;
         }
 
