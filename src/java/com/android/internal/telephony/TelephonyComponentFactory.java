@@ -30,7 +30,6 @@ import android.system.Os;
 import android.system.OsConstants;
 import android.system.StructStatVfs;
 import android.telephony.AccessNetworkConstants.TransportType;
-import android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -46,6 +45,7 @@ import com.android.internal.telephony.nitz.NewNitzStateMachineImpl;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccProfile;
+import com.android.telephony.Rlog;
 
 import dalvik.system.PathClassLoader;
 
@@ -59,8 +59,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
-
 
 /**
  * This class has one-line methods to instantiate objects only. The purpose is to make code

@@ -20,7 +20,6 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Message;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Pair;
@@ -35,7 +34,7 @@ import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
-
+import com.android.telephony.Rlog;
 
 public class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CdmaSMSDispatcher";

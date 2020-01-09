@@ -22,7 +22,6 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ResultReceiver;
-import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.GsmCdmaPhone;
@@ -30,6 +29,7 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.telephony.Rlog;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
