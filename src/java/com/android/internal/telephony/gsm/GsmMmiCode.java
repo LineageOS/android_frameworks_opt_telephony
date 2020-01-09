@@ -37,7 +37,6 @@ import android.os.PersistableBundle;
 import android.os.ResultReceiver;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
 import android.text.BidiFormatter;
 import android.text.SpannableStringBuilder;
 import android.text.TextDirectionHeuristics;
@@ -55,6 +54,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.util.ArrayUtils;
+import com.android.telephony.Rlog;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

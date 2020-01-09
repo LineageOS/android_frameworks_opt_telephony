@@ -17,7 +17,8 @@
 package com.android.internal.telephony.uicc;
 
 import android.compat.annotation.UnsupportedAppUsage;
-import android.telephony.Rlog;
+
+import com.android.telephony.Rlog;
 
 /**
  * Wrapper class for an ICC EF containing a bit field of enabled services.

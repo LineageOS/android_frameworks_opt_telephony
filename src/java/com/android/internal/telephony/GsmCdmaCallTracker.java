@@ -34,7 +34,6 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
@@ -45,6 +44,7 @@ import android.util.EventLog;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

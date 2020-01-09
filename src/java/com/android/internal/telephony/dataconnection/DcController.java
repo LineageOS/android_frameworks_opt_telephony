@@ -27,7 +27,6 @@ import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.DataFailCause;
 import android.telephony.PhoneStateListener;
-import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 
@@ -37,6 +36,7 @@ import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPr
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

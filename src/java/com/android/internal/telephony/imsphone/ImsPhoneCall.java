@@ -18,7 +18,6 @@ package com.android.internal.telephony.imsphone;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.DisconnectCause;
-import android.telephony.Rlog;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.util.Log;
 
@@ -30,6 +29,7 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
+import com.android.telephony.Rlog;
 
 import java.util.List;
 

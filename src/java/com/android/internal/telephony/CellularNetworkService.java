@@ -30,10 +30,11 @@ import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;
