@@ -315,6 +315,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getSubInfoUsingSlotIndexPrivileged(eq(FAKE_SUB_ID_1));
         doReturn("89012604200000000000").when(mIccRecord).getFullIccId();
         doReturn(FAKE_MCC_MNC_1).when(mTelephonyManager).getSimOperatorNumeric(FAKE_SUB_ID_1);
+        when(mActivityManager.updateMccMncConfiguration(anyString(), anyString())).thenReturn(
+                true);
 
         mUpdater.updateInternalIccState(
                 IccCardConstants.INTENT_VALUE_ICC_LOADED, null, FAKE_SUB_ID_1, false);
@@ -445,6 +447,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(FAKE_SUB_ID_2).when(mSubscriptionController).getPhoneId(eq(FAKE_SUB_ID_2));
         doReturn(2).when(mTelephonyManager).getPhoneCount();
         doReturn(2).when(mTelephonyManager).getActiveModemCount();
+        when(mActivityManager.updateMccMncConfiguration(anyString(), anyString())).thenReturn(
+                true);
         doReturn(FAKE_MCC_MNC_1).when(mTelephonyManager).getSimOperatorNumeric(eq(FAKE_SUB_ID_1));
         doReturn(FAKE_MCC_MNC_2).when(mTelephonyManager).getSimOperatorNumeric(eq(FAKE_SUB_ID_2));
         verify(mSubscriptionController, times(0)).clearSubInfo();
