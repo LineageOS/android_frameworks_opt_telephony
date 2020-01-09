@@ -1587,11 +1587,11 @@ public class RILTest extends TelephonyTest {
         cellinfo.cellidentity.mnc = MNC_STR;
         cellinfo.cellidentity.operatorNames.alphaLong = ALPHA_LONG;
         cellinfo.cellidentity.operatorNames.alphaShort = ALPHA_SHORT;
-        cellinfo.signalStrength.ssRsrp = -RSRP;
-        cellinfo.signalStrength.ssRsrq = -RSRQ;
+        cellinfo.signalStrength.ssRsrp = RSRP;
+        cellinfo.signalStrength.ssRsrq = RSRQ;
         cellinfo.signalStrength.ssSinr = SIGNAL_NOISE_RATIO;
-        cellinfo.signalStrength.csiRsrp = -RSRP;
-        cellinfo.signalStrength.csiRsrq = -RSRQ;
+        cellinfo.signalStrength.csiRsrp = RSRP;
+        cellinfo.signalStrength.csiRsrq = RSRQ;
         cellinfo.signalStrength.csiSinr = SIGNAL_NOISE_RATIO;
 
         android.hardware.radio.V1_4.CellInfo record = new android.hardware.radio.V1_4.CellInfo();
