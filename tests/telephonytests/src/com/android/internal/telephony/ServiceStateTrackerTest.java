@@ -1509,7 +1509,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(subId).when(mSubInfo).getSubscriptionId();
 
         doReturn(mSubInfo).when(mSubscriptionController).getActiveSubscriptionInfo(
-                anyInt(), anyString());
+                anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -1541,7 +1541,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
         doReturn(mSubInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfo(anyInt(), anyString());
+                .getActiveSubscriptionInfo(anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -1574,7 +1574,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
         doReturn(mSubInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfo(anyInt(), anyString());
+                .getActiveSubscriptionInfo(anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -1606,7 +1606,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
         doReturn(mSubInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfo(anyInt(), anyString());
+                .getActiveSubscriptionInfo(anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
