@@ -25,7 +25,7 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.SystemProperties;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.annotations.GuardedBy;

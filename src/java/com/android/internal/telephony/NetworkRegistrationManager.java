@@ -38,7 +38,7 @@ import android.telephony.INetworkService;
 import android.telephony.INetworkServiceCallback;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 

@@ -27,7 +27,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.UserHandle;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.view.WindowManager;

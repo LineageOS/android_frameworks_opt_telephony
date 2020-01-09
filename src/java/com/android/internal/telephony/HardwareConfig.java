@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import java.util.BitSet;
 import android.telephony.ServiceState;
 

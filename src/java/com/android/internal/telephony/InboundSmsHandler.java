@@ -56,7 +56,7 @@ import android.os.UserManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;

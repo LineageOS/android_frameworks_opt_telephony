@@ -23,7 +23,7 @@ import android.os.RemoteException;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;

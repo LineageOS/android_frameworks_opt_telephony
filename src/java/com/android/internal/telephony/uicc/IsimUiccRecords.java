@@ -21,7 +21,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;

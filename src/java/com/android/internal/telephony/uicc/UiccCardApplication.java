@@ -23,7 +23,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;

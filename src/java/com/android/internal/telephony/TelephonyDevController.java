@@ -21,7 +21,7 @@ import com.android.internal.telephony.*;
 import android.telephony.TelephonyManager;
 
 import android.os.AsyncResult;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import java.util.BitSet;
 import java.util.List;
 import java.util.ArrayList;

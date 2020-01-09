@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.LargeTest;
 import android.test.suitebuilder.annotation.MediumTest;

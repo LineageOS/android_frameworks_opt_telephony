@@ -25,7 +25,7 @@ import android.database.MatrixCursor;
 import android.database.MergeCursor;
 import android.net.Uri;
 import android.os.RemoteException;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;

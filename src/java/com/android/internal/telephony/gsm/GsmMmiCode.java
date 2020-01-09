@@ -37,7 +37,7 @@ import android.os.PersistableBundle;
 import android.os.ResultReceiver;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.BidiFormatter;
 import android.text.SpannableStringBuilder;
 import android.text.TextDirectionHeuristics;

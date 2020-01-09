@@ -25,7 +25,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 
 import com.android.internal.telephony.sip.SipPhone;

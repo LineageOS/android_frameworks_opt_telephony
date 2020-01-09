@@ -22,7 +22,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.util.Pair;
 

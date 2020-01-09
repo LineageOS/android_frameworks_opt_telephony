@@ -19,7 +19,7 @@ package com.android.internal.telephony.uicc.euicc.apdu;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.IccOpenLogicalChannelResponse;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;

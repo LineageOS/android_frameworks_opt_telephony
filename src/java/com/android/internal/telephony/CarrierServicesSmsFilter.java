@@ -27,7 +27,7 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.CarrierMessagingServiceWrapper;
 import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallbackWrapper;
 import android.service.carrier.MessagePdu;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;

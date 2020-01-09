@@ -18,7 +18,7 @@ package com.android.internal.telephony.imsphone;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.DisconnectCause;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.util.Log;
 

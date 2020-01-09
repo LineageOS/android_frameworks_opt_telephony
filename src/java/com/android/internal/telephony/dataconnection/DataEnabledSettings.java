@@ -31,7 +31,7 @@ import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.CallState;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;

@@ -20,7 +20,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telecom.Connection;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.annotations.VisibleForTesting;
 

@@ -44,7 +44,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ims.RcsEventDescriptor;
 import android.telephony.ims.RcsEventQueryResultDescriptor;
 import android.telephony.ims.RcsGroupThreadIconChangedEventDescriptor;

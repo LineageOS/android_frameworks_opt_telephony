@@ -22,7 +22,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ResultReceiver;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.GsmCdmaPhone;

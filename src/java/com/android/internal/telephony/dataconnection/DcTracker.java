@@ -76,7 +76,7 @@ import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.PreciseDataConnectionState;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SubscriptionManager;

@@ -20,7 +20,7 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Message;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Pair;
