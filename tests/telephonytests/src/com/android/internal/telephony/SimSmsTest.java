@@ -17,13 +17,13 @@
 package com.android.internal.telephony;
 
 import android.app.ActivityThread;
-import android.os.ServiceManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.Suppress;
 
-import java.util.List;
-
 import junit.framework.TestCase;
+
+import java.util.List;
 
 public class SimSmsTest extends TestCase {
 
@@ -31,7 +31,11 @@ public class SimSmsTest extends TestCase {
     @Suppress // TODO: suppress this test for now since it doesn't work on the emulator
     public void testBasic() throws Exception {
 
-        ISms sms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+        ISms sms = ISms.Stub.asInterface(
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getSmsServiceRegisterer()
+                        .get());
         assertNotNull(sms);
 
         int preferredSmsSubscription = sms.getPreferredSmsSubscription();

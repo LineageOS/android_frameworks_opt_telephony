@@ -21,8 +21,8 @@ import android.annotation.Nullable;
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.content.Context;
+import android.os.TimestampedValue;
 import android.telephony.Rlog;
-import android.util.TimestampedValue;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;

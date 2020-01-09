@@ -55,7 +55,7 @@ public class IntentBroadcaster {
                         logd("Rebroadcasting intent " + i.getAction() + " "
                                 + i.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE)
                                 + " for slotId " + pair.getKey());
-                        context.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                        context.sendStickyBroadcastAsUser(i, UserHandle.ALL);
                     }
                 }
             }

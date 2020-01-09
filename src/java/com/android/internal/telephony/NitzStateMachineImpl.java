@@ -19,10 +19,10 @@ package com.android.internal.telephony;
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.content.Context;
 import android.os.PowerManager;
+import android.os.TimestampedValue;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.LocalLog;
-import android.util.TimestampedValue;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;

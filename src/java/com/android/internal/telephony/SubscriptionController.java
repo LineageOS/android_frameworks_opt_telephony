@@ -36,7 +36,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.ParcelUuid;
 import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telecom.PhoneAccountHandle;
@@ -47,6 +47,7 @@ import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.SimDisplayNameSource;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccSlotInfo;
@@ -202,8 +203,11 @@ public class SubscriptionController extends ISub.Stub {
 
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
 
-        if(ServiceManager.getService("isub") == null) {
-            ServiceManager.addService("isub", this);
+        ServiceRegisterer subscriptionServiceRegisterer = TelephonyFrameworkInitializer
+                .getTelephonyServiceManager()
+                .getSubscriptionServiceRegisterer();
+        if (subscriptionServiceRegisterer.get() == null) {
+            subscriptionServiceRegisterer.register(this);
             mLastISubServiceRegTime = System.currentTimeMillis();
         }
 
@@ -272,8 +276,11 @@ public class SubscriptionController extends ISub.Stub {
      */
     @UnsupportedAppUsage
     public void notifySubscriptionInfoChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getTelephonyRegistryServiceRegisterer()
+                        .get());
         try {
             if (DBG) logd("notifySubscriptionInfoChanged:");
             tr.notifySubscriptionInfoChanged();
@@ -1545,7 +1552,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     public static int getNameSourcePriority(@SimDisplayNameSource int nameSource) {
         int index = Arrays.asList(
-                SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE,
+                SubscriptionManager.NAME_SOURCE_DEFAULT,
                 SubscriptionManager.NAME_SOURCE_SIM_PNN,
                 SubscriptionManager.NAME_SOURCE_SIM_SPN,
                 SubscriptionManager.NAME_SOURCE_CARRIER,
@@ -1606,7 +1613,7 @@ public class SubscriptionController extends ISub.Stub {
             }
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-            if (nameSource >= SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE) {
+            if (nameSource >= SubscriptionManager.NAME_SOURCE_DEFAULT) {
                 if (DBG) logd("Set nameSource=" + nameSource);
                 value.put(SubscriptionManager.NAME_SOURCE, nameSource);
             }
@@ -2740,9 +2747,6 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                         case SubscriptionManager.IS_OPPORTUNISTIC:
                         case SubscriptionManager.GROUP_UUID:
-                        case SubscriptionManager.WHITE_LISTED_APN_DATA:
-                            resultValue = cursor.getInt(0) + "";
-                            break;
                         case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
                             resultValue = cursor.getString(0);
                             break;
@@ -3682,8 +3686,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private void notifyOpportunisticSubscriptionInfoChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
-                "telephony.registry"));
+        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getTelephonyRegistryServiceRegisterer()
+                        .get());
         try {
             if (DBG) logd("notifyOpptSubscriptionInfoChanged:");
             tr.notifyOpportunisticSubscriptionInfoChanged();
