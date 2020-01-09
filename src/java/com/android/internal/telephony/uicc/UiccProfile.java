@@ -444,7 +444,7 @@ public class UiccProfile extends IccCard {
             int nameSource) {
         /* update display name with carrier override */
         SubscriptionInfo subInfo = subCon.getActiveSubscriptionInfo(
-                subId, mContext.getOpPackageName());
+                subId, mContext.getOpPackageName(), null);
 
         if (subInfo == null) {
             return;

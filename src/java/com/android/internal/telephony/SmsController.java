@@ -638,10 +638,10 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
-    public int checkSmsShortCodeDestination(
-            int subId, String callingPackage, String destAddress, String countryIso) {
+    public int checkSmsShortCodeDestination(int subId, String callingPackage,
+            String callingFeatureId, String destAddress, String countryIso) {
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(getPhone(subId).getContext(),
-                subId, callingPackage, "checkSmsShortCodeDestination")) {
+                subId, callingPackage, callingFeatureId, "checkSmsShortCodeDestination")) {
             return SmsManager.SMS_CATEGORY_NOT_SHORT_CODE;
         }
         final long identity = Binder.clearCallingIdentity();
