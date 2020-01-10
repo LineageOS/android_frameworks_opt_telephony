@@ -853,7 +853,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         WorkSource workSource = new WorkSource(Process.myUid(), mContext.getPackageName());
-        GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation();
+        GsmCellLocation cl = (GsmCellLocation) sst.getCellIdentity().asCellLocation();
         assertEquals(2, cl.getLac());
         assertEquals(3, cl.getCid());
     }
@@ -877,7 +877,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         WorkSource workSource = new WorkSource(Process.myUid(), mContext.getPackageName());
-        CdmaCellLocation cl = (CdmaCellLocation) sst.getCellLocation();
+        CdmaCellLocation cl = (CdmaCellLocation) sst.getCellIdentity().asCellLocation();
         assertEquals(5, cl.getBaseStationLatitude());
         assertEquals(4, cl.getBaseStationLongitude());
     }
