@@ -899,7 +899,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         Intent intent = intentArgumentCaptor.getValue();
         assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(true, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, false));
+        assertEquals(true, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
         assertEquals(true, mPhoneUT.isInEcm());
 
         // verify that wakeLock is acquired in ECM
@@ -933,7 +934,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         intent = intentArgumentCaptor.getValue();
         assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(false, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, true));
+        assertEquals(false, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, true));
         assertEquals(false, mPhoneUT.isInEcm());
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
@@ -987,7 +989,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         Intent intent = intentArgumentCaptor.getValue();
         assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(true, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, false));
+        assertEquals(true, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
         assertEquals(true, mPhoneUT.isInEcm());
 
         // verify that wakeLock is acquired in ECM
@@ -1021,7 +1024,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         intent = intentArgumentCaptor.getValue();
         assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(false, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, true));
+        assertEquals(false, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, true));
         assertEquals(false, mPhoneUT.isInEcm());
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);

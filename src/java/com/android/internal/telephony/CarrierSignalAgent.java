@@ -316,8 +316,7 @@ public class CarrierSignalAgent extends Handler {
                 continue;
             }
 
-            signal.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
-            signal.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+            SubscriptionManager.putSubscriptionIdExtra(signal, mPhone.getSubId());
             signal.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             if (!wakeup) signal.setFlags(Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
 
