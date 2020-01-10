@@ -148,7 +148,7 @@ public class RILRequest {
         final ArrayList<WorkChain> workChains = mWorkSource.getWorkChains();
         if (workChains != null && !workChains.isEmpty()) {
             final WorkChain workChain = workChains.get(0);
-            return workChain.getAttributionUid() + ":" + workChain.getTags()[0];
+            return workChain.toString();
         }
 
         return null;
