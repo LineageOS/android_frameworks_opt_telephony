@@ -2242,6 +2242,18 @@ message TelephonyCallSession {
 
       // the codec type of an ongoing call
       optional AudioCodec codec_type = 11;
+
+      // true if no incoming RTP is received for a continuous duration of 4 seconds
+      optional bool rtp_inactivity_detected = 12;
+
+      // true if only silence RTP packets are received for 20 seconds immediately
+      // after call is connected
+      optional bool rx_silence_detected = 13;
+
+      // true if only silence RTP packets are sent for 20 seconds immediately
+      // after call is connected
+      optional bool tx_silence_detected = 14;
+
     }
 
     message CallQualitySummary {
