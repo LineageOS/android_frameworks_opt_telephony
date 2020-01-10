@@ -21,8 +21,8 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.CallQuality;
+import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
-import android.telephony.CellLocation;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.emergency.EmergencyNumber;
@@ -39,8 +39,12 @@ public interface PhoneNotifier {
 
     void notifyServiceState(Phone sender);
 
-    /** Notify registrants of the current CellLocation */
-    void notifyCellLocation(Phone sender, CellLocation cl);
+    /**
+     * Notify registrants of the current CellLocation.
+     *
+     * <p>Use CellIdentity that is Parcellable to pass AIDL; convert to CellLocation in client code.
+     */
+    void notifyCellLocation(Phone sender, CellIdentity cellIdentity);
 
     @UnsupportedAppUsage
     void notifySignalStrength(Phone sender);
