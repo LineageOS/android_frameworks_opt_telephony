@@ -16,9 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
-import com.android.internal.telephony.uicc.IccFileHandler;
-
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.AsyncResult;
@@ -26,6 +24,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+
+import com.android.internal.telephony.uicc.IccFileHandler;
+
 import java.util.HashMap;
 
 /**

@@ -18,7 +18,7 @@ package com.android.internal.telephony.uicc;
 
 import android.annotation.IntDef;
 import android.annotation.Nullable;
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;

@@ -16,16 +16,14 @@
 
 package com.android.internal.telephony.uicc;
 
-import java.util.ArrayList;
-
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.uicc.IccConstants;
+import java.util.ArrayList;
 
 public class AdnRecordLoader extends Handler {
     final static String LOG_TAG = "AdnRecordLoader";
