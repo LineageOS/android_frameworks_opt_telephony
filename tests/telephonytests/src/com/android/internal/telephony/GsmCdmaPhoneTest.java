@@ -55,13 +55,13 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
-import android.telephony.CellLocation;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityCdma;
+import android.telephony.CellIdentityGsm;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.cdma.CdmaCellLocation;
-import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -375,20 +375,20 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testGetCellLocation() {
         // GSM
-        CellLocation cellLocation = new GsmCellLocation();
+        CellIdentity cellLocation = new CellIdentityGsm();
         WorkSource workSource = new WorkSource(Process.myUid(),
             mContext.getPackageName());
-        doReturn(cellLocation).when(mSST).getCellLocation();
-        assertEquals(cellLocation, mPhoneUT.getCellLocation());
+        doReturn(cellLocation).when(mSST).getCellIdentity();
+        assertEquals(cellLocation, mPhoneUT.getCellIdentity());
 
         // Switch to CDMA
         switchToCdma();
 
-        CdmaCellLocation cdmaCellLocation = new CdmaCellLocation();
-        doReturn(cdmaCellLocation).when(mSST).getCellLocation();
+        CellIdentityCdma cdmaCellLocation = new CellIdentityCdma();
+        doReturn(cdmaCellLocation).when(mSST).getCellIdentity();
 
-        CdmaCellLocation actualCellLocation =
-                (CdmaCellLocation) mPhoneUT.getCellLocation();
+        CellIdentityCdma actualCellLocation =
+                (CellIdentityCdma) mPhoneUT.getCellIdentity();
 
         assertEquals(actualCellLocation, cdmaCellLocation);
     }
