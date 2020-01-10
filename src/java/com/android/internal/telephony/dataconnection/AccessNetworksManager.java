@@ -35,7 +35,7 @@ import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.IQualifiedNetworksService;
 import android.telephony.data.IQualifiedNetworksServiceCallback;

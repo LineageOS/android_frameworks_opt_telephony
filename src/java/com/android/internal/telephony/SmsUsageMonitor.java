@@ -29,7 +29,7 @@ import android.os.Process;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.util.AtomicFile;
 import android.util.Xml;

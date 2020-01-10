@@ -20,7 +20,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneNotifier;
 
 import android.content.Context;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 /**
  * {@hide}

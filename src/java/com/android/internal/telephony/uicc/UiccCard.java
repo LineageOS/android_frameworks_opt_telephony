@@ -24,7 +24,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Handler;
 import android.os.Message;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 

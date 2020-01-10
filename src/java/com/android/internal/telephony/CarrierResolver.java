@@ -29,7 +29,7 @@ import android.os.Message;
 import android.provider.Telephony;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.PhoneStateListener;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;

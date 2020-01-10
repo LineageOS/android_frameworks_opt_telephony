@@ -22,7 +22,7 @@ import android.hardware.radio.config.V1_1.ModemsConfig;
 import android.hardware.radio.config.V1_2.IRadioConfigResponse;
 import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 

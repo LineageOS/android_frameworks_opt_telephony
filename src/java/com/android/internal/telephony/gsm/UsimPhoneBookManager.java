@@ -20,7 +20,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 

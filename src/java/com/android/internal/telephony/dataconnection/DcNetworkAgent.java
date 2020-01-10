@@ -27,7 +27,7 @@ import android.net.SocketKeepalive;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.util.LocalLog;
 import android.util.SparseArray;
 

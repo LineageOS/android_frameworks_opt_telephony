@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 /**
  * See also RIL_CallForwardInfo in include/telephony/ril.h

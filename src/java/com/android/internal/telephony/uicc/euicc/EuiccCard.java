@@ -25,7 +25,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccCardManager;

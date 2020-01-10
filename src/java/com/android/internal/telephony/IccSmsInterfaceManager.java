@@ -40,7 +40,7 @@ import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SmsCbMessage;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;

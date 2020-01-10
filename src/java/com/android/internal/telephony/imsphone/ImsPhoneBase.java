@@ -25,7 +25,7 @@ import android.os.RegistrantList;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CallQuality;
 import android.telephony.NetworkScanRequest;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.ims.ImsReasonInfo;

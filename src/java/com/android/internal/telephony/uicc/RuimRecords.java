@@ -22,7 +22,7 @@ import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.sysprop.TelephonyProperties;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;

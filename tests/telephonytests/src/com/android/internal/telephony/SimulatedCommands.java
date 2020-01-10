@@ -43,7 +43,7 @@ import android.telephony.IccOpenLogicalChannelResponse;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkScanRequest;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;

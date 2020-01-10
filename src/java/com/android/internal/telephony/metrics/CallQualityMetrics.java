@@ -21,7 +21,7 @@ import static com.android.internal.telephony.metrics.TelephonyMetrics.toCallQual
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthLte;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.util.Pair;
 

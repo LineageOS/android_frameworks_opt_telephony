@@ -22,7 +22,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.os.TimestampedValue;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;

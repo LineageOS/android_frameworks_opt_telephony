@@ -17,7 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.os.Environment;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.util.Xml;
 
 import com.android.internal.telephony.util.XmlUtils;

@@ -22,7 +22,7 @@ import android.app.timedetector.PhoneTimeSuggestion;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.content.Context;
 import android.os.TimestampedValue;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;

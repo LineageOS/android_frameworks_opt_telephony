@@ -24,7 +24,7 @@ import com.android.internal.telephony.UUSInfo;
 
 import android.os.SystemClock;
 import android.telephony.DisconnectCause;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.PhoneNumberUtils;
 
 abstract class SipConnectionBase extends Connection {

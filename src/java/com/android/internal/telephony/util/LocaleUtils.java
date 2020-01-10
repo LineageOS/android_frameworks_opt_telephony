@@ -18,7 +18,7 @@ package com.android.internal.telephony.util;
 
 import android.content.Context;
 import android.icu.util.ULocale;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.MccTable;

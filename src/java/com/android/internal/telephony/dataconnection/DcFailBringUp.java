@@ -19,7 +19,7 @@ package com.android.internal.telephony.dataconnection;
 import android.content.Intent;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.DataFailCause;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 /**
  * A package visible class for supporting testing failing bringUp commands. This

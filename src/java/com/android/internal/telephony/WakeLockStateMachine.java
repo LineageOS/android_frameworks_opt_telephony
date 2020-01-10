@@ -22,7 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Message;
 import android.os.PowerManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.State;

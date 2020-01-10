@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 /**
  * {@hide}

@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.TargetApi;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.TelephonyUtils;

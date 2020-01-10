@@ -48,7 +48,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.CallQuality;
 import android.telephony.DisconnectCause;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;

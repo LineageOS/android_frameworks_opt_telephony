@@ -88,7 +88,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.provider.Telephony;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.ims.RcsEventQueryParams;
 import android.telephony.ims.RcsEventQueryResultDescriptor;

@@ -20,7 +20,7 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.TelephonyFrameworkInitializer;
 
 import com.android.internal.telephony.IIccPhoneBook;

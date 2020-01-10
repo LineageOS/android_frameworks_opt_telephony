@@ -22,7 +22,7 @@ import android.net.NetworkConfig;
 import android.net.NetworkRequest;
 import android.os.Message;
 import android.telephony.Annotation.ApnType;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.LocalLog;
