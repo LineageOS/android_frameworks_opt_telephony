@@ -27,7 +27,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
-import android.os.ServiceManager;
 import android.provider.Settings;
 import android.service.euicc.DownloadSubscriptionResult;
 import android.service.euicc.EuiccService;
@@ -36,6 +35,7 @@ import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccCardInfo;
@@ -109,7 +109,8 @@ public class EuiccController extends IEuiccController.Stub {
 
     private EuiccController(Context context) {
         this(context, new EuiccConnector(context));
-        ServiceManager.addService("econtroller", this);
+        TelephonyFrameworkInitializer
+                .getTelephonyServiceManager().getEuiccControllerService().register(this);
     }
 
     @VisibleForTesting
