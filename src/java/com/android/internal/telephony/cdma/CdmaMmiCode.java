@@ -16,24 +16,23 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
-
-import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.GsmCdmaPhone;
-import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
-import com.android.internal.telephony.MmiCode;
-import com.android.internal.telephony.Phone;
-
-import android.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ResultReceiver;
 import android.telephony.Rlog;
 
-import java.util.regex.Pattern;
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.GsmCdmaPhone;
+import com.android.internal.telephony.MmiCode;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This class can handle Puk code Mmi

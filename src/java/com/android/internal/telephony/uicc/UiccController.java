@@ -21,8 +21,8 @@ import static android.telephony.TelephonyManager.UNSUPPORTED_CARD_ID;
 
 import static java.util.Arrays.copyOf;
 
-import android.annotation.UnsupportedAppUsage;
 import android.app.BroadcastOptions;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
