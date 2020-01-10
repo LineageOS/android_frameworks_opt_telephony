@@ -57,6 +57,7 @@ import android.telephony.ServiceState;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -663,6 +664,27 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(messageAlert, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_MESSAGE));
         assertEquals(messageNotification,
                 intent.getValue().getStringExtra(Phone.EXTRA_KEY_NOTIFICATION_MESSAGE));
+    }
+
+    @Test
+    @SmallTest
+    public void testRegisteringImsRcsRegistrationCallback() throws Exception {
+        RcsFeatureManager rcsFeatureManager = mock(RcsFeatureManager.class);
+
+        // When initialized RcsFeatureManager and
+        mImsPhoneUT.initRcsFeatureManager();
+        assertNotNull(mImsPhoneUT.mRcsManagerConnector);
+
+        // When connection is ready, the register IMS registration callback should be called.
+        mImsPhoneUT.mRcsFeatureConnectorListener.connectionReady(rcsFeatureManager);
+        verify(rcsFeatureManager).registerImsRegistrationCallback(
+                any(IImsRegistrationCallback.class));
+
+        // When connection is unavailable, the IMS registration state should be not registered.
+        mImsPhoneUT.mRcsFeatureConnectorListener.connectionUnavailable();
+        Consumer<Integer> registrationState = mock(Consumer.class);
+        mImsPhoneUT.getImsRcsRegistrationState(registrationState);
+        verify(registrationState).accept(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
     }
 
     @Test
