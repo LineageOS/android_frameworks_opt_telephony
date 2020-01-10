@@ -18,6 +18,7 @@ package com.android.internal.telephony.gsm;
 
 import static com.android.internal.telephony.gsm.SmsCbConstants.MESSAGE_ID_CMAS_GEO_FENCING_TRIGGER;
 
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
@@ -38,8 +39,6 @@ import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage;
 import com.android.internal.telephony.gsm.GsmSmsCbMessage.GeoFencingTriggerMessage.CellBroadcastIdentity;
-
-import dalvik.annotation.compat.UnsupportedAppUsage;
 
 import java.util.ArrayList;
 import java.util.HashMap;

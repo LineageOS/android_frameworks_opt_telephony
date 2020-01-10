@@ -17,6 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import android.app.Activity;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -35,8 +36,6 @@ import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.VisualVoicemailSmsFilter;
 import com.android.internal.telephony.uicc.UsimServiceTable;
-
-import dalvik.annotation.compat.UnsupportedAppUsage;
 
 /**
  * This class broadcasts incoming SMS messages to interested apps after storing them in

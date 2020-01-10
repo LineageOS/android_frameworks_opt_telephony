@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Environment;
 import android.telephony.Rlog;
 import android.util.Xml;

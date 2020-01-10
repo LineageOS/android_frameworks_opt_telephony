@@ -16,8 +16,10 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.annotation.UnsupportedAppUsage;
-import android.os.*;
+import android.compat.annotation.UnsupportedAppUsage;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
 
 import com.android.internal.telephony.CommandsInterface;
 

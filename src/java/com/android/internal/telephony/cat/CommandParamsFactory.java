@@ -16,7 +16,13 @@
 
 package com.android.internal.telephony.cat;
 
-import android.annotation.UnsupportedAppUsage;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.BROWSER_TERMINATION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.BROWSING_STATUS_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
+
+import android.compat.annotation.UnsupportedAppUsage;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Message;
@@ -28,17 +34,6 @@ import com.android.internal.telephony.uicc.IccFileHandler;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-
-import static com.android.internal.telephony.cat.CatCmdMessage
-                   .SetupEventListConstants.BROWSER_TERMINATION_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage
-                   .SetupEventListConstants.BROWSING_STATUS_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage
-                   .SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage
-                   .SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage
-                   .SetupEventListConstants.USER_ACTIVITY_EVENT;
 /**
  * Factory class, used for decoding raw byte arrays, received from baseband,
  * into a CommandParams object.

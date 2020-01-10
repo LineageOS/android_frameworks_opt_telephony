@@ -18,6 +18,7 @@ package com.android.internal.telephony.gsm;
 
 import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
+import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
@@ -38,8 +39,6 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
-
-import dalvik.annotation.compat.UnsupportedAppUsage;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicReference;

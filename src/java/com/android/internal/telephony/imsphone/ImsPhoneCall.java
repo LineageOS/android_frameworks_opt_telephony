@@ -16,9 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
-import android.annotation.UnsupportedAppUsage;
-import com.android.ims.internal.ConferenceParticipant;
-import android.telephony.Rlog;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.ims.ImsStreamMediaProfile;
@@ -26,6 +24,7 @@ import android.util.Log;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsException;
+import com.android.ims.internal.ConferenceParticipant;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;

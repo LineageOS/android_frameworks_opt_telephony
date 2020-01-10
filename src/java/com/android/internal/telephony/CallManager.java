@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.UnsupportedAppUsage;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -27,7 +27,6 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.sip.SipPhone;
 
