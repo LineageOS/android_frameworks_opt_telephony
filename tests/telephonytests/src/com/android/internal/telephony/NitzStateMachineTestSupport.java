@@ -23,7 +23,7 @@ import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
-import android.util.TimestampedValue;
+import android.os.TimestampedValue;
 
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
 
