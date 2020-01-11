@@ -21,7 +21,7 @@ import android.content.Context;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.Pair;

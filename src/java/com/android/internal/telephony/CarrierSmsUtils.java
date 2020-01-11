@@ -24,7 +24,7 @@ import android.content.pm.ResolveInfo;
 import android.os.Binder;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import java.util.List;
 

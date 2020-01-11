@@ -19,7 +19,7 @@
 
 package com.android.internal.telephony.gsm;
 
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.GsmCdmaPhone;
 

@@ -28,7 +28,7 @@ import android.system.Os;
 import android.system.OsConstants;
 import android.system.StructStatVfs;
 import android.telephony.AccessNetworkConstants.TransportType;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;

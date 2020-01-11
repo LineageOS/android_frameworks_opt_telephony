@@ -17,7 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 public abstract class CatLog {
     static final boolean DEBUG = true;

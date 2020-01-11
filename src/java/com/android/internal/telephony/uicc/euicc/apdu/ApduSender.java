@@ -20,7 +20,7 @@ import android.annotation.Nullable;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.IccOpenLogicalChannelResponse;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccIoResult;

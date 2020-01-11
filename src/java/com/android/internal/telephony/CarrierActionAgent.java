@@ -27,7 +27,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.provider.Settings;
 import android.provider.Telephony;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.Log;

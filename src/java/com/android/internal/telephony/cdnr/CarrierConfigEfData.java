@@ -19,7 +19,7 @@ package com.android.internal.telephony.cdnr;
 import android.annotation.NonNull;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.IccRecords;

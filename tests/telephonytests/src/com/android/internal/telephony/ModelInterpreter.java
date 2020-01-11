@@ -19,7 +19,7 @@ package com.android.internal.telephony.test;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import java.io.IOException;
 import java.io.InputStream;

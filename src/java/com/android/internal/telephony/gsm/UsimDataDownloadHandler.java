@@ -22,7 +22,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SmsManager;
 
 import com.android.internal.telephony.CommandsInterface;

@@ -17,7 +17,7 @@
 package com.android.internal.telephony.cdma;
 
 import android.hardware.radio.V1_0.CdmaSmsMessage;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;

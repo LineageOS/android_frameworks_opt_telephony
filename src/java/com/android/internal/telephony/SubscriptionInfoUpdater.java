@@ -46,7 +46,7 @@ import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
@@ -180,7 +180,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     mCurrentlyActiveUserId = intent.getIntExtra(Intent.EXTRA_USER_HANDLE, 0);
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                             mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
-                            sContext.getContentResolver(), mCurrentlyActiveUserId);
+                            mCurrentlyActiveUserId, sContext);
                 }
             }
         }, new IntentFilter(Intent.ACTION_USER_FOREGROUND), null, null);
@@ -188,7 +188,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mCurrentlyActiveUserId = am.getCurrentUser();
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                 mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
-                sContext.getContentResolver(), mCurrentlyActiveUserId);
+                mCurrentlyActiveUserId, sContext);
     }
 
     /**
@@ -571,7 +571,7 @@ public class SubscriptionInfoUpdater extends Handler {
         // Update set of enabled carrier apps now that the privilege rules may have changed.
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                 mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
-                sContext.getContentResolver(), mCurrentlyActiveUserId);
+                mCurrentlyActiveUserId, sContext);
 
         /**
          * The sim loading sequence will be

@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import android.hardware.radio.config.V1_2.IRadioConfigIndication;
 import android.os.AsyncResult;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 

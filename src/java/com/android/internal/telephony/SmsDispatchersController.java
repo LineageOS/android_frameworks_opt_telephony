@@ -36,7 +36,7 @@ import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;

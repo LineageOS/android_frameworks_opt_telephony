@@ -29,7 +29,7 @@ import android.telephony.CellInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;

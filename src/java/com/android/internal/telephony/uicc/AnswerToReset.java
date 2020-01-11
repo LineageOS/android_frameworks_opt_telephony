@@ -17,7 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.annotation.Nullable;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.util.ArrayMap;
 
 import com.android.internal.annotations.VisibleForTesting;

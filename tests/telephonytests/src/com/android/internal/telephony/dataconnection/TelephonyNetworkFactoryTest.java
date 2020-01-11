@@ -39,7 +39,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.AccessNetworkConstants;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;

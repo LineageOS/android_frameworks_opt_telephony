@@ -20,7 +20,7 @@ import android.app.timedetector.PhoneTimeSuggestion;
 import android.content.Context;
 import android.os.PowerManager;
 import android.os.TimestampedValue;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.LocalLog;
 

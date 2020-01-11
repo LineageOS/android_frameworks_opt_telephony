@@ -20,7 +20,7 @@ import android.content.Context;
 import android.os.PersistableBundle;
 import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
+import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.util.Log;
 
