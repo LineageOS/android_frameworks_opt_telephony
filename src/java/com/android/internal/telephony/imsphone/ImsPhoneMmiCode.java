@@ -1678,9 +1678,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         StringBuilder sb = new StringBuilder(getScString());
         sb.append("\n");
 
+        mState = State.FAILED;
         if (ar.exception != null) {
-            mState = State.FAILED;
-
             if (ar.exception instanceof ImsException) {
                 sb.append(getImsErrorMessage(ar));
             } else {
@@ -1693,19 +1692,21 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             if (ints.length != 0) {
                 if (ints[0] == 0) {
                     sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                    mState = State.COMPLETE;
                 } else if (mSc.equals(SC_WAIT)) {
                     // Call Waiting includes additional data in the response.
                     sb.append(createQueryCallWaitingResultMessage(ints[1]));
+                    mState = State.COMPLETE;
                 } else if (ints[0] == 1) {
                     // for all other services, treat it as a boolean
                     sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                    mState = State.COMPLETE;
                 } else {
                     sb.append(mContext.getText(com.android.internal.R.string.mmiError));
                 }
             } else {
                 sb.append(mContext.getText(com.android.internal.R.string.mmiError));
             }
-            mState = State.COMPLETE;
         }
 
         mMessage = sb;
