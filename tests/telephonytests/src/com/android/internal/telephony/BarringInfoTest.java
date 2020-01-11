@@ -92,7 +92,7 @@ public class BarringInfoTest {
         for (int service : sServices) {
             BarringServiceInfo bsi = b.getBarringServiceInfo(service);
             assertNotNull(bsi);
-            assertEquals(bsi.getBarringType(), BarringServiceInfo.BARRING_TYPE_NONE);
+            assertEquals(bsi.getBarringType(), BarringServiceInfo.BARRING_TYPE_UNKNOWN);
             assertFalse(bsi.isBarred());
         }
     }
@@ -101,14 +101,25 @@ public class BarringInfoTest {
     @Test
     public void testBarringService() {
         BarringInfo b = new BarringInfo(null, getBarringServiceInfos());
+
+        // Check that the MO data barring info matches the info provided in getBarringServiceInfos()
         BarringServiceInfo bsi = b.getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_MO_DATA);
         assertEquals(bsi.getBarringType(), BarringServiceInfo.BARRING_TYPE_UNCONDITIONAL);
 
+        // Check that the MMTEL barring info matches the info provided in getBarringServiceInfos()
         bsi = b.getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_MMTEL_VIDEO);
         assertEquals(bsi.getBarringType(), BarringServiceInfo.BARRING_TYPE_CONDITIONAL);
         assertFalse(bsi.isConditionallyBarred());
         assertEquals(bsi.getConditionalBarringFactor(), CONDITIONAL_BARRING_FACTOR_PERCENT);
         assertEquals(bsi.getConditionalBarringTimeSeconds(), CONDITIONAL_BARRING_TIME_SECONDS);
+
+        // Because BarringInfo is available, services that aren't reported as barred are
+        // automatically reported as unbarred.
+        bsi = b.getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_SMS);
+        assertEquals(bsi.getBarringType(), BarringServiceInfo.BARRING_TYPE_NONE);
+        assertFalse(bsi.isConditionallyBarred());
+        assertEquals(bsi.getConditionalBarringFactor(), 0);
+        assertEquals(bsi.getConditionalBarringTimeSeconds(), 0);
     }
 
     /** Test that equality checks are correctly implemented */
