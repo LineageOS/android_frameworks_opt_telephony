@@ -20,14 +20,13 @@ import android.annotation.NonNull;
 import android.net.LinkProperties;
 import android.net.NattKeepalivePacketData;
 import android.net.NetworkAgent;
+import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
-import android.net.NetworkMisc;
 import android.net.SocketKeepalive;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
-import android.telephony.Rlog;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
@@ -36,6 +35,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -67,10 +67,10 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private NetworkInfo mNetworkInfo;
 
-    DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score, NetworkMisc misc,
-                   int factorySerialNumber, int transportType) {
+    DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
+            NetworkAgentConfig config, int factorySerialNumber, int transportType) {
         super(dc.getHandler().getLooper(), phone.getContext(), "DcNetworkAgent", ni,
-                dc.getNetworkCapabilities(), dc.getLinkProperties(), score, misc,
+                dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
                 factorySerialNumber);
         mTag = "DcNetworkAgent" + "-" + network.netId;
         mPhone = phone;

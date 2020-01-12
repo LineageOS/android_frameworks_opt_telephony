@@ -28,10 +28,10 @@ import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
+import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkInfo;
-import android.net.NetworkMisc;
 import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.ProxyInfo;
@@ -51,7 +51,6 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -87,6 +86,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.telephony.Rlog;
 
 import libcore.net.InetAddressUtils;
 
@@ -2046,17 +2046,17 @@ public class DataConnection extends StateMachine {
             mNetworkInfo.setExtraInfo(mApnSetting.getApnName());
             updateTcpBufferSizes(mRilRat);
 
-            final NetworkMisc misc = new NetworkMisc();
+            final NetworkAgentConfig config = new NetworkAgentConfig();
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
             if (carrierSignalAgent.hasRegisteredReceivers(TelephonyIntents
                     .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
                 // carrierSignal Receivers will place the carrier-specific provisioning notification
-                misc.provisioningNotificationDisabled = true;
+                config.provisioningNotificationDisabled = true;
             }
-            misc.subscriberId = mPhone.getSubscriberId();
+            config.subscriberId = mPhone.getSubscriberId();
 
             // set skip464xlat if it is not default otherwise
-            misc.skip464xlat = shouldSkip464Xlat();
+            config.skip464xlat = shouldSkip464Xlat();
 
             mUnmeteredUseOnly = isUnmeteredUseOnly();
 
@@ -2114,7 +2114,7 @@ public class DataConnection extends StateMachine {
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
 
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this,
-                        mPhone, mNetworkInfo, mScore, misc, providerId, mTransportType);
+                        mPhone, mNetworkInfo, mScore, config, providerId, mTransportType);
             }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
