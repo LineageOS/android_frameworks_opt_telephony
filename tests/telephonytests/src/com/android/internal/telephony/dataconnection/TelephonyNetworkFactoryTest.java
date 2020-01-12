@@ -174,7 +174,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcher);
 
         mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone);
-        verify(mConnectivityManager).registerNetworkFactory(any(), anyString());
+        verify(mConnectivityManager).registerNetworkProvider(any());
         verify(mPhoneSwitcher).registerForActivePhoneSwitch(any(), anyInt(), any());
     }
 
