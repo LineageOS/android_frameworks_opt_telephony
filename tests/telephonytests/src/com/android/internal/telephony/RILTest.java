@@ -1688,7 +1688,7 @@ public class RILTest extends TelephonyTest {
         ws = new WorkSource();
         ws.createWorkChain().addNode(100, "foo").addNode(200, "bar");
         request = RILRequest.obtain(0, null, ws);
-        assertEquals("100:foo", request.getWorkSourceClientId());
+        assertEquals("WorkChain{(100, foo), (200, bar)}", request.getWorkSourceClientId());
     }
 
     @Test
