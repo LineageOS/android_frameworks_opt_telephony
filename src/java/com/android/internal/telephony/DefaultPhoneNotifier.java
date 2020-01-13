@@ -258,6 +258,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             callQuality, callNetworkType);
     }
 
+    @Override
+    public void notifyRegistrationFailed(Phone sender, @NonNull CellIdentity cellIdentity,
+            @NonNull String chosenPlmn, int domain, int causeCode, int additionalCauseCode) {
+        mTelephonyRegistryMgr.notifyRegistrationFailed(sender.getPhoneId(), sender.getSubId(),
+                cellIdentity, chosenPlmn, domain, causeCode, additionalCauseCode);
+    }
+
     /**
      * Convert the {@link DataActivityState} enum into the TelephonyManager.DATA_* constants for the
      * public API.
