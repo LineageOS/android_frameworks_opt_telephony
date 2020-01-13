@@ -2046,17 +2046,23 @@ public class DataConnection extends StateMachine {
             mNetworkInfo.setExtraInfo(mApnSetting.getApnName());
             updateTcpBufferSizes(mRilRat);
 
-            final NetworkAgentConfig config = new NetworkAgentConfig();
+            final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
             if (carrierSignalAgent.hasRegisteredReceivers(TelephonyIntents
                     .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
                 // carrierSignal Receivers will place the carrier-specific provisioning notification
-                config.provisioningNotificationDisabled = true;
+                configBuilder.disableProvisioningNotification();
             }
-            config.subscriberId = mPhone.getSubscriberId();
+
+            final String subscriberId = mPhone.getSubscriberId();
+            if (!TextUtils.isEmpty(subscriberId)) {
+                configBuilder.setSubscriberId(subscriberId);
+            }
 
             // set skip464xlat if it is not default otherwise
-            config.skip464xlat = shouldSkip464Xlat();
+            if (shouldSkip464Xlat()) {
+                configBuilder.disableNat64Detection();
+            }
 
             mUnmeteredUseOnly = isUnmeteredUseOnly();
 
@@ -2114,7 +2120,8 @@ public class DataConnection extends StateMachine {
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
 
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this,
-                        mPhone, mNetworkInfo, mScore, config, providerId, mTransportType);
+                        mPhone, mNetworkInfo, mScore, configBuilder.build(), providerId,
+                        mTransportType);
             }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
