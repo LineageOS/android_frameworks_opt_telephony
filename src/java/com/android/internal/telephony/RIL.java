@@ -5992,6 +5992,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_UNSOL_EMERGENCY_NUMBER_LIST";
             case RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED:
                 return "RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED";
+            case RIL_UNSOL_REGISTRATION_FAILED:
+                return "RIL_UNSOL_REGISTRATION_FAILED";
             default:
                 return "<unknown response>";
         }
