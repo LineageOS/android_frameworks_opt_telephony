@@ -1163,6 +1163,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             // Get a list of currently started users.
             int[] users = null;
             final List<UserHandle> userHandles = mUserManager.getUserHandles(false);
+            for (UserHandle handle : userHandles) {
+                if (!mUserManager.isUserRunning(handle)) {
+                    userHandles.remove(handle);
+                }
+            }
             if (userHandles.isEmpty()) {
                 users = new int[] {user.getIdentifier()};
             } else {
