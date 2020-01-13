@@ -22,7 +22,6 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.ServiceState;
-import android.util.Pair;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.InboundSmsHandler;
@@ -139,31 +138,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
      */
     private void handleStatusReport(AsyncResult ar) {
         byte[] pdu = (byte[]) ar.result;
-        SmsMessage sms = SmsMessage.createFromPdu(pdu);
-        boolean handled = false;
-
-        if (sms != null) {
-            int messageRef = sms.mMessageRef;
-            for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
-                SmsTracker tracker = deliveryPendingList.get(i);
-                if (tracker.mMessageRef == messageRef) {
-                    Pair<Boolean, Boolean> result = mSmsDispatchersController.handleSmsStatusReport(
-                            tracker,
-                            getFormat(),
-                            pdu);
-                    if (result.second) {
-                        deliveryPendingList.remove(i);
-                    }
-                    handled = true;
-                    break; // Only expect to see one tracker matching this messageref
-                }
-            }
-            if (!handled) {
-                // Try to find the sent SMS from the map in ImsSmsDispatcher.
-                mSmsDispatchersController.handleSentOverImsStatusReport(
-                        messageRef, getFormat(), pdu);
-            }
-        }
+        mSmsDispatchersController.handleSmsStatusReport(SmsConstants.FORMAT_3GPP, pdu);
         mCi.acknowledgeLastIncomingGsmSms(true, 0 /* cause */, null);
     }
 
