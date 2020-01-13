@@ -134,6 +134,8 @@ public class ImsManagerTest extends TelephonyTest {
         mBundle.putBoolean(
                 CarrierConfigManager.KEY_USE_WFC_HOME_NETWORK_MODE_IN_ROAMING_NETWORK_BOOL,
                 WFC_NOT_USE_HOME_MODE_FOR_ROAMING_VAL);
+        mBundle.putBoolean(CarrierConfigManager.KEY_CARRIER_RCS_PROVISIONING_REQUIRED_BOOL, true);
+
     }
 
     @Test @SmallTest
@@ -250,6 +252,10 @@ public class ImsManagerTest extends TelephonyTest {
         assertEquals(true, imsManager.isVolteProvisionedOnDevice());
         verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VLT_SETTING_ENABLED));
+
+        assertEquals(true, imsManager.isEabProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.EAB_SETTING_ENABLED));
     }
 
     @Test
@@ -274,7 +280,30 @@ public class ImsManagerTest extends TelephonyTest {
                 eq(0));
         verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
                 eq(ImsConfig.ConfigConstants.VOICE_OVER_WIFI_SETTING_ENABLED));
+    }
 
+    @Test
+    public void testEabSetProvisionedValues() throws Exception {
+        ImsManager imsManager = getImsManagerAndInitProvisionedValues();
+
+        assertEquals(true, imsManager.isEabProvisionedOnDevice());
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.EAB_SETTING_ENABLED));
+
+        imsManager.getConfigInterface().setProvisionedValue(
+                ImsConfig.ConfigConstants.EAB_SETTING_ENABLED,
+                ImsConfig.FeatureValueConstants.OFF);
+
+        assertEquals(0, (int) mProvisionedIntVals.get(
+                ImsConfig.ConfigConstants.EAB_SETTING_ENABLED));
+
+        assertEquals(false, imsManager.isEabProvisionedOnDevice());
+
+        verify(mImsConfigImplBaseMock, times(1)).setConfig(
+                eq(ImsConfig.ConfigConstants.EAB_SETTING_ENABLED),
+                eq(0));
+        verify(mImsConfigImplBaseMock, times(1)).getConfigInt(
+                eq(ImsConfig.ConfigConstants.EAB_SETTING_ENABLED));
     }
 
     /**
