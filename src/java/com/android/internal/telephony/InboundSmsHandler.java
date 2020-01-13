@@ -25,7 +25,6 @@ import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SK
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
 import android.app.Notification;
@@ -50,13 +49,11 @@ import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerWhitelistManager;
-import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
-import com.android.telephony.Rlog;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -73,6 +70,7 @@ import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.telephony.Rlog;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
@@ -1164,12 +1162,14 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (user.equals(UserHandle.ALL)) {
             // Get a list of currently started users.
             int[] users = null;
-            try {
-                users = ActivityManager.getService().getRunningUserIds();
-            } catch (RemoteException re) {
-            }
-            if (users == null) {
+            final List<UserHandle> userHandles = mUserManager.getUserHandles(false);
+            if (userHandles.isEmpty()) {
                 users = new int[] {user.getIdentifier()};
+            } else {
+                users = new int[userHandles.size()];
+                for (int i = 0; i < userHandles.size(); i++) {
+                    users[i] = userHandles.get(i).getIdentifier();
+                }
             }
             // Deliver the broadcast only to those running users that are permitted
             // by user policy.
