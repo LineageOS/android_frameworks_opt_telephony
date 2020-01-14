@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.fail;
 
-import android.net.NetworkFactory;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.Test;
@@ -28,25 +27,25 @@ public class PhoneFactoryTest {
     @SmallTest
     public void testBeforeMakePhone() {
         try {
-            Phone phone = PhoneFactory.getDefaultPhone();
+            PhoneFactory.getDefaultPhone();
             fail("Expecting IllegalStateException");
         } catch (IllegalStateException e) {
         }
 
         try {
-            Phone phone = PhoneFactory.getPhone(0);
+            PhoneFactory.getPhone(0);
             fail("Expecting IllegalStateException");
         } catch (IllegalStateException e) {
         }
 
         try {
-            Phone[] phone = PhoneFactory.getPhones();
+            PhoneFactory.getPhones();
             fail("Expecting IllegalStateException");
         } catch (IllegalStateException e) {
         }
 
         try {
-            NetworkFactory factory = PhoneFactory.getNetworkFactory(0);
+            PhoneFactory.getNetworkFactory(0);
             fail("Expecting IllegalStateException");
         } catch (IllegalStateException e) {
         }

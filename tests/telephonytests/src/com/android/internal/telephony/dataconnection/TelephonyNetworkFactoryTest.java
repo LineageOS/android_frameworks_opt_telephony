@@ -16,9 +16,8 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static android.net.NetworkFactory.CMD_CANCEL_REQUEST;
-import static android.net.NetworkFactory.CMD_REQUEST_NETWORK;
-
+import static com.android.internal.telephony.NetworkFactory.CMD_CANCEL_REQUEST;
+import static com.android.internal.telephony.NetworkFactory.CMD_REQUEST_NETWORK;
 import static com.android.internal.telephony.dataconnection.TelephonyNetworkFactory.EVENT_ACTIVE_PHONE_SWITCH;
 
 import static org.junit.Assert.assertEquals;
