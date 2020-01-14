@@ -609,7 +609,6 @@ public class DataConnection extends StateMachine {
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
                 networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
         mNetworkInfo.setRoaming(ss.getDataRoaming());
-        mNetworkInfo.setIsAvailable(true);
 
         addState(mDefaultState);
             addState(mInactiveState, mDefaultState);
@@ -1212,6 +1211,11 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * Get the network capabilities for this data connection.
+     *
+     * Note that this method reads fields from mNetworkInfo, so its output is only as fresh
+     * as mNetworkInfo. Call updateNetworkInfoSuspendState before calling this.
+     *
      * @return the {@link NetworkCapabilities} of this data connection.
      */
     public NetworkCapabilities getNetworkCapabilities() {
@@ -1351,6 +1355,10 @@ public class DataConnection extends StateMachine {
         if (mUnmeteredOverride) {
             result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
+
+        final boolean suspended =
+                mNetworkInfo.getDetailedState() == NetworkInfo.DetailedState.SUSPENDED;
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !suspended);
 
         return result;
     }
