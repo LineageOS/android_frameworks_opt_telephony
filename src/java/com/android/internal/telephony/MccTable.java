@@ -21,16 +21,14 @@ import android.annotation.Nullable;
 import android.annotation.UnsupportedAppUsage;
 import android.app.ActivityManager;
 import android.content.Context;
-import android.content.res.Configuration;
 import android.os.Build;
-import android.os.RemoteException;
 import android.os.SystemProperties;
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 import libcore.timezone.TelephonyLookup;
 import libcore.timezone.TelephonyNetwork;
@@ -286,35 +284,27 @@ public final class MccTable {
         }
 
         if (!TextUtils.isEmpty(mccmnc)) {
-            int mcc, mnc;
-
+            int mccInt;
             try {
-                mcc = Integer.parseInt(mccmnc.substring(0, 3));
-                mnc = Integer.parseInt(mccmnc.substring(3));
+                mccInt = Integer.parseInt(mccmnc.substring(0, 3));
             } catch (NumberFormatException | StringIndexOutOfBoundsException ex) {
-                Rlog.e(LOG_TAG, "Error parsing IMSI: " + mccmnc + ". ex=" + ex);
+                Rlog.e(LOG_TAG, "Error parsing mccmnc: " + mccmnc + ". ex=" + ex);
                 return;
             }
-
-            Rlog.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
-
-            try {
-                Configuration config = new Configuration();
-                boolean updateConfig = false;
-                if (mcc != 0) {
-                    config.mcc = mcc;
-                    config.mnc = mnc == 0 ? Configuration.MNC_ZERO : mnc;
-                    updateConfig = true;
-                }
-
-                if (updateConfig) {
-                    Rlog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
-                    ActivityManager.getService().updateConfiguration(config);
+            if (mccInt != 0) {
+                ActivityManager activityManager = (ActivityManager) context.getSystemService(
+                        Context.ACTIVITY_SERVICE);
+                if (!activityManager.updateMccMncConfiguration(
+                        mccmnc.substring(0, 3), mccmnc.substring(3))) {
+                    Rlog.d(LOG_TAG, "updateMccMncConfiguration: update mccmnc="
+                            + mccmnc + " failure");
+                    return;
                 } else {
-                    Rlog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
+                    Rlog.d(LOG_TAG, "updateMccMncConfiguration: update mccmnc="
+                            + mccmnc + " success");
                 }
-            } catch (RemoteException e) {
-                Rlog.e(LOG_TAG, "Can't update configuration", e);
+            } else {
+                Rlog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
             }
         }
     }
