@@ -54,6 +54,7 @@ import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
@@ -662,6 +663,9 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
         doReturn(mBundle).when(mCarrierConfigManager).getConfig();
+
+        doReturn(mock(Network.class)).when(mConnectivityManager).registerNetworkAgent(
+                any(), any(), any(), any(), anyInt(), any(), anyInt());
 
         doReturn(true).when(mEuiccManager).isEnabled();
 
