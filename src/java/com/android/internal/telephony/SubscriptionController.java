@@ -2676,6 +2676,9 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
+            case SubscriptionManager.ALLOWED_NETWORK_TYPES:
+                value.put(propKey, Long.parseLong(propValue));
+                break;
             default:
                 if (DBG) logd("Invalid column name");
                 break;
@@ -2745,6 +2748,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.IS_OPPORTUNISTIC:
                         case SubscriptionManager.GROUP_UUID:
                         case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
+                        case SubscriptionManager.ALLOWED_NETWORK_TYPES:
                             resultValue = cursor.getString(0);
                             break;
                         default:
