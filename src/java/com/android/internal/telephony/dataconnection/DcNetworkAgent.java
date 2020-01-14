@@ -23,10 +23,12 @@ import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
@@ -68,10 +70,10 @@ public class DcNetworkAgent extends NetworkAgent {
     private NetworkInfo mNetworkInfo;
 
     DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
-            NetworkAgentConfig config, int factorySerialNumber, int transportType) {
-        super(dc.getHandler().getLooper(), phone.getContext(), "DcNetworkAgent", ni,
+            NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
+        super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
-                factorySerialNumber);
+                networkProvider);
         mTag = "DcNetworkAgent" + "-" + network.netId;
         mPhone = phone;
         mNetworkCapabilities = dc.getNetworkCapabilities();
@@ -167,6 +169,18 @@ public class DcNetworkAgent extends NetworkAgent {
         }
     }
 
+    private synchronized boolean isOwned(DataConnection dc, String reason) {
+        if (mDataConnection == null) {
+            loge(reason + " called on no-owner DcNetworkAgent!");
+            return false;
+        } else if (mDataConnection != dc) {
+            loge(reason + ": This agent belongs to "
+                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Set the network capabilities.
      *
@@ -175,14 +189,7 @@ public class DcNetworkAgent extends NetworkAgent {
      */
     public synchronized void sendNetworkCapabilities(NetworkCapabilities networkCapabilities,
                                                      DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendNetworkCapabilities called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendNetworkCapabilities: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
-        }
+        if (!isOwned(dc, "sendNetworkCapabilities")) return;
 
         if (!networkCapabilities.equals(mNetworkCapabilities)) {
             String logStr = "Changed from " + mNetworkCapabilities + " to "
@@ -215,14 +222,7 @@ public class DcNetworkAgent extends NetworkAgent {
      */
     public synchronized void sendLinkProperties(LinkProperties linkProperties,
                                                 DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendLinkProperties called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendLinkProperties: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
-        }
+        if (!isOwned(dc, "sendLinkProperties")) return;
         sendLinkProperties(linkProperties);
     }
 
@@ -233,14 +233,7 @@ public class DcNetworkAgent extends NetworkAgent {
      * @param dc The data connection that invokes this method.
      */
     public synchronized void sendNetworkScore(int score, DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendNetworkScore called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendNetworkScore: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
-        }
+        if (!isOwned(dc, "sendNetworkScore")) return;
         sendNetworkScore(score);
     }
 
@@ -251,16 +244,21 @@ public class DcNetworkAgent extends NetworkAgent {
      * @param dc The data connection that invokes this method.
      */
     public synchronized void sendNetworkInfo(NetworkInfo networkInfo, DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendNetworkInfo called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendNetworkInfo: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
+        if (!isOwned(dc, "sendNetworkInfo")) return;
+        final NetworkInfo.State oldState = mNetworkInfo.getState();
+        final NetworkInfo.State state = networkInfo.getState();
+        if (mNetworkInfo.getExtraInfo() != networkInfo.getExtraInfo()) {
+            setLegacyExtraInfo(networkInfo.getExtraInfo());
+        }
+        final int subType = networkInfo.getSubtype();
+        if (mNetworkInfo.getSubtype() != subType) {
+            setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
+        }
+        if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
+                && state == NetworkInfo.State.DISCONNECTED) {
+            unregister();
         }
         mNetworkInfo = networkInfo;
-        sendNetworkInfo(networkInfo);
     }
 
     /**
