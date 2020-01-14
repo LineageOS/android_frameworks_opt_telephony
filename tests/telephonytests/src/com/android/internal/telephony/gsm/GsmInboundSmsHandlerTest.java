@@ -42,7 +42,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
@@ -76,6 +75,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -198,11 +199,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         UserManager userManager = (UserManager)mContext.getSystemService(Context.USER_SERVICE);
         doReturn(true).when(userManager).isUserUnlocked();
 
-        try {
-            doReturn(new int[]{UserHandle.USER_SYSTEM}).when(mIActivityManager).getRunningUserIds();
-        } catch (RemoteException re) {
-            fail("Unexpected RemoteException: " + re.getStackTrace());
-        }
+        List<UserHandle> userHandles = new ArrayList();
+        userHandles.add(UserHandle.SYSTEM);
+        doReturn(userHandles).when(userManager).getUserHandles(anyBoolean());
 
         mSmsMessage.mWrappedSmsMessage = mGsmSmsMessage;
 
