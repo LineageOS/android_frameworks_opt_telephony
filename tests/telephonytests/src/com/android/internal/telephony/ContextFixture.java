@@ -59,7 +59,6 @@ import android.net.Network;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
-import android.os.BatteryStatsManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IInterface;
@@ -259,11 +258,10 @@ public class ContextFixture implements TestFixture<Context> {
                 case Context.TELEPHONY_REGISTRY_SERVICE:
                     return mTelephonyRegistryManager;
                 case Context.BATTERY_STATS_SERVICE:
-                    return mBatteryStatsManager;
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
                 case Context.PERMISSION_SERVICE:
-                    // PowerManager and DisplayManager are final classes so cannot be mocked,
+                    // These are final classes so cannot be mocked,
                     // return real services.
                     return TestApplication.getAppContext().getSystemService(name);
                 case Context.POWER_WHITELIST_MANAGER:
@@ -622,7 +620,6 @@ public class ContextFixture implements TestFixture<Context> {
     private final PackageInfo mPackageInfo = mock(PackageInfo.class);
     private final TelephonyRegistryManager mTelephonyRegistryManager =
         mock(TelephonyRegistryManager.class);
-    private final BatteryStatsManager mBatteryStatsManager = mock(BatteryStatsManager.class);
     private final PowerWhitelistManager mPowerWhitelistManager = mock(PowerWhitelistManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());

@@ -88,8 +88,6 @@ import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.server.pm.PackageManagerService;
-import com.android.server.pm.permission.PermissionManagerService;
 
 import org.junit.After;
 import org.junit.Before;
@@ -144,10 +142,6 @@ public class DcTrackerTest extends TelephonyTest {
     ApnContext mApnContext;
     @Mock
     DataConnection mDataConnection;
-    @Mock
-    PackageManagerService mMockPackageManager;
-    @Mock
-    PermissionManagerService mMockPermissionManager;
     @Mock
     Handler mHandler;
     @Mock
@@ -514,8 +508,6 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(1).when(mIsub).getDefaultDataSubId();
         doReturn(mIsub).when(mBinder).queryLocalInterface(anyString());
         mServiceManagerMockedServices.put("isub", mBinder);
-        mServiceManagerMockedServices.put("package", mMockPackageManager);
-        mServiceManagerMockedServices.put("permissionmgr", mMockPermissionManager);
 
         mContextFixture.putStringArrayResource(
                 com.android.telephony.resources.R.array.config_cell_retries_per_error_code,

@@ -31,10 +31,10 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_P
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -70,8 +70,6 @@ import com.android.internal.telephony.dataconnection.DataConnection.DisconnectPa
 import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
-import com.android.server.pm.PackageManagerService;
-import com.android.server.pm.permission.PermissionManagerService;
 
 import org.junit.After;
 import org.junit.Before;
@@ -95,10 +93,6 @@ public class DataConnectionTest extends TelephonyTest {
     ApnContext mApnContext;
     @Mock
     DcFailBringUp mDcFailBringUp;
-    @Mock
-    PackageManagerService mMockPackageManager;
-    @Mock
-    PermissionManagerService mMockPermissionManager;
 
     private DataConnection mDc;
     private DataConnectionTestHandler mDataConnectionTestHandler;
@@ -282,10 +276,8 @@ public class DataConnectionTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        logd("+Setup!");
         super.setUp(getClass().getSimpleName());
-        mServiceManagerMockedServices.put("package", mMockPackageManager);
-        mServiceManagerMockedServices.put("permissionmgr", mMockPermissionManager);
+        logd("+Setup!");
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         replaceInstance(ConnectionParams.class, "mApnContext", mCp, mApnContext);
         replaceInstance(ConnectionParams.class, "mRilRat", mCp,
@@ -314,7 +306,6 @@ public class DataConnectionTest extends TelephonyTest {
                 "com.android.phone");
 
         mDcp.mApnContext = mApnContext;
-
         addDataService();
 
         mDataConnectionTestHandler = new DataConnectionTestHandler(getClass().getSimpleName());
