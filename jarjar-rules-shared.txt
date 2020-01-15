@@ -6,6 +6,7 @@ rule android.util.LocalLog* com.android.internal.telephony.LocalLog@1
 rule android.util.TimeUtils* com.android.internal.telephony.TimeUtils@1
 rule com.android.internal.os.SomeArgs* com.android.internal.telephony.SomeArgs@1
 rule com.android.internal.util.AsyncChannel* com.android.internal.telephony.AsyncChannel@1
+rule com.android.internal.util.AsyncService* com.android.internal.telephony.AsyncService@1
 rule com.android.internal.util.BitwiseInputStream* com.android.internal.telephony.BitwiseInputStream@1
 rule com.android.internal.util.FastXmlSerializer* com.android.internal.telephony.FastXmlSerializer@1
 rule com.android.internal.util.HexDump* com.android.internal.telephony.HexDump@1
