@@ -39,7 +39,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
-import android.net.StringNetworkSpecifier;
+import android.net.TelephonyNetworkSpecifier;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -999,22 +999,10 @@ public class PhoneSwitcher extends Handler {
         if (specifier == null) {
             return DEFAULT_SUBSCRIPTION_ID;
         }
-
-        int subId;
-
-        if (specifier instanceof StringNetworkSpecifier) {
-            try {
-                subId = Integer.parseInt(((StringNetworkSpecifier) specifier).specifier);
-            } catch (NumberFormatException e) {
-                Rlog.e(LOG_TAG, "NumberFormatException on "
-                        + ((StringNetworkSpecifier) specifier).specifier);
-                return INVALID_SUBSCRIPTION_ID;
-            }
-        } else {
-            return INVALID_SUBSCRIPTION_ID;
+        if (specifier instanceof TelephonyNetworkSpecifier) {
+            return ((TelephonyNetworkSpecifier) specifier).getSubscriptionId();
         }
-
-        return subId;
+        return INVALID_SUBSCRIPTION_ID;
     }
 
     private int getSubIdForDefaultNetworkRequests() {
