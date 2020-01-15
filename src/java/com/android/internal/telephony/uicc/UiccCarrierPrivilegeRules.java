@@ -438,7 +438,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
             CommandException.Error error = ((CommandException) (ar.exception)).getCommandError();
             int[] results = (int[]) ar.result;
             int statusCode = 0;
-            if (results.length == 3) {
+            if (ar.result != null && results.length == 3) {
                 byte[] bytes = new byte[]{(byte) results[1], (byte) results[2]};
                 statusCode = Integer.parseInt(IccUtils.bytesToHexString(bytes), 16);
                 log("status code: " + String.valueOf(statusCode));
