@@ -421,8 +421,7 @@ public class DataConnection extends StateMachine {
         return getCurrentState() == mDisconnectingState;
     }
 
-    @VisibleForTesting
-    public boolean isActive() {
+    boolean isActive() {
         return getCurrentState() == mActiveState;
     }
 
