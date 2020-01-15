@@ -25,6 +25,7 @@ import android.database.sqlite.SQLiteConstraintException;
 import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -197,7 +198,7 @@ public class CarrierInfoManager {
         mLastAccessResetCarrierKey = now;
         deleteCarrierInfoForImsiEncryption(context);
         Intent resetIntent = new Intent(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
-        resetIntent.putExtra(PhoneConstants.PHONE_KEY, mPhoneId);
+        SubscriptionManager.putPhoneIdAndSubIdExtra(resetIntent, mPhoneId);
         context.sendBroadcastAsUser(resetIntent, UserHandle.ALL);
     }
 
