@@ -36,10 +36,10 @@ import static org.junit.Assert.assertTrue;
 import android.app.timedetector.PhoneTimeSuggestion;
 import android.icu.util.TimeZone;
 import android.os.TimestampedValue;
+import android.timezone.CountryTimeZones.OffsetResult;
 
 import com.android.internal.telephony.NitzStateMachineTestSupport.FakeDeviceState;
 import com.android.internal.telephony.NitzStateMachineTestSupport.Scenario;
-import com.android.internal.telephony.TimeZoneLookupHelper.OffsetResult;
 
 import org.junit.After;
 import org.junit.Before;
@@ -1166,7 +1166,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         String expectedZoneId = result.getTimeZone().getID();
         // All our scenarios should return multiple matches. The only cases where this wouldn't be
         // true are places that use offsets like XX:15, XX:30 and XX:45.
-        assertFalse(result.getIsOnlyMatch());
+        assertFalse(result.isOnlyMatch());
         assertSameOffset(scenario.getActualTimeMillis(), expectedZoneId, scenario.getTimeZoneId());
         return expectedZoneId;
     }
