@@ -270,7 +270,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             return;
         }
         if (VDBG) log("No read privileged phone permission, check carrier privilege next.");
-        TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(subId, message);
+        TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(mContext, subId, message);
     }
 
     /**
