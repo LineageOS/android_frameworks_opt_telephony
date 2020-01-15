@@ -96,7 +96,8 @@ public class SmsPermissions {
             }
         }
 
-        TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(mPhone.getSubId(), message);
+        TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(
+                mContext, mPhone.getSubId(), message);
     }
 
     /**
