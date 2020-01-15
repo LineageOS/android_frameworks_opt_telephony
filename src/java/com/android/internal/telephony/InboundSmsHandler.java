@@ -1155,14 +1155,18 @@ public abstract class InboundSmsHandler extends StateMachine {
         // override the subId value in the intent with the values from tracker as they can be
         // different, specifically if the message is coming from SmsBroadcastUndelivered
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
-            intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, subId);
+            SubscriptionManager.putSubscriptionIdExtra(intent, subId);
         }
 
         if (user.equals(UserHandle.ALL)) {
             // Get a list of currently started users.
             int[] users = null;
             final List<UserHandle> userHandles = mUserManager.getUserHandles(false);
+            for (UserHandle handle : userHandles) {
+                if (!mUserManager.isUserRunning(handle)) {
+                    userHandles.remove(handle);
+                }
+            }
             if (userHandles.isEmpty()) {
                 users = new int[] {user.getIdentifier()};
             } else {

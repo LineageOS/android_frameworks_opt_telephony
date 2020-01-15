@@ -198,6 +198,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         UserManager userManager = (UserManager)mContext.getSystemService(Context.USER_SERVICE);
         doReturn(true).when(userManager).isUserUnlocked();
+        doReturn(true).when(userManager).isUserRunning(any(UserHandle.class));
 
         List<UserHandle> userHandles = new ArrayList();
         userHandles.add(UserHandle.SYSTEM);

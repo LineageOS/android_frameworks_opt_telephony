@@ -33,7 +33,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -42,6 +41,7 @@ import android.util.Log;
 
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -316,8 +316,7 @@ public class CarrierSignalAgent extends Handler {
                 continue;
             }
 
-            signal.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
-            signal.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+            SubscriptionManager.putSubscriptionIdExtra(signal, mPhone.getSubId());
             signal.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             if (!wakeup) signal.setFlags(Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
 

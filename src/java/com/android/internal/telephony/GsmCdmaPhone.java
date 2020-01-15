@@ -65,7 +65,6 @@ import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PreciseDataConnectionState;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SignalThresholdInfo;
@@ -104,6 +103,7 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.util.ArrayUtils;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -774,7 +774,7 @@ public class GsmCdmaPhone extends Phone {
     private void sendEmergencyCallbackModeChange(){
         //Send an Intent
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
-        intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
+        intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         logi("sendEmergencyCallbackModeChange");
@@ -789,7 +789,7 @@ public class GsmCdmaPhone extends Phone {
         }
         if (mBroadcastEmergencyCallStateChanges) {
             Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
-            intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
+            intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, callActive);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
             mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
             if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: callActive " + callActive);

@@ -65,7 +65,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -112,6 +111,7 @@ import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1717,7 +1717,7 @@ public class ImsPhone extends ImsPhoneBase {
     private void sendEmergencyCallbackModeChange() {
         // Send an Intent
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
-        intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, isInEcm());
+        intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         if (DBG) logd("sendEmergencyCallbackModeChange: isInEcm=" + isInEcm());
