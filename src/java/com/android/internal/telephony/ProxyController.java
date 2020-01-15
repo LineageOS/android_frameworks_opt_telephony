@@ -33,7 +33,6 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.ims.RcsMessageController;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -128,8 +127,6 @@ public class ProxyController {
         mContext = context;
         mPhones = PhoneFactory.getPhones();
         mPhoneSwitcher = PhoneSwitcher.getInstance();
-
-        RcsMessageController.init(context);
 
         mUiccPhoneBookController = new UiccPhoneBookController();
         mPhoneSubInfoController = new PhoneSubInfoController(mContext);
