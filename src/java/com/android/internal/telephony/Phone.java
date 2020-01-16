@@ -205,8 +205,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_GET_UICC_APPS_ENABLEMENT_DONE  = 54;
     protected static final int EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE = 55;
     protected static final int EVENT_REGISTRATION_FAILED = 56;
+    protected static final int EVENT_BARRING_INFO_CHANGED = 57;
 
-    protected static final int EVENT_LAST = EVENT_REGISTRATION_FAILED;
+    protected static final int EVENT_LAST = EVENT_BARRING_INFO_CHANGED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";

@@ -2448,4 +2448,21 @@ public interface CommandsInterface {
     default List<ClientRequestStats> getClientRequestStats() {
         return null;
     }
+
+    /**
+     * Registers the handler for RIL_UNSOL_BARRING_INFO_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForBarringInfoChanged(Handler h, int what, Object obj) {};
+
+    /**
+     * Unregisters the handler for RIL_UNSOL_BARRING_INFO_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     */
+    default void unregisterForBarringInfoChanged(Handler h) {};
+
 }

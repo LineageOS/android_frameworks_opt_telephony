@@ -58,6 +58,7 @@ import android.sysprop.TelephonyProperties;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.DataFailCause;
@@ -332,6 +333,7 @@ public class GsmCdmaPhone extends Phone {
                 null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mCi.setOnRegistrationFailed(this, EVENT_REGISTRATION_FAILED, null);
+        mCi.registerForBarringInfoChanged(this, EVENT_BARRING_INFO_CHANGED, null);
 
         //GSM
         mCi.setOnUSSD(this, EVENT_USSD, null);
@@ -2763,6 +2765,13 @@ public class GsmCdmaPhone extends Phone {
                 RegistrationFailedEvent rfe = (RegistrationFailedEvent) ar.result;
                 mNotifier.notifyRegistrationFailed(this, rfe.cellIdentity, rfe.chosenPlmn,
                         rfe.domain, rfe.causeCode, rfe.additionalCauseCode);
+                break;
+
+            case EVENT_BARRING_INFO_CHANGED:
+                logd("Event BarringInfoChanged Received");
+                ar = (AsyncResult) msg.obj;
+                BarringInfo barringInfo = (BarringInfo) ar.result;
+                mNotifier.notifyBarringInfoChanged(this, barringInfo);
                 break;
 
             case EVENT_SET_CALL_FORWARD_DONE:

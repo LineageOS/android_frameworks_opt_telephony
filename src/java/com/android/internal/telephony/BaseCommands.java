@@ -102,6 +102,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mLceInfoRegistrants = new RegistrantList();
     protected RegistrantList mEmergencyNumberListRegistrants = new RegistrantList();
     protected RegistrantList mUiccApplicationsEnablementRegistrants = new RegistrantList();
+    protected RegistrantList mBarringInfoChangedRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1026,5 +1027,27 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterUiccApplicationEnablementChanged(Handler h) {
         mUiccApplicationsEnablementRegistrants.remove(h);
+    }
+
+    /**
+     * Registers the handler for RIL_UNSOL_BARRING_INFO_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    @Override
+    public void registerForBarringInfoChanged(Handler h, int what, Object obj) {
+        mBarringInfoChangedRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters the handler for RIL_UNSOL_BARRING_INFO_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     */
+    @Override
+    public void unregisterForBarringInfoChanged(Handler h) {
+        mBarringInfoChangedRegistrants.remove(h);
     }
 }
