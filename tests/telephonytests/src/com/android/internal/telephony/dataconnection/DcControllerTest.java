@@ -115,15 +115,23 @@ public class DcControllerTest extends TelephonyTest {
     @SmallTest
     public void testDataDormant() throws Exception {
         assertEquals("DccDefaultState", getCurrentState().getName());
-        ArrayList<DataCallResponse> l = new ArrayList<DataCallResponse>();
-        DataCallResponse dcResponse = new DataCallResponse(0, -1, 1,
-                DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT, ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
-                1440);
-
+        ArrayList<DataCallResponse> l = new ArrayList<>();
+        DataCallResponse dcResponse = new DataCallResponse.Builder()
+                .setCause(0)
+                .setSuggestedRetryTime(-1)
+                .setId(1)
+                .setLinkStatus(DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT)
+                .setProtocolType(ApnSetting.PROTOCOL_IP)
+                .setInterfaceName(FAKE_IFNAME)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)))
+                .setPcscfAddresses(
+                        Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
+                .setMtuV4(1440)
+                .setMtuV6(1440)
+                .build();
         l.add(dcResponse);
 
         mDc.mCid = 1;

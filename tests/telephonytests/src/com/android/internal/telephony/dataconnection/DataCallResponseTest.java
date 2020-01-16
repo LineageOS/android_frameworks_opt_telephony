@@ -36,13 +36,22 @@ public class DataCallResponseTest extends AndroidTestCase {
 
     @SmallTest
     public void testParcel() throws Exception {
-        DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
-                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
-                1440);
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setSuggestedRetryTime(-1)
+                .setId(1)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IP)
+                .setInterfaceName(FAKE_IFNAME)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)))
+                .setPcscfAddresses(
+                        Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
+                .setMtuV4(1440)
+                .setMtuV6(1440)
+                .build();
 
         Parcel p = Parcel.obtain();
         response.writeToParcel(p, 0);
@@ -54,34 +63,62 @@ public class DataCallResponseTest extends AndroidTestCase {
 
     @SmallTest
     public void testEquals() throws Exception {
-        DataCallResponse response = new DataCallResponse(0, -1, 1, 2,
-                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
-                1440);
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setSuggestedRetryTime(-1)
+                .setId(1)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IP)
+                .setInterfaceName(FAKE_IFNAME)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)))
+                .setPcscfAddresses(
+                        Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
+                .setMtuV4(1440)
+                .setMtuV6(1400)
+                .build();
 
-        DataCallResponse response1 = new DataCallResponse(0, -1, 1, 2,
-                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
-                1440);
+        DataCallResponse response1 = new DataCallResponse.Builder()
+                .setCause(0)
+                .setSuggestedRetryTime(-1)
+                .setId(1)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IP)
+                .setInterfaceName(FAKE_IFNAME)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)))
+                .setPcscfAddresses(
+                        Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
+                .setMtuV4(1440)
+                .setMtuV6(1400)
+                .build();
 
         assertEquals(response, response);
         assertEquals(response, response1);
 
-        DataCallResponse response2 = new DataCallResponse(1, -1, 1, 3,
-                ApnSetting.PROTOCOL_IP, FAKE_IFNAME,
-                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS),
-                        InetAddresses.parseNumericAddress(FAKE_DNS)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)),
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS),
-                        InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)),
-                1441);
+        DataCallResponse response2 = new DataCallResponse.Builder()
+                .setCause(1)
+                .setSuggestedRetryTime(-1)
+                .setId(1)
+                .setLinkStatus(3)
+                .setProtocolType(ApnSetting.PROTOCOL_IP)
+                .setInterfaceName(FAKE_IFNAME)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS),
+                        InetAddresses.parseNumericAddress(FAKE_DNS)))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS),
+                        InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
+                .setMtuV4(1441)
+                .setMtuV6(1440)
+                .build();
+
         assertNotSame(response1, response2);
         assertNotSame(response1, null);
         assertNotSame(response1, new String[1]);
