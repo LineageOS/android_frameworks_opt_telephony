@@ -17,9 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
-import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
-import android.os.RemoteException;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
@@ -30,9 +28,7 @@ import android.telephony.CellInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
@@ -40,6 +36,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
+import com.android.telephony.Rlog;
 
 import java.util.List;
 
@@ -51,17 +48,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     private static final String LOG_TAG = "DefaultPhoneNotifier";
     private static final boolean DBG = false; // STOPSHIP if true
 
-    @UnsupportedAppUsage
-    protected ITelephonyRegistry mRegistry;
     private TelephonyRegistryManager mTelephonyRegistryMgr;
 
 
     public DefaultPhoneNotifier(Context context) {
-        mRegistry = ITelephonyRegistry.Stub.asInterface(
-                TelephonyFrameworkInitializer
-                        .getTelephonyServiceManager()
-                        .getTelephonyRegistryServiceRegisterer()
-                        .get());
         mTelephonyRegistryMgr = (TelephonyRegistryManager) context.getSystemService(
             Context.TELEPHONY_REGISTRY_SERVICE);
     }
@@ -85,8 +75,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         int phoneId = sender.getPhoneId();
         int subId = sender.getSubId();
 
-        Rlog.d(LOG_TAG, "notifyServiceState: mRegistry=" + mRegistry + " ss=" + ss
-            + " sender=" + sender + " phondId=" + phoneId + " subId=" + subId);
+        Rlog.d(LOG_TAG, "notifyServiceState: mRegistryMgr=" + mTelephonyRegistryMgr + " ss="
+                + ss + " sender=" + sender + " phondId=" + phoneId + " subId=" + subId);
         if (ss == null) {
             ss = new ServiceState();
             ss.setStateOutOfService();
@@ -100,7 +90,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         int subId = sender.getSubId();
         if (DBG) {
             // too chatty to log constantly
-            Rlog.d(LOG_TAG, "notifySignalStrength: mRegistry=" + mRegistry
+            Rlog.d(LOG_TAG, "notifySignalStrength: mRegistryMgr=" + mTelephonyRegistryMgr
                 + " ss=" + sender.getSignalStrength() + " sender=" + sender);
         }
         mTelephonyRegistryMgr.notifySignalStrengthChanged(subId, phoneId,
@@ -128,10 +118,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     @Override
     public void notifyDataActivity(Phone sender) {
         int subId = sender.getSubId();
-        if (mRegistry != null) {
-            mTelephonyRegistryMgr.notifyDataActivityChanged(subId,
+        mTelephonyRegistryMgr.notifyDataActivityChanged(subId,
                 convertDataActivityState(sender.getDataActivityState()));
-        }
     }
 
     @Override
@@ -230,26 +218,14 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyOutgoingEmergencyCall(Phone sender, EmergencyNumber emergencyNumber) {
-        try {
-            if (mRegistry != null) {
-                mRegistry.notifyOutgoingEmergencyCall(sender.getPhoneId(), sender.getSubId(),
-                        emergencyNumber);
-            }
-        } catch (RemoteException ex) {
-            // system process is dead
-        }
+        mTelephonyRegistryMgr.notifyOutgoingEmergencyCall(
+                sender.getPhoneId(), sender.getSubId(), emergencyNumber);
     }
 
     @Override
     public void notifyOutgoingEmergencySms(Phone sender, EmergencyNumber emergencyNumber) {
-        try {
-            if (mRegistry != null) {
-                mRegistry.notifyOutgoingEmergencySms(sender.getPhoneId(), sender.getSubId(),
-                        emergencyNumber);
-            }
-        } catch (RemoteException ex) {
-            // system process is dead
-        }
+        mTelephonyRegistryMgr.notifyOutgoingEmergencySms(
+                sender.getPhoneId(), sender.getSubId(), emergencyNumber);
     }
 
     @Override
