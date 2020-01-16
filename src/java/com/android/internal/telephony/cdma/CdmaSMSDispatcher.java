@@ -20,7 +20,6 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Message;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Pair;
@@ -35,6 +34,7 @@ import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
+import com.android.telephony.Rlog;
 
 
 public class CdmaSMSDispatcher extends SMSDispatcher {
@@ -147,11 +147,13 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
         boolean imsSmsDisabled = (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
-                    || (ServiceState.isLte(currentDataNetwork)
-                    && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
-                    && mPhone.getServiceState().getVoiceNetworkType()
-                    == TelephonyManager.NETWORK_TYPE_1xRTT
-                    && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
+                || (currentDataNetwork == TelephonyManager.NETWORK_TYPE_LTE
+                || currentDataNetwork == TelephonyManager.NETWORK_TYPE_LTE_CA
+                || currentDataNetwork == TelephonyManager.NETWORK_TYPE_NR)
+                && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed())
+                && mPhone.getServiceState().getVoiceNetworkType()
+                        == TelephonyManager.NETWORK_TYPE_1xRTT
+                && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
 
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
