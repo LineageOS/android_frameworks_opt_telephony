@@ -340,7 +340,10 @@ public class DataEnabledOverride {
     }
 
     /**
-     * Set allowing mobile data during voice call.
+     * Set allowing mobile data during voice call. This is used for allowing data on the non-default
+     * data SIM. When a voice call is placed on the non-default data SIM on DSDS devices, users will
+     * not be able to use mobile data. By calling this API, data will be temporarily enabled on the
+     * non-default data SIM during the life cycle of the voice call.
      *
      * @param allow {@code true} if allowing using data during voice call, {@code false} if
      * disallowed.
