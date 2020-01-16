@@ -108,6 +108,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DcTrackerTest extends TelephonyTest {
@@ -446,7 +447,7 @@ public class DcTrackerTest extends TelephonyTest {
 
                     return mc;
                 }
-            } else if (uri.isPathPrefixMatch(
+            } else if (isPathPrefixMatch(uri,
                     Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "preferapnset"))) {
                 MatrixCursor mc = new MatrixCursor(
                         new String[]{Telephony.Carriers.APN_SET_ID});
@@ -2014,5 +2015,30 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         assertFalse(getWatchdogStatus());
+    }
+
+    /**
+     * Test if this is a path prefix match against the given Uri. Verifies that
+     * scheme, authority, and atomic path segments match.
+     *
+     * Copied from frameworks/base/core/java/android/net/Uri.java
+     */
+    private boolean isPathPrefixMatch(Uri uriA, Uri uriB) {
+        if (!Objects.equals(uriA.getScheme(), uriB.getScheme())) return false;
+        if (!Objects.equals(uriA.getAuthority(), uriB.getAuthority())) return false;
+
+        List<String> segA = uriA.getPathSegments();
+        List<String> segB = uriB.getPathSegments();
+
+        final int size = segB.size();
+        if (segA.size() < size) return false;
+
+        for (int i = 0; i < size; i++) {
+            if (!Objects.equals(segA.get(i), segB.get(i))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
