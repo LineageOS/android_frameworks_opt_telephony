@@ -606,8 +606,9 @@ public class ServiceStateTracker extends Handler {
                 .makeEriManager(mPhone, EriManager.ERI_FROM_XML);
 
         mRatRatcheter = new RatRatcheter(mPhone);
-        mVoiceCapable = mPhone.getContext().getResources().getBoolean(
-                com.android.internal.R.bool.config_voice_capable);
+        mVoiceCapable = ((TelephonyManager) mPhone.getContext()
+                .getSystemService(Context.TELEPHONY_SERVICE))
+                .isVoiceCapable();
         mUiccController = UiccController.getInstance();
 
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
@@ -2085,9 +2086,6 @@ public class ServiceStateTracker extends Handler {
 
                     mGsmRoaming = regCodeIsRoaming(registrationState);
                     mNewRejectCode = reasonForDenial;
-
-                    boolean isVoiceCapable = mPhone.getContext().getResources()
-                            .getBoolean(com.android.internal.R.bool.config_voice_capable);
                 } else {
                     int roamingIndicator = voiceSpecificStates.roamingIndicator;
 
