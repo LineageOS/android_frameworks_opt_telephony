@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
+import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
 import android.annotation.NonNull;
 import android.app.AppOpsManager;
@@ -37,14 +38,12 @@ import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.UserHandle;
-import android.permission.IPermissionManager;
+import android.permission.PermissionManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -56,6 +55,7 @@ import android.text.TextUtils;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 import java.util.HashSet;
 import java.util.List;
@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Data service manager manages handling data requests and responses on data services (e.g.
@@ -79,13 +80,15 @@ public class DataServiceManager extends Handler {
 
     private static final long REQUEST_UNRESPONDED_TIMEOUT = 10 * MINUTE_IN_MILLIS; // 10 mins
 
+    private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * SECOND_IN_MILLIS; // 15 secs
+
     private final Phone mPhone;
 
     private final String mTag;
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final AppOpsManager mAppOps;
-    private final IPermissionManager mPermissionManager;
+    private final PermissionManager mPermissionManager;
 
     private final int mTransportType;
 
@@ -132,14 +135,23 @@ public class DataServiceManager extends Handler {
 
     private void grantPermissionsToService(String packageName) {
         final String[] pkgToGrant = {packageName};
+        CountDownLatch latch = new CountDownLatch(1);
         try {
             mPermissionManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
-                    pkgToGrant, UserHandle.myUserId());
+                    pkgToGrant, UserHandle.of(UserHandle.myUserId()), Runnable::run,
+                    isSuccess -> {
+                        if (isSuccess) {
+                            latch.countDown();
+                        } else {
+                            loge("Failed to grant permissions to service.");
+                        }
+                    });
+            TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
                 UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
-        } catch (RemoteException e) {
+        } catch (RuntimeException e) {
             loge("Binder to package manager died, permission grant for DataService failed.");
-            throw TelephonyUtils.rethrowAsRuntimeException(e);
+            throw e;
         }
     }
 
@@ -154,18 +166,27 @@ public class DataServiceManager extends Handler {
             dataServices.remove(getDataServicePackageName(transportType));
         }
 
+        CountDownLatch latch = new CountDownLatch(1);
         try {
             String[] dataServicesArray = new String[dataServices.size()];
             dataServices.toArray(dataServicesArray);
             mPermissionManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
-                    dataServicesArray, UserHandle.myUserId());
+                    dataServicesArray, UserHandle.of(UserHandle.myUserId()), Runnable::run,
+                    isSuccess -> {
+                        if (isSuccess) {
+                            latch.countDown();
+                        } else {
+                            loge("Failed to revoke permissions from data services.");
+                        }
+                    });
+            TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             for (String pkg : dataServices) {
                 mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS, UserHandle.myUserId(),
                         pkg, AppOpsManager.MODE_ERRORED);
             }
-        } catch (RemoteException e) {
+        } catch (RuntimeException e) {
             loge("Binder to package manager died; failed to revoke DataService permissions.");
-            throw TelephonyUtils.rethrowAsRuntimeException(e);
+            throw e;
         }
     }
 
@@ -286,11 +307,7 @@ public class DataServiceManager extends Handler {
         // caches the service instance, but we need to explicitly request a new service
         // so it can be mocked out for tests
         mPermissionManager =
-                IPermissionManager.Stub.asInterface(
-                        TelephonyFrameworkInitializer
-                                .getTelephonyServiceManager()
-                                .getPermissionManagerServiceRegisterer()
-                                .get());
+                (PermissionManager) phone.getContext().getSystemService(Context.PERMISSION_SERVICE);
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
 
         IntentFilter intentFilter = new IntentFilter();
@@ -776,5 +793,4 @@ public class DataServiceManager extends Handler {
     private void loge(String s) {
         Rlog.e(mTag, s);
     }
-
 }

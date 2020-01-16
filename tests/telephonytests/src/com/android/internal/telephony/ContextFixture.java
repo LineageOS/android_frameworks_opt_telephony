@@ -262,6 +262,7 @@ public class ContextFixture implements TestFixture<Context> {
                     return mBatteryStatsManager;
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
+                case Context.PERMISSION_SERVICE:
                     // PowerManager and DisplayManager are final classes so cannot be mocked,
                     // return real services.
                     return TestApplication.getAppContext().getSystemService(name);
