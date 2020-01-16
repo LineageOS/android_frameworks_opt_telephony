@@ -75,7 +75,8 @@ public class DcNetworkAgent extends NetworkAgent {
         super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
                 networkProvider);
-        mTag = "DcNetworkAgent" + "-" + network.netId;
+        register();
+        mTag = "DcNetworkAgent" + "-" + getNetwork().netId;
         mPhone = phone;
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
