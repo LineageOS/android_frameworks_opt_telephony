@@ -19,8 +19,9 @@ package com.android.internal.telephony.dataconnection;
 import android.content.Context;
 import android.hardware.radio.V1_4.DataConnActiveStatus;
 import android.net.LinkAddress;
-import android.net.LinkProperties.CompareResult;
-import android.net.NetworkUtils;
+import android.net.util.LinkPropertiesUtils;
+import android.net.util.LinkPropertiesUtils.CompareResult;
+import android.net.util.NetUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -322,15 +323,21 @@ public class DcController extends StateMachine {
                         if (result.oldLp.equals(result.newLp)) {
                             if (DBG) log("onDataStateChanged: no change");
                         } else {
-                            if (result.oldLp.isIdenticalInterfaceName(result.newLp)) {
-                                if (! result.oldLp.isIdenticalDnses(result.newLp) ||
-                                        ! result.oldLp.isIdenticalRoutes(result.newLp) ||
-                                        ! result.oldLp.isIdenticalHttpProxy(result.newLp) ||
-                                        ! result.oldLp.isIdenticalAddresses(result.newLp)) {
+                            if (LinkPropertiesUtils.isIdenticalInterfaceName(
+                                    result.oldLp, result.newLp)) {
+                                if (!LinkPropertiesUtils.isIdenticalDnses(
+                                        result.oldLp, result.newLp)
+                                        || !LinkPropertiesUtils.isIdenticalRoutes(
+                                                result.oldLp, result.newLp)
+                                        || !LinkPropertiesUtils.isIdenticalHttpProxy(
+                                                result.oldLp, result.newLp)
+                                        || !LinkPropertiesUtils.isIdenticalAddresses(
+                                                result.oldLp, result.newLp)) {
                                     // If the same address type was removed and
                                     // added we need to cleanup
                                     CompareResult<LinkAddress> car =
-                                        result.oldLp.compareAddresses(result.newLp);
+                                            LinkPropertiesUtils.compareAddresses(result.oldLp,
+                                                    result.newLp);
                                     if (DBG) {
                                         log("onDataStateChanged: oldLp=" + result.oldLp +
                                                 " newLp=" + result.newLp + " car=" + car);
@@ -338,7 +345,7 @@ public class DcController extends StateMachine {
                                     boolean needToClean = false;
                                     for (LinkAddress added : car.added) {
                                         for (LinkAddress removed : car.removed) {
-                                            if (NetworkUtils.addressTypeMatches(
+                                            if (NetUtils.addressTypeMatches(
                                                     removed.getAddress(),
                                                     added.getAddress())) {
                                                 needToClean = true;

@@ -58,6 +58,7 @@ import android.sysprop.TelephonyProperties;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.DataFailCause;
@@ -332,6 +333,7 @@ public class GsmCdmaPhone extends Phone {
                 null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mCi.setOnRegistrationFailed(this, EVENT_REGISTRATION_FAILED, null);
+        mCi.registerForBarringInfoChanged(this, EVENT_BARRING_INFO_CHANGED, null);
 
         //GSM
         mCi.setOnUSSD(this, EVENT_USSD, null);
@@ -387,8 +389,7 @@ public class GsmCdmaPhone extends Phone {
             mIsPhoneInEcmState = getInEcmMode();
             if (mIsPhoneInEcmState) {
                 // Send a message which will invoke handleExitEmergencyCallbackMode
-                mCi.exitEmergencyCallbackMode(
-                        obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE));
+                mCi.exitEmergencyCallbackMode(null);
             }
 
             mCi.setPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
@@ -1316,11 +1317,12 @@ public class GsmCdmaPhone extends Phone {
                 "cannot dial voice call in airplane mode");
         }
         // Check for service before placing non emergency CS voice call.
-        // Allow dial only if either CS is camped on any RAT (or) PS is in LTE service.
+        // Allow dial only if either CS is camped on any RAT (or) PS is in LTE/NR service.
         if (mSST != null
                 && mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE /* CS out of service */
                 && !(mSST.mSS.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE
-                    && ServiceState.isLte(mSST.mSS.getRilDataRadioTechnology())) /* PS not in LTE */
+                && ServiceState.isPsOnlyTech(
+                        mSST.mSS.getRilDataRadioTechnology())) /* PS not in LTE/NR */
                 && !VideoProfile.isVideo(dialArgs.videoState) /* voice call */
                 && !isEmergency /* non-emergency call */) {
             throw new CallStateException(
@@ -2766,6 +2768,13 @@ public class GsmCdmaPhone extends Phone {
                         rfe.domain, rfe.causeCode, rfe.additionalCauseCode);
                 break;
 
+            case EVENT_BARRING_INFO_CHANGED:
+                logd("Event BarringInfoChanged Received");
+                ar = (AsyncResult) msg.obj;
+                BarringInfo barringInfo = (BarringInfo) ar.result;
+                mNotifier.notifyBarringInfoChanged(this, barringInfo);
+                break;
+
             case EVENT_SET_CALL_FORWARD_DONE:
                 ar = (AsyncResult)msg.obj;
                 IccRecords r = mIccRecords.get();
@@ -3293,8 +3302,7 @@ public class GsmCdmaPhone extends Phone {
             if (mWakeLock.isHeld()) {
                 mWakeLock.release();
             }
-            // Send a message which will invoke handleExitEmergencyCallbackMode
-            mCi.exitEmergencyCallbackMode(obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE));
+            mCi.exitEmergencyCallbackMode(null);
         }
     }
 
@@ -3632,8 +3640,8 @@ public class GsmCdmaPhone extends Phone {
     private void phoneObjectUpdater(int newVoiceRadioTech) {
         logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
-        // Check for a voice over lte replacement
-        if (ServiceState.isLte(newVoiceRadioTech)
+        // Check for a voice over LTE/NR replacement
+        if (ServiceState.isPsOnlyTech(newVoiceRadioTech)
                 || (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
             CarrierConfigManager configMgr = (CarrierConfigManager)
                     getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -3934,7 +3942,8 @@ public class GsmCdmaPhone extends Phone {
     private static final int[] VOICE_PS_CALL_RADIO_TECHNOLOGY = {
             ServiceState.RIL_RADIO_TECHNOLOGY_LTE,
             ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA,
-            ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+            ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
+            ServiceState.RIL_RADIO_TECHNOLOGY_NR
     };
 
     /**

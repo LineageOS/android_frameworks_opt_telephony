@@ -37,7 +37,7 @@ import android.net.NetworkRequest;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.SocketKeepalive;
-import android.net.StringNetworkSpecifier;
+import android.net.TelephonyNetworkSpecifier;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -86,8 +86,6 @@ import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import com.android.telephony.Rlog;
-
-import libcore.net.InetAddressUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1330,7 +1328,8 @@ public class DataConnection extends StateMachine {
         result.setLinkUpstreamBandwidthKbps(up);
         result.setLinkDownstreamBandwidthKbps(down);
 
-        result.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(mSubId)));
+        result.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                .setSubscriptionId(mSubId).build());
 
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
                 !mPhone.getServiceState().getDataRoaming());
@@ -1395,7 +1394,7 @@ public class DataConnection extends StateMachine {
         if (address.startsWith("[") && address.endsWith("]") && address.indexOf(':') != -1) {
             address = address.substring(1, address.length() - 1);
         }
-        return InetAddressUtils.isNumericAddress(address);
+        return InetAddresses.isNumericAddress(address);
     }
 
     private SetupResult setLinkProperties(DataCallResponse response,

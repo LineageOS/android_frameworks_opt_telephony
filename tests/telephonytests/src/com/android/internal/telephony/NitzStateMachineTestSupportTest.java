@@ -38,8 +38,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.timezone.CountryTimeZones.OffsetResult;
+
 import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
-import com.android.internal.telephony.TimeZoneLookupHelper.OffsetResult;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -115,7 +116,7 @@ public class NitzStateMachineTestSupportTest {
                     NON_UNIQUE_US_ZONE_SCENARIO.getNetworkCountryIsoCode());
             List<String> possibleZones = Arrays.asList(NON_UNIQUE_US_ZONE_SCENARIO_ZONES);
             assertTrue(possibleZones.contains(actualLookupResult.getTimeZone().getID()));
-            assertFalse(actualLookupResult.getIsOnlyMatch());
+            assertFalse(actualLookupResult.isOnlyMatch());
         }
     }
 

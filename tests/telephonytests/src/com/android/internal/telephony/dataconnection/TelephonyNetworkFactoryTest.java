@@ -16,9 +16,8 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static android.net.NetworkFactory.CMD_CANCEL_REQUEST;
-import static android.net.NetworkFactory.CMD_REQUEST_NETWORK;
-
+import static com.android.internal.telephony.NetworkFactory.CMD_CANCEL_REQUEST;
+import static com.android.internal.telephony.NetworkFactory.CMD_REQUEST_NETWORK;
 import static com.android.internal.telephony.dataconnection.TelephonyNetworkFactory.EVENT_ACTIVE_PHONE_SWITCH;
 
 import static org.junit.Assert.assertEquals;
@@ -34,7 +33,7 @@ import static org.mockito.Mockito.verify;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
-import android.net.StringNetworkSpecifier;
+import android.net.TelephonyNetworkSpecifier;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -93,7 +92,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
                 addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
                 addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
+        netCap.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                .setSubscriptionId(subId).build());
         NetworkRequest networkRequest = new NetworkRequest(netCap, -1,
                 mRequestId++, NetworkRequest.Type.REQUEST);
         mTelephonyNetworkFactoryUT.obtainMessage(CMD_REQUEST_NETWORK, 0, 0, networkRequest)
@@ -118,7 +118,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
                 addCapability(NetworkCapabilities.NET_CAPABILITY_MMS).
                 addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).
                 addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        netCap.setNetworkSpecifier(new StringNetworkSpecifier(Integer.toString(subId)));
+        netCap.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+                .setSubscriptionId(subId).build());
         NetworkRequest networkRequest = new NetworkRequest(netCap, -1,
                 mRequestId++, NetworkRequest.Type.REQUEST);
         mTelephonyNetworkFactoryUT.obtainMessage(CMD_REQUEST_NETWORK, 0, 0, networkRequest)

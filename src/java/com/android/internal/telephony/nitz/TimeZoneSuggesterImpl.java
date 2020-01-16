@@ -22,8 +22,8 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.os.TimestampedValue;
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
+import android.timezone.CountryTimeZones.OffsetResult;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;
@@ -31,6 +31,7 @@ import com.android.internal.telephony.NitzStateMachine.DeviceState;
 import com.android.internal.telephony.TimeZoneLookupHelper;
 import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
 import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.TimeZoneSuggester;
+import com.android.telephony.Rlog;
 
 import java.util.Objects;
 
@@ -142,7 +143,7 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
         PhoneTimeZoneSuggestion.Builder suggestionBuilder =
                 new PhoneTimeZoneSuggestion.Builder(phoneId);
         suggestionBuilder.addDebugInfo("findTimeZoneForTestNetwork: nitzSignal=" + nitzSignal);
-        TimeZoneLookupHelper.OffsetResult lookupResult =
+        OffsetResult lookupResult =
                 mTimeZoneLookupHelper.lookupByNitz(nitzData);
         if (lookupResult == null) {
             suggestionBuilder.addDebugInfo("findTimeZoneForTestNetwork: No zone found");
@@ -150,7 +151,7 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
             suggestionBuilder.setZoneId(lookupResult.getTimeZone().getID());
             suggestionBuilder.setMatchType(
                     PhoneTimeZoneSuggestion.MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY);
-            int quality = lookupResult.getIsOnlyMatch()
+            int quality = lookupResult.isOnlyMatch()
                     ? PhoneTimeZoneSuggestion.QUALITY_SINGLE_ZONE
                     : PhoneTimeZoneSuggestion.QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET;
             suggestionBuilder.setQuality(quality);
@@ -183,13 +184,13 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
         }
 
         // Try to find a match using both country + NITZ signal.
-        TimeZoneLookupHelper.OffsetResult lookupResult =
+        OffsetResult lookupResult =
                 mTimeZoneLookupHelper.lookupByNitzCountry(nitzData, countryIsoCode);
         if (lookupResult != null) {
             suggestionBuilder.setZoneId(lookupResult.getTimeZone().getID());
             suggestionBuilder.setMatchType(
                     PhoneTimeZoneSuggestion.MATCH_TYPE_NETWORK_COUNTRY_AND_OFFSET);
-            int quality = lookupResult.getIsOnlyMatch()
+            int quality = lookupResult.isOnlyMatch()
                     ? PhoneTimeZoneSuggestion.QUALITY_SINGLE_ZONE
                     : PhoneTimeZoneSuggestion.QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET;
             suggestionBuilder.setQuality(quality);

@@ -24,15 +24,14 @@ import android.content.Context;
 import android.os.Build;
 import android.os.SystemProperties;
 import android.text.TextUtils;
+import android.timezone.TelephonyLookup;
+import android.timezone.TelephonyNetwork;
+import android.timezone.TelephonyNetworkFinder;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
-
-import libcore.timezone.TelephonyLookup;
-import libcore.timezone.TelephonyNetwork;
-import libcore.timezone.TelephonyNetworkFinder;
 
 import java.util.ArrayList;
 import java.util.Collections;
