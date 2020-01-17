@@ -138,7 +138,7 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mRingingCall).getState();
         doReturn(mExecutor).when(mContext).getMainExecutor();
 
-        mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
+        doReturn(true).when(mTelephonyManager).isVoiceCapable();
 
         mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, true);
 
