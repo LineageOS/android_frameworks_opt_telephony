@@ -51,8 +51,8 @@ public class PhoneStateListenerTest extends TelephonyTest {
             @Override
             public void onServiceStateChanged(ServiceState serviceState) {
                 logd("Service State Changed");
-                mServiceState.setVoiceRegState(serviceState.getVoiceRegState());
-                mServiceState.setDataRegState(serviceState.getDataRegState());
+                mServiceState.setVoiceRegState(serviceState.getState());
+                mServiceState.setDataRegState(serviceState.getDataRegistrationState());
             }
 
             @Override

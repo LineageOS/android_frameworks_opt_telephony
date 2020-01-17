@@ -233,8 +233,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         ServiceState mergedServiceState = mPhoneUT.getServiceState();
 
-        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getVoiceRegState());
-        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegistrationState());
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, mergedServiceState.getDataNetworkType());
     }
 
@@ -315,8 +315,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         ServiceState mergedServiceState = mPhoneUT.getServiceState();
 
-        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getVoiceRegState());
-        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, mergedServiceState.getDataRegistrationState());
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mergedServiceState.getDataNetworkType());
     }
 
