@@ -75,6 +75,7 @@ import com.android.telephony.Rlog;
 import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -1163,17 +1164,18 @@ public abstract class InboundSmsHandler extends StateMachine {
             // Get a list of currently started users.
             int[] users = null;
             final List<UserHandle> userHandles = mUserManager.getUserHandles(false);
+            final List<UserHandle> runningUserHandles = new ArrayList();
             for (UserHandle handle : userHandles) {
-                if (!mUserManager.isUserRunning(handle)) {
-                    userHandles.remove(handle);
+                if (mUserManager.isUserRunning(handle)) {
+                    runningUserHandles.add(handle);
                 }
             }
-            if (userHandles.isEmpty()) {
+            if (runningUserHandles.isEmpty()) {
                 users = new int[] {user.getIdentifier()};
             } else {
-                users = new int[userHandles.size()];
-                for (int i = 0; i < userHandles.size(); i++) {
-                    users[i] = userHandles.get(i).getIdentifier();
+                users = new int[runningUserHandles.size()];
+                for (int i = 0; i < runningUserHandles.size(); i++) {
+                    users[i] = runningUserHandles.get(i).getIdentifier();
                 }
             }
             // Deliver the broadcast only to those running users that are permitted
