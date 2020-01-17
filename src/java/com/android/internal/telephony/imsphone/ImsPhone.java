@@ -213,6 +213,7 @@ public class ImsPhone extends ImsPhoneBase {
     public FeatureConnector<RcsFeatureManager> mRcsManagerConnector;
     @VisibleForTesting
     public FeatureConnector.Listener<RcsFeatureManager> mRcsFeatureConnectorListener;
+    public ImsRcsStatusListener mRcsStatusListener;
 
     // To redial silently through GSM or CDMA when dialing through IMS fails
     private String mLastDialString;
@@ -434,6 +435,10 @@ public class ImsPhone extends ImsPhoneBase {
                 // Listen to the IMS RCS registration status changed
                 mRcsManager.registerImsRegistrationCallback(
                         mImsRcsRegistrationHelper.getCallbackBinder());
+
+                if (mRcsStatusListener != null) {
+                    mRcsStatusListener.onRcsConnected(getPhoneId(), mRcsManager);
+                }
             }
 
             @Override
@@ -444,6 +449,10 @@ public class ImsPhone extends ImsPhoneBase {
                     mRcsManager.release();
                 }
                 mRcsManager = null;
+
+                if (mRcsStatusListener != null) {
+                    mRcsStatusListener.onRcsDisconnected(getPhoneId());
+                }
             }
         };
 
@@ -454,6 +463,10 @@ public class ImsPhone extends ImsPhoneBase {
 
     public RcsFeatureManager getRcsManager() {
         return mRcsManager;
+    }
+
+    public void setRcsStatusListener(ImsRcsStatusListener listener) {
+        mRcsStatusListener = listener;
     }
 
     @UnsupportedAppUsage
