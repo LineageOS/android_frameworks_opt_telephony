@@ -147,11 +147,13 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
         boolean imsSmsDisabled = (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
-                    || (ServiceState.isLte(currentDataNetwork)
-                    && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
-                    && mPhone.getServiceState().getVoiceNetworkType()
-                    == TelephonyManager.NETWORK_TYPE_1xRTT
-                    && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
+                || (currentDataNetwork == TelephonyManager.NETWORK_TYPE_LTE
+                || currentDataNetwork == TelephonyManager.NETWORK_TYPE_LTE_CA
+                || currentDataNetwork == TelephonyManager.NETWORK_TYPE_NR)
+                && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed())
+                && mPhone.getServiceState().getVoiceNetworkType()
+                        == TelephonyManager.NETWORK_TYPE_1xRTT
+                && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
 
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
