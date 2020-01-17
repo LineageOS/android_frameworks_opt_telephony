@@ -78,6 +78,7 @@ import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.stub.ImsUtImplBase;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
@@ -1207,23 +1208,23 @@ public class ImsPhone extends ImsPhoneBase {
 
     private int getCBTypeFromFacility(String facility) {
         if (CB_FACILITY_BAOC.equals(facility)) {
-            return ImsUtInterface.CB_BAOC;
+            return ImsUtImplBase.CALL_BARRING_ALL_OUTGOING;
         } else if (CB_FACILITY_BAOIC.equals(facility)) {
-            return ImsUtInterface.CB_BOIC;
+            return ImsUtImplBase.CALL_BARRING_OUTGOING_INTL;
         } else if (CB_FACILITY_BAOICxH.equals(facility)) {
-            return ImsUtInterface.CB_BOIC_EXHC;
+            return ImsUtImplBase.CALL_BARRING_OUTGOING_INTL_EXCL_HOME;
         } else if (CB_FACILITY_BAIC.equals(facility)) {
-            return ImsUtInterface.CB_BAIC;
+            return ImsUtImplBase.CALL_BARRING_ALL_INCOMING;
         } else if (CB_FACILITY_BAICr.equals(facility)) {
-            return ImsUtInterface.CB_BIC_WR;
+            return ImsUtImplBase.CALL_BLOCKING_INCOMING_WHEN_ROAMING;
         } else if (CB_FACILITY_BA_ALL.equals(facility)) {
-            return ImsUtInterface.CB_BA_ALL;
+            return ImsUtImplBase.CALL_BARRING_ALL;
         } else if (CB_FACILITY_BA_MO.equals(facility)) {
-            return ImsUtInterface.CB_BA_MO;
+            return ImsUtImplBase.CALL_BARRING_OUTGOING_ALL_SERVICES;
         } else if (CB_FACILITY_BA_MT.equals(facility)) {
-            return ImsUtInterface.CB_BA_MT;
+            return ImsUtImplBase.CALL_BARRING_INCOMING_ALL_SERVICES;
         } else if (CB_FACILITY_BIC_ACR.equals(facility)) {
-            return ImsUtInterface.CB_BIC_ACR;
+            return ImsUtImplBase.CALL_BARRING_ANONYMOUS_INCOMING;
         }
 
         return 0;

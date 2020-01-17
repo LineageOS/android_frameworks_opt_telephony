@@ -59,6 +59,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsUtImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -538,20 +539,21 @@ public class ImsPhoneTest extends TelephonyTest {
                 CommandsInterface.SERVICE_CLASS_NONE);
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
-        verify(mImsUtInterface).queryCallBarring(eq(ImsUtInterface.CB_BAOC),
+        verify(mImsUtInterface).queryCallBarring(eq(ImsUtImplBase.CALL_BARRING_ALL_OUTGOING),
                 messageArgumentCaptor.capture(), eq(CommandsInterface.SERVICE_CLASS_NONE));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
         mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOIC, true, "abc", msg,
                 CommandsInterface.SERVICE_CLASS_NONE);
-        verify(mImsUtInterface).updateCallBarring(eq(ImsUtInterface.CB_BOIC),
+        verify(mImsUtInterface).updateCallBarring(eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL),
                 eq(CommandsInterface.CF_ACTION_ENABLE), messageArgumentCaptor.capture(),
                 (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
         mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg,
                 CommandsInterface.SERVICE_CLASS_NONE);
-        verify(mImsUtInterface).updateCallBarring(eq(ImsUtInterface.CB_BOIC_EXHC),
+        verify(mImsUtInterface).updateCallBarring(
+                eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL_EXCL_HOME),
                 eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
                 (String[])eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
