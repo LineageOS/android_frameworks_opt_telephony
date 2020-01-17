@@ -72,10 +72,10 @@ public class ServiceStateTest extends TestCase {
         ServiceState ss = new ServiceState();
 
         ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
-        assertEquals(ServiceState.STATE_IN_SERVICE, ss.getDataRegState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, ss.getDataRegistrationState());
 
         ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
-        assertEquals(ServiceState.STATE_IN_SERVICE, ss.getVoiceRegState());
+        assertEquals(ServiceState.STATE_IN_SERVICE, ss.getState());
     }
 
     @SmallTest

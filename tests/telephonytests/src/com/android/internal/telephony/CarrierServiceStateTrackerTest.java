@@ -145,8 +145,8 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         notificationTypeMap.put(CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK,
                 spyPrefNetworkNotification);
         Notification.Builder mNotificationBuilder = new Notification.Builder(mContext);
-        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getVoiceRegState();
-        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getDataRegState();
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getState();
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getDataRegistrationState();
         doReturn(true).when(mSST).isRadioOn();
         doReturn(mNotificationBuilder).when(spyPrefNetworkNotification).getNotificationBuilder();
 

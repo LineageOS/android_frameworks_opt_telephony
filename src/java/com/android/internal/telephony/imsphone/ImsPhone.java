@@ -494,7 +494,7 @@ public class ImsPhone extends ImsPhoneBase {
         boolean isVoiceRegStateChanged = false;
 
         synchronized (this) {
-            isVoiceRegStateChanged = mSS.getVoiceRegState() != state;
+            isVoiceRegStateChanged = mSS.getState() != state;
             mSS.setVoiceRegState(state);
         }
         updateDataServiceState();
@@ -1608,7 +1608,7 @@ public class ImsPhone extends ImsPhoneBase {
         if (mSS != null && mDefaultPhone.getServiceStateTracker() != null
                 && mDefaultPhone.getServiceStateTracker().mSS != null) {
             ServiceState ss = mDefaultPhone.getServiceStateTracker().mSS;
-            mSS.setDataRegState(ss.getDataRegState());
+            mSS.setDataRegState(ss.getDataRegistrationState());
             List<NetworkRegistrationInfo> nriList =
                     ss.getNetworkRegistrationInfoListForDomain(NetworkRegistrationInfo.DOMAIN_PS);
             for (NetworkRegistrationInfo nri : nriList) {
@@ -2125,8 +2125,8 @@ public class ImsPhone extends ImsPhoneBase {
         if (mRoaming == newRoamingState) {
             return;
         }
-        boolean isInService = (ss.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
-                || ss.getDataRegState() == ServiceState.STATE_IN_SERVICE);
+        boolean isInService = (ss.getState() == ServiceState.STATE_IN_SERVICE
+                || ss.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE);
         // If we are not IN_SERVICE for voice or data, ignore change roaming state, as we always
         // move to home in this case.
         if (!isInService) {

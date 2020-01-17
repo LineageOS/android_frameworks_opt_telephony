@@ -166,8 +166,8 @@ public class CarrierServiceStateTracker extends Handler {
         if (mSST.mSS == null) {
             return true; //something has gone wrong, return true and not show the notification.
         }
-        return (mSST.mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
-                || mSST.mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE);
+        return (mSST.mSS.getState() == ServiceState.STATE_IN_SERVICE
+                || mSST.mSS.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE);
     }
 
     private boolean isPhoneRegisteredForWifiCalling() {

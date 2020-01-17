@@ -369,12 +369,12 @@ public class TelephonyTester {
         /*if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
             ss.setVoiceRegState(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_REG_STATE,
                     ServiceState.STATE_OUT_OF_SERVICE));
-            log("Override voice service state with " + ss.getVoiceRegState());
+            log("Override voice service state with " + ss.getState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_REG_STATE)) {
             ss.setDataRegState(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_REG_STATE,
                     ServiceState.STATE_OUT_OF_SERVICE));
-            log("Override data service state with " + ss.getDataRegState());
+            log("Override data service state with " + ss.getDataRegistrationState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_RAT)) {
             ss.setRilVoiceRadioTechnology(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_RAT,

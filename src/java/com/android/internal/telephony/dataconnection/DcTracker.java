@@ -1578,7 +1578,7 @@ public class DcTracker extends Handler {
             }
             int radioTech = getDataRat();
             if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN && mPhone.getServiceState()
-                    .getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                    .getState() == ServiceState.STATE_IN_SERVICE) {
                 radioTech = getVoiceRat();
             }
             log("service state=" + mPhone.getServiceState());
@@ -3918,7 +3918,7 @@ public class DcTracker extends Handler {
         if (phoneSwitcher == null || serviceState == null) return false;
 
         // If voice is also not in service, don't auto attach.
-        if (serviceState.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) return false;
+        if (serviceState.getState() != ServiceState.STATE_IN_SERVICE) return false;
 
         // If voice is on LTE or NR, don't auto attach as for LTE / NR data would be attached.
         if (serviceState.getVoiceNetworkType() == NETWORK_TYPE_LTE
