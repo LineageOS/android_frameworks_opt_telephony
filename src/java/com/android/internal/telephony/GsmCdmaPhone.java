@@ -1003,11 +1003,11 @@ public class GsmCdmaPhone extends Phone {
      */
     private ServiceState mergeServiceStates(ServiceState baseSs, ServiceState imsSs) {
         // No need to merge states if the baseSs is IN_SERVICE.
-        if (baseSs.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+        if (baseSs.getState() == ServiceState.STATE_IN_SERVICE) {
             return baseSs;
         }
         // "IN_SERVICE" in this case means IMS is registered.
-        if (imsSs.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) {
+        if (imsSs.getState() != ServiceState.STATE_IN_SERVICE) {
             return baseSs;
         }
 
@@ -1015,7 +1015,7 @@ public class GsmCdmaPhone extends Phone {
         // Voice override for IMS case. In this case, voice registration is OUT_OF_SERVICE, but
         // IMS is available, so use data registration state as a basis for determining
         // whether or not the physical link is available.
-        newSs.setVoiceRegState(baseSs.getDataRegState());
+        newSs.setVoiceRegState(baseSs.getDataRegistrationState());
         newSs.setEmergencyOnly(false); // only get here if voice is IN_SERVICE
         return newSs;
     }
@@ -1302,7 +1302,8 @@ public class GsmCdmaPhone extends Phone {
         }
 
         if (mSST != null && mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE
-                && mSST.mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE && !isEmergency) {
+                && mSST.mSS.getDataRegistrationState() != ServiceState.STATE_IN_SERVICE
+                && !isEmergency) {
             throw new CallStateException("cannot dial in current state");
         }
         // Check non-emergency voice CS call - shouldn't dial when POWER_OFF
@@ -1318,7 +1319,7 @@ public class GsmCdmaPhone extends Phone {
         // Allow dial only if either CS is camped on any RAT (or) PS is in LTE/NR service.
         if (mSST != null
                 && mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE /* CS out of service */
-                && !(mSST.mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+                && !(mSST.mSS.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE
                 && ServiceState.isPsOnlyTech(
                         mSST.mSS.getRilDataRadioTechnology())) /* PS not in LTE/NR */
                 && !VideoProfile.isVideo(dialArgs.videoState) /* voice call */
@@ -3949,7 +3950,7 @@ public class GsmCdmaPhone extends Phone {
     public @RilRadioTechnology int getCsCallRadioTech() {
         int calcVrat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
         if (mSST != null) {
-            calcVrat = getCsCallRadioTech(mSST.mSS.getVoiceRegState(),
+            calcVrat = getCsCallRadioTech(mSST.mSS.getState(),
                     mSST.mSS.getRilVoiceRadioTechnology());
         }
 

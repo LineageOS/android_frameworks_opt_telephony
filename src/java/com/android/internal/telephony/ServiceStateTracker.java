@@ -699,7 +699,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         // If we are previously in service, we need to notify that we are out of service now.
-        if (mSS != null && mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+        if (mSS != null && mSS.getState() == ServiceState.STATE_IN_SERVICE) {
             mNetworkDetachedRegistrants.notifyRegistrants();
         }
 
@@ -841,7 +841,7 @@ public class ServiceStateTracker extends Handler {
      */
     protected void notifyVoiceRegStateRilRadioTechnologyChanged() {
         int rat = mSS.getRilVoiceRadioTechnology();
-        int vrs = mSS.getVoiceRegState();
+        int vrs = mSS.getState();
         if (DBG) log("notifyVoiceRegStateRilRadioTechnologyChanged: vrs=" + vrs + " rat=" + rat);
 
         mVoiceRegStateOrRatChangedRegistrants.notifyResult(new Pair<Integer, Integer>(vrs, rat));
@@ -879,11 +879,11 @@ public class ServiceStateTracker extends Handler {
     protected void useDataRegStateForDataOnlyDevices() {
         if (mVoiceCapable == false) {
             if (DBG) {
-                log("useDataRegStateForDataOnlyDevice: VoiceRegState=" + mNewSS.getVoiceRegState()
-                    + " DataRegState=" + mNewSS.getDataRegState());
+                log("useDataRegStateForDataOnlyDevice: VoiceRegState=" + mNewSS.getState()
+                        + " DataRegState=" + mNewSS.getDataRegistrationState());
             }
             // TODO: Consider not lying and instead have callers know the difference.
-            mNewSS.setVoiceRegState(mNewSS.getDataRegState());
+            mNewSS.setVoiceRegState(mNewSS.getDataRegistrationState());
         }
     }
 
@@ -892,8 +892,8 @@ public class ServiceStateTracker extends Handler {
         if (mPhone.getContext().getResources().
                 getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
             // If the phone is not registered on a network, no need to update.
-            boolean isRegistered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE ||
-                    mSS.getVoiceRegState() == ServiceState.STATE_EMERGENCY_ONLY;
+            boolean isRegistered = mSS.getState() == ServiceState.STATE_IN_SERVICE
+                    || mSS.getState() == ServiceState.STATE_EMERGENCY_ONLY;
             if (!isRegistered) {
                 log("updatePhoneObject: Ignore update");
                 return;
@@ -1365,7 +1365,7 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_CHECK_REPORT_GPRS:
                 if (mPhone.isPhoneTypeGsm() && mSS != null &&
-                        !isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+                        !isGprsConsistent(mSS.getDataRegistrationState(), mSS.getState())) {
 
                     // Can't register data service while voice service is ok
                     // i.e. CREG is ok while CGREG is not
@@ -1857,7 +1857,7 @@ public class ServiceStateTracker extends Handler {
                 final int dataRat = getRilDataRadioTechnologyForWwan(mNewSS);
                 if (ServiceState.isCdma(dataRat)) {
                     final boolean isVoiceInService =
-                            (mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
+                            (mNewSS.getState() == ServiceState.STATE_IN_SERVICE);
                     if (isVoiceInService) {
                         boolean isVoiceRoaming = mNewSS.getVoiceRoaming();
                         if (mNewSS.getDataRoaming() != isVoiceRoaming) {
@@ -2722,7 +2722,7 @@ public class ServiceStateTracker extends Handler {
                 // is satisfied or SPN override is enabled for this carrier.
 
                 // Handle Flight Mode
-                if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
+                if (mSS.getState() == ServiceState.STATE_POWER_OFF) {
                     wfcVoiceSpnFormat = wfcFlightSpnFormat;
                 }
 
@@ -2735,7 +2735,7 @@ public class ServiceStateTracker extends Handler {
                 // Show PLMN + Wi-Fi Calling if there is no valid SPN in the above case
                 String originalPlmn = plmn.trim();
                 plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
-            } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
+            } else if (mSS.getState() == ServiceState.STATE_POWER_OFF
                     || (showPlmn && TextUtils.equals(spn, plmn))) {
                 // airplane mode or spn equals plmn, do not show spn
                 spn = null;
@@ -2937,7 +2937,7 @@ public class ServiceStateTracker extends Handler {
      */
     @UnsupportedAppUsage
     public int getCurrentDataConnectionState() {
-        return mSS.getDataRegState();
+        return mSS.getDataRegistrationState();
     }
 
     /**
@@ -2954,7 +2954,7 @@ public class ServiceStateTracker extends Handler {
             // There are cases where we we would setup data connection even data is not yet
             // attached. In these cases we check voice rat.
             if (radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN
-                    && mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE) {
+                    && mSS.getDataRegistrationState() != ServiceState.STATE_IN_SERVICE) {
                 radioTechnology = mSS.getRilVoiceRadioTechnology();
             }
             // Concurrent voice and data is not allowed for 2G technologies. It's allowed in other
@@ -3113,16 +3113,16 @@ public class ServiceStateTracker extends Handler {
         }
 
         boolean hasRegistered =
-                mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
-                        && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
+                mSS.getState() != ServiceState.STATE_IN_SERVICE
+                        && mNewSS.getState() == ServiceState.STATE_IN_SERVICE;
 
         boolean hasDeregistered =
-                mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
-                        && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
+                mSS.getState() == ServiceState.STATE_IN_SERVICE
+                        && mNewSS.getState() != ServiceState.STATE_IN_SERVICE;
 
         boolean hasAirplaneModeOnChanged =
-                mSS.getVoiceRegState() != ServiceState.STATE_POWER_OFF
-                        && mNewSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF;
+                mSS.getState() != ServiceState.STATE_POWER_OFF
+                        && mNewSS.getState() == ServiceState.STATE_POWER_OFF;
 
         SparseBooleanArray hasDataAttached = new SparseBooleanArray(
                 mTransportManager.getAvailableTransports().length);
@@ -3178,7 +3178,7 @@ public class ServiceStateTracker extends Handler {
                 && (mSS.getRilDataRadioTechnology() != mNewSS.getRilDataRadioTechnology());
 
         boolean hasVoiceRegStateChanged =
-                mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
+                mSS.getState() != mNewSS.getState();
 
         boolean hasNrFrequencyRangeChanged =
                 mSS.getNrFrequencyRange() != mNewSS.getNrFrequencyRange();
@@ -3197,7 +3197,8 @@ public class ServiceStateTracker extends Handler {
 
         // ratchet the new tech up through its rat family but don't drop back down
         // until cell change or device is OOS
-        boolean isDataInService = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
+        boolean isDataInService = mNewSS.getDataRegistrationState()
+                == ServiceState.STATE_IN_SERVICE;
         if (isDataInService) {
             mRatRatcheter.ratchet(mSS, mNewSS, hasLocationChanged);
         }
@@ -3225,7 +3226,7 @@ public class ServiceStateTracker extends Handler {
         if (mPhone.isPhoneTypeCdmaLte()) {
             final int wwanDataRat = getRilDataRadioTechnologyForWwan(mSS);
             final int newWwanDataRat = getRilDataRadioTechnologyForWwan(mNewSS);
-            has4gHandoff = mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+            has4gHandoff = mNewSS.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE
                     && ((ServiceState.isPsOnlyTech(wwanDataRat)
                     && (newWwanDataRat == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD))
                     || ((wwanDataRat == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)
@@ -3269,8 +3270,8 @@ public class ServiceStateTracker extends Handler {
         if (hasVoiceRegStateChanged || anyDataRegChanged) {
             EventLog.writeEvent(mPhone.isPhoneTypeGsm() ? EventLogTags.GSM_SERVICE_STATE_CHANGE :
                             EventLogTags.CDMA_SERVICE_STATE_CHANGE,
-                    mSS.getVoiceRegState(), mSS.getDataRegState(),
-                    mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
+                    mSS.getState(), mSS.getDataRegistrationState(),
+                    mNewSS.getState(), mNewSS.getDataRegistrationState());
         }
 
         if (mPhone.isPhoneTypeGsm()) {
@@ -3506,7 +3507,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (mPhone.isPhoneTypeGsm()) {
-            if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+            if (!isGprsConsistent(mSS.getDataRegistrationState(), mSS.getState())) {
                 if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
                     mStartedGprsRegCheck = true;
 
@@ -3529,7 +3530,7 @@ public class ServiceStateTracker extends Handler {
             if ((mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
                     && (!mIsSubscriptionFromRuim)) {
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
-                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                if (mSS.getState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
                 } else {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used for
@@ -3549,16 +3550,16 @@ public class ServiceStateTracker extends Handler {
                 // Only when CDMA is in service, ERI will take effect
                 eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
-                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                if (mSS.getState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
-                } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
+                } else if (mSS.getState() == ServiceState.STATE_POWER_OFF) {
                     eriText = getServiceProviderName();
                     if (TextUtils.isEmpty(eriText)) {
                         // Sets operator alpha property by retrieving from
                         // build-time system property
                         eriText = SystemProperties.get("ro.cdma.home.operator.alpha");
                     }
-                } else if (mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE) {
+                } else if (mSS.getDataRegistrationState() != ServiceState.STATE_IN_SERVICE) {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
                     // for mRegistrationState 0,2,3 and 4
                     eriText = mPhone.getContext()
@@ -4472,7 +4473,7 @@ public class ServiceStateTracker extends Handler {
         Registrant r = new Registrant(h, what, obj);
 
         mNetworkAttachedRegistrants.add(r);
-        if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+        if (mSS.getState() == ServiceState.STATE_IN_SERVICE) {
             r.notifyRegistrant();
         }
     }
@@ -4491,7 +4492,7 @@ public class ServiceStateTracker extends Handler {
         Registrant r = new Registrant(h, what, obj);
 
         mNetworkDetachedRegistrants.add(r);
-        if (mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE) {
+        if (mSS.getState() != ServiceState.STATE_IN_SERVICE) {
             r.notifyRegistrant();
         }
     }
@@ -4967,7 +4968,7 @@ public class ServiceStateTracker extends Handler {
                 TelephonyManager tm = TelephonyManager.from(mPhone.getContext())
                         .createForSubscriptionId(info.getSubscriptionId());
                 ServiceState ss = tm.getServiceState();
-                if (ss != null && ss.getDataRegState() == ServiceState.STATE_IN_SERVICE) {
+                if (ss != null && ss.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE) {
                     return true;
                 }
             }
@@ -5238,7 +5239,7 @@ public class ServiceStateTracker extends Handler {
     @UnsupportedAppUsage
     protected void setRoamingType(ServiceState currentServiceState) {
         final boolean isVoiceInService =
-                (currentServiceState.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
+                (currentServiceState.getState() == ServiceState.STATE_IN_SERVICE);
         if (isVoiceInService) {
             if (currentServiceState.getVoiceRoaming()) {
                 if (mPhone.isPhoneTypeGsm()) {
@@ -5281,7 +5282,7 @@ public class ServiceStateTracker extends Handler {
             }
         }
         final boolean isDataInService =
-                (currentServiceState.getDataRegState() == ServiceState.STATE_IN_SERVICE);
+                (currentServiceState.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE);
         final int dataRegType = getRilDataRadioTechnologyForWwan(currentServiceState);
         if (isDataInService) {
             if (!currentServiceState.getDataRoaming()) {
@@ -5482,8 +5483,8 @@ public class ServiceStateTracker extends Handler {
      * @param ss service state.
      */
     protected int getCombinedRegState(ServiceState ss) {
-        int regState = ss.getVoiceRegState();
-        int dataRegState = ss.getDataRegState();
+        int regState = ss.getState();
+        int dataRegState = ss.getDataRegistrationState();
         if ((regState == ServiceState.STATE_OUT_OF_SERVICE
                 || regState == ServiceState.STATE_POWER_OFF)
                 && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
