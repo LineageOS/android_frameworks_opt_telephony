@@ -179,7 +179,7 @@ public class SmsController extends ISmsImplBase {
     @Override
     public void sendTextForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
@@ -188,7 +188,6 @@ public class SmsController extends ISmsImplBase {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
             return;
         }
-
         long token = Binder.clearCallingIdentity();
         SubscriptionInfo info;
         try {
@@ -200,7 +199,7 @@ public class SmsController extends ISmsImplBase {
             sendBluetoothText(info, destAddr, text, sentIntent, deliveryIntent);
         } else {
             sendIccText(subId, callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
-                    persistMessageForNonDefaultSmsApp);
+                    persistMessageForNonDefaultSmsApp, messageId);
         }
     }
 
@@ -217,14 +216,16 @@ public class SmsController extends ISmsImplBase {
 
     private void sendIccText(int subId, String callingPackage, String destAddr,
             String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId) {
+        Rlog.d(LOG_TAG, "sendTextForSubscriber iccSmsIntMgr"
+                + " Subscription: " + subId + " id: " + messageId);
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
-                    deliveryIntent, persistMessageForNonDefaultSmsApp);
+                    deliveryIntent, persistMessageForNonDefaultSmsApp, messageId);
         } else {
             Rlog.e(LOG_TAG, "sendTextForSubscriber iccSmsIntMgr is null for"
-                    + " Subscription: " + subId);
+                    + " Subscription: " + subId + " id: " + messageId);
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
@@ -273,7 +274,8 @@ public class SmsController extends ISmsImplBase {
     @Override
     public void sendMultipartTextForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp) {
+            List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp,
+            long messageId) {
         // This is different from the checking of other method. It prefers the package name
         // returned by getCallPackage() for backward-compatibility.
         if (getCallingPackage() != null) {
@@ -282,10 +284,10 @@ public class SmsController extends ISmsImplBase {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendMultipartText(callingPackage, destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents, persistMessageForNonDefaultSmsApp);
+                    deliveryIntents, persistMessageForNonDefaultSmsApp, messageId);
         } else {
             Rlog.e(LOG_TAG, "sendMultipartTextForSubscriber iccSmsIntMgr is null for"
-                    + " Subscription: " + subId);
+                    + " Subscription: " + subId + " id: " + messageId);
             sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
@@ -302,7 +304,7 @@ public class SmsController extends ISmsImplBase {
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, destAddr, scAddr, parts,
                     sentIntents, deliveryIntents, persistMessage, priority, expectMore,
-                    validityPeriod);
+                    validityPeriod, 0L /* messageId */);
         } else {
             Rlog.e(LOG_TAG, "sendMultipartTextWithOptions iccSmsIntMgr is null for"
                     + " Subscription: " + subId);

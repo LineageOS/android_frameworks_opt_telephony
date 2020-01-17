@@ -27,12 +27,12 @@ import android.database.SQLException;
 import android.os.PersistableBundle;
 import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -188,8 +188,10 @@ public class SmsBroadcastUndelivered {
                 InboundSmsTracker tracker;
                 try {
                     tracker = TelephonyComponentFactory.getInstance()
-                            .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(cursor,
-                            isCurrentFormat3gpp2);
+                            .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(
+                                    context,
+                                    cursor,
+                                    isCurrentFormat3gpp2);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(TAG, "error loading SmsTracker: " + e);
                     continue;
