@@ -1653,7 +1653,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                     new android.hardware.radio.V1_5.LinkAddress();
                             linkAddress.address = la.getAddress().getHostAddress();
                             linkAddress.properties = la.getFlags();
-                            // TODO: Add deprecated time and expired time support here.
+                            linkAddress.deprecationTime = la.getDeprecationTime();
+                            linkAddress.expirationTime = la.getExpirationTime();
                             addresses15.add(linkAddress);
                         }
                     }
@@ -6464,10 +6465,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             active = result.active;
             protocolType = result.type;
             ifname = result.ifname;
-            //addresses = result.addresses.stream().toArray(String[]::new);
             laList = result.addresses.stream().map(a -> new LinkAddress(
-                    InetAddresses.parseNumericAddress(a.address), 0, a.properties, 0))
-                    .collect(Collectors.toList());
+                    InetAddresses.parseNumericAddress(a.address), 0, a.properties, 0,
+                    a.deprecationTime, a.expirationTime)).collect(Collectors.toList());
+
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
