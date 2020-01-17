@@ -238,7 +238,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** Radio bug detector instance */
     private RadioBugDetector mRadioBugDetector = null;
 
-    boolean mIsMobileNetworkSupported;
+    boolean mIsCellularSupported;
     RadioResponse mRadioResponse;
     RadioIndication mRadioIndication;
     volatile IRadio mRadioProxy = null;
@@ -419,7 +419,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @VisibleForTesting
     public synchronized IRadio getRadioProxy(Message result) {
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return null;
-        if (!mIsMobileNetworkSupported) {
+        if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
             if (result != null) {
                 AsyncResult.forMessage(result, null,
@@ -533,7 +533,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @VisibleForTesting
     public synchronized IOemHook getOemHookProxy(Message result) {
         if (!SubscriptionManager.isValidPhoneId((mPhoneId))) return null;
-        if (!mIsMobileNetworkSupported) {
+        if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getOemHookProxy: Not calling getService(): wifi-only");
             if (result != null) {
                 AsyncResult.forMessage(result, null,
@@ -607,9 +607,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mRadioBugDetector = new RadioBugDetector(context, mPhoneId);
         }
 
-        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
+        TelephonyManager tm = (TelephonyManager) context.getSystemService(
                 Context.TELEPHONY_SERVICE);
-        mIsMobileNetworkSupported = telephonyManager.isDataCapable();
+        mIsCellularSupported = tm.isVoiceCapable() || tm.isSmsCapable() || tm.isDataCapable();
 
         mRadioResponse = new RadioResponse(this);
         mRadioIndication = new RadioIndication(this);
