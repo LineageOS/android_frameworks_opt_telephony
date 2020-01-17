@@ -36,15 +36,6 @@ public class ServiceStateTest extends TestCase {
     @SmallTest
     public void testRoaming() {
         ServiceState ss = new ServiceState();
-        // add data registration state
-        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
-                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
-                .build();
-        ss.addNetworkRegistrationInfo(nri);
-
-        assertTrue(ss.getDataRoamingFromRegistration());
 
         ss.setCdmaDefaultRoamingIndicator(1);
         assertEquals(1, ss.getCdmaDefaultRoamingIndicator());
@@ -61,6 +52,9 @@ public class ServiceStateTest extends TestCase {
         ss.setDataRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
         assertTrue(ss.getDataRoaming());
         assertEquals(ServiceState.ROAMING_TYPE_DOMESTIC, ss.getDataRoamingType());
+
+        ss.setDataRoamingFromRegistration(true);
+        assertTrue(ss.getDataRoamingFromRegistration());
 
         ss.setVoiceRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
         assertTrue(ss.getVoiceRoaming());
@@ -240,6 +234,7 @@ public class ServiceStateTest extends TestCase {
         ss.setDataRegState(ServiceState.STATE_OUT_OF_SERVICE);
         ss.setVoiceRoamingType(ServiceState.ROAMING_TYPE_INTERNATIONAL);
         ss.setDataRoamingType(ServiceState.ROAMING_TYPE_UNKNOWN);
+        ss.setDataRoamingFromRegistration(true);
         ss.setOperatorName("long", "short", "numeric");
         ss.setIsManualSelection(true);
         ss.setCssIndicator(1);
@@ -283,6 +278,7 @@ public class ServiceStateTest extends TestCase {
 
         ss.setVoiceRoamingType(ServiceState.ROAMING_TYPE_INTERNATIONAL);
         ss.setDataRoamingType(ServiceState.ROAMING_TYPE_UNKNOWN);
+        ss.setDataRoamingFromRegistration(true);
         ss.setOperatorName("long", "short", "numeric");
         ss.setIsManualSelection(true);
 
