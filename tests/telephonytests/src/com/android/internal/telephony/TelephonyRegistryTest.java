@@ -52,6 +52,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(AndroidTestingRunner.class)
@@ -65,6 +66,48 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private int mActiveSubId;
     private int mSrvccState = -1;
     private int mRadioPowerState = RADIO_POWER_UNAVAILABLE;
+    // All events contribute to TelephonyRegistry.ENFORCE_PHONE_STATE_PERMISSION_MASK
+    private static final Map<Integer, String> READ_PHONE_STATE_EVENTS = Map.of(
+            PhoneStateListener.LISTEN_CALL_FORWARDING_INDICATOR,
+            "PhoneStateListener.LISTEN_CALL_FORWARDING_INDICATOR",
+            PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR,
+            "PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR",
+            PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST,
+            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST",
+            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
+            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE");
+
+    // All events contribute to TelephonyRegistry.PRECISE_PHONE_STATE_PERMISSION_MASK
+    private static final Map<Integer, String> READ_PRECISE_PHONE_STATE_EVENTS = Map.of(
+            PhoneStateListener.LISTEN_PRECISE_CALL_STATE,
+            "PhoneStateListener.LISTEN_PRECISE_CALL_STATE",
+            PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE,
+            "PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE",
+            PhoneStateListener.LISTEN_CALL_DISCONNECT_CAUSES,
+            "PhoneStateListener.LISTEN_CALL_DISCONNECT_CAUSES",
+            PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED,
+            "PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED",
+            PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES,
+            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES");
+
+    // All events contribute to TelephonyRegistry.PREVILEGED_PHONE_STATE_PERMISSION_MASK
+    // TODO: b/148021947 will create the permission group with PREVILIGED_STATE_PERMISSION_MASK
+    private static final Map<Integer, String> READ_PREVILIGED_PHONE_STATE_EVENTS = Map.of(
+            PhoneStateListener.LISTEN_SRVCC_STATE_CHANGED,
+            "PhoneStateListener.LISTEN_SRVCC_STATE_CHANGED",
+            PhoneStateListener.LISTEN_OEM_HOOK_RAW_EVENT,
+            "PhoneStateListener.LISTEN_OEM_HOOK_RAW_EVENT",
+            PhoneStateListener.LISTEN_RADIO_POWER_STATE_CHANGED,
+            "PhoneStateListener.LISTEN_RADIO_POWER_STATE_CHANGED",
+            PhoneStateListener.LISTEN_VOICE_ACTIVATION_STATE,
+            "PhoneStateListener.LISTEN_VOICE_ACTIVATION_STATE");
+
+    // All events contribute to TelephonyRegistry.READ_ACTIVE_EMERGENCY_SESSION_PERMISSION_MASK
+    private static final Map<Integer, String> READ_ACTIVE_EMERGENCY_SESSION_EVENTS = Map.of(
+            PhoneStateListener.LISTEN_OUTGOING_EMERGENCY_CALL,
+            "PhoneStateListener.LISTEN_OUTGOING_EMERGENCY_CALL",
+            PhoneStateListener.LISTEN_OUTGOING_EMERGENCY_SMS,
+            "PhoneStateListener.LISTEN_OUTGOING_EMERGENCY_SMS");
 
     public class PhoneStateListenerWrapper extends PhoneStateListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
@@ -293,43 +336,95 @@ public class TelephonyRegistryTest extends TelephonyTest {
     }
 
     /**
-     * Validate that SecuirtyException is thrown when we try to listen without permission
-     * READ_PRECISE_PHONE_STATE.
+     * Test listen to events that require READ_PHONE_STATE permission.
      */
     @Test
-    @SmallTest
-    public void testListenWithoutPermission() {
+    public void testReadPhoneStatePermission() {
         // Clear all permission grants for test.
         mContextFixture.addCallingOrSelfPermission("");
+        for (Map.Entry<Integer, String> entry : READ_PHONE_STATE_EVENTS.entrySet()) {
+            assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
+        }
 
-        assertThrowSecurityExceptionWhenListenWithoutPermission(
-                PhoneStateListener.LISTEN_PRECISE_CALL_STATE,
-                "LISTEN_PRECISE_CALL_STATE");
-
-        assertThrowSecurityExceptionWhenListenWithoutPermission(
-                PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE,
-                "LISTEN_PRECISE_DATA_CONNECTION_STATE");
-
-        assertThrowSecurityExceptionWhenListenWithoutPermission(
-                PhoneStateListener.LISTEN_CALL_DISCONNECT_CAUSES,
-                "LISTEN_CALL_DISCONNECT_CAUSES");
-
-        assertThrowSecurityExceptionWhenListenWithoutPermission(
-                PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED,
-                "LISTEN_CALL_ATTRIBUTES_CHANGED");
-
-        assertThrowSecurityExceptionWhenListenWithoutPermission(
-                PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES,
-                "LISTEN_IMS_CALL_DISCONNECT_CAUSES");
+        // Grant permssion
+        mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE);
+        for (Map.Entry<Integer, String> entry : READ_PHONE_STATE_EVENTS.entrySet()) {
+            assertSecurityExceptionNotThrown(entry.getKey(), entry.getValue());
+        }
     }
 
-    private void assertThrowSecurityExceptionWhenListenWithoutPermission(int event,
-            String eventDesc) {
+    /**
+     * Test listen to events that require READ_PRECISE_PHONE_STATE permission.
+     */
+    @Test
+    public void testReadPrecisePhoneStatePermission() {
+        // Clear all permission grants for test.
+        mContextFixture.addCallingOrSelfPermission("");
+        for (Map.Entry<Integer, String> entry : READ_PRECISE_PHONE_STATE_EVENTS.entrySet()) {
+            assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
+        }
+
+        // Grant permssion
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.READ_PRECISE_PHONE_STATE);
+        for (Map.Entry<Integer, String> entry : READ_PRECISE_PHONE_STATE_EVENTS.entrySet()) {
+            assertSecurityExceptionNotThrown(entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * Test listen to events that require READ_PRIVILEGED_PHONE_STATE permission.
+     */
+    @Test
+    public void testReadPrivilegedPhoneStatePermission() {
+        // Clear all permission grants for test.
+        mContextFixture.addCallingOrSelfPermission("");
+        for (Map.Entry<Integer, String> entry : READ_PREVILIGED_PHONE_STATE_EVENTS.entrySet()) {
+            assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
+        }
+
+        // Grant permssion
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        for (Map.Entry<Integer, String> entry : READ_PREVILIGED_PHONE_STATE_EVENTS.entrySet()) {
+            assertSecurityExceptionNotThrown(entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * Test listen to events that require READ_ACTIVE_EMERGENCY_SESSION permission.
+     */
+    @Test
+    public void testReadActiveEmergencySessionPermission() {
+        // Clear all permission grants for test.
+        mContextFixture.addCallingOrSelfPermission("");
+        for (Map.Entry<Integer, String> entry : READ_ACTIVE_EMERGENCY_SESSION_EVENTS.entrySet()) {
+            assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
+        }
+
+        // Grant permssion
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.READ_ACTIVE_EMERGENCY_SESSION);
+        for (Map.Entry<Integer, String> entry : READ_ACTIVE_EMERGENCY_SESSION_EVENTS.entrySet()) {
+            assertSecurityExceptionNotThrown(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private void assertSecurityExceptionThrown(int event, String eventDesc) {
         try {
             mTelephonyRegistry.listen(mContext.getOpPackageName(),
                     mPhoneStateListener.callback, event, true);
             fail("SecurityException should throw when listen " + eventDesc + " without permission");
         } catch (SecurityException expected) {
+        }
+    }
+
+    private void assertSecurityExceptionNotThrown(int event, String eventDesc) {
+        try {
+            mTelephonyRegistry.listen(mContext.getOpPackageName(),
+                    mPhoneStateListener.callback, event, true);
+        } catch (SecurityException unexpected) {
+            fail("SecurityException thrown when listen " + eventDesc + " with permission");
         }
     }
 }
