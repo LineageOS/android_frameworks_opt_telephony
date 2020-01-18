@@ -22,7 +22,6 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.util.Pair;
 
@@ -39,6 +38,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -180,7 +180,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 + " mImsRetry=" + tracker.mImsRetry
                 + " mMessageRef=" + tracker.mMessageRef
                 + " mUsesImsServiceForIms=" + tracker.mUsesImsServiceForIms
-                + " SS=" + ss);
+                + " SS=" + ss
+                + " id=" + tracker.mMessageId);
 
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {

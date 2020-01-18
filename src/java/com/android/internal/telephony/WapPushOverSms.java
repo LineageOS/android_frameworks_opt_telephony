@@ -40,13 +40,13 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
-import com.android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.WapPushManagerConnector;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.telephony.Rlog;
 
 import com.google.android.mms.MmsException;
 import com.google.android.mms.pdu.DeliveryInd;
@@ -289,7 +289,7 @@ public class WapPushOverSms {
      *         to applications
      */
     public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler,
-            String address, int subId) {
+            String address, int subId, long messageId) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         if (result.statusCode != Activity.RESULT_OK) {
             return result.statusCode;
@@ -354,6 +354,9 @@ public class WapPushOverSms {
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, result.phoneId);
         if (!TextUtils.isEmpty(address)) {
             intent.putExtra("address", address);
+        }
+        if (messageId != 0L) {
+            intent.putExtra("messageId", messageId);
         }
 
         // Direct the intent to only the default MMS app. If we can't find a default MMS app

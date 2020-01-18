@@ -383,7 +383,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         byte[] userData = new byte[pdu.length - index];
         System.arraycopy(pdu, index, userData, 0, pdu.length - index);
         InboundSmsTracker tracker = TelephonyComponentFactory.getInstance()
-                .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(
+                .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(mContext,
                         userData, timestamp, destinationPort, true, address, dispAddr,
                         referenceNumber,
                         segment, totalSegments, true, HexDump.toHexString(userData),

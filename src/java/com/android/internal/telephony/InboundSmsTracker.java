@@ -18,12 +18,21 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
+import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Date;
 
@@ -33,6 +42,8 @@ import java.util.Date;
  * outgoing messages.
  */
 public class InboundSmsTracker {
+    // Need 8 bytes to get a message id as a long.
+    private static final int NUM_OF_BYTES_HASH_VALUE_FOR_MESSAGE_ID = 8;
 
     // Fields for single and multi-part messages
     private final byte[] mPdu;
@@ -43,6 +54,7 @@ public class InboundSmsTracker {
     private final String mMessageBody;
     private final boolean mIsClass0;
     private final int mSubId;
+    private final long mMessageId;
 
     // Fields for concatenating multi-part SMS messages
     private final String mAddress;
@@ -95,6 +107,7 @@ public class InboundSmsTracker {
     /**
      * Create a tracker for a single-part SMS.
      *
+     * @param context
      * @param pdu the message PDU
      * @param timestamp the message timestamp
      * @param destPort the destination port
@@ -104,9 +117,9 @@ public class InboundSmsTracker {
      * @param displayAddress email address if this message was from an email gateway, otherwise same
      *                       as originating address
      */
-    public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
-            boolean is3gpp2WapPdu, String address, String displayAddress, String messageBody,
-            boolean isClass0, int subId) {
+    public InboundSmsTracker(Context context, byte[] pdu, long timestamp, int destPort,
+            boolean is3gpp2, boolean is3gpp2WapPdu, String address, String displayAddress,
+            String messageBody, boolean isClass0, int subId) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
@@ -121,6 +134,7 @@ public class InboundSmsTracker {
         mSequenceNumber = getIndexOffset();     // 0 or 1, depending on type
         mMessageCount = 1;
         mSubId = subId;
+        mMessageId = createMessageId(context, timestamp, subId);
     }
 
     /**
@@ -142,10 +156,10 @@ public class InboundSmsTracker {
      * @param messageCount the total number of segments
      * @param is3gpp2WapPdu true for 3GPP2 format WAP PDU; false otherwise
      */
-    public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
-            String address, String displayAddress, int referenceNumber, int sequenceNumber,
-            int messageCount, boolean is3gpp2WapPdu, String messageBody, boolean isClass0,
-            int subId) {
+    public InboundSmsTracker(Context context, byte[] pdu, long timestamp, int destPort,
+             boolean is3gpp2, String address, String displayAddress, int referenceNumber,
+             int sequenceNumber, int messageCount, boolean is3gpp2WapPdu, String messageBody,
+             boolean isClass0, int subId) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
@@ -161,6 +175,7 @@ public class InboundSmsTracker {
         mSequenceNumber = sequenceNumber;
         mMessageCount = messageCount;
         mSubId = subId;
+        mMessageId = createMessageId(context, timestamp, subId);
     }
 
     /**
@@ -168,7 +183,7 @@ public class InboundSmsTracker {
      * Since this constructor is used only for recovery during startup, the Dispatcher is null.
      * @param cursor a Cursor pointing to the row to construct this SmsTracker for
      */
-    public InboundSmsTracker(Cursor cursor, boolean isCurrentFormat3gpp2) {
+    public InboundSmsTracker(Context context, Cursor cursor, boolean isCurrentFormat3gpp2) {
         mPdu = HexDump.hexStringToByteArray(cursor.getString(InboundSmsHandler.PDU_COLUMN));
 
         // TODO: add a column to raw db to store this
@@ -224,6 +239,7 @@ public class InboundSmsTracker {
                     Integer.toString(mReferenceNumber), Integer.toString(mMessageCount)};
         }
         mMessageBody = cursor.getString(InboundSmsHandler.MESSAGE_BODY_COLUMN);
+        mMessageId = createMessageId(context, mTimestamp, mSubId);
     }
 
     public ContentValues getContentValues() {
@@ -301,6 +317,8 @@ public class InboundSmsTracker {
             builder.append(") deleteArgs=(").append(Arrays.toString(mDeleteWhereArgs));
             builder.append(')');
         }
+        builder.append(" id=");
+        builder.append(mMessageId);
         builder.append('}');
         return builder.toString();
     }
@@ -396,6 +414,43 @@ public class InboundSmsTracker {
         return where + " AND (" + whereDestPort + ")";
     }
 
+    private static long createMessageId(Context context, long timestamp, int subId) {
+        int slotId = SubscriptionManager.getSlotIndex(subId);
+        TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        String deviceId = telephonyManager.getImei(slotId);
+        if (TextUtils.isEmpty(deviceId)) {
+            return 0L;
+        }
+        String messagePrint = deviceId + timestamp;
+        return getShaValue(messagePrint);
+    }
+
+    private static long getShaValue(String messagePrint) {
+        try {
+            return ByteBuffer.wrap(getShaBytes(messagePrint,
+                    NUM_OF_BYTES_HASH_VALUE_FOR_MESSAGE_ID)).getLong();
+        } catch (final NoSuchAlgorithmException | UnsupportedEncodingException e) {
+            Rlog.e("InboundSmsTracker", "Exception while getting SHA value for message",
+                    e);
+        }
+        return 0L;
+    }
+
+    private static byte[] getShaBytes(String messagePrint, int maxNumOfBytes)
+            throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        MessageDigest messageDigest = MessageDigest.getInstance("SHA-1");
+        messageDigest.reset();
+        messageDigest.update(messagePrint.getBytes("UTF-8"));
+        byte[] hashResult = messageDigest.digest();
+        if (hashResult.length >= maxNumOfBytes) {
+            byte[] truncatedHashResult = new byte[maxNumOfBytes];
+            System.arraycopy(hashResult, 0, truncatedHashResult, 0, maxNumOfBytes);
+            return truncatedHashResult;
+        }
+        return hashResult;
+    }
+
     /**
      * Sequence numbers for concatenated messages start at 1. The exception is CDMA WAP PDU
      * messages, which use a 0-based index.
@@ -436,5 +491,9 @@ public class InboundSmsTracker {
 
     public String[] getDeleteWhereArgs() {
         return mDeleteWhereArgs;
+    }
+
+    public long getMessageId() {
+        return mMessageId;
     }
 }
