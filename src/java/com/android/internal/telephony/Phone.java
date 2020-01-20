@@ -53,6 +53,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.RadioAccessFamily;
+import android.telephony.RadioAccessSpecifier;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
@@ -2316,6 +2317,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void eraseModemConfig(Message response) {
         mCi.nvResetConfig(2 /* erase NV */, response);
+    }
+
+    public void setSystemSelectionChannels(List<RadioAccessSpecifier> specifiers,
+            Message response) {
+        mCi.setSystemSelectionChannels(specifiers, response);
     }
 
     public void notifyDataActivity() {

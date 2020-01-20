@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.RILConstants.*;
 import static com.android.internal.util.Preconditions.checkNotNull;
 
+import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.hardware.radio.V1_0.Carrier;
@@ -963,6 +964,75 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 radioProxy13.enableModem(rr.mSerial, enable);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "enableModem", e);
+            }
+        }
+    }
+
+    @Override
+    public void setSystemSelectionChannels(@NonNull List<RadioAccessSpecifier> specifiers,
+            Message onComplete) {
+        IRadio radioProxy = getRadioProxy(onComplete);
+        if (mRadioVersion.less(RADIO_HAL_VERSION_1_3)) {
+            if (RILJ_LOGV) riljLog("setSystemSelectionChannels: not supported.");
+            if (onComplete != null) {
+                AsyncResult.forMessage(onComplete, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                onComplete.sendToTarget();
+            }
+            return;
+        }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS, onComplete,
+                mRILDefaultWorkSource);
+
+        if (mRadioVersion.less(RADIO_HAL_VERSION_1_5)) {
+            android.hardware.radio.V1_3.IRadio radioProxy13 =
+                    (android.hardware.radio.V1_3.IRadio) radioProxy;
+            if (radioProxy13 != null) {
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                            + " setSystemSelectionChannels_1.3= "
+                            + specifiers);
+                }
+
+                ArrayList<android.hardware.radio.V1_1.RadioAccessSpecifier> halSpecifiers =
+                        specifiers.stream()
+                                .map(this::convertRadioAccessSpecifierToRadioHAL)
+                                .collect(Collectors.toCollection(ArrayList::new));
+
+                try {
+                    radioProxy13.setSystemSelectionChannels(rr.mSerial,
+                            !halSpecifiers.isEmpty(),
+                            halSpecifiers);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setSystemSelectionChannels", e);
+                }
+            }
+        }
+
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+            android.hardware.radio.V1_5.IRadio radioProxy15 =
+                    (android.hardware.radio.V1_5.IRadio) radioProxy;
+
+            if (radioProxy15 != null) {
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                            + " setSystemSelectionChannels_1.5= "
+                            + specifiers);
+                }
+
+                ArrayList<android.hardware.radio.V1_5.RadioAccessSpecifier> halSpecifiers =
+                        specifiers.stream()
+                                .map(this::convertRadioAccessSpecifierToRadioHAL_1_5)
+                                .collect(Collectors.toCollection(ArrayList::new));
+
+                try {
+                    radioProxy15.setSystemSelectionChannels_1_5(rr.mSerial,
+                            !halSpecifiers.isEmpty(),
+                            halSpecifiers);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setSystemSelectionChannels", e);
+                }
             }
         }
     }
@@ -5875,6 +5945,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_ENABLE_UICC_APPLICATIONS";
             case RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT:
                 return "RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT";
+            case RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS:
+                return "RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS";
             default: return "<unknown request>";
         }
     }
