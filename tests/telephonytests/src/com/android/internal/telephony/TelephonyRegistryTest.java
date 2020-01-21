@@ -291,4 +291,45 @@ public class TelephonyRegistryTest extends TelephonyTest {
         processAllMessages();
         assertEquals(mPhoneStateListener.invocationCount.get(), 4);
     }
+
+    /**
+     * Validate that SecuirtyException is thrown when we try to listen without permission
+     * READ_PRECISE_PHONE_STATE.
+     */
+    @Test
+    @SmallTest
+    public void testListenWithoutPermission() {
+        // Clear all permission grants for test.
+        mContextFixture.addCallingOrSelfPermission("");
+
+        assertThrowSecurityExceptionWhenListenWithoutPermission(
+                PhoneStateListener.LISTEN_PRECISE_CALL_STATE,
+                "LISTEN_PRECISE_CALL_STATE");
+
+        assertThrowSecurityExceptionWhenListenWithoutPermission(
+                PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE,
+                "LISTEN_PRECISE_DATA_CONNECTION_STATE");
+
+        assertThrowSecurityExceptionWhenListenWithoutPermission(
+                PhoneStateListener.LISTEN_CALL_DISCONNECT_CAUSES,
+                "LISTEN_CALL_DISCONNECT_CAUSES");
+
+        assertThrowSecurityExceptionWhenListenWithoutPermission(
+                PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED,
+                "LISTEN_CALL_ATTRIBUTES_CHANGED");
+
+        assertThrowSecurityExceptionWhenListenWithoutPermission(
+                PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES,
+                "LISTEN_IMS_CALL_DISCONNECT_CAUSES");
+    }
+
+    private void assertThrowSecurityExceptionWhenListenWithoutPermission(int event,
+            String eventDesc) {
+        try {
+            mTelephonyRegistry.listen(mContext.getOpPackageName(),
+                    mPhoneStateListener.callback, event, true);
+            fail("SecurityException should throw when listen " + eventDesc + " without permission");
+        } catch (SecurityException expected) {
+        }
+    }
 }
