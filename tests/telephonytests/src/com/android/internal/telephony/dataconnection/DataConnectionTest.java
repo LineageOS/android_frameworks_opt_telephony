@@ -18,8 +18,8 @@ package com.android.internal.telephony.dataconnection;
 
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED;
-import static android.net.NetworkPolicyManager.OVERRIDE_CONGESTED;
-import static android.net.NetworkPolicyManager.OVERRIDE_UNMETERED;
+import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED;
+import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
@@ -651,12 +651,13 @@ public class DataConnectionTest extends TelephonyTest {
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
 
-        mDc.onSubscriptionOverride(OVERRIDE_UNMETERED, OVERRIDE_UNMETERED);
+        mDc.onSubscriptionOverride(SUBSCRIPTION_OVERRIDE_UNMETERED,
+                SUBSCRIPTION_OVERRIDE_UNMETERED);
 
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
 
-        mDc.onSubscriptionOverride(OVERRIDE_UNMETERED, 0);
+        mDc.onSubscriptionOverride(SUBSCRIPTION_OVERRIDE_UNMETERED, 0);
 
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
@@ -672,12 +673,13 @@ public class DataConnectionTest extends TelephonyTest {
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
 
-        mDc.onSubscriptionOverride(OVERRIDE_CONGESTED, OVERRIDE_CONGESTED);
+        mDc.onSubscriptionOverride(SUBSCRIPTION_OVERRIDE_CONGESTED,
+                SUBSCRIPTION_OVERRIDE_CONGESTED);
 
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
 
-        mDc.onSubscriptionOverride(OVERRIDE_CONGESTED, 0);
+        mDc.onSubscriptionOverride(SUBSCRIPTION_OVERRIDE_CONGESTED, 0);
 
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
