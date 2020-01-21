@@ -54,8 +54,7 @@ public class ApnContextTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mNetworkConfig.dependencyMet = true;
-        mApnContext = new ApnContext(mPhone, PhoneConstants.APN_TYPE_DEFAULT, TAG, mNetworkConfig,
-                mDcTracker);
+        mApnContext = new ApnContext(mPhone, ApnSetting.TYPE_DEFAULT, TAG, mDcTracker, 1);
     }
 
     @After
