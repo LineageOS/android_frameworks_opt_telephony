@@ -2050,6 +2050,8 @@ public class DataConnection extends StateMachine {
             updateTcpBufferSizes(mRilRat);
 
             final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
+            configBuilder.setLegacyType(ConnectivityManager.TYPE_MOBILE);
+            configBuilder.setLegacyTypeName(NETWORK_TYPE);
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
             if (carrierSignalAgent.hasRegisteredReceivers(TelephonyManager
                     .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
@@ -2117,14 +2119,17 @@ public class DataConnection extends StateMachine {
                 mScore = calculateScore();
                 final NetworkFactory factory = PhoneFactory.getNetworkFactory(
                         mPhone.getPhoneId());
-                final int providerId = (null == factory)
-                        ? NetworkProvider.ID_NONE : factory.getProviderId();
+                final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
 
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this,
-                        mPhone, mNetworkInfo, mScore, configBuilder.build(), providerId,
+                        mPhone, mNetworkInfo, mScore, configBuilder.build(), provider,
                         mTransportType);
+                // All network agents start out in CONNECTING mode, but DcNetworkAgents are
+                // created when the network is already connected. Hence, send the connected
+                // notification immediately.
+                mNetworkAgent.setConnected();
             }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
