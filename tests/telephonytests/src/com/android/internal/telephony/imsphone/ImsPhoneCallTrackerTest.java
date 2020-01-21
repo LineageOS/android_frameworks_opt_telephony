@@ -44,7 +44,6 @@ import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
@@ -707,18 +706,18 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         // First handover from LTE to WIFI; this takes us into a mid-call state.
         call.getImsCallSessionListenerProxy().callSessionHandover(call.getCallSession(),
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
+                TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_IWLAN,
                 new ImsReasonInfo());
         // Handover back to LTE.
         call.getImsCallSessionListenerProxy().callSessionHandover(call.getCallSession(),
-                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, ServiceState.RIL_RADIO_TECHNOLOGY_LTE,
+                TelephonyManager.NETWORK_TYPE_IWLAN, TelephonyManager.NETWORK_TYPE_LTE,
                 new ImsReasonInfo());
         verify(mImsPhoneConnectionListener).onConnectionEvent(eq(
                 TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE), isNull());
 
         // Finally hand back to WIFI
         call.getImsCallSessionListenerProxy().callSessionHandover(call.getCallSession(),
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
+                TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_IWLAN,
                 new ImsReasonInfo());
         verify(mImsPhoneConnectionListener).onConnectionEvent(eq(
                 TelephonyManager.EVENT_HANDOVER_VIDEO_FROM_LTE_TO_WIFI), isNull());
