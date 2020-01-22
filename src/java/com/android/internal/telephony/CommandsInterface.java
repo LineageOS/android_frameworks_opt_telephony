@@ -23,6 +23,7 @@ import android.net.LinkProperties;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
@@ -1376,8 +1377,15 @@ public interface CommandsInterface {
     @UnsupportedAppUsage
     void setNetworkSelectionModeAutomatic(Message response);
 
+    /**
+     * Ask the radio to connect to the input network with specific RadioAccessNetwork
+     * and change selection mode to manual.
+     * @param operatorNumeric PLMN ID of the network to select.
+     * @param ran radio access network type (see {@link AccessNetworkType}).
+     * @param response callback message.
+     */
     @UnsupportedAppUsage
-    void setNetworkSelectionModeManual(String operatorNumeric, Message response);
+    void setNetworkSelectionModeManual(String operatorNumeric, int ran, Message response);
 
     /**
      * Queries whether the current network selection mode is automatic
