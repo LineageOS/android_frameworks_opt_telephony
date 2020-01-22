@@ -53,6 +53,7 @@ import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
 import android.hardware.radio.V1_5.AccessNetwork;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
+import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -113,8 +114,6 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
-
-import libcore.net.InetAddressUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -6362,7 +6361,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             ifname = result.ifname;
             //addresses = result.addresses.stream().toArray(String[]::new);
             laList = result.addresses.stream().map(a -> new LinkAddress(
-                    InetAddressUtils.parseNumericAddress(a.address), 0, a.properties, 0))
+                    InetAddresses.parseNumericAddress(a.address), 0, a.properties, 0))
                     .collect(Collectors.toList());
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
@@ -6388,7 +6387,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         if (address.split("/").length == 2) {
                             la = new LinkAddress(address);
                         } else {
-                            InetAddress ia = InetAddressUtils.parseNumericAddress(address);
+                            InetAddress ia = InetAddresses.parseNumericAddress(address);
                             la = new LinkAddress(ia, (ia instanceof Inet4Address) ? 32 : 128);
                         }
 
@@ -6407,7 +6406,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 dns = dns.trim();
                 InetAddress ia;
                 try {
-                    ia = InetAddressUtils.parseNumericAddress(dns);
+                    ia = InetAddresses.parseNumericAddress(dns);
                     dnsList.add(ia);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(RILJ_LOG_TAG, "Unknown dns: " + dns, e);
@@ -6422,7 +6421,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 gateway = gateway.trim();
                 InetAddress ia;
                 try {
-                    ia = InetAddressUtils.parseNumericAddress(gateway);
+                    ia = InetAddresses.parseNumericAddress(gateway);
                     gatewayList.add(ia);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(RILJ_LOG_TAG, "Unknown gateway: " + gateway, e);
@@ -6437,7 +6436,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 pcscf = pcscf.trim();
                 InetAddress ia;
                 try {
-                    ia = InetAddressUtils.parseNumericAddress(pcscf);
+                    ia = InetAddresses.parseNumericAddress(pcscf);
                     pcscfList.add(ia);
                 } catch (IllegalArgumentException e) {
                     Rlog.e(RILJ_LOG_TAG, "Unknown pcscf: " + pcscf, e);
