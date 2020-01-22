@@ -863,6 +863,18 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public Connection startConference(String[] participantsToDial, DialArgs dialArgs)
+            throws CallStateException {
+         ImsDialArgs.Builder imsDialArgsBuilder;
+         if (!(dialArgs instanceof ImsDialArgs)) {
+             imsDialArgsBuilder = ImsDialArgs.Builder.from(dialArgs);
+         } else {
+             imsDialArgsBuilder = ImsDialArgs.Builder.from((ImsDialArgs) dialArgs);
+         }
+         return mCT.startConference(participantsToDial, imsDialArgsBuilder.build());
+    }
+
+    @Override
     public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
         return dialInternal(dialString, dialArgs, null);
     }
