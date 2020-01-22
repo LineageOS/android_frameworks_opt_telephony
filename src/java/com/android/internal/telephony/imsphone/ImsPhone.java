@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE;
+import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_TITLE;
+
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAIC;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAICr;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAOC;
@@ -1936,16 +1939,19 @@ public class ImsPhone extends ImsPhoneBase {
                 // Default result code (as passed to sendOrderedBroadcast)
                 // means that intent was not received by WfcSettings.
 
-                CharSequence title = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_TITLE);
-                CharSequence messageAlert = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_MESSAGE);
-                CharSequence messageNotification = intent.getCharSequenceExtra(EXTRA_KEY_NOTIFICATION_MESSAGE);
+                CharSequence title =
+                        intent.getCharSequenceExtra(EXTRA_WFC_REGISTRATION_FAILURE_TITLE);
+                CharSequence messageAlert =
+                        intent.getCharSequenceExtra(EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE);
+                CharSequence messageNotification =
+                        intent.getCharSequenceExtra(EXTRA_KEY_NOTIFICATION_MESSAGE);
 
                 Intent resultIntent = new Intent(Intent.ACTION_MAIN);
                 resultIntent.setClassName("com.android.settings",
                         "com.android.settings.Settings$WifiCallingSettingsActivity");
                 resultIntent.putExtra(EXTRA_KEY_ALERT_SHOW, true);
-                resultIntent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
-                resultIntent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
+                resultIntent.putExtra(EXTRA_WFC_REGISTRATION_FAILURE_TITLE, title);
+                resultIntent.putExtra(EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE, messageAlert);
                 PendingIntent resultPendingIntent =
                         PendingIntent.getActivity(
                                 mContext,
@@ -2070,9 +2076,10 @@ public class ImsPhone extends ImsPhoneBase {
 
             // If WfcSettings are active then alert will be shown
             // otherwise notification will be added.
-            Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
-            intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
-            intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
+            Intent intent = new Intent(
+                    android.telephony.ims.ImsManager.ACTION_WFC_IMS_REGISTRATION_ERROR);
+            intent.putExtra(EXTRA_WFC_REGISTRATION_FAILURE_TITLE, title);
+            intent.putExtra(EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE, messageAlert);
             intent.putExtra(EXTRA_KEY_NOTIFICATION_MESSAGE, messageNotification);
             mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
                     null, Activity.RESULT_OK, null, null);
