@@ -38,6 +38,7 @@ import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -248,13 +249,26 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSetWifiDeprecated() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertFalse(mConnectionUT.isWifi());
+        // ImsCall.getRadioTechnology is tested elsewhere
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsCall).getNetworkType();
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
+        assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
+        assertTrue(mConnectionUT.isWifi());
+    }
+
+    @Test
+    @SmallTest
     public void testSetWifi() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertFalse(mConnectionUT.isWifi());
         // ImsCall.getRadioTechnology is tested elsewhere
-        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN).when(mImsCall).getRadioTechnology();
-        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
-                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsCall).getNetworkType();
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_NETWORK_TYPE,
+                TelephonyManager.NETWORK_TYPE_IWLAN + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertTrue(mConnectionUT.isWifi());
     }
@@ -265,7 +279,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertFalse(mConnectionUT.isWifi());
         // ImsCall.getRadioTechnology is tested elsewhere
-        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN).when(mImsCall).getRadioTechnology();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsCall).getNetworkType();
         // Tests to make sure that the EXTRA_CALL_RAT_TYPE_ALT string is set correctly for newer
         // devices.
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
@@ -276,13 +290,26 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSetLTEDeprecated() {
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
+        assertNotEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        // ImsCall.getRadioTechnology is tested elsewhere
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsCall).getNetworkType();
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
+        assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
+        assertEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+    }
+
+    @Test
+    @SmallTest
     public void testSetLTE() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertNotEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         // ImsCall.getRadioTechnology is tested elsewhere
-        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mImsCall).getRadioTechnology();
-        mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE + "");
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsCall).getNetworkType();
+        mBundle.putString(ImsCallProfile.EXTRA_CALL_NETWORK_TYPE,
+                TelephonyManager.NETWORK_TYPE_LTE + "");
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
     }
@@ -293,7 +320,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
         assertNotEquals(mConnectionUT.getCallRadioTech(), ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
         // ImsCall.getRadioTechnology is tested elsewhere
-        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mImsCall).getRadioTechnology();
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsCall).getNetworkType();
         // Tests to make sure that the EXTRA_CALL_RAT_TYPE_ALT string is set correctly for newer
         // devices.
         mBundle.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT,
