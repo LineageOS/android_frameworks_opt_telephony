@@ -475,7 +475,7 @@ public class SubscriptionController extends ISub.Stub {
     private int getUnusedColor(String callingPackage, String callingFeatureId) {
         List<SubscriptionInfo> availableSubInfos = getActiveSubscriptionInfoList(callingPackage,
                 callingFeatureId);
-        colorArr = mContext.getResources().getIntArray(com.android.internal.R.array.sim_colors);
+        colorArr = mContext.getResources().getIntArray(android.R.array.simColors);
         int colorIdx = 0;
 
         if (availableSubInfos != null) {
