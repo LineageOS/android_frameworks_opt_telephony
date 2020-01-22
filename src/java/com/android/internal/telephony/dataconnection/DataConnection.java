@@ -88,8 +88,6 @@ import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
-import libcore.net.InetAddressUtils;
-
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -1403,7 +1401,7 @@ public class DataConnection extends StateMachine {
         if (address.startsWith("[") && address.endsWith("]") && address.indexOf(':') != -1) {
             address = address.substring(1, address.length() - 1);
         }
-        return InetAddressUtils.isNumericAddress(address);
+        return InetAddresses.isNumericAddress(address);
     }
 
     private SetupResult setLinkProperties(DataCallResponse response,
