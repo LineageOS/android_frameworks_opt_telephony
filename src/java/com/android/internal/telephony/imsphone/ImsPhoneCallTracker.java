@@ -3158,8 +3158,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallQualityChanged(ImsCall imsCall, CallQuality callQuality) {
             // convert ServiceState.radioTech to TelephonyManager.NetworkType constant
-            mPhone.onCallQualityChanged(callQuality,
-                    ServiceState.rilRadioTechnologyToNetworkType(imsCall.getRadioTechnology()));
+            mPhone.onCallQualityChanged(callQuality, imsCall.getNetworkType());
             String callId = imsCall.getSession().getCallId();
             CallQualityMetrics cqm = mCallQualityMetrics.get(callId);
             if (cqm == null) {

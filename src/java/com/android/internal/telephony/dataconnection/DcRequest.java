@@ -16,11 +16,8 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.Context;
-import android.net.NetworkConfig;
 import android.net.NetworkRequest;
 import android.telephony.Annotation.ApnType;
-
-import java.util.HashMap;
 
 public class DcRequest implements Comparable<DcRequest> {
     private static final String LOG_TAG = "DcRequest";
@@ -30,10 +27,9 @@ public class DcRequest implements Comparable<DcRequest> {
     public final @ApnType int apnType;
 
     public DcRequest(NetworkRequest nr, Context context) {
-        initApnPriorities(context);
         networkRequest = nr;
         apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
-        priority = priorityForApnType(apnType);
+        priority = ApnConfigTypeRepository.getDefault().getByType(apnType).getPriority();
     }
 
     public String toString() {
@@ -53,27 +49,5 @@ public class DcRequest implements Comparable<DcRequest> {
 
     public int compareTo(DcRequest o) {
         return o.priority - priority;
-    }
-
-    private static final HashMap<Integer, Integer> sApnPriorityMap =
-            new HashMap<Integer, Integer>();
-
-    private void initApnPriorities(Context context) {
-        synchronized (sApnPriorityMap) {
-            if (sApnPriorityMap.isEmpty()) {
-                String[] networkConfigStrings = context.getResources().getStringArray(
-                        com.android.internal.R.array.networkAttributes);
-                for (String networkConfigString : networkConfigStrings) {
-                    NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
-                    final int apnType = ApnContext.getApnTypeFromNetworkType(networkConfig.type);
-                    sApnPriorityMap.put(apnType, networkConfig.priority);
-                }
-            }
-        }
-    }
-
-    private int priorityForApnType(int apnType) {
-        Integer priority = sApnPriorityMap.get(apnType);
-        return (priority != null ? priority.intValue() : 0);
     }
 }
