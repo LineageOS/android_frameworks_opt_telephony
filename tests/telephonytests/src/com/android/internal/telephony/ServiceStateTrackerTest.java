@@ -108,6 +108,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -470,7 +471,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private CellInfoGsm getCellInfoGsm() {
         CellInfoGsm tmp = new CellInfoGsm();
-        tmp.setCellIdentity(new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst"));
+        tmp.setCellIdentity(new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
+                    Collections.emptyList()));
         tmp.setCellSignalStrength(new CellSignalStrengthGsm(-85, 2, 3));
         return tmp;
     }
@@ -839,7 +841,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     // TODO(nharold): we probably should remove support for this procedure (GET_LOC)
     public void testGsmCellLocation() {
         CellIdentityGsm cellIdentityGsm = new CellIdentityGsm(
-                2, 3, 900, 5, "001", "01", "test", "tst");
+                2, 3, 900, 5, "001", "01", "test", "tst", Collections.emptyList());
 
         NetworkRegistrationInfo result = new NetworkRegistrationInfo.Builder()
                 .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
@@ -1938,7 +1940,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     public void testRatRatchet() throws Exception {
         CellIdentityGsm cellIdentity =
-                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst");
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
+                        Collections.emptyList());
         // start on GPRS
         changeRegState(1, cellIdentity, 16, 1);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
@@ -1956,14 +1959,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     public void testRatRatchetWithCellChange() throws Exception {
         CellIdentityGsm cellIdentity =
-                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst");
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
+                        Collections.emptyList());
         // update data reg state to be in service
         changeRegState(1, cellIdentity, 16, 2);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GSM, sst.mSS.getRilVoiceRadioTechnology());
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
         // RAT: EDGE -> GPRS cell ID: 1 -> 2
-        cellIdentity = new CellIdentityGsm(0, 2, 900, 5, "001", "01", "test", "tst");
+        cellIdentity = new CellIdentityGsm(0, 2, 900, 5, "001", "01", "test", "tst",
+                Collections.emptyList());
         changeRegState(1, cellIdentity, 16, 1);
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
 
@@ -1978,7 +1983,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testRatRatchetWithCellChangeBeforeRatChange() throws Exception {
         // cell ID update
         CellIdentityGsm cellIdentity =
-                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst");
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
+                        Collections.emptyList());
         changeRegState(1, cellIdentity, 16, 2);
         assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
@@ -2037,7 +2043,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthUpdatedOnDataRegState() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
         CellIdentityLte cellIdentity5 =
-                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst");
+                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst",
+                        Collections.emptyList(), null);
 
         sendPhyChanConfigChange(new int[] {10000});
         sendRegStateUpdateForLteCellId(cellIdentity5);
@@ -2048,7 +2055,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthNotUpdatedWhenInvalidInCellIdentity() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
         CellIdentityLte cellIdentityInv =
-                new CellIdentityLte(1, 1, 5, 1, 12345, "001", "01", "test", "tst");
+                new CellIdentityLte(1, 1, 5, 1, 12345, "001", "01", "test", "tst",
+                        Collections.emptyList(), null);
 
         sendPhyChanConfigChange(new int[] {10000});
         sendRegStateUpdateForLteCellId(cellIdentityInv);
@@ -2059,7 +2067,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthPrefersCarrierAggregationReport() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
         CellIdentityLte cellIdentity10 =
-                new CellIdentityLte(1, 1, 5, 1, 10000, "001", "01", "test", "tst");
+                new CellIdentityLte(1, 1, 5, 1, 10000, "001", "01", "test", "tst",
+                        Collections.emptyList(), null);
 
         sendPhyChanConfigChange(new int[] {10000, 5000});
         sendRegStateUpdateForLteCellId(cellIdentity10);
@@ -2070,7 +2079,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() throws Exception {
         // LTE Cell with bandwidth = 10000
         CellIdentityLte cellIdentity10 =
-                new CellIdentityLte(1, 1, 1, 1, 10000, "1", "1", "test", "tst");
+                new CellIdentityLte(1, 1, 1, 1, 10000, "1", "1", "test", "tst",
+                        Collections.emptyList(), null);
 
         sendRegStateUpdateForLteCellId(cellIdentity10);
         assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
@@ -2117,7 +2127,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Start state: Cell data only LTE + IWLAN
         CellIdentityLte cellIdentity =
-                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst");
+                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst",
+                        Collections.emptyList(), null);
         changeRegStateWithIwlan(
                 // WWAN
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, cellIdentity,
@@ -2272,7 +2283,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSS = ss;
 
         CellIdentityLte cellId =
-                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst");
+                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst",
+                        Collections.emptyList(), null);
         LteVopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
                     LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
