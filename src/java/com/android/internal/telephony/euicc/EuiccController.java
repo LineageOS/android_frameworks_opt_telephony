@@ -48,6 +48,7 @@ import android.telephony.euicc.EuiccManager;
 import android.telephony.euicc.EuiccManager.OtaStatus;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController;
@@ -56,6 +57,7 @@ import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallb
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Stack;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -305,6 +307,7 @@ public class EuiccController extends IEuiccController.Stub {
                     extrasIntent.putExtra(
                             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
                             result.getResult());
+                    addExtrasToResultIntent(extrasIntent, result.getResult());
                     break;
             }
 
@@ -328,6 +331,87 @@ public class EuiccController extends IEuiccController.Stub {
             PendingIntent callbackIntent) {
         downloadSubscription(cardId, subscription, switchAfterDownload, callingPackage,
                 false /* forceDeactivateSim */, resolvedBundle, callbackIntent);
+    }
+
+    /**
+     * Given encoded error code described in
+     * {@link android.telephony.euicc.EuiccManager#OPERATION_SMDX_SUBJECT_REASON_CODE} decode it
+     * into SubjectCode[5.2.6.1] and ReasonCode[5.2.6.2] from GSMA (SGP.22 v2.2)
+     *
+     * @param resultCode from
+     *               {@link android.telephony.euicc.EuiccManager#OPERATION_SMDX_SUBJECT_REASON_CODE}
+     * @return a pair containing SubjectCode[5.2.6.1] and ReasonCode[5.2.6.2] from GSMA (SGP.22
+     * v2.2)
+     */
+    Pair<String, String> decodeSmdxSubjectAndReasonCode(int resultCode) {
+        final int numOfSections = 6;
+        final int bitsPerSection = 4;
+        final int sectionMask = 0xF;
+
+        final Stack<Integer> sections = new Stack<>();
+
+        // Extracting each section of digits backwards.
+        for (int i = 0; i < numOfSections; ++i) {
+            int sectionDigit = resultCode & sectionMask;
+            sections.push(sectionDigit);
+            resultCode = resultCode >>> bitsPerSection;
+        }
+
+        String subjectCode = sections.pop() + "." + sections.pop() + "." + sections.pop();
+        String reasonCode = sections.pop() + "." + sections.pop() + "." + sections.pop();
+
+        // drop the leading zeros, e.g 0.1 -> 1, 0.0.3 -> 3, 0.5.1 -> 5.1
+        subjectCode = subjectCode.replaceAll("^(0\\.)*", "");
+        reasonCode = reasonCode.replaceAll("^(0\\.)*", "");
+
+        return Pair.create(subjectCode, reasonCode);
+    }
+
+    /**
+     * Add more detailed information to the resulting intent.
+     * Fields added includes(key -> value):
+     * 1. {@link EuiccManager#EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE} -> original error code
+     * 2. {@link EuiccManager#EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE} ->
+     * EuiccManager.OperationCode such as {@link EuiccManager#OPERATION_DOWNLOAD}
+     * 3. if @link EuiccManager.OperationCode is not
+     * {@link EuiccManager#OPERATION_SMDX_SUBJECT_REASON_CODE}:
+     * {@link EuiccManager#EXTRA_EMBEDDED_SUBSCRIPTION_ERROR_CODE} -> @link
+     * EuiccManager.ErrorCode such as {@link EuiccManager#OPERATION_SMDX}
+     * 4. if EuiccManager.OperationCode is
+     * {@link EuiccManager#OPERATION_SMDX_SUBJECT_REASON_CODE}:
+     * a) {@link EuiccManager#EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_SUBJECT_CODE} ->
+     * SubjectCode[5.2.6.1] from GSMA (SGP.22 v2.2)
+     * b) {@link EuiccManager#EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_REASON_CODE} ->
+     * ReasonCode[5.2.6.2] from GSMA (SGP.22 v2.2
+     */
+    Intent addExtrasToResultIntent(Intent intent, int resultCode) {
+        final int firstByteBitOffset = 24;
+        int errorCodeMask = 0xFFFFFF;
+        int operationCodeMask = 0xFF << firstByteBitOffset;
+
+        intent.putExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE, resultCode);
+
+        intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE,
+                (resultCode & operationCodeMask) >> firstByteBitOffset);
+
+        // check to see if the operation code is EuiccManager#OPERATION_SMDX_SUBJECT_REASON_CODE
+        final boolean isSmdxSubjectReasonCode = (resultCode >> firstByteBitOffset)
+                == EuiccManager.OPERATION_SMDX_SUBJECT_REASON_CODE;
+
+        if (isSmdxSubjectReasonCode) {
+            final Pair<String, String> subjectReasonCode = decodeSmdxSubjectAndReasonCode(
+                    resultCode);
+            final String subjectCode = subjectReasonCode.first;
+            final String reasonCode = subjectReasonCode.second;
+            intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_SUBJECT_CODE,
+                    subjectCode);
+            intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_REASON_CODE, reasonCode);
+        } else {
+            final int errorCode = resultCode & errorCodeMask;
+            intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_ERROR_CODE, errorCode);
+        }
+        return intent;
     }
 
     void downloadSubscription(int cardId, DownloadableSubscription subscription,
@@ -548,9 +632,8 @@ public class EuiccController extends IEuiccController.Stub {
                                 break;
                             default:
                                 resultCode = ERROR;
-                                extrasIntent.putExtra(
-                                        EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result.getResult());
+
+                                addExtrasToResultIntent(extrasIntent, result.getResult());
                                 break;
                         }
 
@@ -661,9 +744,7 @@ public class EuiccController extends IEuiccController.Stub {
                     break;
                 default:
                     resultCode = ERROR;
-                    extrasIntent.putExtra(
-                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                            result.getResult());
+                    addExtrasToResultIntent(extrasIntent, result.getResult());
                     break;
             }
 
@@ -743,9 +824,7 @@ public class EuiccController extends IEuiccController.Stub {
                                 return;
                             default:
                                 resultCode = ERROR;
-                                extrasIntent.putExtra(
-                                        EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result);
+                                addExtrasToResultIntent(extrasIntent, result);
                                 break;
                         }
 
@@ -878,9 +957,7 @@ public class EuiccController extends IEuiccController.Stub {
                                 break;
                             default:
                                 resultCode = ERROR;
-                                extrasIntent.putExtra(
-                                        EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                        result);
+                                addExtrasToResultIntent(extrasIntent, result);
                                 break;
                         }
 
@@ -934,9 +1011,7 @@ public class EuiccController extends IEuiccController.Stub {
                                     return;
                                 default:
                                     resultCode = ERROR;
-                                    extrasIntent.putExtra(
-                                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                            result);
+                                    addExtrasToResultIntent(extrasIntent, result);
                                     break;
                             }
 
@@ -975,9 +1050,7 @@ public class EuiccController extends IEuiccController.Stub {
                                     return;
                                 default:
                                     resultCode = ERROR;
-                                    extrasIntent.putExtra(
-                                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                            result);
+                                    addExtrasToResultIntent(extrasIntent, result);
                                     break;
                             }
 
@@ -1017,9 +1090,7 @@ public class EuiccController extends IEuiccController.Stub {
                             return;
                         default:
                             resultCode = ERROR;
-                            extrasIntent.putExtra(
-                                    EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                    result);
+                                    addExtrasToResultIntent(extrasIntent, result);
                             break;
                     }
 
@@ -1054,9 +1125,7 @@ public class EuiccController extends IEuiccController.Stub {
                                     break;
                                 default:
                                     resultCode = ERROR;
-                                    extrasIntent.putExtra(
-                                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                                            result);
+                                    addExtrasToResultIntent(extrasIntent, result);
                                     break;
                             }
 
