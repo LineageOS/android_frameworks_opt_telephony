@@ -34,6 +34,7 @@ import android.net.NetworkFactory;
 import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.NetworkRequest;
+import android.net.NetworkScore;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.SocketKeepalive;
@@ -160,7 +161,7 @@ public class DataConnection extends StateMachine {
     private static final int OTHER_CONNECTION_SCORE = 45;
 
     // The score we report to connectivity service
-    private int mScore;
+    private NetworkScore mScore;
 
     // The subscription id associated with this data connection.
     private int mSubId;
@@ -2948,21 +2949,23 @@ public class DataConnection extends StateMachine {
      *  Re-calculate score and update through network agent if it changes.
      */
     private void updateScore() {
-        int oldScore = mScore;
+        final NetworkScore oldScore = mScore;
         mScore = calculateScore();
-        if (oldScore != mScore && mNetworkAgent != null) {
+        if (!oldScore.equals(mScore) && mNetworkAgent != null) {
             log("Updating score from " + oldScore + " to " + mScore);
             mNetworkAgent.sendNetworkScore(mScore, this);
         }
     }
 
-    private int calculateScore() {
+    private NetworkScore calculateScore() {
         int score = OTHER_CONNECTION_SCORE;
 
         // If it's serving a network request that asks NET_CAPABILITY_INTERNET and doesn't have
         // specify a subId, this dataConnection is considered to be default Internet data
         // connection. In this case we assign a slightly higher score of 50. The intention is
         // it will not be replaced by other data connections accidentally in DSDS usecase.
+        // TODO : this should be represented by the "default subscription" policy bit in
+        // NetworkScore.
         for (ApnContext apnContext : mApnContexts.keySet()) {
             for (NetworkRequest networkRequest : apnContext.getNetworkRequests()) {
                 if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -2973,7 +2976,9 @@ public class DataConnection extends StateMachine {
             }
         }
 
-        return score;
+        // STOPSHIP (b/148055573) : remove this copy of the constant (and the constant, this
+        // code should just use the NetworkScore regular members)
+        return new NetworkScore.Builder().setLegacyScore(score).build();
     }
 
     private String handoverStateToString(@HandoverState int state) {
