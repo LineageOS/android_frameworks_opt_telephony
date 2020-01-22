@@ -68,7 +68,6 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.ims.FeatureConnector;
 import com.android.ims.ImsEcbmStateListener;
-import com.android.ims.ImsManager;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.RcsFeatureManager;
 import com.android.internal.telephony.Call;
@@ -627,15 +626,14 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(false, mImsPhoneUT.getWakeLock().isHeld());
     }
 
-    @FlakyTest
     @Test
     @SmallTest
-    @Ignore
     public void testProcessDisconnectReason() throws Exception {
         // set up CarrierConfig
         PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
         bundle.putStringArray(CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY,
                 new String[]{"REG09|0"});
+        doReturn(true).when(mImsManager).isWfcEnabledByUser();
 
         // set up overlays
         String title = "title";
@@ -652,18 +650,17 @@ public class ImsPhoneTest extends TelephonyTest {
         mImsPhoneUT.processDisconnectReason(
                 new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0, "REG09"));
 
-        // TODO: Verify that WFC has been turned off (can't do it right now because
-        // setWfcSetting is static).
-        //verify(mImsManager).setWfcSetting(any(), eq(false));
-
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mContext).sendOrderedBroadcast(
                 intent.capture(), nullable(String.class), any(BroadcastReceiver.class),
                 nullable(Handler.class), eq(Activity.RESULT_OK), nullable(String.class),
                 nullable(Bundle.class));
-        assertEquals(ImsManager.ACTION_IMS_REGISTRATION_ERROR, intent.getValue().getAction());
-        assertEquals(title, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_TITLE));
-        assertEquals(messageAlert, intent.getValue().getStringExtra(Phone.EXTRA_KEY_ALERT_MESSAGE));
+        assertEquals(android.telephony.ims.ImsManager.ACTION_WFC_IMS_REGISTRATION_ERROR,
+                intent.getValue().getAction());
+        assertEquals(title, intent.getValue().getStringExtra(
+                android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_TITLE));
+        assertEquals(messageAlert, intent.getValue().getStringExtra(
+                android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE));
         assertEquals(messageNotification,
                 intent.getValue().getStringExtra(Phone.EXTRA_KEY_NOTIFICATION_MESSAGE));
     }
