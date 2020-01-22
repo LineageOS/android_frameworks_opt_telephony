@@ -35,6 +35,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.text.TextUtils;
@@ -1149,17 +1150,18 @@ public class ImsPhoneConnection extends Connection implements
      * @param extras The ImsCallProfile extras.
      */
     private void updateImsCallRatFromExtras(Bundle extras) {
-        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE) ||
-                extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT)) {
+        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_NETWORK_TYPE)
+                || extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)
+                || extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT)) {
 
             ImsCall call = getImsCall();
-            int callTech = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
+            int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
             if (call != null) {
-                callTech = call.getRadioTechnology();
+                networkType = call.getNetworkType();
             }
 
-            // Report any changes for call tech change
-            setCallRadioTech(callTech);
+            // Report any changes for network type change
+            setCallRadioTech(ServiceState.networkTypeToRilRadioTechnology(networkType));
         }
     }
 
