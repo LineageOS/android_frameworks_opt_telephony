@@ -21,8 +21,9 @@ import android.telephony.CellIdentityGsm;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
-/** Unit tests for {@link CellIdentityGsm}. */
+import java.util.Collections;
 
+/** Unit tests for {@link CellIdentityGsm}. */
 public class CellIdentityGsmTest extends AndroidTestCase {
 
     // Location Area Code ranges from 0 to 65535.
@@ -45,7 +46,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     public void testDefaultConstructor() {
         CellIdentityGsm ci =
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR,
-                        ALPHA_LONG, ALPHA_SHORT);
+                        ALPHA_LONG, ALPHA_SHORT, Collections.emptyList());
 
         assertEquals(LAC, ci.getLac());
         assertEquals(CID, ci.getCid());
@@ -66,7 +67,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         final String mncWithThreeDigit = "061";
         CellIdentityGsm ci =
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, MCC_STR, mncWithThreeDigit,
-                        ALPHA_LONG, ALPHA_SHORT);
+                        ALPHA_LONG, ALPHA_SHORT, Collections.emptyList());
 
         assertEquals(MCC, ci.getMcc());
         assertEquals(61, ci.getMnc());
@@ -80,7 +81,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         final String mncWithTwoDigit = "61";
         CellIdentityGsm ci =
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, MCC_STR, mncWithTwoDigit,
-                        ALPHA_LONG, ALPHA_SHORT);
+                        ALPHA_LONG, ALPHA_SHORT, Collections.emptyList());
 
         assertEquals(MCC, ci.getMcc());
         assertEquals(61, ci.getMnc());
@@ -92,7 +93,8 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     @SmallTest
     public void testConstructorWithEmptyMccMnc() {
         CellIdentityGsm ci =
-                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
+                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT,
+                        Collections.emptyList());
 
         assertEquals(Integer.MAX_VALUE, ci.getMcc());
         assertEquals(Integer.MAX_VALUE, ci.getMnc());
@@ -100,7 +102,8 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         assertNull(ci.getMncString());
         assertNull(ci.getMobileNetworkOperator());
 
-        ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, MCC_STR, null, ALPHA_LONG, ALPHA_SHORT);
+        ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, MCC_STR, null, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
 
         assertEquals(MCC, ci.getMcc());
         assertEquals(Integer.MAX_VALUE, ci.getMnc());
@@ -108,7 +111,8 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         assertNull(ci.getMncString());
         assertNull(ci.getMobileNetworkOperator());
 
-        ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+        ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
 
         assertEquals(MNC, ci.getMnc());
         assertEquals(Integer.MAX_VALUE, ci.getMcc());
@@ -116,7 +120,8 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         assertNull(ci.getMccString());
         assertNull(ci.getMobileNetworkOperator());
 
-        ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, "", "", ALPHA_LONG, ALPHA_SHORT);
+        ci = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, "", "", ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
 
         assertEquals(Integer.MAX_VALUE, ci.getMcc());
         assertEquals(Integer.MAX_VALUE, ci.getMnc());
@@ -128,20 +133,26 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     @SmallTest
     public void testEquals() {
         CellIdentityGsm ciA = new CellIdentityGsm(
-                LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+                LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
         CellIdentityGsm ciB = new CellIdentityGsm(
-                LAC, CID, ARFCN, BSIC,  MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+                LAC, CID, ARFCN, BSIC,  MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
 
         assertTrue(ciA.equals(ciB));
 
-        ciA = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
-        ciB = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+        ciA = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
+        ciB = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
 
         assertTrue(ciA.equals(ciB));
 
         ciA = new CellIdentityGsm(
-                LAC, CID, ARFCN, BSIC, MCC_STR,  MNC_STR, ALPHA_LONG, ALPHA_SHORT);
-        ciB = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+                LAC, CID, ARFCN, BSIC, MCC_STR,  MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
+        ciB = new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
 
         assertFalse(ciA.equals(ciB));
     }
@@ -150,7 +161,7 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     public void testParcel() {
         CellIdentityGsm ci =
                 new CellIdentityGsm(LAC, CID, ARFCN, BSIC, MCC_STR, MNC_STR,
-                        ALPHA_LONG, ALPHA_SHORT);
+                        ALPHA_LONG, ALPHA_SHORT, Collections.emptyList());
 
         Parcel p = Parcel.obtain();
         ci.writeToParcel(p, 0);
@@ -163,7 +174,8 @@ public class CellIdentityGsmTest extends AndroidTestCase {
     @SmallTest
     public void testParcelWithUnknowMccMnc() {
         CellIdentityGsm ci =
-                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
+                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT,
+                        Collections.emptyList());
 
         Parcel p = Parcel.obtain();
         ci.writeToParcel(p, 0);
@@ -178,7 +190,8 @@ public class CellIdentityGsmTest extends AndroidTestCase {
         final String invalidMcc = "randomStuff";
         final String invalidMnc = "randomStuff";
         CellIdentityGsm ci =
-                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT);
+                new CellIdentityGsm(LAC, CID, ARFCN, BSIC, null, null, ALPHA_LONG, ALPHA_SHORT,
+                        Collections.emptyList());
 
         Parcel p = Parcel.obtain();
         ci.writeToParcel(p, 0);
