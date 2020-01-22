@@ -86,9 +86,6 @@ public interface PhoneNotifier {
     /** Send a notification that the users mobile data setting has changed */
     void notifyUserMobileDataStateChanged(Phone sender, boolean state);
 
-    /** Send a notification with an OEM hook payload */
-    void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData);
-
     /** Send a notification that the phone capability has changed */
     void notifyPhoneCapabilityChanged(PhoneCapability capability);
 
