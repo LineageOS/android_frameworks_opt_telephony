@@ -1619,8 +1619,9 @@ public class RILTest extends TelephonyTest {
         CellSignalStrengthNr signalStrengthNr =
                 (CellSignalStrengthNr) cellInfoNr.getCellSignalStrength();
 
-        CellIdentityNr expectedCellIdentity = new CellIdentityNr(PCI, TAC, NRARFCN, MCC_STR,
-                MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT, Collections.emptyList());
+        CellIdentityNr expectedCellIdentity = new CellIdentityNr(PCI, TAC, NRARFCN,
+                CellInfo.UNAVAILABLE, MCC_STR, MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList());
         CellSignalStrengthNr expectedSignalStrength = new CellSignalStrengthNr(-RSRP, -RSRQ,
                 SIGNAL_NOISE_RATIO, -RSRP, -RSRQ, SIGNAL_NOISE_RATIO);
 
