@@ -787,6 +787,91 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    private boolean prepareForDialing(ImsPhone.ImsDialArgs dialArgs) throws CallStateException {
+        boolean holdBeforeDial = false;
+        // note that this triggers call state changed notif
+        clearDisconnected();
+        if (mImsManager == null) {
+            throw new CallStateException("service not available");
+        }
+        // See if there are any issues which preclude placing a call; throw a CallStateException
+        // if there is.
+        checkForDialIssues();
+        int videoState = dialArgs.videoState;
+        if (!canAddVideoCallDuringImsAudioCall(videoState)) {
+            throw new CallStateException("cannot dial in current state");
+        }
+
+        // The new call must be assigned to the foreground call.
+        // That call must be idle, so place anything that's
+        // there on hold
+        if (mForegroundCall.getState() == ImsPhoneCall.State.ACTIVE) {
+            if (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE) {
+                //we should have failed in checkForDialIssues above before we get here
+                throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
+                        "Already too many ongoing calls.");
+            }
+            // foreground call is empty for the newly dialed connection
+            holdBeforeDial = true;
+            mPendingCallVideoState = videoState;
+            mPendingIntentExtras = dialArgs.intentExtras;
+            holdActiveCallForPendingMo();
+        }
+
+        ImsPhoneCall.State fgState = ImsPhoneCall.State.IDLE;
+        ImsPhoneCall.State bgState = ImsPhoneCall.State.IDLE;
+
+        synchronized (mSyncHold) {
+            if (holdBeforeDial) {
+                fgState = mForegroundCall.getState();
+                bgState = mBackgroundCall.getState();
+                //holding foreground call failed
+                if (fgState == ImsPhoneCall.State.ACTIVE) {
+                    throw new CallStateException("cannot dial in current state");
+                }
+                //holding foreground call succeeded
+                if (bgState == ImsPhoneCall.State.HOLDING) {
+                    holdBeforeDial = false;
+                }
+            }
+        }
+        return holdBeforeDial;
+    }
+
+    public Connection startConference(String[] participantsToDial, ImsPhone.ImsDialArgs dialArgs)
+            throws CallStateException {
+
+        int clirMode = dialArgs.clirMode;
+        int videoState = dialArgs.videoState;
+
+        if (DBG) log("dial clirMode=" + clirMode);
+        boolean holdBeforeDial = prepareForDialing(dialArgs);
+
+        mClirMode = clirMode;
+
+        synchronized (mSyncHold) {
+            mLastDialArgs = dialArgs;
+            mPendingMO = new ImsPhoneConnection(mPhone,
+                    participantsToDial, this, mForegroundCall,
+                    false);
+            mPendingMO.setVideoState(videoState);
+            if (dialArgs.rttTextStream != null) {
+                log("startConference: setting RTT stream on mPendingMO");
+                mPendingMO.setCurrentRttTextStream(dialArgs.rttTextStream);
+            }
+        }
+        addConnection(mPendingMO);
+
+        if (!holdBeforeDial) {
+            dialInternal(mPendingMO, clirMode, videoState, dialArgs.intentExtras);
+        }
+
+        updatePhoneState();
+        mPhone.notifyPreciseCallStateChanged();
+
+        return mPendingMO;
+    }
+
     @UnsupportedAppUsage
     public Connection dial(String dialString, int videoState, Bundle intentExtras) throws
             CallStateException {
@@ -822,20 +907,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             dialString = convertNumberIfNecessary(mPhone, dialString);
         }
 
-        // note that this triggers call state changed notif
-        clearDisconnected();
-
-        if (mImsManager == null) {
-            throw new CallStateException("service not available");
-        }
-
-        // See if there are any issues which preclude placing a call; throw a CallStateException
-        // if there is.
-        checkForDialIssues();
-
-        if (!canAddVideoCallDuringImsAudioCall(videoState)) {
-            throw new CallStateException("cannot dial in current state");
-        }
+        mClirMode = clirMode;
+        boolean holdBeforeDial = prepareForDialing(dialArgs);
 
         if (isPhoneInEcmMode && isEmergencyNumber) {
             handleEcmTimer(ImsPhone.CANCEL_ECM_TIMER);
@@ -849,46 +922,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             videoState = VideoProfile.STATE_AUDIO_ONLY;
         }
 
-        boolean holdBeforeDial = false;
-
-        // The new call must be assigned to the foreground call.
-        // That call must be idle, so place anything that's
-        // there on hold
-        if (mForegroundCall.getState() == ImsPhoneCall.State.ACTIVE) {
-            if (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE) {
-                //we should have failed in checkForDialIssues above before we get here
-                throw new CallStateException(CallStateException.ERROR_TOO_MANY_CALLS,
-                        "Already too many ongoing calls.");
-            }
-            // foreground call is empty for the newly dialed connection
-            holdBeforeDial = true;
-            // Cache the video state for pending MO call.
-            mPendingCallVideoState = videoState;
-            mPendingIntentExtras = dialArgs.intentExtras;
-            holdActiveCallForPendingMo();
-        }
-
-        ImsPhoneCall.State fgState = ImsPhoneCall.State.IDLE;
-        ImsPhoneCall.State bgState = ImsPhoneCall.State.IDLE;
-
-        mClirMode = clirMode;
+        // Cache the video state for pending MO call.
+        mPendingCallVideoState = videoState;
 
         synchronized (mSyncHold) {
-            if (holdBeforeDial) {
-                fgState = mForegroundCall.getState();
-                bgState = mBackgroundCall.getState();
-
-                //holding foreground call failed
-                if (fgState == ImsPhoneCall.State.ACTIVE) {
-                    throw new CallStateException("cannot dial in current state");
-                }
-
-                //holding foreground call succeeded
-                if (bgState == ImsPhoneCall.State.HOLDING) {
-                    holdBeforeDial = false;
-                }
-            }
-
             mLastDialString = dialString;
             mLastDialArgs = dialArgs;
             mPendingMO = new ImsPhoneConnection(mPhone,
@@ -1099,8 +1136,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return;
         }
 
-        if (conn.getAddress()== null || conn.getAddress().length() == 0
-                || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0) {
+        if (!conn.isAdhocConference() &&
+                (conn.getAddress()== null || conn.getAddress().length() == 0
+                || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0)) {
             // Phone number is invalid
             conn.setDisconnectCause(DisconnectCause.INVALID_NUMBER);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
@@ -1119,6 +1157,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         try {
             String[] callees = new String[] { conn.getAddress() };
             ImsCallProfile profile = mImsManager.createCallProfile(serviceType, callType);
+            if (conn.isAdhocConference()) {
+                profile.setCallExtraBoolean(ImsCallProfile.EXTRA_CONFERENCE, true);
+            }
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
 
             if (isEmergencyCall) {
@@ -1158,7 +1199,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // being sent to the lower layers/to the network.
             }
 
-            ImsCall imsCall = mImsManager.makeCall(profile, callees, mImsCallListener);
+            ImsCall imsCall = mImsManager.makeCall(profile,
+                    conn.isAdhocConference() ? conn.getParticipantsToDial() : callees,
+                    mImsCallListener);
             conn.setImsCall(imsCall);
 
             mMetrics.writeOnImsCallStart(mPhone.getPhoneId(),
