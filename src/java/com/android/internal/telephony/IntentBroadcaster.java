@@ -51,7 +51,7 @@ public class IntentBroadcaster {
                     while (iterator.hasNext()) {
                         Map.Entry pair = (Map.Entry) iterator.next();
                         Intent i = (Intent) pair.getValue();
-                        i.putExtra(TelephonyIntents.EXTRA_REBROADCAST_ON_UNLOCK, true);
+                        i.putExtra(Intent.EXTRA_REBROADCAST_ON_UNLOCK, true);
                         iterator.remove();
                         logd("Rebroadcasting intent " + i.getAction() + " "
                                 + i.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE)
