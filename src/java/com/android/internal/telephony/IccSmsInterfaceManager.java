@@ -306,13 +306,17 @@ public class IccSmsInterfaceManager {
     }
 
     /**
-     * Copy a raw SMS PDU to the Icc.
+     * Copies a raw SMS PDU to the ICC.
      *
-     * @param pdu the raw PDU to store
-     * @param status message status (STATUS_ON_ICC_READ, STATUS_ON_ICC_UNREAD,
-     *               STATUS_ON_ICC_SENT, STATUS_ON_ICC_UNSENT)
-     * @return success or not
-     *
+     * @param callingPackage the package name of the calling app.
+     * @param status message status. One of these status:
+     *               <code>STATUS_ON_ICC_READ</code>
+     *               <code>STATUS_ON_ICC_UNREAD</code>
+     *               <code>STATUS_ON_ICC_SENT</code>
+     *               <code>STATUS_ON_ICC_UNSENT</code>
+     * @param pdu the raw PDU to store.
+     * @param smsc the SMSC for this message. Null means use default.
+     * @return true for success. Otherwise false.
      */
     @UnsupportedAppUsage
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc) {
