@@ -1638,17 +1638,26 @@ public class RILTest extends TelephonyTest {
         result10.pcscf = "fd00:976a:c206:20::6   fd00:976a:c206:20::9    fd00:976a:c202:1d::9";
         result10.mtu = 1500;
 
-        DataCallResponse response = new DataCallResponse(0, -1, 0, 2, ApnSetting.PROTOCOL_IPV4V6,
-                "ifname",
-                Arrays.asList(new LinkAddress(InetAddresses.parseNumericAddress("10.0.2.15"), 32),
-                        new LinkAddress("2607:fb90:a620:651d:eabe:f8da:c107:44be/64")),
-                Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
-                        InetAddresses.parseNumericAddress("fd00:976a::9")),
-                Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.15"),
-                        InetAddresses.parseNumericAddress("fe80::2")),
-                Arrays.asList(InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setSuggestedRetryTime(-1)
+                .setId(0)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress("10.0.2.15"), 32),
+                        new LinkAddress("2607:fb90:a620:651d:eabe:f8da:c107:44be/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
-                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")), 1500);
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
+                .setMtu(1500)
+                .build();
 
         assertEquals(response, RIL.convertDataCallResult(result10));
 
