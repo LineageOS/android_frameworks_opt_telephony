@@ -186,6 +186,12 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
+    public Connection startConference(String[] participantsToDial, DialArgs dialArgs)
+            throws CallStateException {
+        throw new CallStateException("startConference: not supported");
+    }
+
+    @Override
     public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
         synchronized (SipPhone.class) {
             return dialInternal(dialString, dialArgs.videoState);
