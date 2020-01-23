@@ -35,6 +35,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
+import android.os.UserHandle;
 import android.permission.IPermissionManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -177,8 +178,9 @@ public class SubscriptionInfoUpdater extends Handler {
             public void onReceive(Context context, Intent intent) {
                 // Remove this line after testing
                 if (Intent.ACTION_USER_FOREGROUND.equals(intent.getAction())) {
+                    UserHandle userHandle = intent.getParcelableExtra(Intent.EXTRA_USER);
                     // If couldn't get current user ID, guess it's 0.
-                    mCurrentlyActiveUserId = intent.getIntExtra(Intent.EXTRA_USER_HANDLE, 0);
+                    mCurrentlyActiveUserId = userHandle != null ? userHandle.getIdentifier() : 0;
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
                             mPackageManager, mPermissionManager, TelephonyManager.getDefault(),
                             mCurrentlyActiveUserId, sContext);
