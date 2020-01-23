@@ -504,19 +504,22 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteOnSetupDataCallResponse() throws Exception {
-        DataCallResponse response = new DataCallResponse(
-                5, /* status */
-                6, /* suggestedRetryTime */
-                7, /* cid */
-                8, /* active */
-                ApnSetting.PROTOCOL_IPV4V6, /* protocolType */
-                FAKE_IFNAME, /* ifname */
-                Arrays.asList(new LinkAddress(
-                       InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)), /* addresses */
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)), /* dnses */
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)), /* gateways */
-                Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)), /* pcscfs */
-                1440 /* mtu */);
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(5)
+                .setSuggestedRetryTime(6)
+                .setId(7)
+                .setLinkStatus(8)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName(FAKE_IFNAME)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(FAKE_ADDRESS), 0)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_DNS)))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress(FAKE_GATEWAY)))
+                .setPcscfAddresses(
+                        Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
+                .setMtuV4(1440)
+                .setMtuV6(1440)
+                .build();
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 2,
                 RIL_REQUEST_SETUP_DATA_CALL, response);

@@ -334,8 +334,7 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
-    public void setNetworkSelectionModeManual(
-            String operatorNumeric, Message response) {
+    public void setNetworkSelectionModeManual(String operatorNumeric, int ran, Message response) {
     }
 
     @Override

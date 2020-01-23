@@ -20,14 +20,12 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.config.V1_1.ModemsConfig;
 import android.hardware.radio.config.V1_2.IRadioConfigResponse;
-import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
-import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class is the implementation of IRadioConfigResponse interface.
@@ -115,23 +113,6 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
         }
     }
 
-    private PhoneCapability convertHalPhoneCapability(
-            android.hardware.radio.config.V1_1.PhoneCapability phoneCapability) {
-        // TODO b/121394331: clean up V1_1.PhoneCapability fields.
-        int maxActiveVoiceCalls = 0;
-        int maxActiveData = phoneCapability.maxActiveData;
-        int max5G = 0;
-        boolean validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
-        List<ModemInfo> logicalModemList = new ArrayList();
-
-        for (android.hardware.radio.config.V1_1.ModemInfo
-                modemInfo : phoneCapability.logicalModemList) {
-            logicalModemList.add(new ModemInfo(modemInfo.modemId));
-        }
-
-        return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G, logicalModemList,
-                validationBeforeSwitchSupported);
-    }
     /**
      * Response function for IRadioConfig.getPhoneCapability().
      */
@@ -140,7 +121,7 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
         RILRequest rr = mRadioConfig.processResponse(responseInfo);
 
         if (rr != null) {
-            PhoneCapability ret = convertHalPhoneCapability(phoneCapability);
+            PhoneCapability ret = RadioConfig.convertHalPhoneCapability(phoneCapability);
             if (responseInfo.error == RadioError.NONE) {
                 // send response
                 RadioResponse.sendMessageResponse(rr.mResult, ret);
@@ -154,6 +135,31 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             }
         } else {
             Rlog.e(TAG, "getPhoneCapabilityResponse: Error " + responseInfo.toString());
+        }
+    }
+
+    /**
+     * Response function for IRadioConfig.getPhoneCapability_1_3().
+     */
+    public void getPhoneCapabilityResponse_1_3(RadioResponseInfo responseInfo,
+            android.hardware.radio.config.V1_3.PhoneCapability phoneCapability) {
+        RILRequest rr = mRadioConfig.processResponse(responseInfo);
+
+        if (rr != null) {
+            PhoneCapability ret = RadioConfig.convertHalPhoneCapability_1_3(phoneCapability);
+            if (responseInfo.error == RadioError.NONE) {
+                // send response
+                RadioResponse.sendMessageResponse(rr.mResult, ret);
+                Rlog.d(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " " + ret.toString());
+            } else {
+                rr.onError(responseInfo.error, ret);
+                Rlog.e(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " error "
+                        + responseInfo.error);
+            }
+        } else {
+            Rlog.e(TAG, "getPhoneCapabilityResponse_1_3: Error " + responseInfo.toString());
         }
     }
 

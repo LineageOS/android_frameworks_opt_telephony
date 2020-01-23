@@ -19,16 +19,12 @@ package com.android.internal.telephony.dataconnection;
 import android.content.Context;
 import android.hardware.radio.V1_4.DataConnActiveStatus;
 import android.net.LinkAddress;
-import android.net.util.LinkPropertiesUtils;
-import android.net.util.LinkPropertiesUtils.CompareResult;
-import android.net.util.NetUtils;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.DataFailCause;
 import android.telephony.PhoneStateListener;
-import com.android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 
@@ -39,6 +35,10 @@ import com.android.internal.telephony.util.HandlerExecutor;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.net.module.util.LinkPropertiesUtils;
+import com.android.net.module.util.LinkPropertiesUtils.CompareResult;
+import com.android.net.module.util.NetUtils;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

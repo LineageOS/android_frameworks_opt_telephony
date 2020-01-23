@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.provider.Telephony.ServiceStateTable.getContentValuesForServiceState;
 import static android.provider.Telephony.ServiceStateTable.getUriForSubscriptionId;
 
 import static com.android.internal.telephony.CarrierActionAgent.CARRIER_ACTION_SET_RADIO_ENABLED;
@@ -33,6 +32,7 @@ import android.app.PendingIntent;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -44,6 +44,7 @@ import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Parcel;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -280,6 +281,15 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_PHYSICAL_CHANNEL_CONFIG           = 55;
     protected static final int EVENT_CELL_LOCATION_RESPONSE            = 56;
     protected static final int EVENT_CARRIER_CONFIG_CHANGED            = 57;
+
+    /**
+     * The current service state.
+     *
+     * This is a column name in {@link android.provider.Telephony.ServiceStateTable}.
+     *
+     * Copied from packages/services/Telephony/src/com/android/phone/ServiceStateProvider.java
+     */
+    private static final String SERVICE_STATE = "service_state";
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"CARRIER_NAME_DISPLAY_BITMASK"},
@@ -5657,5 +5667,23 @@ public class ServiceStateTracker extends Handler {
         TelephonyManager tm = (TelephonyManager) mPhone.getContext().getSystemService(
                 Context.TELEPHONY_SERVICE);
         tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), type);
+    }
+
+    /**
+     * Used to insert a ServiceState into the ServiceStateProvider as a ContentValues instance.
+     *
+     * Copied from packages/services/Telephony/src/com/android/phone/ServiceStateProvider.java
+     *
+     * @param state the ServiceState to convert into ContentValues
+     * @return the convertedContentValues instance
+     */
+    private ContentValues getContentValuesForServiceState(ServiceState state) {
+        ContentValues values = new ContentValues();
+        final Parcel p = Parcel.obtain();
+        state.writeToParcel(p, 0);
+        // Turn the parcel to byte array. Safe to do this because the content values were never
+        // written into a persistent storage. ServiceStateProvider keeps values in the memory.
+        values.put(SERVICE_STATE, p.marshall());
+        return values;
     }
 }

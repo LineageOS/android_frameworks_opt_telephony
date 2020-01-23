@@ -25,10 +25,22 @@ android_test {
     ],
 
     platform_apis: true,
-    jarjar_rules: ":jarjar-rules-shared",
+    jarjar_rules: ":jarjar-rules-telephony-tests",
 
     test_suites: [
         "mts",
         "device-tests",
     ],
+}
+
+genrule {
+    name: "jarjar-rules-telephony-tests",
+    srcs: [
+        // Order matters: test rules override the base ones
+        "jarjar-rules-tests.txt",
+        ":jarjar-rules-shared",
+    ],
+    out: ["jarjar-rules-telephony-tests-combined.txt"],
+    cmd: "cat $(in) > $(out)",
+    visibility: ["//visibility:private"],
 }
