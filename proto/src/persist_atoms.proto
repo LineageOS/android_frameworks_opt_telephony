@@ -1,0 +1,84 @@
+/*
+ * Copyright (C) 2020 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+package telephonyStatsLog;
+
+option java_package = "com.android.internal.telephony";
+option java_outer_classname = "PersistAtomsProto";
+
+// Holds atoms to store on persist storage in case of power cycle or process crash.
+// NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
+// Next id: 5
+message PersistAtoms {
+    /* Aggregated RAT usage during the call. */
+    repeated RawVoiceCallRatUsage raw_voice_call_rat_usage = 1;
+
+    /* Timestamp of last voice_call_rat_usages pull. */
+    optional int64 raw_voice_call_rat_usage_pull_timestamp_millis = 2;
+
+    /* Per call statistics and information. */
+    repeated VoiceCallSession voice_call_session = 3;
+
+    /* Timestamp of last voice_call_sessions pull. */
+    optional int64 voice_call_session_pull_timestamp_millis = 4;
+}
+
+// The canonical versions of the following enums live in:
+//   frameworks/base/core/proto/android/telephony/enums.proto
+// The canonical versions of the following atoms live in:
+//   frameworks/base/cmds/statsd/src/atoms.proto
+// We cannot link against framework's and statsd's protolite libraries as it is "for test only".
+// NOTE: StatsLog functions use int in place of enum
+
+message VoiceCallSession {
+    optional int32 bearer_at_start = 1;
+    optional int32 bearer_at_end = 2;
+    optional int32 direction = 3;
+    optional int32 setup_duration = 4;
+    optional bool setup_failed = 5;
+    optional int32 disconnect_reason_code = 6;
+    optional int32 disconnect_extra_code = 7;
+    optional string disconnect_extra_message = 8;
+    optional int32 rat_at_start = 9;
+    optional int32 rat_at_end = 10;
+    optional int64 rat_switch_count = 11;
+    optional int64 codec_bitmask = 12;
+    optional int32 concurrent_call_count_at_start = 13;
+    optional int32 concurrent_call_count_at_end = 14;
+    optional int32 sim_slot_index = 15;
+    optional bool is_multi_sim = 16;
+    optional bool is_esim = 17;
+    optional int32 carrier_id = 18;
+    optional bool srvcc_completed = 19;
+    optional int64 srvcc_failure_count = 20;
+    optional int64 srvcc_cancellation_count = 21;
+    optional bool rtt_enabled = 22;
+    optional bool is_emergency = 23;
+    optional bool is_roaming = 24;
+
+    // Internal use only
+    optional int64 setup_begin_millis = 10001;
+}
+
+// Internal use only
+message RawVoiceCallRatUsage {
+    optional int32 carrier_id = 1;
+    optional int32 rat = 2;
+    optional int64 total_duration_millis = 3;
+    optional int64 call_count = 4;
+}

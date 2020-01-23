@@ -44,6 +44,7 @@ import com.android.internal.telephony.euicc.EuiccCardController;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
+import com.android.internal.telephony.metrics.MetricsCollector;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
@@ -95,6 +96,7 @@ public class PhoneFactory {
     static private CellularNetworkValidator sCellularNetworkValidator;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
+    private static MetricsCollector sMetricsCollector;
 
     //***** Class Methods
 
@@ -138,6 +140,9 @@ public class PhoneFactory {
                         }
                     }
                 }
+
+                // register statsd pullers.
+                sMetricsCollector = new MetricsCollector(context);
 
                 sPhoneNotifier = new DefaultPhoneNotifier(context);
 
@@ -520,6 +525,11 @@ public class PhoneFactory {
             }
             sLocalLogs.get(key).log(log);
         }
+    }
+
+    /** Returns the MetricsCollector instance. */
+    public static MetricsCollector getMetricsCollector() {
+        return sMetricsCollector;
     }
 
     public static void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {

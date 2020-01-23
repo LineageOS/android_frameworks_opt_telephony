@@ -227,6 +227,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 TelephonyMetrics.getInstance().writeOnImsCallReceive(mPhone.getPhoneId(),
                         imsCall.getSession());
+                mPhone.getVoiceCallSessionStats().onImsCallReceived(conn);
 
                 if (isUnknown) {
                     mPhone.notifyUnknownConnection(conn);
@@ -1496,13 +1497,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // being sent to the lower layers/to the network.
             }
 
+            mPhone.getVoiceCallSessionStats().onImsDial(conn);
+
             ImsCall imsCall = mImsManager.makeCall(profile,
                     conn.isAdhocConference() ? conn.getParticipantsToDial() : callees,
                     mImsCallListener);
             conn.setImsCall(imsCall);
 
-            mMetrics.writeOnImsCallStart(mPhone.getPhoneId(),
-                    imsCall.getSession());
+            mMetrics.writeOnImsCallStart(mPhone.getPhoneId(), imsCall.getSession());
 
             setVideoCallProvider(conn, imsCall);
             conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
@@ -1551,6 +1553,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (answeringWillDisconnect) {
                 // We need to disconnect the foreground call before answering the background call.
                 mForegroundCall.hangup();
+                mPhone.getVoiceCallSessionStats().onImsAcceptCall(mRingingCall.getConnections());
                 try {
                     ringingCall.accept(ImsCallProfile.getCallTypeFromVideoState(videoState));
                 } catch (ImsException e) {
@@ -1566,6 +1569,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             try {
                 ImsCall imsCall = mRingingCall.getImsCall();
                 if (imsCall != null) {
+                    mPhone.getVoiceCallSessionStats().onImsAcceptCall(
+                            mRingingCall.getConnections());
                     imsCall.accept(ImsCallProfile.getCallTypeFromVideoState(videoState));
                     mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
                             ImsCommand.IMS_CMD_ACCEPT);
@@ -1742,6 +1747,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         //accept waiting call after holding background call
         ImsCall imsCall = mRingingCall.getImsCall();
         if (imsCall != null) {
+            mPhone.getVoiceCallSessionStats().onImsAcceptCall(mRingingCall.getConnections());
             imsCall.accept(
                     ImsCallProfile.getCallTypeFromVideoState(mPendingCallVideoState));
             mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
@@ -2736,6 +2742,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         DisconnectCause.NOT_DISCONNECTED, true /*ignore state update*/);
                 mMetrics.writeImsCallState(mPhone.getPhoneId(),
                         imsCall.getCallSession(), conn.getCall().mState);
+                mPhone.getVoiceCallSessionStats().onCallStateChanged(conn.getCall());
             }
         }
 
@@ -2854,6 +2861,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     getNetworkCountryIso(), emergencyNumberTracker != null
                     ? emergencyNumberTracker.getEmergencyNumberDbVersion()
                     : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
+            mPhone.getVoiceCallSessionStats().onImsCallTerminated(conn, reasonInfo);
             // Remove info for the callId from the current calls and add it to the history
             CallQualityMetrics lastCallMetrics = mCallQualityMetrics.remove(callId);
             if (lastCallMetrics != null) {
