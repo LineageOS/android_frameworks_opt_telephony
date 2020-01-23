@@ -35,7 +35,6 @@ import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
-import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.IQualifiedNetworksService;
 import android.telephony.data.IQualifiedNetworksServiceCallback;
@@ -44,7 +43,9 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.util.ArrayList;
@@ -303,8 +304,9 @@ public class AccessNetworksManager extends Handler {
      */
     private String getQualifiedNetworksServicePackageName() {
         // Read package name from the resource
-        String packageName = mPhone.getContext().getResources().getString(
-                com.android.internal.R.string.config_qualified_networks_service_package);
+        String packageName = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                .getString(com.android.telephony.resources
+                        .R.string.config_qualified_networks_service_package);
 
         PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
 
@@ -328,8 +330,9 @@ public class AccessNetworksManager extends Handler {
      */
     private String getQualifiedNetworksServiceClassName() {
         // Read package name from the resource
-        String className = mPhone.getContext().getResources().getString(
-                com.android.internal.R.string.config_qualified_networks_service_class);
+        String className = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                .getString(com.android.telephony.resources
+                        .R.string.config_qualified_networks_service_class);
 
         PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
 

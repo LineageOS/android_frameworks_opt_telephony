@@ -38,9 +38,11 @@ import android.telephony.INetworkService;
 import android.telephony.INetworkServiceCallback;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
+
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
 
 import java.util.Hashtable;
 import java.util.Map;
@@ -319,12 +321,14 @@ public class NetworkRegistrationManager extends Handler {
 
         switch (mTransportType) {
             case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
-                resourceId = com.android.internal.R.string.config_wwan_network_service_package;
+                resourceId = com.android.telephony.resources.R.string
+                        .config_wwan_network_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_NETWORK_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING;
                 break;
             case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
-                resourceId = com.android.internal.R.string.config_wlan_network_service_package;
+                resourceId = com.android.telephony.resources.R.string
+                        .config_wlan_network_service_package;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_NETWORK_SERVICE_WLAN_PACKAGE_OVERRIDE_STRING;
                 break;
@@ -334,7 +338,8 @@ public class NetworkRegistrationManager extends Handler {
         }
 
         // Read package name from resource overlay
-        packageName = mPhone.getContext().getResources().getString(resourceId);
+        packageName = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                .getString(resourceId);
 
         PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
 
@@ -353,12 +358,14 @@ public class NetworkRegistrationManager extends Handler {
 
         switch (mTransportType) {
             case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
-                resourceId = com.android.internal.R.string.config_wwan_network_service_class;
+                resourceId = com.android.telephony.resources.R.string
+                        .config_wwan_network_service_class;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_NETWORK_SERVICE_WWAN_CLASS_OVERRIDE_STRING;
                 break;
             case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
-                resourceId = com.android.internal.R.string.config_wlan_network_service_class;
+                resourceId = com.android.telephony.resources.R.string
+                        .config_wlan_network_service_class;
                 carrierConfig = CarrierConfigManager
                         .KEY_CARRIER_NETWORK_SERVICE_WLAN_CLASS_OVERRIDE_STRING;
                 break;
@@ -368,7 +375,8 @@ public class NetworkRegistrationManager extends Handler {
         }
 
         // Read class name from resource overlay
-        className = mPhone.getContext().getResources().getString(resourceId);
+        className = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                .getString(resourceId);
 
         PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
 

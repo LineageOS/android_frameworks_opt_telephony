@@ -69,7 +69,6 @@ import android.util.SparseArray;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
-import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -86,6 +85,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -1689,8 +1689,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return null;
         }
 
-        CharSequence[] carrierLocales = mContext.getResources().getTextArray(
-                R.array.carrier_properties);
+        CharSequence[] carrierLocales = TelephonyResourceUtils.getTelephonyResources(mContext)
+                .getTextArray(com.android.telephony.resources.R.array.carrier_properties);
 
         for (int i = 0; i < carrierLocales.length; i+=3) {
             String c = carrierLocales[i].toString();
@@ -3830,8 +3830,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mRadioCapability.set(rc);
 
         if (SubscriptionManager.isValidSubscriptionId(getSubId())) {
-            boolean restoreSelection = !mContext.getResources().getBoolean(
-                    com.android.internal.R.bool.skip_restoring_network_selection);
+            boolean restoreSelection = !TelephonyResourceUtils.getTelephonyResources(mContext)
+                    .getBoolean(com.android.telephony.resources.R.bool
+                            .skip_restoring_network_selection);
             sendSubscriptionSettings(restoreSelection);
         }
     }

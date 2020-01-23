@@ -113,6 +113,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -5490,8 +5491,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // default to UNKNOWN so we fail fast.
         int raf = RadioAccessFamily.RAF_UNKNOWN;
 
-        String rafString = mContext.getResources().getString(
-                com.android.internal.R.string.config_radio_access_family);
+        String rafString = TelephonyResourceUtils.getTelephonyResources(mContext).getString(
+                com.android.telephony.resources.R.string.config_radio_access_family);
         if (!TextUtils.isEmpty(rafString)) {
             raf = RadioAccessFamily.rafTypeFromString(rafString);
         }

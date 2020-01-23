@@ -23,6 +23,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.Context;
+import android.content.res.Resources.NotFoundException;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Message;
@@ -30,6 +32,7 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.util.Iterator;
 import java.util.List;
@@ -49,6 +52,7 @@ class CommandParamsFactory extends Handler {
     private boolean mloadIcon = false;
     private String mSavedLanguage;
     private String mRequestedLanguage;
+    private boolean mNoAlphaUsrCnf = false;
 
     // constants
     static final int MSG_ID_LOAD_ICON_DONE = 1;
@@ -83,19 +87,25 @@ class CommandParamsFactory extends Handler {
     private static final int MAX_UCS2_CHARS = 118;
 
     static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller,
-            IccFileHandler fh) {
+            IccFileHandler fh, Context context) {
         if (sInstance != null) {
             return sInstance;
         }
         if (fh != null) {
-            return new CommandParamsFactory(caller, fh);
+            return new CommandParamsFactory(caller, fh, context);
         }
         return null;
     }
 
-    private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh) {
+    private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh, Context context) {
         mCaller = caller;
         mIconLoader = IconLoader.getInstance(this, fh);
+        try {
+            mNoAlphaUsrCnf = TelephonyResourceUtils.getTelephonyResources(context).getBoolean(
+                    com.android.telephony.resources.R.bool.config_stkNoAlphaUsrCnf);
+        } catch (NotFoundException e) {
+            mNoAlphaUsrCnf = false;
+        }
     }
 
     private CommandDetails processCommandDetails(List<ComprehensionTlv> ctlvs) {
@@ -601,7 +611,7 @@ class CommandParamsFactory extends Handler {
         ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
                 ctlvs);
         if (ctlv != null) {
-            menu.title = ValueParser.retrieveAlphaId(ctlv);
+            menu.title = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
         } else if (cmdType == AppInterface.CommandType.SET_UP_MENU) {
             // According to spec ETSI TS 102 223 section 6.10.3, the
             // Alpha ID is mandatory (and also part of minimum set of
@@ -704,7 +714,7 @@ class CommandParamsFactory extends Handler {
 
         ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
                 ctlvs);
-        textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+        textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {
@@ -813,7 +823,7 @@ class CommandParamsFactory extends Handler {
 
         // parse alpha identifier.
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
-        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
+        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
 
         // parse icon identifier
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
@@ -886,7 +896,7 @@ class CommandParamsFactory extends Handler {
         // parse alpha identifier
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
         if (ctlv != null) {
-            textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
             // Assign the tone message text to empty string, if alpha identifier
             // data is null. If no alpha identifier tlv is present, then tone
             // message text will be null.
@@ -943,7 +953,7 @@ class CommandParamsFactory extends Handler {
 
         // get confirmation message string.
         ctlv = searchForNextTag(ComprehensionTlvTag.ALPHA_ID, iter);
-        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
+        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {
@@ -954,7 +964,7 @@ class CommandParamsFactory extends Handler {
         // get call set up message string.
         ctlv = searchForNextTag(ComprehensionTlvTag.ALPHA_ID, iter);
         if (ctlv != null) {
-            callMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            callMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
         }
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
@@ -1077,7 +1087,7 @@ class CommandParamsFactory extends Handler {
         // parse alpha identifier
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
         if (ctlv != null) {
-            textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
             CatLog.d(this, "alpha TLV text=" + textMsg.text);
             has_alpha_id = true;
         }

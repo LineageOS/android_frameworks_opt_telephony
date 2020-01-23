@@ -234,6 +234,8 @@
     <!-- Component name of the ICC hotswap prompt for restart dialog -->
     <string name="config_iccHotswapPromptForRestartDialogComponent" translatable="false">@null</string>
 
+    <string translatable="false" name="prohibit_manual_network_selection_in_gobal_mode">false</string>
+
     <!-- call barring MMI code from TS 22.030 Annex B -->
     <string-array translatable="false" name="config_callBarringMMI">
         <item>33</item>

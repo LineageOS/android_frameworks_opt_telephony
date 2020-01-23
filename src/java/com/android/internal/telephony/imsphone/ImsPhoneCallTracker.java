@@ -50,7 +50,6 @@ import android.telephony.CallQuality;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -107,8 +106,10 @@ import com.android.internal.telephony.metrics.CallQualityMetrics;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.server.net.NetworkStatsService;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -2854,8 +2855,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
             }
 
-            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
-                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
+            boolean useVideoPauseWorkaround = TelephonyResourceUtils
+                    .getTelephonyResources(mPhone.getContext()).getBoolean(
+                    com.android.telephony.resources.R.bool.config_useVideoPauseWorkaround);
             if (useVideoPauseWorkaround && mSupportPauseVideo &&
                     VideoProfile.isVideo(conn.getVideoState())) {
                 // If we are using the video pause workaround, the vendor IMS code has issues
@@ -3896,8 +3898,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 imsCall.getCallSession().getVideoCallProvider();
         if (imsVideoCallProvider != null) {
             // TODO: Remove this when we can better formalize the format of session modify requests.
-            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
-                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
+            boolean useVideoPauseWorkaround = TelephonyResourceUtils
+                    .getTelephonyResources(mPhone.getContext()).getBoolean(
+                    com.android.telephony.resources.R.bool.config_useVideoPauseWorkaround);
 
             ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
                     new ImsVideoCallProviderWrapper(imsVideoCallProvider);
@@ -4428,8 +4431,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
 
-            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
-                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
+            boolean useVideoPauseWorkaround = TelephonyResourceUtils
+                    .getTelephonyResources(mPhone.getContext()).getBoolean(
+                    com.android.telephony.resources.R.bool.config_useVideoPauseWorkaround);
             if (useVideoPauseWorkaround && mSupportPauseVideo &&
                     VideoProfile.isVideo(conn.getVideoState())) {
                 // If we are using the video pause workaround, the vendor IMS code has issues

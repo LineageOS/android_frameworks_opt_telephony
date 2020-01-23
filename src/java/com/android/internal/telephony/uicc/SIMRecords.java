@@ -24,7 +24,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
 import android.text.TextUtils;
@@ -36,6 +35,8 @@ import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1450,8 +1451,9 @@ public class SIMRecords extends IccRecords {
     }
 
     private void setSimLanguageFromEF() {
-        Resources resource = Resources.getSystem();
-        if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
+        Resources resource = TelephonyResourceUtils.getTelephonyResources(mContext);
+        if (resource.getBoolean(
+                com.android.telephony.resources.R.bool.config_use_sim_language_file)) {
             setSimLanguage(mEfLi, mEfPl);
         } else {
             if (DBG) log ("Not using EF LI/EF PL");

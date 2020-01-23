@@ -92,7 +92,6 @@ import android.util.Pair;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -220,9 +219,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         logd("ServiceStateTrackerTest +Setup!");
         super.setUp("ServiceStateTrackerTest");
 
-        mContextFixture.putResource(R.string.config_wwan_network_service_package,
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.config_wwan_network_service_package,
                 "com.android.phone");
-        mContextFixture.putResource(R.string.config_wlan_network_service_package,
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.config_wlan_network_service_package,
                 "com.xyz.iwlan.networkservice");
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
@@ -266,13 +267,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Override SPN related resource
         mContextFixture.putResource(
-                com.android.internal.R.string.lockscreen_carrier_default,
+                com.android.telephony.resources.R.string.lockscreen_carrier_default,
                 CARRIER_NAME_DISPLAY_NO_SERVICE);
         mContextFixture.putResource(
-                com.android.internal.R.string.emergency_calls_only,
+                com.android.telephony.resources.R.string.emergency_calls_only,
                 CARRIER_NAME_DISPLAY_EMERGENCY_CALL);
         mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.wfcSpnFormats,
+                com.android.telephony.resources.R.array.wfcSpnFormats,
                 WIFI_CALLING_FORMATTERS);
 
         mBundle.putBoolean(
@@ -300,7 +301,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Do not force display "No service" when sim is not ready in any locales
         mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_display_no_service_when_sim_unready,
+                com.android.telephony.resources.R.array.config_display_no_service_when_sim_unready,
                 new String[0]);
 
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
@@ -1516,13 +1517,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+                com.android.telephony.resources.R.bool
+                    .config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnDataTitle, "test1");
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.RestrictedOnDataTitle, "test1");
         sst.setNotification(ServiceStateTracker.PS_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
                 ArgumentCaptor.forClass(Notification.class);
@@ -1548,13 +1551,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+                com.android.telephony.resources.R.bool
+                    .config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnAllVoiceTitle,
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.RestrictedOnAllVoiceTitle,
                 "test2");
         sst.setNotification(ServiceStateTracker.CS_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
@@ -1581,13 +1586,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+                com.android.telephony.resources.R.bool
+                    .config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnNormalTitle, "test3");
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.RestrictedOnNormalTitle, "test3");
         sst.setNotification(ServiceStateTracker.CS_NORMAL_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
                 ArgumentCaptor.forClass(Notification.class);
@@ -1613,13 +1620,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+                com.android.telephony.resources.R.bool
+                    .config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnEmergencyTitle,
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.RestrictedOnEmergencyTitle,
                 "test4");
         sst.setNotification(ServiceStateTracker.CS_EMERGENCY_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
@@ -1647,13 +1656,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                R.bool.config_user_notification_of_restrictied_mobile_access, true);
+                com.android.telephony.resources.R.bool
+                    .config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnDataTitle, "test1");
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.RestrictedOnDataTitle, "test1");
 
         sst.setNotification(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
@@ -2516,13 +2527,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // set up unaffected locale (US) and clear the resource
         doReturn("us").when(mLocaleTracker).getCurrentCountry();
         mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_display_no_service_when_sim_unready,
+                com.android.telephony.resources.R.array.config_display_no_service_when_sim_unready,
                 new String[0]);
         assertFalse(sst.shouldForceDisplayNoService());
 
         // set up the resource to include Germany
         mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.config_display_no_service_when_sim_unready,
+                com.android.telephony.resources.R.array.config_display_no_service_when_sim_unready,
                 new String[]{"de"});
         doReturn("us").when(mLocaleTracker).getCurrentCountry();
         assertFalse(sst.shouldForceDisplayNoService());

@@ -36,8 +36,6 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.MediumTest;
 
-import com.android.internal.R;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,7 +73,8 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         logd("CellularNetworkServiceTest +Setup!");
         super.setUp("CellularNetworkServiceTest");
 
-        mContextFixture.putResource(R.string.config_wwan_network_service_package,
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.config_wwan_network_service_package,
                 "com.android.phone");
         addNetworkService();
         mBinder = mCellularNetworkService.mBinder;

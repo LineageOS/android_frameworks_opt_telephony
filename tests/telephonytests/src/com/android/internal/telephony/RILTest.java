@@ -265,11 +265,11 @@ public class RILTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(RILTest.class.getSimpleName());
+        Context context = new ContextFixture().getTestDouble();
         try {
-            TelephonyDevController.create();
+            TelephonyDevController.create(context);
         } catch (RuntimeException e) {
         }
-        Context context = new ContextFixture().getTestDouble();
         doReturn(true).when(mConnectionManager)
             .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
         doReturn(mConnectionManager).when(context)
