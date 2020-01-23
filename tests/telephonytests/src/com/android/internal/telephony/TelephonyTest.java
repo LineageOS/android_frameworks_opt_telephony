@@ -24,6 +24,7 @@ import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -82,6 +83,9 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
+import com.android.internal.telephony.metrics.MetricsCollector;
+import com.android.internal.telephony.metrics.PersistAtomsStorage;
+import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -280,6 +284,12 @@ public abstract class TelephonyTest {
     protected NetworkStatsManager mStatsManager;
     @Mock
     protected CarrierPrivilegesTracker mCarrierPrivilegesTracker;
+    @Mock
+    protected VoiceCallSessionStats mVoiceCallSessionStats;
+    @Mock
+    protected PersistAtomsStorage mPersistAtomsStorage;
+    @Mock
+    protected MetricsCollector mMetricsCollector;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -498,6 +508,8 @@ public abstract class TelephonyTest {
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
+        doReturn(mVoiceCallSessionStats).when(mPhone).getVoiceCallSessionStats();
+        doReturn(mVoiceCallSessionStats).when(mImsPhone).getVoiceCallSessionStats();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
 
         //mUiccController
@@ -611,6 +623,10 @@ public abstract class TelephonyTest {
                 .when(mCellularNetworkValidator).getSubIdInValidation();
         doReturn(true).when(mCellularNetworkValidator).isValidationFeatureSupported();
 
+        // Metrics
+        doReturn(null).when(mContext).getFileStreamPath(anyString());
+        doReturn(mPersistAtomsStorage).when(mMetricsCollector).getAtomsStorage();
+
         //Use reflection to mock singletons
         replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
         replaceInstance(TelephonyComponentFactory.class, "sInstance", null,
@@ -647,6 +663,7 @@ public abstract class TelephonyTest {
         replaceInstance(SubscriptionInfoUpdater.class, "sIsSubInfoInitialized", null, true);
         replaceInstance(PhoneFactory.class, "sCommandsInterfaces", null,
                 new CommandsInterface[] {mSimulatedCommands});
+        replaceInstance(PhoneFactory.class, "sMetricsCollector", null, mMetricsCollector);
 
         assertNotNull("Failed to set up SubscriptionController singleton",
                 SubscriptionController.getInstance());
