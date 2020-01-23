@@ -2679,7 +2679,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mHoldSwitchingState = HoldSwapState.INACTIVE;
                 }
                 ImsPhoneConnection conn = findConnection(imsCall);
-                if (conn != null) {
+                if (conn != null && conn.getState() != ImsPhoneCall.State.DISCONNECTED) {
                     conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_HOLD_FAILED, null);
                 }
                 mPhone.notifySuppServiceFailed(Phone.SuppService.HOLD);
@@ -4411,5 +4411,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     public boolean isConferenceEventPackageEnabled() {
         return mIsConferenceEventPackageEnabled;
+    }
+
+    @VisibleForTesting
+    public ImsCall.Listener getImsCallListener() {
+        return mImsCallListener;
+    }
+
+    @VisibleForTesting
+    public ArrayList<ImsPhoneConnection> getConnections() {
+        return mConnections;
     }
 }

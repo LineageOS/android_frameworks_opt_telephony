@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony.imsphone;
 
+import static junit.framework.TestCase.fail;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -100,6 +103,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneConnection.Listener mImsPhoneConnectionListener;
     @Mock
     private ImsConfig mImsConfig;
+    @Mock
+    private ImsPhoneConnection mImsPhoneConnection;
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -161,6 +166,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mSecondImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mImsPhoneConnectionListener = mock(ImsPhoneConnection.Listener.class);
+        mImsPhoneConnection = mock(ImsPhoneConnection.class);
         imsCallMocking(mImsCall);
         imsCallMocking(mSecondImsCall);
         doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceState();
@@ -979,6 +985,25 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 mCTUT.maybeRemapReasonCode(
                         new ImsReasonInfo(ImsReasonInfo.CODE_SIP_FORBIDDEN, 0,
                                 "SERVICE not allowed in this location")));
+    }
+
+    @Test
+    @SmallTest
+    public void testNoHoldErrorMessageWhenCallDisconnected() {
+        when(mImsPhoneConnection.getImsCall()).thenReturn(mImsCall);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocationOnMock) {
+                fail("Error message showed when the call has already been disconnected!");
+                return null;
+            }
+        }).when(mImsPhoneConnection)
+                .onConnectionEvent(eq(android.telecom.Connection.EVENT_CALL_HOLD_FAILED), any());
+        mCTUT.getConnections().add(mImsPhoneConnection);
+        when(mImsPhoneConnection.getState()).thenReturn(ImsPhoneCall.State.DISCONNECTED);
+        ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_UNSPECIFIED,
+                ImsReasonInfo.CODE_UNSPECIFIED, null);
+        mCTUT.getImsCallListener().onCallHoldFailed(mImsPhoneConnection.getImsCall(), info);
     }
 
     private ImsPhoneConnection placeCallAndMakeActive() {
