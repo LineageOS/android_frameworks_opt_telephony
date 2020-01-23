@@ -1856,7 +1856,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     //***** Called from ImsPhoneCall
 
     public void hangup (ImsPhoneCall call) throws CallStateException {
-        if (DBG) log("hangup call");
+        hangup(call, android.telecom.Call.REJECT_REASON_DECLINED);
+    }
+
+    public void hangup (ImsPhoneCall call, @android.telecom.Call.RejectReason int rejectReason)
+            throws CallStateException {
+        if (DBG) log("hangup call - reason=" + rejectReason);
 
         if (call.getConnections().size() == 0) {
             throw new CallStateException("no connections");
@@ -1893,7 +1898,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         try {
             if (imsCall != null) {
                 if (rejectCall) {
-                    imsCall.reject(ImsReasonInfo.CODE_USER_DECLINE);
+                    if (rejectReason == android.telecom.Call.REJECT_REASON_UNWANTED) {
+                        imsCall.reject(ImsReasonInfo.CODE_SIP_USER_MARKED_UNWANTED);
+                    } else {
+                        imsCall.reject(ImsReasonInfo.CODE_USER_DECLINE);
+                    }
                     mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
                             ImsCommand.IMS_CMD_REJECT);
                 } else {
