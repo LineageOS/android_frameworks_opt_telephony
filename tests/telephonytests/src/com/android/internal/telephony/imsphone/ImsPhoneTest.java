@@ -546,7 +546,7 @@ public class ImsPhoneTest extends TelephonyTest {
                 CommandsInterface.SERVICE_CLASS_NONE);
         verify(mImsUtInterface).updateCallBarring(eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL),
                 eq(CommandsInterface.CF_ACTION_ENABLE), messageArgumentCaptor.capture(),
-                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
+                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE), eq("abc"));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
         mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg,
@@ -554,7 +554,7 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsUtInterface).updateCallBarring(
                 eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL_EXCL_HOME),
                 eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
-                (String[])eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
+                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE), eq("abc"));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
