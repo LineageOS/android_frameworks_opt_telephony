@@ -446,22 +446,22 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             logd("  " + intent.getAction());
         }
         Intent intent = intents.get(2);
-        assertEquals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION, intent.getAction());
+        assertEquals(TelephonyManager.ACTION_SERVICE_PROVIDERS_UPDATED, intent.getAction());
 
         Bundle b = intent.getExtras();
 
         // For boolean we need to make sure the key exists first
-        assertTrue(b.containsKey(TelephonyIntents.EXTRA_SHOW_SPN));
-        assertFalse(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN));
+        assertTrue(b.containsKey(TelephonyManager.EXTRA_SHOW_SPN));
+        assertFalse(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN));
 
-        assertEquals(null, b.getString(TelephonyIntents.EXTRA_SPN));
-        assertEquals(null, b.getString(TelephonyIntents.EXTRA_DATA_SPN));
+        assertEquals(null, b.getString(TelephonyManager.EXTRA_SPN));
+        assertEquals(null, b.getString(TelephonyManager.EXTRA_DATA_SPN));
 
         // For boolean we need to make sure the key exists first
-        assertTrue(b.containsKey(TelephonyIntents.EXTRA_SHOW_PLMN));
-        assertTrue(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN));
+        assertTrue(b.containsKey(TelephonyManager.EXTRA_SHOW_PLMN));
+        assertTrue(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN));
 
-        assertEquals(SimulatedCommands.FAKE_LONG_NAME, b.getString(TelephonyIntents.EXTRA_PLMN));
+        assertEquals(SimulatedCommands.FAKE_LONG_NAME, b.getString(TelephonyManager.EXTRA_PLMN));
 
         ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mTelephonyManager).setDataNetworkTypeForPhone(anyInt(), intArgumentCaptor.capture());
@@ -2368,9 +2368,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Plmn should be shown, and the string is "Emergency call only"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
                 .isEqualTo(CARRIER_NAME_DISPLAY_EMERGENCY_CALL);
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
     @Test
@@ -2392,9 +2392,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Plmn should be shown, and the string is "No service"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
                 .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
     @Test
@@ -2415,9 +2415,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Plmn should be shown, and the string is "No service"
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
                 .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
     @Test
@@ -2442,12 +2442,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // Only spn should be shown
         String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyIntents.EXTRA_SPN))
+        assertThat(b.getString(TelephonyManager.EXTRA_SPN))
                 .isEqualTo(String.format(WIFI_CALLING_VOICE_FORMAT, spn));
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isTrue();
-        assertThat(b.getString(TelephonyIntents.EXTRA_DATA_SPN))
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN)).isTrue();
+        assertThat(b.getString(TelephonyManager.EXTRA_DATA_SPN))
                 .isEqualTo(String.format(WIFI_CALLING_DATA_FORMAT, spn));
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isFalse();
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isFalse();
     }
 
     @Test
@@ -2476,10 +2476,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         String plmn = mBundle.getStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY)[0];
         plmn = plmn.split("\\s*,\\s*")[0];
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN))
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
                 .isEqualTo(String.format(WIFI_CALLING_VOICE_FORMAT, plmn));
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isFalse();
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN)).isFalse();
     }
 
     @Test
@@ -2505,10 +2505,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         String plmn = mBundle.getStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY)[0];
         plmn = plmn.split("\\s*,\\s*")[0];
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyIntents.EXTRA_SPN)).isEqualTo(spn);
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_SPN)).isTrue();
-        assertThat(b.getString(TelephonyIntents.EXTRA_PLMN)).isEqualTo(plmn);
-        assertThat(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN)).isTrue();
+        assertThat(b.getString(TelephonyManager.EXTRA_SPN)).isEqualTo(spn);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN)).isTrue();
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN)).isEqualTo(plmn);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
     @Test
