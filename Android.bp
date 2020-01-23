@@ -41,6 +41,13 @@ filegroup {
     srcs: ["jarjar-rules-shared.txt"],
 }
 
+genrule {
+    name: "statslog-telephony-java-gen",
+    tools: ["stats-log-api-gen"],
+    cmd: "$(location stats-log-api-gen) --java $(out) --module telephony"
+        + " --javaPackage com.android.internal.telephony --javaClass TelephonyStatsLog",
+    out: ["com/android/internal/telephony/TelephonyStatsLog.java"],
+}
 
 java_library {
     name: "telephony-common",
@@ -53,6 +60,7 @@ java_library {
         ":opt-telephony-common-srcs",
         ":framework-telephony-stack-shared-srcs",
         ":net-utils-telephony-common-srcs",
+        ":statslog-telephony-java-gen",
         "src/java/**/I*.aidl",
         "src/java/**/*.logtags",
     ],
