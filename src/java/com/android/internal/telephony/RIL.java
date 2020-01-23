@@ -3282,7 +3282,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     (android.hardware.radio.V1_5.IRadio) radioProxy;
             if (radioProxy15 != null) {
                 RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE, result,
-                    mRILDefaultWorkSource);
+                        mRILDefaultWorkSource);
 
                 // Do not log function arg for privacy
                 if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
@@ -3293,7 +3293,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 try {
                     radioProxy15.sendCdmaSmsExpectMore(rr.mSerial, msg);
                     mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP2);
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
                 }

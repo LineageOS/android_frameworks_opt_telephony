@@ -165,7 +165,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         //   that the message should fall back to sending over CS.
         if (0 == tracker.mImsRetry && !isIms() || imsSmsDisabled || tracker.mUsesImsServiceForIms) {
             if (tracker.mRetryCount == 0 && tracker.mExpectMore) {
-                mCi.sendCdmaSMSExpectMore(pdu,reply);
+                mCi.sendCdmaSMSExpectMore(pdu, reply);
             } else {
                 mCi.sendCdmaSms(pdu, reply);
             }

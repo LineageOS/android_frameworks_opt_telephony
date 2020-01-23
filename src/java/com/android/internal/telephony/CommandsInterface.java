@@ -1186,6 +1186,11 @@ public interface CommandsInterface {
      */
     void sendCdmaSms(byte[] pdu, Message response);
 
+    /**
+     * Identical to sendCdmaSms, except that more messages are expected to be sent soon
+     * @param pdu is CDMA-SMS in internal pseudo-PDU format
+     * @param response response sent when operation completed
+     */
     void sendCdmaSMSExpectMore(byte[] pdu, Message response);
 
     /**
