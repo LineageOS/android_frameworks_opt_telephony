@@ -83,8 +83,34 @@ public interface NitzStateMachine {
      * A proxy over device state that allows things like system properties, system clock
      * to be faked for tests.
      */
-    // Non-final to allow mocking.
-    class DeviceState {
+    interface DeviceState {
+
+        /**
+         * If time between NITZ updates is less than {@link #getNitzUpdateSpacingMillis()} the
+         * update may be ignored.
+         */
+        int getNitzUpdateSpacingMillis();
+
+        /**
+         * If {@link #getNitzUpdateSpacingMillis()} hasn't been exceeded but update is >
+         * {@link #getNitzUpdateDiffMillis()} do the update
+         */
+        int getNitzUpdateDiffMillis();
+
+        /**
+         * Returns true if the {@code gsm.ignore-nitz} system property is set to "yes".
+         */
+        boolean getIgnoreNitz();
+
+        String getNetworkCountryIsoForPhone();
+    }
+
+    /**
+     * The real implementation of {@link DeviceState}.
+     *
+     * {@hide}
+     */
+    class DeviceStateImpl implements DeviceState {
         private static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
         private final int mNitzUpdateSpacing;
 
@@ -95,7 +121,7 @@ public interface NitzStateMachine {
         private final TelephonyManager mTelephonyManager;
         private final ContentResolver mCr;
 
-        public DeviceState(GsmCdmaPhone phone) {
+        public DeviceStateImpl(GsmCdmaPhone phone) {
             mPhone = phone;
 
             Context context = phone.getContext();
@@ -108,31 +134,24 @@ public interface NitzStateMachine {
                     SystemProperties.getInt("ro.nitz_update_diff", NITZ_UPDATE_DIFF_DEFAULT);
         }
 
-        /**
-         * If time between NITZ updates is less than {@link #getNitzUpdateSpacingMillis()} the
-         * update may be ignored.
-         */
+        @Override
         public int getNitzUpdateSpacingMillis() {
             return Settings.Global.getInt(mCr, Settings.Global.NITZ_UPDATE_SPACING,
                     mNitzUpdateSpacing);
         }
 
-        /**
-         * If {@link #getNitzUpdateSpacingMillis()} hasn't been exceeded but update is >
-         * {@link #getNitzUpdateDiffMillis()} do the update
-         */
+        @Override
         public int getNitzUpdateDiffMillis() {
             return Settings.Global.getInt(mCr, Settings.Global.NITZ_UPDATE_DIFF, mNitzUpdateDiff);
         }
 
-        /**
-         * Returns true if the {@code gsm.ignore-nitz} system property is set to "yes".
-         */
+        @Override
         public boolean getIgnoreNitz() {
             String ignoreNitz = SystemProperties.get("gsm.ignore-nitz");
             return ignoreNitz != null && ignoreNitz.equals("yes");
         }
 
+        @Override
         public String getNetworkCountryIsoForPhone() {
             return mTelephonyManager.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
         }

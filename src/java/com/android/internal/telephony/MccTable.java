@@ -360,23 +360,12 @@ public final class MccTable {
     private static void setTimezoneFromMccIfNeeded(Context context, int mcc) {
         // Switch to use the time service helper associated with the NitzStateMachine impl
         // being used. This logic will be removed once the old implementation is removed.
-        if (TelephonyComponentFactory.USE_NEW_NITZ_STATE_MACHINE) {
-            if (!NewTimeServiceHelper.isTimeZoneSettingInitializedStatic()) {
-                String zoneId = defaultTimeZoneForMcc(mcc);
-                if (zoneId != null && zoneId.length() > 0) {
-                    // Set time zone based on MCC
-                    NewTimeServiceHelper.setDeviceTimeZoneStatic(context, zoneId);
-                    Slog.d(LOG_TAG, "timezone set to " + zoneId);
-                }
-            }
-        } else {
-            if (!OldTimeServiceHelper.isTimeZoneSettingInitializedStatic()) {
-                String zoneId = defaultTimeZoneForMcc(mcc);
-                if (zoneId != null && zoneId.length() > 0) {
-                    // Set time zone based on MCC
-                    OldTimeServiceHelper.setDeviceTimeZoneStatic(context, zoneId);
-                    Slog.d(LOG_TAG, "timezone set to " + zoneId);
-                }
+        if (!TimeServiceHelperImpl.isTimeZoneSettingInitializedStatic()) {
+            String zoneId = defaultTimeZoneForMcc(mcc);
+            if (zoneId != null && zoneId.length() > 0) {
+                // Set time zone based on MCC
+                TimeServiceHelperImpl.setDeviceTimeZoneStatic(context, zoneId);
+                Slog.d(LOG_TAG, "timezone set to " + zoneId);
             }
         }
     }
