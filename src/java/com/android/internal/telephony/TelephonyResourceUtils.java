@@ -18,6 +18,7 @@ package com.android.internal.telephony.util;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.telephony.SubscriptionManager;
 
 import com.android.telephony.Rlog;
 
@@ -40,4 +41,45 @@ public final class TelephonyResourceUtils {
         }
         return null;
     }
+
+    /**
+     * Retrieve resource context for the telephony resource package.
+     */
+    public static Context getTelephonyResourceContext(Context context) {
+        Context resourceContext = null;
+        try {
+            resourceContext = context.createPackageContext(TELEPHONY_RESOURCE_PACKAGE, 0);
+        }  catch (PackageManager.NameNotFoundException ex) {
+            Rlog.e(TAG, "No resource package found");
+        }
+        return resourceContext;
+    }
+
+    /**
+     *  Returns the resources from the given context for the MCC/MNC
+     *  associated with the subscription.
+     */
+    public static Resources getResourcesForSubId(Context context, int subId) {
+        Context resourceContext = getTelephonyResourceContext(context);
+        if (resourceContext != null) {
+            return SubscriptionManager.getResourcesForSubId(resourceContext, subId);
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the resources from the given context for the MCC/MNC associated
+     * with the subscription
+     */
+    public static Resources getResourcesForSubId(Context context, int subId,
+            boolean useRootLocale) {
+        Context resourceContext = getTelephonyResourceContext(context);
+        if (resourceContext != null) {
+            return SubscriptionManager.getResourcesForSubId(resourceContext, subId, useRootLocale);
+        }
+
+        return null;
+    }
+
 }

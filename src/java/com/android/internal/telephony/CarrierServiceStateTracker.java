@@ -30,13 +30,14 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.NotificationChannelController;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -434,11 +435,11 @@ public class CarrierServiceStateTracker extends Handler {
             notificationIntent.putExtra("expandable", true);
             PendingIntent settingsIntent = PendingIntent.getActivity(context, 0, notificationIntent,
                     PendingIntent.FLAG_ONE_SHOT);
-            Resources res = SubscriptionManager.getResourcesForSubId(context, mPhone.getSubId());
+            Resources res = TelephonyResourceUtils.getResourcesForSubId(context, mPhone.getSubId());
             CharSequence title = res.getText(
-                    com.android.internal.R.string.NetworkPreferenceSwitchTitle);
+                    com.android.telephony.resources.R.string.NetworkPreferenceSwitchTitle);
             CharSequence details = res.getText(
-                    com.android.internal.R.string.NetworkPreferenceSwitchSummary);
+                    com.android.telephony.resources.R.string.NetworkPreferenceSwitchSummary);
             return new Notification.Builder(context)
                     .setContentTitle(title)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
@@ -508,11 +509,11 @@ public class CarrierServiceStateTracker extends Handler {
          */
         public Notification.Builder getNotificationBuilder() {
             Context context = mPhone.getContext();
-            Resources res = SubscriptionManager.getResourcesForSubId(context, mPhone.getSubId());
+            Resources res = TelephonyResourceUtils.getResourcesForSubId(context, mPhone.getSubId());
             CharSequence title = res.getText(
-                    com.android.internal.R.string.EmergencyCallWarningTitle);
+                    com.android.telephony.resources.R.string.EmergencyCallWarningTitle);
             CharSequence details = res.getText(
-                    com.android.internal.R.string.EmergencyCallWarningSummary);
+                    com.android.telephony.resources.R.string.EmergencyCallWarningSummary);
             return new Notification.Builder(context)
                     .setContentTitle(title)
                     .setStyle(new Notification.BigTextStyle().bigText(details))

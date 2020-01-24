@@ -113,6 +113,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -1653,7 +1654,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                     new android.hardware.radio.V1_5.LinkAddress();
                             linkAddress.address = la.getAddress().getHostAddress();
                             linkAddress.properties = la.getFlags();
-                            // TODO: Add deprecated time and expired time support here.
+                            linkAddress.deprecationTime = la.getDeprecationTime();
+                            linkAddress.expirationTime = la.getExpirationTime();
                             addresses15.add(linkAddress);
                         }
                     }
@@ -3270,6 +3272,36 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog("sendSmsCdma: conversion from input stream to object failed: "
                         + ex);
             }
+        }
+    }
+
+    @Override
+    public void sendCdmaSMSExpectMore(byte[] pdu, Message result) {
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+            IRadio radioProxy = getRadioProxy(result);
+            // IRadio V1.5
+            android.hardware.radio.V1_5.IRadio radioProxy15 =
+                    (android.hardware.radio.V1_5.IRadio) radioProxy;
+            if (radioProxy15 != null) {
+                RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE, result,
+                        mRILDefaultWorkSource);
+
+                // Do not log function arg for privacy
+                if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+                CdmaSmsMessage msg = new CdmaSmsMessage();
+                constructCdmaSendSmsRilRequest(msg, pdu);
+
+                try {
+                    radioProxy15.sendCdmaSmsExpectMore(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
+                }
+            }
+        } else {
+            sendCdmaSms(pdu, result);
         }
     }
 
@@ -5490,8 +5522,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // default to UNKNOWN so we fail fast.
         int raf = RadioAccessFamily.RAF_UNKNOWN;
 
-        String rafString = mContext.getResources().getString(
-                com.android.internal.R.string.config_radio_access_family);
+        String rafString = TelephonyResourceUtils.getTelephonyResources(mContext).getString(
+                com.android.telephony.resources.R.string.config_radio_access_family);
         if (!TextUtils.isEmpty(rafString)) {
             raf = RadioAccessFamily.rafTypeFromString(rafString);
         }
@@ -5977,6 +6009,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT";
             case RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS:
                 return "RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS";
+            case RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE:
+                return "RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE";
             default: return "<unknown request>";
         }
     }
@@ -6464,10 +6498,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             active = result.active;
             protocolType = result.type;
             ifname = result.ifname;
-            //addresses = result.addresses.stream().toArray(String[]::new);
             laList = result.addresses.stream().map(a -> new LinkAddress(
-                    InetAddresses.parseNumericAddress(a.address), 0, a.properties, 0))
-                    .collect(Collectors.toList());
+                    InetAddresses.parseNumericAddress(a.address), 0, a.properties, 0,
+                    a.deprecationTime, a.expirationTime)).collect(Collectors.toList());
+
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);

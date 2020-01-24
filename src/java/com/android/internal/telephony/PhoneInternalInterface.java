@@ -438,6 +438,21 @@ public interface PhoneInternalInterface {
     Connection dial(String dialString, @NonNull DialArgs dialArgs) throws CallStateException;
 
     /**
+     * Initiate a new conference connection. This happens asynchronously, so you
+     * cannot assume the audio path is connected (or a call index has been
+     * assigned) until PhoneStateChanged notification has occurred.
+     *
+     * @param participantsToDial The participants to dial.
+     * @param dialArgs Parameters to perform the start conference with.
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     */
+    Connection startConference(String[] participantsToDial, @NonNull DialArgs dialArgs)
+            throws CallStateException;
+
+    /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
      * without SEND (so <code>dial</code> is not appropriate).
      *

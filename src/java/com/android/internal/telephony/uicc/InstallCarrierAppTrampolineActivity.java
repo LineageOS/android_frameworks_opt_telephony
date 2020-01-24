@@ -20,11 +20,12 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.util.concurrent.TimeUnit;
 
@@ -86,8 +87,9 @@ public class InstallCarrierAppTrampolineActivity extends Activity {
         // Display dialog activity if available
         Intent showDialogIntent = new Intent();
         ComponentName dialogComponentName = ComponentName.unflattenFromString(
-                Resources.getSystem().getString(
-                        com.android.internal.R.string.config_carrierAppInstallDialogComponent));
+                TelephonyResourceUtils.getTelephonyResources(getApplicationContext()).getString(
+                        com.android.telephony.resources.R.string
+                            .config_carrierAppInstallDialogComponent));
         showDialogIntent.setComponent(dialogComponentName);
         String appName = InstallCarrierAppUtils.getAppNameFromPackageName(this, mPackageName);
         if (!TextUtils.isEmpty(appName)) {

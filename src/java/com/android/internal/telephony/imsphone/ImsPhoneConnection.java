@@ -33,7 +33,6 @@ import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
@@ -50,6 +49,8 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
 
 import java.util.Objects;
 
@@ -186,6 +187,7 @@ public class ImsPhoneConnection extends Connection implements
         mHandler = new MyHandler(mOwner.getLooper());
         mHandlerMessenger = new Messenger(mHandler);
         mImsCall = imsCall;
+        mIsAdhocConference = isMultiparty();
 
         if ((imsCall != null) && (imsCall.getCallProfile() != null)) {
             mAddress = imsCall.getCallProfile().getCallExtra(ImsCallProfile.EXTRA_OI);
@@ -215,8 +217,8 @@ public class ImsPhoneConnection extends Connection implements
 
         fetchDtmfToneDelay(phone);
 
-        if (phone.getContext().getResources().getBoolean(
-                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
+        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
+                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }
@@ -255,11 +257,42 @@ public class ImsPhoneConnection extends Connection implements
 
         fetchDtmfToneDelay(phone);
 
+        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
+                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
+            setAudioModeIsVoip(true);
+        }
+    }
+
+    /** This is an MO conference call, created when dialing */
+    public ImsPhoneConnection(Phone phone, String[] participantsToDial, ImsPhoneCallTracker ct,
+            ImsPhoneCall parent, boolean isEmergency) {
+        super(PhoneConstants.PHONE_TYPE_IMS);
+        createWakeLock(phone.getContext());
+        acquireWakeLock();
+
+        mOwner = ct;
+        mHandler = new MyHandler(mOwner.getLooper());
+        mHandlerMessenger = new Messenger(mHandler);
+
+        mDialString = mAddress = Connection.ADHOC_CONFERENCE_ADDRESS;
+        mParticipantsToDial = participantsToDial;
+        mIsAdhocConference = true;
+
+        mIsIncoming = false;
+        mCnapName = null;
+        mCnapNamePresentation = PhoneConstants.PRESENTATION_ALLOWED;
+        mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
+        mCreateTime = System.currentTimeMillis();
+
+        mParent = parent;
+        parent.attachFake(this, ImsPhoneCall.State.DIALING);
+
         if (phone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }
+
 
     public void dispose() {
     }
@@ -1280,6 +1313,8 @@ public class ImsPhoneConnection extends Connection implements
         sb.append(getTelecomCallId());
         sb.append(" address: ");
         sb.append(Rlog.pii(LOG_TAG, getAddress()));
+        sb.append(" isAdhocConf: ");
+        sb.append(isAdhocConference() ? "Y" : "N");
         sb.append(" ImsCall: ");
         synchronized (this) {
             if (mImsCall == null) {

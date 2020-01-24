@@ -137,6 +137,7 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mRingingCall).getState();
         doReturn(mExecutor).when(mContext).getMainExecutor();
 
+        mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
         doReturn(true).when(mTelephonyManager).isVoiceCapable();
 
         mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, true);
@@ -547,7 +548,7 @@ public class ImsPhoneTest extends TelephonyTest {
                 CommandsInterface.SERVICE_CLASS_NONE);
         verify(mImsUtInterface).updateCallBarring(eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL),
                 eq(CommandsInterface.CF_ACTION_ENABLE), messageArgumentCaptor.capture(),
-                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
+                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE), eq("abc"));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
 
         mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg,
@@ -555,7 +556,7 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsUtInterface).updateCallBarring(
                 eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL_EXCL_HOME),
                 eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
-                (String[])eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE));
+                (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE), eq("abc"));
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
@@ -643,12 +644,14 @@ public class ImsPhoneTest extends TelephonyTest {
         String messageAlert = "Alert!";
         String messageNotification = "Notification!";
         mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.wfcOperatorErrorAlertMessages,
+                com.android.telephony.resources.R.array.wfcOperatorErrorAlertMessages,
                 new String[]{messageAlert});
         mContextFixture.putStringArrayResource(
-                com.android.internal.R.array.wfcOperatorErrorNotificationMessages,
+                com.android.telephony.resources.R.array.wfcOperatorErrorNotificationMessages,
                 new String[]{messageNotification});
-        mContextFixture.putResource(com.android.internal.R.string.wfcRegErrorTitle, title);
+        mContextFixture.putResource(
+                com.android.telephony.resources.R.string.wfcRegErrorTitle,
+                title);
 
         mImsPhoneUT.processDisconnectReason(
                 new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0, "REG09"));

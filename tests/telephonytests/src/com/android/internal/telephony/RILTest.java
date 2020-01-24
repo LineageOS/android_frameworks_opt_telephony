@@ -265,11 +265,11 @@ public class RILTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(RILTest.class.getSimpleName());
+        Context context = new ContextFixture().getTestDouble();
         try {
-            TelephonyDevController.create();
+            TelephonyDevController.create(context);
         } catch (RuntimeException e) {
         }
-        Context context = new ContextFixture().getTestDouble();
         doReturn(true).when(mConnectionManager)
             .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
         doReturn(mConnectionManager).when(context)
@@ -1625,7 +1625,7 @@ public class RILTest extends TelephonyTest {
                 (CellSignalStrengthNr) cellInfoNr.getCellSignalStrength();
 
         CellIdentityNr expectedCellIdentity = new CellIdentityNr(PCI, TAC, NRARFCN,
-                CellInfo.UNAVAILABLE, MCC_STR, MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList(), MCC_STR, MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT,
                 Collections.emptyList());
         CellSignalStrengthNr expectedSignalStrength = new CellSignalStrengthNr(-RSRP, -RSRQ,
                 SIGNAL_NOISE_RATIO, -RSRP, -RSRQ, SIGNAL_NOISE_RATIO);

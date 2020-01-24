@@ -46,6 +46,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.content.res.XmlResourceParser;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -79,12 +80,12 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
-import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -202,8 +203,8 @@ public abstract class SMSDispatcher extends Handler {
         mContext.getContentResolver().registerContentObserver(Settings.Global.getUriFor(
                 Settings.Global.SMS_SHORT_CODE_RULE), false, mSettingsObserver);
 
-        mSmsCapable = mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_sms_capable);
+        mSmsCapable = ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE))
+                .isSmsCapable();
         mSmsSendDisabled = !mTelephonyManager.getSmsSendCapableForPhone(
                 mPhone.getPhoneId(), mSmsCapable);
         Rlog.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
@@ -1462,19 +1463,24 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         CharSequence appLabel = getAppLabel(trackers[0].getAppPackageName(), trackers[0].mUserId);
-        Resources r = Resources.getSystem();
-        Spanned messageText = Html.fromHtml(r.getString(R.string.sms_control_message, appLabel));
+        Resources r = TelephonyResourceUtils.getTelephonyResources(mContext);
+        Context telephonyContext = TelephonyResourceUtils.getTelephonyResourceContext(mContext);
+        Spanned messageText = Html.fromHtml(r.getString(
+                com.android.telephony.resources.R.string.sms_control_message, appLabel));
 
         // Construct ConfirmDialogListenter for Rate Limit handling
         ConfirmDialogListener listener =
                 new ConfirmDialogListener(trackers, null, ConfirmDialogListener.RATE_LIMIT);
 
         AlertDialog d = new AlertDialog.Builder(mContext)
-                .setTitle(R.string.sms_control_title)
-                .setIcon(R.drawable.stat_sys_warning)
+                .setTitle(telephonyContext.getText(
+                        com.android.telephony.resources.R.string.sms_control_title))
+                .setIcon(android.R.drawable.stat_sys_warning)
                 .setMessage(messageText)
-                .setPositiveButton(r.getString(R.string.sms_control_yes), listener)
-                .setNegativeButton(r.getString(R.string.sms_control_no), listener)
+                .setPositiveButton(r.getString(
+                        com.android.telephony.resources.R.string.sms_control_yes), listener)
+                .setNegativeButton(r.getString(
+                        com.android.telephony.resources.R.string.sms_control_no), listener)
                 .setOnCancelListener(listener)
                 .create();
 
@@ -1496,49 +1502,62 @@ public abstract class SMSDispatcher extends Handler {
 
         int detailsId;
         if (isPremium) {
-            detailsId = R.string.sms_premium_short_code_details;
+            detailsId = com.android.telephony.resources.R.string.sms_premium_short_code_details;
         } else {
-            detailsId = R.string.sms_short_code_details;
+            detailsId = com.android.telephony.resources.R.string.sms_short_code_details;
         }
 
         CharSequence appLabel = getAppLabel(trackers[0].getAppPackageName(), trackers[0].mUserId);
-        Resources r = Resources.getSystem();
+        Resources r = TelephonyResourceUtils.getTelephonyResources(mContext);
         Spanned messageText =
                 Html.fromHtml(
                         r.getString(
-                                R.string.sms_short_code_confirm_message,
+                                com.android.telephony.resources.R.string
+                                    .sms_short_code_confirm_message,
                                 appLabel,
                                 trackers[0].mDestAddress));
 
         LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(
                 Context.LAYOUT_INFLATER_SERVICE);
-        View layout = inflater.inflate(R.layout.sms_short_code_confirmation_dialog, null);
+        Resources res = TelephonyResourceUtils.getTelephonyResources(mContext);
+        XmlResourceParser parser = res.getLayout(
+                com.android.telephony.resources.R.layout.sms_short_code_confirmation_dialog);
+        View layout = inflater.inflate(parser, null);
 
         // Construct ConfirmDialogListenter for short code message sending
         ConfirmDialogListener listener =
                 new ConfirmDialogListener(
                         trackers,
-                        (TextView)
-                                layout.findViewById(R.id.sms_short_code_remember_undo_instruction),
+                        (TextView) layout.findViewById(
+                                com.android.telephony.resources.R.id
+                                    .sms_short_code_remember_undo_instruction),
                         ConfirmDialogListener.SHORT_CODE_MSG);
 
-        TextView messageView = (TextView) layout.findViewById(R.id.sms_short_code_confirm_message);
+        TextView messageView = (TextView) layout.findViewById(
+                com.android.telephony.resources.R.id.sms_short_code_confirm_message);
         messageView.setText(messageText);
 
         ViewGroup detailsLayout = (ViewGroup) layout.findViewById(
-                R.id.sms_short_code_detail_layout);
+                com.android.telephony.resources.R.id.sms_short_code_detail_layout);
         TextView detailsView = (TextView) detailsLayout.findViewById(
-                R.id.sms_short_code_detail_message);
-        detailsView.setText(detailsId);
+                com.android.telephony.resources.R.id.sms_short_code_detail_message);
+        detailsView.setText(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
+                .getText(detailsId));
 
         CheckBox rememberChoice = (CheckBox) layout.findViewById(
-                R.id.sms_short_code_remember_choice_checkbox);
+                com.android.telephony.resources.R.id.sms_short_code_remember_choice_checkbox);
         rememberChoice.setOnCheckedChangeListener(listener);
 
         AlertDialog d = new AlertDialog.Builder(mContext)
                 .setView(layout)
-                .setPositiveButton(r.getString(R.string.sms_short_code_confirm_allow), listener)
-                .setNegativeButton(r.getString(R.string.sms_short_code_confirm_deny), listener)
+                .setPositiveButton(
+                        r.getString(
+                            com.android.telephony.resources.R.string.sms_short_code_confirm_allow),
+                        listener)
+                .setNegativeButton(
+                        r.getString(
+                            com.android.telephony.resources.R.string.sms_short_code_confirm_deny),
+                        listener)
                 .setOnCancelListener(listener)
                 .create();
 
@@ -2035,17 +2054,28 @@ public abstract class SMSDispatcher extends Handler {
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
             Rlog.d(TAG, "remember this choice: " + isChecked);
             mRememberChoice = isChecked;
+            Context telephonyContext = TelephonyResourceUtils.getTelephonyResourceContext(mContext);
             if (isChecked) {
-                mPositiveButton.setText(R.string.sms_short_code_confirm_always_allow);
-                mNegativeButton.setText(R.string.sms_short_code_confirm_never_allow);
+                mPositiveButton.setText(
+                        telephonyContext.getText(com.android.telephony.resources.R.string
+                            .sms_short_code_confirm_always_allow));
+                mNegativeButton.setText(
+                        telephonyContext.getText(com.android.telephony.resources.R.string
+                            .sms_short_code_confirm_never_allow));
                 if (mRememberUndoInstruction != null) {
-                    mRememberUndoInstruction.
-                            setText(R.string.sms_short_code_remember_undo_instruction);
+                    mRememberUndoInstruction
+                            .setText(telephonyContext.getText(com.android.telephony.resources
+                                    .R.string.sms_short_code_remember_undo_instruction));
                     mRememberUndoInstruction.setPadding(0,0,0,32);
                 }
             } else {
-                mPositiveButton.setText(R.string.sms_short_code_confirm_allow);
-                mNegativeButton.setText(R.string.sms_short_code_confirm_deny);
+                mPositiveButton.setText(
+                        telephonyContext.getText(
+                                com.android.telephony.resources.R.string
+                                        .sms_short_code_confirm_allow));
+                mNegativeButton.setText(
+                        telephonyContext.getText(com.android.telephony.resources.R
+                                .string.sms_short_code_confirm_deny));
                 if (mRememberUndoInstruction != null) {
                     mRememberUndoInstruction.setText("");
                     mRememberUndoInstruction.setPadding(0,0,0,0);

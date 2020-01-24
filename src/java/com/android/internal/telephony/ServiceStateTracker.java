@@ -37,7 +37,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.res.Resources;
+import android.graphics.drawable.Icon;
 import android.hardware.radio.V1_0.CellInfoType;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
@@ -110,6 +110,7 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.NotificationChannelController;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
@@ -393,8 +394,10 @@ public class ServiceStateTracker extends Handler {
                         mPhone.notifyServiceStateChanged(mSS);
                     }
 
-                    boolean restoreSelection = !context.getResources().getBoolean(
-                            com.android.internal.R.bool.skip_restoring_network_selection);
+                    boolean restoreSelection = !TelephonyResourceUtils
+                            .getTelephonyResources(context).getBoolean(
+                            com.android.telephony.resources.R.bool
+                                .skip_restoring_network_selection);
                     mPhone.sendSubscriptionSettings(restoreSelection);
 
                     setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
@@ -899,8 +902,9 @@ public class ServiceStateTracker extends Handler {
 
     @UnsupportedAppUsage
     protected void updatePhoneObject() {
-        if (mPhone.getContext().getResources().
-                getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
+        if (TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                .getBoolean(com.android.telephony.resources.R.bool
+                    .config_switch_phone_on_voice_reg_state_change)) {
             // If the phone is not registered on a network, no need to update.
             boolean isRegistered = mSS.getState() == ServiceState.STATE_IN_SERVICE
                     || mSS.getState() == ServiceState.STATE_EMERGENCY_ONLY;
@@ -1696,9 +1700,9 @@ public class ServiceStateTracker extends Handler {
      */
     public String getImsi() {
         // TODO: When RUIM is enabled, IMSI will come from RUIM not build-time props.
-        String operatorNumeric = ((TelephonyManager) mPhone.getContext().
-                getSystemService(Context.TELEPHONY_SERVICE)).
-                getSimOperatorNumericForPhone(mPhone.getPhoneId());
+        String operatorNumeric = ((TelephonyManager) mPhone.getContext()
+                .getSystemService(Context.TELEPHONY_SERVICE))
+                .getSimOperatorNumericForPhone(mPhone.getPhoneId());
 
         if (!TextUtils.isEmpty(operatorNumeric) && getCdmaMin() != null) {
             return (operatorNumeric + getCdmaMin());
@@ -2540,7 +2544,7 @@ public class ServiceStateTracker extends Handler {
 
     private void notifySpnDisplayUpdate(CarrierDisplayNameData data) {
         int subId = mPhone.getSubId();
-        // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
+        // Update ACTION_SERVICE_PROVIDERS_UPDATED IFF any value changes
         if (mSubId != subId
                 || data.shouldShowPlmn() != mCurShowPlmn
                 || data.shouldShowSpn() != mCurShowSpn
@@ -2561,12 +2565,12 @@ public class ServiceStateTracker extends Handler {
             mCdnrLogs.log(log);
             if (DBG) log("updateSpnDisplay: " + log);
 
-            Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, data.shouldShowSpn());
-            intent.putExtra(TelephonyIntents.EXTRA_SPN, data.getSpn());
-            intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, data.getDataSpn());
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, data.shouldShowPlmn());
-            intent.putExtra(TelephonyIntents.EXTRA_PLMN, data.getPlmn());
+            Intent intent = new Intent(TelephonyManager.ACTION_SERVICE_PROVIDERS_UPDATED);
+            intent.putExtra(TelephonyManager.EXTRA_SHOW_SPN, data.shouldShowSpn());
+            intent.putExtra(TelephonyManager.EXTRA_SPN, data.getSpn());
+            intent.putExtra(TelephonyManager.EXTRA_DATA_SPN, data.getDataSpn());
+            intent.putExtra(TelephonyManager.EXTRA_SHOW_PLMN, data.shouldShowPlmn());
+            intent.putExtra(TelephonyManager.EXTRA_PLMN, data.getPlmn());
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
@@ -2639,9 +2643,10 @@ public class ServiceStateTracker extends Handler {
             useRootLocale =
                     bundle.getBoolean(CarrierConfigManager.KEY_WFC_SPN_USE_ROOT_LOCALE);
 
-            String[] wfcSpnFormats = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),
+            String[] wfcSpnFormats = TelephonyResourceUtils.getResourcesForSubId(
+                    mPhone.getContext(),
                     mPhone.getSubId(), useRootLocale)
-                    .getStringArray(com.android.internal.R.array.wfcSpnFormats);
+                    .getStringArray(com.android.telephony.resources.R.array.wfcSpnFormats);
 
             if (voiceIdx < 0 || voiceIdx >= wfcSpnFormats.length) {
                 loge("updateSpnDisplay: KEY_WFC_SPN_FORMAT_IDX_INT out of bounds: " + voiceIdx);
@@ -2693,12 +2698,14 @@ public class ServiceStateTracker extends Handler {
                 final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
                 if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
                     // No service but emergency call allowed
-                    plmn = Resources.getSystem().
-                            getText(com.android.internal.R.string.emergency_calls_only).toString();
+                    plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                            .getText(com.android.telephony.resources.R.string.emergency_calls_only)
+                                .toString();
                 } else {
                     // No service at all
-                    plmn = Resources.getSystem().
-                            getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
+                    plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                            .getText(com.android.telephony.resources.R.string
+                                    .lockscreen_carrier_default).toString();
                     noService = true;
                 }
                 if (DBG) log("updateSpnDisplay: radio is on but out " +
@@ -2713,8 +2720,9 @@ public class ServiceStateTracker extends Handler {
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
                 showPlmn = true;
-                plmn = Resources.getSystem().
-                        getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
+                plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
+                        .getText(com.android.telephony.resources.R.string
+                                .lockscreen_carrier_default).toString();
                 if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
                         + showPlmn + " plmn=" + plmn);
             }
@@ -2782,8 +2790,9 @@ public class ServiceStateTracker extends Handler {
             }
 
             if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
-                plmn = Resources.getSystem().getText(com.android.internal.R.string
-                        .lockscreen_carrier_default).toString();
+                plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext()).getText(
+                                com.android.telephony.resources.R.string.lockscreen_carrier_default)
+                        .toString();
                 if (DBG) {
                     log("updateSpnDisplay: radio is on but out of svc, set plmn='" + plmn + "'");
                 }
@@ -2805,8 +2814,10 @@ public class ServiceStateTracker extends Handler {
      * Returns whether out-of-service will be displayed as "no service" to the user.
      */
     public boolean shouldForceDisplayNoService() {
-        String[] countriesWithNoService = mPhone.getContext().getResources().getStringArray(
-                com.android.internal.R.array.config_display_no_service_when_sim_unready);
+        String[] countriesWithNoService = TelephonyResourceUtils
+                .getTelephonyResources(mPhone.getContext()).getStringArray(
+                com.android.telephony.resources.R.array
+                    .config_display_no_service_when_sim_unready);
         if (ArrayUtils.isEmpty(countriesWithNoService)) {
             return false;
         }
@@ -3534,6 +3545,8 @@ public class ServiceStateTracker extends Handler {
 
     private String getOperatorNameFromEri() {
         String eriText = null;
+        Context telephonyContext = TelephonyResourceUtils.getTelephonyResourceContext(
+                mPhone.getContext());
         if (mPhone.isPhoneTypeCdma()) {
             if ((mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
                     && (!mIsSubscriptionFromRuim)) {
@@ -3543,8 +3556,9 @@ public class ServiceStateTracker extends Handler {
                 } else {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used for
                     // mRegistrationState 0,2,3 and 4
-                    eriText = mPhone.getContext().getText(
-                            com.android.internal.R.string.roamingTextSearching).toString();
+                    eriText = telephonyContext.getText(
+                            com.android.telephony.resources.R.string.roamingTextSearching)
+                                .toString();
                 }
             }
         } else if (mPhone.isPhoneTypeCdmaLte()) {
@@ -3553,8 +3567,8 @@ public class ServiceStateTracker extends Handler {
             if (!hasBrandOverride && (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
                     && (mEriManager.isEriFileLoaded())
                     && (!ServiceState.isPsOnlyTech(mSS.getRilVoiceRadioTechnology())
-                    || mPhone.getContext().getResources().getBoolean(com.android.internal.R
-                    .bool.config_LTE_eri_for_network_name))) {
+                    || TelephonyResourceUtils.getTelephonyResources(mPhone.getContext()).getBoolean(
+                        com.android.telephony.resources.R.bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
                 eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
@@ -3570,8 +3584,9 @@ public class ServiceStateTracker extends Handler {
                 } else if (mSS.getDataRegistrationState() != ServiceState.STATE_IN_SERVICE) {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
                     // for mRegistrationState 0,2,3 and 4
-                    eriText = mPhone.getContext()
-                            .getText(com.android.internal.R.string.roamingTextSearching).toString();
+                    eriText = telephonyContext
+                            .getText(com.android.telephony.resources.R.string.roamingTextSearching)
+                            .toString();
                 }
             }
 
@@ -4131,8 +4146,10 @@ public class ServiceStateTracker extends Handler {
         }
 
         // Needed because sprout RIL sends these when they shouldn't?
-        boolean isSetNotification = context.getResources().getBoolean(
-                com.android.internal.R.bool.config_user_notification_of_restrictied_mobile_access);
+        boolean isSetNotification = TelephonyResourceUtils
+                .getTelephonyResources(mPhone.getContext()).getBoolean(
+                com.android.telephony.resources.R.bool
+                    .config_user_notification_of_restrictied_mobile_access);
         if (!isSetNotification) {
             if (DBG) log("Ignore all the notifications");
             return;
@@ -4155,7 +4172,7 @@ public class ServiceStateTracker extends Handler {
         CharSequence details = "";
         CharSequence title = "";
         int notificationId = CS_NOTIFICATION;
-        int icon = com.android.internal.R.drawable.stat_sys_warning;
+        Icon icon = Icon.createWithResource(context, android.R.drawable.stat_sys_warning);
 
         final boolean multipleSubscriptions = (((TelephonyManager) mPhone.getContext()
                   .getSystemService(Context.TELEPHONY_SERVICE)).getPhoneCount() > 1);
@@ -4168,39 +4185,58 @@ public class ServiceStateTracker extends Handler {
                     return;
                 }
                 notificationId = PS_NOTIFICATION;
-                title = context.getText(com.android.internal.R.string.RestrictedOnDataTitle);
+                title = TelephonyResourceUtils.getTelephonyResourceContext(context).getText(
+                        com.android.telephony.resources.R.string.RestrictedOnDataTitle);
                 details = multipleSubscriptions
-                        ? context.getString(
-                                com.android.internal.R.string.RestrictedStateContentMsimTemplate,
+                        ? TelephonyResourceUtils.getTelephonyResourceContext(context).getString(
+                                com.android.telephony.resources.R.string
+                                    .RestrictedStateContentMsimTemplate,
                                 simNumber) :
-                        context.getText(com.android.internal.R.string.RestrictedStateContent);
+                        TelephonyResourceUtils.getTelephonyResourceContext(context)
+                                .getText(com.android.telephony.resources.R.string
+                                .RestrictedStateContent);
                 break;
             case PS_DISABLED:
                 notificationId = PS_NOTIFICATION;
                 break;
             case CS_ENABLED:
-                title = context.getText(com.android.internal.R.string.RestrictedOnAllVoiceTitle);
+                title = TelephonyResourceUtils.getTelephonyResourceContext(context)
+                        .getText(com.android.telephony.resources.R.string
+                        .RestrictedOnAllVoiceTitle);
                 details = multipleSubscriptions
-                        ? context.getString(
-                                com.android.internal.R.string.RestrictedStateContentMsimTemplate,
+                        ? TelephonyResourceUtils.getTelephonyResourceContext(context).getString(
+                                com.android.telephony.resources.R.string
+                                    .RestrictedStateContentMsimTemplate,
                                 simNumber) :
-                        context.getText(com.android.internal.R.string.RestrictedStateContent);
+                        TelephonyResourceUtils.getTelephonyResourceContext(context)
+                                .getText(com.android.telephony.resources.R.string
+                                .RestrictedStateContent);
                 break;
             case CS_NORMAL_ENABLED:
-                title = context.getText(com.android.internal.R.string.RestrictedOnNormalTitle);
+                title = TelephonyResourceUtils.getTelephonyResourceContext(context)
+                        .getText(com.android.telephony.resources.R.string
+                        .RestrictedOnNormalTitle);
                 details = multipleSubscriptions
-                        ? context.getString(
-                                com.android.internal.R.string.RestrictedStateContentMsimTemplate,
+                        ? TelephonyResourceUtils.getTelephonyResourceContext(context).getString(
+                                com.android.telephony.resources.R.string
+                                    .RestrictedStateContentMsimTemplate,
                                 simNumber) :
-                        context.getText(com.android.internal.R.string.RestrictedStateContent);
+                        TelephonyResourceUtils.getTelephonyResourceContext(context)
+                                .getText(com.android.telephony.resources.R.string
+                                .RestrictedStateContent);
                 break;
             case CS_EMERGENCY_ENABLED:
-                title = context.getText(com.android.internal.R.string.RestrictedOnEmergencyTitle);
+                title = TelephonyResourceUtils.getTelephonyResourceContext(context)
+                        .getText(com.android.telephony.resources.R.string
+                        .RestrictedOnEmergencyTitle);
                 details = multipleSubscriptions
-                        ? context.getString(
-                                com.android.internal.R.string.RestrictedStateContentMsimTemplate,
+                        ? TelephonyResourceUtils.getTelephonyResourceContext(context).getString(
+                                com.android.telephony.resources.R.string
+                                    .RestrictedStateContentMsimTemplate,
                                 simNumber) :
-                        context.getText(com.android.internal.R.string.RestrictedStateContent);
+                        TelephonyResourceUtils.getTelephonyResourceContext(context)
+                                .getText(com.android.telephony.resources.R.string
+                                .RestrictedStateContent);
                 break;
             case CS_DISABLED:
                 // do nothing and cancel the notification later
@@ -4216,9 +4252,13 @@ public class ServiceStateTracker extends Handler {
                         return;
                     }
                 } else {
-                    icon = com.android.internal.R.drawable.stat_notify_mmcc_indication_icn;
+                    icon = Icon.createWithResource(
+                            TelephonyResourceUtils.TELEPHONY_RESOURCE_PACKAGE,
+                            com.android.telephony.resources.R.drawable
+                                    .stat_notify_mmcc_indication_icn);
                     // if using the single SIM resource, simNumber will be ignored
-                    title = context.getString(resId, simNumber);
+                    title = TelephonyResourceUtils.getTelephonyResourceContext(context)
+                            .getString(resId, simNumber);
                     details = null;
                 }
                 break;
@@ -4235,7 +4275,7 @@ public class ServiceStateTracker extends Handler {
                 .setSmallIcon(icon)
                 .setTicker(title)
                 .setColor(context.getResources().getColor(
-                        com.android.internal.R.color.system_notification_accent_color))
+                        android.R.color.system_notification_accent_color))
                 .setContentTitle(title)
                 .setStyle(new Notification.BigTextStyle().bigText(details))
                 .setContentText(details)
@@ -4281,23 +4321,25 @@ public class ServiceStateTracker extends Handler {
         switch (rejCode) {
             case 1:// Authentication reject
                 rejResourceId = multipleSubscriptions
-                        ? com.android.internal.R.string.mmcc_authentication_reject_msim_template :
-                        com.android.internal.R.string.mmcc_authentication_reject;
+                        ? com.android.telephony.resources.R.string
+                            .mmcc_authentication_reject_msim_template :
+                        com.android.telephony.resources.R.string.mmcc_authentication_reject;
                 break;
             case 2:// IMSI unknown in HLR
                 rejResourceId = multipleSubscriptions
-                        ? com.android.internal.R.string.mmcc_imsi_unknown_in_hlr_msim_template :
-                        com.android.internal.R.string.mmcc_imsi_unknown_in_hlr;
+                        ? com.android.telephony.resources.R.string
+                            .mmcc_imsi_unknown_in_hlr_msim_template :
+                        com.android.telephony.resources.R.string.mmcc_imsi_unknown_in_hlr;
                 break;
             case 3:// Illegal MS
                 rejResourceId = multipleSubscriptions
-                        ? com.android.internal.R.string.mmcc_illegal_ms_msim_template :
-                        com.android.internal.R.string.mmcc_illegal_ms;
+                        ? com.android.telephony.resources.R.string.mmcc_illegal_ms_msim_template :
+                        com.android.telephony.resources.R.string.mmcc_illegal_ms;
                 break;
             case 6:// Illegal ME
                 rejResourceId = multipleSubscriptions
-                        ? com.android.internal.R.string.mmcc_illegal_me_msim_template :
-                        com.android.internal.R.string.mmcc_illegal_me;
+                        ? com.android.telephony.resources.R.string.mmcc_illegal_me_msim_template :
+                        com.android.telephony.resources.R.string.mmcc_illegal_me;
                 break;
             default:
                 // The other codes are not defined or not required by operators till now.
@@ -5261,8 +5303,10 @@ public class ServiceStateTracker extends Handler {
                     }
                 } else {
                     // some carrier defines international roaming by indicator
-                    int[] intRoamingIndicators = mPhone.getContext().getResources().getIntArray(
-                            com.android.internal.R.array.config_cdma_international_roaming_indicators);
+                    int[] intRoamingIndicators = TelephonyResourceUtils
+                            .getTelephonyResources(mPhone.getContext()).getIntArray(
+                            com.android.telephony.resources.R.array
+                                .config_cdma_international_roaming_indicators);
                     if ((intRoamingIndicators != null) && (intRoamingIndicators.length > 0)) {
                         // It's domestic roaming at least now
                         currentServiceState.setVoiceRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);

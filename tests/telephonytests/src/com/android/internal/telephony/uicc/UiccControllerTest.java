@@ -96,7 +96,8 @@ public class UiccControllerTest extends TelephonyTest {
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
         // set number of slots to 1
-        mContextFixture.putIntResource(com.android.internal.R.integer.config_num_physical_slots, 1);
+        mContextFixture.putIntResource(
+                com.android.telephony.resources.R.integer.config_num_physical_slots, 1);
 
         replaceInstance(UiccController.class, "mInstance", null, null);
 
@@ -124,10 +125,11 @@ public class UiccControllerTest extends TelephonyTest {
      * Replace num slots and euicc slots resources and reinstantiate the UiccController
      */
     private void reconfigureSlots(int numSlots, int[] nonRemovableEuiccSlots) throws Exception {
-        mContextFixture.putIntResource(com.android.internal.R.integer.config_num_physical_slots,
+        mContextFixture.putIntResource(
+                com.android.telephony.resources.R.integer.config_num_physical_slots,
                 numSlots);
         mContextFixture.putIntArrayResource(
-                com.android.internal.R.array.non_removable_euicc_slots,
+                com.android.telephony.resources.R.array.non_removable_euicc_slots,
                 nonRemovableEuiccSlots);
         replaceInstance(UiccController.class, "mInstance", null, null);
         mUiccControllerUT = UiccController.make(mContext);

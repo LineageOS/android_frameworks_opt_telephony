@@ -25,7 +25,6 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccCardManager;
@@ -53,6 +52,8 @@ import com.android.internal.telephony.uicc.euicc.apdu.RequestBuilder;
 import com.android.internal.telephony.uicc.euicc.apdu.RequestProvider;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultHelper;
+import com.android.internal.telephony.util.TelephonyResourceUtils;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -120,12 +121,14 @@ public class EuiccCard extends UiccCard {
     }
 
     private final ApduSender mApduSender;
+    private final Context mContext;
     private RegistrantList mEidReadyRegistrants;
     private EuiccSpecVersion mSpecVersion;
     private volatile String mEid;
 
     public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
         super(c, ci, ics, phoneId, lock);
+        mContext = c;
         // TODO: Set supportExtendedApdu based on ATR.
         mApduSender = new ApduSender(ci, ISD_R_AID, false /* supportExtendedApdu */);
 
@@ -664,7 +667,8 @@ public class EuiccCard extends UiccCard {
 
                     Asn1Node.Builder devCapsBuilder = Asn1Node.newBuilder(Tags.TAG_CTX_COMP_1);
                     String[] devCapsStrings = getResources().getStringArray(
-                            com.android.internal.R.array.config_telephonyEuiccDeviceCapabilities);
+                            com.android.telephony.resources.R.array
+                                .config_telephonyEuiccDeviceCapabilities);
                     if (devCapsStrings != null) {
                         for (String devCapItem : devCapsStrings) {
                             addDeviceCapability(devCapsBuilder, devCapItem);
@@ -1136,7 +1140,7 @@ public class EuiccCard extends UiccCard {
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected Resources getResources()  {
-        return Resources.getSystem();
+        return TelephonyResourceUtils.getTelephonyResources(mContext);
     }
 
     private RequestProvider newRequestProvider(ApduRequestBuilder builder) {

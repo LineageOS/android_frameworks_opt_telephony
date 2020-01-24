@@ -33,12 +33,12 @@ import static org.mockito.Mockito.when;
 
 import android.content.Intent;
 import android.net.LinkProperties;
+import android.os.ServiceManager;
 import android.telephony.Annotation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.SubscriptionInfo;
-import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -112,10 +112,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mPhoneStateListener = new PhoneStateListenerWrapper();
         processAllMessages();
         assertEquals(mTelephonyRegistry.asBinder(),
-                TelephonyFrameworkInitializer
-                        .getTelephonyServiceManager()
-                        .getTelephonyRegistryServiceRegisterer()
-                        .get());
+                ServiceManager.getService("telephony.registry"));
     }
 
     @After
