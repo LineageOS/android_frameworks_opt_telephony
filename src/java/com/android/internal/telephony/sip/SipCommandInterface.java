@@ -242,6 +242,10 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void sendCdmaSMSExpectMore(byte[] pdu, Message result) {
+    }
+
+    @Override
     public void sendImsGsmSms (String smscPDU, String pdu,
             int retry, int messageRef, Message response) {
     }
