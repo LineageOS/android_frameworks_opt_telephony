@@ -35,7 +35,6 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.ParcelUuid;
-import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -48,6 +47,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.SimDisplayNameSource;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccSlotInfo;
 import android.telephony.euicc.EuiccManager;
@@ -279,17 +279,11 @@ public class SubscriptionController extends ISub.Stub {
      */
     @UnsupportedAppUsage
     public void notifySubscriptionInfoChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
-                TelephonyFrameworkInitializer
-                        .getTelephonyServiceManager()
-                        .getTelephonyRegistryServiceRegisterer()
-                        .get());
-        try {
-            if (DBG) logd("notifySubscriptionInfoChanged:");
-            tr.notifySubscriptionInfoChanged();
-        } catch (RemoteException ex) {
-            // Should never happen because its always available.
-        }
+        TelephonyRegistryManager trm =
+                (TelephonyRegistryManager)
+                        mContext.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
+        if (DBG) logd("notifySubscriptionInfoChanged:");
+        trm.notifySubscriptionInfoChanged();
 
         // FIXME: Remove if listener technique accepted.
         broadcastSimInfoContentChanged();
@@ -3735,17 +3729,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private void notifyOpportunisticSubscriptionInfoChanged() {
-        ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
-                TelephonyFrameworkInitializer
-                        .getTelephonyServiceManager()
-                        .getTelephonyRegistryServiceRegisterer()
-                        .get());
-        try {
-            if (DBG) logd("notifyOpptSubscriptionInfoChanged:");
-            tr.notifyOpportunisticSubscriptionInfoChanged();
-        } catch (RemoteException ex) {
-            // Should never happen because its always available.
-        }
+        TelephonyRegistryManager trm =
+                (TelephonyRegistryManager)
+                        mContext.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
+        if (DBG) logd("notifyOpptSubscriptionInfoChanged:");
+        trm.notifyOpportunisticSubscriptionInfoChanged();
     }
 
     private void refreshCachedOpportunisticSubscriptionInfoList() {
