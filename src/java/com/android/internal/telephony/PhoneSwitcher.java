@@ -51,7 +51,6 @@ import android.os.RemoteException;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
@@ -66,6 +65,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwi
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.util.HandlerExecutor;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -671,21 +671,26 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
-        final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
-        if (!mPrioritizedDcRequests.contains(dcRequest)) {
-            collectRequestNetworkMetrics(networkRequest);
-            mPrioritizedDcRequests.add(dcRequest);
-            Collections.sort(mPrioritizedDcRequests);
-            onEvaluate(REQUESTS_CHANGED, "netRequest");
+        final DcRequest dcRequest = DcRequest.create(networkRequest);
+        if (dcRequest != null) {
+            if (!mPrioritizedDcRequests.contains(dcRequest)) {
+                collectRequestNetworkMetrics(networkRequest);
+                mPrioritizedDcRequests.add(dcRequest);
+                Collections.sort(mPrioritizedDcRequests);
+                onEvaluate(REQUESTS_CHANGED, "netRequest");
+                log("Added DcRequest, size: " + mPrioritizedDcRequests.size());
+            }
         }
     }
 
     private void onReleaseNetwork(NetworkRequest networkRequest) {
-        final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
-
-        if (mPrioritizedDcRequests.remove(dcRequest)) {
-            onEvaluate(REQUESTS_CHANGED, "netReleased");
-            collectReleaseNetworkMetrics(networkRequest);
+        final DcRequest dcRequest = DcRequest.create(networkRequest);
+        if (dcRequest != null) {
+            if (mPrioritizedDcRequests.remove(dcRequest)) {
+                onEvaluate(REQUESTS_CHANGED, "netReleased");
+                collectReleaseNetworkMetrics(networkRequest);
+                log("Removed DcRequest, size: " + mPrioritizedDcRequests.size());
+            }
         }
     }
 

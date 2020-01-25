@@ -15,21 +15,68 @@
  */
 package com.android.internal.telephony.dataconnection;
 
-import android.content.Context;
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.NetworkRequest;
+import android.net.NetworkSpecifier;
+import android.net.TelephonyNetworkSpecifier;
 import android.telephony.Annotation.ApnType;
 
+import com.android.telephony.Rlog;
+
+/**
+ * Wraps cellular network requests to configured apn types.
+ */
 public class DcRequest implements Comparable<DcRequest> {
     private static final String LOG_TAG = "DcRequest";
 
+    @NonNull
     public final NetworkRequest networkRequest;
     public final int priority;
     public final @ApnType int apnType;
 
-    public DcRequest(NetworkRequest nr, Context context) {
+    private DcRequest(@NonNull final NetworkRequest nr, @ApnType final int type,
+            int apnPriority) {
         networkRequest = nr;
-        apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
-        priority = ApnConfigTypeRepository.getDefault().getByType(apnType).getPriority();
+        priority = apnPriority;
+        apnType = type;
+    }
+
+    /**
+     * Create a DcRequest based off of the network request.  If the network request is not cellular,
+     * then null is returned and a warning is generated.
+     * @param networkRequest sets the type of dc request
+     * @return corresponding DcRequest
+     *
+     */
+    @Nullable
+    public static DcRequest create(@NonNull final NetworkRequest networkRequest) {
+        final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
+        final ApnConfigType apnConfigType = ApnConfigTypeRepository.getDefault().getByType(apnType);
+        if (apnConfigType == null) {
+            Rlog.d(LOG_TAG, "Non cellular request ignored: " + networkRequest.toString());
+            checkForAnomalousNetworkRequest(networkRequest);
+            return null;
+        } else {
+            Rlog.d(LOG_TAG, "Cellular request confirmed: " + networkRequest.toString());
+            return new DcRequest(networkRequest, apnType, apnConfigType.getPriority());
+        }
+    }
+
+    private static void checkForAnomalousNetworkRequest(NetworkRequest networkRequest) {
+        NetworkSpecifier specifier = networkRequest.getNetworkSpecifier();
+        if (specifier != null) {
+            if (specifier instanceof TelephonyNetworkSpecifier) {
+                reportAnomalousNetworkRequest(networkRequest);
+            }
+        }
+    }
+
+    private static void reportAnomalousNetworkRequest(NetworkRequest networkRequest) {
+        //TODO: Report anomaly if this happens
+        Rlog.w(LOG_TAG, "A TelephonyNetworkSpecifier for a non-cellular request is invalid: "
+                + networkRequest.toString());
+
     }
 
     public String toString() {
