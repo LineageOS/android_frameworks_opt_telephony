@@ -63,7 +63,6 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwitch;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
-import com.android.internal.telephony.util.HandlerExecutor;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -161,8 +160,6 @@ public class PhoneSwitcher extends Handler {
     private final LocalLog mLocalLog;
     private PhoneState[] mPhoneStates;
     private int[] mPhoneSubscriptions;
-    @VisibleForTesting
-    public final PhoneStateListener mPhoneStateListener;
     private final CellularNetworkValidator mValidator;
     private int mPendingSwitchSubId = INVALID_SUBSCRIPTION_ID;
     private boolean mPendingSwitchNeedValidation;
@@ -353,14 +350,6 @@ public class PhoneSwitcher extends Handler {
 
         mSubscriptionController = SubscriptionController.getInstance();
         mRadioConfig = RadioConfig.getInstance(mContext);
-
-        mPhoneStateListener = new PhoneStateListener(new HandlerExecutor(this)) {
-            @Override
-            public void onPhoneCapabilityChanged(PhoneCapability capability) {
-                onPhoneCapabilityChangedInternal(capability);
-            }
-        };
-
         mValidator = CellularNetworkValidator.getInstance();
 
         mActivePhoneRegistrants = new RegistrantList();
@@ -1375,6 +1364,12 @@ public class PhoneSwitcher extends Handler {
      */
     public int getActiveDataSubId() {
         return mPreferredDataSubId;
+    }
+
+    // TODO (b/148396668): add an internal callback method to monitor phone capability change,
+    // and hook this call to that callback.
+    private void onPhoneCapabilityChanged(PhoneCapability capability) {
+        onPhoneCapabilityChangedInternal(capability);
     }
 
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
