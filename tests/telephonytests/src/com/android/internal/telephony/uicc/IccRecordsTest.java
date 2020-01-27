@@ -31,12 +31,14 @@ package com.android.internal.telephony.uicc;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
-import android.content.Context;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.SystemClock;
+import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.telephony.TelephonyTest;
@@ -124,4 +126,95 @@ public class IccRecordsTest extends TelephonyTest {
         waitForLastHandlerAction(mIccRecords);
         assertEquals(mIccRecords.getSmsCapacityOnIcc(), 500);
     }
+
+    @Test
+    public void testGetIccSimChallengeResponseNull() {
+        long startTime;
+        long timeSpent;
+
+        // EAP-SIM rand is 16 bytes.
+        String base64Challenge = "ECcTqwuo6OfY8ddFRboD9WM=";
+
+        // Test for null result
+        mSimulatedCommands.setAuthenticationMode(mSimulatedCommands.ICC_AUTHENTICATION_MODE_NULL);
+
+        startTime = SystemClock.elapsedRealtime();
+        assertNull("getIccAuthentication should return null for empty data.",
+                mIccRecords.getIccSimChallengeResponse(UiccCardApplication.AUTH_CONTEXT_EAP_AKA,
+                      base64Challenge));
+        timeSpent = SystemClock.elapsedRealtime() - startTime;
+        Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
+        assertTrue("getIccAuthentication should not timeout",
+                timeSpent < mSimulatedCommands.ICC_SIM_CHALLENGE_TIMEOUT_MILLIS);
+    }
+
+    @Test
+    public void testGetIccSimChallengeResponseTimeout() {
+        long startTime;
+        long timeSpent;
+
+        // EAP-SIM rand is 16 bytes.
+        String base64Challenge = "ECcTqwuo6OfY8ddFRboD9WM=";
+
+        mSimulatedCommands.setAuthenticationMode(
+                mSimulatedCommands.ICC_AUTHENTICATION_MODE_TIMEOUT);
+        startTime = SystemClock.elapsedRealtime();
+        assertNull("getIccAuthentication should return null for empty data.",
+                mIccRecords.getIccSimChallengeResponse(UiccCardApplication.AUTH_CONTEXT_EAP_AKA,
+                      base64Challenge));
+        timeSpent = SystemClock.elapsedRealtime() - startTime;
+        Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
+        assertTrue("getIccAuthentication should timeout",
+                timeSpent >= mSimulatedCommands.ICC_SIM_CHALLENGE_TIMEOUT_MILLIS);
+    }
+
+    @Test
+    public void testGetIccSimChallengeResponseDefault() {
+        long startTime;
+        long timeSpent;
+
+        // EAP-SIM rand is 16 bytes.
+        String base64Challenge = "ECcTqwuo6OfY8ddFRboD9WM=";
+        String base64Challenge2 = "EMNxjsFrPCpm+KcgCmQGnwQ=";
+
+        // Test for default setup
+        mSimulatedCommands.setAuthenticationMode(
+                mSimulatedCommands.ICC_AUTHENTICATION_MODE_DEFAULT);
+
+        // Test for null input
+        startTime = SystemClock.elapsedRealtime();
+        assertNull("getIccAuthentication should return null for empty data.",
+                mIccRecords.getIccSimChallengeResponse(
+                        UiccCardApplication.AUTH_CONTEXT_EAP_AKA, ""));
+        timeSpent = SystemClock.elapsedRealtime() - startTime;
+        Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
+        assertTrue("getIccAuthentication should not timeout",
+                timeSpent < mSimulatedCommands.ICC_SIM_CHALLENGE_TIMEOUT_MILLIS);
+
+        // EAP-SIM
+        startTime = SystemClock.elapsedRealtime();
+        String response = mIccRecords.getIccSimChallengeResponse(
+                UiccCardApplication.AUTH_CONTEXT_EAP_SIM, base64Challenge);
+        timeSpent = SystemClock.elapsedRealtime() - startTime;
+        Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
+        Log.d("IccRecordsTest", "Result of getIccSimChallengeResponse is " + response);
+        assertTrue("Response to EAP-SIM Challenge must not be Null.", response != null);
+
+        startTime = SystemClock.elapsedRealtime();
+        String response1 = mIccRecords.getIccSimChallengeResponse(
+                UiccCardApplication.AUTH_CONTEXT_EAP_SIM, base64Challenge);
+        timeSpent = SystemClock.elapsedRealtime() - startTime;
+        Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
+        Log.d("IccRecordsTest", "Result of getIccSimChallengeResponse is " + response1);
+        assertTrue("Response to EAP-SIM Challenge must be consistent.",
+                response.equals(response1));
+
+        startTime = SystemClock.elapsedRealtime();
+        String response2 = mIccRecords.getIccSimChallengeResponse(
+                UiccCardApplication.AUTH_CONTEXT_EAP_SIM, base64Challenge2);
+        timeSpent = SystemClock.elapsedRealtime() - startTime;
+        Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
+        assertTrue("Two responses must be different.", !response.equals(response2));
+    }
+
 }
