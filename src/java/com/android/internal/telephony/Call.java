@@ -102,6 +102,8 @@ public abstract class Call {
     @UnsupportedAppUsage
     public abstract void hangup() throws CallStateException;
 
+    public abstract void hangup(@android.telecom.Call.RejectReason int rejectReason)
+            throws CallStateException;
 
     /**
      * hasConnection
