@@ -61,6 +61,16 @@ public class GsmCdmaCall extends Call {
         mOwner.hangup(this);
     }
 
+    /**
+     * Hangup the ringing call with a specified reason; reason is not supported on GSM/CDMA.
+     * @param rejectReason
+     */
+    @Override
+    public void hangup(@android.telecom.Call.RejectReason int rejectReason)
+            throws CallStateException {
+        mOwner.hangup(this);
+    }
+
     @Override
     public String toString() {
         return mState.toString();
