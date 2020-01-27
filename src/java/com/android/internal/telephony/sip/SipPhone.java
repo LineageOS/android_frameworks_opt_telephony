@@ -549,6 +549,16 @@ public class SipPhone extends SipPhoneBase {
             }
         }
 
+        /**
+         * Hangup the ringing call with a specified reason; reason is not supported on SIP.
+         * @param rejectReason
+         */
+        @Override
+        public void hangup(@android.telecom.Call.RejectReason int rejectReason)
+                throws CallStateException  {
+            hangup();
+        }
+
         SipConnection initIncomingCall(SipAudioCall sipAudioCall, boolean makeCallWait) {
             SipProfile callee = sipAudioCall.getPeerProfile();
             SipConnection c = new SipConnection(this, callee);

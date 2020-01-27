@@ -60,6 +60,12 @@ public class ImsExternalCall extends Call {
 
     }
 
+    @Override
+    public void hangup(@android.telecom.Call.RejectReason int rejectReason)
+            throws CallStateException {
+        // tumbleweed
+    }
+
     /**
      * Sets the call state to active.
      */
