@@ -76,6 +76,7 @@ public class DeviceStateMonitor extends Handler {
     static final int EVENT_RADIO_AVAILABLE              = 6;
     @VisibleForTesting
     static final int EVENT_WIFI_CONNECTION_CHANGED      = 7;
+    static final int EVENT_UPDATE_ALWAYS_REPORT_SIGNAL_STRENGTH = 8;
 
     // TODO(b/74006656) load hysteresis values from a property when DeviceStateMonitor starts
     private static final int HYSTERESIS_KBPS = 50;
@@ -162,6 +163,11 @@ public class DeviceStateMonitor extends Handler {
      * that fewer location updates should be provided by cellular.
      */
     private boolean mIsWifiConnected;
+
+    /**
+     * True indicates we should always enable the signal strength reporting from radio.
+     */
+    private boolean mIsAlwaysSignalStrengthReportingEnabled;
 
     @VisibleForTesting
     static final int CELL_INFO_INTERVAL_SHORT_MS = 2000;
@@ -313,7 +319,8 @@ public class DeviceStateMonitor extends Handler {
         // 3. When the update mode is IGNORE_SCREEN_OFF. This mode is used in some corner cases like
         //    when Bluetooth carkit is connected, we still want to update signal strength even
         //    when screen is off.
-        if (mIsCharging || mIsScreenOn
+        // 4. Any of system services is registrating to always listen to signal strength changes
+        if (mIsAlwaysSignalStrengthReportingEnabled || mIsCharging || mIsScreenOn
                 || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH)
                 == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
             return false;
@@ -410,6 +417,15 @@ public class DeviceStateMonitor extends Handler {
         sendMessage(obtainMessage(EVENT_UPDATE_MODE_CHANGED, filters, mode));
     }
 
+    /**
+     * Set if Telephony need always report signal strength.
+     *
+     * @param isEnable
+     */
+    public void setAlwaysReportSignalStrength(boolean isEnable) {
+        sendMessage(obtainMessage(EVENT_UPDATE_ALWAYS_REPORT_SIGNAL_STRENGTH, isEnable ? 1 : 0));
+    }
+
     private void onSetIndicationUpdateMode(int filters, int mode) {
         if ((filters & TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH) != 0) {
             mUpdateModes.put(TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH, mode);
@@ -453,6 +469,9 @@ public class DeviceStateMonitor extends Handler {
             case EVENT_WIFI_CONNECTION_CHANGED:
                 onUpdateDeviceState(msg.what, msg.arg1 != WIFI_UNAVAILABLE);
                 break;
+            case EVENT_UPDATE_ALWAYS_REPORT_SIGNAL_STRENGTH:
+                onUpdateDeviceState(msg.what, msg.arg1 != 0);
+                break;
             default:
                 throw new IllegalStateException("Unexpected message arrives. msg = " + msg.what);
         }
@@ -487,7 +506,10 @@ public class DeviceStateMonitor extends Handler {
             case EVENT_WIFI_CONNECTION_CHANGED:
                 if (mIsWifiConnected == state) return;
                 mIsWifiConnected = state;
-
+                break;
+            case EVENT_UPDATE_ALWAYS_REPORT_SIGNAL_STRENGTH:
+                if (mIsAlwaysSignalStrengthReportingEnabled == state) return;
+                mIsAlwaysSignalStrengthReportingEnabled = state;
                 break;
             default:
                 return;
