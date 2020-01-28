@@ -48,7 +48,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.CallQuality;
 import android.telephony.DisconnectCause;
 import android.telephony.NetworkRegistrationInfo;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -113,6 +112,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
 import com.android.internal.telephony.protobuf.nano.MessageNano;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1838,9 +1838,11 @@ public class TelephonyMetrics {
      *
      * @param phoneId Phone id
      * @param errorReason Defined in {@link SmsManager} RESULT_XXX.
+     * @param messageId Unique id for this message.
      */
     public synchronized void writeOnImsServiceSmsSolicitedResponse(int phoneId,
-            @ImsSmsImplBase.SendStatusResult int resultCode, int errorReason) {
+            @ImsSmsImplBase.SendStatusResult int resultCode, int errorReason,
+            long messageId) {
 
         InProgressSmsSession smsSession = mInProgressSmsSessions.get(phoneId);
         if (smsSession == null) {
@@ -1851,6 +1853,7 @@ public class TelephonyMetrics {
                     SmsSession.Event.Type.SMS_SEND_RESULT)
                     .setImsServiceErrno(resultCode)
                     .setErrorCode(errorReason)
+                    .setMessageId((messageId))
             );
 
             smsSession.decreaseExpectedResponse();
@@ -2398,13 +2401,16 @@ public class TelephonyMetrics {
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     * @param messageId Unique id for this message.
      */
     private void writeIncomingSmsSessionWithType(int phoneId, int type, boolean smsOverIms,
-            String format, long[] timestamps, boolean blocked, boolean success) {
+            String format, long[] timestamps, boolean blocked, boolean success,
+            long messageId) {
         logv("Logged SMS session consisting of " + timestamps.length
                 + " parts, over IMS = " + smsOverIms
                 + " blocked = " + blocked
-                + " type = " + type);
+                + " type = " + type
+                + " messageId = " + messageId);
 
         InProgressSmsSession smsSession = startNewSmsSession(phoneId);
         for (long time : timestamps) {
@@ -2416,7 +2422,8 @@ public class TelephonyMetrics {
                         .setErrorCode(success ? SmsManager.RESULT_ERROR_NONE :
                             SmsManager.RESULT_ERROR_GENERIC_FAILURE)
                         .setSmsType(type)
-                        .setBlocked(blocked);
+                        .setBlocked(blocked)
+                        .setMessageId(messageId);
             smsSession.addEvent(time, eventBuilder);
         }
         finishSmsSession(smsSession);
@@ -2430,11 +2437,12 @@ public class TelephonyMetrics {
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     * @param messageId Unique id for this message.
      */
     public void writeIncomingWapPush(int phoneId, boolean smsOverIms, String format,
-            long[] timestamps, boolean success) {
+            long[] timestamps, boolean success, long messageId) {
         writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_WAP_PUSH,
-                smsOverIms, format, timestamps, false, success);
+                smsOverIms, format, timestamps, false, success, messageId);
     }
 
     /**
@@ -2445,11 +2453,12 @@ public class TelephonyMetrics {
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
+     * @param messageId Unique id for this message.
      */
     public void writeIncomingSmsSession(int phoneId, boolean smsOverIms, String format,
-            long[] timestamps, boolean blocked) {
+            long[] timestamps, boolean blocked, long messageId) {
         writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_NORMAL,
-                smsOverIms, format, timestamps, blocked, true);
+                smsOverIms, format, timestamps, blocked, true, messageId);
     }
 
     /**
