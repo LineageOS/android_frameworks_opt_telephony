@@ -3276,6 +3276,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Enable or disable always reporting signal strength changes from radio.
+     *
+     * @param isEnable {@code true} for enabling; {@code false} for disabling.
+     */
+    public void setAlwaysReportSignalStrength(boolean isEnable) {
+        if (mDeviceStateMonitor != null) {
+            mDeviceStateMonitor.setAlwaysReportSignalStrength(isEnable);
+        }
+    }
+
+    /**
      * TODO: Adding a function for each property is not good.
      * A fucntion of type getPhoneProp(propType) where propType is an
      * enum of GSM+CDMA+LTE props would be a better approach.
