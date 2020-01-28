@@ -233,10 +233,6 @@ public class TimeZoneLookupHelper {
             }
 
             TimeZone timeZone = timeZoneMapping.getTimeZone();
-            if (timeZone == null) {
-                continue;
-            }
-
             int candidateOffset = timeZone.getOffset(whenMillis);
             if (countryDefaultOffset != candidateOffset) {
                 return true;
@@ -308,7 +304,7 @@ public class TimeZoneLookupHelper {
         // be strong consistency across calls.
         synchronized (this) {
             if (mLastCountryTimeZones != null) {
-                if (mLastCountryTimeZones.isForCountryCode(isoCountryCode)) {
+                if (mLastCountryTimeZones.matchesCountryCode(isoCountryCode)) {
                     return mLastCountryTimeZones;
                 }
             }
