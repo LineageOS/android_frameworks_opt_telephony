@@ -660,21 +660,26 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
-        final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
-        if (!mPrioritizedDcRequests.contains(dcRequest)) {
-            collectRequestNetworkMetrics(networkRequest);
-            mPrioritizedDcRequests.add(dcRequest);
-            Collections.sort(mPrioritizedDcRequests);
-            onEvaluate(REQUESTS_CHANGED, "netRequest");
+        final DcRequest dcRequest = DcRequest.create(networkRequest);
+        if (dcRequest != null) {
+            if (!mPrioritizedDcRequests.contains(dcRequest)) {
+                collectRequestNetworkMetrics(networkRequest);
+                mPrioritizedDcRequests.add(dcRequest);
+                Collections.sort(mPrioritizedDcRequests);
+                onEvaluate(REQUESTS_CHANGED, "netRequest");
+                log("Added DcRequest, size: " + mPrioritizedDcRequests.size());
+            }
         }
     }
 
     private void onReleaseNetwork(NetworkRequest networkRequest) {
-        final DcRequest dcRequest = new DcRequest(networkRequest, mContext);
-
-        if (mPrioritizedDcRequests.remove(dcRequest)) {
-            onEvaluate(REQUESTS_CHANGED, "netReleased");
-            collectReleaseNetworkMetrics(networkRequest);
+        final DcRequest dcRequest = DcRequest.create(networkRequest);
+        if (dcRequest != null) {
+            if (mPrioritizedDcRequests.remove(dcRequest)) {
+                onEvaluate(REQUESTS_CHANGED, "netReleased");
+                collectReleaseNetworkMetrics(networkRequest);
+                log("Removed DcRequest, size: " + mPrioritizedDcRequests.size());
+            }
         }
     }
 
