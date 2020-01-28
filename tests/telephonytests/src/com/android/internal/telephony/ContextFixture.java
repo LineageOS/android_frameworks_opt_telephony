@@ -281,6 +281,10 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.TELECOM_SERVICE;
             } else if (serviceClass == UserManager.class) {
                 return Context.USER_SERVICE;
+            } else if (serviceClass == ConnectivityManager.class) {
+                return Context.CONNECTIVITY_SERVICE;
+            } else if (serviceClass == PowerWhitelistManager.class) {
+                return Context.POWER_WHITELIST_MANAGER;
             }
             return super.getSystemServiceName(serviceClass);
         }
