@@ -51,7 +51,6 @@ import android.os.RemoteException;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
@@ -66,6 +65,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.DataSwi
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent.OnDemandDataSwitch;
 import com.android.internal.telephony.util.HandlerExecutor;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -709,7 +709,7 @@ public class PhoneSwitcher extends Handler {
     private void collectRequestNetworkMetrics(NetworkRequest networkRequest) {
         // Request network for MMS will temporary disable the network on default data subscription,
         // this only happen on multi-sim device.
-        if (mActiveModemCount > 1 && networkRequest.networkCapabilities.hasCapability(
+        if (mActiveModemCount > 1 && networkRequest.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)) {
             OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
             onDemandDataSwitch.apn = TelephonyEvent.ApnType.APN_TYPE_MMS;
@@ -721,7 +721,7 @@ public class PhoneSwitcher extends Handler {
     private void collectReleaseNetworkMetrics(NetworkRequest networkRequest) {
         // Release network for MMS will recover the network on default data subscription, this only
         // happen on multi-sim device.
-        if (mActiveModemCount > 1 && networkRequest.networkCapabilities.hasCapability(
+        if (mActiveModemCount > 1 && networkRequest.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)) {
             OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
             onDemandDataSwitch.apn = TelephonyEvent.ApnType.APN_TYPE_MMS;
