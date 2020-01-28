@@ -736,7 +736,7 @@ public class PhoneSwitcher extends Handler {
     private void collectRequestNetworkMetrics(NetworkRequest networkRequest) {
         // Request network for MMS will temporary disable the network on default data subscription,
         // this only happen on multi-sim device.
-        if (mActiveModemCount > 1 && networkRequest.networkCapabilities.hasCapability(
+        if (mActiveModemCount > 1 && networkRequest.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)) {
             OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
             onDemandDataSwitch.apn = TelephonyEvent.ApnType.APN_TYPE_MMS;
@@ -748,7 +748,7 @@ public class PhoneSwitcher extends Handler {
     private void collectReleaseNetworkMetrics(NetworkRequest networkRequest) {
         // Release network for MMS will recover the network on default data subscription, this only
         // happen on multi-sim device.
-        if (mActiveModemCount > 1 && networkRequest.networkCapabilities.hasCapability(
+        if (mActiveModemCount > 1 && networkRequest.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMS)) {
             OnDemandDataSwitch onDemandDataSwitch = new OnDemandDataSwitch();
             onDemandDataSwitch.apn = TelephonyEvent.ApnType.APN_TYPE_MMS;
