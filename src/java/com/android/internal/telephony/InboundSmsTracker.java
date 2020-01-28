@@ -20,7 +20,6 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -28,6 +27,7 @@ import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
+import com.android.telephony.Rlog;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;

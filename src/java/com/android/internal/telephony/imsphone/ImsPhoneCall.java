@@ -123,6 +123,12 @@ public class ImsPhoneCall extends Call {
     }
 
     @Override
+    public void hangup(@android.telecom.Call.RejectReason int rejectReason)
+            throws CallStateException {
+        mOwner.hangup(this, rejectReason);
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[ImsPhoneCall ");
