@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Message;
@@ -533,31 +532,6 @@ public class ApnContext {
 
     long getRetryAfterDisconnectDelay() {
         return mRetryManager.getRetryAfterDisconnectDelay();
-    }
-
-    public static int getApnTypeFromNetworkType(int networkType) {
-        switch (networkType) {
-            case ConnectivityManager.TYPE_MOBILE:
-                return ApnSetting.TYPE_DEFAULT;
-            case ConnectivityManager.TYPE_MOBILE_MMS:
-                return ApnSetting.TYPE_MMS;
-            case ConnectivityManager.TYPE_MOBILE_SUPL:
-                return ApnSetting.TYPE_SUPL;
-            case ConnectivityManager.TYPE_MOBILE_DUN:
-                return ApnSetting.TYPE_DUN;
-            case ConnectivityManager.TYPE_MOBILE_FOTA:
-                return ApnSetting.TYPE_FOTA;
-            case ConnectivityManager.TYPE_MOBILE_IMS:
-                return ApnSetting.TYPE_IMS;
-            case ConnectivityManager.TYPE_MOBILE_CBS:
-                return ApnSetting.TYPE_CBS;
-            case ConnectivityManager.TYPE_MOBILE_IA:
-                return ApnSetting.TYPE_IA;
-            case ConnectivityManager.TYPE_MOBILE_EMERGENCY:
-                return ApnSetting.TYPE_EMERGENCY;
-            default:
-                return ApnSetting.TYPE_NONE;
-        }
     }
 
     static @ApnType int getApnTypeFromNetworkRequest(NetworkRequest nr) {
