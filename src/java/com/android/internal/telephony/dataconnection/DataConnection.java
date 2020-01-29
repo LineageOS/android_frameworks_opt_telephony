@@ -1677,7 +1677,7 @@ public class DataConnection extends StateMachine {
                 case EVENT_KEEPALIVE_START_REQUEST:
                 case EVENT_KEEPALIVE_STOP_REQUEST:
                     if (mNetworkAgent != null) {
-                        mNetworkAgent.onSocketKeepaliveEvent(
+                        mNetworkAgent.sendSocketKeepaliveEvent(
                                 msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
                     }
                     break;
@@ -2325,7 +2325,7 @@ public class DataConnection extends StateMachine {
                         // so that keepalive requests can be handled (if supported) by the
                         // underlying transport.
                         if (mNetworkAgent != null) {
-                            mNetworkAgent.onSocketKeepaliveEvent(
+                            mNetworkAgent.sendSocketKeepaliveEvent(
                                     msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
                         }
                     }
@@ -2337,7 +2337,8 @@ public class DataConnection extends StateMachine {
                     int handle = mNetworkAgent.keepaliveTracker.getHandleForSlot(slotId);
                     if (handle < 0) {
                         loge("No slot found for stopSocketKeepalive! " + slotId);
-                        mNetworkAgent.onSocketKeepaliveEvent(slotId, SocketKeepalive.NO_KEEPALIVE);
+                        mNetworkAgent.sendSocketKeepaliveEvent(
+                                slotId, SocketKeepalive.NO_KEEPALIVE);
                         retVal = HANDLED;
                         break;
                     } else {
@@ -2356,7 +2357,7 @@ public class DataConnection extends StateMachine {
                     if (ar.exception != null || ar.result == null) {
                         loge("EVENT_KEEPALIVE_STARTED: error starting keepalive, e="
                                 + ar.exception);
-                        mNetworkAgent.onSocketKeepaliveEvent(
+                        mNetworkAgent.sendSocketKeepaliveEvent(
                                 slot, SocketKeepalive.ERROR_HARDWARE_ERROR);
                     } else {
                         KeepaliveStatus ks = (KeepaliveStatus) ar.result;
