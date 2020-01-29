@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.hardware.radio.V1_0.RegState;
 import android.hardware.radio.V1_4.DataRegStateResult.VopsInfo.hidl_discriminator;
 import android.os.AsyncResult;
@@ -26,14 +28,17 @@ import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CellIdentity;
+import android.telephony.CellIdentityCdma;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
+
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -202,6 +207,17 @@ public class CellularNetworkService extends NetworkService {
             }
         }
 
+        private @NonNull String getPlmnFromCellIdentity(@Nullable final CellIdentity ci) {
+            if (ci == null || ci instanceof CellIdentityCdma) return "";
+
+            final String mcc = ci.getMccString();
+            final String mnc = ci.getMncString();
+
+            if (TextUtils.isEmpty(mcc) || TextUtils.isEmpty(mnc)) return "";
+
+            return mcc + mnc;
+        }
+
         private NetworkRegistrationInfo createRegistrationStateFromVoiceRegState(Object result) {
             int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
             int domain = NetworkRegistrationInfo.DOMAIN_CS;
@@ -223,10 +239,11 @@ public class CellularNetworkService extends NetworkService {
                 List<Integer> availableServices = getAvailableServices(
                         regState, domain, emergencyOnly);
                 CellIdentity cellIdentity = CellIdentity.create(voiceRegState.cellIdentity);
+                final String rplmn = getPlmnFromCellIdentity(cellIdentity);
 
                 return new NetworkRegistrationInfo(domain, transportType, regState,
                         networkType, reasonForDenial, emergencyOnly, availableServices,
-                        cellIdentity, cssSupported, roamingIndicator, systemIsInPrl,
+                        cellIdentity, rplmn, cssSupported, roamingIndicator, systemIsInPrl,
                         defaultRoamingIndicator);
             } else if (result instanceof android.hardware.radio.V1_2.VoiceRegStateResult) {
                 android.hardware.radio.V1_2.VoiceRegStateResult voiceRegState =
@@ -245,10 +262,11 @@ public class CellularNetworkService extends NetworkService {
                 List<Integer> availableServices = getAvailableServices(
                         regState, domain, emergencyOnly);
                 CellIdentity cellIdentity = CellIdentity.create(voiceRegState.cellIdentity);
+                final String rplmn = getPlmnFromCellIdentity(cellIdentity);
 
                 return new NetworkRegistrationInfo(domain, transportType, regState,
                         networkType, reasonForDenial, emergencyOnly, availableServices,
-                        cellIdentity, cssSupported, roamingIndicator, systemIsInPrl,
+                        cellIdentity, rplmn, cssSupported, roamingIndicator, systemIsInPrl,
                         defaultRoamingIndicator);
             }
 
@@ -325,6 +343,7 @@ public class CellularNetworkService extends NetworkService {
                 return null;
             }
 
+            String rplmn = getPlmnFromCellIdentity(cellIdentity);
             List<Integer> availableServices = getAvailableServices(
                     regState, domain, emergencyOnly);
 
@@ -334,9 +353,9 @@ public class CellularNetworkService extends NetworkService {
             }
 
             return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
-                    reasonForDenial, emergencyOnly, availableServices, cellIdentity, maxDataCalls,
-                    isDcNrRestricted, isNrAvailable, isEndcAvailable, lteVopsSupportInfo,
-                    isUsingCarrierAggregation);
+                    reasonForDenial, emergencyOnly, availableServices, cellIdentity, rplmn,
+                    maxDataCalls, isDcNrRestricted, isNrAvailable, isEndcAvailable,
+                    lteVopsSupportInfo, isUsingCarrierAggregation);
         }
 
         private LteVopsSupportInfo convertHalLteVopsSupportInfo(
