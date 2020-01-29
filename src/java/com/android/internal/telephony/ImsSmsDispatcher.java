@@ -23,7 +23,6 @@ import android.os.RemoteException;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
@@ -41,6 +40,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -121,8 +121,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     + " status=" + status + " reason=" + reason + " networkReasonCode="
                     + networkReasonCode);
             // TODO integrate networkReasonCode into IMS SMS metrics.
-            mMetrics.writeOnImsServiceSmsSolicitedResponse(mPhone.getPhoneId(), status, reason);
             SmsTracker tracker = mTrackers.get(token);
+            mMetrics.writeOnImsServiceSmsSolicitedResponse(mPhone.getPhoneId(), status, reason,
+                    (tracker != null ? tracker.mMessageId : 0L));
             if (tracker == null) {
                 throw new IllegalArgumentException("Invalid token.");
             }

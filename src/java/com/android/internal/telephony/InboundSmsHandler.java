@@ -942,7 +942,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         String format = tracker.getFormat();
         if (!isWapPush) {
             mMetrics.writeIncomingSmsSession(mPhone.getPhoneId(), mLastSmsWasInjected,
-                    format, timestamps, block);
+                    format, timestamps, block, tracker.getMessageId());
         }
 
         // Do not process null pdu(s). Check for that and return false in that case.
@@ -969,7 +969,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                                 + " id: "
                                 + tracker.getMessageId());
                         mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
-                                SmsConstants.FORMAT_3GPP, timestamps, false);
+                                SmsConstants.FORMAT_3GPP, timestamps, false,
+                                tracker.getMessageId());
                         return false;
                     }
                 }
@@ -995,10 +996,10 @@ public abstract class InboundSmsHandler extends StateMachine {
             // needs to be ignored, so treating it as a success case.
             if (result == Activity.RESULT_OK || result == Intents.RESULT_SMS_HANDLED) {
                 mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
-                        format, timestamps, true);
+                        format, timestamps, true, tracker.getMessageId());
             } else {
                 mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
-                        format, timestamps, false);
+                        format, timestamps, false, tracker.getMessageId());
             }
             // result is Activity.RESULT_OK if an ordered broadcast was sent
             if (result == Activity.RESULT_OK) {
