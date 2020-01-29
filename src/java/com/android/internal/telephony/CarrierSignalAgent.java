@@ -140,8 +140,8 @@ public class CarrierSignalAgent extends Handler {
                     Rlog.e(LOG_TAG, "Register default network exception: " + ar.exception);
                     return;
                 }
-                final ConnectivityManager connectivityMgr =  ConnectivityManager
-                        .from(mPhone.getContext());
+                final ConnectivityManager connectivityMgr =  mPhone.getContext()
+                        .getSystemService(ConnectivityManager.class);
                 if ((boolean) ar.result) {
                     mNetworkCallback = new ConnectivityManager.NetworkCallback() {
                         @Override

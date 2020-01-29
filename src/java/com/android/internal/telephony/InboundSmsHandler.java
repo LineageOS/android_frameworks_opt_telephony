@@ -1195,7 +1195,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             // by user policy.
             for (int i = users.length - 1; i >= 0; i--) {
                 UserHandle targetUser = UserHandle.of(users[i]);
-                if (users[i] != UserHandle.USER_SYSTEM) {
+                if (users[i] != UserHandle.SYSTEM.getIdentifier()) {
                     // Is the user not allowed to use SMS?
                     if (hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
                         continue;
@@ -1205,11 +1205,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                         continue;
                     }
                 }
-                // Only pass in the resultReceiver when the USER_SYSTEM is processed.
+                // Only pass in the resultReceiver when the user SYSTEM is processed.
                 try {
                     mContext.createPackageContextAsUser(mContext.getPackageName(), 0, targetUser)
                             .sendOrderedBroadcast(intent, permission, appOp, opts,
-                                    users[i] == UserHandle.USER_SYSTEM ? resultReceiver : null,
+                                    users[i] == UserHandle.SYSTEM.getIdentifier()
+                                            ? resultReceiver : null,
                                     getHandler(), Activity.RESULT_OK, null /* initialData */,
                                     null /* initialExtras */);
                 } catch (PackageManager.NameNotFoundException ignored) {

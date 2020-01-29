@@ -3655,7 +3655,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         // Create the snapshot of total video call data usage.
         NetworkStats vtDataUsageSnapshot = new NetworkStats(currentTime, 1);
-        vtDataUsageSnapshot.combineAllValues(mVtDataUsageSnapshot);
+        vtDataUsageSnapshot = vtDataUsageSnapshot.add(mVtDataUsageSnapshot);
         // Since the modem only reports the total vt data usage rather than rx/tx separately,
         // the only thing we can do here is splitting the usage into half rx and half tx.
         // Uid -1 indicates this is for the overall device data usage.

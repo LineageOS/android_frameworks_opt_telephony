@@ -43,7 +43,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
-import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
@@ -1443,9 +1442,7 @@ public abstract class SMSDispatcher extends Handler {
         try {
             ApplicationInfo appInfo = pm.getApplicationInfoAsUser(appPackage, 0,
                 UserHandle.getUserHandleForUid(userId));
-            return appInfo.loadSafeLabel(pm, PackageItemInfo.DEFAULT_MAX_LABEL_SIZE_PX,
-                    PackageItemInfo.SAFE_LABEL_FLAG_TRIM
-                            | PackageItemInfo.SAFE_LABEL_FLAG_FIRST_LINE);
+            return appInfo.loadSafeLabel(pm);
         } catch (PackageManager.NameNotFoundException e) {
             Rlog.e(TAG, "PackageManager Name Not Found for package " + appPackage);
             return appPackage;  // fall back to package name if we can't get app label
