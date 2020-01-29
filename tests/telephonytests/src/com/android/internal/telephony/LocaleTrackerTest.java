@@ -80,7 +80,7 @@ public class LocaleTrackerTest extends TelephonyTest {
         mCellInfo.setCellIdentity(new CellIdentityGsm(
                     CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE,
                     CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE,
-                    US_MCC, FAKE_MNC, null, null));
+                    US_MCC, FAKE_MNC, null, null, Collections.emptyList()));
         doAnswer(invocation -> {
             Message m = invocation.getArgument(1);
             AsyncResult.forMessage(m, Arrays.asList(mCellInfo), null);

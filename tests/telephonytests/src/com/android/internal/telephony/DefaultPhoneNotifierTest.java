@@ -41,6 +41,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class DefaultPhoneNotifierTest extends TelephonyTest {
@@ -244,7 +245,8 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     @Test @SmallTest
     public void testNotifyCellLocation() throws Exception {
         // mock gsm cell location
-        CellIdentityGsm mGsmCellLocation = new CellIdentityGsm(2, 3, 0, 0, null, null, null, null);
+        CellIdentityGsm mGsmCellLocation = new CellIdentityGsm(
+                2, 3, 0, 0, null, null, null, null, Collections.emptyList());
         doReturn(mGsmCellLocation).when(mPhone).getCellIdentity();
         ArgumentCaptor<CellIdentityGsm> cellLocationCapture =
                 ArgumentCaptor.forClass(CellIdentityGsm.class);
