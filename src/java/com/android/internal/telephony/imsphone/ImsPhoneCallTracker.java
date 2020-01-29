@@ -1383,6 +1383,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsCall callToHold = mForegroundCall.getImsCall();
             HoldSwapState oldHoldState = mHoldSwitchingState;
             mHoldSwitchingState = HoldSwapState.HOLDING_TO_ANSWER_INCOMING;
+            ImsCall callExpectedToResume = mCallExpectedToResume;
+            mCallExpectedToResume = mRingingCall.getImsCall();
             mForegroundCall.switchWith(mBackgroundCall);
             logHoldSwapState("holdActiveCallForWaitingCall");
             try {
@@ -1392,6 +1394,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             } catch (ImsException e) {
                 mForegroundCall.switchWith(mBackgroundCall);
                 mHoldSwitchingState = oldHoldState;
+                mCallExpectedToResume = callExpectedToResume;
                 logHoldSwapState("holdActiveCallForWaitingCall - fail");
                 throw new CallStateException(e.getMessage());
             }
