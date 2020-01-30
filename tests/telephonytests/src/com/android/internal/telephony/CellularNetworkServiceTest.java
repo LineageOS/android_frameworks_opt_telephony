@@ -134,7 +134,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
                 domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
-                false, availableServices, null, cssSupported,
+                false, availableServices, null, "", cssSupported,
                 roamingIndicator, systemIsInPrl, defaultRoamingIndicator);
 
         try {
@@ -159,7 +159,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         expectedState = new NetworkRegistrationInfo(
                 domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
-                false, availableServices, null, maxDataCalls, false, false, false,
+                false, availableServices, null, "", maxDataCalls, false, false, false,
                 lteVopsSupportInfo, false);
 
         try {

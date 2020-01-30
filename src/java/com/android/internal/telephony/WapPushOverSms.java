@@ -98,8 +98,7 @@ public class WapPushOverSms {
 
     public WapPushOverSms(Context context) {
         mContext = context;
-        mPowerWhitelistManager =
-                (PowerWhitelistManager) mContext.getSystemService(Context.POWER_WHITELIST_MANAGER);
+        mPowerWhitelistManager = mContext.getSystemService(PowerWhitelistManager.class);
         mWapPushManager = new WapPushManagerConnector(context);
 
         UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
