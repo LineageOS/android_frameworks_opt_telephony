@@ -17,10 +17,9 @@
 package com.android.internal.telephony.uicc;
 
 import android.compat.annotation.UnsupportedAppUsage;
-import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
-
+import com.android.telephony.Rlog;
 
 /**
  * See also RIL_AppStatus in include/telephony/ril.h

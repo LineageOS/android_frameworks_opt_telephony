@@ -38,7 +38,6 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.AccessNetworkConstants;
-import com.android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -51,6 +50,7 @@ import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams.HandoverCallback;
+import com.android.telephony.Rlog;
 
 import org.junit.After;
 import org.junit.Before;
@@ -61,7 +61,6 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper

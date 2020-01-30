@@ -16,10 +16,10 @@
 
 package com.android.internal.telephony;
 
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

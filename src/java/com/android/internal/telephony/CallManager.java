@@ -25,17 +25,15 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 
 import com.android.internal.telephony.sip.SipPhone;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-
-
 
 /**
  * @hide

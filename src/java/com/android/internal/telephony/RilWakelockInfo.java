@@ -17,10 +17,10 @@
 package com.android.internal.telephony;
 
 import android.annotation.TargetApi;
-import com.android.telephony.Rlog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 @TargetApi(8)
 public class RilWakelockInfo {

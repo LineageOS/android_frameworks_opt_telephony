@@ -24,8 +24,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.service.carrier.CarrierMessagingService;
-import com.android.telephony.Rlog;
 import android.util.Log;
+
+import com.android.telephony.Rlog;
 
 /**
  * Permissions checks for SMS functionality

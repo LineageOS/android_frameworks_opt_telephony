@@ -20,12 +20,12 @@ import android.annotation.Nullable;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.IccOpenLogicalChannelResponse;
-import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultHelper;
+import com.android.telephony.Rlog;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

@@ -18,9 +18,8 @@ package com.android.internal.telephony;
 
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PACKAGE;
 
-import com.android.telephony.Rlog;
-
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.telephony.Rlog;
 
 import java.util.Calendar;
 import java.util.TimeZone;

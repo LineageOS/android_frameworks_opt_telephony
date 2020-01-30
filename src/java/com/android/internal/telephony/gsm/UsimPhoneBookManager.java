@@ -20,7 +20,6 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import com.android.telephony.Rlog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
@@ -29,6 +28,7 @@ import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 

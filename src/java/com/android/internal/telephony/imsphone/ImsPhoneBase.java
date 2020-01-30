@@ -25,7 +25,6 @@ import android.os.RegistrantList;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CallQuality;
 import android.telephony.NetworkScanRequest;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.ims.ImsReasonInfo;
@@ -43,6 +42,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -18,10 +18,10 @@ package com.android.internal.telephony.util;
 
 import android.content.Context;
 import android.icu.util.ULocale;
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.MccTable;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
