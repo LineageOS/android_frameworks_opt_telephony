@@ -766,7 +766,7 @@ message TelephonyEvent {
     // along with the event if it is available
     MODEM_RESTART = 11;
 
-    // System time overwritten by NITZ (Network time)
+    // A system time update suggestion was made from a received NITZ (Network time) signal
     NITZ_TIME = 12;
 
     // Carrier Identification Matching Event
@@ -1750,7 +1750,7 @@ message TelephonyEvent {
   // Modem restart event
   optional ModemRestart modem_restart = 14;
 
-  // NITZ time in milliseconds
+  // NITZ time in milliseconds (see TelephonyEvent.Type.NITZ_TIME)
   optional int64 nitz_timestamp_millis = 15;
 
   // Carrier id matching event
