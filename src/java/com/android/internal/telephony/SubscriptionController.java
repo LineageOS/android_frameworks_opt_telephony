@@ -2208,8 +2208,7 @@ public class SubscriptionController extends ISub.Stub {
         // Broadcast an Intent for default sms sub change
         if (DBG) logdl("[broadcastDefaultSmsSubIdChanged] subId=" + subId);
         Intent intent = new Intent(SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
-                | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         SubscriptionManager.putSubscriptionIdExtra(intent, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
@@ -2269,8 +2268,7 @@ public class SubscriptionController extends ISub.Stub {
         // Broadcast an Intent for default voice sub change
         if (DBG) logdl("[broadcastDefaultVoiceSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
-                | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         SubscriptionManager.putSubscriptionIdExtra(intent, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
@@ -2369,8 +2367,7 @@ public class SubscriptionController extends ISub.Stub {
         // Broadcast an Intent for default data sub change
         if (DBG) logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
-                | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         SubscriptionManager.putSubscriptionIdExtra(intent, subId);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
@@ -2418,8 +2415,7 @@ public class SubscriptionController extends ISub.Stub {
         // Broadcast an Intent for default sub change
         int phoneId = SubscriptionManager.getPhoneId(subId);
         Intent intent = new Intent(SubscriptionManager.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
-                | Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
         if (DBG) {
             logdl("[sendDefaultChangedBroadcast] broadcast default subId changed phoneId="
