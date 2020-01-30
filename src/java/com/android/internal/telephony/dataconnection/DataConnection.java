@@ -1477,7 +1477,7 @@ public class DataConnection extends StateMachine {
                 }
 
                 for (InetAddress gateway : response.getGatewayAddresses()) {
-                    int mtu = linkProperties.hasGlobalIPv6Address() ? response.getMtuV6()
+                    int mtu = linkProperties.hasGlobalIpv6Address() ? response.getMtuV6()
                             : response.getMtuV4();
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
