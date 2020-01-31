@@ -36,7 +36,6 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
@@ -45,6 +44,7 @@ import android.view.Display;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

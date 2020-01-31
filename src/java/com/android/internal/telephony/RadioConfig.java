@@ -39,11 +39,11 @@ import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.WorkSource;
 import android.telephony.PhoneCapability;
-import android.telephony.Rlog;
 import android.telephony.SimSlotCapability;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;

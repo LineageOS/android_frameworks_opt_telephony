@@ -30,7 +30,6 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
 
@@ -40,6 +39,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
+import com.android.telephony.Rlog;
 
 import java.text.ParseException;
 import java.util.List;

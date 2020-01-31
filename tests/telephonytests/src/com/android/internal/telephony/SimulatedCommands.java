@@ -43,7 +43,6 @@ import android.telephony.IccOpenLogicalChannelResponse;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkScanRequest;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
@@ -71,6 +70,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -22,7 +22,6 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.timezonedetector.PhoneTimeZoneSuggestion;
 import android.os.TimestampedValue;
-import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.timezone.CountryTimeZones.OffsetResult;
 
@@ -32,6 +31,7 @@ import com.android.internal.telephony.NitzStateMachine.DeviceState;
 import com.android.internal.telephony.TimeZoneLookupHelper;
 import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
 import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.TimeZoneSuggester;
+import com.android.telephony.Rlog;
 
 import java.util.Objects;
 

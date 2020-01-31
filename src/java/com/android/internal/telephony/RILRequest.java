@@ -22,7 +22,8 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.os.WorkSource;
 import android.os.WorkSource.WorkChain;
-import android.telephony.Rlog;
+
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Random;

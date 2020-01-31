@@ -20,10 +20,9 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.ServiceManager;
-import android.telephony.Rlog;
 
-import com.android.internal.telephony.IIccPhoneBook;
 import com.android.internal.telephony.uicc.AdnRecord;
+import com.android.telephony.Rlog;
 
 import java.util.List;
 

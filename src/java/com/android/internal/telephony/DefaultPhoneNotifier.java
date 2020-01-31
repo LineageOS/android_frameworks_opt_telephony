@@ -30,7 +30,6 @@ import android.telephony.CellInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
@@ -38,6 +37,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
+import com.android.telephony.Rlog;
 
 import java.util.List;
 

@@ -22,7 +22,6 @@ import android.net.NetworkConfig;
 import android.net.NetworkRequest;
 import android.os.Message;
 import android.telephony.Annotation.ApnType;
-import android.telephony.Rlog;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -35,6 +34,7 @@ import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

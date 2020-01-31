@@ -33,13 +33,13 @@ import android.os.Bundle;
 import android.os.ServiceManager;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
-import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

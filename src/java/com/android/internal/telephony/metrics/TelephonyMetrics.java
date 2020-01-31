@@ -44,7 +44,6 @@ import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CallQuality;
 import android.telephony.DisconnectCause;
-import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -109,6 +108,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TimeInterval;
 import com.android.internal.telephony.protobuf.nano.MessageNano;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

@@ -26,16 +26,15 @@ import android.database.MergeCursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccConstants;
+import com.android.telephony.Rlog;
 
 import java.util.List;
-
 
 /**
  * {@hide}
