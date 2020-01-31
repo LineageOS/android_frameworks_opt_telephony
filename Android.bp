@@ -41,6 +41,26 @@ filegroup {
     srcs: ["jarjar-rules-shared.txt"],
 }
 
+android_app {
+    name: "telephony-resources",
+    installable: true,
+
+    resource_dirs: [
+        "res",
+    ],
+
+    platform_apis: true,
+    manifest: "AndroidManifest_Resources.xml",
+    export_package_resources: true,
+
+    product_variables: {
+        pdk: {
+            // enable this build only when platform library is available
+            enabled: false,
+        },
+    },
+}
+
 java_library {
     name: "telephony-common",
     installable: true,
@@ -68,7 +88,9 @@ java_library {
         "ims-common",
         "services",
         "unsupportedappusage",
+        "telephony-resources",
     ],
+    required: ["telephony-resources"],
     static_libs: [
         "android.hardware.radio.config-V1.0-java-shallow",
         "android.hardware.radio.config-V1.1-java-shallow",
