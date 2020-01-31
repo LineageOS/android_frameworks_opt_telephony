@@ -22,12 +22,12 @@ import android.content.Context;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.TimestampedValue;
-import com.android.telephony.Rlog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
 import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.NitzSignalInputFilterPredicate;
+import com.android.telephony.Rlog;
 
 import java.util.Arrays;
 import java.util.Objects;

@@ -20,13 +20,12 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
+import com.android.telephony.Rlog;
 
 import java.util.Arrays;
-
 
 /**
  *

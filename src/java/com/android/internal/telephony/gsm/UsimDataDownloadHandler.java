@@ -22,7 +22,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.SmsManager;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -31,6 +30,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UsimServiceTable;
+import com.android.telephony.Rlog;
 
 /**
  * Handler for SMS-PP data download messages.

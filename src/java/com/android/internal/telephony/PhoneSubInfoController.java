@@ -32,13 +32,13 @@ import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
 
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.telephony.Rlog;
 
 public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final String TAG = "PhoneSubInfoController";

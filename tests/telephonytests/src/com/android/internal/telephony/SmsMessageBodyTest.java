@@ -16,18 +16,11 @@
 
 package com.android.internal.telephony;
 
-import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
-import com.android.telephony.Rlog;
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.LargeTest;
-import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Log;
 
-import com.android.internal.telephony.SmsConstants;
-
-import java.util.Random;
+import com.android.telephony.Rlog;
 
 /**
  * Test cases to verify selection of the optimal 7 bit encoding tables

@@ -27,12 +27,12 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.CarrierMessagingServiceWrapper;
 import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallbackWrapper;
 import android.service.carrier.MessagePdu;
-import com.android.telephony.Rlog;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;

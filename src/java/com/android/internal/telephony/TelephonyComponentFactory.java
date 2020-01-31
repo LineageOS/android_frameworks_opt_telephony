@@ -58,8 +58,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-
-
 /**
  * This class has one-line methods to instantiate objects only. The purpose is to make code
  * unit-test friendly and use this class as a way to do dependency injection. Instantiating objects

@@ -31,7 +31,6 @@ import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.CallState;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -43,6 +42,7 @@ import com.android.internal.telephony.GlobalSettingsHelper;
 import com.android.internal.telephony.MultiSimSettingController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

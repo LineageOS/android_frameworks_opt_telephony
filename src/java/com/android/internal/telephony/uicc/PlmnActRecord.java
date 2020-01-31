@@ -19,6 +19,7 @@ package com.android.internal.telephony.uicc;
 import android.annotation.IntDef;
 import android.os.Parcel;
 import android.os.Parcelable;
+
 import com.android.telephony.Rlog;
 
 import java.lang.annotation.Retention;

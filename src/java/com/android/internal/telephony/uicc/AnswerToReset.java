@@ -17,10 +17,10 @@
 package com.android.internal.telephony.uicc;
 
 import android.annotation.Nullable;
-import com.android.telephony.Rlog;
 import android.util.ArrayMap;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

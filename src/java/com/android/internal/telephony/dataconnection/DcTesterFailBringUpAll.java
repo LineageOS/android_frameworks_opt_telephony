@@ -22,10 +22,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Handler;
 import android.telephony.DataFailCause;
-import com.android.telephony.Rlog;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 /**
  * A package level call that causes all DataConnection bringUp calls to fail a specific

@@ -28,7 +28,6 @@ import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
-import com.android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.emergency.EmergencyNumber.EmergencyCallRouting;
@@ -48,6 +47,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
 import com.android.phone.ecc.nano.ProtobufEccData.EccInfo;
+import com.android.telephony.Rlog;
 
 import com.google.i18n.phonenumbers.ShortNumberInfo;
 

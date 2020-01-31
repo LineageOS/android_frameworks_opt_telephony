@@ -22,7 +22,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
@@ -31,6 +30,7 @@ import android.telephony.data.DataServiceCallback;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.List;

@@ -36,7 +36,6 @@ import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
 import com.android.telephony.Rlog;
 
-
 public class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;

@@ -21,7 +21,6 @@ import static com.android.internal.telephony.metrics.TelephonyMetrics.toCallQual
 import android.telephony.CallQuality;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthLte;
-import com.android.telephony.Rlog;
 import android.telephony.SignalStrength;
 import android.util.Pair;
 
@@ -29,6 +28,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Collections;

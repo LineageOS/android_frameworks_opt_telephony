@@ -19,12 +19,12 @@ package com.android.internal.telephony.cdnr;
 import android.annotation.NonNull;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
-import com.android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
 import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;

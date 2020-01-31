@@ -26,8 +26,9 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.provider.Telephony.Sms.Intents;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
+
+import com.android.telephony.Rlog;
 
 /**
  * Monitors the device and ICC storage, and sends the appropriate events.

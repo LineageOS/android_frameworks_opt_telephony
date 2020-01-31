@@ -24,7 +24,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Handler;
 import android.os.Message;
-import com.android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
@@ -33,6 +32,7 @@ import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
+import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

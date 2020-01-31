@@ -24,7 +24,6 @@ import android.net.Uri;
 import android.os.BadParcelableException;
 import android.os.Bundle;
 import android.telephony.AccessNetworkConstants;
-import com.android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
@@ -39,6 +38,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.test.TestConferenceEventPackageParser;
 import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 import java.io.File;
 import java.io.FileInputStream;

@@ -17,7 +17,6 @@
 package com.android.internal.telephony.cdma;
 
 import android.hardware.radio.V1_0.CdmaSmsMessage;
-import com.android.telephony.Rlog;
 import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
@@ -32,6 +31,7 @@ import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.util.BitwiseOutputStream;
+import com.android.telephony.Rlog;
 
 import org.junit.Ignore;
 import org.junit.Test;

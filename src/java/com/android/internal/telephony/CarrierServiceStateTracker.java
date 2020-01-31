@@ -42,8 +42,6 @@ import com.android.telephony.Rlog;
 import java.util.HashMap;
 import java.util.Map;
 
-
-
 /**
  * This contains Carrier specific logic based on the states/events
  * managed in ServiceStateTracker.
