@@ -1304,7 +1304,9 @@ public class DataConnection extends StateMachine {
                 result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
             }
 
-            result.maybeMarkCapabilitiesRestricted();
+            if (result.deduceRestrictedCapability()) {
+                result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            }
         }
 
         if (mRestrictedNetworkOverride) {
