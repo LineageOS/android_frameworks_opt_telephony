@@ -91,7 +91,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
          */
         @NonNull
         PhoneTimeZoneSuggestion getTimeZoneSuggestion(
-                int phoneId, @Nullable String countryIsoCode,
+                int slotIndex, @Nullable String countryIsoCode,
                 @Nullable TimestampedValue<NitzData> nitzSignal);
     }
 
@@ -99,7 +99,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
     static final boolean DBG = true;
 
     // Miscellaneous dependencies and helpers not related to detection state.
-    private final int mPhoneId;
+    private final int mSlotIndex;
     /** Applied to NITZ signals during input filtering. */
     private final NitzSignalInputFilterPredicate mNitzSignalInputFilter;
     /** Creates {@link PhoneTimeZoneSuggestion} for passing to the time zone detection service. */
@@ -132,7 +132,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
     public static NewNitzStateMachineImpl createInstance(@NonNull Phone phone) {
         Objects.requireNonNull(phone);
 
-        int phoneId = phone.getPhoneId();
+        int slotIndex = phone.getPhoneId();
         DeviceState deviceState = new DeviceStateImpl(phone);
         TimeZoneLookupHelper timeZoneLookupHelper = new TimeZoneLookupHelper();
         TimeZoneSuggester timeZoneSuggester =
@@ -141,7 +141,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         NitzSignalInputFilterPredicate nitzSignalFilter =
                 NitzSignalInputFilterPredicateFactory.create(phone.getContext(), deviceState);
         return new NewNitzStateMachineImpl(
-                phoneId, nitzSignalFilter, timeZoneSuggester, newTimeServiceHelper);
+                slotIndex, nitzSignalFilter, timeZoneSuggester, newTimeServiceHelper);
     }
 
     /**
@@ -149,11 +149,11 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
      * See {@link #createInstance(Phone)}
      */
     @VisibleForTesting
-    public NewNitzStateMachineImpl(int phoneId,
+    public NewNitzStateMachineImpl(int slotIndex,
             @NonNull NitzSignalInputFilterPredicate nitzSignalInputFilter,
             @NonNull TimeZoneSuggester timeZoneSuggester,
             @NonNull NewTimeServiceHelper newTimeServiceHelper) {
-        mPhoneId = phoneId;
+        mSlotIndex = slotIndex;
         mTimeZoneSuggester = Objects.requireNonNull(timeZoneSuggester);
         mNewTimeServiceHelper = Objects.requireNonNull(newTimeServiceHelper);
         mNitzSignalInputFilter = Objects.requireNonNull(nitzSignalInputFilter);
@@ -284,8 +284,8 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         try {
             Objects.requireNonNull(reason);
 
-            PhoneTimeZoneSuggestion suggestion =
-                    mTimeZoneSuggester.getTimeZoneSuggestion(mPhoneId, countryIsoCode, nitzSignal);
+            PhoneTimeZoneSuggestion suggestion = mTimeZoneSuggester.getTimeZoneSuggestion(
+                    mSlotIndex, countryIsoCode, nitzSignal);
             suggestion.addDebugInfo("Detection reason=" + reason);
 
             if (DBG) {
@@ -296,7 +296,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
             mNewTimeServiceHelper.maybeSuggestDeviceTimeZone(suggestion);
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "doTimeZoneDetection: Exception thrown"
-                    + " mPhoneId=" + mPhoneId
+                    + " mSlotIndex=" + mSlotIndex
                     + ", countryIsoCode=" + countryIsoCode
                     + ", nitzSignal=" + nitzSignal
                     + ", reason=" + reason
@@ -312,7 +312,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         try {
             Objects.requireNonNull(reason);
 
-            PhoneTimeSuggestion.Builder builder = new PhoneTimeSuggestion.Builder(mPhoneId);
+            PhoneTimeSuggestion.Builder builder = new PhoneTimeSuggestion.Builder(mSlotIndex);
             if (nitzSignal == null) {
                 builder.addDebugInfo("Clearing time suggestion"
                         + " reason=" + reason);
@@ -328,7 +328,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
             mNewTimeServiceHelper.suggestDeviceTime(builder.build());
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "doTimeDetection: Exception thrown"
-                    + " mPhoneId=" + mPhoneId
+                    + " mSlotIndex=" + mSlotIndex
                     + ", nitzSignal=" + nitzSignal
                     + ", reason=" + reason
                     + ", ex=" + ex, ex);

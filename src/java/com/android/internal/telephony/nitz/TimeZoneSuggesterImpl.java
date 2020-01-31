@@ -55,7 +55,7 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
 
     @Override
     @NonNull
-    public PhoneTimeZoneSuggestion getTimeZoneSuggestion(int phoneId,
+    public PhoneTimeZoneSuggestion getTimeZoneSuggestion(int slotIndex,
             @Nullable String countryIsoCode, @Nullable TimestampedValue<NitzData> nitzSignal) {
         try {
             // Check for overriding NITZ-based signals from Android running in an emulator.
@@ -64,7 +64,7 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
                 NitzData nitzData = nitzSignal.getValue();
                 if (nitzData.getEmulatorHostTimeZone() != null) {
                     PhoneTimeZoneSuggestion.Builder builder =
-                            new PhoneTimeZoneSuggestion.Builder(phoneId)
+                            new PhoneTimeZoneSuggestion.Builder(slotIndex)
                             .setZoneId(nitzData.getEmulatorHostTimeZone().getID())
                             .setMatchType(PhoneTimeZoneSuggestion.MATCH_TYPE_EMULATOR_ZONE_ID)
                             .setQuality(PhoneTimeZoneSuggestion.QUALITY_SINGLE_ZONE)
@@ -78,23 +78,23 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
                 suggestion = overridingSuggestion;
             } else if (countryIsoCode == null) {
                 if (nitzSignal == null) {
-                    suggestion = createEmptySuggestion(phoneId,
+                    suggestion = createEmptySuggestion(slotIndex,
                             "getTimeZoneSuggestion: nitzSignal=null, countryIsoCode=null");
                 } else {
                     // NITZ only - wait until we have a country.
-                    suggestion = createEmptySuggestion(phoneId, "getTimeZoneSuggestion:"
+                    suggestion = createEmptySuggestion(slotIndex, "getTimeZoneSuggestion:"
                             + " nitzSignal=" + nitzSignal + ", countryIsoCode=null");
                 }
             } else { // countryIsoCode != null
                 if (nitzSignal == null) {
                     if (countryIsoCode.isEmpty()) {
                         // This is assumed to be a test network with no NITZ data to go on.
-                        suggestion = createEmptySuggestion(phoneId,
+                        suggestion = createEmptySuggestion(slotIndex,
                                 "getTimeZoneSuggestion: nitzSignal=null, countryIsoCode=\"\"");
                     } else {
                         // Country only
                         suggestion = findTimeZoneFromNetworkCountryCode(
-                                phoneId, countryIsoCode, mDeviceState.currentTimeMillis());
+                                slotIndex, countryIsoCode, mDeviceState.currentTimeMillis());
                     }
                 } else { // nitzSignal != null
                     if (countryIsoCode.isEmpty()) {
@@ -103,11 +103,11 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
                         // (eg, "001"). Obtain a TimeZone based only on the NITZ parameters: without
                         // a country it will be arbitrary, but it should at least have the correct
                         // offset.
-                        suggestion = findTimeZoneForTestNetwork(phoneId, nitzSignal);
+                        suggestion = findTimeZoneForTestNetwork(slotIndex, nitzSignal);
                     } else {
                         // We have both NITZ and Country code.
                         suggestion = findTimeZoneFromCountryAndNitz(
-                                phoneId, countryIsoCode, nitzSignal);
+                                slotIndex, countryIsoCode, nitzSignal);
                     }
                 }
             }
@@ -123,7 +123,7 @@ public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
                     + " countryIsoCode=" + countryIsoCode
                     + ", nitzSignal=" + nitzSignal
                     + ", e=" + e.getMessage();
-            PhoneTimeZoneSuggestion errorSuggestion = createEmptySuggestion(phoneId, message);
+            PhoneTimeZoneSuggestion errorSuggestion = createEmptySuggestion(slotIndex, message);
             Rlog.w(LOG_TAG, message, e);
             return errorSuggestion;
         }
