@@ -86,12 +86,14 @@ public class CarrierServiceBindHelper {
     };
 
     private static final int EVENT_REBIND = 0;
-    private static final int EVENT_PERFORM_IMMEDIATE_UNBIND = 1;
+    @VisibleForTesting
+    public static final int EVENT_PERFORM_IMMEDIATE_UNBIND = 1;
     @VisibleForTesting
     public static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 2;
 
     @UnsupportedAppUsage
-    private Handler mHandler = new Handler() {
+    @VisibleForTesting
+    public Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             int phoneId;
@@ -331,8 +333,12 @@ public class CarrierServiceBindHelper {
             carrierServiceClass = null;
 
             // Actually unbind
-            log("Unbinding from carrier app");
-            mContext.unbindService(connection);
+            if (connection != null && connection.connected) {
+                log("Unbinding from carrier app");
+                mContext.unbindService(connection);
+            } else {
+                log("Already unbound, skipping unbindService call");
+            }
             connection = null;
             mUnbindScheduledUptimeMillis = -1;
         }
@@ -366,6 +372,18 @@ public class CarrierServiceBindHelper {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             log("Disconnected from carrier app: " + name.flattenToString());
+            connected = false;
+        }
+
+        @Override
+        public void onBindingDied(ComponentName name) {
+            log("Binding from carrier app died: " + name.flattenToString());
+            connected = false;
+        }
+
+        @Override
+        public void onNullBinding(ComponentName name) {
+            log("Null binding from carrier app: " + name.flattenToString());
             connected = false;
         }
 
