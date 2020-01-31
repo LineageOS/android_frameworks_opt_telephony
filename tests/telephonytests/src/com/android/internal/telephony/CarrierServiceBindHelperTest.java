@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 
+import android.os.Message;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -80,5 +81,16 @@ public class CarrierServiceBindHelperTest extends TelephonyTest {
         assertEquals(MODEM_COUNT_SINGLE_MODEM, mCarrierServiceBindHelper.mLastSimState.size());
         assertNotNull(mCarrierServiceBindHelper.mBindings.get(0));
         assertNotNull(mCarrierServiceBindHelper.mLastSimState.get(0));
+    }
+
+    @Test
+    public void testUnbindWhenNotConnected() throws Exception {
+        mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
+
+        // Try unbinding without binding and make sure we don't throw an Exception
+        mCarrierServiceBindHelper.mHandler.handleMessage(
+                Message.obtain(mCarrierServiceBindHelper.mHandler,
+                        CarrierServiceBindHelper.EVENT_PERFORM_IMMEDIATE_UNBIND,
+                        new Integer(0)));
     }
 }
