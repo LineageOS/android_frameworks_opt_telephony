@@ -34,6 +34,7 @@ import android.net.NetworkFactory;
 import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.NetworkRequest;
+import android.net.NetworkScore;
 import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.SocketKeepalive;
@@ -160,7 +161,7 @@ public class DataConnection extends StateMachine {
     private static final int OTHER_CONNECTION_SCORE = 45;
 
     // The score we report to connectivity service
-    private int mScore;
+    private NetworkScore mScore;
 
     // The subscription id associated with this data connection.
     private int mSubId;
@@ -1303,7 +1304,9 @@ public class DataConnection extends StateMachine {
                 result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
             }
 
-            result.maybeMarkCapabilitiesRestricted();
+            if (result.deduceRestrictedCapability()) {
+                result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            }
         }
 
         if (mRestrictedNetworkOverride) {
@@ -1478,7 +1481,7 @@ public class DataConnection extends StateMachine {
                 }
 
                 for (InetAddress gateway : response.getGatewayAddresses()) {
-                    int mtu = linkProperties.hasGlobalIPv6Address() ? response.getMtuV6()
+                    int mtu = linkProperties.hasGlobalIpv6Address() ? response.getMtuV6()
                             : response.getMtuV4();
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
@@ -1678,7 +1681,7 @@ public class DataConnection extends StateMachine {
                 case EVENT_KEEPALIVE_START_REQUEST:
                 case EVENT_KEEPALIVE_STOP_REQUEST:
                     if (mNetworkAgent != null) {
-                        mNetworkAgent.onSocketKeepaliveEvent(
+                        mNetworkAgent.sendSocketKeepaliveEvent(
                                 msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
                     }
                     break;
@@ -2331,7 +2334,7 @@ public class DataConnection extends StateMachine {
                         // so that keepalive requests can be handled (if supported) by the
                         // underlying transport.
                         if (mNetworkAgent != null) {
-                            mNetworkAgent.onSocketKeepaliveEvent(
+                            mNetworkAgent.sendSocketKeepaliveEvent(
                                     msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
                         }
                     }
@@ -2343,7 +2346,8 @@ public class DataConnection extends StateMachine {
                     int handle = mNetworkAgent.keepaliveTracker.getHandleForSlot(slotId);
                     if (handle < 0) {
                         loge("No slot found for stopSocketKeepalive! " + slotId);
-                        mNetworkAgent.onSocketKeepaliveEvent(slotId, SocketKeepalive.NO_KEEPALIVE);
+                        mNetworkAgent.sendSocketKeepaliveEvent(
+                                slotId, SocketKeepalive.NO_KEEPALIVE);
                         retVal = HANDLED;
                         break;
                     } else {
@@ -2362,7 +2366,7 @@ public class DataConnection extends StateMachine {
                     if (ar.exception != null || ar.result == null) {
                         loge("EVENT_KEEPALIVE_STARTED: error starting keepalive, e="
                                 + ar.exception);
-                        mNetworkAgent.onSocketKeepaliveEvent(
+                        mNetworkAgent.sendSocketKeepaliveEvent(
                                 slot, SocketKeepalive.ERROR_HARDWARE_ERROR);
                     } else {
                         KeepaliveStatus ks = (KeepaliveStatus) ar.result;
@@ -2949,21 +2953,23 @@ public class DataConnection extends StateMachine {
      *  Re-calculate score and update through network agent if it changes.
      */
     private void updateScore() {
-        int oldScore = mScore;
+        final NetworkScore oldScore = mScore;
         mScore = calculateScore();
-        if (oldScore != mScore && mNetworkAgent != null) {
+        if (!oldScore.equals(mScore) && mNetworkAgent != null) {
             log("Updating score from " + oldScore + " to " + mScore);
             mNetworkAgent.sendNetworkScore(mScore, this);
         }
     }
 
-    private int calculateScore() {
+    private NetworkScore calculateScore() {
         int score = OTHER_CONNECTION_SCORE;
 
         // If it's serving a network request that asks NET_CAPABILITY_INTERNET and doesn't have
         // specify a subId, this dataConnection is considered to be default Internet data
         // connection. In this case we assign a slightly higher score of 50. The intention is
         // it will not be replaced by other data connections accidentally in DSDS usecase.
+        // TODO : this should be represented by the "default subscription" policy bit in
+        // NetworkScore.
         for (ApnContext apnContext : mApnContexts.keySet()) {
             for (NetworkRequest networkRequest : apnContext.getNetworkRequests()) {
                 if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -2974,7 +2980,9 @@ public class DataConnection extends StateMachine {
             }
         }
 
-        return score;
+        // STOPSHIP (b/148055573) : remove this copy of the constant (and the constant, this
+        // code should just use the NetworkScore regular members)
+        return new NetworkScore.Builder().setLegacyScore(score).build();
     }
 
     private String handoverStateToString(@HandoverState int state) {

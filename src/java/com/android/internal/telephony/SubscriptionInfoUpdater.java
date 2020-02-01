@@ -1098,7 +1098,6 @@ public class SubscriptionInfoUpdater extends Handler {
             sSimCardState[phoneId] = state;
             Intent i = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
-            i.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
             // TODO(b/130664115) we manually populate this intent with the slotId. In the future we
@@ -1125,7 +1124,6 @@ public class SubscriptionInfoUpdater extends Handler {
         if (state != sSimApplicationState[phoneId] && (!isUnknownToNotReady || emptyProfile)) {
             sSimApplicationState[phoneId] = state;
             Intent i = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
-            i.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             i.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);

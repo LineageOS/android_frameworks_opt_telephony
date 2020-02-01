@@ -156,7 +156,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     /** Flags to use when querying PackageManager for Euicc component implementations. */
     private static final int EUICC_QUERY_FLAGS =
-            PackageManager.MATCH_SYSTEM_ONLY | PackageManager.MATCH_DEBUG_TRIAGED_MISSING
+            PackageManager.MATCH_SYSTEM_ONLY | PackageManager.MATCH_DIRECT_BOOT_AUTO
                     | PackageManager.GET_RESOLVED_FILTER;
 
     /**

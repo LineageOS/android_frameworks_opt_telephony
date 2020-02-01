@@ -724,9 +724,6 @@ public abstract class InboundSmsHandler extends StateMachine {
             Intent intent = new Intent(Intents.SMS_REJECTED_ACTION);
             intent.putExtra("result", result);
             intent.putExtra("subId", mPhone.getSubId());
-            // Allow registered broadcast receivers to get this intent even
-            // when they are in the background.
-            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
             mContext.sendBroadcast(intent, android.Manifest.permission.RECEIVE_SMS);
         }
         acknowledgeLastIncomingSms(success, result, response);
@@ -1153,18 +1150,6 @@ public abstract class InboundSmsHandler extends StateMachine {
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user, int subId) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         final String action = intent.getAction();
-        if (Intents.SMS_DELIVER_ACTION.equals(action)
-                || Intents.SMS_RECEIVED_ACTION.equals(action)
-                || Intents.WAP_PUSH_DELIVER_ACTION.equals(action)
-                || Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
-            // Some intents need to be delivered with high priority:
-            // SMS_DELIVER, SMS_RECEIVED, WAP_PUSH_DELIVER, WAP_PUSH_RECEIVED
-            // In some situations, like after boot up or system under load, normal
-            // intent delivery could take a long time.
-            // This flag should only be set for intents for visible, timely operations
-            // which is true for the intents above.
-            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        }
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
 
         // override the subId value in the intent with the values from tracker as they can be
@@ -1321,9 +1306,6 @@ public abstract class InboundSmsHandler extends StateMachine {
             Uri uri = Uri.parse("sms://localhost:" + destPort);
             intent.setData(uri);
             intent.setComponent(null);
-            // Allow registered broadcast receivers to get this intent even
-            // when they are in the background.
-            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
         }
 
         Bundle options = handleSmsWhitelisting(intent.getComponent(), isClass0);
@@ -1515,7 +1497,6 @@ public abstract class InboundSmsHandler extends StateMachine {
                 intent.setAction(Intents.SMS_RECEIVED_ACTION);
                 // Allow registered broadcast receivers to get this intent even
                 // when they are in the background.
-                intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
                 intent.setComponent(null);
                 // All running users will be notified of the received sms.
                 Bundle options = handleSmsWhitelisting(null, false /* bgActivityStartAllowed */);
@@ -1527,9 +1508,6 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
                 intent.setComponent(null);
-                // Allow registered broadcast receivers to get this intent even
-                // when they are in the background.
-                intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
                 // Only the primary user will receive notification of incoming mms.
                 // That app will do the actual downloading of the mms.
                 long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(

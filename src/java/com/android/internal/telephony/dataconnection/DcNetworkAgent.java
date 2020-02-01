@@ -25,6 +25,7 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkProvider;
+import android.net.NetworkScore;
 import android.net.SocketKeepalive;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
@@ -70,7 +71,7 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private NetworkInfo mNetworkInfo;
 
-    DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
+    DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, NetworkScore score,
             NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
         super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
@@ -234,7 +235,7 @@ public class DcNetworkAgent extends NetworkAgent {
      * @param score The network score.
      * @param dc The data connection that invokes this method.
      */
-    public synchronized void sendNetworkScore(int score, DataConnection dc) {
+    public synchronized void sendNetworkScore(NetworkScore score, DataConnection dc) {
         if (!isOwned(dc, "sendNetworkScore")) return;
         sendNetworkScore(score);
     }
