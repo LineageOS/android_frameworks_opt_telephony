@@ -28,6 +28,7 @@ import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.emergency.EmergencyNumber.EmergencyCallRouting;
@@ -144,17 +145,27 @@ public class EmergencyNumberTracker extends Handler {
                             TelephonyManager.EXTRA_NETWORK_COUNTRY);
                     logd("ACTION_NETWORK_COUNTRY_CHANGED: PhoneId: " + phoneId + " CountryIso: "
                             + countryIso);
+
+                    boolean isInApm = false;
+                    ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
+                    if (serviceStateTracker != null) {
+                        if (serviceStateTracker.getServiceState().getState()
+                                == ServiceState.STATE_POWER_OFF) {
+                            isInApm = true;
+                        }
+                    }
                     // Sometimes the country is updated as an empty string when the network signal
                     // is lost; though we may not call emergency when there is no signal, we want
                     // to keep the old country iso to provide country-related emergency numbers,
                     // because they think they are still in that country. We don't need to update
-                    // country change in this case.
-                    if (TextUtils.isEmpty(countryIso)) {
+                    // country change in this case. We will still need to update the empty string
+                    // if device is in APM.
+                    if (TextUtils.isEmpty(countryIso) && !isInApm) {
                         return;
                     }
 
                     // Update country iso change for available Phones
-                    updateEmergencyCountryIsoAllPhones(countryIso);
+                    updateEmergencyCountryIsoAllPhones(countryIso == null ? "" : countryIso);
                 }
                 return;
             }
