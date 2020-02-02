@@ -201,7 +201,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void supplySimDepersonalizationResponse(RadioResponseInfo info,
             int persoType, int remainingRetries) {
-        //short-term stub method
+        responseInts(info, persoType, remainingRetries);
     }
 
     /**
