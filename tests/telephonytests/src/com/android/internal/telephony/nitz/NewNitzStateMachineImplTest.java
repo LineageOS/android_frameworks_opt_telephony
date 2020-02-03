@@ -55,11 +55,11 @@ import java.util.concurrent.TimeUnit;
 
 public class NewNitzStateMachineImplTest extends TelephonyTest {
 
-    private static final int PHONE_ID = 99999;
+    private static final int SLOT_INDEX = 99999;
     private static final PhoneTimeZoneSuggestion EMPTY_TIME_ZONE_SUGGESTION =
-            createEmptyTimeZoneSuggestion(PHONE_ID);
+            createEmptyTimeZoneSuggestion(SLOT_INDEX);
     private static final PhoneTimeSuggestion EMPTY_TIME_SUGGESTION =
-            createEmptyTimeSuggestion(PHONE_ID);
+            createEmptyTimeSuggestion(SLOT_INDEX);
 
     private FakeNewTimeServiceHelper mFakeNewTimeServiceHelper;
     private FakeDeviceState mFakeDeviceState;
@@ -91,7 +91,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         mRealTimeZoneSuggester = new TimeZoneSuggesterImpl(mFakeDeviceState, timeZoneLookupHelper);
 
         mNitzStateMachineImpl = new NewNitzStateMachineImpl(
-                PHONE_ID, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
+                SLOT_INDEX, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
                 mFakeNewTimeServiceHelper);
 
         TelephonyTest.logd("NewNitzStateMachineImplTest -Setup!");
@@ -113,10 +113,10 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // between them.
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion1 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, networkCountryIsoCode, null /* nitzSignal */);
+                        SLOT_INDEX, networkCountryIsoCode, null /* nitzSignal */);
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion2 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, networkCountryIsoCode, nitzSignal);
+                        SLOT_INDEX, networkCountryIsoCode, nitzSignal);
         assertNotNull(expectedTimeZoneSuggestion2);
         assertNotEquals(expectedTimeZoneSuggestion1, expectedTimeZoneSuggestion2);
 
@@ -136,7 +136,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         script.nitzReceived(nitzSignal);
 
         PhoneTimeSuggestion expectedTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, nitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, nitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedTimeSuggestion, expectedTimeZoneSuggestion2);
 
@@ -156,10 +156,10 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // between them.
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion1 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, null /* countryIsoCode */, nitzSignal);
+                        SLOT_INDEX, null /* countryIsoCode */, nitzSignal);
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion2 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, networkCountryIsoCode, nitzSignal);
+                        SLOT_INDEX, networkCountryIsoCode, nitzSignal);
         assertNotEquals(expectedTimeZoneSuggestion1, expectedTimeZoneSuggestion2);
 
         Script script = new Script()
@@ -171,7 +171,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
 
         // Verify the state machine did the right thing.
         PhoneTimeSuggestion expectedTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, nitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, nitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedTimeSuggestion, expectedTimeZoneSuggestion1);
 
@@ -209,12 +209,12 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         script.nitzReceived(nitzSignal);
 
         PhoneTimeSuggestion expectedTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, nitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, nitzSignal);
         // Capture output from the real suggester and confirm it meets the test's needs /
         // expectations.
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, "" /* countryIsoCode */, nitzSignal);
+                        SLOT_INDEX, "" /* countryIsoCode */, nitzSignal);
         assertEquals(MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY,
                 expectedTimeZoneSuggestion.getMatchType());
         assertEquals(QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET,
@@ -244,7 +244,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // Verify the state machine did the right thing.
         // No time zone should be set. A NITZ signal by itself is not enough.
         PhoneTimeSuggestion expectedTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, nitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, nitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedTimeSuggestion, EMPTY_TIME_ZONE_SUGGESTION);
 
@@ -258,7 +258,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // expectations.
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, "" /* countryIsoCode */, nitzSignal);
+                        SLOT_INDEX, "" /* countryIsoCode */, nitzSignal);
         assertEquals(MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY,
                 expectedTimeZoneSuggestion.getMatchType());
         assertEquals(QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET,
@@ -285,7 +285,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         TimestampedValue<NitzData> preFlightNitzSignal =
                 scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         PhoneTimeSuggestion expectedPreFlightTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, preFlightNitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, preFlightNitzSignal);
         String preFlightCountryIsoCode = scenario.getNetworkCountryIsoCode();
 
         // Simulate receiving the NITZ signal and country.
@@ -295,7 +295,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // Verify the state machine did the right thing.
         PhoneTimeZoneSuggestion expectedPreFlightTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, preFlightCountryIsoCode, preFlightNitzSignal);
+                        SLOT_INDEX, preFlightCountryIsoCode, preFlightNitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedPreFlightTimeSuggestion, expectedPreFlightTimeZoneSuggestion);
 
@@ -356,10 +356,10 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
 
         // Verify the state machine did the right thing.
         PhoneTimeSuggestion expectedPostFlightTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, postFlightNitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, postFlightNitzSignal);
         PhoneTimeZoneSuggestion expectedPostFlightTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, postFlightCountryCode, postFlightNitzSignal);
+                        SLOT_INDEX, postFlightCountryCode, postFlightNitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedPostFlightTimeSuggestion, expectedPostFlightTimeZoneSuggestion);
 
@@ -384,7 +384,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         TimestampedValue<NitzData> initialNitzSignal =
                 scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         PhoneTimeSuggestion expectedInitialTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, initialNitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, initialNitzSignal);
 
         // Simulate receiving the NITZ signal and country.
         script.nitzReceived(initialNitzSignal)
@@ -393,7 +393,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // Verify the state machine did the right thing.
         PhoneTimeZoneSuggestion expectedInitialTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, countryIsoCode, initialNitzSignal);
+                        SLOT_INDEX, countryIsoCode, initialNitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedInitialTimeSuggestion, expectedInitialTimeZoneSuggestion);
 
@@ -410,7 +410,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         // Check the "no NITZ" time and time zone suggestions are made.
         PhoneTimeZoneSuggestion expectedMiddleTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, countryIsoCode, null /* nitzSignal */);
+                        SLOT_INDEX, countryIsoCode, null /* nitzSignal */);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 EMPTY_TIME_SUGGESTION, expectedMiddleTimeZoneSuggestion);
 
@@ -440,10 +440,10 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
 
         // Verify the state machine did the right thing.
         PhoneTimeSuggestion expectedFinalTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, finalNitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, finalNitzSignal);
         PhoneTimeZoneSuggestion expectedFinalTimeZoneSuggestion =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, countryIsoCode, finalNitzSignal);
+                        SLOT_INDEX, countryIsoCode, finalNitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedFinalTimeSuggestion, expectedFinalTimeZoneSuggestion);
 
@@ -465,16 +465,16 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         script.countryReceived(scenario.getNetworkCountryIsoCode());
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion1 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, scenario.getNetworkCountryIsoCode(), null /* nitzSignal */);
+                        SLOT_INDEX, scenario.getNetworkCountryIsoCode(), null /* nitzSignal */);
         script.verifyOnlyTimeZoneWasSuggestedAndReset(expectedTimeZoneSuggestion1);
 
         // Simulate receiving an NITZ signal and verify the state machine does the right thing.
         script.nitzReceived(nitzSignal);
         PhoneTimeSuggestion expectedTimeSuggestion =
-                createTimeSuggestionFromNitzSignal(PHONE_ID, nitzSignal);
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, nitzSignal);
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion2 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, scenario.getNetworkCountryIsoCode(), nitzSignal);
+                        SLOT_INDEX, scenario.getNetworkCountryIsoCode(), nitzSignal);
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedTimeSuggestion, expectedTimeZoneSuggestion2);
 
@@ -486,7 +486,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         script.countryUnavailable();
         PhoneTimeZoneSuggestion expectedTimeZoneSuggestion3 =
                 mRealTimeZoneSuggester.getTimeZoneSuggestion(
-                        PHONE_ID, null /* countryIsoCode */, nitzSignal);
+                        SLOT_INDEX, null /* countryIsoCode */, nitzSignal);
         script.verifyOnlyTimeZoneWasSuggestedAndReset(expectedTimeZoneSuggestion3);
 
         // Check state that NitzStateMachine must expose.
