@@ -1402,11 +1402,11 @@ public class ImsPhone extends ImsPhoneBase {
     public ArrayList<Connection> getHandoverConnection() {
         ArrayList<Connection> connList = new ArrayList<Connection>();
         // Add all foreground call connections
-        connList.addAll(getForegroundCall().mConnections);
+        connList.addAll(getForegroundCall().getConnections());
         // Add all background call connections
-        connList.addAll(getBackgroundCall().mConnections);
+        connList.addAll(getBackgroundCall().getConnections());
         // Add all background call connections
-        connList.addAll(getRingingCall().mConnections);
+        connList.addAll(getRingingCall().getConnections());
         if (connList.size() > 0) {
             return connList;
         } else {
