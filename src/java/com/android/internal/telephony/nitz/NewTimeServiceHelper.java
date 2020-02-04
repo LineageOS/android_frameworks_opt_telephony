@@ -17,9 +17,9 @@
 package com.android.internal.telephony.nitz;
 
 import android.annotation.NonNull;
-import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
 import android.app.timedetector.TimeDetector;
-import android.app.timezonedetector.PhoneTimeZoneSuggestion;
+import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -36,17 +36,18 @@ public interface NewTimeServiceHelper {
      *
      * @param suggestion the time
      */
-    void suggestDeviceTime(@NonNull PhoneTimeSuggestion suggestion);
+    void suggestDeviceTime(@NonNull TelephonyTimeSuggestion suggestion);
 
     /**
      * Suggests the time zone to the time zone detector.
      *
-     * <p>NOTE: The PhoneTimeZoneSuggestion cannot be null. The zoneId it contains can be null to
-     * indicate there is no active suggestion; this can be used to clear a previous suggestion.
+     * <p>NOTE: The {@link TelephonyTimeZoneSuggestion} cannot be null. The zoneId it contains can
+     * be null to indicate there is no active suggestion; this can be used to clear a previous
+     * suggestion.
      *
      * @param suggestion the time zone
      */
-    void maybeSuggestDeviceTimeZone(@NonNull PhoneTimeZoneSuggestion suggestion);
+    void maybeSuggestDeviceTimeZone(@NonNull TelephonyTimeZoneSuggestion suggestion);
 
     /**
      * Dumps any logs held to the supplied writer.
