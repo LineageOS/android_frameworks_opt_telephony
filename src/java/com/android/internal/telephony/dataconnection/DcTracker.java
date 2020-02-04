@@ -343,8 +343,13 @@ public class DcTracker extends Handler {
     private final LocalLog mApnSettingsInitializationLog = new LocalLog(50);
 
     /* Default for 5G connection reevaluation alarm durations */
-    private long mHysteresisTimeMs = 0;
+    private int mHysteresisTimeSec = 0;
     private long mWatchdogTimeMs = 1000 * 60 * 60;
+
+    /* Default for whether 5G frequencies are considered unmetered */
+    private boolean mAllUnmetered = false;
+    private boolean mMmwaveUnmetered = false;
+    private boolean mSub6Unmetered = false;
 
     /* Used to check whether 5G timers are currently active and waiting to go off */
     private boolean mHysteresis = false;
@@ -373,12 +378,16 @@ public class DcTracker extends Handler {
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
+                reevaluateUnmeteredConnections();
             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
                 if (DBG) log("screen off");
                 mIsScreenOn = false;
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
+                stopHysteresisAlarm();
+                stopWatchdogAlarm();
+                setDataConnectionUnmetered(false);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 onActionIntentDataStallAlarm(intent);
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
@@ -408,10 +417,16 @@ public class DcTracker extends Handler {
                             mDataIconPattern = CarrierConfigManager.getDefaultConfig().getString(
                                     CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
                         }
-                        mHysteresisTimeMs = b.getLong(
+                        mHysteresisTimeSec = b.getInt(
                                 CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT);
                         mWatchdogTimeMs = b.getLong(
                                 CarrierConfigManager.KEY_5G_WATCHDOG_TIME_MS_LONG);
+                        mAllUnmetered = b.getBoolean(
+                                CarrierConfigManager.KEY_UNMETERED_NR_NSA_BOOL);
+                        mMmwaveUnmetered = b.getBoolean(
+                                CarrierConfigManager.KEY_UNMETERED_NR_NSA_MMWAVE_BOOL);
+                        mSub6Unmetered = b.getBoolean(
+                                CarrierConfigManager.KEY_UNMETERED_NR_NSA_SUB6_BOOL);
                     }
                 }
             } else {
@@ -4045,7 +4060,8 @@ public class DcTracker extends Handler {
     }
 
     private boolean reevaluateUnmeteredConnections() {
-        if (isNetworkTypeUnmetered(NETWORK_TYPE_NR)) {
+        if (isNetworkTypeUnmetered(NETWORK_TYPE_NR) || isFrequencyRangeUnmetered()) {
+            if (DBG) log("NR NSA is unmetered");
             if (mPhone.getServiceState().getNrState()
                     == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
                 if (!m5GWasConnected) { // 4G -> 5G
@@ -4123,6 +4139,20 @@ public class DcTracker extends Handler {
         return plan.getDataLimitBytes() == SubscriptionPlan.BYTES_UNLIMITED
                 && (plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_UNKNOWN
                 || plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED);
+    }
+
+    private boolean isFrequencyRangeUnmetered() {
+        boolean nrConnected = mPhone.getServiceState().getNrState()
+                == NetworkRegistrationInfo.NR_STATE_CONNECTED;
+        if (mMmwaveUnmetered || mSub6Unmetered) {
+            int frequencyRange = mPhone.getServiceState().getNrFrequencyRange();
+            boolean mmwave = frequencyRange == ServiceState.FREQUENCY_RANGE_MMWAVE;
+            // frequency range LOW, MID, or HIGH
+            boolean sub6 = frequencyRange != ServiceState.FREQUENCY_RANGE_UNKNOWN && !mmwave;
+            return (mMmwaveUnmetered && mmwave || mSub6Unmetered && sub6) && nrConnected;
+        } else {
+            return mAllUnmetered && nrConnected;
+        }
     }
 
     private boolean updateDisplayInfo() {
@@ -5052,10 +5082,10 @@ public class DcTracker extends Handler {
      * 5G connection reevaluation alarms
      */
     private boolean startHysteresisAlarm() {
-        if (mHysteresisTimeMs > 0) {
+        if (mHysteresisTimeSec > 0) {
             // only create hysteresis alarm if CarrierConfig allows it
             sendMessageDelayed(obtainMessage(DctConstants.EVENT_5G_TIMER_HYSTERESIS),
-                    mHysteresisTimeMs);
+                    mHysteresisTimeSec * 1000);
             mHysteresis = true;
             return true;
         } else {
