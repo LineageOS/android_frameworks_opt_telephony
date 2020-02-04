@@ -1067,6 +1067,12 @@ public class EmergencyNumberTracker extends Handler {
         ipw.println(" Hal Version:" + mPhone.getHalVersion());
         ipw.println(" ========================================= ");
 
+        ipw.println(" Country Iso:" + getEmergencyCountryIso());
+        ipw.println(" ========================================= ");
+
+        ipw.println(" Database Version:" + getEmergencyNumberDbVersion());
+        ipw.println(" ========================================= ");
+
         ipw.println("mEmergencyNumberListDatabaseLocalLog:");
         ipw.increaseIndent();
         mEmergencyNumberListDatabaseLocalLog.dump(fd, pw, args);
