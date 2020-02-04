@@ -46,6 +46,7 @@ import android.service.euicc.IDeleteSubscriptionCallback;
 import android.service.euicc.IDownloadSubscriptionCallback;
 import android.service.euicc.IEraseSubscriptionsCallback;
 import android.service.euicc.IEuiccService;
+import android.service.euicc.IEuiccServiceDumpResultCallback;
 import android.service.euicc.IGetDefaultDownloadableSubscriptionListCallback;
 import android.service.euicc.IGetDownloadableSubscriptionMetadataCallback;
 import android.service.euicc.IGetEidCallback;
@@ -95,7 +96,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
      * true or onServiceDisconnected is called (and no package change has occurred which should
      * force us to reestablish the binding).
      */
-    private static final int BIND_TIMEOUT_MILLIS = 30000;
+    static final int BIND_TIMEOUT_MILLIS = 30000;
 
     /**
      * Maximum amount of idle time to hold the binding while in {@link ConnectedState}. After this,
@@ -147,6 +148,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     private static final int CMD_GET_OTA_STATUS = 111;
     private static final int CMD_START_OTA_IF_NECESSARY = 112;
     private static final int CMD_ERASE_SUBSCRIPTIONS_WITH_OPTIONS = 113;
+    private static final int CMD_DUMP_EUICC_SERVICE = 114;
 
     private static boolean isEuiccCommand(int what) {
         return what >= CMD_GET_EID;
@@ -320,6 +322,13 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     public interface RetainSubscriptionsCommandCallback extends BaseEuiccCommandCallback {
         /** Called when the retain command has completed (though it may have failed). */
         void onRetainSubscriptionsComplete(int result);
+    }
+
+    /** Callback class for {@link #dumpEuiccService(DumpEuiccCommandCallback)}   }*/
+    @VisibleForTesting(visibility = PACKAGE)
+    public interface DumpEuiccServiceCommandCallback extends BaseEuiccCommandCallback {
+        /** Called when the retain command has completed (though it may have failed). */
+        void onDumpEuiccServiceComplete(String logs);
     }
 
     private Context mContext;
@@ -519,6 +528,14 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     @VisibleForTesting(visibility = PACKAGE)
     public void retainSubscriptions(int cardId, RetainSubscriptionsCommandCallback callback) {
         sendMessage(CMD_RETAIN_SUBSCRIPTIONS, cardId, 0 /* arg2 */, callback);
+    }
+
+    /** Asynchronously calls the currently bound EuiccService implementation to dump its states */
+    @VisibleForTesting(visibility = PACKAGE)
+    public void dumpEuiccService(DumpEuiccServiceCommandCallback callback) {
+        sendMessage(CMD_DUMP_EUICC_SERVICE, TelephonyManager.UNSUPPORTED_CARD_ID /* ignored */,
+                0 /* arg2 */,
+                callback);
     }
 
     /**
@@ -923,6 +940,20 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                                     });
                             break;
                         }
+                        case CMD_DUMP_EUICC_SERVICE: {
+                            mEuiccService.dump(new IEuiccServiceDumpResultCallback.Stub() {
+                                @Override
+                                public void onComplete(String logs)
+                                        throws RemoteException {
+                                    sendMessage(CMD_COMMAND_COMPLETE, (Runnable) () -> {
+                                        ((DumpEuiccServiceCommandCallback) callback)
+                                                .onDumpEuiccServiceComplete(logs);
+                                        onCommandEnd(callback);
+                                    });
+                                }
+                            });
+                            break;
+                        }
                         default: {
                             Log.wtf(TAG, "Unimplemented eUICC command: " + message.what);
                             callback.onEuiccServiceUnavailable();
@@ -968,6 +999,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
             case CMD_RETAIN_SUBSCRIPTIONS:
             case CMD_GET_OTA_STATUS:
             case CMD_START_OTA_IF_NECESSARY:
+            case CMD_DUMP_EUICC_SERVICE:
                 return (BaseEuiccCommandCallback) message.obj;
             case CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA:
                 return ((GetMetadataRequest) message.obj).mCallback;
