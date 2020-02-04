@@ -16,11 +16,15 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
@@ -28,8 +32,11 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
+import android.telephony.CellIdentityLte;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -49,6 +56,8 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
             new PhoneCapability(0, 0, 0, 0, 1, 0, null, null, null, null, null, null, null);
     private static final PhoneCapability CAPABILITY_WITHOUT_VALIDATION_SUPPORTED =
             new PhoneCapability(0, 0, 0, 0, 0, 0, null, null, null, null, null, null, null);
+    private final CellIdentityLte mCellIdentityLte1 = new CellIdentityLte(123, 456, 0, 0, 111);
+    private final CellIdentityLte mCellIdentityLte2 = new CellIdentityLte(321, 654, 0, 0, 222);
 
     CellularNetworkValidator.ValidationCallback mCallback = (validated, subId) -> {
         mValidated = validated;
@@ -62,6 +71,7 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         doReturn(CAPABILITY_WITH_VALIDATION_SUPPORTED).when(mPhoneConfigurationManager)
                 .getCurrentPhoneCapability();
         mValidatorUT = new CellularNetworkValidator(mContext);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
         processAllMessages();
     }
 
@@ -214,12 +224,242 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         moveTimeForward(timeout);
         processAllMessages();
 
-        assertFalse(mValidated);
-        assertEquals(subId, mValidatedSubId);
+        assertValidationResult(subId, false);
+    }
+
+    @Test
+    @SmallTest
+    public void testSkipRecentlyValidatedNetwork() {
+        int subId = 1;
+        int slotId = 0;
+        int timeout = 1000;
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+        testValidateSuccess();
+
+        resetStates();
+        mValidatorUT.validate(subId, timeout, true, mCallback);
+
+        assertTrue(mValidatorUT.isValidating());
+        assertEquals(subId, mValidatorUT.getSubIdInValidation());
+
+        // As recently validated, onAvailable should trigger switch.
+        mValidatorUT.mNetworkCallback.onAvailable(new Network(100));
+
+        assertValidationResult(subId, true);
+    }
+
+    @Test
+    @SmallTest
+    public void testDoNotSkipIfValidationFailed() {
+        int subId = 1;
+        int slotId = 0;
+        int timeout = 1000;
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+        testValidateFailure();
+
+        resetStates();
+        mValidatorUT.validate(subId, timeout, true, mCallback);
+        assertInValidation(subId);
+        // Last time validation fialed, onAvailable should NOT trigger switch.
+        mValidatorUT.mNetworkCallback.onAvailable(new Network(100));
+        assertInValidation(subId);
+    }
+
+    @Test
+    @SmallTest
+    public void testDoNotSkipIfCachExpires() {
+        int subId = 1;
+        int slotId = 0;
+        int timeout = 1000;
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+        testValidateSuccess();
+
+        // Mark mValidationCacheTtl to only 1 second.
+        mValidatorUT.mValidationCacheTtl = 1000;
+        waitForMs(1100);
+
+        resetStates();
+        mValidatorUT.validate(subId, timeout, true, mCallback);
+        assertInValidation(subId);
+
+        // Last time validation expired, onAvailable should NOT trigger switch.
+        mValidatorUT.mNetworkCallback.onAvailable(new Network(100));
+        assertInValidation(subId);
+    }
+
+    @Test
+    @SmallTest
+    public void testNetworkCachingOfMultipleSub() {
+        int slotId = 0;
+        int timeout = 1000;
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+
+        verifyNetworkRecentlyValidated(1, false);
+        verifyNetworkRecentlyValidated(2, false);
+        verifyNetworkRecentlyValidated(3, false);
+        // Validate sub 1, 2, and 3.
+        mValidatorUT.validate(1, timeout, true, mCallback);
+        mValidatorUT.mNetworkCallback.onCapabilitiesChanged(null, new NetworkCapabilities()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+        assertValidationResult(1, true);
+        verifyNetworkRecentlyValidated(1, true);
+        verifyNetworkRecentlyValidated(2, false);
+        verifyNetworkRecentlyValidated(3, false);
+        mValidatorUT.validate(2, timeout, true, mCallback);
+        mValidatorUT.mNetworkCallback.onCapabilitiesChanged(null, new NetworkCapabilities()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+        assertValidationResult(2, true);
+        mValidatorUT.validate(3, timeout, true, mCallback);
+        mValidatorUT.mNetworkCallback.onCapabilitiesChanged(null, new NetworkCapabilities()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+        assertValidationResult(3, true);
+        verifyNetworkRecentlyValidated(1, true);
+        verifyNetworkRecentlyValidated(2, true);
+        verifyNetworkRecentlyValidated(3, true);
+
+        // When re-validating sub 3, onAvailable should trigger validation callback.
+        resetStates();
+        mValidatorUT.validate(3, timeout, true, mCallback);
+        mValidatorUT.mNetworkCallback.onAvailable(new Network(100));
+        assertValidationResult(3, true);
+        // Mark sub 2 validation failed. Should clear the network from cache.
+        resetStates();
+        mValidatorUT.validate(2, timeout, true, mCallback);
+        mValidatorUT.mNetworkCallback.onLost(new Network(100));
+        verifyNetworkRecentlyValidated(2, false);
+
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+    }
+
+    @Test
+    @SmallTest
+    public void testNetworkCachingOfMultipleNetworks() {
+        int timeout = 1000;
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+
+        // Validate sub 1.
+        verifyNetworkRecentlyValidated(1, false);
+        mValidatorUT.validate(1, timeout, true, mCallback);
+        mValidatorUT.mNetworkCallback.onCapabilitiesChanged(null, new NetworkCapabilities()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+        verifyNetworkRecentlyValidated(1, true);
+
+        // Change reg state to a different network.
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte2)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+
+        // Should NOT skip validation.
+        verifyNetworkRecentlyValidated(1, false);
+    }
+
+    @Test
+    @SmallTest
+    public void testNetworkCachingOverflow() {
+        int timeout = 1000;
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .setCellIdentity(mCellIdentityLte1)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+
+        for (int subId = 8; subId <= 100; subId++) {
+            mValidatorUT.validate(subId, timeout, true, mCallback);
+            mValidatorUT.mNetworkCallback.onCapabilitiesChanged(null, new NetworkCapabilities()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+            verifyNetworkRecentlyValidated(subId, true);
+        }
+
+        // Last 10 subs are kept in cache.
+        for (int subId = 1; subId <= 90; subId++) {
+            verifyNetworkRecentlyValidated(subId, false);
+        }
+        // Last 10 subs are kept in cache.
+        for (int subId = 91; subId <= 100; subId++) {
+            verifyNetworkRecentlyValidated(subId, true);
+        }
+    }
+
+    private void verifyNetworkRecentlyValidated(int subId, boolean shouldBeRecentlyValidated) {
+        // Start validation and send network available callback.
+        resetStates();
+        mValidatorUT.validate(subId, 1000, true, mCallback);
+        mValidatorUT.mNetworkCallback.onAvailable(new Network(1000));
+
+        if (shouldBeRecentlyValidated) {
+            assertValidationResult(subId, true);
+        } else {
+            assertInValidation(subId);
+        }
+
+        mValidatorUT.stopValidation();
+        resetStates();
+    }
+
+    private void assertValidationResult(int subId, boolean shouldPass) {
+        // Verify that validation is over.
         verify(mConnectivityManager).unregisterNetworkCallback(eq(mValidatorUT.mNetworkCallback));
         assertFalse(mValidatorUT.mHandler.hasCallbacks(mValidatorUT.mTimeoutCallback));
         assertFalse(mValidatorUT.isValidating());
         assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                 mValidatorUT.getSubIdInValidation());
+
+        // Verify result.
+        assertEquals(shouldPass, mValidated);
+        assertEquals(subId, mValidatedSubId);
+    }
+
+    private void assertInValidation(int subId) {
+        assertEquals(subId, mValidatorUT.getSubIdInValidation());
+        assertTrue(mValidatorUT.mHandler.hasCallbacks(mValidatorUT.mTimeoutCallback));
+        assertTrue(mValidatorUT.isValidating());
+    }
+
+    private void resetStates() {
+        clearInvocations(mConnectivityManager);
+        mValidated = false;
+        mValidatedSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 }
