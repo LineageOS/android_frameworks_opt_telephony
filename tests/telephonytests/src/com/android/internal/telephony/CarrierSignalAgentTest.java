@@ -15,9 +15,8 @@
  */
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE;
-import static com.android.internal.telephony.TelephonyIntents
-        .ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED;
+import static android.telephony.TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE;
+import static android.telephony.TelephonyManager.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
