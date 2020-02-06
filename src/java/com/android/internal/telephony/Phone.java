@@ -2486,6 +2486,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mIsPhoneInEcmState;
     }
 
+    public boolean isInImsEcm() {
+        return false;
+    }
+
     public void setIsInEcm(boolean isInEcm) {
         if (!getUnitTestMode()) {
             TelephonyProperties.in_ecm_mode(isInEcm);

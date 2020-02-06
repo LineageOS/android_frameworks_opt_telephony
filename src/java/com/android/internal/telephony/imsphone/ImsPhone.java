@@ -239,6 +239,8 @@ public class ImsPhone extends ImsPhoneBase {
 
     private boolean mRoaming = false;
 
+    private boolean mIsInImsEcm = false;
+
     // List of Registrants to send supplementary service notifications to.
     private RegistrantList mSsnRegistrants = new RegistrantList();
 
@@ -834,12 +836,18 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public boolean isInImsEcm() {
+        return mIsInImsEcm;
+    }
+
+    @Override
     public boolean isInEcm() {
         return mDefaultPhone.isInEcm();
     }
 
     @Override
     public void setIsInEcm(boolean isInEcm){
+        mIsInImsEcm = isInEcm;
         mDefaultPhone.setIsInEcm(isInEcm);
     }
 
