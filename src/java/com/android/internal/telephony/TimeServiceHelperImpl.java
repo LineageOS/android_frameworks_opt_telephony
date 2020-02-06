@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.app.AlarmManager;
-import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
 import android.app.timedetector.TimeDetector;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -96,7 +96,7 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
     }
 
     @Override
-    public void suggestDeviceTime(PhoneTimeSuggestion phoneTimeSuggestion) {
-        mTimeDetector.suggestPhoneTime(phoneTimeSuggestion);
+    public void suggestDeviceTime(TelephonyTimeSuggestion timeSuggestion) {
+        mTimeDetector.suggestTelephonyTime(timeSuggestion);
     }
 }
