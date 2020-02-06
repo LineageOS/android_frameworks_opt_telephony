@@ -40,6 +40,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.ModemActivityInfo;
@@ -2398,5 +2399,27 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     public void setSystemSelectionChannelsResponse_1_5(RadioResponseInfo info) {
         responseVoid(info);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     * @param cellIdentity CellIdentity for the barringInfos.
+     * @param barringInfos List of BarringInfo for all the barring service types.
+     */
+    public void getBarringInfoResponse(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_5.CellIdentity cellIdentity,
+            ArrayList<android.hardware.radio.V1_5.BarringInfo> barringInfos) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            BarringInfo bi = BarringInfo.create(cellIdentity, barringInfos);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, bi);
+                // notify all registrants for the possible barring info change
+                mRil.mBarringInfoChangedRegistrants.notifyRegistrants(
+                        new AsyncResult(null, bi, null));
+            }
+            mRil.processResponseDone(rr, responseInfo, bi);
+        }
     }
 }
