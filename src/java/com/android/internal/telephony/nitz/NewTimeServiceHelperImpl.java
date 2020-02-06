@@ -18,9 +18,9 @@ package com.android.internal.telephony.nitz;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
 import android.app.timedetector.TimeDetector;
-import android.app.timezonedetector.PhoneTimeZoneSuggestion;
+import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.app.timezonedetector.TimeZoneDetector;
 import android.content.Context;
 import android.os.TimestampedValue;
@@ -38,7 +38,7 @@ import java.util.Objects;
  */
 public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
 
-    private final int mPhoneId;
+    private final int mSlotIndex;
     private final TimeDetector mTimeDetector;
     private final TimeZoneDetector mTimeZoneDetector;
 
@@ -51,10 +51,10 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
      * been made.
      */
     @NonNull
-    private PhoneTimeZoneSuggestion mLastSuggestedTimeZone;
+    private TelephonyTimeZoneSuggestion mLastSuggestedTimeZone;
 
     public NewTimeServiceHelperImpl(@NonNull Phone phone) {
-        mPhoneId = phone.getPhoneId();
+        mSlotIndex = phone.getPhoneId();
         Context context = Objects.requireNonNull(phone.getContext());
         mTimeDetector = Objects.requireNonNull(context.getSystemService(TimeDetector.class));
         mTimeZoneDetector =
@@ -62,33 +62,33 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
     }
 
     @Override
-    public void suggestDeviceTime(@NonNull PhoneTimeSuggestion phoneTimeSuggestion) {
-        mTimeLog.log("Sending time suggestion: " + phoneTimeSuggestion);
+    public void suggestDeviceTime(@NonNull TelephonyTimeSuggestion timeSuggestion) {
+        mTimeLog.log("Sending time suggestion: " + timeSuggestion);
 
-        Objects.requireNonNull(phoneTimeSuggestion);
+        Objects.requireNonNull(timeSuggestion);
 
-        if (phoneTimeSuggestion.getUtcTime() != null) {
-            TimestampedValue<Long> utcTime = phoneTimeSuggestion.getUtcTime();
-            TelephonyMetrics.getInstance().writeNITZEvent(mPhoneId, utcTime.getValue());
+        if (timeSuggestion.getUtcTime() != null) {
+            TimestampedValue<Long> utcTime = timeSuggestion.getUtcTime();
+            TelephonyMetrics.getInstance().writeNITZEvent(mSlotIndex, utcTime.getValue());
         }
-        mTimeDetector.suggestPhoneTime(phoneTimeSuggestion);
+        mTimeDetector.suggestTelephonyTime(timeSuggestion);
     }
 
     @Override
-    public void maybeSuggestDeviceTimeZone(@NonNull PhoneTimeZoneSuggestion newSuggestion) {
+    public void maybeSuggestDeviceTimeZone(@NonNull TelephonyTimeZoneSuggestion newSuggestion) {
         Objects.requireNonNull(newSuggestion);
 
-        PhoneTimeZoneSuggestion oldSuggestion = mLastSuggestedTimeZone;
+        TelephonyTimeZoneSuggestion oldSuggestion = mLastSuggestedTimeZone;
         if (shouldSendNewTimeZoneSuggestion(oldSuggestion, newSuggestion)) {
             mTimeZoneLog.log("Suggesting time zone update: " + newSuggestion);
-            mTimeZoneDetector.suggestPhoneTimeZone(newSuggestion);
+            mTimeZoneDetector.suggestTelephonyTimeZone(newSuggestion);
             mLastSuggestedTimeZone = newSuggestion;
         }
     }
 
     private static boolean shouldSendNewTimeZoneSuggestion(
-            @Nullable PhoneTimeZoneSuggestion oldSuggestion,
-            @NonNull PhoneTimeZoneSuggestion newSuggestion) {
+            @Nullable TelephonyTimeZoneSuggestion oldSuggestion,
+            @NonNull TelephonyTimeZoneSuggestion newSuggestion) {
         if (oldSuggestion == null) {
             // No previous suggestion.
             return true;
