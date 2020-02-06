@@ -18,8 +18,8 @@ package com.android.internal.telephony.nitz;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.app.timedetector.PhoneTimeSuggestion;
-import android.app.timezonedetector.PhoneTimeZoneSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
+import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.content.Context;
 import android.os.TimestampedValue;
 
@@ -83,14 +83,14 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
     public interface TimeZoneSuggester {
 
         /**
-         * Generates a {@link PhoneTimeZoneSuggestion} given the information available. This method
-         * must always return a non-null {@link PhoneTimeZoneSuggestion} but that object does not
-         * have to contain a time zone if the available information is not sufficient to determine
-         * one. {@link PhoneTimeZoneSuggestion#getDebugInfo()} provides debugging / logging
-         * information explaining the choice.
+         * Generates a {@link TelephonyTimeZoneSuggestion} given the information available. This
+         * method must always return a non-null {@link TelephonyTimeZoneSuggestion} but that object
+         * does not have to contain a time zone if the available information is not sufficient to
+         * determine one. {@link TelephonyTimeZoneSuggestion#getDebugInfo()} provides debugging /
+         * logging information explaining the choice.
          */
         @NonNull
-        PhoneTimeZoneSuggestion getTimeZoneSuggestion(
+        TelephonyTimeZoneSuggestion getTimeZoneSuggestion(
                 int slotIndex, @Nullable String countryIsoCode,
                 @Nullable TimestampedValue<NitzData> nitzSignal);
     }
@@ -102,7 +102,9 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
     private final int mSlotIndex;
     /** Applied to NITZ signals during input filtering. */
     private final NitzSignalInputFilterPredicate mNitzSignalInputFilter;
-    /** Creates {@link PhoneTimeZoneSuggestion} for passing to the time zone detection service. */
+    /**
+     * Creates a {@link TelephonyTimeZoneSuggestion} for passing to the time zone detection service.
+     */
     private final TimeZoneSuggester mTimeZoneSuggester;
     /** A facade to the time / time zone detection services. */
     private final NewTimeServiceHelper mNewTimeServiceHelper;
@@ -284,7 +286,7 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         try {
             Objects.requireNonNull(reason);
 
-            PhoneTimeZoneSuggestion suggestion = mTimeZoneSuggester.getTimeZoneSuggestion(
+            TelephonyTimeZoneSuggestion suggestion = mTimeZoneSuggester.getTimeZoneSuggestion(
                     mSlotIndex, countryIsoCode, nitzSignal);
             suggestion.addDebugInfo("Detection reason=" + reason);
 
@@ -312,7 +314,8 @@ public final class NewNitzStateMachineImpl implements NitzStateMachine {
         try {
             Objects.requireNonNull(reason);
 
-            PhoneTimeSuggestion.Builder builder = new PhoneTimeSuggestion.Builder(mSlotIndex);
+            TelephonyTimeSuggestion.Builder builder =
+                    new TelephonyTimeSuggestion.Builder(mSlotIndex);
             if (nitzSignal == null) {
                 builder.addDebugInfo("Clearing time suggestion"
                         + " reason=" + reason);

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
 import android.content.Context;
 import android.os.PowerManager;
 import android.os.TimestampedValue;
@@ -402,8 +402,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     }
 
     private void sendEmptyTimeSuggestion(String reason) {
-        PhoneTimeSuggestion timeSuggestion =
-                new PhoneTimeSuggestion.Builder(mPhone.getPhoneId()).build();
+        TelephonyTimeSuggestion timeSuggestion =
+                new TelephonyTimeSuggestion.Builder(mPhone.getPhoneId()).build();
         timeSuggestion.addDebugInfo("Empty suggestion, reason=" + reason);
         mTimeServiceHelper.suggestDeviceTime(timeSuggestion);
     }
@@ -485,12 +485,12 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 Rlog.d(LOG_TAG, logMsg);
             }
             mTimeLog.log(logMsg);
-            PhoneTimeSuggestion phoneTimeSuggestion =
-                    new PhoneTimeSuggestion.Builder(mPhone.getPhoneId())
+            TelephonyTimeSuggestion timeSuggestion =
+                    new TelephonyTimeSuggestion.Builder(mPhone.getPhoneId())
                             .setUtcTime(newNitzTime)
                             .addDebugInfo(logMsg)
                             .build();
-            mTimeServiceHelper.suggestDeviceTime(phoneTimeSuggestion);
+            mTimeServiceHelper.suggestDeviceTime(timeSuggestion);
 
             TelephonyMetrics.getInstance().writeNITZEvent(
                     mPhone.getPhoneId(), newNitzTime.getValue());
