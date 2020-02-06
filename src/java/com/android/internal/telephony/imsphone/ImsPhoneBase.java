@@ -168,11 +168,6 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public boolean getCallForwardingIndicator() {
-        return false;
-    }
-
-    @Override
     public List<? extends MmiCode> getPendingMmiCodes() {
         return new ArrayList<MmiCode>(0);
     }
