@@ -380,12 +380,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                             isServiceClassVoiceorNone(ssData.serviceClass));
 
                     Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag cffEnabled: " + cffEnabled);
-                    if (mIccRecords != null) {
-                        mPhone.setVoiceCallForwardingFlag(1, cffEnabled, null);
-                        Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag done from SS Info.");
-                    } else {
-                        Rlog.e(LOG_TAG, "setVoiceCallForwardingFlag aborted. sim records is null.");
-                    }
+                    mPhone.setVoiceCallForwardingFlag(1, cffEnabled, null);
                 }
                 onSetComplete(null, new AsyncResult(null, ssData.cfInfo, ex));
                 break;
@@ -1216,9 +1211,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 */
                 if ((ar.exception == null) && (msg.arg1 == 1)) {
                     boolean cffEnabled = (msg.arg2 == 1);
-                    if (mIccRecords != null) {
-                        mPhone.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
-                    }
+                    mPhone.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
                 }
 
                 onSetComplete(msg, ar);
@@ -1627,9 +1620,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 (info.serviceClass & serviceClassMask)
                         == CommandsInterface.SERVICE_CLASS_VOICE) {
             boolean cffEnabled = (info.status == 1);
-            if (mIccRecords != null) {
-                mPhone.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
-            }
+            mPhone.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
         }
 
         return TextUtils.replace(template, sources, destinations);
@@ -1656,15 +1647,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
             infos = (CallForwardInfo[]) ar.result;
 
-            if (infos.length == 0) {
+            if (infos == null || infos.length == 0) {
                 // Assume the default is not active
                 sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
                         com.android.telephony.resources.R.string.serviceDisabled));
 
                 // Set unconditional CFF in SIM to false
-                if (mIccRecords != null) {
-                    mPhone.setVoiceCallForwardingFlag(1, false, null);
-                }
+                mPhone.setVoiceCallForwardingFlag(1, false, null);
             } else {
 
                 SpannableStringBuilder tb = new SpannableStringBuilder();
