@@ -20,6 +20,8 @@ import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_DELIVERY_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
@@ -30,20 +32,25 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteException;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.PowerWhitelistManager;
+import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
-import android.telephony.WapPushManagerConnector;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.util.TelephonyResourceUtils;
@@ -59,13 +66,14 @@ import com.google.android.mms.pdu.PduPersister;
 import com.google.android.mms.pdu.ReadOrigInd;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * WAP push handler class.
  *
  * @hide
  */
-public class WapPushOverSms {
+public class WapPushOverSms implements ServiceConnection {
     private static final String TAG = "WAP PUSH";
     private static final boolean DBG = false;
 
@@ -73,7 +81,11 @@ public class WapPushOverSms {
     private final Context mContext;
     PowerWhitelistManager mPowerWhitelistManager;
 
-    private WapPushManagerConnector mWapPushManager;
+    private String mWapPushManagerPackage;
+
+    /** Assigned from ServiceConnection callback on main threaad. */
+    @UnsupportedAppUsage
+    private volatile IWapPushManager mWapPushManager;
 
     /** Broadcast receiver that binds to WapPushManager when the user unlocks the phone for the
      *  first time after reboot and the credential-encrypted storage is available.
@@ -83,28 +95,85 @@ public class WapPushOverSms {
         public void onReceive(final Context context, Intent intent) {
             Rlog.d(TAG, "Received broadcast " + intent.getAction());
             if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
-                new Thread(() -> bindWapPushManagerService()).start();
+                new BindServiceThread(mContext).start();
             }
         }
     };
 
-    private void bindWapPushManagerService() {
-        if (!mWapPushManager.bindToWapPushManagerService()) {
-            Rlog.e(TAG, "binding for wappush manager failed");
-        } else {
-            if (DBG) Rlog.v(TAG, "binding for wappush manager succeeded");
+    private class BindServiceThread extends Thread {
+        private final Context context;
+
+        private BindServiceThread(Context context) {
+            this.context = context;
         }
+
+        @Override
+        public void run() {
+            bindWapPushManagerService(context);
+        }
+    }
+
+    private void bindWapPushManagerService(Context context) {
+        Intent intent = new Intent(IWapPushManager.class.getName());
+        ComponentName comp = resolveSystemService(context.getPackageManager(), intent);
+        intent.setComponent(comp);
+        if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
+            Rlog.e(TAG, "bindService() for wappush manager failed");
+        } else {
+            synchronized (this) {
+                mWapPushManagerPackage = comp.getPackageName();
+            }
+            if (DBG) Rlog.v(TAG, "bindService() for wappush manager succeeded");
+        }
+    }
+
+    /**
+     * Special function for use by the system to resolve service
+     * intents to system apps.  Throws an exception if there are
+     * multiple potential matches to the Intent.  Returns null if
+     * there are no matches.
+     */
+    private static @Nullable ComponentName resolveSystemService(@NonNull PackageManager pm,
+            @NonNull Intent intent) {
+        List<ResolveInfo> results = pm.queryIntentServices(
+                intent, PackageManager.MATCH_SYSTEM_ONLY);
+        if (results == null) {
+            return null;
+        }
+        ComponentName comp = null;
+        for (int i = 0; i < results.size(); i++) {
+            ResolveInfo ri = results.get(i);
+            ComponentName foundComp = new ComponentName(ri.serviceInfo.applicationInfo.packageName,
+                    ri.serviceInfo.name);
+            if (comp != null) {
+                throw new IllegalStateException("Multiple system services handle " + intent
+                    + ": " + comp + ", " + foundComp);
+            }
+            comp = foundComp;
+        }
+        return comp;
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        mWapPushManager = IWapPushManager.Stub.asInterface(service);
+        if (DBG) Rlog.v(TAG, "wappush manager connected to " + hashCode());
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        mWapPushManager = null;
+        if (DBG) Rlog.v(TAG, "wappush manager disconnected.");
     }
 
     public WapPushOverSms(Context context) {
         mContext = context;
         mPowerWhitelistManager = mContext.getSystemService(PowerWhitelistManager.class);
-        mWapPushManager = new WapPushManagerConnector(context);
 
         UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
 
         if (userManager.isUserUnlocked()) {
-            bindWapPushManagerService();
+            bindWapPushManagerService(mContext);
         } else {
             IntentFilter userFilter = new IntentFilter();
             userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
@@ -113,8 +182,12 @@ public class WapPushOverSms {
     }
 
     public void dispose() {
-        if (DBG) Rlog.v(TAG, "dispose: unbind wappush manager");
-        mWapPushManager.unbindWapPushManagerService();
+        if (mWapPushManager != null) {
+            if (DBG) Rlog.v(TAG, "dispose: unbind wappush manager");
+            mContext.unbindService(this);
+        } else {
+            Rlog.e(TAG, "dispose: not bound to a wappush manager");
+        }
     }
 
     /**
@@ -301,40 +374,42 @@ public class WapPushOverSms {
          * is not found, legacy message processing will be continued.
          */
         if (result.wapAppId != null) {
-            boolean processFurther = true;
+            try {
+                boolean processFurther = true;
+                IWapPushManager wapPushMan = mWapPushManager;
 
-            String wapPushManagerPackage =
-                    mWapPushManager.getConnectedWapPushManagerServicePackage();
-            if (wapPushManagerPackage == null) {
-                if (DBG) Rlog.w(TAG, "wap push manager not found!");
-            } else {
-                mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                        wapPushManagerPackage, PowerWhitelistManager.EVENT_MMS, "mms-mgr");
+                if (wapPushMan == null) {
+                    if (DBG) Rlog.w(TAG, "wap push manager not found!");
+                } else {
+                    synchronized (this) {
+                        mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
+                                mWapPushManagerPackage, PowerWhitelistManager.EVENT_MMS, "mms-mgr");
+                    }
 
-                Intent intent = new Intent();
-                intent.putExtra("transactionId", result.transactionId);
-                intent.putExtra("pduType", result.pduType);
-                intent.putExtra("header", result.header);
-                intent.putExtra("data", result.intentData);
-                intent.putExtra("contentTypeParameters", result.contentTypeParameters);
-                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, result.phoneId);
-                if (!TextUtils.isEmpty(address)) {
-                    intent.putExtra("address", address);
-                }
+                    Intent intent = new Intent();
+                    intent.putExtra("transactionId", result.transactionId);
+                    intent.putExtra("pduType", result.pduType);
+                    intent.putExtra("header", result.header);
+                    intent.putExtra("data", result.intentData);
+                    intent.putExtra("contentTypeParameters", result.contentTypeParameters);
+                    SubscriptionManager.putPhoneIdAndSubIdExtra(intent, result.phoneId);
+                    if (!TextUtils.isEmpty(address)) {
+                        intent.putExtra("address", address);
+                    }
 
-                int procRet = mWapPushManager.processMessage(
+                    int procRet = wapPushMan.processMessage(
                         result.wapAppId, result.contentType, intent);
-                if (DBG) Rlog.v(TAG, "procRet:" + procRet);
-                if ((procRet & WapPushManagerConnector.RESULT_MESSAGE_HANDLED) > 0
-                        && (procRet & WapPushManagerConnector.RESULT_FURTHER_PROCESSING) == 0) {
-                    processFurther = false;
+                    if (DBG) Rlog.v(TAG, "procRet:" + procRet);
+                    if ((procRet & WapPushManagerParams.MESSAGE_HANDLED) > 0
+                            && (procRet & WapPushManagerParams.FURTHER_PROCESSING) == 0) {
+                        processFurther = false;
+                    }
                 }
-                if ((procRet & WapPushManagerConnector.RESULT_EXCEPTION_CAUGHT) != 0) {
-                    if (DBG) Rlog.w(TAG, "remote func failed...");
+                if (!processFurther) {
+                    return Intents.RESULT_SMS_HANDLED;
                 }
-            }
-            if (!processFurther) {
-                return Intents.RESULT_SMS_HANDLED;
+            } catch (RemoteException e) {
+                if (DBG) Rlog.w(TAG, "remote func failed...");
             }
         }
         if (DBG) Rlog.v(TAG, "fall back to existing handler");
@@ -473,12 +548,12 @@ public class WapPushOverSms {
                     break;
                 }
                 default:
-                    Rlog.e(TAG, "Received unrecognized WAP Push PDU.");
+                    Log.e(TAG, "Received unrecognized WAP Push PDU.");
             }
         } catch (MmsException e) {
-            Rlog.e(TAG, "Failed to save MMS WAP push data: type=" + type, e);
+            Log.e(TAG, "Failed to save MMS WAP push data: type=" + type, e);
         } catch (RuntimeException e) {
-            Rlog.e(TAG, "Unexpected RuntimeException in persisting MMS WAP push data", e);
+            Log.e(TAG, "Unexpected RuntimeException in persisting MMS WAP push data", e);
         }
 
     }
