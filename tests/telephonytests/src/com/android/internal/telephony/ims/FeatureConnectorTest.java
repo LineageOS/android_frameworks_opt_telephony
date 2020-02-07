@@ -19,11 +19,13 @@ package com.android.internal.telephony.ims;
 import junit.framework.AssertionFailedError;
 
 import static org.mockito.ArgumentMatchers.anyObject;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.pm.PackageManager;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.telephony.ims.feature.ImsFeature;
@@ -70,7 +72,7 @@ public class FeatureConnectorTest extends TelephonyTest {
         mHandlerThread = new HandlerThread("ConnectorHandlerThread");
         mHandlerThread.start();
 
-        mFeatureConnector = new FeatureConnector<ImsManager>(mContext, phoneId,
+        mFeatureConnector = new FeatureConnector<>(mContext, phoneId,
             mListener, mExecutor, mHandlerThread.getLooper());
         mFeatureConnector.mListener = mListener;
     }
@@ -85,7 +87,7 @@ public class FeatureConnectorTest extends TelephonyTest {
     @SmallTest
     public void testConnect() {
         // ImsManager is supported on device
-        when(mListener.isSupported()).thenReturn(true);
+        setImsSupportedFeature(true);
         when(mListener.getFeatureManager()).thenReturn(mImsManager);
 
         mFeatureConnector.connect();
@@ -97,7 +99,7 @@ public class FeatureConnectorTest extends TelephonyTest {
         reset(mListener);
 
         // ImsManager is NOT supported on device
-        when(mListener.isSupported()).thenReturn(false);
+        setImsSupportedFeature(false);
         when(mListener.getFeatureManager()).thenReturn(mImsManager);
 
         mFeatureConnector.connect();
@@ -144,5 +146,10 @@ public class FeatureConnectorTest extends TelephonyTest {
 
         // Verify removeNotifyStatusChangedCallback will be called if ImsManager is not null.
         verify(mImsManager).removeNotifyStatusChangedCallback(anyObject());
+    }
+
+    private void setImsSupportedFeature(boolean isSupported) {
+        doReturn(isSupported).when(mPackageManager).hasSystemFeature(
+                PackageManager.FEATURE_TELEPHONY_IMS);
     }
 }
