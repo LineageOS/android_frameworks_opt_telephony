@@ -48,7 +48,8 @@ public class ImsRegistrationCallbackHelperTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
 
-        mRegistrationCallbackHelper = new ImsRegistrationCallbackHelper(mMockRegistrationUpdate);
+        mRegistrationCallbackHelper = new ImsRegistrationCallbackHelper(mMockRegistrationUpdate,
+                Runnable::run);
     }
 
     @After
