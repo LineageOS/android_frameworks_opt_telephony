@@ -591,14 +591,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
 
         // Allow the executor to be specified for testing.
-        mImsManagerConnector = new FeatureConnector<ImsManager>(
+        mImsManagerConnector = new FeatureConnector<>(
                 phone.getContext(), phone.getPhoneId(),
                 new FeatureConnector.Listener<ImsManager>() {
-                    @Override
-                    public boolean isSupported() {
-                        return ImsManager.isImsSupportedOnDevice(phone.getContext());
-                    }
-
                     @Override
                     public ImsManager getFeatureManager() {
                         return ImsManager.getInstance(phone.getContext(), phone.getPhoneId());
@@ -4253,7 +4248,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean tmpIsVideoCallEnabled = isVideoCallEnabled();
         mMmTelCapabilities = new MmTelFeature.MmTelCapabilities();
         mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
-        mPhone.resetImsRegistrationState(ImsFeature.FEATURE_MMTEL);
+        mPhone.resetImsRegistrationState();
         mPhone.processDisconnectReason(new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN,
                 ImsReasonInfo.CODE_UNSPECIFIED));
         boolean isVideoEnabled = isVideoCallEnabled();
