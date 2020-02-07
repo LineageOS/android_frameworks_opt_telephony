@@ -871,28 +871,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean holdBeforeDial = prepareForDialing(dialArgs);
 
         mClirMode = clirMode;
-
+        ImsPhoneConnection pendingConnection;
         synchronized (mSyncHold) {
             mLastDialArgs = dialArgs;
-            mPendingMO = new ImsPhoneConnection(mPhone,
+            pendingConnection = new ImsPhoneConnection(mPhone,
                     participantsToDial, this, mForegroundCall,
                     false);
-            mPendingMO.setVideoState(videoState);
+            // Don't rely on the mPendingMO in this method; if the modem calls back through
+            // onCallProgressing, we'll end up nulling out mPendingMO, which means that
+            // TelephonyConnectionService would treat this call as an MMI code, which it is not,
+            // which would mean that the MMI code dialog would crash.
+            mPendingMO = pendingConnection;
+            pendingConnection.setVideoState(videoState);
             if (dialArgs.rttTextStream != null) {
                 log("startConference: setting RTT stream on mPendingMO");
-                mPendingMO.setCurrentRttTextStream(dialArgs.rttTextStream);
+                pendingConnection.setCurrentRttTextStream(dialArgs.rttTextStream);
             }
         }
-        addConnection(mPendingMO);
+        addConnection(pendingConnection);
 
         if (!holdBeforeDial) {
-            dialInternal(mPendingMO, clirMode, videoState, dialArgs.intentExtras);
+            dialInternal(pendingConnection, clirMode, videoState, dialArgs.intentExtras);
         }
 
         updatePhoneState();
         mPhone.notifyPreciseCallStateChanged();
 
-        return mPendingMO;
+        return pendingConnection;
     }
 
     @UnsupportedAppUsage
