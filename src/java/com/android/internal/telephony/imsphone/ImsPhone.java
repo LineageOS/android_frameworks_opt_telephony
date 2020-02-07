@@ -239,6 +239,8 @@ public class ImsPhone extends ImsPhoneBase {
 
     private boolean mRoaming = false;
 
+    private boolean mIsInImsEcm = false;
+
     // List of Registrants to send supplementary service notifications to.
     private RegistrantList mSsnRegistrants = new RegistrantList();
 
@@ -834,12 +836,18 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public boolean isInImsEcm() {
+        return mIsInImsEcm;
+    }
+
+    @Override
     public boolean isInEcm() {
         return mDefaultPhone.isInEcm();
     }
 
     @Override
     public void setIsInEcm(boolean isInEcm){
+        mIsInImsEcm = isInEcm;
         mDefaultPhone.setIsInEcm(isInEcm);
     }
 
@@ -1549,20 +1557,15 @@ public class ImsPhone extends ImsPhoneBase {
             cfInfos = new CallForwardInfo[infos.length];
         }
 
-        IccRecords r = mDefaultPhone.getIccRecords();
         if (infos == null || infos.length == 0) {
-            if (r != null) {
-                // Assume the default is not active
-                // Set unconditional CFF in SIM to false
-                setVoiceCallForwardingFlag(r, 1, false, null);
-            }
+            // Assume the default is not active
+            // Set unconditional CFF in SIM to false
+            setVoiceCallForwardingFlag(getIccRecords(), 1, false, null);
         } else {
             for (int i = 0, s = infos.length; i < s; i++) {
                 if (infos[i].getCondition() == ImsUtInterface.CDIV_CF_UNCONDITIONAL) {
-                    if (r != null) {
-                        setVoiceCallForwardingFlag(r, 1, (infos[i].getStatus() == 1),
-                                infos[i].getNumber());
-                    }
+                    setVoiceCallForwardingFlag(getIccRecords(), 1, (infos[i].getStatus() == 1),
+                        infos[i].getNumber());
                 }
                 cfInfos[i] = getCallForwardInfo(infos[i]);
             }
@@ -1629,10 +1632,9 @@ public class ImsPhone extends ImsPhoneBase {
         if (DBG) logd("handleMessage what=" + msg.what);
         switch (msg.what) {
             case EVENT_SET_CALL_FORWARD_DONE:
-                IccRecords r = mDefaultPhone.getIccRecords();
                 Cf cf = (Cf) ar.userObj;
-                if (cf.mIsCfu && ar.exception == null && r != null) {
-                    setVoiceCallForwardingFlag(r, 1, msg.arg1 == 1, cf.mSetCfNumber);
+                if (cf.mIsCfu && ar.exception == null) {
+                    setVoiceCallForwardingFlag(getIccRecords(), 1, msg.arg1 == 1, cf.mSetCfNumber);
                 }
                 sendResponse(cf.mOnComplete, null, ar.exception);
                 break;
@@ -2271,6 +2273,10 @@ public class ImsPhone extends ImsPhoneBase {
             if (DBG) logd("handle RCS SubscriberAssociatedUriChanged");
         }
     };
+
+    public IccRecords getIccRecords() {
+        return mDefaultPhone.getIccRecords();
+    }
 
     @Override
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {

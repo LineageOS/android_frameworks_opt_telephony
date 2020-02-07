@@ -18,8 +18,8 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.fail;
 
-import android.app.timedetector.PhoneTimeSuggestion;
-import android.app.timezonedetector.PhoneTimeZoneSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
+import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
@@ -271,21 +271,21 @@ public final class NitzStateMachineTestSupport {
         return cal.getTimeInMillis();
     }
 
-    public static PhoneTimeZoneSuggestion createEmptyTimeZoneSuggestion(int slotIndex) {
-        return new PhoneTimeZoneSuggestion.Builder(slotIndex)
+    public static TelephonyTimeZoneSuggestion createEmptyTimeZoneSuggestion(int slotIndex) {
+        return new TelephonyTimeZoneSuggestion.Builder(slotIndex)
                 .addDebugInfo("Test")
                 .build();
     }
 
-    public static PhoneTimeSuggestion createEmptyTimeSuggestion(int slotIndex) {
-        return new PhoneTimeSuggestion.Builder(slotIndex)
+    public static TelephonyTimeSuggestion createEmptyTimeSuggestion(int slotIndex) {
+        return new TelephonyTimeSuggestion.Builder(slotIndex)
                 .addDebugInfo("Test")
                 .build();
     }
 
-    public static PhoneTimeSuggestion createTimeSuggestionFromNitzSignal(
+    public static TelephonyTimeSuggestion createTimeSuggestionFromNitzSignal(
             int slotIndex, TimestampedValue<NitzData> nitzSignal) {
-        return new PhoneTimeSuggestion.Builder(slotIndex)
+        return new TelephonyTimeSuggestion.Builder(slotIndex)
                 .setUtcTime(createTimeSignalFromNitzSignal(nitzSignal))
                 .addDebugInfo("Test")
                 .build();

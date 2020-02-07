@@ -2047,20 +2047,26 @@ public class DcTrackerTest extends TelephonyTest {
 
         return true;
     }
+
     @Test
-    public void testNoApnContextsWhenDataIsDisabled() {
+    public void testNoApnContextsWhenDataIsDisabled() throws java.lang.InterruptedException {
+        //Check that apn contexts are loaded.
+        assertTrue(mDct.getApnContexts().size() > 0);
+
+        //Do work normally done in teardown.
+        mDct.removeCallbacksAndMessages(null);
+        mDcTrackerTestHandler.quit();
+        mDcTrackerTestHandler.join();
+
+        //Set isDataCapable to false for the new DcTracker being created in DcTrackerTestHandler.
         doReturn(false).when(mTelephonyManager).isDataCapable();
         mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
         setReady(false);
-        mDcTrackerTestHandler.start();
-        waitUntilReady();
-        assertTrue(mDct.getApnContexts().size() == 0);
 
-        doReturn(true).when(mTelephonyManager).isDataCapable();
-        mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
-        setReady(false);
         mDcTrackerTestHandler.start();
         waitUntilReady();
-        assertTrue(mDct.getApnContexts().size() > 0);
+        assertEquals(0, mDct.getApnContexts().size());
+
+        //No need to clean up handler because that work is done in teardown.
     }
 }

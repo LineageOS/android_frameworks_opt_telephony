@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.app.timedetector.PhoneTimeSuggestion;
+import android.app.timedetector.TelephonyTimeSuggestion;
 import android.app.timedetector.TimeDetector;
 
 /**
@@ -62,8 +62,8 @@ public interface TimeServiceHelper {
     /**
      * Suggest the time to the {@link TimeDetector}.
      *
-     * @param phoneTimeSuggestion the suggested time
+     * @param timeSuggestion the suggested time
      */
-    void suggestDeviceTime(PhoneTimeSuggestion phoneTimeSuggestion);
+    void suggestDeviceTime(TelephonyTimeSuggestion timeSuggestion);
 
 }

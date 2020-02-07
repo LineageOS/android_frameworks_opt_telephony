@@ -38,9 +38,7 @@ import android.os.PowerManager;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SignalThresholdInfo;
-import android.telephony.TelephonyManager;
 import android.util.LocalLog;
-import android.util.SparseIntArray;
 import android.view.Display;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -67,7 +65,6 @@ public class DeviceStateMonitor extends Handler {
     protected static final String TAG = DeviceStateMonitor.class.getSimpleName();
 
     static final int EVENT_RIL_CONNECTED                = 0;
-    static final int EVENT_UPDATE_MODE_CHANGED          = 1;
     @VisibleForTesting
     static final int EVENT_SCREEN_STATE_CHANGED         = 2;
     static final int EVENT_POWER_SAVE_MODE_CHANGED      = 3;
@@ -177,9 +174,6 @@ public class DeviceStateMonitor extends Handler {
 
     /** The minimum required wait time between cell info requests to the modem */
     private int mCellInfoMinInterval = CELL_INFO_INTERVAL_SHORT_MS;
-
-
-    private SparseIntArray mUpdateModes = new SparseIntArray();
 
     /**
      * The unsolicited response filter. See IndicationFilter defined in types.hal for the definition
@@ -317,13 +311,8 @@ public class DeviceStateMonitor extends Handler {
         // We should not turn off signal strength update if one of the following condition is true.
         // 1. The device is charging.
         // 2. When the screen is on.
-        // 3. When the update mode is IGNORE_SCREEN_OFF. This mode is used in some corner cases like
-        //    when Bluetooth carkit is connected, we still want to update signal strength even
-        //    when screen is off.
-        // 4. Any of system services is registrating to always listen to signal strength changes
-        if (mIsAlwaysSignalStrengthReportingEnabled || mIsCharging || mIsScreenOn
-                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH)
-                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+        // 3. Any of system services is registrating to always listen to signal strength changes
+        if (mIsAlwaysSignalStrengthReportingEnabled || mIsCharging || mIsScreenOn) {
             return false;
         }
 
@@ -340,10 +329,7 @@ public class DeviceStateMonitor extends Handler {
         // 1. The device is charging.
         // 2. When the screen is on.
         // 3. When data tethering is on.
-        // 4. When the update mode is IGNORE_SCREEN_OFF.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn
-                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_FULL_NETWORK_STATE)
-                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
             return false;
         }
 
@@ -359,10 +345,7 @@ public class DeviceStateMonitor extends Handler {
         // 1. The device is charging.
         // 2. When the screen is on.
         // 3. When data tethering is on.
-        // 4. When the update mode is IGNORE_SCREEN_OFF.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn
-                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED)
-                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
             return false;
         }
 
@@ -378,10 +361,7 @@ public class DeviceStateMonitor extends Handler {
         // 1. The device is charging.
         // 2. When the screen is on.
         // 3. When data tethering is on.
-        // 4. When the update mode is IGNORE_SCREEN_OFF.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn
-                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_LINK_CAPACITY_ESTIMATE)
-                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
             return false;
         }
 
@@ -398,24 +378,12 @@ public class DeviceStateMonitor extends Handler {
         // 2. When the screen is on.
         // 3. When data tethering is on.
         // 4. When the update mode is IGNORE_SCREEN_OFF.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn
-                || mUpdateModes.get(TelephonyManager.INDICATION_FILTER_PHYSICAL_CHANNEL_CONFIG)
-                == TelephonyManager.INDICATION_UPDATE_MODE_IGNORE_SCREEN_OFF) {
+        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
             return false;
         }
 
         // In all other cases, we turn off physical channel config update.
         return true;
-    }
-
-    /**
-     * Set indication update mode
-     *
-     * @param filters Indication filters. Should be a bitmask of INDICATION_FILTER_XXX.
-     * @param mode The voice activation state
-     */
-    public void setIndicationUpdateMode(int filters, int mode) {
-        sendMessage(obtainMessage(EVENT_UPDATE_MODE_CHANGED, filters, mode));
     }
 
     /**
@@ -425,24 +393,6 @@ public class DeviceStateMonitor extends Handler {
      */
     public void setAlwaysReportSignalStrength(boolean isEnable) {
         sendMessage(obtainMessage(EVENT_UPDATE_ALWAYS_REPORT_SIGNAL_STRENGTH, isEnable ? 1 : 0));
-    }
-
-    private void onSetIndicationUpdateMode(int filters, int mode) {
-        if ((filters & TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH) != 0) {
-            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_SIGNAL_STRENGTH, mode);
-        }
-        if ((filters & TelephonyManager.INDICATION_FILTER_FULL_NETWORK_STATE) != 0) {
-            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_FULL_NETWORK_STATE, mode);
-        }
-        if ((filters & TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED) != 0) {
-            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_DATA_CALL_DORMANCY_CHANGED, mode);
-        }
-        if ((filters & TelephonyManager.INDICATION_FILTER_LINK_CAPACITY_ESTIMATE) != 0) {
-            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_LINK_CAPACITY_ESTIMATE, mode);
-        }
-        if ((filters & TelephonyManager.INDICATION_FILTER_PHYSICAL_CHANNEL_CONFIG) != 0) {
-            mUpdateModes.put(TelephonyManager.INDICATION_FILTER_PHYSICAL_CHANNEL_CONFIG, mode);
-        }
     }
 
     /**
@@ -457,9 +407,6 @@ public class DeviceStateMonitor extends Handler {
             case EVENT_RIL_CONNECTED:
             case EVENT_RADIO_AVAILABLE:
                 onReset();
-                break;
-            case EVENT_UPDATE_MODE_CHANGED:
-                onSetIndicationUpdateMode(msg.arg1, msg.arg2);
                 break;
             case EVENT_SCREEN_STATE_CHANGED:
             case EVENT_POWER_SAVE_MODE_CHANGED:

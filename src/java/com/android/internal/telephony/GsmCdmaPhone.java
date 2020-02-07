@@ -2833,9 +2833,8 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_SET_CALL_FORWARD_DONE:
                 ar = (AsyncResult)msg.obj;
-                IccRecords r = mIccRecords.get();
                 Cfu cfu = (Cfu) ar.userObj;
-                if (ar.exception == null && r != null) {
+                if (ar.exception == null) {
                     setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
                 }
                 if (cfu.mOnComplete != null) {
@@ -3173,20 +3172,17 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void handleCfuQueryResult(CallForwardInfo[] infos) {
-        IccRecords r = mIccRecords.get();
-        if (r != null) {
-            if (infos == null || infos.length == 0) {
-                // Assume the default is not active
-                // Set unconditional CFF in SIM to false
-                setVoiceCallForwardingFlag(1, false, null);
-            } else {
-                for (int i = 0, s = infos.length; i < s; i++) {
-                    if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
-                        setVoiceCallForwardingFlag(1, (infos[i].status == 1),
-                            infos[i].number);
-                        // should only have the one
-                        break;
-                    }
+        if (infos == null || infos.length == 0) {
+            // Assume the default is not active
+            // Set unconditional CFF in SIM to false
+            setVoiceCallForwardingFlag(1, false, null);
+        } else {
+            for (int i = 0, s = infos.length; i < s; i++) {
+                if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
+                    setVoiceCallForwardingFlag(1, (infos[i].status == 1),
+                        infos[i].number);
+                    // should only have the one
+                    break;
                 }
             }
         }
@@ -3351,10 +3347,8 @@ public class GsmCdmaPhone extends Phone {
             Rlog.d(LOG_TAG, "exitEmergencyCallbackMode: mImsPhone=" + mImsPhone
                     + " isPhoneTypeGsm=" + isPhoneTypeGsm());
         }
-        if (isPhoneTypeGsm()) {
-            if (mImsPhone != null) {
-                mImsPhone.exitEmergencyCallbackMode();
-            }
+        if (mImsPhone != null && mImsPhone.isInImsEcm()) {
+            mImsPhone.exitEmergencyCallbackMode();
         } else {
             if (mWakeLock.isHeld()) {
                 mWakeLock.release();
