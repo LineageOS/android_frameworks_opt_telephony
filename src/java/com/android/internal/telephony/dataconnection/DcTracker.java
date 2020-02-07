@@ -398,25 +398,35 @@ public class DcTracker extends Handler {
                 if (mIccRecords.get() != null && mIccRecords.get().getRecordsLoaded()) {
                     setDefaultDataRoamingEnabled();
                 }
+                String nr5GIconConfiguration = CarrierConfigManager.getDefaultConfig().getString(
+                        CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
+                String[] bandwidths = CarrierConfigManager.getDefaultConfig().getStringArray(
+                        CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY);
+                boolean useLte = false;
+                mDataIconPattern = CarrierConfigManager.getDefaultConfig().getString(
+                        CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
                 CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                         .getSystemService(Context.CARRIER_CONFIG_SERVICE);
                 if (configManager != null) {
                     PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
                     if (b != null) {
-                        String nr5GIconConfiguration = b.getString(
-                                CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
-                        if (nr5GIconConfiguration == null) {
-                            nr5GIconConfiguration =
-                                    CarrierConfigManager.getDefaultConfig().getString(
+                        if (b.getString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING)
+                                != null) {
+                            nr5GIconConfiguration = b.getString(
                                     CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
                         }
-                        process5GIconMapping(nr5GIconConfiguration);
-                        mDataIconPattern = b.getString(
-                                CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
-                        if (mDataIconPattern == null) {
-                            mDataIconPattern = CarrierConfigManager.getDefaultConfig().getString(
+                        if (b.getString(CarrierConfigManager
+                                .KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING) != null) {
+                            mDataIconPattern = b.getString(
                                     CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
                         }
+                        if (b.getStringArray(CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY)
+                                != null) {
+                            bandwidths = b.getStringArray(
+                                    CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY);
+                        }
+                        useLte = b.getBoolean(CarrierConfigManager
+                                .KEY_BANDWIDTH_NR_NSA_USE_LTE_VALUE_FOR_UPSTREAM_BOOL);
                         mHysteresisTimeSec = b.getInt(
                                 CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT);
                         mWatchdogTimeMs = b.getLong(
@@ -429,29 +439,14 @@ public class DcTracker extends Handler {
                                 CarrierConfigManager.KEY_UNMETERED_NR_NSA_SUB6_BOOL);
                     }
                 }
+                sendMessage(obtainMessage(DctConstants.EVENT_UPDATE_CARRIER_CONFIGS,
+                        useLte ? 1 : 0, 0 /* unused */,
+                        new Pair<>(bandwidths, nr5GIconConfiguration)));
             } else {
                 if (DBG) log("onReceive: Unknown action=" + action);
             }
         }
     };
-
-    private void process5GIconMapping(String config) {
-        m5GIconMapping.clear();
-        for (String pair : config.trim().split(",")) {
-            String[] kv = (pair.trim().toLowerCase()).split(":");
-            if (kv.length != 2) {
-                if (DBG) log("Invalid 5G icon configuration, config = " + pair);
-                continue;
-            }
-            int value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-            if (kv[1].equals("5g")) {
-                value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
-            } else if (kv[1].equals("5g_plus")) {
-                value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
-            }
-            m5GIconMapping.put(kv[0], value);
-        }
-    }
 
     private final Runnable mPollNetStat = new Runnable() {
         @Override
@@ -703,6 +698,10 @@ public class DcTracker extends Handler {
     private int mDisconnectPendingCount = 0;
 
     private ArrayList<DataProfile> mLastDataProfileList = new ArrayList<>();
+
+    /** RAT name ===> (downstream, upstream) bandwidth values from carrier config. */
+    private final ConcurrentHashMap<String, Pair<Integer, Integer>> mBandwidths =
+            new ConcurrentHashMap<>();
 
     /**
      * Handles changes to the APN db.
@@ -3901,6 +3900,11 @@ public class DcTracker extends Handler {
                 mWatchdog = false;
                 reevaluateUnmeteredConnections();
                 break;
+            case DctConstants.EVENT_UPDATE_CARRIER_CONFIGS:
+                Pair<String[], String> configPair = (Pair<String[], String>) msg.obj;
+                updateLinkBandwidths(configPair.first, msg.arg1 == 1);
+                update5GIconMapping(configPair.second);
+                break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
                 break;
@@ -3966,6 +3970,75 @@ public class DcTracker extends Handler {
                 }
             } else {
                 onSimNotReady();
+            }
+        }
+    }
+
+    /**
+     * Update link bandwidth estimate default values from carrier config.
+     * @param bandwidths String array of "RAT:upstream,downstream" for each RAT
+     * @param useLte For NR NSA, whether to use LTE value for upstream or not
+     */
+    private void updateLinkBandwidths(String[] bandwidths, boolean useLte) {
+        synchronized (mBandwidths) {
+            mBandwidths.clear();
+            for (String config : bandwidths) {
+                int downstream = 14;
+                int upstream = 14;
+                String[] kv = config.split(":");
+                if (kv.length == 2) {
+                    String[] split = kv[1].split(",");
+                    if (split.length == 2) {
+                        try {
+                            downstream = Integer.parseInt(split[0]);
+                            upstream = Integer.parseInt(split[1]);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    mBandwidths.put(kv[0], new Pair<>(downstream, upstream));
+                }
+            }
+            if (useLte) {
+                Pair<Integer, Integer> ltePair = mBandwidths.get("LTE");
+                if (ltePair != null) {
+                    if (mBandwidths.containsKey("NR_NSA")) {
+                        mBandwidths.put("NR_NSA",
+                                new Pair<>(mBandwidths.get("NR_NSA").first, ltePair.second));
+                    }
+                    if (mBandwidths.containsKey("NR_NSA_MMWAVE")) {
+                        mBandwidths.put("NR_NSA_MMWAVE",
+                                new Pair<>(mBandwidths.get("NR_NSA_MMWAVE").first, ltePair.second));
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Return the link upstream/downstream values from CarrierConfig for the given RAT name.
+     * @param ratName RAT name from ServiceState#rilRadioTechnologyToString.
+     * @return pair of downstream/upstream values (kbps), or null if the config is not defined.
+     */
+    public Pair<Integer, Integer> getLinkBandwidths(String ratName) {
+        return mBandwidths.get(ratName);
+    }
+
+    private void update5GIconMapping(String config) {
+        synchronized (m5GIconMapping) {
+            m5GIconMapping.clear();
+            for (String pair : config.trim().split(",")) {
+                String[] kv = (pair.trim().toLowerCase()).split(":");
+                if (kv.length != 2) {
+                    if (DBG) log("Invalid 5G icon configuration, config = " + pair);
+                    continue;
+                }
+                int value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+                if (kv[1].equals("5g")) {
+                    value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
+                } else if (kv[1].equals("5g_plus")) {
+                    value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
+                }
+                m5GIconMapping.put(kv[0], value);
             }
         }
     }
