@@ -65,6 +65,7 @@ import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
+import android.telephony.DisplayInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -2015,6 +2016,107 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         assertFalse(getWatchdogStatus());
+    }
+
+    @Test
+    public void testGetNrDisplayType() {
+        ArgumentCaptor<DisplayInfo> captor = ArgumentCaptor.forClass(DisplayInfo.class);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+
+        // set up 5G icon configuration
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING,
+                "connected_mmwave:5G_Plus,connected:5G,not_restricted_rrc_idle:5G,"
+                        + "not_restricted_rrc_con:5G");
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
+        mContext.sendBroadcast(intent);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        // not NR
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(1)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                captor.getValue().getOverrideNetworkType());
+
+        // NR NSA, restricted
+        doReturn(NetworkRegistrationInfo.NR_STATE_RESTRICTED).when(mServiceState).getNrState();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(2)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                captor.getValue().getOverrideNetworkType());
+
+        // NR NSA, not restricted
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(3)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                captor.getValue().getOverrideNetworkType());
+
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+
+        // NR NSA, sub 6 frequency
+        doReturn(ServiceState.FREQUENCY_RANGE_UNKNOWN).when(mServiceState).getNrFrequencyRange();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(4)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                captor.getValue().getOverrideNetworkType());
+
+        // NR NSA, millimeter wave frequency
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(5)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+                captor.getValue().getOverrideNetworkType());
+    }
+
+    @Test
+    public void testGetLteDisplayType() {
+        ArgumentCaptor<DisplayInfo> captor = ArgumentCaptor.forClass(DisplayInfo.class);
+
+        // normal LTE
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(1)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                captor.getValue().getOverrideNetworkType());
+
+        // LTE CA
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE_CA).when(mServiceState).getDataNetworkType();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(2)).notifyDisplayInfoChanged(captor.capture());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
+                captor.getValue().getOverrideNetworkType());
+
+        // TODO: LTE ADVANCED PRO
+    }
+
+    @Test
+    public void testUpdateDisplayInfo() {
+        ArgumentCaptor<DisplayInfo> captor = ArgumentCaptor.forClass(DisplayInfo.class);
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPAP).when(mServiceState).getDataNetworkType();
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mPhone, times(1)).notifyDisplayInfoChanged(captor.capture());
+        DisplayInfo displayInfo = captor.getValue();
+        assertEquals(TelephonyManager.NETWORK_TYPE_HSPAP, displayInfo.getNetworkType());
+        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, displayInfo.getOverrideNetworkType());
     }
 
     /**

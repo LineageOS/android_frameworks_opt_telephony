@@ -47,6 +47,7 @@ import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
+import android.telephony.DisplayInfo;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
@@ -2391,6 +2392,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void notifyUserMobileDataStateChanged(boolean state) {
         mNotifier.notifyUserMobileDataStateChanged(this, state);
+    }
+
+    /** Send notification that display info has changed. */
+    public void notifyDisplayInfoChanged(DisplayInfo displayInfo) {
+        mNotifier.notifyDisplayInfoChanged(this, displayInfo);
     }
 
     public void notifySignalStrength() {
