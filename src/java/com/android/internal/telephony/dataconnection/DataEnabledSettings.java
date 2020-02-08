@@ -264,16 +264,23 @@ public class DataEnabledSettings {
     }
 
     /**
-     * Set allowing mobile data during voice call.
+     * Set allowing mobile data during voice call. This is used for allowing data on the non-default
+     * data SIM. When a voice call is placed on the non-default data SIM on DSDS devices, users will
+     * not be able to use mobile data. By calling this API, data will be temporarily enabled on the
+     * non-default data SIM during the life cycle of the voice call.
      *
      * @param allow {@code true} if allowing using data during voice call, {@code false} if
      * disallowed
      *
-     * @return {@code false} if the setting is changed.
+     * @return {@code true} if operation is successful. otherwise {@code false}.
      */
     public synchronized boolean setAllowDataDuringVoiceCall(boolean allow) {
         localLog("setAllowDataDuringVoiceCall", allow);
+        if (allow == isDataAllowedInVoiceCall()) {
+            return true;
+        }
         mDataEnabledOverride.setDataAllowedInVoiceCall(allow);
+
         boolean changed = SubscriptionController.getInstance()
                 .setDataEnabledOverrideRules(mPhone.getSubId(), mDataEnabledOverride.getRules());
         if (changed) {
