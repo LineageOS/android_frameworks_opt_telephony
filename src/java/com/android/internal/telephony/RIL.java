@@ -174,8 +174,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
     final Integer mPhoneId;
-    private List<String> mOldRilFeatures;
-    private boolean mUseOldMncMccFormat;
 
     /* default work source which will blame phone process */
     protected WorkSource mRILDefaultWorkSource;
@@ -457,12 +455,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mPreferredNetworkType = preferredNetworkType;
         mPhoneType = RILConstants.NO_PHONE;
         mPhoneId = instanceId;
-
-        final String oldRilFeatures = SystemProperties.get("ro.telephony.ril.config", "");
-        mOldRilFeatures = Arrays.asList(oldRilFeatures.split(","));
-
-        mUseOldMncMccFormat = SystemProperties.getBoolean(
-                "ro.telephony.use_old_mnc_mcc_format", false);
 
         ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
                 Context.CONNECTIVITY_SERVICE);
@@ -5591,7 +5583,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.wcdma.rscp);
     }
 
-    public boolean needsOldRilFeature(String feature) {
-        return mOldRilFeatures.contains(feature);
+    public static boolean needsOldRilFeature(String feature) {
+        List<String> oldRilFeatures = Arrays.asList(SystemProperties.get("ro.telephony.ril.config", "").split(","));
+
+        return oldRilFeatures.contains(feature);
     }
 }
