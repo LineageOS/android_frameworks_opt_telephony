@@ -35,7 +35,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -58,7 +57,6 @@ import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
-import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -67,10 +65,8 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.ims.FeatureConnector;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsUtInterface;
-import com.android.ims.RcsFeatureManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
@@ -673,27 +669,6 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testRegisteringImsRcsRegistrationCallback() throws Exception {
-        RcsFeatureManager rcsFeatureManager = mock(RcsFeatureManager.class);
-
-        // When initialized RcsFeatureManager and
-        mImsPhoneUT.initRcsFeatureManager();
-        assertNotNull(mImsPhoneUT.mRcsManagerConnector);
-
-        // When connection is ready, the register IMS registration callback should be called.
-        mImsPhoneUT.mRcsFeatureConnectorListener.connectionReady(rcsFeatureManager);
-        verify(rcsFeatureManager).registerImsRegistrationCallback(
-                any(IImsRegistrationCallback.class));
-
-        // When connection is unavailable, the IMS registration state should be not registered.
-        mImsPhoneUT.mRcsFeatureConnectorListener.connectionUnavailable();
-        Consumer<Integer> registrationState = mock(Consumer.class);
-        mImsPhoneUT.getImsRcsRegistrationState(registrationState);
-        verify(registrationState).accept(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
-    }
-
-    @Test
-    @SmallTest
     public void testImsRegistered() throws Exception {
         mImsPhoneUT.setServiceState(ServiceState.STATE_IN_SERVICE);
         mImsPhoneUT.setImsRegistrationState(RegistrationManager.REGISTRATION_STATE_REGISTERED);
@@ -875,19 +850,6 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testNonNullTrackersInImsPhone() throws Exception {
         assertNotNull(mImsPhoneUT.getEmergencyNumberTracker());
         assertNotNull(mImsPhoneUT.getServiceStateTracker());
-    }
-
-    @Test
-    @SmallTest
-    public void testRcsFeatureManagerInitialization() throws Exception {
-        FeatureConnector<RcsFeatureManager> mockRcsManagerConnector =
-                (FeatureConnector<RcsFeatureManager>) mock(FeatureConnector.class);
-        mImsPhoneUT.mRcsManagerConnector = mockRcsManagerConnector;
-
-        mImsPhoneUT.initRcsFeatureManager();
-
-        verify(mockRcsManagerConnector).disconnect();
-        assertNotNull(mImsPhoneUT.mRcsManagerConnector);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {

@@ -236,13 +236,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     public ImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController) {
         super(phone, smsDispatchersController);
 
-        mImsManagerConnector = new FeatureConnector<ImsManager>(mContext, mPhone.getPhoneId(),
+        mImsManagerConnector = new FeatureConnector<>(mContext, mPhone.getPhoneId(),
                 new FeatureConnector.Listener<ImsManager>() {
-                    @Override
-                    public boolean isSupported() {
-                        return ImsManager.isImsSupportedOnDevice(mContext);
-                    }
-
                     @Override
                     public ImsManager getFeatureManager() {
                         return ImsManager.getInstance(mContext, phone.getPhoneId());

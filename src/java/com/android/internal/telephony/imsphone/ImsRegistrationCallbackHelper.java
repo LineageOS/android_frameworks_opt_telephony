@@ -16,22 +16,20 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.annotation.AnyThread;
 import android.annotation.NonNull;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.util.Log;
-
-import com.android.internal.telephony.util.HandlerExecutor;
 
 import java.util.concurrent.Executor;
 
 /**
  * A helper class to manager the ImsRegistrationCallback can notify the state changed to listener.
  */
+@AnyThread
 public class ImsRegistrationCallbackHelper {
     private static final String TAG = "ImsRegCallbackHelper";
 
@@ -63,6 +61,7 @@ public class ImsRegistrationCallbackHelper {
 
     private ImsRegistrationUpdate mImsRegistrationUpdate;
     private int mRegistrationState = RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
+    private final Object mLock = new Object();
 
     private final RegistrationManager.RegistrationCallback mImsRegistrationCallback =
             new RegistrationManager.RegistrationCallback() {
@@ -90,8 +89,9 @@ public class ImsRegistrationCallbackHelper {
                 }
             };
 
-    public ImsRegistrationCallbackHelper(@NonNull ImsRegistrationUpdate registrationUpdate) {
-        mImsRegistrationCallback.setExecutor(getThreadExecutor());
+    public ImsRegistrationCallbackHelper(@NonNull ImsRegistrationUpdate registrationUpdate,
+            Executor executor) {
+        mImsRegistrationCallback.setExecutor(executor);
         mImsRegistrationUpdate = registrationUpdate;
     }
 
@@ -108,17 +108,21 @@ public class ImsRegistrationCallbackHelper {
      */
     public synchronized void updateRegistrationState(
             @RegistrationManager.ImsRegistrationState int newState) {
-        Log.d(TAG, "updateRegistrationState: registration state from " + mRegistrationState
-                + " to " + newState);
-        mRegistrationState = newState;
+        synchronized (mLock) {
+            Log.d(TAG, "updateRegistrationState: registration state from " + mRegistrationState
+                    + " to " + newState);
+            mRegistrationState = newState;
+        }
     }
 
     public int getImsRegistrationState() {
-        return mRegistrationState;
+        synchronized (mLock) {
+            return mRegistrationState;
+        }
     }
 
     public boolean isImsRegistered() {
-        return mRegistrationState == RegistrationManager.REGISTRATION_STATE_REGISTERED;
+        return getImsRegistrationState() == RegistrationManager.REGISTRATION_STATE_REGISTERED;
     }
 
     public RegistrationManager.RegistrationCallback getCallback() {
@@ -127,12 +131,5 @@ public class ImsRegistrationCallbackHelper {
 
     public IImsRegistrationCallback getCallbackBinder() {
         return mImsRegistrationCallback.getBinder();
-    }
-
-    private Executor getThreadExecutor() {
-        if (Looper.myLooper() == null) {
-            Looper.prepare();
-        }
-        return new HandlerExecutor(new Handler(Looper.myLooper()));
     }
 }
