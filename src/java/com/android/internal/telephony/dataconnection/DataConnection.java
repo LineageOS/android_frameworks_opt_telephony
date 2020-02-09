@@ -20,6 +20,7 @@ import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED;
 import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED;
 
 import android.annotation.IntDef;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -101,6 +102,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -2933,14 +2935,18 @@ public class DataConnection extends StateMachine {
      *  Re-calculate score and update through network agent if it changes.
      */
     private void updateScore() {
-        final NetworkScore oldScore = mScore;
-        mScore = calculateScore();
-        if (!oldScore.equals(mScore) && mNetworkAgent != null) {
-            log("Updating score from " + oldScore + " to " + mScore);
+        // No need to update the score if there is no network associated.
+        if (mNetworkAgent == null) return;
+
+        final NetworkScore score =  calculateScore();
+        if (!Objects.equals(score, mScore)) {
+            log("Updating score from " + mScore + " to " + score);
+            mScore = score;
             mNetworkAgent.sendNetworkScore(mScore, this);
         }
     }
 
+    @NonNull
     private NetworkScore calculateScore() {
         int score = OTHER_CONNECTION_SCORE;
 
