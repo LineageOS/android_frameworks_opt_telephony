@@ -1679,10 +1679,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL, result,
                     mRILDefaultWorkSource);
 
-            if (mUseOldMncMccFormat && !TextUtils.isEmpty(operatorNumeric)) {
-                operatorNumeric += "+";
-            }
-
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                         + " operatorNumeric = " + operatorNumeric);
