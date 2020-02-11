@@ -84,7 +84,7 @@ public class CarrierServiceBindHelperTest extends TelephonyTest {
     }
 
     @Test
-    public void testUnbindWhenNotConnected() throws Exception {
+    public void testUnbindWhenNotBound() throws Exception {
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
 
         // Try unbinding without binding and make sure we don't throw an Exception
