@@ -361,8 +361,8 @@ public class UiccSlot extends Handler {
             String message = (isAdded)
                     ? r.getString(com.android.telephony.resources.R.string.sim_added_message)
                     : r.getString(com.android.telephony.resources.R.string.sim_removed_message);
-            String buttonTxt = r.getString(
-                    com.android.telephony.resources.R.string.sim_restart_button);
+            String buttonTxt = mContext.getResources().getString(
+                    com.android.internal.R.string.sim_restart_button);
 
             AlertDialog dialog = new AlertDialog.Builder(mContext)
                     .setTitle(title)

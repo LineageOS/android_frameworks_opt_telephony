@@ -384,11 +384,11 @@ public class CarrierDisplayNameResolver {
         ServiceState ss = getServiceState();
         if (ss.getState() == ServiceState.STATE_POWER_OFF
                 || forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
-            plmn = TelephonyResourceUtils.getTelephonyResources(mContext).getString(
-                    com.android.telephony.resources.R.string.lockscreen_carrier_default);
+            plmn = mContext.getResources().getString(
+                    com.android.internal.R.string.lockscreen_carrier_default);
         } else {
-            plmn = TelephonyResourceUtils.getTelephonyResources(mContext).getString(
-                    com.android.telephony.resources.R.string.emergency_calls_only);
+            plmn = mContext.getResources().getString(
+                    com.android.internal.R.string.emergency_calls_only);
         }
         return new CarrierDisplayNameData.Builder()
                 .setSpn(data.getSpn())

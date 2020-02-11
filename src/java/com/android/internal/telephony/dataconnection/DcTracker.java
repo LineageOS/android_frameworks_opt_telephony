@@ -979,7 +979,7 @@ public class DcTracker extends Handler {
             mProvisioningSpinner.setTitle(mNetworkOperator);
             mProvisioningSpinner.setMessage(
                     // TODO: Don't borrow "Connecting..." i18n string; give Telephony a version.
-                    context.getText(com.android.telephony.resources.R.string
+                    context.getText(com.android.internal.R.string
                             .media_route_status_connecting));
             mProvisioningSpinner.setIndeterminate(true);
             mProvisioningSpinner.setCancelable(true);

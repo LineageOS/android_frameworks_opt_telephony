@@ -38,9 +38,6 @@
     <!-- Displayed when a carrier does not support call forwarding queries when roaming. -->
     <string name="mmiErrorWhileRoaming">Can not change call forwarding settings from your phone while you are roaming.</string>
 
-    <!-- What the UI should display for "voice mail" unless overridden by the SIM-->
-    <string name="defaultVoiceMailAlphaTag">Voicemail</string>
-
     <!-- Displayed when a phone feature such as call barring was activated. -->
     <string name="serviceEnabled">Service was enabled.</string>
     <!-- Displayed in front of the list of a set of service classes
@@ -332,8 +329,11 @@
     <string name="sim_added_title">SIM card added</string>
     <!-- See SIM_ADDED_DIALOG.  This is the message of that dialog. -->
     <string name="sim_added_message">Restart your device to access the mobile network.</string>
-    <!-- See SIM_ADDED_DIALOG.  This is the button of that dialog. -->
-    <string name="sim_restart_button">Restart</string>
+
+    <!-- Keep sim_restart_button is in frameworks/base due to reference in global_action_restart -->
+    <!--string name="sim_restart_button">Restart</string-->
+    <skip />
+
     <!-- See Carrier_App_Dialog. This is the message of that dialog. -->
     <string name="install_carrier_app_notification_title">Activate mobile service</string>
     <!-- Notification message that shows when the user inserts a SIM card that requires a carrier app download, but the app name is unknown -->
@@ -386,27 +386,4 @@
     <string name="mmcc_imsi_unknown_in_hlr_msim_template">SIM <xliff:g id="simNumber" example="1">%d</xliff:g> not provisioned</string>
     <string name="mmcc_illegal_ms_msim_template">SIM <xliff:g id="simNumber" example="1">%d</xliff:g> not allowed</string>
     <string name="mmcc_illegal_me_msim_template">SIM <xliff:g id="simNumber" example="1">%d</xliff:g> not allowed</string>
-
-    <!-- Shown in the lock screen when there is emergency calls only mode. -->
-    <string name="emergency_calls_only" msgid="2485604591272668370">Emergency calls only</string>
-
-    <!-- On the keyguard screen, it shows the carrier the phone is connected to.  This is displayed if the phone is not connected to a carrier.-->
-    <string name="lockscreen_carrier_default">No service</string>
-
-    <!-- Status message for a remote route attempting to connect -->
-    <string name="media_route_status_connecting">Connecting...</string>
-
-    <!-- WFC, summary for Disabled -->
-    <string name="wifi_calling_off_summary">Off</string>
-    <!-- WFC, summary for Wi-Fi Preferred -->
-    <string name="wfc_mode_wifi_preferred_summary">Call over Wi-Fi</string>
-    <!-- WFC, summary for Mobile data Preferred -->
-    <string name="wfc_mode_cellular_preferred_summary">Call over mobile network</string>
-    <!-- WFC, summary for Wi-Fi Only -->
-    <string name="wfc_mode_wifi_only_summary">Wi-Fi only</string>
-
-    <!-- Sequence of characters used to separate message strings in keyguard. Typically just em-dash
-         with spaces on either side. [CHAR LIMIT=3] -->
-    <string name="kg_text_message_separator" product="default">" \u2014 "</string>
-
 </resources>

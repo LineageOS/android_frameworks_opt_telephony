@@ -2702,14 +2702,12 @@ public class ServiceStateTracker extends Handler {
                 final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
                 if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
                     // No service but emergency call allowed
-                    plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                            .getText(com.android.telephony.resources.R.string.emergency_calls_only)
-                                .toString();
+                    plmn = mPhone.getContext().getResources()
+                            .getText(com.android.internal.R.string.emergency_calls_only)
+                            .toString();
                 } else {
                     // No service at all
-                    plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                            .getText(com.android.telephony.resources.R.string
-                                    .lockscreen_carrier_default).toString();
+                    plmn = getLockscreenCarrierDefaultText();
                     noService = true;
                 }
                 if (DBG) log("updateSpnDisplay: radio is on but out " +
@@ -2724,9 +2722,7 @@ public class ServiceStateTracker extends Handler {
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
                 showPlmn = true;
-                plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                        .getText(com.android.telephony.resources.R.string
-                                .lockscreen_carrier_default).toString();
+                plmn = getLockscreenCarrierDefaultText();
                 if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
                         + showPlmn + " plmn=" + plmn);
             }
@@ -2794,9 +2790,7 @@ public class ServiceStateTracker extends Handler {
             }
 
             if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
-                plmn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext()).getText(
-                                com.android.telephony.resources.R.string.lockscreen_carrier_default)
-                        .toString();
+                plmn = getLockscreenCarrierDefaultText();
                 if (DBG) {
                     log("updateSpnDisplay: radio is on but out of svc, set plmn='" + plmn + "'");
                 }
@@ -5725,5 +5719,11 @@ public class ServiceStateTracker extends Handler {
         // written into a persistent storage. ServiceStateProvider keeps values in the memory.
         values.put(SERVICE_STATE, p.marshall());
         return values;
+    }
+
+    private String getLockscreenCarrierDefaultText() {
+        return mPhone.getContext().getResources()
+                .getText(com.android.internal.R.string.lockscreen_carrier_default)
+                .toString();
     }
 }

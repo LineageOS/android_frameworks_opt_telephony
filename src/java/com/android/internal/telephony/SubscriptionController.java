@@ -1485,10 +1485,8 @@ public class SubscriptionController extends ISub.Stub {
                 if (showSpn) {
                     // Need to show both plmn and spn if both are not same.
                     if(!Objects.equals(spn, plmn)) {
-                        String separator = TelephonyResourceUtils
-                                .getTelephonyResourceContext(mContext).getString(
-                                com.android.telephony.resources.R.string.kg_text_message_separator)
-                                .toString();
+                        String separator = mContext.getResources().getString(
+                                com.android.internal.R.string.kg_text_message_separator);
                         carrierText = new StringBuilder().append(carrierText).append(separator)
                                 .append(spn).toString();
                     }
