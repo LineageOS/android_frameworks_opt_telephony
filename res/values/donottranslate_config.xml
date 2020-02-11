@@ -28,13 +28,13 @@
          Empty is viewed as "all".  Only used on devices which
          don't support RIL_REQUEST_GET_RADIO_CAPABILITY
          format is UMTS|LTE|... -->
-    <string translatable="false" name="config_radio_access_family"></string>
+    <string name="config_radio_access_family"></string>
 
     <!-- MMS user agent string -->
-    <string name="config_mms_user_agent" translatable="false"></string>
+    <string name="config_mms_user_agent"></string>
 
-    <!-- MMS user agent prolfile url -->
-    <string name="config_mms_user_agent_profile_url" translatable="false"></string>
+    <!-- MMS user agent profile url -->
+    <string name="config_mms_user_agent_profile_url"></string>
 
     <!-- Config determines whether to update phone object when voice registration
          state changes. Voice radio tech change will always trigger an update of
@@ -43,10 +43,10 @@
 
     <!-- Boolean indicating if restoring network selection should be skipped -->
     <!-- The restoring is handled by modem if it is true-->
-    <bool translatable="false" name="skip_restoring_network_selection">false</bool>
+    <bool name="skip_restoring_network_selection">false</bool>
 
     <!-- An array of CDMA roaming indicators which means international roaming -->
-    <integer-array translatable="false" name="config_cdma_international_roaming_indicators" />
+    <integer-array name="config_cdma_international_roaming_indicators" />
 
     <!-- Configure mobile network MTU. The standard default is set here but each carrier
          may have a specific value set in an overlay config.xml file. -->
@@ -64,7 +64,7 @@
 
     <!-- List of countries in which we display 'No service' on status bar
          instead of 'Emergency calls only' when SIM is unready. -->
-    <string-array translatable="false" name="config_display_no_service_when_sim_unready">
+    <string-array name="config_display_no_service_when_sim_unready">
         <item>"DE"</item>
         <item>"GB"</item>
         <item>"JP"</item>
@@ -103,7 +103,7 @@
              nfc : contactlessSupportedRelease
              crl : rspCrlSupportedVersion
     -->
-    <string-array translatable="false" name="config_telephonyEuiccDeviceCapabilities">
+    <string-array name="config_telephonyEuiccDeviceCapabilities">
         <!-- Example:
         <item>"gsm,11"</item>
         <item>"utran,11"</item>
@@ -124,40 +124,40 @@
     <bool name="config_duplicate_port_omadm_wappush">false</bool>
 
     <!-- Cellular network service package name to bind to by default. -->
-    <string name="config_wwan_network_service_package" translatable="false">com.android.phone</string>
+    <string name="config_wwan_network_service_package">com.android.phone</string>
 
     <!-- Cellular network service class name to bind to by default.-->
-    <string name="config_wwan_network_service_class" translatable="false"></string>
+    <string name="config_wwan_network_service_class"></string>
 
     <!-- IWLAN network service package name to bind to by default. If none is specified in an overlay, an
          empty string is passed in -->
-    <string name="config_wlan_network_service_package" translatable="false"></string>
+    <string name="config_wlan_network_service_package"></string>
 
     <!-- IWLAN network service class name to bind to by default. If none is specified in an overlay, an
          empty string is passed in -->
-    <string name="config_wlan_network_service_class" translatable="false"></string>
+    <string name="config_wlan_network_service_class"></string>
 
     <!-- Telephony qualified networks service package name to bind to by default. -->
-    <string name="config_qualified_networks_service_package" translatable="false"></string>
+    <string name="config_qualified_networks_service_package"></string>
 
     <!-- Telephony qualified networks service class name to bind to by default. -->
-    <string name="config_qualified_networks_service_class" translatable="false"></string>
+    <string name="config_qualified_networks_service_class"></string>
 
     <!-- Cellular data service package name to bind to by default. If none is specified in an overlay, an
          empty string is passed in -->
-    <string name="config_wwan_data_service_package" translatable="false">com.android.phone</string>
+    <string name="config_wwan_data_service_package">com.android.phone</string>
 
     <!-- IWLAN data service package name to bind to by default. If none is specified in an overlay, an
          empty string is passed in -->
-    <string name="config_wlan_data_service_package" translatable="false"></string>
+    <string name="config_wlan_data_service_package"></string>
 
     <!-- Cellular data service class name to bind to by default. If none is specified in an overlay, an
          empty string is passed in -->
-    <string name="config_wwan_data_service_class" translatable="false"></string>
+    <string name="config_wwan_data_service_class"></string>
 
     <!-- IWLAN data service class name to bind to by default. If none is specified in an overlay, an
          empty string is passed in -->
-    <string name="config_wlan_data_service_class" translatable="false"></string>
+    <string name="config_wlan_data_service_class"></string>
 
     <!-- Boolean indicating if RADIO POWER OFF is required on receiving SIM REFRESH with RESET.
          This will be handled by modem if it is false. -->
@@ -195,18 +195,18 @@
     <string name="config_ims_package"/>
 
     <!-- Whether cbrs is supported on the device or not -->
-    <bool name="config_cbrs_supported" translatable="false">false</bool>
+    <bool name="config_cbrs_supported">false</bool>
 
     <!-- Enables SIP on WIFI only -->
     <bool name="config_sip_wifi_only">false</bool>
 
     <!-- Name of the dialog that is used to install the carrier app when the SIM is inserted -->
-    <string name="config_carrierAppInstallDialogComponent" translatable="false"
+    <string name="config_carrierAppInstallDialogComponent"
             >com.android.simappdialog/com.android.simappdialog.InstallCarrierAppActivity</string>
 
     <!-- The default mobile provisioning apn. Empty by default, maybe overridden by
          an mcc/mnc specific config.xml -->
-    <string name="mobile_provisioning_apn" translatable="false"></string>
+    <string name="mobile_provisioning_apn"></string>
 
     <!-- Number of retries Cell Data should attempt for a given error code before
          restarting the modem.
@@ -232,12 +232,12 @@
     <bool name="config_user_notification_of_restrictied_mobile_access">true</bool>
 
     <!-- Component name of the ICC hotswap prompt for restart dialog -->
-    <string name="config_iccHotswapPromptForRestartDialogComponent" translatable="false">@null</string>
+    <string name="config_iccHotswapPromptForRestartDialogComponent">@null</string>
 
-    <string translatable="false" name="prohibit_manual_network_selection_in_gobal_mode">false</string>
+    <string name="prohibit_manual_network_selection_in_gobal_mode">false</string>
 
     <!-- call barring MMI code from TS 22.030 Annex B -->
-    <string-array translatable="false" name="config_callBarringMMI">
+    <string-array name="config_callBarringMMI">
         <item>33</item>
         <item>331</item>
         <item>332</item>
@@ -249,14 +249,14 @@
     </string-array>
 
     <!-- Do not translate. Defines the slots is Two Digit Number for dialing normally not USSD -->
-    <string-array name="config_twoDigitNumberPattern" translatable="false">
+    <string-array name="config_twoDigitNumberPattern">
     </string-array>
 
     <!-- A array of regex to treat a SMS as VVM SMS if the message body matches.
          Each item represents an entry, which consists of two parts:
          a comma (,) separated list of MCCMNC the regex applies to, followed by a semicolon (;), and
          then the regex itself. -->
-    <string-array name="config_vvmSmsFilterRegexes" translatable="false">
+    <string-array name="config_vvmSmsFilterRegexes">
         <!-- Verizon requires any SMS that starts with //VZWVVM to be treated as a VVM SMS-->
         <item>310004,310010,310012,310013,310590,310890,310910,311110,311270,311271,311272,311273,311274,311275,311276,311277,311278,311279,311280,311281,311282,311283,311284,311285,311286,311287,311288,311289,311390,311480,311481,311482,311483,311484,311485,311486,311487,311488,311489;^//VZWVVM.*</item>
     </string-array>
@@ -277,7 +277,7 @@
          refer to HardwareConfig in com.android.internal.telephony for specific details/values
          those elements can carry.
     -->
-    <string-array translatable="false" name="config_telephonyHardware">
+    <string-array name="config_telephonyHardware">
         <!-- modem -->
         <item>0,modem,0,0,0,1,1,1</item>
         <!-- sim -->
@@ -285,7 +285,7 @@
     </string-array>
 
     <!-- Package name for the default CellBroadcastService module [DO NOT TRANSLATE] -->
-    <string name="cellbroadcast_default_package" translatable="false">com.android.cellbroadcastservice
+    <string name="cellbroadcast_default_package">com.android.cellbroadcastservice
     </string>
 
     <!-- For some operators, PDU has garbages. To fix it, need to use valid index -->

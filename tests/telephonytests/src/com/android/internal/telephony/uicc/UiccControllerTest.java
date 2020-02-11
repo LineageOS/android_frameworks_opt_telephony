@@ -595,4 +595,42 @@ public class UiccControllerTest extends TelephonyTest {
         assertEquals(mUiccControllerUT.convertToPublicCardId(eidForRemovableEuicc),
                 mUiccControllerUT.getCardIdForDefaultEuicc());
     }
+
+    /**
+     * When IccCardStatus is received, if the EID is known from previous APDU, use it to set the
+     * mDefaultEuiccCardId.
+     */
+    @Test
+    public void testEidFromPreviousApduSetsDefaultEuicc() {
+        // Give UiccController a real context so it can use shared preferences
+        mUiccControllerUT.mContext = InstrumentationRegistry.getContext();
+
+        // Mock out UiccSlots
+        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        doReturn(true).when(mMockSlot).isEuicc();
+        doReturn(null).when(mMockSlot).getUiccCard();
+        doReturn("123451234567890").when(mMockSlot).getIccId();
+        doReturn(false).when(mMockSlot).isRemovable();
+
+        // If APDU has already happened, the EuiccCard already knows EID
+        String knownEidFromApdu = "A1B2C3D4E5";
+        doReturn(mMockEuiccCard).when(mMockSlot).getUiccCard();
+        doReturn(knownEidFromApdu).when(mMockEuiccCard).getEid();
+
+        // simulate card status loaded so that the UiccController sets the card ID
+        IccCardStatus ics = new IccCardStatus();
+        ics.setCardState(1 /* present */);
+        ics.setUniversalPinState(3 /* disabled */);
+        ics.atr = "abcdef0123456789abcdef";
+        ics.iccid = "123451234567890";
+        // the IccCardStatus does not contain EID, but it is known from previous APDU
+        ics.eid = null;
+        AsyncResult ar = new AsyncResult(null, ics, null);
+        Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
+        mUiccControllerUT.handleMessage(msg);
+
+        // since EID is known and we've gotten card status, the default eUICC card ID should be set
+        assertEquals(mUiccControllerUT.convertToPublicCardId(knownEidFromApdu),
+                mUiccControllerUT.getCardIdForDefaultEuicc());
+    }
 }
