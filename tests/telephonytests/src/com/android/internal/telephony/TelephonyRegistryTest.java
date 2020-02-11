@@ -74,9 +74,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR,
             "PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR",
             PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST,
-            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST",
-            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
-            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE");
+            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST");
 
     // All events contribute to TelephonyRegistry.PRECISE_PHONE_STATE_PERMISSION_MASK
     private static final Map<Integer, String> READ_PRECISE_PHONE_STATE_EVENTS = Map.of(
@@ -89,7 +87,11 @@ public class TelephonyRegistryTest extends TelephonyTest {
             PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED,
             "PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED",
             PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES,
-            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES");
+            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES",
+            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
+            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE",
+            PhoneStateListener.LISTEN_BARRING_INFO,
+            "PhoneStateListener.LISTEN_BARRING_INFO");
 
     // All events contribute to TelephonyRegistry.PREVILEGED_PHONE_STATE_PERMISSION_MASK
     // TODO: b/148021947 will create the permission group with PREVILIGED_STATE_PERMISSION_MASK
