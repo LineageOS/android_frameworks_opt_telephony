@@ -69,6 +69,9 @@ public class CarrierServiceBindHelper {
     public SparseArray<String> mLastSimState = new SparseArray<>();
     private final PackageChangeReceiver mPackageMonitor = new CarrierServicePackageMonitor();
 
+    // whether we have successfully bound to the service
+    private boolean mServiceBound = false;
+
     private BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -279,6 +282,7 @@ public class CarrierServiceBindHelper {
                                 Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE,
                                 (r) -> mHandler.post(r),
                                 connection)) {
+                    mServiceBound = true;
                     return;
                 }
 
@@ -333,11 +337,12 @@ public class CarrierServiceBindHelper {
             carrierServiceClass = null;
 
             // Actually unbind
-            if (connection != null && connection.connected) {
+            if (mServiceBound) {
                 log("Unbinding from carrier app");
+                mServiceBound = false;
                 mContext.unbindService(connection);
             } else {
-                log("Already unbound, skipping unbindService call");
+                log("Not bound, skipping unbindService call");
             }
             connection = null;
             mUnbindScheduledUptimeMillis = -1;
