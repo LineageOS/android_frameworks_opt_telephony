@@ -1928,22 +1928,38 @@ public class SIMRecords extends IccRecords {
     @UnsupportedAppUsage
     @Override
     protected void log(String s) {
-        Rlog.d(LOG_TAG, "[SIMRecords] " + s);
+        if (mParentApp != null) {
+            Rlog.d(LOG_TAG, "[SIMRecords-" + mParentApp.getPhoneId() + "] " + s);
+        } else {
+            Rlog.d(LOG_TAG, "[SIMRecords] " + s);
+        }
     }
 
     @UnsupportedAppUsage
     @Override
     protected void loge(String s) {
-        Rlog.e(LOG_TAG, "[SIMRecords] " + s);
+        if (mParentApp != null) {
+            Rlog.e(LOG_TAG, "[SIMRecords-" + mParentApp.getPhoneId() + "] " + s);
+        } else {
+            Rlog.e(LOG_TAG, "[SIMRecords] " + s);
+        }
     }
 
     protected void logw(String s, Throwable tr) {
-        Rlog.w(LOG_TAG, "[SIMRecords] " + s, tr);
+        if (mParentApp != null) {
+            Rlog.w(LOG_TAG, "[SIMRecords-" + mParentApp.getPhoneId() + "] " + s, tr);
+        } else {
+            Rlog.w(LOG_TAG, "[SIMRecords] " + s, tr);
+        }
     }
 
     @UnsupportedAppUsage
     protected void logv(String s) {
-        Rlog.v(LOG_TAG, "[SIMRecords] " + s);
+        if (mParentApp != null) {
+            Rlog.v(LOG_TAG, "[SIMRecords-" + mParentApp.getPhoneId() + "] " + s);
+        } else {
+            Rlog.v(LOG_TAG, "[SIMRecords] " + s);
+        }
     }
 
     /**
