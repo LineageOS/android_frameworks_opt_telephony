@@ -519,7 +519,7 @@ public class SubscriptionController extends ISub.Stub {
             if (subList != null) {
                 for (SubscriptionInfo si : subList) {
                     if (si.getSubscriptionId() == subId) {
-                        if (DBG) {
+                        if (VDBG) {
                             logd("[getActiveSubscriptionInfo]+ subId=" + subId + " subInfo=" + si);
                         }
 
