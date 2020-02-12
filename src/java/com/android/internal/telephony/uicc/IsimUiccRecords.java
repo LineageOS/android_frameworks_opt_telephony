@@ -434,12 +434,20 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     @UnsupportedAppUsage
     @Override
     protected void log(String s) {
-        if (DBG) Rlog.d(LOG_TAG, "[ISIM] " + s);
+        if (mParentApp != null) {
+            Rlog.d(LOG_TAG, "[ISIM-" + mParentApp.getPhoneId() + "] " + s);
+        } else {
+            Rlog.d(LOG_TAG, "[ISIM] " + s);
+        }
     }
 
     @Override
     protected void loge(String s) {
-        if (DBG) Rlog.e(LOG_TAG, "[ISIM] " + s);
+        if (mParentApp != null) {
+            Rlog.e(LOG_TAG, "[ISIM-" + mParentApp.getPhoneId() + "] " + s);
+        } else {
+            Rlog.e(LOG_TAG, "[ISIM] " + s);
+        }
     }
 
     @Override

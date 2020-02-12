@@ -390,6 +390,7 @@ public abstract class TelephonyTest {
     protected void setUp(String tag) throws Exception {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
+        TelephonyManager.disableServiceHandleCaching();
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
@@ -658,6 +659,7 @@ public abstract class TelephonyTest {
         sharedPreferences.edit().clear().commit();
 
         restoreInstances();
+        TelephonyManager.enableServiceHandleCaching();
     }
 
     protected static void logd(String s) {
