@@ -281,6 +281,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_PHYSICAL_CHANNEL_CONFIG           = 55;
     protected static final int EVENT_CELL_LOCATION_RESPONSE            = 56;
     protected static final int EVENT_CARRIER_CONFIG_CHANGED            = 57;
+    private static final int EVENT_POLL_STATE_REQUEST                  = 58;
 
     /**
      * The current service state.
@@ -1217,7 +1218,7 @@ public class ServiceStateTracker extends Handler {
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID);
                 mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
                 mIsSimReady = true;
-                pollState();
+                pollStateInternal(false);
                 // Signal strength polling stops when radio is off
                 queueNextSignalStrengthPoll();
                 break;
@@ -1234,11 +1235,11 @@ public class ServiceStateTracker extends Handler {
                 // This will do nothing in the 'radio not available' case
                 setPowerStateToDesired();
                 // These events are modem triggered, so pollState() needs to be forced
-                modemTriggeredPollState();
+                pollStateInternal(true);
                 break;
 
             case EVENT_NETWORK_STATE_CHANGED:
-                modemTriggeredPollState();
+                pollStateInternal(true);
                 break;
 
             case EVENT_GET_SIGNAL_STRENGTH:
@@ -1444,7 +1445,7 @@ public class ServiceStateTracker extends Handler {
                 if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                     // Subscription will be read from SIM I/O
                     if (DBG) log("Receive EVENT_RUIM_READY");
-                    pollState();
+                    pollStateInternal(false);
                 } else {
                     if (DBG) log("Receive EVENT_RUIM_READY and Send Request getCDMASubscription.");
                     getSubscriptionInfoAndStartPollingThreads();
@@ -1537,7 +1538,7 @@ public class ServiceStateTracker extends Handler {
                         // SID/NID/PRL is loaded. Poll service state
                         // again to update to the roaming state with
                         // the latest variables.
-                        pollState();
+                        pollStateInternal(false);
                     }
                 }
                 break;
@@ -1616,6 +1617,10 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_CARRIER_CONFIG_CHANGED:
                 onCarrierConfigChanged();
+                break;
+
+            case EVENT_POLL_STATE_REQUEST:
+                pollStateInternal(false);
                 break;
 
             default:
@@ -3019,18 +3024,10 @@ public class ServiceStateTracker extends Handler {
      */
     @UnsupportedAppUsage
     public void pollState() {
-        pollState(false);
-    }
-    /**
-     * We insist on polling even if the radio says its off.
-     * Used when we get a network changed notification
-     * but the radio is off - part of iwlan hack
-     */
-    private void modemTriggeredPollState() {
-        pollState(true);
+        sendEmptyMessage(EVENT_POLL_STATE_REQUEST);
     }
 
-    public void pollState(boolean modemTriggered) {
+    private void pollStateInternal(boolean modemTriggered) {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
 
@@ -4733,7 +4730,7 @@ public class ServiceStateTracker extends Handler {
         // Sometimes the network registration information comes before carrier config is ready.
         // For some cases like roaming/non-roaming overriding, we need carrier config. So it's
         // important to poll state again when carrier config is ready.
-        pollState();
+        pollStateInternal(false);
     }
 
     private void updateLteEarfcnLists(PersistableBundle config) {
@@ -5023,7 +5020,7 @@ public class ServiceStateTracker extends Handler {
         mCi.getCDMASubscription(obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
 
         // Get Registration Information
-        pollState();
+        pollStateInternal(false);
     }
 
     private void handleCdmaSubscriptionSource(int newSubscriptionSource) {
