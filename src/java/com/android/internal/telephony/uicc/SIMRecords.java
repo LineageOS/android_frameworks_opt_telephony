@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.uicc;
 
+import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
+import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
+
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources;
@@ -930,7 +933,7 @@ public class SIMRecords extends IccRecords {
                     break;
 
                 case EVENT_MARK_SMS_READ_DONE:
-                    Rlog.i("ENF", "marked read: sms " + msg.arg1);
+                    log("marked read: sms " + msg.arg1);
                     break;
 
 
@@ -1356,21 +1359,18 @@ public class SIMRecords extends IccRecords {
      * Dispatch 3GPP format message to registrant ({@code GsmCdmaPhone}) to pass to the 3GPP SMS
      * dispatcher for delivery.
      */
-    private int dispatchGsmMessage(SmsMessage message) {
+    private void dispatchGsmMessage(SmsMessage message) {
         mNewSmsRegistrants.notifyResult(message);
-        return 0;
     }
 
     private void handleSms(byte[] ba) {
-        if (ba[0] != 0)
-            Rlog.d("ENF", "status : " + ba[0]);
+        if (DBG) log("handleSms status : " + ba[0]);
 
-        // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
-        // 3 == "received by MS from network; message to be read"
-        if (ba[0] == 3) {
+        // ba[0] is status byte. (see 3GPP TS 51.011 10.5.3)
+        if ((ba[0] & 0x07) == STATUS_ON_ICC_UNREAD) {
             int n = ba.length;
 
-            // Note: Data may include trailing FF's.  That's OK; message
+            // Note: Data may include trailing FF's. That's OK; message
             // should still parse correctly.
             byte[] pdu = new byte[n - 1];
             System.arraycopy(ba, 1, pdu, 0, n - 1);
@@ -1380,23 +1380,19 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-
     private void handleSmses(ArrayList<byte[]> messages) {
         int count = messages.size();
 
         for (int i = 0; i < count; i++) {
             byte[] ba = messages.get(i);
 
-            if (ba[0] != 0)
-                Rlog.i("ENF", "status " + i + ": " + ba[0]);
+            if (DBG) log("handleSmses status " + i + ": " + ba[0]);
 
-            // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
-            // 3 == "received by MS from network; message to be read"
-
-            if (ba[0] == 3) {
+            // ba[0] is status byte. (see 3GPP TS 51.011 10.5.3)
+            if ((ba[0] & 0x07) == STATUS_ON_ICC_UNREAD) {
                 int n = ba.length;
 
-                // Note: Data may include trailing FF's.  That's OK; message
+                // Note: Data may include trailing FF's. That's OK; message
                 // should still parse correctly.
                 byte[] pdu = new byte[n - 1];
                 System.arraycopy(ba, 1, pdu, 0, n - 1);
@@ -1404,10 +1400,7 @@ public class SIMRecords extends IccRecords {
 
                 dispatchGsmMessage(message);
 
-                // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
-                // 1 == "received by MS from network; message read"
-
-                ba[0] = 1;
+                ba[0] = (byte) STATUS_ON_ICC_READ;
 
                 if (false) { // FIXME: writing seems to crash RdoServD
                     mFh.updateEFLinearFixed(EF_SMS,

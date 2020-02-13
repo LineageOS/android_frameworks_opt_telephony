@@ -549,10 +549,10 @@ public abstract class TelephonyTest {
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
         doReturn(mIBinder).when(mIIntentSender).asBinder();
-        doReturn(mIIntentSender).when(mIActivityManager).getIntentSender(anyInt(),
-                nullable(String.class), nullable(IBinder.class), nullable(String.class), anyInt(),
-                nullable(Intent[].class), nullable(String[].class), anyInt(),
-                nullable(Bundle.class), anyInt());
+        doReturn(mIIntentSender).when(mIActivityManager).getIntentSenderWithFeature(anyInt(),
+                nullable(String.class), nullable(String.class), nullable(IBinder.class),
+                nullable(String.class), anyInt(), nullable(Intent[].class),
+                nullable(String[].class), anyInt(), nullable(Bundle.class), anyInt());
         doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
         doReturn(true).when(mTelephonyManager).isDataCapable();
 

@@ -572,7 +572,7 @@ public class DeviceStateMonitor extends Handler {
             mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSNR,
                     AccessNetworkThresholds.EUTRAN_RSSNR, AccessNetworkType.EUTRAN, true);
 
-            // Defaultly we only need SSRSRP for NGRAN signal criterial reporting
+            // Defaultly we only need SSRSRP for NGRAN signal criteria reporting
             mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRP,
                     AccessNetworkThresholds.NGRAN_RSRSRP, AccessNetworkType.NGRAN, true);
             mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRQ,
@@ -591,6 +591,10 @@ public class DeviceStateMonitor extends Handler {
                 LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.EUTRAN);
         mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
                 LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.CDMA2000);
+        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+            mPhone.setLinkCapacityReportingCriteria(LINK_CAPACITY_DOWNLINK_THRESHOLDS,
+                    LINK_CAPACITY_UPLINK_THRESHOLDS, AccessNetworkType.NGRAN);
+        }
     }
 
     private void setCellInfoMinInterval(int rate) {
