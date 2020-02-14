@@ -193,9 +193,12 @@ public interface PhoneInternalInterface {
     int CDMA_RM_ANY         = TelephonyManager.CDMA_ROAMING_MODE_ANY;
 
     // Used for CDMA subscription mode
-    static final int CDMA_SUBSCRIPTION_UNKNOWN  =-1; // Unknown
-    static final int CDMA_SUBSCRIPTION_RUIM_SIM = 0; // RUIM/SIM (default)
-    static final int CDMA_SUBSCRIPTION_NV       = 1; // NV -> non-volatile memory
+    // Unknown
+    static final int CDMA_SUBSCRIPTION_UNKNOWN  = TelephonyManager.CDMA_SUBSCRIPTION_UNKNOWN;
+    // RUIM/SIM (default)
+    static final int CDMA_SUBSCRIPTION_RUIM_SIM = TelephonyManager.CDMA_SUBSCRIPTION_RUIM_SIM;
+    // NV -> non-volatile memory
+    static final int CDMA_SUBSCRIPTION_NV       = TelephonyManager.CDMA_SUBSCRIPTION_NV;
 
     static final int PREFERRED_CDMA_SUBSCRIPTION = CDMA_SUBSCRIPTION_RUIM_SIM;
 
