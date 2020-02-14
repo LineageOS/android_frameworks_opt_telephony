@@ -2496,4 +2496,12 @@ public interface CommandsInterface {
      */
     default void unregisterForBarringInfoChanged(Handler h) {};
 
+    /**
+     * Get all the barring info for the current camped cell applicable to the current user.
+     *
+     * AsyncResult.result is the object of {@link android.telephony.BarringInfo}.
+     *
+     * @param result Message will be sent back to handler and result.obj will be the AsycResult.
+     */
+    default void getBarringInfo(Message result) {};
 }
