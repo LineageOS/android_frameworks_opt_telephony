@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG;
 import static android.telephony.NetworkRegistrationInfo.DOMAIN_PS;
 
 import android.content.Context;
@@ -26,6 +27,8 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
 import android.os.Handler;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
@@ -50,6 +53,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class CellularNetworkValidator {
     private static final String LOG_TAG = "NetworkValidator";
+    // If true, upon validated network cache hit, we report validationDone only when
+    // network becomes available. Otherwise, we report validationDone immediately.
+    private static boolean sWaitForNetworkAvailableWhenCacheHit = true;
 
     // States of validator. Only one validation can happen at once.
     // IDLE: no validation going on.
@@ -64,7 +70,7 @@ public class CellularNetworkValidator {
     // Singleton instance.
     private static CellularNetworkValidator sInstance;
     @VisibleForTesting
-    public static long mValidationCacheTtl = TimeUnit.DAYS.toMillis(1);
+    public static final long MAX_VALIDATION_CACHE_TTL = TimeUnit.DAYS.toMillis(1);
 
     private int mState = STATE_IDLE;
     private int mSubId;
@@ -83,7 +89,7 @@ public class CellularNetworkValidator {
     public Runnable mTimeoutCallback;
     private final ValidatedNetworkCache mValidatedNetworkCache = new ValidatedNetworkCache();
 
-    private static class ValidatedNetworkCache {
+    private class ValidatedNetworkCache {
         // A cache with fixed size. It remembers 10 most recently successfully validated networks.
         private static final int VALIDATED_NETWORK_CACHE_SIZE = 10;
         private final PriorityQueue<ValidatedNetwork> mValidatedNetworkPQ =
@@ -98,7 +104,7 @@ public class CellularNetworkValidator {
                 });
         private final Map<String, ValidatedNetwork> mValidatedNetworkMap = new HashMap();
 
-        private static final class ValidatedNetwork {
+        private final class ValidatedNetwork {
             ValidatedNetwork(String identity, long timeStamp) {
                 mValidationIdentity = identity;
                 mValidationTimeStamp = timeStamp;
@@ -111,7 +117,7 @@ public class CellularNetworkValidator {
         }
 
         boolean isRecentlyValidated(int subId) {
-            long cacheTtl = getValidationCacheTtl();
+            long cacheTtl = getValidationCacheTtl(subId);
             String networkIdentity = getValidationNetworkIdentity(subId);
             if (networkIdentity == null || !mValidatedNetworkMap.containsKey(networkIdentity)) {
                 return false;
@@ -177,8 +183,18 @@ public class CellularNetworkValidator {
                     + ((CellIdentityLte) cellIdentity).getTac() + "_" + subId;
         }
 
-        private long getValidationCacheTtl() {
-            return mValidationCacheTtl;
+        private long getValidationCacheTtl(int subId) {
+            long ttl = 0;
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfigForSubId(subId);
+                if (b != null) {
+                    ttl = b.getLong(KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG);
+                }
+            }
+            // Ttl can't be bigger than one day for now.
+            return Math.min(ttl, MAX_VALIDATION_CACHE_TTL);
         }
     }
 
@@ -247,6 +263,12 @@ public class CellularNetworkValidator {
 
         if (isValidating()) {
             stopValidation();
+        }
+
+        if (!sWaitForNetworkAvailableWhenCacheHit && mValidatedNetworkCache
+                .isRecentlyValidated(subId)) {
+            callback.onValidationDone(true, subId);
+            return;
         }
 
         mState = STATE_VALIDATING;
