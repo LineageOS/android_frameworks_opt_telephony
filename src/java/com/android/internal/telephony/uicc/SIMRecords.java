@@ -1348,6 +1348,7 @@ public class SIMRecords extends IccRecords {
                 // For now, fetch all records if this is not a
                 // voicemail number.
                 // TODO: Handle other cases, instead of fetching all.
+                mLoaded.set(false);
                 mAdnCache.reset();
                 fetchSimRecords();
                 break;

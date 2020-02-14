@@ -936,6 +936,7 @@ public class RuimRecords extends IccRecords {
 
     @Override
     protected void handleFileUpdate(int efid) {
+        mLoaded.set(false);
         mAdnCache.reset();
         fetchRuimRecords();
     }
