@@ -287,8 +287,8 @@ public class ImsPhoneConnection extends Connection implements
         mParent = parent;
         parent.attachFake(this, ImsPhoneCall.State.DIALING);
 
-        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
-                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }

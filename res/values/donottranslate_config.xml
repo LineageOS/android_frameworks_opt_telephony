@@ -197,6 +197,9 @@
     <!-- Whether cbrs is supported on the device or not -->
     <bool name="config_cbrs_supported">false</bool>
 
+    <!-- Enables SIP on WIFI only -->
+    <bool name="config_sip_wifi_only">false</bool>
+
     <!-- Name of the dialog that is used to install the carrier app when the SIM is inserted -->
     <string name="config_carrierAppInstallDialogComponent"
             >com.android.simappdialog/com.android.simappdialog.InstallCarrierAppActivity</string>

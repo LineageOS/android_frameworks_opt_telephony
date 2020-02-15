@@ -1681,7 +1681,8 @@ public class GsmCdmaPhone extends Phone {
         }
 
         if (ret == null || ret.length() == 0) {
-            return mContext.getString(android.R.string.defaultVoiceMailAlphaTag);
+            return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
+                com.android.telephony.resources.R.string.defaultVoiceMailAlphaTag).toString();
         }
 
         return ret;

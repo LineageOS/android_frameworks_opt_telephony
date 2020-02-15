@@ -268,10 +268,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Override SPN related resource
         mContextFixture.putResource(
-                com.android.internal.R.string.lockscreen_carrier_default,
+                com.android.telephony.resources.R.string.lockscreen_carrier_default,
                 CARRIER_NAME_DISPLAY_NO_SERVICE);
         mContextFixture.putResource(
-                com.android.internal.R.string.emergency_calls_only,
+                com.android.telephony.resources.R.string.emergency_calls_only,
                 CARRIER_NAME_DISPLAY_EMERGENCY_CALL);
         mContextFixture.putStringArrayResource(
                 com.android.telephony.resources.R.array.wfcSpnFormats,
