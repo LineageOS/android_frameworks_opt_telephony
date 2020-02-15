@@ -580,7 +580,7 @@ public interface PhoneInternalInterface {
 
     /**
      * getCallForwardingOptions
-     * gets a call forwarding option. The return value of
+     * gets a call forwarding option for SERVICE_CLASS_VOICE. The return value of
      * ((AsyncResult)onComplete.obj) is an array of CallForwardInfo.
      *
      * @param commandInterfaceCFReason is one of the valid call forwarding
@@ -593,8 +593,24 @@ public interface PhoneInternalInterface {
                                   Message onComplete);
 
     /**
+     * getCallForwardingOptions
+     * gets a call forwarding option. The return value of
+     * ((AsyncResult)onComplete.obj) is an array of CallForwardInfo.
+     *
+     * @param commandInterfaceCFReason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param serviceClass is a sum of SERVICE_CLASS_* as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param onComplete a callback message when the action is completed.
+     *        @see com.android.internal.telephony.CallForwardInfo for details.
+     */
+    void getCallForwardingOption(int commandInterfaceCFReason, int serviceClass,
+                                  Message onComplete);
+
+    /**
      * setCallForwardingOptions
-     * sets a call forwarding option.
+     * sets a call forwarding option for SERVICE_CLASS_VOICE.
      *
      * @param commandInterfaceCFAction is one of the valid call forwarding
      *        CF_ACTIONS, as defined in
@@ -610,6 +626,30 @@ public interface PhoneInternalInterface {
     void setCallForwardingOption(int commandInterfaceCFAction,
                                  int commandInterfaceCFReason,
                                  String dialingNumber,
+                                 int timerSeconds,
+                                 Message onComplete);
+
+    /**
+     * setCallForwardingOptions
+     * sets a call forwarding option.
+     *
+     * @param commandInterfaceCFAction is one of the valid call forwarding
+     *        CF_ACTIONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param commandInterfaceCFReason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param dialingNumber is the target phone number to forward calls to
+     * @param serviceClass is a sum of SERVICE_CLASS_* as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param timerSeconds is used by CFNRy to indicate the timeout before
+     *        forwarding is attempted.
+     * @param onComplete a callback message when the action is completed.
+     */
+    void setCallForwardingOption(int commandInterfaceCFAction,
+                                 int commandInterfaceCFReason,
+                                 String dialingNumber,
+                                 int serviceClass,
                                  int timerSeconds,
                                  Message onComplete);
 
