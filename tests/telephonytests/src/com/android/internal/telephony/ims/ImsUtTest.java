@@ -101,7 +101,7 @@ public class ImsUtTest extends TelephonyTest {
     public void testClirConversionCompat() throws Exception {
         ArgumentCaptor<ImsUt.IImsUtListenerProxy> captor =
                 ArgumentCaptor.forClass(ImsUt.IImsUtListenerProxy.class);
-        ImsUt mImsUt = new ImsUt(mImsUtBinder);
+        ImsUt mImsUt = new ImsUt(mContext, mImsUtBinder);
         verify(mImsUtBinder).setListener(captor.capture());
         ImsUt.IImsUtListenerProxy proxy = captor.getValue();
         assertNotNull(proxy);
@@ -129,7 +129,7 @@ public class ImsUtTest extends TelephonyTest {
     public void testClipConversionCompat() throws Exception {
         ArgumentCaptor<ImsUt.IImsUtListenerProxy> captor =
                 ArgumentCaptor.forClass(ImsUt.IImsUtListenerProxy.class);
-        ImsUt mImsUt = new ImsUt(mImsUtBinder);
+        ImsUt mImsUt = new ImsUt(mContext, mImsUtBinder);
         verify(mImsUtBinder).setListener(captor.capture());
         ImsUt.IImsUtListenerProxy proxy = captor.getValue();
         assertNotNull(proxy);

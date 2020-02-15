@@ -79,7 +79,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
-    private final static String LOG_TAG = "SimulatedCommands";
+    private static final String LOG_TAG = "SimulatedCommands";
 
     private enum SimLockState {
         NONE,
@@ -95,21 +95,27 @@ public class SimulatedCommands extends BaseCommands
         SIM_PERM_LOCKED
     }
 
-    private final static SimLockState INITIAL_LOCK_STATE = SimLockState.NONE;
-    public final static String DEFAULT_SIM_PIN_CODE = "1234";
-    private final static String SIM_PUK_CODE = "12345678";
-    private final static SimFdnState INITIAL_FDN_STATE = SimFdnState.NONE;
-    public final static String DEFAULT_SIM_PIN2_CODE = "5678";
-    private final static String SIM_PUK2_CODE = "87654321";
-    public final static String FAKE_LONG_NAME = "Fake long name";
-    public final static String FAKE_SHORT_NAME = "Fake short name";
-    public final static String FAKE_MCC_MNC = "310260";
-    public final static String FAKE_IMEI = "012345678901234";
-    public final static String FAKE_IMEISV = "99";
-    public final static String FAKE_ESN = "1234";
-    public final static String FAKE_MEID = "1234";
-    public final static int DEFAULT_PIN1_ATTEMPT = 5;
-    public final static int DEFAULT_PIN2_ATTEMPT = 5;
+    private static final SimLockState INITIAL_LOCK_STATE = SimLockState.NONE;
+    public static final String DEFAULT_SIM_PIN_CODE = "1234";
+    private static final String SIM_PUK_CODE = "12345678";
+    private static final SimFdnState INITIAL_FDN_STATE = SimFdnState.NONE;
+    public static final String DEFAULT_SIM_PIN2_CODE = "5678";
+    private static final String SIM_PUK2_CODE = "87654321";
+    public static final String FAKE_LONG_NAME = "Fake long name";
+    public static final String FAKE_SHORT_NAME = "Fake short name";
+    public static final String FAKE_MCC_MNC = "310260";
+    public static final String FAKE_IMEI = "012345678901234";
+    public static final String FAKE_IMEISV = "99";
+    public static final String FAKE_ESN = "1234";
+    public static final String FAKE_MEID = "1234";
+    public static final int DEFAULT_PIN1_ATTEMPT = 5;
+    public static final int DEFAULT_PIN2_ATTEMPT = 5;
+    public static final int ICC_AUTHENTICATION_MODE_DEFAULT = 0;
+    public static final int ICC_AUTHENTICATION_MODE_NULL = 1;
+    public static final int ICC_AUTHENTICATION_MODE_TIMEOUT = 2;
+    // Maximum time in millisecond to wait for a IccSim Challenge before assuming it will not
+    // arrive and returning null to the callers.
+    public static final  long ICC_SIM_CHALLENGE_TIMEOUT_MILLIS = 2500;
 
     private String mImei;
     private String mImeiSv;
@@ -162,6 +168,8 @@ public class SimulatedCommands extends BaseCommands
     private SetupDataCallResult mSetupDataCallResult;
     private boolean mIsRadioPowerFailResponse = false;
 
+    // mode for Icc Sim Authentication
+    private int mAuthenticationMode;
     //***** Constructor
     public
     SimulatedCommands() {
@@ -179,6 +187,7 @@ public class SimulatedCommands extends BaseCommands
         mSimFdnEnabledState = INITIAL_FDN_STATE;
         mSimFdnEnabled = (mSimFdnEnabledState != SimFdnState.NONE);
         mPin2Code = DEFAULT_SIM_PIN2_CODE;
+        mAuthenticationMode = ICC_AUTHENTICATION_MODE_DEFAULT;
     }
 
     public void dispose() throws Exception {
@@ -1897,7 +1906,38 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void requestIccSimAuthentication(int authContext, String data, String aid, Message response) {
-        unimplemented(response);
+        switch (mAuthenticationMode) {
+            case ICC_AUTHENTICATION_MODE_TIMEOUT:
+                break;
+
+            case ICC_AUTHENTICATION_MODE_NULL:
+                sendMessageResponse(response, null);
+                break;
+
+            default:
+                if (data == null || data.length() == 0) {
+                    sendMessageResponse(response,  null);
+                } else {
+                    sendMessageResponse(response, new IccIoResult(0, 0, (byte[]) data.getBytes()));
+                }
+                break;
+        }
+    }
+
+    /**
+     * Helper function to send response msg
+     * @param msg Response message to be sent
+     * @param ret Return object to be included in the response message
+     */
+    private void sendMessageResponse(Message msg, Object ret) {
+        if (msg != null) {
+            AsyncResult.forMessage(msg, ret, null);
+            msg.sendToTarget();
+        }
+    }
+
+    public void setAuthenticationMode(int authenticationMode) {
+        mAuthenticationMode = authenticationMode;
     }
 
     @Override
