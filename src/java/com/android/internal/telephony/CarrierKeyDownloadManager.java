@@ -539,6 +539,7 @@ public class CarrierKeyDownloadManager extends Handler {
             request.setAllowedOverMetered(mAllowedOverMeteredNetwork);
             request.setVisibleInDownloadsUi(false);
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
+            request.addRequestHeader("Accept-Encoding", "gzip");
             Long carrierKeyDownloadRequestId = mDownloadManager.enqueue(request);
             SharedPreferences.Editor editor = getDefaultSharedPreferences(mContext).edit();
 
