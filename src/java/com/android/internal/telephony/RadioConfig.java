@@ -38,8 +38,6 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.WorkSource;
-import android.telephony.PhoneCapability;
-import android.telephony.SimSlotCapability;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
@@ -47,10 +45,8 @@ import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * This class provides wrapper APIs for IRadioConfig interface.
@@ -67,8 +63,6 @@ public class RadioConfig extends Handler {
     private static final HalVersion RADIO_CONFIG_HAL_VERSION_1_0 = new HalVersion(1, 0);
 
     private static final HalVersion RADIO_CONFIG_HAL_VERSION_1_1 = new HalVersion(1, 1);
-
-    private static final HalVersion RADIO_CONFIG_HAL_VERSION_1_3 = new HalVersion(1, 3);
 
     private final boolean mIsMobileNetworkSupported;
     private volatile IRadioConfig mRadioConfigProxy = null;
@@ -346,20 +340,11 @@ public class RadioConfig extends Handler {
             logd(rr.serialString() + "> " + requestToString(rr.mRequest));
         }
 
-        if (mRadioConfigVersion.greaterOrEqual(RADIO_CONFIG_HAL_VERSION_1_3)) {
-            try {
-                ((android.hardware.radio.config.V1_3.IRadioConfig) mRadioConfigProxy)
-                        .getPhoneCapability_1_3(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                resetProxyAndRequestList("getPhoneCapability_1_3", e);
-            }
-        } else {
-            try {
-                ((android.hardware.radio.config.V1_1.IRadioConfig) mRadioConfigProxy)
-                        .getPhoneCapability(rr.mSerial);
-            } catch (RemoteException | RuntimeException e) {
-                resetProxyAndRequestList("getPhoneCapability", e);
-            }
+        try {
+            ((android.hardware.radio.config.V1_1.IRadioConfig) mRadioConfigProxy)
+                    .getPhoneCapability(rr.mSerial);
+        } catch (RemoteException | RuntimeException e) {
+            resetProxyAndRequestList("getPhoneCapability", e);
         }
     }
 
@@ -500,49 +485,6 @@ public class RadioConfig extends Handler {
             response.add(iccSlotStatus);
         }
         return response;
-    }
-
-    static PhoneCapability convertHalPhoneCapability(
-            android.hardware.radio.config.V1_1.PhoneCapability pc) {
-        long psDataConnectionLingerTimeMillis = pc.isInternetLingeringSupported ? 1 : 0;
-
-        List<String> logicalModemUuids = new ArrayList<>();
-        for (android.hardware.radio.config.V1_1.ModemInfo modemInfo : pc.logicalModemList) {
-            logicalModemUuids.add("com.xxxx.lm" + modemInfo.modemId);
-        }
-
-        List<List<Long>> features = new ArrayList<>();
-        for (int i = 0; i < pc.maxActiveData; i++) {
-            List<Long> feature = new ArrayList<>();
-            feature.add(PhoneCapability.MODEM_FEATURE_PS_VOICE_REG);
-            features.add(feature);
-        }
-
-        return new PhoneCapability(0, 0, 0, 0, psDataConnectionLingerTimeMillis, 0,
-                null, null, null, null, logicalModemUuids, null, features);
-    }
-
-    static PhoneCapability convertHalPhoneCapability_1_3(
-            android.hardware.radio.config.V1_3.PhoneCapability pc) {
-        List<SimSlotCapability> simSlotCapabilities = new ArrayList<>();
-        for (android.hardware.radio.config.V1_3.SimSlotCapability sc : pc.simSlotCapabilities) {
-            simSlotCapabilities.add(new SimSlotCapability(sc.physicalSlotId, sc.slotType));
-        }
-
-        List<List<Long>> features = new ArrayList<>();
-        for (android.hardware.radio.config.V1_3.ConcurrentModemFeatures cmf
-                : pc.concurrentFeatureSupport) {
-            features.add(cmf.modemFeatures
-                    .stream()
-                    .mapToLong(Integer::longValue)
-                    .boxed()
-                    .collect(Collectors.toList()));
-        }
-
-        return new PhoneCapability(pc.utranUeCategoryDl, pc.utranUeCategoryUl,
-                pc.eutranUeCategoryDl, pc.eutranUeCategoryUl, pc.psDataConnectionLingerTimeMillis,
-                pc.supportedRats, pc.geranBands, pc.utranBands, pc.eutranBands, pc.ngranBands,
-                pc.logicalModemUuids, simSlotCapabilities, features);
     }
 
     private static void logd(String log) {

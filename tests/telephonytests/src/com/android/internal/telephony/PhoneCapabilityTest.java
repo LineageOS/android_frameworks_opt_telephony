@@ -20,9 +20,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 import android.os.Parcel;
-import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
-import android.telephony.SimSlotCapability;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.Test;
 
@@ -31,108 +31,53 @@ import java.util.List;
 
 public class PhoneCapabilityTest {
     @Test
-    public void basicTests() {
-        int utranUeCategoryDl = 1;
-        int utranUeCategoryUl = 2;
-        int eutranUeCategoryDl = 3;
-        int eutranUeCategoryUl = 4;
-        long lingerTime = 5;
-        long supportedRats = 6;
-        List<Integer> geranBands = new ArrayList<>();
-        geranBands.add(1);
-        List<Integer> utranBands = new ArrayList<>();
-        utranBands.add(2);
-        List<Integer> eutranBands = new ArrayList<>();
-        eutranBands.add(3);
-        List<Integer> ngranBands = new ArrayList<>();
-        ngranBands.add(4);
-        List<String> logicalModemUuids = new ArrayList<>();
-        logicalModemUuids.add("com.google.android.lm0");
-        List<SimSlotCapability> simSlotCapabilities = new ArrayList<>();
-        simSlotCapabilities.add(new SimSlotCapability(1, 2));
-        List<List<Long>> concurrentFeaturesSupport = new ArrayList<>();
-        List<Long> feature = new ArrayList<>();
-        feature.add(PhoneCapability.MODEM_FEATURE_CDMA2000_EHRPD_REG);
-        concurrentFeaturesSupport.add(feature);
+    @SmallTest
+    public void basicTests() throws Exception {
+        int maxActiveVoiceCalls = 1;
+        int maxActiveData = 2;
+        int max5G = 3;
+        ModemInfo modemInfo = new ModemInfo(1, 2, true, false);
+        List<ModemInfo> logicalModemList = new ArrayList<>();
+        logicalModemList.add(modemInfo);
 
-        PhoneCapability capability = new PhoneCapability(utranUeCategoryDl, utranUeCategoryUl,
-                eutranUeCategoryDl, eutranUeCategoryUl, lingerTime,
-                supportedRats, geranBands, utranBands, eutranBands, ngranBands, logicalModemUuids,
-                simSlotCapabilities, concurrentFeaturesSupport);
+        PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G,
+                logicalModemList, false);
 
-        assertEquals(utranUeCategoryDl, capability.getUeCategory(false, AccessNetworkType.UTRAN));
-        assertEquals(utranUeCategoryUl, capability.getUeCategory(true, AccessNetworkType.UTRAN));
-        assertEquals(eutranUeCategoryDl, capability.getUeCategory(false, AccessNetworkType.EUTRAN));
-        assertEquals(eutranUeCategoryUl, capability.getUeCategory(true, AccessNetworkType.EUTRAN));
-        assertEquals(lingerTime, capability.getPsDataConnectionLingerTimeMillis());
-        assertEquals(supportedRats, capability.getSupportedRats());
-        assertEquals(geranBands, capability.getBands(AccessNetworkType.GERAN));
-        assertEquals(utranBands, capability.getBands(AccessNetworkType.UTRAN));
-        assertEquals(eutranBands, capability.getBands(AccessNetworkType.EUTRAN));
-        assertEquals(ngranBands, capability.getBands(AccessNetworkType.NGRAN));
-        assertEquals(logicalModemUuids, capability.getLogicalModemUuids());
-        assertEquals(simSlotCapabilities, capability.getSimSlotCapabilities());
-        assertEquals(concurrentFeaturesSupport, capability.getConcurrentFeaturesSupport());
-
-        PhoneCapability toCompare = new PhoneCapability(utranUeCategoryDl + 1,
-                utranUeCategoryUl + 1, eutranUeCategoryDl + 1, eutranUeCategoryUl + 1,
-                lingerTime + 1, supportedRats + 1, geranBands, utranBands, eutranBands, ngranBands,
-                logicalModemUuids, simSlotCapabilities, concurrentFeaturesSupport);
-        assertEquals(capability, new PhoneCapability(utranUeCategoryDl, utranUeCategoryUl,
-                eutranUeCategoryDl, eutranUeCategoryUl, lingerTime,
-                supportedRats, geranBands, utranBands, eutranBands, ngranBands, logicalModemUuids,
-                simSlotCapabilities, concurrentFeaturesSupport));
+        assertEquals(maxActiveVoiceCalls, capability.maxActiveVoiceCalls);
+        assertEquals(maxActiveData, capability.maxActiveData);
+        assertEquals(max5G, capability.max5G);
+        assertEquals(1, capability.logicalModemList.size());
+        assertEquals(modemInfo, capability.logicalModemList.get(0));
+        PhoneCapability toCompare = new PhoneCapability(
+                maxActiveVoiceCalls + 1, maxActiveData - 1, max5G, logicalModemList, false);
+        assertEquals(capability, new PhoneCapability(
+                maxActiveVoiceCalls, maxActiveData, max5G, logicalModemList, false));
         assertNotEquals(capability, toCompare);
     }
 
     @Test
-    public void parcelReadWrite() {
-        int utranUeCategoryDl = 1;
-        int utranUeCategoryUl = 2;
-        int eutranUeCategoryDl = 3;
-        int eutranUeCategoryUl = 4;
-        long lingerTime = 5;
-        long supportedRats = 6;
-        List<Integer> geranBands = new ArrayList<>();
-        geranBands.add(1);
-        List<Integer> utranBands = new ArrayList<>();
-        utranBands.add(2);
-        List<Integer> eutranBands = new ArrayList<>();
-        eutranBands.add(3);
-        List<Integer> ngranBands = new ArrayList<>();
-        ngranBands.add(4);
-        List<String> logicalModemUuids = new ArrayList<>();
-        logicalModemUuids.add("com.google.android.lm0");
-        List<SimSlotCapability> simSlotCapabilities = new ArrayList<>();
-        simSlotCapabilities.add(new SimSlotCapability(1, 2));
-        List<List<Long>> concurrentFeaturesSupport = new ArrayList<>();
-        List<Long> feature = new ArrayList<>();
-        feature.add(PhoneCapability.MODEM_FEATURE_NETWORK_SCAN);
-        concurrentFeaturesSupport.add(feature);
+    @SmallTest
+    public void parcelReadWrite() throws Exception {
+        int maxActiveVoiceCalls = 1;
+        int maxActiveData = 2;
+        int max5G = 3;
+        ModemInfo modemInfo = new ModemInfo(1, 2, true, false);
+        List<ModemInfo> logicalModemList = new ArrayList<>();
+        logicalModemList.add(modemInfo);
 
-        PhoneCapability capability = new PhoneCapability(utranUeCategoryDl, utranUeCategoryUl,
-                eutranUeCategoryDl, eutranUeCategoryUl, lingerTime,
-                supportedRats, geranBands, utranBands, eutranBands, ngranBands, logicalModemUuids,
-                simSlotCapabilities, concurrentFeaturesSupport);
+        PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G,
+                logicalModemList, false);
 
         Parcel parcel = Parcel.obtain();
         capability.writeToParcel(parcel, 0);
         parcel.setDataPosition(0);
         PhoneCapability toCompare = PhoneCapability.CREATOR.createFromParcel(parcel);
 
-        assertEquals(utranUeCategoryDl, capability.getUeCategory(false, AccessNetworkType.UTRAN));
-        assertEquals(utranUeCategoryUl, capability.getUeCategory(true, AccessNetworkType.UTRAN));
-        assertEquals(eutranUeCategoryDl, capability.getUeCategory(false, AccessNetworkType.EUTRAN));
-        assertEquals(eutranUeCategoryUl, capability.getUeCategory(true, AccessNetworkType.EUTRAN));
-        assertEquals(lingerTime, capability.getPsDataConnectionLingerTimeMillis());
-        assertEquals(supportedRats, capability.getSupportedRats());
-        assertEquals(geranBands, capability.getBands(AccessNetworkType.GERAN));
-        assertEquals(utranBands, capability.getBands(AccessNetworkType.UTRAN));
-        assertEquals(eutranBands, capability.getBands(AccessNetworkType.EUTRAN));
-        assertEquals(ngranBands, capability.getBands(AccessNetworkType.NGRAN));
-        assertEquals(logicalModemUuids, capability.getLogicalModemUuids());
-        assertEquals(simSlotCapabilities, capability.getSimSlotCapabilities());
-        assertEquals(concurrentFeaturesSupport, capability.getConcurrentFeaturesSupport());
+        assertEquals(maxActiveVoiceCalls, toCompare.maxActiveVoiceCalls);
+        assertEquals(maxActiveData, toCompare.maxActiveData);
+        assertEquals(max5G, toCompare.max5G);
+        assertEquals(1, toCompare.logicalModemList.size());
+        assertEquals(modemInfo, toCompare.logicalModemList.get(0));
         assertEquals(capability, toCompare);
     }
 }
