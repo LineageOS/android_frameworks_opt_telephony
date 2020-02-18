@@ -3211,10 +3211,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             // Start plumbing this even through Telecom so other components can take
             // appropriate action.
-            ImsPhoneConnection conn = findConnection(call);
-            if (conn != null) {
-                conn.onConferenceMergeFailed();
-                conn.handleMergeComplete();
+            ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
+            if (foregroundConnection != null) {
+                foregroundConnection.onConferenceMergeFailed();
+                foregroundConnection.handleMergeComplete();
+            }
+
+            ImsPhoneConnection backgroundConnection = mBackgroundCall.getFirstConnection();
+            if (backgroundConnection != null) {
+                backgroundConnection.onConferenceMergeFailed();
+                backgroundConnection.handleMergeComplete();
             }
         }
 

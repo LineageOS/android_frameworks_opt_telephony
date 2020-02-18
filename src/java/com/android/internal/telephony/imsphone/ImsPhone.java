@@ -1011,6 +1011,13 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason,
             Message onComplete) {
+        getCallForwardingOption(commandInterfaceCFReason,
+                SERVICE_CLASS_VOICE, onComplete);
+    }
+
+    @Override
+    public void getCallForwardingOption(int commandInterfaceCFReason, int serviceClass,
+            Message onComplete) {
         if (DBG) logd("getCallForwardingOption reason=" + commandInterfaceCFReason);
         if (isValidCommandInterfaceCFReason(commandInterfaceCFReason)) {
             if (DBG) logd("requesting call forwarding query.");
@@ -1039,6 +1046,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @UnsupportedAppUsage
+    @Override
     public void setCallForwardingOption(int commandInterfaceCFAction,
             int commandInterfaceCFReason,
             String dialingNumber,
@@ -1140,7 +1148,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void getCallBarring(String facility, Message onComplete) {
-        getCallBarring(facility, onComplete, CommandsInterface.SERVICE_CLASS_NONE);
+        getCallBarring(facility, onComplete, CommandsInterface.SERVICE_CLASS_VOICE);
     }
 
     public void getCallBarring(String facility, Message onComplete, int serviceClass) {
@@ -1166,7 +1174,7 @@ public class ImsPhone extends ImsPhoneBase {
     public void setCallBarring(String facility, boolean lockState, String password,
             Message onComplete) {
         setCallBarring(facility, lockState, password, onComplete,
-                CommandsInterface.SERVICE_CLASS_NONE);
+                CommandsInterface.SERVICE_CLASS_VOICE);
     }
 
     @Override
