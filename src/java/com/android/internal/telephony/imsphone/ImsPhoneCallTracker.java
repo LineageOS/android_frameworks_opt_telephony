@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
 import android.annotation.NonNull;
@@ -280,10 +281,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    /**
+     * A class implementing {@link AbstractNetworkStatsProvider} to report VT data usage to system.
+     */
     // TODO: 1. Directly reports diff in updateVtDataUsage.
     //       2. Remove unused getVtDataUsage.
-    //       3. Add tests.
-    private class VtDataUsageProvider extends AbstractNetworkStatsProvider {
+    @VisibleForTesting(visibility = PRIVATE)
+    public class VtDataUsageProvider extends AbstractNetworkStatsProvider {
         private int mToken = 0;
         private NetworkStats mIfaceSnapshot = new NetworkStats(0L, 0);
         private NetworkStats mUidSnapshot = new NetworkStats(0L, 0);
@@ -3952,7 +3956,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @param call The IMS call
      * @param dataUsage The aggregated data usage for the call
      */
-    private void updateVtDataUsage(ImsCall call, long dataUsage) {
+    @VisibleForTesting(visibility = PRIVATE)
+    public void updateVtDataUsage(ImsCall call, long dataUsage) {
         long oldUsage = 0L;
         if (mVtDataUsageMap.containsKey(call.uniqueId)) {
             oldUsage = mVtDataUsageMap.get(call.uniqueId);
