@@ -31,6 +31,7 @@ import static org.mockito.Mockito.eq;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.IActivityManager;
+import android.app.usage.NetworkStatsManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.IIntentSender;
@@ -274,6 +275,8 @@ public abstract class TelephonyTest {
     protected MultiSimSettingController mMultiSimSettingController;
     @Mock
     protected IccCard mIccCard;
+    @Mock
+    protected NetworkStatsManager mStatsManager;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -587,6 +590,7 @@ public abstract class TelephonyTest {
         doAnswer((invocation)->Math.max(mTelephonyManager.getActiveModemCount(),
                 mTelephonyManager.getPhoneCount()))
                 .when(mTelephonyManager).getSupportedModemCount();
+        doReturn(mStatsManager).when(mContext).getSystemService(eq(Context.NETWORK_STATS_SERVICE));
 
         //Data
         //Initial state is: userData enabled, provisioned.
