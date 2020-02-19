@@ -563,6 +563,10 @@ public class LocaleTracker extends Handler {
             timeZoneCountryIsoDebugInfo = countryIsoDebugInfo;
         }
 
+        if (mLastServiceState == ServiceState.STATE_POWER_OFF) {
+            countryIso = "";
+        }
+
         log("updateLocale: countryIso = " + countryIso
                 + ", countryIsoDebugInfo = " + countryIsoDebugInfo);
         if (!Objects.equals(countryIso, mCurrentCountryIso)) {
