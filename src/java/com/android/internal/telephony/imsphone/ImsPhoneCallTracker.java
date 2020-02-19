@@ -16,9 +16,11 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
 import android.annotation.NonNull;
+import android.app.usage.NetworkStatsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -32,6 +34,8 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.NetworkStats;
+import android.net.netstats.provider.AbstractNetworkStatsProvider;
+import android.net.netstats.provider.NetworkStatsProviderCallback;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,6 +48,7 @@ import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
+import android.telecom.Connection.VideoProvider;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.CallQuality;
@@ -255,6 +260,49 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    /**
+     * A class implementing {@link AbstractNetworkStatsProvider} to report VT data usage to system.
+     */
+    // TODO: 1. Directly reports diff in updateVtDataUsage.
+    //       2. Remove unused getVtDataUsage.
+    @VisibleForTesting(visibility = PRIVATE)
+    public class VtDataUsageProvider extends AbstractNetworkStatsProvider {
+        private int mToken = 0;
+        private NetworkStats mIfaceSnapshot = new NetworkStats(0L, 0);
+        private NetworkStats mUidSnapshot = new NetworkStats(0L, 0);
+        @Override
+        public void requestStatsUpdate(int token) {
+            // If there is an ongoing VT call, request the latest VT usage from the modem. The
+            // latest usage will return asynchronously so it won't be counted in this round, but it
+            // will be eventually counted when next requestStatsUpdate is called.
+            if (mState != PhoneConstants.State.IDLE) {
+                for (ImsPhoneConnection conn : mConnections) {
+                    final VideoProvider videoProvider = conn.getVideoProvider();
+                    if (videoProvider != null) {
+                        videoProvider.onRequestConnectionDataUsage();
+                    }
+                }
+            }
+
+            final NetworkStats ifaceDiff = mVtDataUsageSnapshot.subtract(mIfaceSnapshot);
+            final NetworkStats uidDiff = mVtDataUsageUidSnapshot.subtract(mUidSnapshot);
+            mVtDataUsageProviderCb.onStatsUpdated(mToken, ifaceDiff, uidDiff);
+            mIfaceSnapshot = mIfaceSnapshot.add(ifaceDiff);
+            mUidSnapshot = mUidSnapshot.add(uidDiff);
+            mToken = token;
+        }
+
+        @Override
+        public void setLimit(String iface, long quotaBytes) {
+            // No-op
+        }
+
+        @Override
+        public void setAlert(long quotaBytes) {
+            // No-op
+        }
+    }
+
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -390,6 +438,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private volatile NetworkStats mVtDataUsageSnapshot = null;
     private volatile NetworkStats mVtDataUsageUidSnapshot = null;
+    private final NetworkStatsProviderCallback mVtDataUsageProviderCb;
 
     private final AtomicInteger mDefaultDialerUid = new AtomicInteger(NetworkStats.UID_ALL);
 
@@ -823,6 +872,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         long currentTime = SystemClock.elapsedRealtime();
         mVtDataUsageSnapshot = new NetworkStats(currentTime, 1);
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
+        final NetworkStatsManager statsManager =
+                (NetworkStatsManager) mPhone.getContext().getSystemService(
+                        Context.NETWORK_STATS_SERVICE);
+        mVtDataUsageProviderCb = statsManager.registerNetworkStatsProvider(LOG_TAG,
+                new VtDataUsageProvider());
 
         // Allow the executor to be specified for testing.
         mImsManagerConnector = new FeatureConnector<>(
@@ -972,6 +1026,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().unregisterReceiver(mReceiver);
         mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
         mImsManagerConnector.disconnect();
+
+        if (mVtDataUsageProviderCb != null) {
+            mVtDataUsageProviderCb.unregister();
+        }
     }
 
     @Override
@@ -3865,7 +3923,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @param call The IMS call
      * @param dataUsage The aggregated data usage for the call
      */
-    private void updateVtDataUsage(ImsCall call, long dataUsage) {
+    @VisibleForTesting(visibility = PRIVATE)
+    public void updateVtDataUsage(ImsCall call, long dataUsage) {
         long oldUsage = 0L;
         if (mVtDataUsageMap.containsKey(call.uniqueId)) {
             oldUsage = mVtDataUsageMap.get(call.uniqueId);
@@ -4299,7 +4358,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // eventually counted when next getVtDataUsage is called.
         if (mState != PhoneConstants.State.IDLE) {
             for (ImsPhoneConnection conn : mConnections) {
-                android.telecom.Connection.VideoProvider videoProvider = conn.getVideoProvider();
+                VideoProvider videoProvider = conn.getVideoProvider();
                 if (videoProvider != null) {
                     videoProvider.onRequestConnectionDataUsage();
                 }
