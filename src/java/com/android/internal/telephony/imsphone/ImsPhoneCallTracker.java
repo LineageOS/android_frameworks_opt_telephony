@@ -3495,6 +3495,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         }
 
+        @Override
+        public void onCallSessionTransferred(ImsCall imsCall) {
+            if (DBG) log("onCallSessionTransferred success");
+        }
+
+        @Override
+        public void onCallSessionTransferFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
+            if (DBG) log("onCallSessionTransferFailed reasonInfo=" + reasonInfo);
+        }
+
         /**
          * Handles a change to the multiparty state for an {@code ImsCall}.  Notifies the associated
          * {@link ImsPhoneConnection} of the change.

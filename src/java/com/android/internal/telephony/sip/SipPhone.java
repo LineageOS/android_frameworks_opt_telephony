@@ -1036,6 +1036,19 @@ public class SipPhone extends SipPhoneBase {
             throw new CallStateException ("deflect is not supported for SipPhone");
         }
 
+        @Override
+        public void transfer(String number, boolean isConfirmationRequired)
+                throws CallStateException {
+            //Transfer is not supported.
+            throw new CallStateException("transfer is not supported for SipPhone");
+        }
+
+        @Override
+        public void consultativeTransfer(Connection other) throws CallStateException {
+            //Transfer is not supported.
+            throw new CallStateException("transfer is not supported for SipPhone");
+        }
+
         private void log(String s) {
             Rlog.d(SCN_TAG, s);
         }

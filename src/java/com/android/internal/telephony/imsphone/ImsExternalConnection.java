@@ -133,6 +133,18 @@ public class ImsExternalConnection extends Connection {
     }
 
     @Override
+    public void transfer(String number, boolean isConfirmationRequired) throws CallStateException {
+        // Transfer is not supported for external calls.
+        throw new CallStateException("Transfer is not supported for external calls");
+    }
+
+    @Override
+    public void consultativeTransfer(Connection other) throws CallStateException {
+        // Transfer is not supported for external calls.
+        throw new CallStateException("Transfer is not supported for external calls");
+    }
+
+    @Override
     public void separate() throws CallStateException {
         // No-op - Separate is not supported for external calls.
     }
