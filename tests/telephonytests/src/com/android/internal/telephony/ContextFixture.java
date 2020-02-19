@@ -351,11 +351,6 @@ public class ContextFixture implements TestFixture<Context> {
             return registerReceiverFakeImpl(receiver, filter);
         }
 
-        @Override
-        public Context createPackageContext(String packageName, int flags) {
-            return this;
-        }
-
         private Intent registerReceiverFakeImpl(BroadcastReceiver receiver, IntentFilter filter) {
             Intent result = null;
             synchronized (mBroadcastReceiversByAction) {

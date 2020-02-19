@@ -33,7 +33,6 @@ import android.telephony.SmsManager;
 import android.util.AtomicFile;
 import android.util.Xml;
 
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.XmlUtils;
 import com.android.internal.util.FastXmlSerializer;
 import com.android.telephony.Rlog;
@@ -292,10 +291,10 @@ public class SmsUsageMonitor {
     }
 
     private ShortCodePatternMatcher getPatternMatcherFromResource(String country) {
-        int id = com.android.telephony.resources.R.xml.sms_short_codes;
+        int id = com.android.internal.R.xml.sms_short_codes;
         XmlResourceParser parser = null;
         try {
-            parser = TelephonyResourceUtils.getTelephonyResources(mContext).getXml(id);
+            parser = mContext.getResources().getXml(id);
             return getPatternMatcherFromXmlParser(parser, country);
         } finally {
             if (parser != null) parser.close();

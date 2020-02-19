@@ -82,7 +82,6 @@ import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkTyp
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
@@ -570,8 +569,8 @@ public class DataConnection extends StateMachine {
             return;
         }
 
-        int mtu = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext()).getInteger(
-                com.android.telephony.resources.R.integer.config_mobile_mtu);
+        int mtu = mPhone.getContext().getResources().getInteger(
+                com.android.internal.R.integer.config_mobile_mtu);
         if (mtu != PhoneConstants.UNSET_MTU) {
             lp.setMtu(mtu);
             if (DBG) log("MTU set by config resource to: " + mtu);
@@ -1039,9 +1038,8 @@ public class DataConnection extends StateMachine {
         log("updateTcpBufferSizes: " + ratName);
 
         // in the form: "ratname:rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max"
-        String[] configOverride = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                .getStringArray(
-                com.android.telephony.resources.R.array.config_mobile_tcp_buffers);
+        String[] configOverride = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.config_mobile_tcp_buffers);
         for (int i = 0; i < configOverride.length; i++) {
             String[] split = configOverride[i].split(":");
             if (ratName.equals(split[0]) && split.length == 2) {

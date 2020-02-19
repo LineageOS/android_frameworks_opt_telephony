@@ -29,7 +29,6 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.util.Collections;
 import java.util.Set;
@@ -230,8 +229,7 @@ public class ImsExternalConnection extends Connection {
 
         if (PhoneAccount.SCHEME_SIP.equals(address.getScheme())) {
             if (address.getSchemeSpecificPart().startsWith(CONFERENCE_PREFIX)) {
-                mCnapName = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getString(
-                        com.android.telephony.resources.R.string.conference_call);
+                mCnapName = mContext.getString(com.android.internal.R.string.conference_call);
                 mCnapNamePresentation = PhoneConstants.PRESENTATION_ALLOWED;
                 mAddress = "";
                 mNumberPresentation = PhoneConstants.PRESENTATION_RESTRICTED;

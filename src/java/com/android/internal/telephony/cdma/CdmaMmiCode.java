@@ -29,7 +29,6 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.util.regex.Matcher;
@@ -234,15 +233,15 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                 if (isRegister()) {
                     if (!newPinOrPuk.equals(mSic)) {
                         // password mismatch; return error
-                        handlePasswordError(com.android.telephony.resources.R.string.mismatchPin);
+                        handlePasswordError(com.android.internal.R.string.mismatchPin);
                     } else if (pinLen < 4 || pinLen > 8 ) {
                         // invalid length
-                        handlePasswordError(com.android.telephony.resources.R.string.invalidPin);
+                        handlePasswordError(com.android.internal.R.string.invalidPin);
                     } else if (mSc.equals(SC_PIN)
                             && mUiccApplication != null
                             && mUiccApplication.getState() == AppState.APPSTATE_PUK) {
                         // Sim is puk-locked
-                        handlePasswordError(com.android.telephony.resources.R.string.needPuk);
+                        handlePasswordError(com.android.internal.R.string.needPuk);
                     } else if (mUiccApplication != null) {
                         Rlog.d(LOG_TAG, "process mmi service code using UiccApp sc=" + mSc);
 
@@ -271,8 +270,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
             }
         } catch (RuntimeException exc) {
             mState = State.FAILED;
-            mMessage = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                    com.android.telephony.resources.R.string.mmiError);
+            mMessage = mContext.getText(com.android.internal.R.string.mmiError);
             mPhone.onMMIDone(this);
         }
     }
@@ -281,7 +279,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         mState = State.FAILED;
         StringBuilder sb = new StringBuilder(getScString());
         sb.append("\n");
-        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(res));
+        sb.append(mContext.getText(res));
         mMessage = sb;
         mPhone.onMMIDone(this);
     }
@@ -303,8 +301,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
     private CharSequence getScString() {
         if (mSc != null) {
             if (isPinPukCommand()) {
-                return TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                        com.android.telephony.resources.R.string.PinMmi);
+                return mContext.getText(com.android.internal.R.string.PinMmi);
             }
         }
 
@@ -325,11 +322,11 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                         // look specifically for the PUK commands and adjust
                         // the message accordingly.
                         if (mSc.equals(SC_PUK) || mSc.equals(SC_PUK2)) {
-                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                    .getText(com.android.telephony.resources.R.string.badPuk));
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.badPuk));
                         } else {
-                            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                    .getText(com.android.telephony.resources.R.string.badPin));
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.badPin));
                         }
                         // Get the No. of retries remaining to unlock PUK/PUK2
                         int attemptsRemaining = msg.arg1;
@@ -339,43 +336,40 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                             mState = State.CANCELLED;
                         } else if (attemptsRemaining > 0) {
                             Rlog.d(LOG_TAG, "onSetComplete: attemptsRemaining="+attemptsRemaining);
-                            sb.append(TelephonyResourceUtils.getTelephonyResources(mContext)
-                                    .getQuantityString(
-                                    com.android.telephony.resources.R.plurals.pinpuk_attempts,
+                            sb.append(mContext.getResources().getQuantityString(
+                                    com.android.internal.R.plurals.pinpuk_attempts,
                                     attemptsRemaining, attemptsRemaining));
                         }
                     } else {
-                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                .getText(com.android.telephony.resources
-                                        .R.string.passwordIncorrect));
+                        sb.append(mContext.getText(
+                                com.android.internal.R.string.passwordIncorrect));
                     }
                 } else if (err == CommandException.Error.SIM_PUK2) {
-                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                            com.android.telephony.resources.R.string.badPin));
+                    sb.append(mContext.getText(
+                            com.android.internal.R.string.badPin));
                     sb.append("\n");
-                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                            com.android.telephony.resources.R.string.needPuk2));
+                    sb.append(mContext.getText(
+                            com.android.internal.R.string.needPuk2));
                 } else if (err == CommandException.Error.REQUEST_NOT_SUPPORTED) {
                     if (mSc.equals(SC_PIN)) {
-                        sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                .getText(com.android.telephony.resources.R.string.enablePin));
+                        sb.append(mContext.getText(com.android.internal.R.string.enablePin));
                     }
                 } else {
-                    sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                            com.android.telephony.resources.R.string.mmiError));
+                    sb.append(mContext.getText(
+                            com.android.internal.R.string.mmiError));
                 }
             } else {
-                sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                        com.android.telephony.resources.R.string.mmiError));
+                sb.append(mContext.getText(
+                        com.android.internal.R.string.mmiError));
             }
         } else if (isRegister()) {
             mState = State.COMPLETE;
-            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                    com.android.telephony.resources.R.string.serviceRegistered));
+            sb.append(mContext.getText(
+                    com.android.internal.R.string.serviceRegistered));
         } else {
             mState = State.FAILED;
-            sb.append(TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                    com.android.telephony.resources.R.string.mmiError));
+            sb.append(mContext.getText(
+                    com.android.internal.R.string.mmiError));
         }
 
         mMessage = sb;

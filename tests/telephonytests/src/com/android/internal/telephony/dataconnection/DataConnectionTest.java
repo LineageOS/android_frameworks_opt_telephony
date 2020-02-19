@@ -62,6 +62,7 @@ import android.telephony.data.DataService;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.R;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
@@ -288,7 +289,7 @@ public class DataConnectionTest extends TelephonyTest {
         mDcFailBringUp.saveParameters(0, 0, -2);
         doReturn(mDcFailBringUp).when(mDcTesterFailBringUpAll).getDcFailBringUp();
 
-        mContextFixture.putStringArrayResource(com.android.telephony.resources.R.array
+        mContextFixture.putStringArrayResource(com.android.internal.R.array
                 .config_mobile_tcp_buffers, new String[]{
                 "umts:131072,262144,1452032,4096,16384,399360",
                 "hspa:131072,262144,2441216,4096,16384,399360",
@@ -301,8 +302,7 @@ public class DataConnectionTest extends TelephonyTest {
                 "evdo:131072,262144,1048576,4096,16384,524288",
                 "lte:524288,1048576,8388608,262144,524288,4194304"});
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.config_wwan_data_service_package,
+        mContextFixture.putResource(R.string.config_wwan_data_service_package,
                 "com.android.phone");
 
         mDcp.mApnContext = mApnContext;
