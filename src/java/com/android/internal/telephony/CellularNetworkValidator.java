@@ -156,11 +156,10 @@ public class CellularNetworkValidator {
 
         private String getValidationNetworkIdentity(int subId) {
             if (!SubscriptionManager.isUsableSubscriptionId(subId)) return null;
-            Phone phone = PhoneFactory.getPhone(SubscriptionController.getInstance()
-                    .getPhoneId(subId));
-            if (phone == null) return null;
-
-            if (phone.getServiceState() == null) return null;
+            SubscriptionController subController = SubscriptionController.getInstance();
+            if (subController == null) return null;
+            Phone phone = PhoneFactory.getPhone(subController.getPhoneId(subId));
+            if (phone == null || phone.getServiceState() == null) return null;
 
             NetworkRegistrationInfo regInfo = phone.getServiceState().getNetworkRegistrationInfo(
                     DOMAIN_PS, TRANSPORT_TYPE_WWAN);
@@ -190,7 +189,11 @@ public class CellularNetworkValidator {
         /**
          * Validation failed, passed or timed out.
          */
-        void onValidationResult(boolean validated, int subId);
+        void onValidationDone(boolean validated, int subId);
+        /**
+         * Called when a corresponding network becomes available.
+         */
+        void onNetworkAvailable(Network network, int subId);
     }
 
     /**
@@ -238,7 +241,7 @@ public class CellularNetworkValidator {
 
         if (!SubscriptionController.getInstance().isActiveSubId(subId)) {
             logd("Failed to start validation. Inactive subId " + subId);
-            callback.onValidationResult(false, subId);
+            callback.onValidationDone(false, subId);
             return;
         }
 
@@ -325,7 +328,7 @@ public class CellularNetworkValidator {
         // Deal with the result only when state is still VALIDATING. This is to avoid
         // receiving multiple callbacks in queue.
         if (mState == STATE_VALIDATING) {
-            mValidationCallback.onValidationResult(passed, mSubId);
+            mValidationCallback.onValidationDone(passed, mSubId);
             if (!mReleaseAfterValidation && passed) {
                 mState = STATE_VALIDATED;
             } else {
@@ -341,6 +344,12 @@ public class CellularNetworkValidator {
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
+    private synchronized void reportNetworkAvailable(Network network, int subId) {
+        // If the validation result is not for current subId, do nothing.
+        if (mSubId != subId) return;
+        mValidationCallback.onNetworkAvailable(network, subId);
+    }
+
     @VisibleForTesting
     public class ConnectivityNetworkCallback extends ConnectivityManager.NetworkCallback {
         private final int mSubId;
@@ -354,13 +363,14 @@ public class CellularNetworkValidator {
         @Override
         public void onAvailable(Network network) {
             logd("network onAvailable " + network);
-            if (ConnectivityNetworkCallback.this.mSubId != CellularNetworkValidator.this.mSubId) {
-                return;
-            }
             TelephonyMetrics.getInstance().writeNetworkValidate(
                     TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_AVAILABLE);
+            // If it hits validation cache, we report as validation passed; otherwise we report
+            // network is available.
             if (mValidatedNetworkCache.isRecentlyValidated(mSubId)) {
                 reportValidationResult(true, ConnectivityNetworkCallback.this.mSubId);
+            } else {
+                reportNetworkAvailable(network, ConnectivityNetworkCallback.this.mSubId);
             }
         }
 
