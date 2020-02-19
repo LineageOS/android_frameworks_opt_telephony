@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+/* //device/apps/common/assets/res/any/strings.xml
+**
+** Copyright 2020, The Android Open Source Project
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="mmiError" msgid="1023442595500494574">"Праблема падлучэння ці няправільны код MMI."</string>
+    <string name="mmiFdnError" msgid="8494219236221734158">"Выкарыстанне абмежаванае толькі дазволенымі нумарамі."</string>
+    <string name="mmiErrorWhileRoaming" msgid="1561137125983549492">"Немагчыма змяніць налады пераадрасацыі выклікаў з тэлефона, пакуль вы знаходзіцеся ў роўмінгу."</string>
+    <string name="defaultVoiceMailAlphaTag" msgid="8864546208952359023">"Галасавая пошта"</string>
+    <string name="serviceEnabled" msgid="4883462919275093199">"Служба была ўключана."</string>
+    <string name="serviceEnabledFor" msgid="7198628669371384667">"Служба была ўключана для:"</string>
+    <string name="serviceDisabled" msgid="3843511572901328090">"Служба была адключаная."</string>
+    <string name="serviceRegistered" msgid="8340863975094712082">"Рэгістрацыя прайшла паспяхова."</string>
+    <string name="serviceErased" msgid="8709823130329554753">"Паспяхова выдалена."</string>
+    <string name="passwordIncorrect" msgid="3625408645444788703">"Няправільны пароль."</string>
+    <string name="mmiComplete" msgid="6255278485094294879">"MMI завершаны."</string>
+    <string name="badPin" msgid="2146348036420912863">"Стары PIN-код уведзены няправільна."</string>
+    <string name="badPuk" msgid="5482174962391109200">"Няправільны PUK-код."</string>
+    <string name="mismatchPin" msgid="5172508988259223690">"Уведзеныя PIN-коды не супадаюць."</string>
+    <string name="invalidPin" msgid="2439884944669064974">"Увядзіце PIN-код, які змяшчае ад 4 да 8 лічбаў."</string>
+    <string name="invalidPuk" msgid="2727206050762528857">"Увядзіце PUK з 8 лічбаў ці больш."</string>
+    <string name="needPuk" msgid="693504928134817411">"Ваша SIM-карта заблакавана PUK-кодам. Увядзіце PUK, каб разблакаваць карту."</string>
+    <string name="needPuk2" msgid="5035072767055250931">"Увядзіце PUK2 для разблакавання SIM-карты."</string>
+    <string name="enablePin" msgid="5174710017479719448">"Не атрымалася, уключыце блакіроўку SIM/RUIM."</string>
+    <plurals name="pinpuk_attempts" formatted="false" msgid="2864291796009169366">
+      <item quantity="one">У вас засталася <xliff:g id="NUMBER_1">%d</xliff:g> спроба перад тым, як SIM-карта будзе заблакіравана.</item>
+      <item quantity="few">У вас засталося <xliff:g id="NUMBER_1">%d</xliff:g> спробы перад тым, як SIM-карта будзе заблакіравана.</item>
+      <item quantity="many">У вас засталося <xliff:g id="NUMBER_1">%d</xliff:g> спроб перад тым, як SIM-карта будзе заблакіравана.</item>
+      <item quantity="other">У вас засталося <xliff:g id="NUMBER_1">%d</xliff:g> спробы перад тым, як SIM-карта будзе заблакіравана.</item>
+    </plurals>
+    <string name="imei" msgid="6257982312415273699">"IMEI"</string>
+    <string name="meid" msgid="6944938460891725240">"MEID"</string>
+    <string name="ClipMmi" msgid="5267319943079051994">"Ідэнтыфікатар АВН"</string>
+    <string name="ClirMmi" msgid="5625289194685937628">"Ідэнтыфікатар АВН"</string>
+    <string name="ColpMmi" msgid="6327360747989933494">"Ідэнтыфікатар падлучанай лініі"</string>
+    <string name="ColrMmi" msgid="3477018035826436657">"Абмежаванне ідэнтыфікатара падлучанай лініі"</string>
+    <string name="CfMmi" msgid="3349849406819913908">"Пераадрасацыя выкліку"</string>
+    <string name="CwMmi" msgid="3370271108272827156">"Чаканне выкліку"</string>
+    <string name="BaMmi" msgid="8506416352216411504">"Забарона выкліку"</string>
+    <string name="PwdMmi" msgid="5655236897721579115">"Змена пароля"</string>
+    <string name="PinMmi" msgid="7946074122258344572">"Змена PIN-коду"</string>
+    <string name="CnipMmi" msgid="559873089884095557">"Цяперашні нумар выкліку"</string>
+    <string name="CnirMmi" msgid="7399373758195512797">"Нумар выкліку абмежаваны"</string>
+    <string name="ThreeWCMmi" msgid="523390035341026064">"Трохбаковы выклік"</string>
+    <string name="RuacMmi" msgid="3703904994630793745">"Адмова ад непажаданых раздражняючых выклікаў"</string>
+    <string name="CndMmi" msgid="3646838188766092527">"Дастаўка нумару выкліку"</string>
+    <string name="DndMmi" msgid="5146793519701587893">"Не турбаваць"</string>
+    <string name="CLIRDefaultOnNextCallOn" msgid="3331479151042589343">"Налады ідэнтыфікатару АВН па змаўчанні абмежаваныя. Наступны выклік: абмежавана"</string>
+    <string name="CLIRDefaultOnNextCallOff" msgid="2388033443641772150">"Ідэнтыфікатар АВН па змаўчанні абмежаваны. Наступны выклік: не абмежавана"</string>
+    <string name="CLIRDefaultOffNextCallOn" msgid="3445728068458228238">"Па змаўчанні ідэнтыфікатар АВН не абмежаваны. Наступны выклік: абмежаваны"</string>
+    <string name="CLIRDefaultOffNextCallOff" msgid="2706215451323007610">"Налады ідэнтыфікатару АВН па змаўчанні: не абмяжавана. Наступны выклік: не абмежавана"</string>
+    <string name="serviceNotProvisioned" msgid="1437446754190604913">"Служба не прадастаўляецца."</string>
+    <string name="CLIRPermanent" msgid="7191633320241443489">"Вы не можаце змяніць налады ідэнтыфікатара абанента, якi тэлефануе."</string>
+    <string name="RestrictedOnDataTitle" msgid="7614146974080993425">"Мабільная перадача даных недаступная"</string>
+    <string name="RestrictedOnEmergencyTitle" msgid="6362614006432906742">"Экстранныя выклікі недаступныя"</string>
+    <string name="RestrictedOnNormalTitle" msgid="8333715893690298268">"Няма сэрвісу галасавых выклікаў"</string>
+    <string name="RestrictedOnAllVoiceTitle" msgid="4257192094649867888">"Галасавыя або экстранныя выклікі недаступныя"</string>
+    <string name="RestrictedStateContent" msgid="3868407917799281990">"Часова выключана аператарам сувязі"</string>
+    <string name="RestrictedStateContentMsimTemplate" msgid="2051960554177939848">"Часова адключана для SIM <xliff:g id="SIMNUMBER">%d</xliff:g> аператарам сувязі"</string>
+    <string name="NetworkPreferenceSwitchTitle" msgid="6054662454014426745">"Сетка мабільнай сувязі недаступная"</string>
+    <string name="NetworkPreferenceSwitchSummary" msgid="3472910253614375814">"Націсніце, каб выбраць іншую сетку."</string>
+    <string name="EmergencyCallWarningTitle" msgid="1185401427444792730">"Экстранныя выклікі недаступныя"</string>
+    <string name="EmergencyCallWarningSummary" msgid="1489064916947930937">"Экстранныя выклікі ў сетцы Wi‑Fi недаступныя"</string>
+    <string name="notification_channel_network_alert" msgid="4751167011159186116">"Абвесткі"</string>
+    <string name="notification_channel_call_forward" msgid="1148988165387665548">"Пераадрасацыя выкліку"</string>
+    <string name="notification_channel_emergency_callback" msgid="6878487391709930971">"Рэжым экстраннага зваротнага выкліку"</string>
+    <string name="notification_channel_mobile_data_status" msgid="7174756351195977201">"Стан мабільнай перадачы даных"</string>
+    <string name="notification_channel_sms" msgid="4945609907300955711">"SMS-паведамленні"</string>
+    <string name="notification_channel_voice_mail" msgid="5344908172205315833">"Паведамленні галасавой пошты"</string>
+    <string name="notification_channel_wfc" msgid="929525864779742908">"Wi-Fi-тэлефанія"</string>
+    <string name="notification_channel_sim" msgid="1588401714118628515">"Статус SIM-карты"</string>
+    <string name="notification_channel_sim_high_prio" msgid="1290323767457025076">"Стан SIM-карты з высокім прыярытэтам"</string>
+    <string name="peerTtyModeFull" msgid="2630344080574439013">"Аднарангавая прылада запытала рэжым TTY FULL"</string>
+    <string name="peerTtyModeHco" msgid="519607068232438175">"Аднарангавая прылада запытала рэжым TTY НСО"</string>
+    <string name="peerTtyModeVco" msgid="362613461160305374">"Аднарангавая прылада запытала рэжым TTY VCO"</string>
+    <string name="peerTtyModeOff" msgid="6524511110244204423">"Аднарангавая прылада запытала рэжым TTY OFF"</string>
+    <string name="serviceClassVoice" msgid="5295300507464543289">"Голас"</string>
+    <string name="serviceClassData" msgid="8152458944689350760">"Дадзеныя"</string>
+    <string name="serviceClassFAX" msgid="1729860400781144327">"Факс"</string>
+    <string name="serviceClassSMS" msgid="7770300042268931806">"SMS"</string>
+    <string name="serviceClassDataAsync" msgid="1745961563014313779">"Асінхронныя"</string>
+    <string name="serviceClassDataSync" msgid="1259617733005203622">"Сінхронныя"</string>
+    <string name="serviceClassPacket" msgid="7686414075485232705">"Пакет"</string>
+    <string name="serviceClassPAD" msgid="7639293369899923082">"PAD"</string>
+    <string name="roamingText0" msgid="3318257203209872590">"Індыкатар роўмінгу ўключаны"</string>
+    <string name="roamingText1" msgid="7217313047635882754">"Індыкатар роўмінгу адключаны"</string>
+    <string name="roamingText2" msgid="6212557644292539155">"Індыкатар роўмінгу міргае"</string>
+    <string name="roamingText3" msgid="3467855797361668131">"З раёну"</string>
+    <string name="roamingText4" msgid="4287600402320474977">"З будынку"</string>
+    <string name="roamingText5" msgid="8947828970147948538">"Роўмінг: пераважная сістэма"</string>
+    <string name="roamingText6" msgid="2487318096255702808">"Роўмінг: даступная сістэма"</string>
+    <string name="roamingText7" msgid="299395641289770039">"Роўмінг: асацыятыўны партнёр"</string>
+    <string name="roamingText8" msgid="3646137140623760567">"Роўмінг: прэмiум-партнёр"</string>
+    <string name="roamingText9" msgid="5722409013790063497">"Роўмінг: поўная функцыянальнасць службы"</string>
+    <string name="roamingText10" msgid="5267593644689617088">"Роўмінг – частковая функцыянальнасць службы"</string>
+    <string name="roamingText11" msgid="1326295496863599275">"Банэр роўмінгу ўключаны"</string>
+    <string name="roamingText12" msgid="6969936398908875373">"Банэр роўмінгу адключаны"</string>
+    <string name="roamingTextSearching" msgid="3205637826170280377">"Пошук службы"</string>
+    <string name="wfcRegErrorTitle" msgid="3587221580356886653">"Не атрымалася падключыць Wi‑Fi-тэлефанію"</string>
+  <string-array name="wfcOperatorErrorAlertMessages">
+    <item msgid="3437343175656751382">"Каб рабіць выклікі і адпраўляць паведамленні па Wi-Fi, спачатку папрасіце свайго аператара наладзіць гэту паслугу. Затым зноў уключыце Wi-Fi-тэлефанію ў меню Налады. (Код памылкі: <xliff:g id="CODE">%1$s</xliff:g>)"</item>
+  </string-array>
+  <string-array name="wfcOperatorErrorNotificationMessages">
+    <item msgid="8422463738705478408">"Памылка падключэння Wi‑Fi-тэлефаніі ў вашага аператара: <xliff:g id="CODE">%1$s</xliff:g>"</item>
+  </string-array>
+    <!-- no translation found for wfcSpnFormat_spn (2935593237090890712) -->
+    <skip />
+    <string name="wfcSpnFormat_spn_wifi_calling" msgid="4866611519785304639">"Wi-Fi-тэлефанія ад <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_wifi_calling_vo_hyphen" msgid="3228085116169384334">"Wi-Fi-тэлефанія ад аператара \"<xliff:g id="SPN">%s</xliff:g>\""</string>
+    <string name="wfcSpnFormat_wlan_call" msgid="4418107841035615881">"Выклік праз WLAN"</string>
+    <string name="wfcSpnFormat_spn_wlan_call" msgid="1158376504699481352">"Выклік праз WLAN ад <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_wifi" msgid="8193290615697360557">"Wi-Fi ад <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_wifi_calling_bar_spn" msgid="6724375326528125344">"Wi-Fi-тэлефанія | <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_vowifi" msgid="7439751417720932625">"VoWi-Fi ад <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_wifi_calling" msgid="7955587787276301602">"Wi-Fi-тэлефанія"</string>
+    <string name="wfcSpnFormat_wifi" msgid="2175344691206928824">"Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi_calling_wo_hyphen" msgid="532288921741719455">"Wi-Fi-тэлефанія"</string>
+    <string name="wfcSpnFormat_vowifi" msgid="335037103096054056">"VoWi-Fi"</string>
+    <string name="cfTemplateNotForwarded" msgid="8812005909511089993">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: не пераадрасоўваецца"</string>
+    <string name="cfTemplateForwarded" msgid="3302157589484961637">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g>"</string>
+    <string name="cfTemplateForwardedTime" msgid="5654128800182665435">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g> праз <xliff:g id="TIME_DELAY">{2}</xliff:g> с."</string>
+    <string name="cfTemplateRegistered" msgid="3782802180266767430">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: не пераадрасоўваецца"</string>
+    <string name="cfTemplateRegisteredTime" msgid="2033084400423273904">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: не пераадрасоўваецца"</string>
+    <string name="sms_control_title" msgid="5897819774814118232">"Адпраўка SMS"</string>
+    <string name="sms_control_message" msgid="99804090463203747">"Прыкладанне &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; дасылае вялікую колькасць SMS-паведамленняў. Дазволіць гэтаму прыкладанню працягваць адпраўляць паведамленні?"</string>
+    <string name="sms_control_yes" msgid="3285333055962335001">"Дазволіць"</string>
+    <string name="sms_control_no" msgid="4657312407697761088">"Адмовіць"</string>
+    <string name="sms_short_code_confirm_message" msgid="2463657668141495030">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; хоча адправiць паведамленне на адрас &lt;b&gt;<xliff:g id="DEST_ADDRESS">%2$s</xliff:g>&lt;/b&gt;."</string>
+    <string name="sms_short_code_details" msgid="2159169204813483744">"Гэта "<b>"можа прывесці да спагнання аплаты"</b>" з рахунку вашага мабільнага тэлефона."</string>
+    <string name="sms_premium_short_code_details" msgid="475271565092315329"><b>"Гэта прывядзе да спагнання аплаты з рахунку вашага мабільнага тэлефона."</b></string>
+    <string name="sms_short_code_confirm_allow" msgid="6587513384670537791">"Адправiць"</string>
+    <string name="sms_short_code_confirm_deny" msgid="2001576474856656532">"Скасаваць"</string>
+    <string name="sms_short_code_remember_choice" msgid="5963037270314122374">"Захаваць мой выбар"</string>
+    <string name="sms_short_code_remember_undo_instruction" msgid="4542904223183282400">"Пазней гэта можна змянiць у раздзеле \"Налады &gt; Прыкладаннi\""</string>
+    <string name="sms_short_code_confirm_always_allow" msgid="466738082610201835">"Заўсёды дазваляць"</string>
+    <string name="sms_short_code_confirm_never_allow" msgid="8061393668017829115">"Ніколі не дазваляць"</string>
+    <string name="sim_removed_title" msgid="5820647305002998615">"SIM-карта выдаленая"</string>
+    <string name="sim_removed_message" msgid="3964522736649761378">"Мабільная сетка будзе недаступная да перазагрузкі з дзеючай SIM-картай."</string>
+    <string name="sim_done_button" msgid="2300674042108475811">"Гатова"</string>
+    <string name="sim_added_title" msgid="1037725879564044972">"SIM-карта дадазеная"</string>
+    <string name="sim_added_message" msgid="8461331105822964497">"Перазагрузіце прыладу, каб атрымаць доступ да мабільнай сеткі."</string>
+    <string name="sim_restart_button" msgid="4132234640091195133">"Перазапусціць"</string>
+    <string name="install_carrier_app_notification_title" msgid="7891599802720696038">"Уключыць мабільную сувязь"</string>
+    <string name="install_carrier_app_notification_text" msgid="4021057891030846342">"Спампаваць праграму аператара для актывацыі новай SIM-карты"</string>
+    <string name="install_carrier_app_notification_text_app_name" msgid="3261523141748490253">"Для актывацыі новай SIM-карты спампуйце праграму <xliff:g id="APP_NAME">%1$s</xliff:g>"</string>
+    <string name="install_carrier_app_notification_button" msgid="4651966240023969914">"Спампаваць праграму"</string>
+    <string name="carrier_app_notification_title" msgid="444898173986612616">"Устаўлена новая SIM-карта"</string>
+    <string name="carrier_app_notification_text" msgid="687265847426143857">"Краніце, каб наладзіць"</string>
+    <string name="sending" msgid="7816699175586805545">"Адпраўка..."</string>
+    <string name="launchBrowserDefault" msgid="629052799233260209">"Запусцiць браўзер?"</string>
+    <string name="SetupCallDefault" msgid="580230871789150298">"Прыняць выклік?"</string>
+    <string name="stk_cc_ussd_to_dial" msgid="5824331516164546925">"USSD-запыт заменены на стандартны выклік"</string>
+    <string name="stk_cc_ussd_to_ss" msgid="564791643843260238">"USSD-запыт заменены на SS-запыт"</string>
+    <string name="stk_cc_ussd_to_ussd" msgid="5381138585419310854">"Заменена на новы USSD-запыт"</string>
+    <string name="stk_cc_ussd_to_dial_video" msgid="4049392049695423603">"USSD-запыт заменены на відэавыклік"</string>
+    <string name="stk_cc_ss_to_dial" msgid="1591266989491372460">"SS-запыт заменены на стандартны выклік"</string>
+    <string name="stk_cc_ss_to_dial_video" msgid="4865582630524330327">"SS-запыт заменены на відэавыклік"</string>
+    <string name="stk_cc_ss_to_ussd" msgid="1701283146883688457">"SS-запыт заменены на USSD-запыт"</string>
+    <string name="stk_cc_ss_to_ss" msgid="700436393026079703">"Зроблена замена на новы SS-запыт"</string>
+    <string name="new_sms_notification_title" msgid="1923364920610861253">"У вас ёсць новыя паведамленні"</string>
+    <string name="new_sms_notification_content" msgid="4567509229027865439">"Праглядзець праз праграму для SMS"</string>
+    <string name="conference_call" msgid="2990940131095267161">"Канферэнц-выклік"</string>
+    <string name="mmcc_authentication_reject" msgid="6879477386490076573">"Дзеянні з голасам для гэтай SIM-карты не дапускаюцца"</string>
+    <string name="mmcc_imsi_unknown_in_hlr" msgid="2128934740544236008">"Няма SIM-карты для дзеянняў з голасам"</string>
+    <string name="mmcc_illegal_ms" msgid="5768447181347094072">"Дзеянні з голасам для гэтай SIM-карты не дапускаюцца"</string>
+    <string name="mmcc_illegal_me" msgid="8474688631960877778">"Дзеянні з голасам для гэтага тэлефона не дапускаюцца"</string>
+    <string name="mmcc_authentication_reject_msim_template" msgid="1991661944094476731">"Дзеянні з SIM <xliff:g id="SIMNUMBER">%d</xliff:g> не дазволены"</string>
+    <string name="mmcc_imsi_unknown_in_hlr_msim_template" msgid="2027905617631765926">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g> адсутнічае"</string>
+    <string name="mmcc_illegal_ms_msim_template" msgid="2869965218803005104">"Дзеянні з SIM <xliff:g id="SIMNUMBER">%d</xliff:g> не дазволены"</string>
+    <string name="mmcc_illegal_me_msim_template" msgid="1771419560981767126">"Дзеянні з SIM <xliff:g id="SIMNUMBER">%d</xliff:g> не дазволены"</string>
+    <string name="emergency_calls_only" msgid="1560650709188829753">"Толькі экстранныя выклікі"</string>
+    <string name="lockscreen_carrier_default" msgid="6030870681121260513">"Не абслугоўваецца"</string>
+    <string name="media_route_status_connecting" msgid="1891672781795004704">"Падключэнне..."</string>
+    <string name="wifi_calling_off_summary" msgid="7353426836733632728">"Выкл."</string>
+    <string name="wfc_mode_wifi_preferred_summary" msgid="7882558771712672887">"Выклікаць праз Wi-Fi"</string>
+    <string name="wfc_mode_cellular_preferred_summary" msgid="114508946793873122">"Выклікаць праз мабільную сетку"</string>
+    <string name="wfc_mode_wifi_only_summary" msgid="1717037324991030568">"Толькі Wi-Fi"</string>
+    <string name="kg_text_message_separator" product="default" msgid="4334398812288993504">" — "</string>
+</resources>

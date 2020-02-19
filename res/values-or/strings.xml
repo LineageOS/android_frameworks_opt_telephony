@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+/* //device/apps/common/assets/res/any/strings.xml
+**
+** Copyright 2020, The Android Open Source Project
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="mmiError" msgid="1023442595500494574">"ସଂଯୋଗରେ ସମସ୍ୟା ଅଛି କିମ୍ବା ଅମାନ୍ୟ MMI କୋଡ୍।"</string>
+    <string name="mmiFdnError" msgid="8494219236221734158">"କେବଳ ସ୍ଥାୟୀ ଡାୟଲିଙ୍ଗ ନମ୍ବର୍‌ ପାଇଁ କାର୍ଯ୍ୟ ସୀମିତ ଅଟେ।"</string>
+    <string name="mmiErrorWhileRoaming" msgid="1561137125983549492">"ଆପଣ ରୋମିଙ୍ଗରେ ଥିବାବେଳେ କଲ୍‍ ଫର୍‌ୱର୍ଡିଙ୍ଗ ସେଟିଙ୍ଗ ବଦଳାଇପାରିବେ ନାହିଁ।"</string>
+    <string name="defaultVoiceMailAlphaTag" msgid="8864546208952359023">"ଭଏସ୍‌ ମେଲ୍"</string>
+    <string name="serviceEnabled" msgid="4883462919275093199">"ସେବା ସକ୍ଷମ କରାଯାଇଥିଲା।"</string>
+    <string name="serviceEnabledFor" msgid="7198628669371384667">"ଏଥିପାଇଁ ସେବା ସକ୍ଷମ କରାଯାଇଥିଲା:"</string>
+    <string name="serviceDisabled" msgid="3843511572901328090">"ସେବାକୁ ଅକ୍ଷମ କରିଦିଆଯାଇଛି।"</string>
+    <string name="serviceRegistered" msgid="8340863975094712082">"ପଞ୍ଜିକରଣ ସଫଳ ହେଲା।"</string>
+    <string name="serviceErased" msgid="8709823130329554753">"ଲିଭାଇବା ସଫଳ ହେଲା।"</string>
+    <string name="passwordIncorrect" msgid="3625408645444788703">"ଭୁଲ ପାସୱର୍ଡ।"</string>
+    <string name="mmiComplete" msgid="6255278485094294879">"MMI ସମ୍ପୂର୍ଣ୍ଣ।"</string>
+    <string name="badPin" msgid="2146348036420912863">"ଆପଣ ଟାଇପ୍‍ କରିଥିବା ପୁରୁଣା PIN ଭୁଲ ଅଟେ।"</string>
+    <string name="badPuk" msgid="5482174962391109200">"ଆପଣ ଟାଇପ୍‍ କରିଥିବା PUK ଭୁଲ ଅଟେ।"</string>
+    <string name="mismatchPin" msgid="5172508988259223690">"ଆପଣ ଟାଇପ୍‍ କରିଥିବା PINଗୁଡ଼ିକ ମେଳ ହେଉନାହିଁ। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।"</string>
+    <string name="invalidPin" msgid="2439884944669064974">"4 ରୁ 8ଟି ସଂଖ୍ୟା ବିଶିଷ୍ଟ ଏକ PIN ଟାଇପ୍ କରନ୍ତୁ।"</string>
+    <string name="invalidPuk" msgid="2727206050762528857">"ଏକ PUK ଟାଇପ୍ କରନ୍ତୁ, ଯାହାକି 8 ସଂଖ୍ୟା ବିଶିଷ୍ଟ କିମ୍ୱା ତା’ଠାରୁ ଅଧିକ ହୋଇଥିବ।"</string>
+    <string name="needPuk" msgid="693504928134817411">"ଆପଣଙ୍କ SIM କାର୍ଡ PUK ଲକ୍ ଅଛି। ଏହାକୁ ଅନଲକ୍‍ କରିବାକୁ PUK କୋଡ୍‌ ଟାଇପ୍ କରନ୍ତୁ।"</string>
+    <string name="needPuk2" msgid="5035072767055250931">"SIM କାର୍ଡରୁ ଅବରୋଧ ହଟାଇବା ପାଇଁ PUK2 ଟାଇପ୍ କରନ୍ତୁ।"</string>
+    <string name="enablePin" msgid="5174710017479719448">"ସଫଳ ହେଲାନାହିଁ, SIM/RUIM ଲକ୍‍ କରନ୍ତୁ।"</string>
+    <plurals name="pinpuk_attempts" formatted="false" msgid="2864291796009169366">
+      <item quantity="other">ଆଉ <xliff:g id="NUMBER_1">%d</xliff:g>ଟି ପ୍ରୟାସ ପରେ SIM ଲକ୍‍ ହୋଇଯିବ।</item>
+      <item quantity="one">ଆଉ <xliff:g id="NUMBER_0">%d</xliff:g>ଟି ପ୍ରୟାସ ପରେ SIM ଲକ୍‍ ହୋଇଯିବ।</item>
+    </plurals>
+    <string name="imei" msgid="6257982312415273699">"IMEI"</string>
+    <string name="meid" msgid="6944938460891725240">"MEID"</string>
+    <string name="ClipMmi" msgid="5267319943079051994">"ଇନକମିଙ୍ଗ କଲର୍ ଆଇଡି"</string>
+    <string name="ClirMmi" msgid="5625289194685937628">"ଆଉଟଗୋଇଙ୍ଗ୍ କଲର୍ ଆଇଡି"</string>
+    <string name="ColpMmi" msgid="6327360747989933494">"ସଂଯୁକ୍ତ ଲାଇନ୍ ID"</string>
+    <string name="ColrMmi" msgid="3477018035826436657">"ସଂଯୁକ୍ତ ଲାଇନ୍ ID କଟକଣା"</string>
+    <string name="CfMmi" msgid="3349849406819913908">"କଲ୍‌ ଫରୱାର୍ଡିଙ୍ଗ"</string>
+    <string name="CwMmi" msgid="3370271108272827156">"କଲ୍‌ ଅପେକ୍ଷାରତ"</string>
+    <string name="BaMmi" msgid="8506416352216411504">"କଲ୍‌ ବ୍ୟାରିଙ୍ଗ୍"</string>
+    <string name="PwdMmi" msgid="5655236897721579115">"ପାସ୍‌ୱର୍ଡ ପରିବର୍ତ୍ତନ"</string>
+    <string name="PinMmi" msgid="7946074122258344572">"PIN ପରିବର୍ତ୍ତନ"</string>
+    <string name="CnipMmi" msgid="559873089884095557">"କଲିଙ୍ଗ ନମ୍ୱର୍‌ ଉପସ୍ଥିତ"</string>
+    <string name="CnirMmi" msgid="7399373758195512797">"କଲିଙ୍ଗ ନମ୍ବର୍‌ ପ୍ରତିବନ୍ଧିତ"</string>
+    <string name="ThreeWCMmi" msgid="523390035341026064">"ତିନି ପ୍ରକାରରେ କଲିଙ୍ଗ"</string>
+    <string name="RuacMmi" msgid="3703904994630793745">"ଅବାଞ୍ଛିତ ଅଜଣା କଲ୍‌ଗୁଡ଼ିକର ପ୍ରତ୍ୟାଖ୍ୟାନ"</string>
+    <string name="CndMmi" msgid="3646838188766092527">"କଲିଙ୍ଗ ନମ୍ବର୍ ଡେଲିଭରୀ"</string>
+    <string name="DndMmi" msgid="5146793519701587893">"ବିରକ୍ତ କରନ୍ତୁ ନାହିଁ"</string>
+    <string name="CLIRDefaultOnNextCallOn" msgid="3331479151042589343">"କଲର୍ ଆଇଡି ଡିଫଲ୍ଟ ଭାବରେ ପ୍ରତିବନ୍ଧିତ। ପରବର୍ତ୍ତୀ କଲ୍: ପ୍ରତିବନ୍ଧିତ"</string>
+    <string name="CLIRDefaultOnNextCallOff" msgid="2388033443641772150">"କଲର୍ ଆଇଡି ଡିଫଲ୍ଟ ଭାବରେ ପ୍ରତିବନ୍ଧିତ। ପରବର୍ତ୍ତୀ କଲ୍: ପ୍ରତିବନ୍ଧିତ ନୁହେଁ"</string>
+    <string name="CLIRDefaultOffNextCallOn" msgid="3445728068458228238">"କଲର୍ ଆଇଡି ଡିଫଲ୍ଟ ଭାବରେ ପ୍ରତିବନ୍ଧିତ ନୁହେଁ। ପରବର୍ତ୍ତୀ କଲ୍: ପ୍ରତିବନ୍ଧିତ"</string>
+    <string name="CLIRDefaultOffNextCallOff" msgid="2706215451323007610">"କଲର୍ ଆଇଡି ଡିଫଲ୍ଟ ଭାବରେ ପ୍ରତିବନ୍ଧିତ ନୁହେଁ। ପରବର୍ତ୍ତୀ କଲ୍: ପ୍ରତିବନ୍ଧିତ ନୁହେଁ"</string>
+    <string name="serviceNotProvisioned" msgid="1437446754190604913">"ସେବାର ସୁବିଧା ନାହିଁ।"</string>
+    <string name="CLIRPermanent" msgid="7191633320241443489">"ଆପଣ କଲର୍‍ ID ସେଟିଙ୍ଗ ବଦଳାଇପାରିବେ ନାହିଁ।"</string>
+    <string name="RestrictedOnDataTitle" msgid="7614146974080993425">"କୌଣସି ମୋବାଇଲ୍ ଡାଟା ସେବା ନାହିଁ"</string>
+    <string name="RestrictedOnEmergencyTitle" msgid="6362614006432906742">"ଜରୁରୀକାଳୀନ କଲ୍ ଉପଲବ୍ଧ ନାହିଁ"</string>
+    <string name="RestrictedOnNormalTitle" msgid="8333715893690298268">"କୌଣସି ଭଏସ୍‍ ସେବା ନାହିଁ"</string>
+    <string name="RestrictedOnAllVoiceTitle" msgid="4257192094649867888">"କୌଣସି ଭଏସ୍ ସେବା କିମ୍ବା ଜରୁରୀକାଳୀନ କଲିଙ୍ଗ ନାହିଁ"</string>
+    <string name="RestrictedStateContent" msgid="3868407917799281990">"ଆପଣଙ୍କ କେରିଅର୍‌ଙ୍କ ଦ୍ୱାରା ଅସ୍ଥାୟୀ ରୂପେ ବନ୍ଦ କରାଯାଇଛି"</string>
+    <string name="RestrictedStateContentMsimTemplate" msgid="2051960554177939848">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g> ପାଇଁ ଆପଣଙ୍କ କେରିଅର୍ ଦ୍ୱାରା ଅସ୍ଥାୟୀ ରୂପେ ବନ୍ଦ କରାଯାଇଛି"</string>
+    <string name="NetworkPreferenceSwitchTitle" msgid="6054662454014426745">"ମୋବାଇଲ୍‌ ନେଟ୍‌ୱର୍କ ମିଳୁନାହିଁ"</string>
+    <string name="NetworkPreferenceSwitchSummary" msgid="3472910253614375814">"ନିଜ ପସନ୍ଦର ନେଟ୍‌ୱର୍କକୁ ଯିବାପାଇଁ ଚେଷ୍ଟା କରନ୍ତୁ। ବଦଳାଇବା ପାଇଁ ଟାପ୍ କରନ୍ତୁ।"</string>
+    <string name="EmergencyCallWarningTitle" msgid="1185401427444792730">"ଜରୁରୀକାଳୀନ କଲ୍ ଉପଲବ୍ଧ ନାହିଁ"</string>
+    <string name="EmergencyCallWarningSummary" msgid="1489064916947930937">"ୱାଇ-ଫାଇ ସାହାଯ୍ୟରେ ଜରୁରୀକାଳୀନ କଲ୍ କରାଯାଇପାରିବ ନାହିଁ"</string>
+    <string name="notification_channel_network_alert" msgid="4751167011159186116">"ଆଲର୍ଟ"</string>
+    <string name="notification_channel_call_forward" msgid="1148988165387665548">"କଲ୍‌ ଫରୱାର୍ଡିଙ୍ଗ"</string>
+    <string name="notification_channel_emergency_callback" msgid="6878487391709930971">"ଜରୁରୀକାଳୀନ କଲବ୍ୟାକ୍‍ ମୋଡ୍‍"</string>
+    <string name="notification_channel_mobile_data_status" msgid="7174756351195977201">"ମୋବାଇଲ୍‍ ଡାଟା ଷ୍ଟାଟସ୍‌"</string>
+    <string name="notification_channel_sms" msgid="4945609907300955711">"SMS ମେସେଜ୍‌"</string>
+    <string name="notification_channel_voice_mail" msgid="5344908172205315833">"ଭଏସମେଲ୍‍ ମେସେଜ୍‍"</string>
+    <string name="notification_channel_wfc" msgid="929525864779742908">"ୱାଇ-ଫାଇ କଲିଙ୍ଗ"</string>
+    <string name="notification_channel_sim" msgid="1588401714118628515">"SIM ଷ୍ଟାଟସ୍"</string>
+    <string name="notification_channel_sim_high_prio" msgid="1290323767457025076">"ଉଚ୍ଚ ପ୍ରାଥମିକତା SIM ସ୍ଥିତି"</string>
+    <string name="peerTtyModeFull" msgid="2630344080574439013">"ପୀଆର୍‌ ଅନୁରୋଧ କରିଥିବା TTY ମୋଡ୍‍ FULL ଅଟେ"</string>
+    <string name="peerTtyModeHco" msgid="519607068232438175">"ପୀଅର୍‌ ଅନୁରୋଧ କରିଥିବା TTY ମୋଡ୍‍ HCO ଅଟେ"</string>
+    <string name="peerTtyModeVco" msgid="362613461160305374">"ପୀଅର୍‌ ଅନୁରୋଧ କରିଥିବା TTY ମୋଡ୍‍ VCO ଅଟେ"</string>
+    <string name="peerTtyModeOff" msgid="6524511110244204423">"ପୀଅର୍‌ ଅନୁରୋଧ କରିଥିବା TTY ମୋଡ୍‍ OFF ଅଛି"</string>
+    <string name="serviceClassVoice" msgid="5295300507464543289">"ଭଏସ୍"</string>
+    <string name="serviceClassData" msgid="8152458944689350760">"ଡାଟା"</string>
+    <string name="serviceClassFAX" msgid="1729860400781144327">"ଫାକ୍ସ"</string>
+    <string name="serviceClassSMS" msgid="7770300042268931806">"SMS"</string>
+    <string name="serviceClassDataAsync" msgid="1745961563014313779">"ଏସିଙ୍କ୍"</string>
+    <string name="serviceClassDataSync" msgid="1259617733005203622">"ସିଙ୍କ୍"</string>
+    <string name="serviceClassPacket" msgid="7686414075485232705">"ପ୍ୟାକେଟ୍"</string>
+    <string name="serviceClassPAD" msgid="7639293369899923082">"PAD"</string>
+    <string name="roamingText0" msgid="3318257203209872590">"ରୋମିଙ୍ଗ ସୂଚକ ଅନ୍ ଅଛି"</string>
+    <string name="roamingText1" msgid="7217313047635882754">"ରୋମିଙ୍ଗ ସୂଚକ ଅଫ୍ ଅଛି"</string>
+    <string name="roamingText2" msgid="6212557644292539155">"ରୋମିଙ୍ଗ ସୂଚକ ଧପ୍‍ ଧପ୍‍ ହେଉଛି"</string>
+    <string name="roamingText3" msgid="3467855797361668131">"ନିକଟସ୍ଥ ଅଞ୍ଚଳ ବାହାରେ"</string>
+    <string name="roamingText4" msgid="4287600402320474977">"ବିଲଡିଙ୍ଗ ବାହାରେ"</string>
+    <string name="roamingText5" msgid="8947828970147948538">"ରୋମିଙ୍ଗ - ପସନ୍ଦର ସିଷ୍ଟମ୍"</string>
+    <string name="roamingText6" msgid="2487318096255702808">"ରୋମିଙ୍ଗ - ଉପଲବ୍ଧ ସେବା"</string>
+    <string name="roamingText7" msgid="299395641289770039">"ରୋମିଙ୍ଗ - ଆଲାୟାନ୍ସ ପାର୍ଟନର୍‍"</string>
+    <string name="roamingText8" msgid="3646137140623760567">"ରୋମିଙ୍ଗ - ପ୍ରିମିୟମ୍ ପାର୍ଟନର୍"</string>
+    <string name="roamingText9" msgid="5722409013790063497">"ରୋମିଙ୍ଗ - ସମ୍ପୂର୍ଣ୍ଣ ସେବା କାର୍ଯ୍ୟକ୍ଷମତା"</string>
+    <string name="roamingText10" msgid="5267593644689617088">"ରୋମିଙ୍ଗ - ଆଂଶିକ ସେବା କାର୍ଯ୍ୟକ୍ଷମତା"</string>
+    <string name="roamingText11" msgid="1326295496863599275">"ରୋମିଙ୍ଗ ବ୍ୟାନର୍ ଅନ୍ ଅଛି"</string>
+    <string name="roamingText12" msgid="6969936398908875373">"ରୋମିଙ୍ଗ ବ୍ୟାନର୍ ଅଫ୍ ଅଛି"</string>
+    <string name="roamingTextSearching" msgid="3205637826170280377">"ସେବା ଖୋଜାଯାଉଛି"</string>
+    <string name="wfcRegErrorTitle" msgid="3587221580356886653">"ୱାଇ-ଫାଇ କଲିଙ୍ଗ ସେଟ୍ ଅପ୍ ହେବନାହିଁ"</string>
+  <string-array name="wfcOperatorErrorAlertMessages">
+    <item msgid="3437343175656751382">"ୱାଇ-ଫାଇରେ କଲ୍‍ କରିବାକୁ ଏବଂ ମେସେଜ୍‍ ପଠାଇବା ପାଇଁ, ଏହି ସେବା ସେଟଅପ୍‍ କରିବାକୁ ପ୍ରଥମେ ଆପଣଙ୍କ କେରିଅର୍‌କୁ କୁହନ୍ତୁ। ତା’ପରେ ସେଟିଙ୍ଗରେ ୱାଇ-ଫାଇ କଲିଙ୍ଗ ଅନ୍‍ କରନ୍ତୁ। (ତ୍ରୁଟି କୋଡ୍‍ <xliff:g id="CODE">%1$s</xliff:g>)"</item>
+  </string-array>
+  <string-array name="wfcOperatorErrorNotificationMessages">
+    <item msgid="8422463738705478408">"ଆପଣଙ୍କ କେରିଅର୍ ସହିତ ୱାଇ-ଫାଇ କଲ୍ କରିବା ପାଇଁ ପଞ୍ଜୀକରଣ କରିବାରେ ସମସ୍ୟା: <xliff:g id="CODE">%1$s</xliff:g>"</item>
+  </string-array>
+    <!-- no translation found for wfcSpnFormat_spn (2935593237090890712) -->
+    <skip />
+    <string name="wfcSpnFormat_spn_wifi_calling" msgid="4866611519785304639">"<xliff:g id="SPN">%s</xliff:g> ୱାଇ-ଫାଇ କଲିଂ"</string>
+    <string name="wfcSpnFormat_spn_wifi_calling_vo_hyphen" msgid="3228085116169384334">"<xliff:g id="SPN">%s</xliff:g> ୱାଇଫାଇ କଲିଂ"</string>
+    <string name="wfcSpnFormat_wlan_call" msgid="4418107841035615881">"WLAN କଲ୍‍"</string>
+    <string name="wfcSpnFormat_spn_wlan_call" msgid="1158376504699481352">"<xliff:g id="SPN">%s</xliff:g> WLAN କଲ୍‍"</string>
+    <string name="wfcSpnFormat_spn_wifi" msgid="8193290615697360557">"<xliff:g id="SPN">%s</xliff:g> ୱାଇ-ଫାଇ"</string>
+    <string name="wfcSpnFormat_wifi_calling_bar_spn" msgid="6724375326528125344">"ୱାଇଫାଇ କଲିଂ | <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_vowifi" msgid="7439751417720932625">"<xliff:g id="SPN">%s</xliff:g> VoWifi"</string>
+    <string name="wfcSpnFormat_wifi_calling" msgid="7955587787276301602">"ୱାଇ-ଫାଇ କଲିଂ"</string>
+    <string name="wfcSpnFormat_wifi" msgid="2175344691206928824">"ୱାଇ-ଫାଇ"</string>
+    <string name="wfcSpnFormat_wifi_calling_wo_hyphen" msgid="532288921741719455">"ୱାଇଫାଇ କଲିଂ"</string>
+    <string name="wfcSpnFormat_vowifi" msgid="335037103096054056">"VoWifi"</string>
+    <string name="cfTemplateNotForwarded" msgid="8812005909511089993">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: ଫରୱାର୍ଡ କରାଯାଇନାହିଁ"</string>
+    <string name="cfTemplateForwarded" msgid="3302157589484961637">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g>"</string>
+    <string name="cfTemplateForwardedTime" msgid="5654128800182665435">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g> <xliff:g id="TIME_DELAY">{2}</xliff:g> ସେକେଣ୍ଡ ପରେ"</string>
+    <string name="cfTemplateRegistered" msgid="3782802180266767430">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: ଫରୱାର୍ଡ କରାଯାଇନାହିଁ"</string>
+    <string name="cfTemplateRegisteredTime" msgid="2033084400423273904">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: ଫର୍‌ୱର୍ଡ କରାଗଲା ନାହିଁ"</string>
+    <string name="sms_control_title" msgid="5897819774814118232">"SMS ମେସେଜ୍‌ଗୁଡ଼ିକୁ ପଠାଯାଉଛି"</string>
+    <string name="sms_control_message" msgid="99804090463203747">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; ବହୁତ ସଂଖ୍ୟାର SMS ମେସେଜ୍‍ ପଠାଉଛି। ଏହି ଆପ୍‍ ମେସେଜ୍‍ ପଠାଇବା ଜାରି ରଖିବାକୁ ଆପଣ ଅନୁମତି ଦେବେ କି?"</string>
+    <string name="sms_control_yes" msgid="3285333055962335001">"ଅନୁମତି ଦିଅନ୍ତୁ"</string>
+    <string name="sms_control_no" msgid="4657312407697761088">"ପ୍ରତ୍ୟାଖ୍ୟାନ"</string>
+    <string name="sms_short_code_confirm_message" msgid="2463657668141495030">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; &lt;b&gt;<xliff:g id="DEST_ADDRESS">%2$s</xliff:g>&lt;/b&gt;କୁ ଏକ ମେସେଜ୍‍ ପଠାଇବାକୁ ଚାହେଁ।"</string>
+    <string name="sms_short_code_details" msgid="2159169204813483744">"ଏହା ଦ୍ୱାରା "<b>" ଆପଣଙ୍କ ମୋବାଇଲ୍ ଆକାଉଣ୍ଟରୁ ପଇସା କଟିପାରେ। "</b></string>
+    <string name="sms_premium_short_code_details" msgid="475271565092315329"><b>" ଆପଣଙ୍କ ମୋବାଇଲ୍ ଆକାଉଣ୍ଟରୁ ପଇସା କଟିପାରେ। "</b></string>
+    <string name="sms_short_code_confirm_allow" msgid="6587513384670537791">"ପଠାନ୍ତୁ"</string>
+    <string name="sms_short_code_confirm_deny" msgid="2001576474856656532">"କ୍ୟାନ୍ସଲ୍‍ କରନ୍ତୁ"</string>
+    <string name="sms_short_code_remember_choice" msgid="5963037270314122374">"ମୋ ପସନ୍ଦ ମନେରଖନ୍ତୁ"</string>
+    <string name="sms_short_code_remember_undo_instruction" msgid="4542904223183282400">"ଏହାକୁ ଆପଣ ସେଟିଙ୍ଗ ଓ ଆପ୍‍ରେ ପରବର୍ତ୍ତୀ ସମୟରେ ବଦଳାଇପାରିବେ"</string>
+    <string name="sms_short_code_confirm_always_allow" msgid="466738082610201835">"ସର୍ବଦା ଅନୁମତି ଦିଅନ୍ତୁ"</string>
+    <string name="sms_short_code_confirm_never_allow" msgid="8061393668017829115">"ଆଦୌ ଅନୁମତି ଦିଅନ୍ତୁ ନାହିଁ"</string>
+    <string name="sim_removed_title" msgid="5820647305002998615">"SIM କାର୍ଡ ବାହାର କରିଦିଆଯାଇଛି"</string>
+    <string name="sim_removed_message" msgid="3964522736649761378">"ଯେପର୍ଯ୍ୟନ୍ତ ଆପଣ କୌଣସି ବୈଧ SIM କାର୍ଡ ବ୍ୟବହାର କରି ରିଷ୍ଟାଟ୍ କରିନାହାନ୍ତି, ସେପର୍ଯ୍ୟନ୍ତ କୌଣସି ମୋବାଇଲ୍ ନେଟୱର୍କ ଉପଲବ୍ଧ ହେବନାହିଁ।"</string>
+    <string name="sim_done_button" msgid="2300674042108475811">"ହୋଇଗଲା"</string>
+    <string name="sim_added_title" msgid="1037725879564044972">"SIM କାର୍ଡ ଯୋଡ଼ାଯାଇଛି"</string>
+    <string name="sim_added_message" msgid="8461331105822964497">"ମୋବାଇଲ୍‍ ନେଟ୍‍ୱର୍କ ଆକ୍ସେସ୍‌ କରିବା ପାଇଁ ଆପଣଙ୍କ ଡିଭାଇସ୍‍କୁ ରିଷ୍ଟାର୍ଟ କରନ୍ତୁ"</string>
+    <string name="sim_restart_button" msgid="4132234640091195133">"ରିଷ୍ଟାର୍ଟ କରନ୍ତୁ"</string>
+    <string name="install_carrier_app_notification_title" msgid="7891599802720696038">"ମୋବାଇଲ୍ ସେବା ସକ୍ରିୟ କରନ୍ତୁ"</string>
+    <string name="install_carrier_app_notification_text" msgid="4021057891030846342">"ଆପଣଙ୍କର ନୂତନ SIMକୁ ସକ୍ରିୟ କରିବା ପାଇଁ କ୍ୟାରିଅର୍‌ ଆପ୍‌କୁ ଡାଉନଲୋଡ୍ କରନ୍ତୁ"</string>
+    <string name="install_carrier_app_notification_text_app_name" msgid="3261523141748490253">"ଆପଣଙ୍କର ନୂତନ SIMକୁ ସକ୍ରିୟ କରିବା ପାଇଁ <xliff:g id="APP_NAME">%1$s</xliff:g> ଆପ୍‌କୁ ଡାଉନଲୋଡ୍ କରନ୍ତୁ"</string>
+    <string name="install_carrier_app_notification_button" msgid="4651966240023969914">"ଆପ୍‌ ଡାଉନଲୋଡ୍‌ କରନ୍ତୁ"</string>
+    <string name="carrier_app_notification_title" msgid="444898173986612616">"ନୂଆ SIM କାର୍ଡ ଭର୍ତ୍ତି କରାଗଲା"</string>
+    <string name="carrier_app_notification_text" msgid="687265847426143857">"ଏହା ସେଟଅପ୍‌ କରିବା ପାଇଁ ଟାପ୍‌ କରନ୍ତୁ"</string>
+    <string name="sending" msgid="7816699175586805545">"ପଠାଯାଉଛି…"</string>
+    <string name="launchBrowserDefault" msgid="629052799233260209">"ବ୍ରାଉଜର୍‍ ଲଞ୍ଚ କରିବେ?"</string>
+    <string name="SetupCallDefault" msgid="580230871789150298">"କଲ୍‍ ସ୍ୱୀକାର କରିବେ?"</string>
+    <string name="stk_cc_ussd_to_dial" msgid="5824331516164546925">"USSD ଅନୁରୋଧ, ସ୍ଵାଭାବିକ କଲ୍‌ରେ ପରିବର୍ତ୍ତନ ହେଲା"</string>
+    <string name="stk_cc_ussd_to_ss" msgid="564791643843260238">"USSD ଅନୁରୋଧ, SS ଅନୁରୋଧକୁ ପରିବର୍ତ୍ତନ ହେଲା"</string>
+    <string name="stk_cc_ussd_to_ussd" msgid="5381138585419310854">"ନୂତନ USSD ଅନୁରୋଧରେ ପରିବର୍ତ୍ତନ ହେଲା"</string>
+    <string name="stk_cc_ussd_to_dial_video" msgid="4049392049695423603">"USSD ଅନୁରୋଧ, ଭିଡିଓ କଲ୍‌ରେ ପରିବର୍ତ୍ତନ ହେଲା"</string>
+    <string name="stk_cc_ss_to_dial" msgid="1591266989491372460">"SSଙ୍କ ଅନୁରୋଧକୁ ସ୍ଵାଭାବିକ କଲ୍‌ରେ ପରିବର୍ତ୍ତନ କରାଗଲା"</string>
+    <string name="stk_cc_ss_to_dial_video" msgid="4865582630524330327">"SSଙ୍କ ଅନୁରୋଧକୁ ଭିଡିଓ କଲ୍‌ରେ ପରିବର୍ତ୍ତନ କରାଗଲା"</string>
+    <string name="stk_cc_ss_to_ussd" msgid="1701283146883688457">"SS ଅନୁରୋଧ, USSD ଅନୁରୋଧକୁ ପରିବର୍ତ୍ତନ ହେଲା"</string>
+    <string name="stk_cc_ss_to_ss" msgid="700436393026079703">"ନୂତନ SS ଅନୁରୋଧରେ ପରିବର୍ତ୍ତନ ହେଲା"</string>
+    <string name="new_sms_notification_title" msgid="1923364920610861253">"ଆପଣଙ୍କ ପାଖରେ ନୂଆ ମେସେଜ୍‍ ରହିଛି"</string>
+    <string name="new_sms_notification_content" msgid="4567509229027865439">"ଦେଖିବା ପାଇଁ SMS ଆପ୍‍ ଖୋଲନ୍ତୁ"</string>
+    <string name="conference_call" msgid="2990940131095267161">"କନ୍‌ଫରେନ୍ସ କଲ୍‍"</string>
+    <string name="mmcc_authentication_reject" msgid="6879477386490076573">"SIM କାର୍ଡକୁ ଭଏସ୍‍ ପାଇଁ ଅନୁମତି ଦିଆଯାଇନାହିଁ"</string>
+    <string name="mmcc_imsi_unknown_in_hlr" msgid="2128934740544236008">"SIM କାର୍ଡକୁ ଭଏସ୍‍ ପାଇଁ ପ୍ରସ୍ତୁତ କରାଯାଇନାହିଁ"</string>
+    <string name="mmcc_illegal_ms" msgid="5768447181347094072">"SIM କାର୍ଡକୁ ଭଏସ୍‍ ପାଇଁ ଅନୁମତି ଦିଆଯାଇନାହିଁ"</string>
+    <string name="mmcc_illegal_me" msgid="8474688631960877778">"ଫୋନକୁ ଭଏସ୍‍ ପାଇଁ ଅନୁମତି ଦିଆଯାଇନାହିଁ"</string>
+    <string name="mmcc_authentication_reject_msim_template" msgid="1991661944094476731">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g>ର ଅନୁମତି ନାହିଁ"</string>
+    <string name="mmcc_imsi_unknown_in_hlr_msim_template" msgid="2027905617631765926">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g>ର ପ୍ରାବଧାନ ନାହିଁ"</string>
+    <string name="mmcc_illegal_ms_msim_template" msgid="2869965218803005104">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g>ର ଅନୁମତି ନାହିଁ"</string>
+    <string name="mmcc_illegal_me_msim_template" msgid="1771419560981767126">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g>ର ଅନୁମତି ନାହିଁ"</string>
+    <string name="emergency_calls_only" msgid="1560650709188829753">"କେବଳ ଜରୁରୀକାଳୀନ କଲ୍‌"</string>
+    <string name="lockscreen_carrier_default" msgid="6030870681121260513">"କୌଣସି ସେବା ନାହିଁ"</string>
+    <string name="media_route_status_connecting" msgid="1891672781795004704">"ସଂଯୋଗ କରୁଛି..."</string>
+    <string name="wifi_calling_off_summary" msgid="7353426836733632728">"ଅଫ୍"</string>
+    <string name="wfc_mode_wifi_preferred_summary" msgid="7882558771712672887">"ୱାଇ-ଫାଇ ମାଧ୍ୟମରେ କଲ୍ କରନ୍ତୁ"</string>
+    <string name="wfc_mode_cellular_preferred_summary" msgid="114508946793873122">"ମୋବାଇଲ ନେଟ୍‌ୱର୍କ ମାଧ୍ୟମରେ କଲ୍ କରନ୍ତୁ"</string>
+    <string name="wfc_mode_wifi_only_summary" msgid="1717037324991030568">"କେବଳ ୱାଇ-ଫାଇ"</string>
+    <string name="kg_text_message_separator" product="default" msgid="4334398812288993504">" — "</string>
+</resources>
