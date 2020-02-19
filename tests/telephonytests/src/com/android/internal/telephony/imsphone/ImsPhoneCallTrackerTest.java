@@ -20,6 +20,7 @@ import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
@@ -40,6 +41,7 @@ import static org.mockito.Mockito.when;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.netstats.provider.NetworkStatsProviderCallback;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -104,6 +106,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsConfig mImsConfig;
     @Mock
     private ImsPhoneConnection mImsPhoneConnection;
+    @Mock
+    private NetworkStatsProviderCallback mVtDataUsageProviderCb;
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -196,7 +200,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 mSecondImsCall.setListener(mImsCallListener);
                 return mSecondImsCall;
             }
-        }).when(mImsManager).makeCall(eq(mImsCallProfile), (String []) any(),
+        }).when(mImsManager).makeCall(eq(mImsCallProfile), (String[]) any(),
                 (ImsCall.Listener) any());
 
         doAnswer(invocation -> {
@@ -208,6 +212,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doReturn(mImsConfig).when(mImsManager).getConfigInterface();
 
         doNothing().when(mImsManager).addNotifyStatusChangedCallbackIfAvailable(any());
+
+        doReturn(mVtDataUsageProviderCb).when(mStatsManager).registerNetworkStatsProvider(
+                anyString(), any());
 
         mCTUT = new ImsPhoneCallTracker(mImsPhone, Runnable::run);
         mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
