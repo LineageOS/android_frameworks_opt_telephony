@@ -18,7 +18,6 @@ package com.android.internal.telephony.uicc;
 
 import android.annotation.IntDef;
 import android.annotation.Nullable;
-import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -79,35 +78,26 @@ public abstract class IccRecords extends Handler implements IccConstants {
     };
 
     // ***** Instance Variables
-    @UnsupportedAppUsage
     protected AtomicBoolean mDestroyed = new AtomicBoolean(false);
     protected AtomicBoolean mLoaded = new AtomicBoolean(false);
-    @UnsupportedAppUsage
     protected Context mContext;
-    @UnsupportedAppUsage
     protected CommandsInterface mCi;
-    @UnsupportedAppUsage
     protected IccFileHandler mFh;
-    @UnsupportedAppUsage
     protected UiccCardApplication mParentApp;
-    @UnsupportedAppUsage
     protected TelephonyManager mTelephonyManager;
 
     protected RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mLockedRecordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mNetworkLockedRecordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mImsiReadyRegistrants = new RegistrantList();
-    @UnsupportedAppUsage
     protected RegistrantList mRecordsEventsRegistrants = new RegistrantList();
     protected RegistrantList mNewSmsRegistrants = new RegistrantList();
     protected RegistrantList mNetworkSelectionModeAutomaticRegistrants = new RegistrantList();
     protected RegistrantList mSpnUpdatedRegistrants = new RegistrantList();
     protected RegistrantList mRecordsOverrideRegistrants = new RegistrantList();
 
-    @UnsupportedAppUsage
     protected int mRecordsToLoad;  // number of pending load requests
 
-    @UnsupportedAppUsage
     protected AdnRecordCache mAdnCache;
 
     // ***** Cached SIM State; cleared on channel close
@@ -122,7 +112,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
     protected int mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
 
-    @UnsupportedAppUsage
     protected String mIccId;  // Includes only decimals (no hex)
 
     protected String mFullIccId;  // Includes hex characters in ICCID
@@ -130,26 +119,20 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mMsisdnTag = null;
     protected String mNewMsisdn = null;
     protected String mNewMsisdnTag = null;
-    @UnsupportedAppUsage
     protected String mVoiceMailNum = null;
     protected String mVoiceMailTag = null;
     protected String mNewVoiceMailNum = null;
     protected String mNewVoiceMailTag = null;
-    @UnsupportedAppUsage
     protected boolean mIsVoiceMailFixed = false;
-    @UnsupportedAppUsage
     protected String mImsi; // IMSI must be only valid numeric characters 0-9 without padding 'f's
 
-    @UnsupportedAppUsage
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
 
     protected int mSmsCountOnIcc = 0;
 
-    @UnsupportedAppUsage
     private String mSpn;
 
-    @UnsupportedAppUsage
     protected String mGid1;
     protected String mGid2;
 
@@ -395,7 +378,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * hex digits.
      * @return ICC ID without hex digits
      */
-    @UnsupportedAppUsage
     public String getIccId() {
         if (mCarrierTestOverride.isInTestMode()) {
             String fakeIccId = mCarrierTestOverride.getFakeIccid();
@@ -414,7 +396,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return mFullIccId;
     }
 
-    @UnsupportedAppUsage
     public void registerForRecordsLoaded(Handler h, int what, Object obj) {
         if (mDestroyed.get()) {
             return;
@@ -427,7 +408,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
-    @UnsupportedAppUsage
+
     public void unregisterForRecordsLoaded(Handler h) {
         mRecordsLoadedRegistrants.remove(h);
     }
@@ -527,7 +508,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mSpnUpdatedRegistrants.remove(h);
     }
 
-    @UnsupportedAppUsage
     public void registerForRecordsEvents(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mRecordsEventsRegistrants.add(r);
@@ -537,28 +517,25 @@ public abstract class IccRecords extends Handler implements IccConstants {
         r.notifyResult(EVENT_MWI);
         r.notifyResult(EVENT_CFI);
     }
-    @UnsupportedAppUsage
+
     public void unregisterForRecordsEvents(Handler h) {
         mRecordsEventsRegistrants.remove(h);
     }
 
-    @UnsupportedAppUsage
     public void registerForNewSms(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mNewSmsRegistrants.add(r);
     }
-    @UnsupportedAppUsage
+
     public void unregisterForNewSms(Handler h) {
         mNewSmsRegistrants.remove(h);
     }
 
-    @UnsupportedAppUsage
     public void registerForNetworkSelectionModeAutomatic(
             Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mNetworkSelectionModeAutomaticRegistrants.add(r);
     }
-    @UnsupportedAppUsage
     public void unregisterForNetworkSelectionModeAutomatic(Handler h) {
         mNetworkSelectionModeAutomaticRegistrants.remove(h);
     }
@@ -570,7 +547,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      *
      * @return null if SIM is not yet ready or unavailable
      */
-    @UnsupportedAppUsage
     public String getIMSI() {
         if (mCarrierTestOverride.isInTestMode()) {
             String fakeImsi = mCarrierTestOverride.getFakeIMSI();
@@ -667,7 +643,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return null;
     }
 
-    @UnsupportedAppUsage
     public String getMsisdnNumber() {
         return mMsisdn;
     }
@@ -676,7 +651,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * Get the Group Identifier Level 1 (GID1) on a SIM for GSM.
      * @return null if SIM is not yet ready
      */
-    @UnsupportedAppUsage
     public String getGid1() {
         if (mCarrierTestOverride.isInTestMode()) {
             String fakeGid1 = mCarrierTestOverride.getFakeGid1();
@@ -715,7 +689,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return mPnnHomeName;
     }
 
-    @UnsupportedAppUsage
     public void setMsisdnNumber(String alphaTag, String number,
             Message onComplete) {
         loge("setMsisdn() should not be invoked on base IccRecords");
@@ -738,7 +711,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      *
      * @return null if SIM is not yet ready or no RUIM entry
      */
-    @UnsupportedAppUsage
     public String getServiceProviderName() {
         if (mCarrierTestOverride.isInTestMode()) {
             String fakeSpn = mCarrierTestOverride.getFakeSpn();
@@ -825,7 +797,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public abstract void onRefresh(boolean fileChanged, int[] fileList);
 
-    @UnsupportedAppUsage
     public boolean getRecordsLoaded() {
         return mRecordsToLoad == 0 && mRecordsRequested;
     }
@@ -995,7 +966,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected abstract void handleFileUpdate(int efid);
 
-    @UnsupportedAppUsage
     protected void handleRefresh(IccRefreshResponse refreshResponse){
         if (refreshResponse == null) {
             if (DBG) log("handleRefresh received without input");
@@ -1100,7 +1070,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * or is not valid for the type of IccCard. Generally used for
      * GSM/UMTS and the like SIMS
      */
-    @UnsupportedAppUsage
     public String getOperatorNumeric() {
         return null;
     }
@@ -1121,7 +1090,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @param enable
      * @param number to which CFU is enabled
      */
-    @UnsupportedAppUsage
     public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
     }
 
@@ -1149,7 +1117,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
      *
      * @param s is the string to write
      */
-    @UnsupportedAppUsage
     protected abstract void log(String s);
 
     /**
@@ -1186,7 +1153,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return null;
     }
 
-    @UnsupportedAppUsage
     public UsimServiceTable getUsimServiceTable() {
         return null;
     }
