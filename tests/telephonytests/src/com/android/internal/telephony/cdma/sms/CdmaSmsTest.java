@@ -337,7 +337,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         assertEquals(bearerData.depositIndex, 1382);
         assertEquals(bearerData.userResponseCode, 5);
         assertEquals(bearerData.msgCenterTimeStamp.year, 2008);
-        assertEquals(bearerData.msgCenterTimeStamp.month, 11);
+        assertEquals(bearerData.msgCenterTimeStamp.monthOrdinal, 12);
         assertEquals(bearerData.msgCenterTimeStamp.monthDay, 1);
         assertEquals(bearerData.msgCenterTimeStamp.hour, 11);
         assertEquals(bearerData.msgCenterTimeStamp.minute, 1);
@@ -345,7 +345,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         assertEquals(bearerData.validityPeriodAbsolute, null);
         assertEquals(bearerData.validityPeriodRelative, 193);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.year, 1997);
-        assertEquals(bearerData.deferredDeliveryTimeAbsolute.month, 5);
+        assertEquals(bearerData.deferredDeliveryTimeAbsolute.monthOrdinal, 6);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.monthDay, 18);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.hour, 0);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.minute, 0);
@@ -384,7 +384,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         assertEquals(bearerData.depositIndex, 1382);
         assertEquals(bearerData.userResponseCode, 5);
         assertEquals(bearerData.msgCenterTimeStamp.year, 2008);
-        assertEquals(bearerData.msgCenterTimeStamp.month, 11);
+        assertEquals(bearerData.msgCenterTimeStamp.monthOrdinal, 12);
         assertEquals(bearerData.msgCenterTimeStamp.monthDay, 1);
         assertEquals(bearerData.msgCenterTimeStamp.hour, 11);
         assertEquals(bearerData.msgCenterTimeStamp.minute, 1);
@@ -392,7 +392,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         assertEquals(bearerData.validityPeriodAbsolute, null);
         assertEquals(bearerData.validityPeriodRelative, 61);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.year, 1997);
-        assertEquals(bearerData.deferredDeliveryTimeAbsolute.month, 5);
+        assertEquals(bearerData.deferredDeliveryTimeAbsolute.monthOrdinal, 6);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.monthDay, 18);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.hour, 0);
         assertEquals(bearerData.deferredDeliveryTimeAbsolute.minute, 0);
