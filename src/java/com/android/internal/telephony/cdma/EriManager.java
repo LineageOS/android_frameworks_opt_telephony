@@ -25,7 +25,6 @@ import android.telephony.CarrierConfigManager;
 import android.util.Xml;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.XmlUtils;
 import com.android.telephony.Rlog;
 
@@ -158,12 +157,12 @@ public class EriManager {
     private void loadEriFileFromXml() {
         XmlPullParser parser = null;
         FileInputStream stream = null;
-        Resources r = TelephonyResourceUtils.getTelephonyResources(mContext);
+        Resources r = mContext.getResources();
 
         try {
             if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: check for alternate file");
-            stream = new FileInputStream(r.getString(
-                    com.android.telephony.resources.R.string.alternate_eri_file));
+            stream = new FileInputStream(
+                            r.getString(com.android.internal.R.string.alternate_eri_file));
             parser = Xml.newPullParser();
             parser.setInput(stream, null);
             if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: opened alternate file");
@@ -333,27 +332,21 @@ public class EriManager {
             ret = new EriDisplayInformation(
                     EriInfo.ROAMING_INDICATOR_ON,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText0)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText0).toString());
             break;
 
         case EriInfo.ROAMING_INDICATOR_OFF:
             ret = new EriDisplayInformation(
                     EriInfo.ROAMING_INDICATOR_OFF,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText1)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText1).toString());
             break;
 
         case EriInfo.ROAMING_INDICATOR_FLASH:
             ret = new EriDisplayInformation(
                     EriInfo.ROAMING_INDICATOR_FLASH,
                     EriInfo.ROAMING_ICON_MODE_FLASH,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText2)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText2).toString());
             break;
 
 
@@ -362,90 +355,70 @@ public class EriManager {
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText3)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText3).toString());
             break;
 
         case 4:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText4)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText4).toString());
             break;
 
         case 5:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText5)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText5).toString());
             break;
 
         case 6:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText6)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText6).toString());
             break;
 
         case 7:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText7)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText7).toString());
             break;
 
         case 8:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText8)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText8).toString());
             break;
 
         case 9:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText9)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText9).toString());
             break;
 
         case 10:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText10)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText10).toString());
             break;
 
         case 11:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText11)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText11).toString());
             break;
 
         case 12:
             ret = new EriDisplayInformation(
                     roamInd,
                     EriInfo.ROAMING_ICON_MODE_NORMAL,
-                    TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                            .getText(com.android.telephony.resources.R.string.roamingText12)
-                            .toString());
+                    mContext.getText(com.android.internal.R.string.roamingText12).toString());
             break;
 
         // Handling the non standard Enhanced Roaming Indicator (roamInd > 63)
@@ -458,8 +431,7 @@ public class EriManager {
                     ret = new EriDisplayInformation(
                             EriInfo.ROAMING_INDICATOR_FLASH,
                             EriInfo.ROAMING_ICON_MODE_FLASH,
-                            TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                    .getText(com.android.telephony.resources
+                            mContext.getText(com.android.internal
                                                             .R.string.roamingText2).toString());
                 } else {
                     if (VDBG) Rlog.v(LOG_TAG, "ERI defRoamInd <= 2");
@@ -468,27 +440,24 @@ public class EriManager {
                         ret = new EriDisplayInformation(
                                 EriInfo.ROAMING_INDICATOR_ON,
                                 EriInfo.ROAMING_ICON_MODE_NORMAL,
-                                TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                        .getText(com.android.telephony.resources
-                                                .R.string.roamingText0).toString());
+                                mContext.getText(com.android.internal
+                                                            .R.string.roamingText0).toString());
                         break;
 
                     case EriInfo.ROAMING_INDICATOR_OFF:
                         ret = new EriDisplayInformation(
                                 EriInfo.ROAMING_INDICATOR_OFF,
                                 EriInfo.ROAMING_ICON_MODE_NORMAL,
-                                TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                        .getText(com.android.telephony.resources
-                                                .R.string.roamingText1).toString());
+                                mContext.getText(com.android.internal
+                                                            .R.string.roamingText1).toString());
                         break;
 
                     case EriInfo.ROAMING_INDICATOR_FLASH:
                         ret = new EriDisplayInformation(
                                 EriInfo.ROAMING_INDICATOR_FLASH,
                                 EriInfo.ROAMING_ICON_MODE_FLASH,
-                                TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                        .getText(com.android.telephony.resources
-                                                .R.string.roamingText2).toString());
+                                mContext.getText(com.android.internal
+                                                            .R.string.roamingText2).toString());
                         break;
 
                     default:
@@ -510,9 +479,8 @@ public class EriManager {
                         ret = new EriDisplayInformation(
                                 EriInfo.ROAMING_INDICATOR_ON,
                                 EriInfo.ROAMING_ICON_MODE_NORMAL,
-                                TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                                        .getText(com.android.telephony.resources
-                                                .R.string.roamingText0).toString());
+                                mContext.getText(com.android.internal
+                                                             .R.string.roamingText0).toString());
 
                     } else {
                         if (VDBG) {

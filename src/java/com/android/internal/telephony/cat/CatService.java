@@ -47,7 +47,6 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
@@ -432,8 +431,7 @@ public class CatService extends Handler implements AppInterface {
             case LAUNCH_BROWSER:
                 if ((((LaunchBrowserParams) cmdParams).mConfirmMsg.text != null)
                         && (((LaunchBrowserParams) cmdParams).mConfirmMsg.text.equals(STK_DEFAULT))) {
-                    message = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                            com.android.telephony.resources.R.string.launchBrowserDefault);
+                    message = mContext.getText(com.android.internal.R.string.launchBrowserDefault);
                     ((LaunchBrowserParams) cmdParams).mConfirmMsg.text = message.toString();
                 }
                 break;
@@ -454,8 +452,7 @@ public class CatService extends Handler implements AppInterface {
             case SEND_USSD:
                 if ((((DisplayTextParams)cmdParams).mTextMsg.text != null)
                         && (((DisplayTextParams)cmdParams).mTextMsg.text.equals(STK_DEFAULT))) {
-                    message = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                            com.android.telephony.resources.R.string.sending);
+                    message = mContext.getText(com.android.internal.R.string.sending);
                     ((DisplayTextParams)cmdParams).mTextMsg.text = message.toString();
                 }
                 break;
@@ -464,8 +461,7 @@ public class CatService extends Handler implements AppInterface {
             case SET_UP_CALL:
                 if ((((CallSetupParams) cmdParams).mConfirmMsg.text != null)
                         && (((CallSetupParams) cmdParams).mConfirmMsg.text.equals(STK_DEFAULT))) {
-                    message = TelephonyResourceUtils.getTelephonyResourceContext(mContext).getText(
-                            com.android.telephony.resources.R.string.SetupCallDefault);
+                    message = mContext.getText(com.android.internal.R.string.SetupCallDefault);
                     ((CallSetupParams) cmdParams).mConfirmMsg.text = message.toString();
                 }
                 break;
@@ -493,9 +489,8 @@ public class CatService extends Handler implements AppInterface {
                  */
                 boolean noAlphaUsrCnf = false;
                 try {
-                    noAlphaUsrCnf = TelephonyResourceUtils.getTelephonyResources(mContext)
-                            .getBoolean(
-                                    com.android.telephony.resources.R.bool.config_stkNoAlphaUsrCnf);
+                    noAlphaUsrCnf = mContext.getResources().getBoolean(
+                            com.android.internal.R.bool.config_stkNoAlphaUsrCnf);
                 } catch (NotFoundException e) {
                     noAlphaUsrCnf = false;
                 }

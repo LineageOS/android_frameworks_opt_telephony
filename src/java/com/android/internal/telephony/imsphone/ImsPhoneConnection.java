@@ -49,7 +49,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.util.Objects;
@@ -217,8 +216,8 @@ public class ImsPhoneConnection extends Connection implements
 
         fetchDtmfToneDelay(phone);
 
-        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
-                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }
@@ -257,8 +256,8 @@ public class ImsPhoneConnection extends Connection implements
 
         fetchDtmfToneDelay(phone);
 
-        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
-                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }

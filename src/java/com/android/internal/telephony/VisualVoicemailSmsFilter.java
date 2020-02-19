@@ -32,7 +32,6 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -111,9 +110,8 @@ public class VisualVoicemailSmsFilter {
      * <p>[clientPrefix]:[prefix]:([key]=[value];)*
      *
      * Additionally, if the SMS does not match the format, but matches the regex specified by the
-     * carrier in {@link com.android.telephony.resources.R.array#config_vvmSmsFilterRegexes}, the
-     * SMS will still be dropped and a {@link VoicemailContract#ACTION_VOICEMAIL_SMS_RECEIVED} will
-     * be sent.
+     * carrier in {@link com.android.internal.R.array#config_vvmSmsFilterRegexes}, the SMS will
+     * still be dropped and a {@link VoicemailContract#ACTION_VOICEMAIL_SMS_RECEIVED} will be sent.
      *
      * @return true if the SMS has been parsed to be a visual voicemail SMS and should be dropped
      */
@@ -244,8 +242,8 @@ public class VisualVoicemailSmsFilter {
         }
         sPatterns = new ArrayMap<>();
         // TODO(twyen): build from CarrierConfig once public API can be updated.
-        for (String entry : TelephonyResourceUtils.getTelephonyResources(context).getStringArray(
-                com.android.telephony.resources.R.array.config_vvmSmsFilterRegexes)) {
+        for (String entry : context.getResources()
+                .getStringArray(com.android.internal.R.array.config_vvmSmsFilterRegexes)) {
             String[] mccMncList = entry.split(";")[0].split(",");
             Pattern pattern = Pattern.compile(entry.split(";")[1]);
 

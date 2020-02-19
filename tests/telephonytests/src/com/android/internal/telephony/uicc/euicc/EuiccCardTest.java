@@ -529,7 +529,7 @@ public class EuiccCardTest extends TelephonyTest {
     @Test
     public void testAuthenticateServer() {
         when(mMockResources.getStringArray(
-                com.android.telephony.resources.R.array.config_telephonyEuiccDeviceCapabilities))
+                com.android.internal.R.array.config_telephonyEuiccDeviceCapabilities))
                 .thenReturn(new String[] {});
 
         int channel = mockLogicalChannelResponses("BF3802A0009000");
@@ -555,7 +555,7 @@ public class EuiccCardTest extends TelephonyTest {
     @Test
     public void testAuthenticateServer_Error() {
         when(mMockResources.getStringArray(
-                com.android.telephony.resources.R.array.config_telephonyEuiccDeviceCapabilities))
+                com.android.internal.R.array.config_telephonyEuiccDeviceCapabilities))
                 .thenReturn(new String[] {});
 
         int channel = mockLogicalChannelResponses("BF3805A1030201039000");
@@ -580,7 +580,7 @@ public class EuiccCardTest extends TelephonyTest {
     @Test
     public void testAuthenticateService_devCap() {
         when(mMockResources.getStringArray(
-                com.android.telephony.resources.R.array.config_telephonyEuiccDeviceCapabilities))
+                com.android.internal.R.array.config_telephonyEuiccDeviceCapabilities))
                 .thenReturn(new String[] {
                         "gsm,11",
                         "utran,11",

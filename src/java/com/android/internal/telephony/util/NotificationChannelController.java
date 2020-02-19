@@ -27,7 +27,10 @@ import android.net.Uri;
 import android.provider.Settings;
 import android.telephony.SubscriptionManager;
 
+import com.android.internal.R;
+
 import java.util.Arrays;
+
 
 public class NotificationChannelController {
 
@@ -62,9 +65,7 @@ public class NotificationChannelController {
     private static void createAll(Context context) {
         final NotificationChannel alertChannel = new NotificationChannel(
                 CHANNEL_ID_ALERT,
-                TelephonyResourceUtils.getTelephonyResourceContext(context)
-                        .getText(com.android.telephony.resources.R.string
-                        .notification_channel_network_alert),
+                context.getText(R.string.notification_channel_network_alert),
                 NotificationManager.IMPORTANCE_DEFAULT);
         alertChannel.setSound(Settings.System.DEFAULT_NOTIFICATION_URI,
                 new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
@@ -73,45 +74,34 @@ public class NotificationChannelController {
 
         final NotificationChannel mobileDataStatusChannel = new NotificationChannel(
                 CHANNEL_ID_MOBILE_DATA_STATUS,
-                TelephonyResourceUtils.getTelephonyResourceContext(context)
-                        .getText(com.android.telephony.resources.R.string
-                        .notification_channel_mobile_data_status),
+                context.getText(R.string.notification_channel_mobile_data_status),
                 NotificationManager.IMPORTANCE_LOW);
         // allow users to block notifications from system
         mobileDataStatusChannel.setBlockableSystem(true);
 
         final NotificationChannel simChannel = new NotificationChannel(
                 CHANNEL_ID_SIM,
-                TelephonyResourceUtils.getTelephonyResourceContext(context)
-                        .getText(com.android.telephony.resources.R.string.notification_channel_sim),
+                context.getText(R.string.notification_channel_sim),
                 NotificationManager.IMPORTANCE_LOW
         );
         simChannel.setSound(null, null);
 
         final NotificationChannel callforwardChannel = new NotificationChannel(
                 CHANNEL_ID_CALL_FORWARD,
-                TelephonyResourceUtils.getTelephonyResourceContext(context)
-                        .getText(com.android.telephony.resources.R.string
-                        .notification_channel_call_forward),
+                context.getText(R.string.notification_channel_call_forward),
                 NotificationManager.IMPORTANCE_DEFAULT);
         migrateCallFowardNotificationChannel(context, callforwardChannel);
 
         context.getSystemService(NotificationManager.class)
                 .createNotificationChannels(Arrays.asList(
                 new NotificationChannel(CHANNEL_ID_SMS,
-                        TelephonyResourceUtils.getTelephonyResourceContext(context)
-                                .getText(com.android.telephony.resources.R.string
-                                .notification_channel_sms),
+                        context.getText(R.string.notification_channel_sms),
                         NotificationManager.IMPORTANCE_HIGH),
                 new NotificationChannel(CHANNEL_ID_WFC,
-                        TelephonyResourceUtils.getTelephonyResourceContext(context)
-                                .getText(com.android.telephony.resources.R.string
-                                .notification_channel_wfc),
+                        context.getText(R.string.notification_channel_wfc),
                         NotificationManager.IMPORTANCE_LOW),
                 new NotificationChannel(CHANNEL_ID_SIM_HIGH_PRIORITY,
-                        TelephonyResourceUtils.getTelephonyResourceContext(context)
-                                .getText(com.android.telephony.resources.R.string
-                                .notification_channel_sim_high_prio),
+                        context.getText(R.string.notification_channel_sim_high_prio),
                         NotificationManager.IMPORTANCE_HIGH),
                 alertChannel, mobileDataStatusChannel,
                 simChannel, callforwardChannel));
@@ -157,8 +147,7 @@ public class NotificationChannelController {
     private static void migrateVoicemailNotificationSettings(Context context) {
         final NotificationChannel voiceMailChannel = new NotificationChannel(
                 CHANNEL_ID_VOICE_MAIL,
-                TelephonyResourceUtils.getTelephonyResourceContext(context).getText(
-                        com.android.telephony.resources.R.string.notification_channel_voice_mail),
+                context.getText(R.string.notification_channel_voice_mail),
                 NotificationManager.IMPORTANCE_DEFAULT);
         voiceMailChannel.enableVibration(
                 VoicemailNotificationSettingsUtil.getVibrationPreference(context));

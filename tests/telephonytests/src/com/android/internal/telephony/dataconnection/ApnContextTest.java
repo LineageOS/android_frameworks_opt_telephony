@@ -31,6 +31,7 @@ import android.net.NetworkRequest;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
@@ -200,8 +201,7 @@ public class ApnContextTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testProvisionApn() throws Exception {
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.mobile_provisioning_apn, "fake_apn");
+        mContextFixture.putResource(R.string.mobile_provisioning_apn, "fake_apn");
 
         ApnSetting myApn = ApnSetting.makeApnSetting(
                 2163,                   // id
@@ -250,7 +250,7 @@ public class ApnContextTest extends TelephonyTest {
     @SmallTest
     public void testErrorCodeRetry() throws Exception {
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.config_cell_retries_per_error_code,
+                com.android.internal.R.array.config_cell_retries_per_error_code,
                 new String[]{"36,2"});
         mApnContext.resetErrorCodeRetries();
 

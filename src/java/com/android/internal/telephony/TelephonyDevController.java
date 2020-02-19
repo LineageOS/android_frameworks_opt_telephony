@@ -16,12 +16,11 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -54,17 +53,18 @@ public class TelephonyDevController extends Handler {
         Rlog.e(LOG_TAG, s);
     }
 
-    /** Creates an instance of TelephonyDevController. */
-    public static TelephonyDevController create(Context context) {
+    /** Create TelephonyDevController and set as singleton instance. */
+    public static TelephonyDevController create() {
         synchronized (mLock) {
             if (sTelephonyDevController != null) {
                 throw new RuntimeException("TelephonyDevController already created!?!");
             }
-            sTelephonyDevController = new TelephonyDevController(context);
+            sTelephonyDevController = new TelephonyDevController();
             return sTelephonyDevController;
         }
     }
 
+    /** Get TelephonyDevController singleton. */
     public static TelephonyDevController getInstance() {
         synchronized (mLock) {
             if (sTelephonyDevController == null) {
@@ -74,9 +74,10 @@ public class TelephonyDevController extends Handler {
         }
     }
 
-    private void initFromResource(Context context) {
-        String[] hwStrings = TelephonyResourceUtils.getTelephonyResources(context).getStringArray(
-                com.android.telephony.resources.R.array.config_telephonyHardware);
+    private void initFromResource() {
+        Resources resource = Resources.getSystem();
+        String[] hwStrings = resource.getStringArray(
+            com.android.internal.R.array.config_telephonyHardware);
         if (hwStrings != null) {
             for (String hwString : hwStrings) {
                 HardwareConfig hw = new HardwareConfig(hwString);
@@ -91,8 +92,8 @@ public class TelephonyDevController extends Handler {
         }
     }
 
-    private TelephonyDevController(Context context) {
-        initFromResource(context);
+    private TelephonyDevController() {
+        initFromResource();
 
         mModems.trimToSize();
         mSims.trimToSize();

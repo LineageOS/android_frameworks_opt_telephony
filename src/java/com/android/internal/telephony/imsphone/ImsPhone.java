@@ -110,7 +110,6 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.util.NotificationChannelController;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -1890,12 +1889,11 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         final String[] wfcOperatorErrorAlertMessages =
-                TelephonyResourceUtils.getTelephonyResources(mContext).getStringArray(
-                        com.android.telephony.resources.R.array.wfcOperatorErrorAlertMessages);
+                mContext.getResources().getStringArray(
+                        com.android.internal.R.array.wfcOperatorErrorAlertMessages);
         final String[] wfcOperatorErrorNotificationMessages =
-                TelephonyResourceUtils.getTelephonyResources(mContext).getStringArray(
-                        com.android.telephony.resources.R.array
-                            .wfcOperatorErrorNotificationMessages);
+                mContext.getResources().getStringArray(
+                        com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
 
         for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
             String[] codes = wfcOperatorErrorCodes[i].split("\\|");
@@ -1924,8 +1922,8 @@ public class ImsPhone extends ImsPhoneBase {
                 }
             }
 
-            final CharSequence title = TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                    .getText(com.android.telephony.resources.R.string.wfcRegErrorTitle);
+            final CharSequence title = mContext.getText(
+                    com.android.internal.R.string.wfcRegErrorTitle);
 
             int idx = Integer.parseInt(codes[1]);
             if (idx < 0

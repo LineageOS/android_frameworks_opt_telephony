@@ -47,7 +47,6 @@ import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
 import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -334,10 +333,9 @@ public class CarrierDisplayNameResolver {
             CarrierDisplayNameData rawCarrierDisplayNameData) {
         PersistableBundle config = getCarrierConfig();
         boolean useRootLocale = config.getBoolean(CarrierConfigManager.KEY_WFC_SPN_USE_ROOT_LOCALE);
-        Resources r = TelephonyResourceUtils.getTelephonyResources(mContext);
+        Resources r = mContext.getResources();
         if (useRootLocale) r.getConfiguration().setLocale(Locale.ROOT);
-        String[] wfcSpnFormats = r.getStringArray(
-                com.android.telephony.resources.R.array.wfcSpnFormats);
+        String[] wfcSpnFormats = r.getStringArray(com.android.internal.R.array.wfcSpnFormats);
         WfcCarrierNameFormatter wfcFormatter = new WfcCarrierNameFormatter(config, wfcSpnFormats,
                 getServiceState().getState() == ServiceState.STATE_POWER_OFF);
 
@@ -384,11 +382,11 @@ public class CarrierDisplayNameResolver {
         ServiceState ss = getServiceState();
         if (ss.getState() == ServiceState.STATE_POWER_OFF
                 || forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
-            plmn = TelephonyResourceUtils.getTelephonyResources(mContext).getString(
-                    com.android.telephony.resources.R.string.lockscreen_carrier_default);
+            plmn = mContext.getResources().getString(
+                    com.android.internal.R.string.lockscreen_carrier_default);
         } else {
-            plmn = TelephonyResourceUtils.getTelephonyResources(mContext).getString(
-                    com.android.telephony.resources.R.string.emergency_calls_only);
+            plmn = mContext.getResources().getString(
+                    com.android.internal.R.string.emergency_calls_only);
         }
         return new CarrierDisplayNameData.Builder()
                 .setSpn(data.getSpn())
