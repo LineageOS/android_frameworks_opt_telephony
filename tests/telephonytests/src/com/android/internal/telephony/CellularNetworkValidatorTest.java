@@ -28,10 +28,13 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import android.content.Context;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentityLte;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneCapability;
@@ -69,6 +72,7 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         mValidatorUT = new CellularNetworkValidator(mContext);
         doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
         processAllMessages();
+        setCacheTtlInCarrierConfig(5000);
     }
 
     @After
@@ -267,7 +271,7 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         testValidateSuccess();
 
         // Mark mValidationCacheTtl to only 1 second.
-        mValidatorUT.mValidationCacheTtl = 1000;
+        setCacheTtlInCarrierConfig(1000);
         waitForMs(1100);
 
         resetStates();
@@ -446,5 +450,13 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
     private void resetStates() {
         clearInvocations(mConnectivityManager);
         clearInvocations(mCallback);
+    }
+
+    private void setCacheTtlInCarrierConfig(long ttl) {
+        // Mark to skip validation in 5 seconds.
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle bundle = carrierConfigManager.getConfigForSubId(anyInt());
+        bundle.putLong(CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG, ttl);
     }
 }
