@@ -263,8 +263,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /**
      * A class implementing {@link AbstractNetworkStatsProvider} to report VT data usage to system.
      */
-    // TODO: 1. Directly reports diff in updateVtDataUsage.
-    //       2. Remove unused getVtDataUsage.
+    // TODO: Directly reports diff in updateVtDataUsage.
     @VisibleForTesting(visibility = PRIVATE)
     public class VtDataUsageProvider extends AbstractNetworkStatsProvider {
         private int mToken = 0;
@@ -4343,29 +4342,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 isIncomingCallAudio + " isVowifiEnabled=" + isVoWifiEnabled);
 
         return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio && !isVoWifiEnabled;
-    }
-
-    /**
-     * Get aggregated video call data usage since boot.
-     *
-     * @param perUidStats True if requesting data usage per uid, otherwise overall usage.
-     * @return Snapshot of video call data usage
-     */
-    public NetworkStats getVtDataUsage(boolean perUidStats) {
-
-        // If there is an ongoing VT call, request the latest VT usage from the modem. The latest
-        // usage will return asynchronously so it won't be counted in this round, but it will be
-        // eventually counted when next getVtDataUsage is called.
-        if (mState != PhoneConstants.State.IDLE) {
-            for (ImsPhoneConnection conn : mConnections) {
-                VideoProvider videoProvider = conn.getVideoProvider();
-                if (videoProvider != null) {
-                    videoProvider.onRequestConnectionDataUsage();
-                }
-            }
-        }
-
-        return perUidStats ? mVtDataUsageUidSnapshot : mVtDataUsageSnapshot;
     }
 
     public void registerPhoneStateListener(PhoneStateListener listener) {
