@@ -85,8 +85,6 @@ public class CellularNetworkValidator {
     public Handler mHandler = new Handler();
     @VisibleForTesting
     public ConnectivityNetworkCallback mNetworkCallback;
-    @VisibleForTesting
-    public Runnable mTimeoutCallback;
     private final ValidatedNetworkCache mValidatedNetworkCache = new ValidatedNetworkCache();
 
     private class ValidatedNetworkCache {
@@ -116,7 +114,7 @@ public class CellularNetworkValidator {
             long mValidationTimeStamp;
         }
 
-        boolean isRecentlyValidated(int subId) {
+        synchronized boolean isRecentlyValidated(int subId) {
             long cacheTtl = getValidationCacheTtl(subId);
             String networkIdentity = getValidationNetworkIdentity(subId);
             if (networkIdentity == null || !mValidatedNetworkMap.containsKey(networkIdentity)) {
@@ -128,7 +126,7 @@ public class CellularNetworkValidator {
             return recentlyValidated;
         }
 
-        void storeLastValidationResult(int subId, boolean validated) {
+        synchronized void storeLastValidationResult(int subId, boolean validated) {
             String networkIdentity = getValidationNetworkIdentity(subId);
             logd("storeLastValidationResult for subId " + subId
                     + (validated ? " validated." : " not validated."));
@@ -284,23 +282,14 @@ public class CellularNetworkValidator {
         mNetworkCallback = new ConnectivityNetworkCallback(subId);
 
         mConnectivityManager.requestNetwork(mNetworkRequest, mNetworkCallback, mHandler);
-
-        mTimeoutCallback = () -> {
-            logd("timeout on subId " + subId + " validation.");
-            // Remember latest validated network.
-            mValidatedNetworkCache.storeLastValidationResult(subId, false);
-            reportValidationResult(false, subId);
-        };
-
-        mHandler.postDelayed(mTimeoutCallback, mTimeoutInMs);
+        mHandler.postDelayed(() -> onValidationTimeout(subId), mTimeoutInMs);
     }
 
-    private void removeTimeoutCallback() {
-        // Remove timeout callback.
-        if (mTimeoutCallback != null) {
-            mHandler.removeCallbacks(mTimeoutCallback);
-            mTimeoutCallback = null;
-        }
+    private synchronized void onValidationTimeout(int subId) {
+        logd("timeout on subId " + subId + " validation.");
+        // Remember latest validated network.
+        mValidatedNetworkCache.storeLastValidationResult(subId, false);
+        reportValidationResult(false, subId);
     }
 
     /**
@@ -309,12 +298,13 @@ public class CellularNetworkValidator {
     public synchronized void stopValidation() {
         if (!isValidating()) {
             logd("No need to stop validation.");
-        } else {
-            mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
-            mState = STATE_IDLE;
+            return;
         }
-
-        removeTimeoutCallback();
+        if (mNetworkCallback != null) {
+            mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
+        }
+        mState = STATE_IDLE;
+        mHandler.removeCallbacksAndMessages(null);
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
@@ -345,25 +335,24 @@ public class CellularNetworkValidator {
         // If the validation result is not for current subId, do nothing.
         if (mSubId != subId) return;
 
-        removeTimeoutCallback();
+        mHandler.removeCallbacksAndMessages(null);
 
         // Deal with the result only when state is still VALIDATING. This is to avoid
         // receiving multiple callbacks in queue.
         if (mState == STATE_VALIDATING) {
             mValidationCallback.onValidationDone(passed, mSubId);
+            mState = STATE_VALIDATED;
+            // If validation passed and per request to NOT release after validation, delay cleanup.
             if (!mReleaseAfterValidation && passed) {
-                mState = STATE_VALIDATED;
+                mHandler.postDelayed(()-> stopValidation(), 500);
             } else {
-                mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
-                mState = STATE_IDLE;
+                stopValidation();
             }
 
             TelephonyMetrics.getInstance().writeNetworkValidate(passed
                     ? TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_PASSED
                     : TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_FAILED);
         }
-
-        mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
     private synchronized void reportNetworkAvailable(Network network, int subId) {
