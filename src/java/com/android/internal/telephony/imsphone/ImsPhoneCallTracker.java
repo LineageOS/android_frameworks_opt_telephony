@@ -1352,7 +1352,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
         mAllowHoldingVideoCall =
                 carrierConfig.getBoolean(
-                        CarrierConfigManager.KEY_ALLOW_HOLDING_VIDEO_CALL_BOOL);
+                        CarrierConfigManager.KEY_ALLOW_HOLD_VIDEO_CALL_BOOL);
         mNotifyVtHandoverToWifiFail = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
         mSupportDowngradeVtToAudio = carrierConfig.getBoolean(
