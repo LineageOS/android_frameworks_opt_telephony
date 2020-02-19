@@ -70,6 +70,13 @@ public class ConnectionTest extends TelephonyTest {
         public void deflect(String number) throws CallStateException {}
 
         @Override
+        public void transfer(String number, boolean isConfirmationRequired)
+                throws CallStateException {}
+
+        @Override
+        public void consultativeTransfer(Connection other) throws CallStateException {}
+
+        @Override
         public void hangup() throws CallStateException {}
 
         @Override
