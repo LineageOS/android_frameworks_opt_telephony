@@ -136,19 +136,24 @@ public class LocaleTrackerTest extends TelephonyTest {
     @SmallTest
     public void testUpdateOperatorNumericSync() throws Exception {
         mLocaleTracker.updateOperatorNumeric(US_MCC + FAKE_MNC);
-        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
-        verifyCountryCodeNotified(new String[]{US_COUNTRY_CODE});
+        // Because the service state is in APM, the country ISO should be set empty.
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
     }
 
     @Test
     @SmallTest
     public void testNoSim() throws Exception {
+        // Set the state as STATE_OUT_OF_SERVICE. This will trigger an country change to US.
+        sendServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
+
         // updateOperatorNumeric("") will not trigger an instantaneous country change
         mLocaleTracker.updateOperatorNumeric("");
         sendGsmCellInfo();
         sendServiceState(ServiceState.STATE_EMERGENCY_ONLY);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
-        verifyCountryCodeNotified(new String[]{US_COUNTRY_CODE});
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
         assertTrue(mLocaleTracker.isTracking());
     }
 
@@ -178,6 +183,13 @@ public class LocaleTrackerTest extends TelephonyTest {
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
         sendServiceState(ServiceState.STATE_POWER_OFF);
         assertFalse(mLocaleTracker.isTracking());
+
+        // updateOperatorNumeric("") will trigger a country change in APM
+        mLocaleTracker.updateOperatorNumeric("");
+        processAllMessages();
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+        verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE,
+                COUNTRY_CODE_UNAVAILABLE});
     }
 
     @Test
