@@ -1225,6 +1225,8 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void sendUSSD(String ussdString, Message response) {
+        Rlog.d(LOG_TAG, "sendUssd ussdString = " + ussdString);
+        mLastDialString = ussdString;
         mCT.sendUSSD(ussdString, response);
     }
 
