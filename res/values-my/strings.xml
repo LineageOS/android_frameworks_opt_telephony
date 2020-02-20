@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+/* //device/apps/common/assets/res/any/strings.xml
+**
+** Copyright 2020, The Android Open Source Project
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="mmiError" msgid="1023442595500494574">"ဆက်သွယ်မှုဆိုင်ရာပြသနာ သို့မဟုတ် မမှန်ကန်သောMMIကုတ်"</string>
+    <string name="mmiFdnError" msgid="8494219236221734158">"သတ်မှတ်ခေါ်ဆိုနိုင်သောနံပါတ်များထံသာ ကန့်သတ်ထားသည်"</string>
+    <string name="mmiErrorWhileRoaming" msgid="1561137125983549492">"ကွန်ရက်ပြင်ပဒေတာအသုံးပြုခြင်းကို ဖွင့်ထားသည့်အခါ သင့်ဖုန်းမှနေ၍ ခေါ်ဆိုမှုထပ်ဆင့်ပို့ခြင်းဆက်တင်အား ပြောင်း၍မရပါ။"</string>
+    <string name="defaultVoiceMailAlphaTag" msgid="8864546208952359023">"အသံမေးလ်"</string>
+    <string name="serviceEnabled" msgid="4883462919275093199">"ဝန်ဆောင်မှု လုပ်ဆောင်နိုင်မည်"</string>
+    <string name="serviceEnabledFor" msgid="7198628669371384667">"ဝန်ဆောင်မှု ရရှိမည်"</string>
+    <string name="serviceDisabled" msgid="3843511572901328090">"ဝန်ဆောင်မှုအား ရပ်ဆိုင်းသည်"</string>
+    <string name="serviceRegistered" msgid="8340863975094712082">"စာရင်းသွင်းခြင်းအောင်မြင်ပါသည်"</string>
+    <string name="serviceErased" msgid="8709823130329554753">"ပယ်ဖျက်မှု အောင်မြင်ပါသည်"</string>
+    <string name="passwordIncorrect" msgid="3625408645444788703">"လျို့ဝှက် နံပါတ်မှားယွင်းနေသည်"</string>
+    <string name="mmiComplete" msgid="6255278485094294879">"MMI ပြီးဆုံးပါပြီ"</string>
+    <string name="badPin" msgid="2146348036420912863">"သင် ရိုက်ထည့်သော PIN ဟောင်းမှာ မမှန်ပါ။"</string>
+    <string name="badPuk" msgid="5482174962391109200">"သင်ရိုက် ထည့်သော PUK မှာ မမှန်ကန်ပါ။"</string>
+    <string name="mismatchPin" msgid="5172508988259223690">"သင် ရိုက်ထည့်ခဲ့သည့် PIN များ မတိုက်ဆိုင်ပါ။"</string>
+    <string name="invalidPin" msgid="2439884944669064974">"နံပါတ်(၄)ခုမှ(၈)ခုအထိပါရှိသော ပင်နံပါတ်အားထည့်ပါ"</string>
+    <string name="invalidPuk" msgid="2727206050762528857">"နံပါတ်(၈)ခုသို့မဟုတ် ထိုထက်ရှည်သောသော PUKအားထည့်သွင်းပါ"</string>
+    <string name="needPuk" msgid="693504928134817411">"ဆင်းမ်ကဒ် ရဲ့ ပင်နံပါတ် ပြန်ဖွင့်သည့် ကုဒ် သော့ကျနေပါသည်။ ဖွင့်ရန် ကုဒ်အားထည့်သွင်းပါ။"</string>
+    <string name="needPuk2" msgid="5035072767055250931">"ဆင်းမ်ကဒ်အားမပိတ်ရန် PUK2အားထည့်သွင်းပါ"</string>
+    <string name="enablePin" msgid="5174710017479719448">"မအောင်မြင်ပါ, SIM/RUIM သော့ကို အရင် သုံးခွင့်ပြုရန်"</string>
+    <plurals name="pinpuk_attempts" formatted="false" msgid="2864291796009169366">
+      <item quantity="other">ဆင်းမ်ကဒ် သော့မချခင် သင့်တွင် <xliff:g id="NUMBER_1">%d</xliff:g> ခါ ကြိုးစားခွင့်များကျန်ပါသေးသည်။</item>
+      <item quantity="one">ဆင်းမ်ကဒ် သော့မချခင် သင့်တွင် <xliff:g id="NUMBER_0">%d</xliff:g> ခါ ကြိုးစားခွင့် ကျန်ပါသေးသည်။</item>
+    </plurals>
+    <string name="imei" msgid="6257982312415273699">"IMEI"</string>
+    <string name="meid" msgid="6944938460891725240">"MEIDနံပါတ်"</string>
+    <string name="ClipMmi" msgid="5267319943079051994">"အဝင်ခေါ်ဆိုမှုID"</string>
+    <string name="ClirMmi" msgid="5625289194685937628">"အထွက်ခေါ်ဆိုခြင်းအိုင်ဒီ"</string>
+    <string name="ColpMmi" msgid="6327360747989933494">"လိုင်း ID ချိတ်ဆက်သည်"</string>
+    <string name="ColrMmi" msgid="3477018035826436657">"လိုင်း ID ချိတ်ဆက်မှု ကန့်သတ်ချက်များ"</string>
+    <string name="CfMmi" msgid="3349849406819913908">"အဝင်ခေါ်ဆိုမှုအား ထပ်ဆင့်ပို့ခြင်း"</string>
+    <string name="CwMmi" msgid="3370271108272827156">"ခေါ်ဆိုမှု စောင့်ဆိုင်းခြင်း"</string>
+    <string name="BaMmi" msgid="8506416352216411504">"အဝင်ခေါ်ဆိုမှုအားတားဆီးခြင်း"</string>
+    <string name="PwdMmi" msgid="5655236897721579115">"လျှို့ဝှက်နံပါတ်/စာ ပြောင်းသည်"</string>
+    <string name="PinMmi" msgid="7946074122258344572">"ပင်နံပါတ်ပြောင်းသည်"</string>
+    <string name="CnipMmi" msgid="559873089884095557">"ခေါ်ဆိုသောနံပါတ်တည်ရှိသည်"</string>
+    <string name="CnirMmi" msgid="7399373758195512797">"ခေါ်ဆိုသောနံပါတ်အားကန့်သတ်ခြင်း"</string>
+    <string name="ThreeWCMmi" msgid="523390035341026064">"(၃)ယောက်ဆိုင်ပြောဆိုခြင်း"</string>
+    <string name="RuacMmi" msgid="3703904994630793745">"စိတ်အနှောက်အယှက်ဖြစ်သော မလိုလားသည့်ခေါ်ဆိုမှုများအား ငြင်းဖယ်ခြင်း"</string>
+    <string name="CndMmi" msgid="3646838188766092527">"ခေါ်ဆိုသောနံပါတ် ပေးပို့မှု"</string>
+    <string name="DndMmi" msgid="5146793519701587893">"မနှောင့်ယှက်ရ"</string>
+    <string name="CLIRDefaultOnNextCallOn" msgid="3331479151042589343">"ပုံသေအားဖြင့် ခေါ်ဆိုသူအိုင်ဒီ(Caller ID)အား ကန့်သတ်ထားသည်။ နောက်ထပ်အဝင်ခေါ်ဆိုမှု-ကန့်သတ်ထားသည်။"</string>
+    <string name="CLIRDefaultOnNextCallOff" msgid="2388033443641772150">"ပုံသေအားဖြင့် ခေါ်ဆိုသူအိုင်ဒီ(Caller ID)အား ကန့်သတ်ထားသည်။ နောက်ထပ်အဝင်ခေါ်ဆိုမှု-ကန့်သတ်မထားပါ။"</string>
+    <string name="CLIRDefaultOffNextCallOn" msgid="3445728068458228238">"ပုံသေအားဖြင့် ခေါ်ဆိုသူအိုင်ဒီ(Caller ID)အား ကန့်သတ်မထားပါ။ နောက်ထပ်အဝင်ခေါ်ဆိုမှု-ကန့်သတ်ထားသည်။"</string>
+    <string name="CLIRDefaultOffNextCallOff" msgid="2706215451323007610">"ပုံသေအားဖြင့် ခေါ်ဆိုသူအိုင်ဒီ(Caller ID)အား ကန့်သတ်မထားပါ။ နောက်ထပ်အဝင်ခေါ်ဆိုမှု-ကန့်သတ်မထားပါ။"</string>
+    <string name="serviceNotProvisioned" msgid="1437446754190604913">"ဝန်ဆောင်မှုအား ကန့်သတ်မထားပါ"</string>
+    <string name="CLIRPermanent" msgid="7191633320241443489">"သင်သည် ခေါ်ဆိုသူ ID ဆက်တင်ကို မပြောင်းလဲနိုင်ပါ။"</string>
+    <string name="RestrictedOnDataTitle" msgid="7614146974080993425">"မိုဘိုင်း ဒေတာဝန်ဆောင်မှု မရှိပါ"</string>
+    <string name="RestrictedOnEmergencyTitle" msgid="6362614006432906742">"အရေးပေါ်ခေါ်ဆိုမှု မရနိုင်ပါ"</string>
+    <string name="RestrictedOnNormalTitle" msgid="8333715893690298268">"ဖုန်းဝန်ဆောင်မှု မရှိပါ"</string>
+    <string name="RestrictedOnAllVoiceTitle" msgid="4257192094649867888">"ဖုန်းခေါ်ဆိုခြင်း ဝန်ဆောင်မှု သို့မဟုတ် အရေးပေါ်ခေါ်ဆိုခြင်း မရနိုင်ပါ"</string>
+    <string name="RestrictedStateContent" msgid="3868407917799281990">"သင်၏ ဝန်ဆောင်မှုပေးသူက ယာယီပိတ်ထားသည်"</string>
+    <string name="RestrictedStateContentMsimTemplate" msgid="2051960554177939848">"ဆင်းမ် <xliff:g id="SIMNUMBER">%d</xliff:g> အတွက် သင်၏ ဝန်ဆောင်မှုပေးသူက ယာယီပိတ်ထားပါသည်"</string>
+    <string name="NetworkPreferenceSwitchTitle" msgid="6054662454014426745">"မိုဘိုင်းကွန်ရက် လိုင်းမရပါ"</string>
+    <string name="NetworkPreferenceSwitchSummary" msgid="3472910253614375814">"ဦးစားပေးကွန်ရက်သို့ ပြောင်းကြည့်ပါ။ ပြောင်းရန် တို့ပါ။"</string>
+    <string name="EmergencyCallWarningTitle" msgid="1185401427444792730">"အရေးပေါ်ခေါ်ဆိုမှု မရနိုင်ပါ"</string>
+    <string name="EmergencyCallWarningSummary" msgid="1489064916947930937">"Wi‑Fi ဖြင့် အရေးပေါ်ခေါ်ဆိုမှုများ ပြုလုပ်၍မရပါ"</string>
+    <string name="notification_channel_network_alert" msgid="4751167011159186116">"သတိပေးချက်များ"</string>
+    <string name="notification_channel_call_forward" msgid="1148988165387665548">"အဝင်ခေါ်ဆိုမှုအား ထပ်ဆင့်ပို့ခြင်း"</string>
+    <string name="notification_channel_emergency_callback" msgid="6878487391709930971">"အရေးပေါ် ပြန်လည်ခေါ်ဆိုနိုင်သောမုဒ်"</string>
+    <string name="notification_channel_mobile_data_status" msgid="7174756351195977201">"မိုဘိုင်းဒေတာ အခြေအနေ"</string>
+    <string name="notification_channel_sms" msgid="4945609907300955711">"SMS မက်ဆေ့ဂျ်များ"</string>
+    <string name="notification_channel_voice_mail" msgid="5344908172205315833">"အသံမေးလ် မက်ဆေ့ဂျ်များ"</string>
+    <string name="notification_channel_wfc" msgid="929525864779742908">"Wi-Fi ခေါ်ဆိုမှု"</string>
+    <string name="notification_channel_sim" msgid="1588401714118628515">"ဆင်းမ်ကဒ် အခြေအနေ"</string>
+    <string name="notification_channel_sim_high_prio" msgid="1290323767457025076">"အထူးဦးစားပေး ဆင်းမ်ကတ်အခြေအနေ"</string>
+    <string name="peerTtyModeFull" msgid="2630344080574439013">"အခြားစက်မှ TTY မုဒ် FULL ပြုရန် တောင်းဆို၏"</string>
+    <string name="peerTtyModeHco" msgid="519607068232438175">"အခြားစက်မှ TTY မုဒ် HCO ပြုရန် တောင်းဆို၏"</string>
+    <string name="peerTtyModeVco" msgid="362613461160305374">"TTY မုဒ် VCO ပြုရန် အခြားစက်မှ တောင်းဆို၏"</string>
+    <string name="peerTtyModeOff" msgid="6524511110244204423">"TTY မုဒ် OFF ပြုရန် အခြားစက်မှ တောင်းဆို၏"</string>
+    <string name="serviceClassVoice" msgid="5295300507464543289">"အသံ"</string>
+    <string name="serviceClassData" msgid="8152458944689350760">"ဒေတာ"</string>
+    <string name="serviceClassFAX" msgid="1729860400781144327">"ဖက်စ်"</string>
+    <string name="serviceClassSMS" msgid="7770300042268931806">"SMS စာတိုစနစ်"</string>
+    <string name="serviceClassDataAsync" msgid="1745961563014313779">"Async"</string>
+    <string name="serviceClassDataSync" msgid="1259617733005203622">"ထပ်တူ ကိုက်ညီခြင်း"</string>
+    <string name="serviceClassPacket" msgid="7686414075485232705">"Packet"</string>
+    <string name="serviceClassPAD" msgid="7639293369899923082">"PAD"</string>
+    <string name="roamingText0" msgid="3318257203209872590">"ရုန်းမင်းအချက်ပြမီး ဖွင့်ထားခြင်း"</string>
+    <string name="roamingText1" msgid="7217313047635882754">"ရုန်းမင်းအချက်ပြမီး ပိတ်ထားခြင်း"</string>
+    <string name="roamingText2" msgid="6212557644292539155">"ရုန်းမင်းအချက်ပြမီး လက်နေခြင်း"</string>
+    <string name="roamingText3" msgid="3467855797361668131">"ပတ်ဝန်းကျင်အနီးအနားပြင်ပ"</string>
+    <string name="roamingText4" msgid="4287600402320474977">"အဆောက်အဦးပြင်ပ"</string>
+    <string name="roamingText5" msgid="8947828970147948538">"ရုန်းမင်း-ပိုမိုသင့်တော်သောစနစ်"</string>
+    <string name="roamingText6" msgid="2487318096255702808">"ရုန်းမင်း-ရရှိနိုင်သောစနစ်"</string>
+    <string name="roamingText7" msgid="299395641289770039">"ရုန်းမင်း-ပူးပေါင်းလုပ်ဖော်ကိုင်ဖက်"</string>
+    <string name="roamingText8" msgid="3646137140623760567">"ရုန်းမင်း-အထူးတန်ဖိုးထားရသောလုပ်ဖော်ကိုင်ဖက်"</string>
+    <string name="roamingText9" msgid="5722409013790063497">"ရုန်းမင်း-ဝန်ဆောင်မှုအပြည့်လုပ်ဆောင်မှု"</string>
+    <string name="roamingText10" msgid="5267593644689617088">"ရုန်းမင်း-ဝန်ဆောင်မှုတစိတ်တပိုင်းလုပ်ဆောင်မှု"</string>
+    <string name="roamingText11" msgid="1326295496863599275">"ရုန်းမင်းစာတမ်းဖွင့်ရန်"</string>
+    <string name="roamingText12" msgid="6969936398908875373">"ရုန်းမင်းစာတမ်းပိတ်ထားရန်"</string>
+    <string name="roamingTextSearching" msgid="3205637826170280377">"ဆားဗစ်အားရှာဖွေနေသည်"</string>
+    <string name="wfcRegErrorTitle" msgid="3587221580356886653">"Wi‑Fi ခေါ်ဆိုမှုကို စနစ်ထည့်သွင်း၍မရပါ"</string>
+  <string-array name="wfcOperatorErrorAlertMessages">
+    <item msgid="3437343175656751382">"Wi-Fi အသုံးပြု၍ ဖုန်းခေါ်ရန်နှင့် မက်ဆေ့ဂျ်ပို့ရန်အတွက် သင့်ဝန်ဆောင်မှုပေးသူကို ဤဝန်ဆောင်မှုအား သတ်မှတ်ပေးရန် ဦးစွာတောင်းဆိုပါ။ ထို့နောက် ဆက်တင်ထဲသို့ သွား၍ Wi-Fi ဖြင့် ဖုန်းခေါ်ခြင်းကို ဖွင့်ရပါမည်။ (အမှားကုဒ်- <xliff:g id="CODE">%1$s</xliff:g>)"</item>
+  </string-array>
+  <string-array name="wfcOperatorErrorNotificationMessages">
+    <item msgid="8422463738705478408">"သင်၏ ဝန်ဆောင်မှုပေးသူဖြင့် Wi‑Fi ခေါ်ဆိုမှုကို မှတ်ပုံတင်ရာတွင် ပြဿနာရှိနေသည်− <xliff:g id="CODE">%1$s</xliff:g>"</item>
+  </string-array>
+    <!-- no translation found for wfcSpnFormat_spn (2935593237090890712) -->
+    <skip />
+    <string name="wfcSpnFormat_spn_wifi_calling" msgid="4866611519785304639">"<xliff:g id="SPN">%s</xliff:g> Wi-Fi ခေါ်ဆိုမှု"</string>
+    <string name="wfcSpnFormat_spn_wifi_calling_vo_hyphen" msgid="3228085116169384334">"<xliff:g id="SPN">%s</xliff:g>Wi-Fi ခေါ်ဆိုမှု"</string>
+    <string name="wfcSpnFormat_wlan_call" msgid="4418107841035615881">"WLAN ခေါ်ဆိုမှု"</string>
+    <string name="wfcSpnFormat_spn_wlan_call" msgid="1158376504699481352">"<xliff:g id="SPN">%s</xliff:g> WLAN ခေါ်ဆိုမှု"</string>
+    <string name="wfcSpnFormat_spn_wifi" msgid="8193290615697360557">"<xliff:g id="SPN">%s</xliff:g> Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi_calling_bar_spn" msgid="6724375326528125344">"WiFi ခေါ်ဆိုမှု | <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_vowifi" msgid="7439751417720932625">"<xliff:g id="SPN">%s</xliff:g> VoWifi"</string>
+    <string name="wfcSpnFormat_wifi_calling" msgid="7955587787276301602">"Wi-Fi ခေါ်ဆိုမှု"</string>
+    <string name="wfcSpnFormat_wifi" msgid="2175344691206928824">"Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi_calling_wo_hyphen" msgid="532288921741719455">"WiFi ခေါ်ဆိုမှု"</string>
+    <string name="wfcSpnFormat_vowifi" msgid="335037103096054056">"VoWifi"</string>
+    <string name="cfTemplateNotForwarded" msgid="8812005909511089993">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: ထပ်ဆင့်မပို့နိုင်ပါ"</string>
+    <string name="cfTemplateForwarded" msgid="3302157589484961637">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g>"</string>
+    <string name="cfTemplateForwardedTime" msgid="5654128800182665435">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g> နောက် <xliff:g id="TIME_DELAY">{2}</xliff:g> စက္ကန့်"</string>
+    <string name="cfTemplateRegistered" msgid="3782802180266767430">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: ထပ်ဆင့်မပို့နိုင်ပါ"</string>
+    <string name="cfTemplateRegisteredTime" msgid="2033084400423273904">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: ထပ်ဆင့်မပို့နိုင်ပါ"</string>
+    <string name="sms_control_title" msgid="5897819774814118232">"စာတိုပို့စနစ်(SMS)ဖြင့် စာများ ပို့သည်"</string>
+    <string name="sms_control_message" msgid="99804090463203747">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; မှ စာ အမြောက်အများ ပို့နေပါသည်။ ဒီအပလီကေးရှင်းကို ဆက်လက်ပြီး လုပ်ဆောင်ရန် ခွင့်ပြုပါမလား"</string>
+    <string name="sms_control_yes" msgid="3285333055962335001">"ခွင့်ပြုရန်"</string>
+    <string name="sms_control_no" msgid="4657312407697761088">"ငြင်းပယ်ရန်"</string>
+    <string name="sms_short_code_confirm_message" msgid="2463657668141495030">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; မှ &lt;b&gt;<xliff:g id="DEST_ADDRESS">%2$s</xliff:g>&lt;/b&gt; ကို စာတို ပို့ချင်ပါသည်"</string>
+    <string name="sms_short_code_details" msgid="2159169204813483744"><b>"ဒါက သင့် မိုဘိုင်း အကောင့် အတွက် "</b>" ကုန်ကျမှု ရှိလာနိုင်သည်။"</string>
+    <string name="sms_premium_short_code_details" msgid="475271565092315329"><b>"ဒါက သင့် မိုဘိုင်း အကောင့် အတွက် ကုန်ကျမှု ရှိလာနိုင်သည်။"</b></string>
+    <string name="sms_short_code_confirm_allow" msgid="6587513384670537791">"ပို့ရန်"</string>
+    <string name="sms_short_code_confirm_deny" msgid="2001576474856656532">"မလုပ်တော့"</string>
+    <string name="sms_short_code_remember_choice" msgid="5963037270314122374">"ကျွန်ပ်၏ရွေးချယ်မှုကို မှတ်ထားရန်"</string>
+    <string name="sms_short_code_remember_undo_instruction" msgid="4542904223183282400">"နောင်တွင် ဆက်တင် &gt; အပလီကေးရှင်းများ မှပြောင်းနိုင်သည်"</string>
+    <string name="sms_short_code_confirm_always_allow" msgid="466738082610201835">"အမြဲခွင့်ပြုရန်"</string>
+    <string name="sms_short_code_confirm_never_allow" msgid="8061393668017829115">"ဘယ်တော့မှခွင့်မပြုပါ"</string>
+    <string name="sim_removed_title" msgid="5820647305002998615">"SIMကဒ်ဖယ်ရှားခြင်း"</string>
+    <string name="sim_removed_message" msgid="3964522736649761378">"သတ်မှတ်ထားသောဆင်းမ်ကဒ်ဖြင့် ပြန်လည်ဖွင့်သည့်အထိ မိုဘိုင်းကွန်ယက်ရရှိမည်မဟုတ်ပါ"</string>
+    <string name="sim_done_button" msgid="2300674042108475811">"ပြီးပါပြီ"</string>
+    <string name="sim_added_title" msgid="1037725879564044972">"ဆင်းမ်ကဒ် ထည့်ပါသည်"</string>
+    <string name="sim_added_message" msgid="8461331105822964497">"မိုးဘိုင်းကွန်ရက်ကို ဆက်သွယ်ရန် စက်ကို ပြန် စ ပါ"</string>
+    <string name="sim_restart_button" msgid="4132234640091195133">"ပြန်စရန်"</string>
+    <string name="install_carrier_app_notification_title" msgid="7891599802720696038">"မိုဘိုင်းဝန်ဆောင်မှု စတင်ဖွင့်လှစ်ရန်"</string>
+    <string name="install_carrier_app_notification_text" msgid="4021057891030846342">"သင့်ဆင်းမ်ကဒ်အသစ်ကို စတင်အသုံးပြုရန် ဝန်ဆောင်မှုပေးသူအက်ပ်ကို ဒေါင်းလုဒ်လုပ်ပါ"</string>
+    <string name="install_carrier_app_notification_text_app_name" msgid="3261523141748490253">"သင်၏ ဆင်းမ်ကဒ်အသစ်ကို စဖွင့်အသုံးပြုနိုင်ရန် <xliff:g id="APP_NAME">%1$s</xliff:g> အက်ပ်ကို ဒေါင်းလုဒ်လုပ်ပါ"</string>
+    <string name="install_carrier_app_notification_button" msgid="4651966240023969914">"အက်ပ် ဒေါင်းလုဒ်လုပ်ရန်"</string>
+    <string name="carrier_app_notification_title" msgid="444898173986612616">"SIM အသစ်ထည့်သွင်းလိုက်ပါသည်"</string>
+    <string name="carrier_app_notification_text" msgid="687265847426143857">"၎င်းကိုတပ်ဆင်ရန် တို့ပါ"</string>
+    <string name="sending" msgid="7816699175586805545">"ပေးပို့နေစဉ်…"</string>
+    <string name="launchBrowserDefault" msgid="629052799233260209">"ဘရောက်ဇာ ဖွင့်မည်လား။"</string>
+    <string name="SetupCallDefault" msgid="580230871789150298">"ဖုန်းခေါ်ဆိုမှုကို လက်ခံမလား?"</string>
+    <string name="stk_cc_ussd_to_dial" msgid="5824331516164546925">"USSD တောင်းဆိုမှုကို ပုံမှန်ခေါ်ဆိုမှုသို့ ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ussd_to_ss" msgid="564791643843260238">"USSD တောင်းဆိုမှုကို SS တောင်းဆိုမှုအဖြစ် ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ussd_to_ussd" msgid="5381138585419310854">"USSD တောင်းဆိုမှုအသစ်သို့ ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ussd_to_dial_video" msgid="4049392049695423603">"USSD တောင်းဆိုမှုကို ဗီဒီယိုခေါ်ဆိုမှုသို့ ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ss_to_dial" msgid="1591266989491372460">"SS တောင်းဆိုမှုကို ပုံမှန်ခေါ်ဆိုမှုသို့ ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ss_to_dial_video" msgid="4865582630524330327">"SS တောင်းဆိုမှုကို ဗီဒီယိုခေါ်ဆိုမှုသို့ ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ss_to_ussd" msgid="1701283146883688457">"SS တောင်းဆိုမှုကို USSD တောင်းဆိုမှုအဖြစ် ပြောင်းထားသည်"</string>
+    <string name="stk_cc_ss_to_ss" msgid="700436393026079703">"SS တောင်းဆိုမှုအသစ်သို့ ပြောင်းထားသည်"</string>
+    <string name="new_sms_notification_title" msgid="1923364920610861253">"သင့်ထံတွင် စာအသစ်များရောက်နေသည်"</string>
+    <string name="new_sms_notification_content" msgid="4567509229027865439">"ကြည့်ရှုရန် SMS အက်ပ်ကိုဖွင့်ပါ"</string>
+    <string name="conference_call" msgid="2990940131095267161">"လူအမြောက်အမြားတပြိုင်နက် ခေါ်ဆိုမှု"</string>
+    <string name="mmcc_authentication_reject" msgid="6879477386490076573">"စကားသံအတွက် ဆင်းမ်ကို ခွင့်မပြုပါ"</string>
+    <string name="mmcc_imsi_unknown_in_hlr" msgid="2128934740544236008">"စကားသံအတွက် ဆင်းမ်ကို ထောက်ပံ့မထားပါ"</string>
+    <string name="mmcc_illegal_ms" msgid="5768447181347094072">"စကားသံအတွက် ဆင်းမ်ကို ခွင့်မပြုပါ"</string>
+    <string name="mmcc_illegal_me" msgid="8474688631960877778">"စကားသံအတွက် ဖုန်းကို ခွင့်မပြုပါ"</string>
+    <string name="mmcc_authentication_reject_msim_template" msgid="1991661944094476731">"ဆင်းမ် <xliff:g id="SIMNUMBER">%d</xliff:g> ကို ခွင့်မပြုပါ"</string>
+    <string name="mmcc_imsi_unknown_in_hlr_msim_template" msgid="2027905617631765926">"ဆင်းမ် <xliff:g id="SIMNUMBER">%d</xliff:g> ကို ပေးမထားပါ"</string>
+    <string name="mmcc_illegal_ms_msim_template" msgid="2869965218803005104">"ဆင်းမ် <xliff:g id="SIMNUMBER">%d</xliff:g> ကို ခွင့်မပြုပါ"</string>
+    <string name="mmcc_illegal_me_msim_template" msgid="1771419560981767126">"ဆင်းမ် <xliff:g id="SIMNUMBER">%d</xliff:g> ကို ခွင့်မပြုပါ"</string>
+    <string name="emergency_calls_only" msgid="1560650709188829753">"အရေးပေါ်ခေါ်ဆိုမှုသာ"</string>
+    <string name="lockscreen_carrier_default" msgid="6030870681121260513">"ဝန်ဆောင်မှု မရှိပါ"</string>
+    <string name="media_route_status_connecting" msgid="1891672781795004704">"ဆက်သွယ်နေစဉ်..."</string>
+    <string name="wifi_calling_off_summary" msgid="7353426836733632728">"ပိတ်ထားရသည်"</string>
+    <string name="wfc_mode_wifi_preferred_summary" msgid="7882558771712672887">"Wi-Fi သုံး၍ ခေါ်ဆိုသည်"</string>
+    <string name="wfc_mode_cellular_preferred_summary" msgid="114508946793873122">"မိုဘိုင်းကွန်ရက်သုံး၍ ခေါ်ဆိုသည်"</string>
+    <string name="wfc_mode_wifi_only_summary" msgid="1717037324991030568">"ကြိုးမဲ့အင်တာနက် သာလျှင်"</string>
+    <string name="kg_text_message_separator" product="default" msgid="4334398812288993504">" — "</string>
+</resources>

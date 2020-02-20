@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+/* //device/apps/common/assets/res/any/strings.xml
+**
+** Copyright 2020, The Android Open Source Project
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="mmiError" msgid="1023442595500494574">"‏مشکل در اتصال یا کد MMI نامعتبر."</string>
+    <string name="mmiFdnError" msgid="8494219236221734158">"عملکرد فقط به شماره‌های شماره‌گیری ثابت محدود است."</string>
+    <string name="mmiErrorWhileRoaming" msgid="1561137125983549492">"وقتی درحال فراگردی هستید، نمی‌توانید تنظیمات هدایت تماس را از تلفنتان تغییر دهید."</string>
+    <string name="defaultVoiceMailAlphaTag" msgid="8864546208952359023">"پست صوتی"</string>
+    <string name="serviceEnabled" msgid="4883462919275093199">"سرویس فعال شد."</string>
+    <string name="serviceEnabledFor" msgid="7198628669371384667">"سرویس فعال شد برای:"</string>
+    <string name="serviceDisabled" msgid="3843511572901328090">"سرویس غیرفعال شده است."</string>
+    <string name="serviceRegistered" msgid="8340863975094712082">"ثبت با موفقیت انجام شد"</string>
+    <string name="serviceErased" msgid="8709823130329554753">"پاک کردن با موفقیت انجام شد."</string>
+    <string name="passwordIncorrect" msgid="3625408645444788703">"گذرواژه اشتباه است."</string>
+    <string name="mmiComplete" msgid="6255278485094294879">"‏MMI کامل شد."</string>
+    <string name="badPin" msgid="2146348036420912863">"این پین قدیمی که نوشتید صحیح نیست."</string>
+    <string name="badPuk" msgid="5482174962391109200">"‏PUK که نوشته‌اید صحیح نیست."</string>
+    <string name="mismatchPin" msgid="5172508988259223690">"‏پین‎هایی که وارد کرده‎اید با یکدیگر مطابقت ندارند."</string>
+    <string name="invalidPin" msgid="2439884944669064974">"یک پین بنویسید که ۴ تا ۸ رقم باشد."</string>
+    <string name="invalidPuk" msgid="2727206050762528857">"‏یک PUK با ۸ رقم یا بیشتر تایپ کنید."</string>
+    <string name="needPuk" msgid="693504928134817411">"‏سیم کارت شما با PUK قفل شده است. کد PUK را برای بازگشایی آن بنویسید."</string>
+    <string name="needPuk2" msgid="5035072767055250931">"‏PUK2 را برای بازگشایی قفل سیم کارت بنویسید."</string>
+    <string name="enablePin" msgid="5174710017479719448">"‏ناموفق بود، قفل سیم/RUIM را فعال کنید."</string>
+    <plurals name="pinpuk_attempts" formatted="false" msgid="2864291796009169366">
+      <item quantity="one"><xliff:g id="NUMBER_1">%d</xliff:g> بار دیگر می‌توانید تلاش کنید و پس از آن سیم‌کارت قفل می‌شود.</item>
+      <item quantity="other"><xliff:g id="NUMBER_1">%d</xliff:g> بار دیگر می‌توانید تلاش کنید و پس از آن سیم‌کارت قفل می‌شود.</item>
+    </plurals>
+    <string name="imei" msgid="6257982312415273699">"IMEI"</string>
+    <string name="meid" msgid="6944938460891725240">"MEID"</string>
+    <string name="ClipMmi" msgid="5267319943079051994">"شناسه تماس‌گیرنده ورودی"</string>
+    <string name="ClirMmi" msgid="5625289194685937628">"شناسه تماس‌گیرنده خروجی"</string>
+    <string name="ColpMmi" msgid="6327360747989933494">"شناسه خط متصل"</string>
+    <string name="ColrMmi" msgid="3477018035826436657">"محدودیت شناسه خط متصل"</string>
+    <string name="CfMmi" msgid="3349849406819913908">"هدایت تماس"</string>
+    <string name="CwMmi" msgid="3370271108272827156">"انتظار تماس"</string>
+    <string name="BaMmi" msgid="8506416352216411504">"محدودیت تماس"</string>
+    <string name="PwdMmi" msgid="5655236897721579115">"تغییر گذرواژه"</string>
+    <string name="PinMmi" msgid="7946074122258344572">"تغییر پین"</string>
+    <string name="CnipMmi" msgid="559873089884095557">"شماره تماس حاضر"</string>
+    <string name="CnirMmi" msgid="7399373758195512797">"شماره تماس محدود شده"</string>
+    <string name="ThreeWCMmi" msgid="523390035341026064">"سه روش برقراری تماس"</string>
+    <string name="RuacMmi" msgid="3703904994630793745">"رد تماس‌های ناخواسته و آزار دهنده"</string>
+    <string name="CndMmi" msgid="3646838188766092527">"تحویل شماره تماس"</string>
+    <string name="DndMmi" msgid="5146793519701587893">"مزاحم نشوید"</string>
+    <string name="CLIRDefaultOnNextCallOn" msgid="3331479151042589343">"پیش‌فرض شناسه تماس‌گیرنده روی محدود است. تماس بعدی: محدود"</string>
+    <string name="CLIRDefaultOnNextCallOff" msgid="2388033443641772150">"پیش‌فرض شناسه تماس‌گیرنده روی محدود است. تماس بعدی: بدون محدودیت"</string>
+    <string name="CLIRDefaultOffNextCallOn" msgid="3445728068458228238">"پیش‌فرض شناسه تماس‌گیرنده روی غیرمحدود است. تماس بعدی: محدود"</string>
+    <string name="CLIRDefaultOffNextCallOff" msgid="2706215451323007610">"پیش‌فرض شناسه تماس‌گیرنده روی غیرمحدود است. تماس بعدی: بدون محدودیت"</string>
+    <string name="serviceNotProvisioned" msgid="1437446754190604913">"سرویس دارای مجوز نیست."</string>
+    <string name="CLIRPermanent" msgid="7191633320241443489">"‏شما می‎توانید تنظیم شناسه تماس‌گیرنده را تغییر دهید."</string>
+    <string name="RestrictedOnDataTitle" msgid="7614146974080993425">"بدون سرویس داده تلفن همراه"</string>
+    <string name="RestrictedOnEmergencyTitle" msgid="6362614006432906742">"تماس اضطراری دردسترس نیست"</string>
+    <string name="RestrictedOnNormalTitle" msgid="8333715893690298268">"سرویس صوتی دردسترس نیست"</string>
+    <string name="RestrictedOnAllVoiceTitle" msgid="4257192094649867888">"بدون سرویس صوتی یا تماس اضطراری"</string>
+    <string name="RestrictedStateContent" msgid="3868407917799281990">"شرکت مخابراتی شما موقتاً آن را خاموش کرده است"</string>
+    <string name="RestrictedStateContentMsimTemplate" msgid="2051960554177939848">"شرکت مخابراتی‌تان موقتاً آن را برای سیم‌کارت <xliff:g id="SIMNUMBER">%d</xliff:g> خاموش کرده است"</string>
+    <string name="NetworkPreferenceSwitchTitle" msgid="6054662454014426745">"شبکه تلفن همراه دردسترس نیست"</string>
+    <string name="NetworkPreferenceSwitchSummary" msgid="3472910253614375814">"تغییر شبکه برگزیده را امتحان کنید. برای تغییر ضربه بزنید."</string>
+    <string name="EmergencyCallWarningTitle" msgid="1185401427444792730">"تماس اضطراری امکان‌پذیر نیست"</string>
+    <string name="EmergencyCallWarningSummary" msgid="1489064916947930937">"‏تماس اضطراری ازطریق Wi‑Fi امکان‌پذیر نیست"</string>
+    <string name="notification_channel_network_alert" msgid="4751167011159186116">"هشدارها"</string>
+    <string name="notification_channel_call_forward" msgid="1148988165387665548">"بازارسال تماس"</string>
+    <string name="notification_channel_emergency_callback" msgid="6878487391709930971">"حالت پاسخ تماس اضطراری"</string>
+    <string name="notification_channel_mobile_data_status" msgid="7174756351195977201">"وضعیت داده تلفن همراه"</string>
+    <string name="notification_channel_sms" msgid="4945609907300955711">"پیامک‌ها"</string>
+    <string name="notification_channel_voice_mail" msgid="5344908172205315833">"پیام‌های پست صوتی"</string>
+    <string name="notification_channel_wfc" msgid="929525864779742908">"‏تماس ازطریق Wi-Fi"</string>
+    <string name="notification_channel_sim" msgid="1588401714118628515">"وضعیت سیم‌کارت"</string>
+    <string name="notification_channel_sim_high_prio" msgid="1290323767457025076">"وضعیت سیم با اولویت بالا"</string>
+    <string name="peerTtyModeFull" msgid="2630344080574439013">"‏دستگاه مرتبط درخواست TTY حالت FULL کرد"</string>
+    <string name="peerTtyModeHco" msgid="519607068232438175">"‏دستگاه مرتبط درخواست TTY حالت HCO کرد"</string>
+    <string name="peerTtyModeVco" msgid="362613461160305374">"‏دستگاه مرتبط درخواست TTY حالت VCO کرد"</string>
+    <string name="peerTtyModeOff" msgid="6524511110244204423">"‏دستگاه مرتبط درخواست TTY حالت OFF کرد"</string>
+    <string name="serviceClassVoice" msgid="5295300507464543289">"صوتی"</string>
+    <string name="serviceClassData" msgid="8152458944689350760">"داده"</string>
+    <string name="serviceClassFAX" msgid="1729860400781144327">"نمابر"</string>
+    <string name="serviceClassSMS" msgid="7770300042268931806">"پیامک"</string>
+    <string name="serviceClassDataAsync" msgid="1745961563014313779">"ناهمگام"</string>
+    <string name="serviceClassDataSync" msgid="1259617733005203622">"همگام‌سازی"</string>
+    <string name="serviceClassPacket" msgid="7686414075485232705">"بسته"</string>
+    <string name="serviceClassPAD" msgid="7639293369899923082">"PAD"</string>
+    <string name="roamingText0" msgid="3318257203209872590">"نشانگر فراگردی روشن"</string>
+    <string name="roamingText1" msgid="7217313047635882754">"نشانگر فراگردی خاموش"</string>
+    <string name="roamingText2" msgid="6212557644292539155">"نشانگر چشمک زن فراگردی"</string>
+    <string name="roamingText3" msgid="3467855797361668131">"خارج از محله"</string>
+    <string name="roamingText4" msgid="4287600402320474977">"خارج از ساختمان"</string>
+    <string name="roamingText5" msgid="8947828970147948538">"فراگردی - سیستم برگزیده"</string>
+    <string name="roamingText6" msgid="2487318096255702808">"فراگردی - سیستم موجود"</string>
+    <string name="roamingText7" msgid="299395641289770039">"فراگردی - شریک"</string>
+    <string name="roamingText8" msgid="3646137140623760567">"فراگردی - شریک ویژه"</string>
+    <string name="roamingText9" msgid="5722409013790063497">"فراگردی - عملکرد کامل سرویس"</string>
+    <string name="roamingText10" msgid="5267593644689617088">"فراگردی - عملکرد جزئی سرویس"</string>
+    <string name="roamingText11" msgid="1326295496863599275">"اعلان فراگردی روشن"</string>
+    <string name="roamingText12" msgid="6969936398908875373">"اعلان فراگردی خاموش"</string>
+    <string name="roamingTextSearching" msgid="3205637826170280377">"جستجوی سرویس"</string>
+    <string name="wfcRegErrorTitle" msgid="3587221580356886653">"‏تماس ازطریق Wi‑Fi تنظیم نشد"</string>
+  <string-array name="wfcOperatorErrorAlertMessages">
+    <item msgid="3437343175656751382">"‏برای برقراری تماس و ارسال پیام ازطریق Wi-Fi، ابتدا از شرکت مخابراتی خود بخواهید این سرویس را تنظیم کند. سپس در «تنظیمات»۷ دوباره «تماس ازطریق Wi-Fi» را روشن کنید. (کد خطا: <xliff:g id="CODE">%1$s</xliff:g>)"</item>
+  </string-array>
+  <string-array name="wfcOperatorErrorNotificationMessages">
+    <item msgid="8422463738705478408">"‏مشکل هنگام ثبت تماس ازطریق Wi‑Fi با شرکت مخابراتی: <xliff:g id="CODE">%1$s</xliff:g>"</item>
+  </string-array>
+    <!-- no translation found for wfcSpnFormat_spn (2935593237090890712) -->
+    <skip />
+    <string name="wfcSpnFormat_spn_wifi_calling" msgid="4866611519785304639">"‏تماس ازطریق Wi-Fi <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_wifi_calling_vo_hyphen" msgid="3228085116169384334">"‏تماس Wi‑Fi <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_wlan_call" msgid="4418107841035615881">"‏تماس ازطریق WLAN"</string>
+    <string name="wfcSpnFormat_spn_wlan_call" msgid="1158376504699481352">"‏تماس ازطریق WLAN <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_wifi" msgid="8193290615697360557">"Wi-Fi <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_wifi_calling_bar_spn" msgid="6724375326528125344">"‏درحال تماس ازطریق WiFi | <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_vowifi" msgid="7439751417720932625">"VoWifi <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_wifi_calling" msgid="7955587787276301602">"‏تماس ازطریق Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi" msgid="2175344691206928824">"Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi_calling_wo_hyphen" msgid="532288921741719455">"‏تماس ازطریق WiFi"</string>
+    <string name="wfcSpnFormat_vowifi" msgid="335037103096054056">"VoWifi"</string>
+    <string name="cfTemplateNotForwarded" msgid="8812005909511089993">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: هدایت نشده"</string>
+    <string name="cfTemplateForwarded" msgid="3302157589484961637">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g>"</string>
+    <string name="cfTemplateForwardedTime" msgid="5654128800182665435">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g> پس از <xliff:g id="TIME_DELAY">{2}</xliff:g> ثانیه"</string>
+    <string name="cfTemplateRegistered" msgid="3782802180266767430">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: هدایت نشده"</string>
+    <string name="cfTemplateRegisteredTime" msgid="2033084400423273904">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: هدایت نشده"</string>
+    <string name="sms_control_title" msgid="5897819774814118232">"درحال ارسال پیامک‌ها"</string>
+    <string name="sms_control_message" msgid="99804090463203747">"‏&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; درحال ارسال تعداد زیادی پیامک است. آیا اجازه می‌دهید این برنامه همچنان پیامک ارسال کند؟"</string>
+    <string name="sms_control_yes" msgid="3285333055962335001">"مجاز است"</string>
+    <string name="sms_control_no" msgid="4657312407697761088">"اجازه ندارد"</string>
+    <string name="sms_short_code_confirm_message" msgid="2463657668141495030">"‏&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; مایل است پیامی به &lt;b&gt;<xliff:g id="DEST_ADDRESS">%2$s</xliff:g>&lt;/b&gt; ارسال کند."</string>
+    <string name="sms_short_code_details" msgid="2159169204813483744">"این مورد "<b>"شاید هزینه‌ای"</b>" را به حساب دستگاه همراهتان بگذارد."</string>
+    <string name="sms_premium_short_code_details" msgid="475271565092315329"><b>"این مورد هزینه‌ای را به حساب دستگاه همراهتان می‌گذارد."</b></string>
+    <string name="sms_short_code_confirm_allow" msgid="6587513384670537791">"ارسال"</string>
+    <string name="sms_short_code_confirm_deny" msgid="2001576474856656532">"لغو"</string>
+    <string name="sms_short_code_remember_choice" msgid="5963037270314122374">"این انتخاب را به خاطر بسپار"</string>
+    <string name="sms_short_code_remember_undo_instruction" msgid="4542904223183282400">"‏می‌توانید بعداً آن را در تنظیمات &gt; برنامه‌ها تغییر دهید"</string>
+    <string name="sms_short_code_confirm_always_allow" msgid="466738082610201835">"همیشه مجاز است"</string>
+    <string name="sms_short_code_confirm_never_allow" msgid="8061393668017829115">"همیشه غیرمجاز"</string>
+    <string name="sim_removed_title" msgid="5820647305002998615">"سیم کارت برداشته شد"</string>
+    <string name="sim_removed_message" msgid="3964522736649761378">"تا وقتی که با یک سیم‌کارت معتبر راه‌اندازی مجدد نکنید شبکهٔ تلفن همراه غیر قابل‌ دسترس خواهد بود."</string>
+    <string name="sim_done_button" msgid="2300674042108475811">"تمام"</string>
+    <string name="sim_added_title" msgid="1037725879564044972">"سیم کارت اضافه شد"</string>
+    <string name="sim_added_message" msgid="8461331105822964497">"برای دسترسی به شبکهٔ تلفن همراه، دستگاه خود را مجدداً راه‌اندازی کنید."</string>
+    <string name="sim_restart_button" msgid="4132234640091195133">"راه‌اندازی مجدد"</string>
+    <string name="install_carrier_app_notification_title" msgid="7891599802720696038">"سرویس دستگاه همراه را فعال کنید"</string>
+    <string name="install_carrier_app_notification_text" msgid="4021057891030846342">"برای فعال کردن سیم‌کارت جدیدتان، برنامه شرکت مخابراتی را بارگیری کنید"</string>
+    <string name="install_carrier_app_notification_text_app_name" msgid="3261523141748490253">"برای فعال کردن سیم‌کارت جدیدتان، برنامه <xliff:g id="APP_NAME">%1$s</xliff:g> را بارگیری کنید"</string>
+    <string name="install_carrier_app_notification_button" msgid="4651966240023969914">"بارگیری برنامه"</string>
+    <string name="carrier_app_notification_title" msgid="444898173986612616">"سیم‌کارت جدید جاگذاری شد"</string>
+    <string name="carrier_app_notification_text" msgid="687265847426143857">"برای تنظیم آن ضربه بزنید"</string>
+    <string name="sending" msgid="7816699175586805545">"در حال ارسال..."</string>
+    <string name="launchBrowserDefault" msgid="629052799233260209">"مرورگر راه‌اندازی شود؟"</string>
+    <string name="SetupCallDefault" msgid="580230871789150298">"تماس را می‌پذیرید؟"</string>
+    <string name="stk_cc_ussd_to_dial" msgid="5824331516164546925">"‏درخواست USSD به تماس معمولی تغییر کرد"</string>
+    <string name="stk_cc_ussd_to_ss" msgid="564791643843260238">"‏درخواست USSD به‌درخواست SS تغییر کرد"</string>
+    <string name="stk_cc_ussd_to_ussd" msgid="5381138585419310854">"‏به‌ درخواست USSD جدید تغییر کرد"</string>
+    <string name="stk_cc_ussd_to_dial_video" msgid="4049392049695423603">"‏درخواست USSD به تماس ویدیویی تغییر کرد"</string>
+    <string name="stk_cc_ss_to_dial" msgid="1591266989491372460">"‏درخواست SS به تماس معمولی تغییر کرد"</string>
+    <string name="stk_cc_ss_to_dial_video" msgid="4865582630524330327">"‏درخواست SS به تماس ویدیویی تغییر کرد"</string>
+    <string name="stk_cc_ss_to_ussd" msgid="1701283146883688457">"‏درخواست SS به‌ درخواست USSD تغییر کرد"</string>
+    <string name="stk_cc_ss_to_ss" msgid="700436393026079703">"‏به‌ درخواست SS جدید تغییر کرد"</string>
+    <string name="new_sms_notification_title" msgid="1923364920610861253">"پیام‌های جدیدی دارید"</string>
+    <string name="new_sms_notification_content" msgid="4567509229027865439">"برای مشاهده، برنامه پیامک را باز کنید"</string>
+    <string name="conference_call" msgid="2990940131095267161">"تماس کنفرانسی"</string>
+    <string name="mmcc_authentication_reject" msgid="6879477386490076573">"سیم‌کارت برای عملیات صوتی مجاز نیست"</string>
+    <string name="mmcc_imsi_unknown_in_hlr" msgid="2128934740544236008">"سیم‌کارت مجوز لازم برای عملیات صوتی را ندارد"</string>
+    <string name="mmcc_illegal_ms" msgid="5768447181347094072">"سیم‌کارت برای عملیات صوتی مجاز نیست"</string>
+    <string name="mmcc_illegal_me" msgid="8474688631960877778">"تلفن برای عملیات صوتی مجاز نیست"</string>
+    <string name="mmcc_authentication_reject_msim_template" msgid="1991661944094476731">"سیم‌کارت <xliff:g id="SIMNUMBER">%d</xliff:g> مجاز نیست"</string>
+    <string name="mmcc_imsi_unknown_in_hlr_msim_template" msgid="2027905617631765926">"سیم‌کارت <xliff:g id="SIMNUMBER">%d</xliff:g> مجوز لازم را ندارد"</string>
+    <string name="mmcc_illegal_ms_msim_template" msgid="2869965218803005104">"سیم‌کارت <xliff:g id="SIMNUMBER">%d</xliff:g> مجاز نیست"</string>
+    <string name="mmcc_illegal_me_msim_template" msgid="1771419560981767126">"سیم‌کارت <xliff:g id="SIMNUMBER">%d</xliff:g> مجاز نیست"</string>
+    <string name="emergency_calls_only" msgid="1560650709188829753">"فقط تماس‌های اضطراری"</string>
+    <string name="lockscreen_carrier_default" msgid="6030870681121260513">"بدون سرویس"</string>
+    <string name="media_route_status_connecting" msgid="1891672781795004704">"درحال اتصال…"</string>
+    <string name="wifi_calling_off_summary" msgid="7353426836733632728">"خاموش"</string>
+    <string name="wfc_mode_wifi_preferred_summary" msgid="7882558771712672887">"‏تماس ازطریق Wi-Fi"</string>
+    <string name="wfc_mode_cellular_preferred_summary" msgid="114508946793873122">"تماس ازطریق شبکه تلفن همراه"</string>
+    <string name="wfc_mode_wifi_only_summary" msgid="1717037324991030568">"‏فقط Wi-Fi"</string>
+    <string name="kg_text_message_separator" product="default" msgid="4334398812288993504">" — "</string>
+</resources>

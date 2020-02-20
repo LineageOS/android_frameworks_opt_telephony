@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+/* //device/apps/common/assets/res/any/strings.xml
+**
+** Copyright 2020, The Android Open Source Project
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+ -->
+
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="mmiError" msgid="1023442595500494574">"Verbindingsprobleem of ongeldige MMI-kode."</string>
+    <string name="mmiFdnError" msgid="8494219236221734158">"Bewerking is beperk tot belbeperking-nommers."</string>
+    <string name="mmiErrorWhileRoaming" msgid="1561137125983549492">"Kan oproep-aanstuurinstellings nie van jou foon af verander tewyl jy swerf nie."</string>
+    <string name="defaultVoiceMailAlphaTag" msgid="8864546208952359023">"Stemboodskap"</string>
+    <string name="serviceEnabled" msgid="4883462919275093199">"Diens is geaktiveer."</string>
+    <string name="serviceEnabledFor" msgid="7198628669371384667">"Diens geaktiveer vir:"</string>
+    <string name="serviceDisabled" msgid="3843511572901328090">"Diens is gedeaktiveer."</string>
+    <string name="serviceRegistered" msgid="8340863975094712082">"Registrasie was suksesvol."</string>
+    <string name="serviceErased" msgid="8709823130329554753">"Uitvee was suksesvol."</string>
+    <string name="passwordIncorrect" msgid="3625408645444788703">"Verkeerde wagwoord."</string>
+    <string name="mmiComplete" msgid="6255278485094294879">"MMI voltooi."</string>
+    <string name="badPin" msgid="2146348036420912863">"Die ou PIN wat jy ingevoer het, is nie korrek nie."</string>
+    <string name="badPuk" msgid="5482174962391109200">"Die PUK wat jy ingevoer het, is nie korrek nie."</string>
+    <string name="mismatchPin" msgid="5172508988259223690">"Die PIN\'e wat jy ingevoer het, pas nie by mekaar nie."</string>
+    <string name="invalidPin" msgid="2439884944669064974">"Sleutel \'n PIN wat 4 to 8 nommers lank is, in."</string>
+    <string name="invalidPuk" msgid="2727206050762528857">"Voer \'n PUK van 8 syfers of langer in."</string>
+    <string name="needPuk" msgid="693504928134817411">"Jou SIM-kaart is PUK-gesluit. Voer die PUK-kode in om dit te ontsluit."</string>
+    <string name="needPuk2" msgid="5035072767055250931">"Sleutel PUK2 in om SIM-kaart oop te sluit."</string>
+    <string name="enablePin" msgid="5174710017479719448">"Onsuksesvol, aktiveer SIM-/RUIM-slot."</string>
+    <plurals name="pinpuk_attempts" formatted="false" msgid="2864291796009169366">
+      <item quantity="other">Jy het <xliff:g id="NUMBER_1">%d</xliff:g> pogings oor voordat SIM gesluit word.</item>
+      <item quantity="one">Jy het <xliff:g id="NUMBER_0">%d</xliff:g> poging oor voordat SIM gesluit word.</item>
+    </plurals>
+    <string name="imei" msgid="6257982312415273699">"IMEI"</string>
+    <string name="meid" msgid="6944938460891725240">"MEID"</string>
+    <string name="ClipMmi" msgid="5267319943079051994">"Inkomender beller-ID"</string>
+    <string name="ClirMmi" msgid="5625289194685937628">"Uitgaande beller-ID"</string>
+    <string name="ColpMmi" msgid="6327360747989933494">"ID van gekoppelde lyn"</string>
+    <string name="ColrMmi" msgid="3477018035826436657">"Beperking op ID van gekoppelde lyn"</string>
+    <string name="CfMmi" msgid="3349849406819913908">"Oproepaanstuur"</string>
+    <string name="CwMmi" msgid="3370271108272827156">"Oproep wag"</string>
+    <string name="BaMmi" msgid="8506416352216411504">"Oproepblokkering"</string>
+    <string name="PwdMmi" msgid="5655236897721579115">"Wagwoord verander"</string>
+    <string name="PinMmi" msgid="7946074122258344572">"PIN verander"</string>
+    <string name="CnipMmi" msgid="559873089884095557">"Bel teenwoordige nommer"</string>
+    <string name="CnirMmi" msgid="7399373758195512797">"Oproepnommer beperk"</string>
+    <string name="ThreeWCMmi" msgid="523390035341026064">"Drierigtingbel"</string>
+    <string name="RuacMmi" msgid="3703904994630793745">"Verwerping van ongewenste, irriterende oproepe"</string>
+    <string name="CndMmi" msgid="3646838188766092527">"Oproepnommer-lewering"</string>
+    <string name="DndMmi" msgid="5146793519701587893">"Moenie Steur Nie"</string>
+    <string name="CLIRDefaultOnNextCallOn" msgid="3331479151042589343">"Beller-ID se verstek is beperk. Volgende oproep: beperk"</string>
+    <string name="CLIRDefaultOnNextCallOff" msgid="2388033443641772150">"Beller-ID se verstek is beperk. Volgende oproep: nie beperk nie"</string>
+    <string name="CLIRDefaultOffNextCallOn" msgid="3445728068458228238">"Beller-ID se verstek is nie beperk nie. Volgende oproep: beperk"</string>
+    <string name="CLIRDefaultOffNextCallOff" msgid="2706215451323007610">"Beller-ID se verstek is nie beperk nie. Volgende oproep: nie beperk nie"</string>
+    <string name="serviceNotProvisioned" msgid="1437446754190604913">"Diens nie verskaf nie."</string>
+    <string name="CLIRPermanent" msgid="7191633320241443489">"Jy kan nie die beller-ID-instelling verander nie."</string>
+    <string name="RestrictedOnDataTitle" msgid="7614146974080993425">"Geen mobiele datadiens nie"</string>
+    <string name="RestrictedOnEmergencyTitle" msgid="6362614006432906742">"Noodoproepe is onbeskikbaar"</string>
+    <string name="RestrictedOnNormalTitle" msgid="8333715893690298268">"Geen stemdiens nie"</string>
+    <string name="RestrictedOnAllVoiceTitle" msgid="4257192094649867888">"Geen stemdiens of noodoproepe nie"</string>
+    <string name="RestrictedStateContent" msgid="3868407917799281990">"Tydelik deur jou diensverskaffer afgeskakel"</string>
+    <string name="RestrictedStateContentMsimTemplate" msgid="2051960554177939848">"Tydelik deur jou diensverskaffer afgeskakel vir SIM <xliff:g id="SIMNUMBER">%d</xliff:g>"</string>
+    <string name="NetworkPreferenceSwitchTitle" msgid="6054662454014426745">"Kan nie selnetwerk bereik nie"</string>
+    <string name="NetworkPreferenceSwitchSummary" msgid="3472910253614375814">"Probeer die voorkeurnetwerk verander. Tik om te verander."</string>
+    <string name="EmergencyCallWarningTitle" msgid="1185401427444792730">"Noodoproepe is onbeskikbaar"</string>
+    <string name="EmergencyCallWarningSummary" msgid="1489064916947930937">"Kan nie noodoproepe oor Wi-Fi maak nie"</string>
+    <string name="notification_channel_network_alert" msgid="4751167011159186116">"Opletberigte"</string>
+    <string name="notification_channel_call_forward" msgid="1148988165387665548">"Oproepaanstuur"</string>
+    <string name="notification_channel_emergency_callback" msgid="6878487391709930971">"Noodterugbel-modus"</string>
+    <string name="notification_channel_mobile_data_status" msgid="7174756351195977201">"Status van mobiele data"</string>
+    <string name="notification_channel_sms" msgid="4945609907300955711">"SMS-boodskappe"</string>
+    <string name="notification_channel_voice_mail" msgid="5344908172205315833">"Stemboodskappe"</string>
+    <string name="notification_channel_wfc" msgid="929525864779742908">"Wi-Fi-oproepe"</string>
+    <string name="notification_channel_sim" msgid="1588401714118628515">"SIM-status"</string>
+    <string name="notification_channel_sim_high_prio" msgid="1290323767457025076">"Hoëprioriteit-SIM-status"</string>
+    <string name="peerTtyModeFull" msgid="2630344080574439013">"Ander party het TTY-modus VOL versoek"</string>
+    <string name="peerTtyModeHco" msgid="519607068232438175">"Ander party het TTY-modus GOD versoek"</string>
+    <string name="peerTtyModeVco" msgid="362613461160305374">"Ander party het TTY-modus SOD versoek"</string>
+    <string name="peerTtyModeOff" msgid="6524511110244204423">"Ander party het TTY-modus AF versoek"</string>
+    <string name="serviceClassVoice" msgid="5295300507464543289">"Stem"</string>
+    <string name="serviceClassData" msgid="8152458944689350760">"Data"</string>
+    <string name="serviceClassFAX" msgid="1729860400781144327">"FAKS"</string>
+    <string name="serviceClassSMS" msgid="7770300042268931806">"SMS"</string>
+    <string name="serviceClassDataAsync" msgid="1745961563014313779">"A-sinkroniseer"</string>
+    <string name="serviceClassDataSync" msgid="1259617733005203622">"Sinkroniseer"</string>
+    <string name="serviceClassPacket" msgid="7686414075485232705">"Pakkie"</string>
+    <string name="serviceClassPAD" msgid="7639293369899923082">"PAD"</string>
+    <string name="roamingText0" msgid="3318257203209872590">"Swerfmodus-liggie aan"</string>
+    <string name="roamingText1" msgid="7217313047635882754">"Swerfmodus-liggie af"</string>
+    <string name="roamingText2" msgid="6212557644292539155">"Swerwing-aanduider flits"</string>
+    <string name="roamingText3" msgid="3467855797361668131">"Buite die buurt"</string>
+    <string name="roamingText4" msgid="4287600402320474977">"Buite die gebou"</string>
+    <string name="roamingText5" msgid="8947828970147948538">"Swerwing - voorkeurstelsel"</string>
+    <string name="roamingText6" msgid="2487318096255702808">"Swerfmodus - beskikbare stelsel"</string>
+    <string name="roamingText7" msgid="299395641289770039">"Swerwing - Alliansievennoot"</string>
+    <string name="roamingText8" msgid="3646137140623760567">"Swerwend - Premiumvennoot"</string>
+    <string name="roamingText9" msgid="5722409013790063497">"Swerwend - voldiens-funksionaliteit"</string>
+    <string name="roamingText10" msgid="5267593644689617088">"Swerwend - gedeeltelikediens-funksionaliteit"</string>
+    <string name="roamingText11" msgid="1326295496863599275">"Swerfbanier aan"</string>
+    <string name="roamingText12" msgid="6969936398908875373">"Swerfbanier af"</string>
+    <string name="roamingTextSearching" msgid="3205637826170280377">"Soek vir diens"</string>
+    <string name="wfcRegErrorTitle" msgid="3587221580356886653">"Kon nie Wi-Fi-oproepe opstel nie"</string>
+  <string-array name="wfcOperatorErrorAlertMessages">
+    <item msgid="3437343175656751382">"Om oproepe te maak en boodskappe oor Wi-Fi te stuur, vra eers jou diensverskaffer om hierdie diens op te stel. Skakel Wi-Fi-oproepe dan weer in Instellings aan. (Foutkode: <xliff:g id="CODE">%1$s</xliff:g>)"</item>
+  </string-array>
+  <string-array name="wfcOperatorErrorNotificationMessages">
+    <item msgid="8422463738705478408">"Probleem om Wi-Fi-oproepe by jou diensverskaffer te registreer: <xliff:g id="CODE">%1$s</xliff:g>"</item>
+  </string-array>
+    <!-- no translation found for wfcSpnFormat_spn (2935593237090890712) -->
+    <skip />
+    <string name="wfcSpnFormat_spn_wifi_calling" msgid="4866611519785304639">"<xliff:g id="SPN">%s</xliff:g>-Wi-Fi-oproepe"</string>
+    <string name="wfcSpnFormat_spn_wifi_calling_vo_hyphen" msgid="3228085116169384334">"<xliff:g id="SPN">%s</xliff:g>-Wi-Fi-oproepe"</string>
+    <string name="wfcSpnFormat_wlan_call" msgid="4418107841035615881">"WLAN-oproep"</string>
+    <string name="wfcSpnFormat_spn_wlan_call" msgid="1158376504699481352">"<xliff:g id="SPN">%s</xliff:g>-WLAN-oproep"</string>
+    <string name="wfcSpnFormat_spn_wifi" msgid="8193290615697360557">"<xliff:g id="SPN">%s</xliff:g>-Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi_calling_bar_spn" msgid="6724375326528125344">"Wi-Fi-oproepe | <xliff:g id="SPN">%s</xliff:g>"</string>
+    <string name="wfcSpnFormat_spn_vowifi" msgid="7439751417720932625">"<xliff:g id="SPN">%s</xliff:g>-VoWifi"</string>
+    <string name="wfcSpnFormat_wifi_calling" msgid="7955587787276301602">"Wi-Fi-oproepe"</string>
+    <string name="wfcSpnFormat_wifi" msgid="2175344691206928824">"Wi-Fi"</string>
+    <string name="wfcSpnFormat_wifi_calling_wo_hyphen" msgid="532288921741719455">"Wi-Fi-oproepe"</string>
+    <string name="wfcSpnFormat_vowifi" msgid="335037103096054056">"VoWifi"</string>
+    <string name="cfTemplateNotForwarded" msgid="8812005909511089993">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: Nie aangestuur nie"</string>
+    <string name="cfTemplateForwarded" msgid="3302157589484961637">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g>"</string>
+    <string name="cfTemplateForwardedTime" msgid="5654128800182665435">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: <xliff:g id="DIALING_NUMBER">{1}</xliff:g> na <xliff:g id="TIME_DELAY">{2}</xliff:g> sekondes"</string>
+    <string name="cfTemplateRegistered" msgid="3782802180266767430">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: Nie aangestuur nie"</string>
+    <string name="cfTemplateRegisteredTime" msgid="2033084400423273904">"<xliff:g id="BEARER_SERVICE_CODE">{0}</xliff:g>: Nie aangestuur nie"</string>
+    <string name="sms_control_title" msgid="5897819774814118232">"Stuur SMS-boodskappe"</string>
+    <string name="sms_control_message" msgid="99804090463203747">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; stuur \'n groot aantal SMS-boodskappe. Wil jy hierdie program toelaat om voort te gaan om boodskappe te stuur?"</string>
+    <string name="sms_control_yes" msgid="3285333055962335001">"Laat toe"</string>
+    <string name="sms_control_no" msgid="4657312407697761088">"Weier"</string>
+    <string name="sms_short_code_confirm_message" msgid="2463657668141495030">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; wil \'n boodskap na &lt;b&gt;<xliff:g id="DEST_ADDRESS">%2$s</xliff:g>&lt;/b&gt; stuur."</string>
+    <string name="sms_short_code_details" msgid="2159169204813483744">"Dit "<b>"kan heffings veroorsaak"</b>" op jou selfoonrekening."</string>
+    <string name="sms_premium_short_code_details" msgid="475271565092315329"><b>"Dit sal heffings op jou selfoonrekening veroorsaak."</b></string>
+    <string name="sms_short_code_confirm_allow" msgid="6587513384670537791">"Stuur"</string>
+    <string name="sms_short_code_confirm_deny" msgid="2001576474856656532">"Kanselleer"</string>
+    <string name="sms_short_code_remember_choice" msgid="5963037270314122374">"Onthou my keuse"</string>
+    <string name="sms_short_code_remember_undo_instruction" msgid="4542904223183282400">"Jy kan dit later verander in Instellings &gt; Programme"</string>
+    <string name="sms_short_code_confirm_always_allow" msgid="466738082610201835">"Laat altyd toe"</string>
+    <string name="sms_short_code_confirm_never_allow" msgid="8061393668017829115">"Moet nooit toelaat nie"</string>
+    <string name="sim_removed_title" msgid="5820647305002998615">"SIM-kaart verwyder"</string>
+    <string name="sim_removed_message" msgid="3964522736649761378">"Die mobielnetwerk sal nie beskikbaar wees nie totdat jy weer begin met \'n geldige SIM-kaart."</string>
+    <string name="sim_done_button" msgid="2300674042108475811">"Klaar"</string>
+    <string name="sim_added_title" msgid="1037725879564044972">"SIM-kaart bygevoeg"</string>
+    <string name="sim_added_message" msgid="8461331105822964497">"Herbegin jou toestel om toegang tot die mobiele netwerk te kry."</string>
+    <string name="sim_restart_button" msgid="4132234640091195133">"Herbegin"</string>
+    <string name="install_carrier_app_notification_title" msgid="7891599802720696038">"Aktiveer mobiele diens"</string>
+    <string name="install_carrier_app_notification_text" msgid="4021057891030846342">"Laai die diensverskafferprogram af om jou nuwe SIM te aktiveer"</string>
+    <string name="install_carrier_app_notification_text_app_name" msgid="3261523141748490253">"Laai die <xliff:g id="APP_NAME">%1$s</xliff:g>-program af om jou nuwe SIM te aktiveer"</string>
+    <string name="install_carrier_app_notification_button" msgid="4651966240023969914">"Laai program af"</string>
+    <string name="carrier_app_notification_title" msgid="444898173986612616">"Nuwe SIM is ingesit"</string>
+    <string name="carrier_app_notification_text" msgid="687265847426143857">"Tik om dit op te stel"</string>
+    <string name="sending" msgid="7816699175586805545">"Stuur tans…"</string>
+    <string name="launchBrowserDefault" msgid="629052799233260209">"Begin webblaaier?"</string>
+    <string name="SetupCallDefault" msgid="580230871789150298">"Aanvaar oproep?"</string>
+    <string name="stk_cc_ussd_to_dial" msgid="5824331516164546925">"USSD-versoek is na gewone oproep toe verander"</string>
+    <string name="stk_cc_ussd_to_ss" msgid="564791643843260238">"USSD-versoek is na SS-versoek toe verander"</string>
+    <string name="stk_cc_ussd_to_ussd" msgid="5381138585419310854">"Na nuwe USSD-versoek toe verander"</string>
+    <string name="stk_cc_ussd_to_dial_video" msgid="4049392049695423603">"USSD-versoek is na video-oproep toe verander"</string>
+    <string name="stk_cc_ss_to_dial" msgid="1591266989491372460">"SS-versoek is na gewone oproep toe verander"</string>
+    <string name="stk_cc_ss_to_dial_video" msgid="4865582630524330327">"SS-versoek is na video-oproep toe verander"</string>
+    <string name="stk_cc_ss_to_ussd" msgid="1701283146883688457">"SS-versoek is na USSD-versoek toe verander"</string>
+    <string name="stk_cc_ss_to_ss" msgid="700436393026079703">"Na nuwe SS-versoek toe verander"</string>
+    <string name="new_sms_notification_title" msgid="1923364920610861253">"Jy het nuwe boodskappe"</string>
+    <string name="new_sms_notification_content" msgid="4567509229027865439">"Maak SMS-program oop om te bekyk"</string>
+    <string name="conference_call" msgid="2990940131095267161">"Konferensie-oproep"</string>
+    <string name="mmcc_authentication_reject" msgid="6879477386490076573">"SIM nie toegelaat vir stem nie"</string>
+    <string name="mmcc_imsi_unknown_in_hlr" msgid="2128934740544236008">"SIM nie opgestel vir stem nie"</string>
+    <string name="mmcc_illegal_ms" msgid="5768447181347094072">"SIM nie toegelaat vir stem nie"</string>
+    <string name="mmcc_illegal_me" msgid="8474688631960877778">"Foon nie toegelaat vir stem nie"</string>
+    <string name="mmcc_authentication_reject_msim_template" msgid="1991661944094476731">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g> word nie toegelaat nie"</string>
+    <string name="mmcc_imsi_unknown_in_hlr_msim_template" msgid="2027905617631765926">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g> is nie opgestel nie"</string>
+    <string name="mmcc_illegal_ms_msim_template" msgid="2869965218803005104">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g> word nie toegelaat nie"</string>
+    <string name="mmcc_illegal_me_msim_template" msgid="1771419560981767126">"SIM <xliff:g id="SIMNUMBER">%d</xliff:g> word nie toegelaat nie"</string>
+    <string name="emergency_calls_only" msgid="1560650709188829753">"Net noodoproepe"</string>
+    <string name="lockscreen_carrier_default" msgid="6030870681121260513">"Geen diens nie"</string>
+    <string name="media_route_status_connecting" msgid="1891672781795004704">"Koppel tans..."</string>
+    <string name="wifi_calling_off_summary" msgid="7353426836733632728">"Af"</string>
+    <string name="wfc_mode_wifi_preferred_summary" msgid="7882558771712672887">"Bel oor Wi-Fi"</string>
+    <string name="wfc_mode_cellular_preferred_summary" msgid="114508946793873122">"Bel oor mobiele netwerk"</string>
+    <string name="wfc_mode_wifi_only_summary" msgid="1717037324991030568">"Net Wi-Fi"</string>
+    <string name="kg_text_message_separator" product="default" msgid="4334398812288993504">" — "</string>
+</resources>
