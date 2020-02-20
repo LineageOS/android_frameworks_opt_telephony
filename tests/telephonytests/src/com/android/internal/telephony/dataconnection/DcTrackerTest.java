@@ -1841,13 +1841,20 @@ public class DcTrackerTest extends TelephonyTest {
         return (boolean) method.invoke(mDct, networkType);
     }
 
-    private void setUpDataConnection() throws Exception {
+    private int setUpDataConnection() throws Exception {
         Field dc = DcTracker.class.getDeclaredField("mDataConnections");
         dc.setAccessible(true);
         Field uig = DcTracker.class.getDeclaredField("mUniqueIdGenerator");
         uig.setAccessible(true);
-        ((HashMap<Integer, DataConnection>) dc.get(mDct)).put(
-                ((AtomicInteger) uig.get(mDct)).getAndIncrement(), mDataConnection);
+        int id = ((AtomicInteger) uig.get(mDct)).getAndIncrement();
+        ((HashMap<Integer, DataConnection>) dc.get(mDct)).put(id, mDataConnection);
+        return id;
+    }
+
+    private void resetDataConnection(int id) throws Exception {
+        Field dc = DcTracker.class.getDeclaredField("mDataConnections");
+        dc.setAccessible(true);
+        ((HashMap<Integer, DataConnection>) dc.get(mDct)).remove(id);
     }
 
     private void setUpWatchdogTimer() {
@@ -1906,9 +1913,56 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testIsFrequencyRangeUnmetered() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        int id = setUpDataConnection();
+        setUpSubscriptionPlans(false);
+        setUpWatchdogTimer();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+
+        // NetCapability should be metered when connected to 5G with no unmetered plan or frequency
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        verify(mDataConnection, times(1)).onMeterednessChanged(false);
+
+        // Set MMWAVE frequency to unmetered
+        mBundle.putBoolean(CarrierConfigManager.KEY_UNMETERED_NR_NSA_MMWAVE_BOOL, true);
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
+        mContext.sendBroadcast(intent);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        // NetCapability should switch to unmetered when fr=MMWAVE and MMWAVE unmetered
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        verify(mDataConnection, times(1)).onMeterednessChanged(true);
+
+        // NetCapability should switch to metered when fr=SUB6 and MMWAVE unmetered
+        doReturn(ServiceState.FREQUENCY_RANGE_HIGH).when(mServiceState).getNrFrequencyRange();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        verify(mDataConnection, times(2)).onMeterednessChanged(false);
+
+        // Set SUB6 frequency to unmetered
+        mBundle.putBoolean(CarrierConfigManager.KEY_UNMETERED_NR_NSA_SUB6_BOOL, true);
+        intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
+        mContext.sendBroadcast(intent);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        // NetCapability should switch to unmetered when fr=SUB6 and SUB6 unmetered
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        verify(mDataConnection, times(2)).onMeterednessChanged(true);
+
+        resetDataConnection(id);
+    }
+
+    @Test
     public void testReevaluateUnmeteredConnectionsOnNetworkChange() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        setUpDataConnection();
+        int id = setUpDataConnection();
         setUpSubscriptionPlans(true);
         setUpWatchdogTimer();
 
@@ -1923,17 +1977,19 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         verify(mDataConnection, times(1)).onMeterednessChanged(false);
+
+        resetDataConnection(id);
     }
 
     @Test
     public void testReevaluateUnmeteredConnectionsOnHysteresis() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        setUpDataConnection();
+        int id = setUpDataConnection();
         setUpSubscriptionPlans(true);
         setUpWatchdogTimer();
 
         // Hysteresis active for 10s
-        mBundle.putLong(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 10000);
+        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 10000);
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
         mContext.sendBroadcast(intent);
@@ -1970,7 +2026,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertFalse(getHysteresisStatus());
 
         // Hysteresis disabled
-        mBundle.putLong(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 0);
+        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 0);
         intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
         mContext.sendBroadcast(intent);
@@ -1981,12 +2037,14 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         assertFalse(getHysteresisStatus());
+
+        resetDataConnection(id);
     }
 
     @Test
     public void testReevaluateUnmeteredConnectionsOnWatchdog() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
-        setUpDataConnection();
+        int id = setUpDataConnection();
         setUpSubscriptionPlans(true);
         setUpWatchdogTimer();
 
@@ -1997,7 +2055,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertFalse(getWatchdogStatus());
 
         // Hysteresis active for 10s
-        mBundle.putLong(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 10000);
+        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 10000);
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
         mContext.sendBroadcast(intent);
@@ -2022,6 +2080,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         assertFalse(getWatchdogStatus());
+
+        resetDataConnection(id);
     }
 
     @Test
