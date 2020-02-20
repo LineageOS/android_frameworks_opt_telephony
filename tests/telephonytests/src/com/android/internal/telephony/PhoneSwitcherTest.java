@@ -959,7 +959,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mPhoneSwitcher.mValidationCallback.onNetworkAvailable(null, 2);
         processAllMessages();
         verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
-        verify(mCellularNetworkValidator).stopValidation();
     }
 
     @Test
