@@ -3562,6 +3562,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         public void onCallStartFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("mImsUssdListener onCallStartFailed reasonCode=" + reasonInfo.getCode());
 
+            if (mUssdSession != null) {
+                if (DBG) log("mUssdSession is not null");
+                // To initiate sending Ussd under circuit-switched call
+                if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED) {
+                    mUssdSession = null;
+                    mPhone.getPendingMmiCodes().clear();
+                    mPhone.initiateSilentRedial();
+                    if (DBG) log("Initiated sending ussd by using silent redial.");
+                    return;
+                } else {
+                    if (DBG) log("Failed to start sending ussd by using silent resendUssd.!!");
+                }
+            }
+
             onCallTerminated(imsCall, reasonInfo);
         }
 
