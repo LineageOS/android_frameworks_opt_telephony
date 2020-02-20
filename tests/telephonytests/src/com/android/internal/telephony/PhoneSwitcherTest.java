@@ -116,8 +116,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        PhoneCapability phoneCapability = new PhoneCapability(0, 0, 0, 0, 0, 0,
-                null, null, null, null, null, null, null);
+
+        PhoneCapability phoneCapability = new PhoneCapability(1, 1, 0, null, false);
         doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
 
         doReturn(Call.State.ACTIVE).when(mActiveCall).getState();

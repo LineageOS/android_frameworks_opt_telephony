@@ -55,9 +55,9 @@ import org.mockito.Mock;
 public class CellularNetworkValidatorTest extends TelephonyTest {
     private CellularNetworkValidator mValidatorUT;
     private static final PhoneCapability CAPABILITY_WITH_VALIDATION_SUPPORTED =
-            new PhoneCapability(0, 0, 0, 0, 1, 0, null, null, null, null, null, null, null);
+            new PhoneCapability(1, 1, 0, null, true);
     private static final PhoneCapability CAPABILITY_WITHOUT_VALIDATION_SUPPORTED =
-            new PhoneCapability(0, 0, 0, 0, 0, 0, null, null, null, null, null, null, null);
+            new PhoneCapability(1, 1, 0, null, false);
     private final CellIdentityLte mCellIdentityLte1 = new CellIdentityLte(123, 456, 0, 0, 111);
     private final CellIdentityLte mCellIdentityLte2 = new CellIdentityLte(321, 654, 0, 0, 222);
     @Mock

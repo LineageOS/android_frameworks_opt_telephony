@@ -237,7 +237,7 @@ public class CellularNetworkValidator {
      */
     public boolean isValidationFeatureSupported() {
         return PhoneConfigurationManager.getInstance().getCurrentPhoneCapability()
-                .getPsDataConnectionLingerTimeMillis() > 0;
+                .validationBeforeSwitchSupported;
     }
 
     @VisibleForTesting

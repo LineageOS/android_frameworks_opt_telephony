@@ -28,12 +28,12 @@ import android.os.PowerManager;
 import android.os.RegistrantList;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
+import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -311,7 +311,7 @@ public class PhoneConfigurationManager {
     }
 
     public int getNumberOfModemsWithSimultaneousDataConnections() {
-        return mStaticCapability.getMaxActivePsVoice();
+        return mStaticCapability.maxActiveData;
     }
 
     private void notifyCapabilityChanged() {
@@ -326,7 +326,7 @@ public class PhoneConfigurationManager {
      */
     public void switchMultiSimConfig(int numOfSims) {
         log("switchMultiSimConfig: with numOfSims = " + numOfSims);
-        if (getStaticPhoneCapability().getLogicalModemUuids().size() < numOfSims) {
+        if (getStaticPhoneCapability().logicalModemList.size() < numOfSims) {
             log("switchMultiSimConfig: Phone is not capable of enabling "
                     + numOfSims + " sims, exiting!");
             return;
