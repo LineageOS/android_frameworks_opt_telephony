@@ -24,6 +24,7 @@ import android.net.Uri;
 import android.os.BadParcelableException;
 import android.os.Bundle;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
@@ -130,6 +131,8 @@ public class TelephonyTester {
     private static final String EXTRA_DATA_REG_STATE = "data_reg_state";
     private static final String EXTRA_VOICE_ROAMING_TYPE = "voice_roaming_type";
     private static final String EXTRA_DATA_ROAMING_TYPE = "data_roaming_type";
+    private static final String EXTRA_NR_FREQUENCY_RANGE = "nr_frequency_range";
+    private static final String EXTRA_NR_STATE = "nr_state";
     private static final String EXTRA_OPERATOR = "operator";
 
     private static final String ACTION_RESET = "reset";
@@ -215,11 +218,13 @@ public class TelephonyTester {
                 filter.addAction(ACTION_TEST_SUPP_SRVC_NOTIFICATION);
                 filter.addAction(ACTION_TEST_IMS_E_CALL);
                 mImsExternalCallStates = new ArrayList<ImsExternalCallState>();
-            } else {
-                filter.addAction(ACTION_TEST_SERVICE_STATE);
-                log("register for intent action=" + ACTION_TEST_SERVICE_STATE);
             }
+
+            filter.addAction(ACTION_TEST_SERVICE_STATE);
+            log("register for intent action=" + ACTION_TEST_SERVICE_STATE);
+
             filter.addAction(ACTION_TEST_CHANGE_NUMBER);
+            log("register for intent action=" + ACTION_TEST_CHANGE_NUMBER);
             phone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone.getHandler());
         }
     }
@@ -365,9 +370,7 @@ public class TelephonyTester {
             return;
         }
 
-        // TODO: Fix this with modifing NetworkRegistrationInfo inside ServiceState. Do not call
-        // ServiceState's set methods directly.
-        /*if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
+        if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
             ss.setVoiceRegState(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_REG_STATE,
                     ServiceState.STATE_OUT_OF_SERVICE));
             log("Override voice service state with " + ss.getState());
@@ -377,30 +380,84 @@ public class TelephonyTester {
                     ServiceState.STATE_OUT_OF_SERVICE));
             log("Override data service state with " + ss.getDataRegistrationState());
         }
-        if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_RAT)) {
-            ss.setRilVoiceRadioTechnology(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_RAT,
-                    ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
-            log("Override voice rat with " + ss.getRilVoiceRadioTechnology());
-        }
-        if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_RAT)) {
-            ss.setRilDataRadioTechnology(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_RAT,
-                    ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
-            log("Override data rat with " + ss.getRilDataRadioTechnology());
-        }*/
-        if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_ROAMING_TYPE)) {
-            ss.setVoiceRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_ROAMING_TYPE,
-                    ServiceState.ROAMING_TYPE_UNKNOWN));
-            log("Override voice roaming type with " + ss.getVoiceRoamingType());
-        }
-        if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_ROAMING_TYPE)) {
-            ss.setDataRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_ROAMING_TYPE,
-                    ServiceState.ROAMING_TYPE_UNKNOWN));
-            log("Override data roaming type with " + ss.getDataRoamingType());
-        }
         if (mServiceStateTestIntent.hasExtra(EXTRA_OPERATOR)) {
             String operator = mServiceStateTestIntent.getStringExtra(EXTRA_OPERATOR);
             ss.setOperatorName(operator, operator, "");
             log("Override operator with " + operator);
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_NR_FREQUENCY_RANGE)) {
+            ss.setNrFrequencyRange(mServiceStateTestIntent.getIntExtra(EXTRA_NR_FREQUENCY_RANGE,
+                    ServiceState.FREQUENCY_RANGE_UNKNOWN));
+            log("Override NR frequency range with " + ss.getNrFrequencyRange());
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_NR_STATE)) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri == null) {
+                nri = new NetworkRegistrationInfo.Builder()
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .build();
+            }
+            nri.setNrState(mServiceStateTestIntent.getIntExtra(EXTRA_NR_STATE,
+                    NetworkRegistrationInfo.NR_STATE_NONE));
+            log("Override NR state with " + ss.getNrState());
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_RAT)) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri == null) {
+                nri = new NetworkRegistrationInfo.Builder()
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .build();
+            }
+            nri.setAccessNetworkTechnology(ServiceState.rilRadioTechnologyToNetworkType(
+                    mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_RAT,
+                    ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)));
+            ss.addNetworkRegistrationInfo(nri);
+            log("Override voice rat with " + ss.getRilVoiceRadioTechnology());
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_RAT)) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri == null) {
+                nri = new NetworkRegistrationInfo.Builder()
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .build();
+            }
+            nri.setAccessNetworkTechnology(ServiceState.rilRadioTechnologyToNetworkType(
+                    mServiceStateTestIntent.getIntExtra(EXTRA_DATA_RAT,
+                    ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)));
+            ss.addNetworkRegistrationInfo(nri);
+            log("Override data rat with " + ss.getRilDataRadioTechnology());
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_ROAMING_TYPE)) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri == null) {
+                nri = new NetworkRegistrationInfo.Builder()
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .build();
+            }
+            nri.setRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_ROAMING_TYPE,
+                    ServiceState.ROAMING_TYPE_UNKNOWN));
+            log("Override voice roaming type with " + ss.getVoiceRoamingType());
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_ROAMING_TYPE)) {
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri == null) {
+                nri = new NetworkRegistrationInfo.Builder()
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .build();
+            }
+            nri.setRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_ROAMING_TYPE,
+                    ServiceState.ROAMING_TYPE_UNKNOWN));
+            log("Override data roaming type with " + ss.getDataRoamingType());
         }
     }
 
