@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_REMOTE_SERVICE_EXCEPTION;
+
 import static com.android.internal.telephony.uicc.IccCardStatus.CardState.CARDSTATE_PRESENT;
 
 import static org.junit.Assert.assertEquals;
@@ -78,6 +80,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private ITelephonyRegistry.Stub mTelephonyRegisteryMock;
     @Mock
     private MultiSimSettingController mMultiSimSettingControllerMock;
+    @Mock
+    private ISetOpportunisticDataCallback mSetOpptDataCallback;
 
     private static final String MAC_ADDRESS_PREFIX = "mac_";
     private static final String DISPLAY_NAME_PREFIX = "my_phone_";
@@ -1336,5 +1340,23 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals(2, infoList.size());
         assertEquals("123", infoList.get(0).getIccId());
         assertEquals("456", infoList.get(1).getIccId());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetPreferredDataSubscriptionId_phoneSwitcherNotInitialized() throws Exception {
+        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, null);
+
+        mSubscriptionControllerUT.setPreferredDataSubscriptionId(1, true, mSetOpptDataCallback);
+        verify(mSetOpptDataCallback).onComplete(SET_OPPORTUNISTIC_SUB_REMOTE_SERVICE_EXCEPTION);
+    }
+
+    @Test
+    @SmallTest
+    public void testGetPreferredDataSubscriptionId_phoneSwitcherNotInitialized() throws Exception {
+        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, null);
+
+        assertEquals(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                mSubscriptionControllerUT.getPreferredDataSubscriptionId());
     }
 }
