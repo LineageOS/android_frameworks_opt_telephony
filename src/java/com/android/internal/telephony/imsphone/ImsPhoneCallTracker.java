@@ -1884,9 +1884,23 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
-    public void
-    explicitCallTransfer() {
-        //TODO : implement
+    /**
+     * Connects the two calls and disconnects the subscriber from both calls. Throws a
+     * {@link CallStateException} if there is an issue.
+     * @throws CallStateException
+     */
+    public void explicitCallTransfer() throws CallStateException {
+        ImsCall fgImsCall = mForegroundCall.getImsCall();
+        ImsCall bgImsCall = mBackgroundCall.getImsCall();
+        if ((fgImsCall == null) || (bgImsCall == null) || !canTransfer()) {
+            throw new CallStateException("cannot transfer");
+        }
+
+        try {
+            fgImsCall.consultativeTransfer(bgImsCall);
+        } catch (ImsException e) {
+            throw new CallStateException(e.getMessage());
+        }
     }
 
     @UnsupportedAppUsage
@@ -3470,6 +3484,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallSessionTransferFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("onCallSessionTransferFailed reasonInfo=" + reasonInfo);
+            mPhone.notifySuppServiceFailed(Phone.SuppService.TRANSFER);
         }
 
         /**
