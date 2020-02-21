@@ -34,7 +34,6 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.telephony.cdma.SmsMessage;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -124,9 +123,8 @@ public class CellBroadcastServiceManager {
 
     /**
      * The CellBroadcastServiceManager binds to an implementation of the CellBroadcastService
-     * specified in com.android.telephony.resources.R.string.cellbroadcast_default_package
-     * (typically the DefaultCellBroadcastService) and forwards cell broadcast messages to the
-     * service.
+     * specified in com.android.internal.R.string.cellbroadcast_default_package (typically the
+     * DefaultCellBroadcastService) and forwards cell broadcast messages to the service.
      */
     private void initCellBroadcastServiceModule() {
         mEnabled = true;
@@ -205,8 +203,8 @@ public class CellBroadcastServiceManager {
 
     /** Returns the package name of the cell broadcast service, or null if there is none. */
     private String getCellBroadcastServicePackage() {
-        return TelephonyResourceUtils.getTelephonyResources(mContext).getString(
-                com.android.telephony.resources.R.string.cellbroadcast_default_package);
+        return mContext.getResources().getString(
+                com.android.internal.R.string.cellbroadcast_default_package);
     }
 
     private class CellBroadcastServiceConnection implements ServiceConnection {

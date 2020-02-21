@@ -25,7 +25,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
-import android.net.NetworkStats;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -70,6 +69,7 @@ import android.util.SparseArray;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -86,7 +86,6 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -1690,8 +1689,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return null;
         }
 
-        CharSequence[] carrierLocales = TelephonyResourceUtils.getTelephonyResources(mContext)
-                .getTextArray(com.android.telephony.resources.R.array.carrier_properties);
+        CharSequence[] carrierLocales = mContext.getResources().getTextArray(
+                R.array.carrier_properties);
 
         for (int i = 0; i < carrierLocales.length; i+=3) {
             String c = carrierLocales[i].toString();
@@ -2652,8 +2651,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             options.setBackgroundActivityStartsAllowed(true);
             Intent intent = new Intent(TelephonyIntents.SECRET_CODE_ACTION,
                     Uri.parse("android_secret_code://" + code));
-            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND
-                    | Intent.FLAG_RECEIVER_FOREGROUND);
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             mContext.sendBroadcast(intent, null, options.toBundle());
 
             // {@link TelephonyManager.ACTION_SECRET_CODE} will replace {@link
@@ -2661,8 +2659,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             // that both of these two actions will be broadcast.
             Intent secrectCodeIntent = new Intent(TelephonyManager.ACTION_SECRET_CODE,
                     Uri.parse("android_secret_code://" + code));
-            secrectCodeIntent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND
-                    | Intent.FLAG_RECEIVER_FOREGROUND);
+            secrectCodeIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
             mContext.sendBroadcast(secrectCodeIntent, null, options.toBundle());
         }
     }
@@ -3844,9 +3841,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mRadioCapability.set(rc);
 
         if (SubscriptionManager.isValidSubscriptionId(getSubId())) {
-            boolean restoreSelection = !TelephonyResourceUtils.getTelephonyResources(mContext)
-                    .getBoolean(com.android.telephony.resources.R.bool
-                            .skip_restoring_network_selection);
+            boolean restoreSelection = !mContext.getResources().getBoolean(
+                    com.android.internal.R.bool.skip_restoring_network_selection);
             sendSubscriptionSettings(restoreSelection);
         }
     }
@@ -4101,18 +4097,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public Phone getDefaultPhone() {
         return this;
-    }
-
-    /**
-     * Get aggregated video call data usage since boot.
-     * Permissions android.Manifest.permission.READ_NETWORK_USAGE_HISTORY is required.
-     *
-     * @param perUidStats True if requesting data usage per uid, otherwise overall usage.
-     * @return Snapshot of video call data usage
-     */
-    public NetworkStats getVtDataUsage(boolean perUidStats) {
-        if (mImsPhone == null) return null;
-        return mImsPhone.getVtDataUsage(perUidStats);
     }
 
     /**

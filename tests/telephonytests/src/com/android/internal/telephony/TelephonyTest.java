@@ -29,7 +29,9 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 
 import android.app.ActivityManager;
+import android.app.AppOpsManager;
 import android.app.IActivityManager;
+import android.app.usage.NetworkStatsManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.IIntentSender;
@@ -273,6 +275,8 @@ public abstract class TelephonyTest {
     protected MultiSimSettingController mMultiSimSettingController;
     @Mock
     protected IccCard mIccCard;
+    @Mock
+    protected NetworkStatsManager mStatsManager;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -282,6 +286,7 @@ public abstract class TelephonyTest {
     protected EuiccManager mEuiccManager;
     protected PackageManager mPackageManager;
     protected ConnectivityManager mConnectivityManager;
+    protected AppOpsManager mAppOpsManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -415,6 +420,7 @@ public abstract class TelephonyTest {
         mConnectivityManager = (ConnectivityManager)
                 mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         mPackageManager = mContext.getPackageManager();
+        mAppOpsManager = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
 
         //mTelephonyComponentFactory
         doReturn(mTelephonyComponentFactory).when(mTelephonyComponentFactory).inject(anyString());
@@ -584,6 +590,7 @@ public abstract class TelephonyTest {
         doAnswer((invocation)->Math.max(mTelephonyManager.getActiveModemCount(),
                 mTelephonyManager.getPhoneCount()))
                 .when(mTelephonyManager).getSupportedModemCount();
+        doReturn(mStatsManager).when(mContext).getSystemService(eq(Context.NETWORK_STATS_SERVICE));
 
         //Data
         //Initial state is: userData enabled, provisioned.
@@ -733,6 +740,13 @@ public abstract class TelephonyTest {
         mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
         doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(TAG), anyInt(),
                 any());
+
+        // TelephonyPermissions also checks to see if the calling package has been granted
+        // identifier access via an appop; ensure this query does not allow identifier access for
+        // any packages.
+        doReturn(AppOpsManager.MODE_DEFAULT).when(mAppOpsManager).noteOpNoThrow(
+                eq(AppOpsManager.OPSTR_READ_DEVICE_IDENTIFIERS), anyInt(), anyString(),
+                nullable(String.class), nullable(String.class));
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access
         // restrictions should be enabled; this results in a NPE when DeviceConfig uses

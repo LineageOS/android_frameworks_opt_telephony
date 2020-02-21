@@ -16,18 +16,15 @@
 
 package com.android.internal.telephony;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.when;
 
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
 import android.telephony.VisualVoicemailSmsFilterSettings;
-import android.util.Log;
 
 import com.android.internal.telephony.VisualVoicemailSmsFilter.PhoneAccountHandleConverter;
 
@@ -83,14 +80,12 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
 
     private Context mContext;
     private TelephonyManager mTelephonyManager;
-    private PackageManager mPackageManager;
 
     @Override
     public void setUp() throws Exception {
         super.setUp();
         mContext = Mockito.mock(Context.class);
         mTelephonyManager = Mockito.mock(TelephonyManager.class);
-        mPackageManager = Mockito.mock(PackageManager.class);
         when(mContext.getSystemServiceName(TelephonyManager.class))
                 .thenReturn(Context.TELEPHONY_SERVICE);
         when(mContext.getSystemService(Context.TELEPHONY_SERVICE))
@@ -138,15 +133,7 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
                 .thenReturn(SIM_MCC_MNC);
         when(mContext.getResources())
                 .thenReturn(resources);
-        when(mContext.getPackageManager()).thenReturn(mPackageManager);
-        try {
-            when(mPackageManager.getResourcesForApplication(anyString())).thenReturn(resources);
-        } catch (PackageManager.NameNotFoundException ex) {
-            Log.d("VisualVoicemailSmsFilterTest", "NameNotFoundException: " + ex);
-        }
-
-        when(resources.getStringArray(
-                com.android.telephony.resources.R.array.config_vvmSmsFilterRegexes))
+        when(resources.getStringArray(com.android.internal.R.array.config_vvmSmsFilterRegexes))
                 .thenReturn(VVM_PATTERN_REGEXP);
 
         assertTrue(

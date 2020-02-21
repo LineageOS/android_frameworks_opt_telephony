@@ -32,9 +32,9 @@ import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
 import android.text.TextUtils;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.NotificationChannelController;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,23 +50,18 @@ public class InstallCarrierAppUtils {
     private static CarrierAppInstallReceiver sCarrierAppInstallReceiver = null;
 
     static void showNotification(Context context, String pkgName) {
-        Resources res = TelephonyResourceUtils.getTelephonyResources(context);
+        Resources res = Resources.getSystem();
         String title = res.getString(
-                com.android.telephony.resources.R.string.install_carrier_app_notification_title);
+                com.android.internal.R.string.install_carrier_app_notification_title);
         String appName = getAppNameFromPackageName(context, pkgName);
         String message;
         if (TextUtils.isEmpty(appName)) {
-            message = res.getString(
-                    com.android.telephony.resources.R.string
-                            .install_carrier_app_notification_text);
+            message = res.getString(R.string.install_carrier_app_notification_text);
         } else {
-            message = res.getString(
-                    com.android.telephony.resources.R.string
-                            .install_carrier_app_notification_text_app_name,
+            message = res.getString(R.string.install_carrier_app_notification_text_app_name,
                     appName);
         }
-        String downloadButtonText = res.getString(
-                com.android.telephony.resources.R.string.install_carrier_app_notification_button);
+        String downloadButtonText = res.getString(R.string.install_carrier_app_notification_button);
 
         boolean persistent = Settings.Global.getInt(
                 context.getContentResolver(),
@@ -82,8 +77,7 @@ public class InstallCarrierAppUtils {
                 NotificationChannelController.CHANNEL_ID_SIM)
                 .setContentTitle(title)
                 .setContentText(message)
-                .setSmallIcon(
-                        com.android.telephony.resources.R.drawable.ic_signal_cellular_alt_24px)
+                .setSmallIcon(R.drawable.ic_signal_cellular_alt_24px)
                 .addAction(goToStoreAction)
                 .setOngoing(persistent)
                 .setVisibility(Notification.VISIBILITY_SECRET) // Should not appear on lock screen

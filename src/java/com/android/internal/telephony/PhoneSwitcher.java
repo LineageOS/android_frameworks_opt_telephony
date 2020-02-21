@@ -1271,7 +1271,6 @@ public class PhoneSwitcher extends Handler {
             return;
         }
         confirmSwitch(subId, true);
-        mValidator.stopValidation();
     }
 
     private void onValidationDone(int subId, boolean passed) {

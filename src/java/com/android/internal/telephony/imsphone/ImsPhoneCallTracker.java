@@ -16,9 +16,11 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
 import android.annotation.NonNull;
+import android.app.usage.NetworkStatsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -32,6 +34,8 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.NetworkStats;
+import android.net.netstats.provider.AbstractNetworkStatsProvider;
+import android.net.netstats.provider.NetworkStatsProviderCallback;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,6 +48,7 @@ import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
+import android.telecom.Connection.VideoProvider;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.CallQuality;
@@ -108,7 +113,6 @@ import com.android.internal.telephony.metrics.CallQualityMetrics;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -277,6 +281,48 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    /**
+     * A class implementing {@link AbstractNetworkStatsProvider} to report VT data usage to system.
+     */
+    // TODO: Directly reports diff in updateVtDataUsage.
+    @VisibleForTesting(visibility = PRIVATE)
+    public class VtDataUsageProvider extends AbstractNetworkStatsProvider {
+        private int mToken = 0;
+        private NetworkStats mIfaceSnapshot = new NetworkStats(0L, 0);
+        private NetworkStats mUidSnapshot = new NetworkStats(0L, 0);
+        @Override
+        public void requestStatsUpdate(int token) {
+            // If there is an ongoing VT call, request the latest VT usage from the modem. The
+            // latest usage will return asynchronously so it won't be counted in this round, but it
+            // will be eventually counted when next requestStatsUpdate is called.
+            if (mState != PhoneConstants.State.IDLE) {
+                for (ImsPhoneConnection conn : mConnections) {
+                    final VideoProvider videoProvider = conn.getVideoProvider();
+                    if (videoProvider != null) {
+                        videoProvider.onRequestConnectionDataUsage();
+                    }
+                }
+            }
+
+            final NetworkStats ifaceDiff = mVtDataUsageSnapshot.subtract(mIfaceSnapshot);
+            final NetworkStats uidDiff = mVtDataUsageUidSnapshot.subtract(mUidSnapshot);
+            mVtDataUsageProviderCb.onStatsUpdated(mToken, ifaceDiff, uidDiff);
+            mIfaceSnapshot = mIfaceSnapshot.add(ifaceDiff);
+            mUidSnapshot = mUidSnapshot.add(uidDiff);
+            mToken = token;
+        }
+
+        @Override
+        public void setLimit(String iface, long quotaBytes) {
+            // No-op
+        }
+
+        @Override
+        public void setAlert(long quotaBytes) {
+            // No-op
+        }
+    }
+
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -412,6 +458,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private volatile NetworkStats mVtDataUsageSnapshot = null;
     private volatile NetworkStats mVtDataUsageUidSnapshot = null;
+    private final NetworkStatsProviderCallback mVtDataUsageProviderCb;
 
     private final AtomicInteger mDefaultDialerUid = new AtomicInteger(NetworkStats.UID_ALL);
 
@@ -846,6 +893,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         long currentTime = SystemClock.elapsedRealtime();
         mVtDataUsageSnapshot = new NetworkStats(currentTime, 1);
         mVtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
+        final NetworkStatsManager statsManager =
+                (NetworkStatsManager) mPhone.getContext().getSystemService(
+                        Context.NETWORK_STATS_SERVICE);
+        mVtDataUsageProviderCb = statsManager.registerNetworkStatsProvider(LOG_TAG,
+                new VtDataUsageProvider());
 
         // Allow the executor to be specified for testing.
         mImsManagerConnector = new FeatureConnector<>(
@@ -995,6 +1047,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().unregisterReceiver(mReceiver);
         mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
         mImsManagerConnector.disconnect();
+
+        if (mVtDataUsageProviderCb != null) {
+            mVtDataUsageProviderCb.unregister();
+        }
     }
 
     @Override
@@ -1318,7 +1374,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         CarrierConfigManager.KEY_ALLOW_ADD_CALL_DURING_VIDEO_CALL_BOOL);
         mAllowHoldingVideoCall =
                 carrierConfig.getBoolean(
-                        CarrierConfigManager.KEY_ALLOW_HOLDING_VIDEO_CALL_BOOL);
+                        CarrierConfigManager.KEY_ALLOW_HOLD_VIDEO_CALL_BOOL);
         mNotifyVtHandoverToWifiFail = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_NOTIFY_VT_HANDOVER_TO_WIFI_FAILURE_BOOL);
         mSupportDowngradeVtToAudio = carrierConfig.getBoolean(
@@ -3111,9 +3167,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
             }
 
-            boolean useVideoPauseWorkaround = TelephonyResourceUtils
-                    .getTelephonyResources(mPhone.getContext()).getBoolean(
-                    com.android.telephony.resources.R.bool.config_useVideoPauseWorkaround);
+            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
             if (useVideoPauseWorkaround && mSupportPauseVideo &&
                     VideoProfile.isVideo(conn.getVideoState())) {
                 // If we are using the video pause workaround, the vendor IMS code has issues
@@ -3440,6 +3495,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         }
 
+        @Override
+        public void onCallSessionTransferred(ImsCall imsCall) {
+            if (DBG) log("onCallSessionTransferred success");
+        }
+
+        @Override
+        public void onCallSessionTransferFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
+            if (DBG) log("onCallSessionTransferFailed reasonInfo=" + reasonInfo);
+        }
+
         /**
          * Handles a change to the multiparty state for an {@code ImsCall}.  Notifies the associated
          * {@link ImsPhoneConnection} of the change.
@@ -3496,6 +3561,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallStartFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             if (DBG) log("mImsUssdListener onCallStartFailed reasonCode=" + reasonInfo.getCode());
+
+            if (mUssdSession != null) {
+                if (DBG) log("mUssdSession is not null");
+                // To initiate sending Ussd under circuit-switched call
+                if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED) {
+                    mUssdSession = null;
+                    mPhone.getPendingMmiCodes().clear();
+                    mPhone.initiateSilentRedial();
+                    if (DBG) log("Initiated sending ussd by using silent redial.");
+                    return;
+                } else {
+                    if (DBG) log("Failed to start sending ussd by using silent resendUssd.!!");
+                }
+            }
 
             onCallTerminated(imsCall, reasonInfo);
         }
@@ -3900,7 +3979,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @param call The IMS call
      * @param dataUsage The aggregated data usage for the call
      */
-    private void updateVtDataUsage(ImsCall call, long dataUsage) {
+    @VisibleForTesting(visibility = PRIVATE)
+    public void updateVtDataUsage(ImsCall call, long dataUsage) {
         long oldUsage = 0L;
         if (mVtDataUsageMap.containsKey(call.uniqueId)) {
             oldUsage = mVtDataUsageMap.get(call.uniqueId);
@@ -4168,9 +4248,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 imsCall.getCallSession().getVideoCallProvider();
         if (imsVideoCallProvider != null) {
             // TODO: Remove this when we can better formalize the format of session modify requests.
-            boolean useVideoPauseWorkaround = TelephonyResourceUtils
-                    .getTelephonyResources(mPhone.getContext()).getBoolean(
-                    com.android.telephony.resources.R.bool.config_useVideoPauseWorkaround);
+            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
 
             ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
                     new ImsVideoCallProviderWrapper(imsVideoCallProvider);
@@ -4320,29 +4399,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 isIncomingCallAudio + " isVowifiEnabled=" + isVoWifiEnabled);
 
         return isActiveCallVideo && isActiveCallOnWifi && isIncomingCallAudio && !isVoWifiEnabled;
-    }
-
-    /**
-     * Get aggregated video call data usage since boot.
-     *
-     * @param perUidStats True if requesting data usage per uid, otherwise overall usage.
-     * @return Snapshot of video call data usage
-     */
-    public NetworkStats getVtDataUsage(boolean perUidStats) {
-
-        // If there is an ongoing VT call, request the latest VT usage from the modem. The latest
-        // usage will return asynchronously so it won't be counted in this round, but it will be
-        // eventually counted when next getVtDataUsage is called.
-        if (mState != PhoneConstants.State.IDLE) {
-            for (ImsPhoneConnection conn : mConnections) {
-                android.telecom.Connection.VideoProvider videoProvider = conn.getVideoProvider();
-                if (videoProvider != null) {
-                    videoProvider.onRequestConnectionDataUsage();
-                }
-            }
-        }
-
-        return perUidStats ? mVtDataUsageUidSnapshot : mVtDataUsageSnapshot;
     }
 
     public void registerPhoneStateListener(PhoneStateListener listener) {
@@ -4701,9 +4757,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
 
-            boolean useVideoPauseWorkaround = TelephonyResourceUtils
-                    .getTelephonyResources(mPhone.getContext()).getBoolean(
-                    com.android.telephony.resources.R.bool.config_useVideoPauseWorkaround);
+            boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_useVideoPauseWorkaround);
             if (useVideoPauseWorkaround && mSupportPauseVideo &&
                     VideoProfile.isVideo(conn.getVideoState())) {
                 // If we are using the video pause workaround, the vendor IMS code has issues

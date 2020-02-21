@@ -103,9 +103,9 @@ public class TelephonyCapabilities {
      */
     public static int getDeviceIdLabel(Phone phone) {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
-            return com.android.telephony.resources.R.string.imei;
+            return com.android.internal.R.string.imei;
         } else if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return com.android.telephony.resources.R.string.meid;
+            return com.android.internal.R.string.meid;
         } else {
             Rlog.w(LOG_TAG, "getDeviceIdLabel: no known label for phone "
                   + phone.getPhoneName());

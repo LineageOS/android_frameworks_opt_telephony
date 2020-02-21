@@ -83,8 +83,7 @@ public class UiccSlotTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mContextFixture.putBooleanResource(
-                com.android.telephony.resources.R.bool.config_hotswapCapable, true);
+        mContextFixture.putBooleanResource(com.android.internal.R.bool.config_hotswapCapable, true);
         /* initially there are no application available */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
         mIccCardStatus.mCdmaSubscriptionAppIndex =
@@ -343,8 +342,7 @@ public class UiccSlotTest extends TelephonyTest {
         int slotIndex = 0;
 
         // mock the resource overlay which declares the euicc slots
-        mContextFixture.putIntArrayResource(
-                com.android.telephony.resources.R.array.non_removable_euicc_slots,
+        mContextFixture.putIntArrayResource(com.android.internal.R.array.non_removable_euicc_slots,
                 new int[]{0, 1});
 
         // Simulate when SIM is added, UiccCard and UiccProfile should be created.
@@ -360,8 +358,7 @@ public class UiccSlotTest extends TelephonyTest {
         int slotIndex = 0;
 
         // mock the resource overlay which declares the euicc slots
-        mContextFixture.putIntArrayResource(
-                com.android.telephony.resources.R.array.non_removable_euicc_slots,
+        mContextFixture.putIntArrayResource(com.android.internal.R.array.non_removable_euicc_slots,
                 new int[]{1});
 
         // Simulate when SIM is added, UiccCard and UiccProfile should be created.

@@ -49,7 +49,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.util.Objects;
@@ -217,8 +216,8 @@ public class ImsPhoneConnection extends Connection implements
 
         fetchDtmfToneDelay(phone);
 
-        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
-                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }
@@ -257,8 +256,8 @@ public class ImsPhoneConnection extends Connection implements
 
         fetchDtmfToneDelay(phone);
 
-        if (TelephonyResourceUtils.getTelephonyResources(phone.getContext()).getBoolean(
-                com.android.telephony.resources.R.bool.config_use_voip_mode_for_ims)) {
+        if (phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_use_voip_mode_for_ims)) {
             setAudioModeIsVoip(true);
         }
     }
@@ -422,6 +421,32 @@ public class ImsPhoneConnection extends Connection implements
             }
         } else {
             throw new CallStateException("phone not ringing");
+        }
+    }
+
+    @Override
+    public void transfer(String number, boolean isConfirmationRequired) throws CallStateException {
+        try {
+            if (mImsCall != null) {
+                mImsCall.transfer(number, isConfirmationRequired);
+            } else {
+                throw new CallStateException("no valid ims call to transfer");
+            }
+        } catch (ImsException e) {
+            throw new CallStateException("cannot transfer call");
+        }
+    }
+
+    @Override
+    public void consultativeTransfer(Connection other) throws CallStateException {
+        try {
+            if (mImsCall != null) {
+                mImsCall.consultativeTransfer(((ImsPhoneConnection) other).getImsCall());
+            } else {
+                throw new CallStateException("no valid ims call to transfer");
+            }
+        } catch (ImsException e) {
+            throw new CallStateException("cannot transfer call");
         }
     }
 

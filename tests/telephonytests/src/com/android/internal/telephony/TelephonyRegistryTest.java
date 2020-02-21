@@ -171,17 +171,16 @@ public class TelephonyRegistryTest extends TelephonyTest {
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
         doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
-        PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, 4, 5, 6,
-                null, null, null, null, null, null, null);
+        PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), mContext.getFeatureId(),
-                mPhoneStateListener.callback, LISTEN_PHONE_CAPABILITY_CHANGE, true);
+                mPhoneStateListener.callback,
+                LISTEN_PHONE_CAPABILITY_CHANGE, true);
         processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);
 
         // notifyPhoneCapabilityChanged with a new capability. Callback should be triggered.
-        phoneCapability = new PhoneCapability(6, 5, 4, 3, 2, 1,
-                null, null, null, null, null, null, null);
+        phoneCapability = new PhoneCapability(3, 2, 2, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);

@@ -31,13 +31,13 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.view.WindowManager;
 
+import com.android.internal.R;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -223,8 +223,8 @@ public class UiccSlot extends Handler {
 
     // Return true if a slot index is for removable UICCs or eUICCs
     private boolean isSlotRemovable(int slotIndex) {
-        int[] euiccSlots = TelephonyResourceUtils.getTelephonyResources(mContext)
-                .getIntArray(com.android.telephony.resources.R.array.non_removable_euicc_slots);
+        int[] euiccSlots = mContext.getResources()
+                .getIntArray(com.android.internal.R.array.non_removable_euicc_slots);
         if (euiccSlots == null) {
             return true;
         }
@@ -291,8 +291,8 @@ public class UiccSlot extends Handler {
 
     private void onIccSwap(boolean isAdded) {
 
-        boolean isHotSwapSupported = TelephonyResourceUtils.getTelephonyResources(mContext)
-                .getBoolean(com.android.telephony.resources.R.bool.config_hotswapCapable);
+        boolean isHotSwapSupported = mContext.getResources().getBoolean(
+                R.bool.config_hotswapCapable);
 
         if (isHotSwapSupported) {
             log("onIccSwap: isHotSwapSupported is true, don't prompt for rebooting");
@@ -312,10 +312,9 @@ public class UiccSlot extends Handler {
 
     private void promptForRestart(boolean isAdded) {
         synchronized (mLock) {
-            final Resources res = TelephonyResourceUtils.getTelephonyResources(mContext);
+            final Resources res = mContext.getResources();
             final String dialogComponent = res.getString(
-                    com.android.telephony.resources.R.string
-                        .config_iccHotswapPromptForRestartDialogComponent);
+                    R.string.config_iccHotswapPromptForRestartDialogComponent);
             if (dialogComponent != null) {
                 Intent intent = new Intent().setComponent(ComponentName.unflattenFromString(
                         dialogComponent)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -353,16 +352,13 @@ public class UiccSlot extends Handler {
 
             };
 
-            Resources r = TelephonyResourceUtils.getTelephonyResources(mContext);
+            Resources r = Resources.getSystem();
 
-            String title = (isAdded)
-                    ? r.getString(com.android.telephony.resources.R.string.sim_added_title)
-                    : r.getString(com.android.telephony.resources.R.string.sim_removed_title);
-            String message = (isAdded)
-                    ? r.getString(com.android.telephony.resources.R.string.sim_added_message)
-                    : r.getString(com.android.telephony.resources.R.string.sim_removed_message);
-            String buttonTxt = r.getString(
-                    com.android.telephony.resources.R.string.sim_restart_button);
+            String title = (isAdded) ? r.getString(R.string.sim_added_title) :
+                    r.getString(R.string.sim_removed_title);
+            String message = (isAdded) ? r.getString(R.string.sim_added_message) :
+                    r.getString(R.string.sim_removed_message);
+            String buttonTxt = r.getString(R.string.sim_restart_button);
 
             AlertDialog dialog = new AlertDialog.Builder(mContext)
                     .setTitle(title)

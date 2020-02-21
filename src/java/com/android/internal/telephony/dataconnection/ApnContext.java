@@ -25,12 +25,12 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.SparseIntArray;
 
+import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -384,8 +384,8 @@ public class ApnContext {
     }
 
     public boolean isProvisioningApn() {
-        String provisioningApn = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                .getString(com.android.telephony.resources.R.string.mobile_provisioning_apn);
+        String provisioningApn = mPhone.getContext().getResources()
+                .getString(R.string.mobile_provisioning_apn);
         if (!TextUtils.isEmpty(provisioningApn) &&
                 (mApnSetting != null) && (mApnSetting.getApnName() != null)) {
             return (mApnSetting.getApnName().equals(provisioningApn));
@@ -468,9 +468,8 @@ public class ApnContext {
     public void resetErrorCodeRetries() {
         logl("ApnContext.resetErrorCodeRetries");
 
-        String[] config = TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                .getStringArray(
-                com.android.telephony.resources.R.array.config_cell_retries_per_error_code);
+        String[] config = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.config_cell_retries_per_error_code);
         synchronized (mRetriesLeftPerErrorCode) {
             mRetriesLeftPerErrorCode.clear();
 

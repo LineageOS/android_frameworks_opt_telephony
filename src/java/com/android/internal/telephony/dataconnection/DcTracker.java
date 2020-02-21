@@ -112,7 +112,6 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.ArrayUtils;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.AsyncChannel;
 import com.android.telephony.Rlog;
@@ -325,8 +324,13 @@ public class DcTracker extends Handler {
     private final LocalLog mApnSettingsInitializationLog = new LocalLog(50);
 
     /* Default for 5G connection reevaluation alarm durations */
-    private long mHysteresisTimeMs = 0;
+    private int mHysteresisTimeSec = 0;
     private long mWatchdogTimeMs = 1000 * 60 * 60;
+
+    /* Default for whether 5G frequencies are considered unmetered */
+    private boolean mAllUnmetered = false;
+    private boolean mMmwaveUnmetered = false;
+    private boolean mSub6Unmetered = false;
 
     /* Used to check whether 5G timers are currently active and waiting to go off */
     private boolean mHysteresis = false;
@@ -355,12 +359,16 @@ public class DcTracker extends Handler {
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
+                reevaluateUnmeteredConnections();
             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
                 if (DBG) log("screen off");
                 mIsScreenOn = false;
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
+                stopHysteresisAlarm();
+                stopWatchdogAlarm();
+                setDataConnectionUnmetered(false);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 onActionIntentDataStallAlarm(intent);
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
@@ -371,54 +379,55 @@ public class DcTracker extends Handler {
                 if (mIccRecords.get() != null && mIccRecords.get().getRecordsLoaded()) {
                     setDefaultDataRoamingEnabled();
                 }
+                String nr5GIconConfiguration = CarrierConfigManager.getDefaultConfig().getString(
+                        CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
+                String[] bandwidths = CarrierConfigManager.getDefaultConfig().getStringArray(
+                        CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY);
+                boolean useLte = false;
+                mDataIconPattern = CarrierConfigManager.getDefaultConfig().getString(
+                        CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
                 CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                         .getSystemService(Context.CARRIER_CONFIG_SERVICE);
                 if (configManager != null) {
                     PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
                     if (b != null) {
-                        String nr5GIconConfiguration = b.getString(
-                                CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
-                        if (nr5GIconConfiguration == null) {
-                            nr5GIconConfiguration =
-                                    CarrierConfigManager.getDefaultConfig().getString(
+                        if (b.getString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING)
+                                != null) {
+                            nr5GIconConfiguration = b.getString(
                                     CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
                         }
-                        process5GIconMapping(nr5GIconConfiguration);
-                        mDataIconPattern = b.getString(
-                                CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
-                        if (mDataIconPattern == null) {
-                            mDataIconPattern = CarrierConfigManager.getDefaultConfig().getString(
+                        if (b.getString(CarrierConfigManager
+                                .KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING) != null) {
+                            mDataIconPattern = b.getString(
                                     CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
                         }
-                        mHysteresisTimeMs = b.getLong(
+                        if (b.getStringArray(CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY)
+                                != null) {
+                            bandwidths = b.getStringArray(
+                                    CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY);
+                        }
+                        useLte = b.getBoolean(CarrierConfigManager
+                                .KEY_BANDWIDTH_NR_NSA_USE_LTE_VALUE_FOR_UPSTREAM_BOOL);
+                        mHysteresisTimeSec = b.getInt(
                                 CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT);
                         mWatchdogTimeMs = b.getLong(
                                 CarrierConfigManager.KEY_5G_WATCHDOG_TIME_MS_LONG);
+                        mAllUnmetered = b.getBoolean(
+                                CarrierConfigManager.KEY_UNMETERED_NR_NSA_BOOL);
+                        mMmwaveUnmetered = b.getBoolean(
+                                CarrierConfigManager.KEY_UNMETERED_NR_NSA_MMWAVE_BOOL);
+                        mSub6Unmetered = b.getBoolean(
+                                CarrierConfigManager.KEY_UNMETERED_NR_NSA_SUB6_BOOL);
                     }
                 }
+                sendMessage(obtainMessage(DctConstants.EVENT_UPDATE_CARRIER_CONFIGS,
+                        useLte ? 1 : 0, 0 /* unused */,
+                        new Pair<>(bandwidths, nr5GIconConfiguration)));
             } else {
                 if (DBG) log("onReceive: Unknown action=" + action);
             }
         }
     };
-
-    private void process5GIconMapping(String config) {
-        m5GIconMapping.clear();
-        for (String pair : config.trim().split(",")) {
-            String[] kv = (pair.trim().toLowerCase()).split(":");
-            if (kv.length != 2) {
-                if (DBG) log("Invalid 5G icon configuration, config = " + pair);
-                continue;
-            }
-            int value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-            if (kv[1].equals("5g")) {
-                value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
-            } else if (kv[1].equals("5g_plus")) {
-                value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
-            }
-            m5GIconMapping.put(kv[0], value);
-        }
-    }
 
     private final Runnable mPollNetStat = new Runnable() {
         @Override
@@ -608,9 +617,9 @@ public class DcTracker extends Handler {
     private RegistrantList mAllDataDisconnectedRegistrants = new RegistrantList();
 
     // member variables
-    private final Phone mPhone;
+    protected final Phone mPhone;
     private final UiccController mUiccController;
-    private final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    protected final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private DctConstants.Activity mActivity = DctConstants.Activity.NONE;
     private DctConstants.State mState = DctConstants.State.IDLE;
     private final Handler mDataConnectionTracker;
@@ -643,7 +652,7 @@ public class DcTracker extends Handler {
     private PendingIntent mReconnectIntent = null;
 
     // When false we will not auto attach and manually attaching is required.
-    private boolean mAutoAttachOnCreationConfig = false;
+    protected boolean mAutoAttachOnCreationConfig = false;
     private AtomicBoolean mAutoAttachEnabled = new AtomicBoolean(false);
 
     // State of screen
@@ -670,6 +679,10 @@ public class DcTracker extends Handler {
     private int mDisconnectPendingCount = 0;
 
     private ArrayList<DataProfile> mLastDataProfileList = new ArrayList<>();
+
+    /** RAT name ===> (downstream, upstream) bandwidth values from carrier config. */
+    private final ConcurrentHashMap<String, Pair<Integer, Integer>> mBandwidths =
+            new ConcurrentHashMap<>();
 
     /**
      * Handles changes to the APN db.
@@ -1020,8 +1033,7 @@ public class DcTracker extends Handler {
             mProvisioningSpinner.setTitle(mNetworkOperator);
             mProvisioningSpinner.setMessage(
                     // TODO: Don't borrow "Connecting..." i18n string; give Telephony a version.
-                    context.getText(com.android.telephony.resources.R.string
-                            .media_route_status_connecting));
+                    context.getText(com.android.internal.R.string.media_route_status_connecting));
             mProvisioningSpinner.setIndeterminate(true);
             mProvisioningSpinner.setCancelable(true);
             // Allow non-Activity Service Context to create a View.
@@ -1490,7 +1502,7 @@ public class DcTracker extends Handler {
     }
 
     // arg for setupDataOnAllConnectableApns
-    private enum RetryFailures {
+    protected enum RetryFailures {
         // retry failed networks always (the old default)
         ALWAYS,
         // retry only when a substantial change has occurred.  Either:
@@ -1499,7 +1511,7 @@ public class DcTracker extends Handler {
         ONLY_ON_CHANGE
     };
 
-    private void setupDataOnAllConnectableApns(String reason, RetryFailures retryFailures) {
+    protected void setupDataOnAllConnectableApns(String reason, RetryFailures retryFailures) {
         if (VDBG) log("setupDataOnAllConnectableApns: " + reason);
 
         if (DBG && !VDBG) {
@@ -2051,7 +2063,7 @@ public class DcTracker extends Handler {
         return true;
     }
 
-    private void setInitialAttachApn() {
+    protected void setInitialAttachApn() {
         ApnSetting iaApnSetting = null;
         ApnSetting defaultApnSetting = null;
         ApnSetting firstNonEmergencyApnSetting = null;
@@ -2081,6 +2093,12 @@ public class DcTracker extends Handler {
                     defaultApnSetting = apn;
                 }
             }
+        }
+
+        if ((iaApnSetting == null) && (defaultApnSetting == null) &&
+                !allowInitialAttachForOperator()) {
+            log("Abort Initial attach");
+            return;
         }
 
         // The priority of apn candidates from highest to lowest is:
@@ -2113,6 +2131,10 @@ public class DcTracker extends Handler {
                             initialAttachApnSetting.equals(getPreferredApn())),
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
+    }
+
+    protected boolean allowInitialAttachForOperator() {
+        return true;
     }
 
     /**
@@ -2264,13 +2286,12 @@ public class DcTracker extends Handler {
         removeMessages(DctConstants.EVENT_DATA_RECONNECT, apnContext);
     }
 
-    private void onRecordsLoadedOrSubIdChanged() {
+    protected void onRecordsLoadedOrSubIdChanged() {
         if (DBG) log("onRecordsLoadedOrSubIdChanged: createAllApnList");
         if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
             // Auto attach is for cellular only.
-            mAutoAttachOnCreationConfig = TelephonyResourceUtils.getTelephonyResources(
-                    mPhone.getContext()).getBoolean(
-                    com.android.telephony.resources.R.bool.config_auto_attach_data_on_creation);
+            mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
+                    .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
         }
 
         createAllApnList();
@@ -3021,9 +3042,8 @@ public class DcTracker extends Handler {
                 startReconnect(delay, apnContext);
             }
         } else {
-            boolean restartRadioAfterProvisioning = TelephonyResourceUtils.getTelephonyResources(
-                    mPhone.getContext()).getBoolean(
-                    com.android.telephony.resources.R.bool.config_restartRadioAfterProvisioning);
+            boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_restartRadioAfterProvisioning);
 
             if (apnContext.isProvisioningApn() && restartRadioAfterProvisioning) {
                 log("onDisconnectDone: restartRadio after provisioning");
@@ -3101,7 +3121,7 @@ public class DcTracker extends Handler {
         return true;
     }
 
-    private void setDataProfilesAsNeeded() {
+    protected void setDataProfilesAsNeeded() {
         if (DBG) log("setDataProfilesAsNeeded");
 
         ArrayList<DataProfile> dataProfileList = new ArrayList<>();
@@ -3128,7 +3148,7 @@ public class DcTracker extends Handler {
      * Based on the sim operator numeric, create a list for all possible
      * Data Connections and setup the preferredApn.
      */
-    private void createAllApnList() {
+    protected void createAllApnList() {
         mAllApnSettings.clear();
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
@@ -3284,8 +3304,8 @@ public class DcTracker extends Handler {
         // to say they don't want to use preferred at all.
         boolean usePreferred = true;
         try {
-            usePreferred = !TelephonyResourceUtils.getTelephonyResources(mPhone.getContext())
-                    .getBoolean(com.android.telephony.resources.R.bool.config_dontPreferApn);
+            usePreferred = !mPhone.getContext().getResources().getBoolean(com.android
+                    .internal.R.bool.config_dontPreferApn);
         } catch (Resources.NotFoundException e) {
             if (DBG) log("buildWaitingApns: usePreferred NotFoundException set to true");
             usePreferred = true;
@@ -3832,6 +3852,11 @@ public class DcTracker extends Handler {
                 mWatchdog = false;
                 reevaluateUnmeteredConnections();
                 break;
+            case DctConstants.EVENT_UPDATE_CARRIER_CONFIGS:
+                Pair<String[], String> configPair = (Pair<String[], String>) msg.obj;
+                updateLinkBandwidths(configPair.first, msg.arg1 == 1);
+                update5GIconMapping(configPair.second);
+                break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
                 break;
@@ -3897,6 +3922,75 @@ public class DcTracker extends Handler {
                 }
             } else {
                 onSimNotReady();
+            }
+        }
+    }
+
+    /**
+     * Update link bandwidth estimate default values from carrier config.
+     * @param bandwidths String array of "RAT:upstream,downstream" for each RAT
+     * @param useLte For NR NSA, whether to use LTE value for upstream or not
+     */
+    private void updateLinkBandwidths(String[] bandwidths, boolean useLte) {
+        synchronized (mBandwidths) {
+            mBandwidths.clear();
+            for (String config : bandwidths) {
+                int downstream = 14;
+                int upstream = 14;
+                String[] kv = config.split(":");
+                if (kv.length == 2) {
+                    String[] split = kv[1].split(",");
+                    if (split.length == 2) {
+                        try {
+                            downstream = Integer.parseInt(split[0]);
+                            upstream = Integer.parseInt(split[1]);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    mBandwidths.put(kv[0], new Pair<>(downstream, upstream));
+                }
+            }
+            if (useLte) {
+                Pair<Integer, Integer> ltePair = mBandwidths.get("LTE");
+                if (ltePair != null) {
+                    if (mBandwidths.containsKey("NR_NSA")) {
+                        mBandwidths.put("NR_NSA",
+                                new Pair<>(mBandwidths.get("NR_NSA").first, ltePair.second));
+                    }
+                    if (mBandwidths.containsKey("NR_NSA_MMWAVE")) {
+                        mBandwidths.put("NR_NSA_MMWAVE",
+                                new Pair<>(mBandwidths.get("NR_NSA_MMWAVE").first, ltePair.second));
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Return the link upstream/downstream values from CarrierConfig for the given RAT name.
+     * @param ratName RAT name from ServiceState#rilRadioTechnologyToString.
+     * @return pair of downstream/upstream values (kbps), or null if the config is not defined.
+     */
+    public Pair<Integer, Integer> getLinkBandwidths(String ratName) {
+        return mBandwidths.get(ratName);
+    }
+
+    private void update5GIconMapping(String config) {
+        synchronized (m5GIconMapping) {
+            m5GIconMapping.clear();
+            for (String pair : config.trim().split(",")) {
+                String[] kv = (pair.trim().toLowerCase()).split(":");
+                if (kv.length != 2) {
+                    if (DBG) log("Invalid 5G icon configuration, config = " + pair);
+                    continue;
+                }
+                int value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+                if (kv[1].equals("5g")) {
+                    value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
+                } else if (kv[1].equals("5g_plus")) {
+                    value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
+                }
+                m5GIconMapping.put(kv[0], value);
             }
         }
     }
@@ -3991,7 +4085,8 @@ public class DcTracker extends Handler {
     }
 
     private boolean reevaluateUnmeteredConnections() {
-        if (isNetworkTypeUnmetered(NETWORK_TYPE_NR)) {
+        if (isNetworkTypeUnmetered(NETWORK_TYPE_NR) || isFrequencyRangeUnmetered()) {
+            if (DBG) log("NR NSA is unmetered");
             if (mPhone.getServiceState().getNrState()
                     == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
                 if (!m5GWasConnected) { // 4G -> 5G
@@ -4068,6 +4163,20 @@ public class DcTracker extends Handler {
         return plan.getDataLimitBytes() == SubscriptionPlan.BYTES_UNLIMITED
                 && (plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_UNKNOWN
                 || plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED);
+    }
+
+    private boolean isFrequencyRangeUnmetered() {
+        boolean nrConnected = mPhone.getServiceState().getNrState()
+                == NetworkRegistrationInfo.NR_STATE_CONNECTED;
+        if (mMmwaveUnmetered || mSub6Unmetered) {
+            int frequencyRange = mPhone.getServiceState().getNrFrequencyRange();
+            boolean mmwave = frequencyRange == ServiceState.FREQUENCY_RANGE_MMWAVE;
+            // frequency range LOW, MID, or HIGH
+            boolean sub6 = frequencyRange != ServiceState.FREQUENCY_RANGE_UNKNOWN && !mmwave;
+            return (mMmwaveUnmetered && mmwave || mSub6Unmetered && sub6) && nrConnected;
+        } else {
+            return mAllUnmetered && nrConnected;
+        }
     }
 
     private boolean updateDisplayInfo() {
@@ -4156,7 +4265,7 @@ public class DcTracker extends Handler {
         return false;
     }
 
-    private void log(String s) {
+    protected void log(String s) {
         Rlog.d(mLogTag, s);
     }
 
@@ -4997,10 +5106,10 @@ public class DcTracker extends Handler {
      * 5G connection reevaluation alarms
      */
     private boolean startHysteresisAlarm() {
-        if (mHysteresisTimeMs > 0) {
+        if (mHysteresisTimeSec > 0) {
             // only create hysteresis alarm if CarrierConfig allows it
             sendMessageDelayed(obtainMessage(DctConstants.EVENT_5G_TIMER_HYSTERESIS),
-                    mHysteresisTimeMs);
+                    mHysteresisTimeSec * 1000);
             mHysteresis = true;
             return true;
         } else {

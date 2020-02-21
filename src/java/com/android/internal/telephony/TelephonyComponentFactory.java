@@ -414,4 +414,20 @@ public class TelephonyComponentFactory {
     public DataEnabledSettings makeDataEnabledSettings(Phone phone) {
         return new DataEnabledSettings(phone);
     }
+
+    public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
+            int phoneId, int precisePhoneType,
+            TelephonyComponentFactory telephonyComponentFactory) {
+        return new GsmCdmaPhone(context, ci, notifier, phoneId, precisePhoneType,
+                telephonyComponentFactory);
+    }
+
+    public SubscriptionController initSubscriptionController(Context c) {
+        return SubscriptionController.init(c);
+    }
+
+    public PhoneSwitcher makePhoneSwitcher(int maxDataAttachModemCount, Context context,
+            Looper looper) {
+        return PhoneSwitcher.make(maxDataAttachModemCount, context, looper);
+    }
 }
