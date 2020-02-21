@@ -5491,7 +5491,8 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed
+     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed.
+     * If dataRegState is in service on IWLAN, also check for wifi calling enabled.
      * @param ss service state.
      */
     protected int getCombinedRegState(ServiceState ss) {
@@ -5500,8 +5501,16 @@ public class ServiceStateTracker extends Handler {
         if ((regState == ServiceState.STATE_OUT_OF_SERVICE
                 || regState == ServiceState.STATE_POWER_OFF)
                 && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
-            log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
-            regState = dataRegState;
+            if (ss.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()) {
+                    log("getCombinedRegState: return STATE_IN_SERVICE for IWLAN as "
+                            + "Data is in service and WFC is enabled");
+                    regState = dataRegState;
+                }
+            } else {
+                log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
+                regState = dataRegState;
+            }
         }
         return regState;
     }
