@@ -259,7 +259,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleInCallMmiCommandCallEct() {
+    public void testHandleInCallMmiCommandCallEct() throws Exception {
         doReturn(Call.State.ACTIVE).when(mForegroundCall).getState();
 
         // dial string length > 1
@@ -267,11 +267,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // dial string length == 1
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("4"));
-        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
-        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
-        assertEquals(EVENT_SUPP_SERVICE_FAILED, messageArgumentCaptor.getValue().what);
-        assertEquals(Phone.SuppService.TRANSFER,
-                ((AsyncResult) messageArgumentCaptor.getValue().obj).result);
+        verify(mImsCT).explicitCallTransfer();
     }
 
     @Test

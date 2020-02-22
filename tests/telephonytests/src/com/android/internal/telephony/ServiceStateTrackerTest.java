@@ -150,7 +150,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private static final int PHONE_ID = 0;
 
-    private static final String CARRIER_NAME_DISPLAY_NO_SERVICE = "no service";
+    private static final String CARRIER_NAME_DISPLAY_NO_SERVICE = "No service";
     private static final String CARRIER_NAME_DISPLAY_EMERGENCY_CALL = "emergency call";
     private static final String WIFI_CALLING_VOICE_FORMAT = "%s wifi calling";
     private static final String WIFI_CALLING_DATA_FORMAT = "%s wifi data";
@@ -2356,16 +2356,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mEriManager, times(1)).loadEriFile();
     }
 
-    private void enableCdnr() {
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
-        sendCarrierConfigUpdate();
-    }
-
     @Test
     public void testUpdateSpnDisplay_noService_displayEmergencyCallOnly() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2388,8 +2380,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_noServiceAndEmergencyCallNotAvailable_displayOOS() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2412,8 +2402,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_flightMode_displayOOS() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2435,8 +2423,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_spnNotEmptyAndWifiCallingEnabled_showSpnOnly() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2467,8 +2453,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testUpdateSpnDisplay_spnEmptyAndWifiCallingEnabled_showPlmnOnly() {
         // set empty service provider name
         mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, "");
-
-        enableCdnr();
+        sendCarrierConfigUpdate();
 
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -2497,8 +2482,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_inServiceNoWifiCalling_showSpnAndPlmn() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2543,6 +2526,34 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // mock the locale to Germany
         doReturn("de").when(mLocaleTracker).getCurrentCountry();
         assertTrue(sst.shouldForceDisplayNoService());
+    }
+
+    @Test
+    public void testUpdateSpnDisplayLegacy_WlanServiceNoWifiCalling_displayOOS() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, false);
+        sendCarrierConfigUpdate();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // voice out of service but data in service (connected to IWLAN)
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mServiceState).getState();
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getDataRegistrationState();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mServiceState).getDataNetworkType();
+        sst.mSS = mServiceState;
+
+        // wifi-calling is disable
+        doReturn(false).when(mPhone).isWifiCallingEnabled();
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Plmn should be shown, and the string is "No service"
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
+                .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
     private Bundle getExtrasFromLastSpnUpdateIntent() {

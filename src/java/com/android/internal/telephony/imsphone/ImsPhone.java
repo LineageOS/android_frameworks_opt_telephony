@@ -445,7 +445,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void explicitCallTransfer() {
+    public void explicitCallTransfer() throws CallStateException {
         mCT.explicitCallTransfer();
     }
 
@@ -637,15 +637,17 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     private boolean handleEctIncallSupplementaryService(String dialString) {
-
-        int len = dialString.length();
-
-        if (len != 1) {
+        if (dialString.length() != 1) {
             return false;
         }
 
-        if (DBG) logd("MmiCode 4: not support explicit call transfer");
-        notifySuppServiceFailed(Phone.SuppService.TRANSFER);
+        if (DBG) logd("MmiCode 4: explicit call transfer");
+        try {
+            explicitCallTransfer();
+        } catch (CallStateException e) {
+            if (DBG) Rlog.d(LOG_TAG, "explicit call transfer failed", e);
+            notifySuppServiceFailed(Phone.SuppService.TRANSFER);
+        }
         return true;
     }
 
