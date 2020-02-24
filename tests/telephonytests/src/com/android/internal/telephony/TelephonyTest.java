@@ -399,6 +399,7 @@ public abstract class TelephonyTest {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
         TelephonyManager.disableServiceHandleCaching();
+        SubscriptionController.disableCaching();
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
@@ -674,6 +675,7 @@ public abstract class TelephonyTest {
 
         restoreInstances();
         TelephonyManager.enableServiceHandleCaching();
+        SubscriptionController.enableCaching();
     }
 
     protected static void logd(String s) {
