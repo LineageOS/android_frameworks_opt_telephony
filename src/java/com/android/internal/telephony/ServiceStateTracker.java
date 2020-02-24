@@ -484,15 +484,15 @@ public class ServiceStateTracker extends Handler {
     private int mNewRejectCode;
 
     /**
-     * GSM roaming status solely based on TS 27.007 7.2 CREG. Only used by
+     * GSM voice roaming status solely based on TS 27.007 7.2 CREG. Only used by
      * handlePollStateResult to store CREG roaming result.
      */
-    private boolean mGsmRoaming = false;
+    private boolean mGsmVoiceRoaming = false;
     /**
-     * Data roaming status solely based on TS 27.007 10.1.19 CGREG. Only used by
+     * Gsm data roaming status solely based on TS 27.007 10.1.19 CGREG. Only used by
      * handlePollStateResult to store CGREG roaming result.
      */
-    private boolean mDataRoaming = false;
+    private boolean mGsmDataRoaming = false;
     /**
      * Mark when service state is in emergency call only mode
      */
@@ -2099,7 +2099,7 @@ public class ServiceStateTracker extends Handler {
                 mEmergencyOnly = networkRegState.isEmergencyEnabled();
                 if (mPhone.isPhoneTypeGsm()) {
 
-                    mGsmRoaming = regCodeIsRoaming(registrationState);
+                    mGsmVoiceRoaming = regCodeIsRoaming(registrationState);
                     mNewRejectCode = reasonForDenial;
                 } else {
                     int roamingIndicator = voiceSpecificStates.roamingIndicator;
@@ -2197,11 +2197,16 @@ public class ServiceStateTracker extends Handler {
 
                     mNewReasonDataDenied = networkRegState.getRejectCause();
                     mNewMaxDataCalls = dataSpecificStates.maxDataCalls;
-                    mDataRoaming = regCodeIsRoaming(registrationState);
+                    mGsmDataRoaming = regCodeIsRoaming(registrationState);
+                    // Save the data roaming state reported by modem registration before resource
+                    // overlay or carrier config possibly overrides it.
+                    mNewSS.setDataRoamingFromRegistration(mGsmDataRoaming);
                 } else if (mPhone.isPhoneTypeCdma()) {
-
                     boolean isDataRoaming = regCodeIsRoaming(registrationState);
                     mNewSS.setDataRoaming(isDataRoaming);
+                    // Save the data roaming state reported by modem registration before resource
+                    // overlay or carrier config possibly overrides it.
+                    mNewSS.setDataRoamingFromRegistration(isDataRoaming);
                 } else {
 
                     // If the unsolicited signal strength comes just before data RAT family changes
@@ -2223,6 +2228,9 @@ public class ServiceStateTracker extends Handler {
                     // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
                     boolean isDataRoaming = regCodeIsRoaming(registrationState);
                     mNewSS.setDataRoaming(isDataRoaming);
+                    // Save the data roaming state reported by modem registration before resource
+                    // overlay or carrier config possibly overrides it.
+                    mNewSS.setDataRoamingFromRegistration(isDataRoaming);
                 }
 
                 updateServiceStateLteEarfcnBoost(mNewSS,
@@ -2453,7 +2461,7 @@ public class ServiceStateTracker extends Handler {
              * The test for the operators is to handle special roaming
              * agreements and MVNO's.
              */
-            boolean roaming = (mGsmRoaming || mDataRoaming);
+            boolean roaming = (mGsmVoiceRoaming || mGsmDataRoaming);
 
             if (roaming && !isOperatorConsideredRoaming(mNewSS)
                     && (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
@@ -2476,8 +2484,7 @@ public class ServiceStateTracker extends Handler {
                 roaming = true;
             }
 
-            mNewSS.setVoiceRoaming(roaming);
-            mNewSS.setDataRoaming(roaming);
+            mNewSS.setRoaming(roaming);
         } else {
             String systemId = Integer.toString(mNewSS.getCdmaSystemId());
 
@@ -2498,22 +2505,19 @@ public class ServiceStateTracker extends Handler {
 
             if (TelephonyUtils.IS_DEBUGGABLE
                     && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
-                mNewSS.setVoiceRoaming(true);
-                mNewSS.setDataRoaming(true);
+                mNewSS.setRoaming(true);
             }
         }
     }
 
     private void setRoamingOn() {
-        mNewSS.setVoiceRoaming(true);
-        mNewSS.setDataRoaming(true);
+        mNewSS.setRoaming(true);
         mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
         mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
     }
 
     private void setRoamingOff() {
-        mNewSS.setVoiceRoaming(false);
-        mNewSS.setDataRoaming(false);
+        mNewSS.setRoaming(false);
         mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
     }
 
@@ -3099,8 +3103,7 @@ public class ServiceStateTracker extends Handler {
 
         if (TelephonyUtils.IS_DEBUGGABLE
                 && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
-            mNewSS.setVoiceRoaming(true);
-            mNewSS.setDataRoaming(true);
+            mNewSS.setRoaming(true);
         }
         useDataRegStateForDataOnlyDevices();
         processIwlanRegistrationInfo();
@@ -5094,8 +5097,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mNewMaxDataCalls=" + mNewMaxDataCalls);
         pw.println(" mReasonDataDenied=" + mReasonDataDenied);
         pw.println(" mNewReasonDataDenied=" + mNewReasonDataDenied);
-        pw.println(" mGsmRoaming=" + mGsmRoaming);
-        pw.println(" mDataRoaming=" + mDataRoaming);
+        pw.println(" mGsmVoiceRoaming=" + mGsmVoiceRoaming);
+        pw.println(" mGsmDataRoaming=" + mGsmDataRoaming);
         pw.println(" mEmergencyOnly=" + mEmergencyOnly);
         pw.flush();
         mNitzState.dumpState(pw);
