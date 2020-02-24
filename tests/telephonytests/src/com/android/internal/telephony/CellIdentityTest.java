@@ -25,7 +25,9 @@ import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 public class CellIdentityTest extends AndroidTestCase {
 
@@ -37,6 +39,7 @@ public class CellIdentityTest extends AndroidTestCase {
     private static final int TAC = 65535;
     // Absolute RF Channel Number ranges from 0 to 262140.
     private static final int EARFCN = 262140;
+    private static final List<Integer> BANDS = Arrays.asList(1, 2);
     private static final int BANDWIDTH = 5000;  // kHz
     private static final int MCC = 120;
     private static final int MNC = 260;
@@ -98,24 +101,24 @@ public class CellIdentityTest extends AndroidTestCase {
     @SmallTest
     public void testEquals() {
         CellIdentity ciA = new CellIdentityLte(
-                CI, PCI, TAC, EARFCN, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
                 Collections.emptyList(), null);
         CellIdentity ciB = new CellIdentityLte(
-                CI, PCI, TAC, EARFCN, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
                 Collections.emptyList(), null);
 
         assertTrue(ciA.equals(ciB));
 
-        ciA = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG,
+        ciA = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, null, null, ALPHA_LONG,
                 ALPHA_SHORT, Collections.emptyList(), null);
-        ciB = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG,
+        ciB = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, null, null, ALPHA_LONG,
                 ALPHA_SHORT, Collections.emptyList(), null);
 
         assertTrue(ciA.equals(ciB));
 
-        ciA = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDWIDTH, MCC_STR, null, ALPHA_LONG,
-                ALPHA_SHORT, Collections.emptyList(), null);
-        ciB = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDWIDTH, null, null, ALPHA_LONG,
+        ciA = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, null,
+                ALPHA_LONG, ALPHA_SHORT, Collections.emptyList(), null);
+        ciB = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, null, null, ALPHA_LONG,
                 ALPHA_SHORT, Collections.emptyList(), null);
 
         assertFalse(ciA.equals(ciB));
@@ -123,8 +126,8 @@ public class CellIdentityTest extends AndroidTestCase {
 
     @SmallTest
     public void testParcel() {
-        CellIdentity ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDWIDTH, MCC_STR, MNC_STR,
-                ALPHA_LONG, ALPHA_SHORT, Collections.emptyList(), null);
+        CellIdentity ci = new CellIdentityLte(CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR,
+                MNC_STR, ALPHA_LONG, ALPHA_SHORT, Collections.emptyList(), null);
 
         Parcel p = Parcel.obtain();
         ci.writeToParcel(p, 0);
