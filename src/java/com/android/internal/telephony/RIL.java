@@ -2098,17 +2098,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL, result,
                     mRILDefaultWorkSource);
             try {
-                int accessNetwork = convertRanToAnt(ran);
+                int halRan = convertRanToHalRan(ran);
                 if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     android.hardware.radio.V1_5.IRadio radioProxy15 =
                             (android.hardware.radio.V1_5.IRadio) radioProxy;
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                                 + " operatorNumeric = " + operatorNumeric
-                                + ", ran = " + accessNetwork);
+                                + ", ran = " + halRan);
                     }
                     radioProxy15.setNetworkSelectionModeManual_1_5(rr.mSerial,
-                            convertNullToEmptyString(operatorNumeric), accessNetwork);
+                            convertNullToEmptyString(operatorNumeric), halRan);
                 } else {
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -4698,7 +4698,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private static int convertRanToAnt(int radioAccessNetwork) {
-        switch(radioAccessNetwork) {
+        switch (radioAccessNetwork) {
             case RadioAccessNetworks.GERAN:
                 return AccessNetworkType.GERAN;
             case RadioAccessNetworks.UTRAN:
@@ -4709,6 +4709,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return AccessNetworkType.NGRAN;
             case RadioAccessNetworks.CDMA2000:
                 return AccessNetworkType.CDMA2000;
+            case RadioAccessNetworks.UNKNOWN:
             default:
                 return AccessNetworkType.UNKNOWN;
         }
