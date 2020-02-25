@@ -306,7 +306,7 @@ public class PhoneConfigurationManager {
     }
 
     public int getNumberOfModemsWithSimultaneousDataConnections() {
-        return mStaticCapability.getMaxActivePsVoice();
+        return mStaticCapability.maxActiveData;
     }
 
     private void notifyCapabilityChanged() {
@@ -321,7 +321,7 @@ public class PhoneConfigurationManager {
      */
     public void switchMultiSimConfig(int numOfSims) {
         log("switchMultiSimConfig: with numOfSims = " + numOfSims);
-        if (getStaticPhoneCapability().getLogicalModemUuids().size() < numOfSims) {
+        if (getStaticPhoneCapability().logicalModemList.size() < numOfSims) {
             log("switchMultiSimConfig: Phone is not capable of enabling "
                     + numOfSims + " sims, exiting!");
             return;
