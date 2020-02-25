@@ -215,7 +215,6 @@ public class DataServiceManager extends Handler {
         public void onServiceDisconnected(ComponentName name) {
             if (DBG) log("onServiceDisconnected");
             removeMessages(EVENT_WATCHDOG_TIMEOUT);
-            mIDataService.asBinder().unlinkToDeath(mDeathRecipient, 0);
             mIDataService = null;
             mBound = false;
             mServiceBindingChangedRegistrants.notifyResult(false);
