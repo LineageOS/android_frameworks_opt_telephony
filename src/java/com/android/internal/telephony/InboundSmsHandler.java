@@ -1128,6 +1128,14 @@ public abstract class InboundSmsHandler extends StateMachine {
             return true;
         }
 
+        MissedIncomingCallSmsFilter missedIncomingCallSmsFilter =
+                new MissedIncomingCallSmsFilter(mPhone);
+        if (missedIncomingCallSmsFilter.filter(pdus, tracker.getFormat())) {
+            log("Missed incoming call SMS received.");
+            dropSms(resultReceiver);
+            return true;
+        }
+
         return false;
     }
 
