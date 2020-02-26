@@ -28,9 +28,8 @@ import android.timezone.CountryTimeZones.OffsetResult;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
-import com.android.internal.telephony.TimeZoneLookupHelper;
-import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
-import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.TimeZoneSuggester;
+import com.android.internal.telephony.nitz.NitzStateMachineImpl.TimeZoneSuggester;
+import com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult;
 import com.android.telephony.Rlog;
 
 import java.util.Objects;
@@ -41,7 +40,7 @@ import java.util.Objects;
 @VisibleForTesting
 public class TimeZoneSuggesterImpl implements TimeZoneSuggester {
 
-    private static final String LOG_TAG = NewNitzStateMachineImpl.LOG_TAG;
+    private static final String LOG_TAG = NitzStateMachineImpl.LOG_TAG;
 
     private final DeviceState mDeviceState;
     private final TimeZoneLookupHelper mTimeZoneLookupHelper;
