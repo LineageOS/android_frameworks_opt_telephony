@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.nitz;
 
 import static org.junit.Assert.fail;
 
@@ -25,42 +25,42 @@ import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 import android.os.TimestampedValue;
 
+import com.android.internal.telephony.NitzData;
+import com.android.internal.telephony.NitzStateMachine;
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
 
 /**
  * An assortment of methods and classes for testing {@link NitzStateMachine} implementations.
  */
-public final class NitzStateMachineTestSupport {
+final class NitzStateMachineTestSupport {
 
     // Values used to when initializing device state but where the value isn't important.
-    public static final long ARBITRARY_SYSTEM_CLOCK_TIME = createUtcTime(1977, 1, 1, 12, 0, 0);
-    public static final long ARBITRARY_REALTIME_MILLIS = 123456789L;
-    // This zone isn't used in any of the scenarios below.
-    public static final String ARBITRARY_TIME_ZONE_ID = "Europe/Paris";
-    public static final String ARBITRARY_DEBUG_INFO = "Test debug info";
+    static final long ARBITRARY_SYSTEM_CLOCK_TIME = createUtcTime(1977, 1, 1, 12, 0, 0);
+    static final long ARBITRARY_REALTIME_MILLIS = 123456789L;
+    static final String ARBITRARY_DEBUG_INFO = "Test debug info";
 
     // A country with a single zone : the zone can be guessed from the country.
     // The UK uses UTC for part of the year so it is not good for detecting bogus NITZ signals.
-    public static final Scenario UNITED_KINGDOM_SCENARIO = new Scenario.Builder()
+    static final Scenario UNITED_KINGDOM_SCENARIO = new Scenario.Builder()
             .setTimeZone("Europe/London")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("gb")
             .buildFrozen();
 
-    public static final String UNITED_KINGDOM_COUNTRY_DEFAULT_ZONE_ID = "Europe/London";
+    static final String UNITED_KINGDOM_COUNTRY_DEFAULT_ZONE_ID = "Europe/London";
 
     // The US is a country that has multiple zones, but there is only one matching time zone at the
     // time in this scenario: the zone cannot be guessed from the country alone, but can be guessed
     // from the country + NITZ. The US never uses UTC so it can be used for testing bogus (zero'd
     // values) NITZ signals.
-    public static final Scenario UNIQUE_US_ZONE_SCENARIO1 = new Scenario.Builder()
+    static final Scenario UNIQUE_US_ZONE_SCENARIO1 = new Scenario.Builder()
             .setTimeZone("America/Los_Angeles")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("us")
             .buildFrozen();
 
     // An alternative US scenario which also provides a unique time zone answer.
-    public static final Scenario UNIQUE_US_ZONE_SCENARIO2 = new Scenario.Builder()
+    static final Scenario UNIQUE_US_ZONE_SCENARIO2 = new Scenario.Builder()
             .setTimeZone("America/Chicago")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("us")
@@ -68,52 +68,52 @@ public final class NitzStateMachineTestSupport {
 
     // A non-unique US scenario: the offset information is ambiguous between America/Phoenix and
     // America/Denver during winter.
-    public static final Scenario NON_UNIQUE_US_ZONE_SCENARIO = new Scenario.Builder()
+    static final Scenario NON_UNIQUE_US_ZONE_SCENARIO = new Scenario.Builder()
             .setTimeZone("America/Denver")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("us")
             .buildFrozen();
-    public static final String[] NON_UNIQUE_US_ZONE_SCENARIO_ZONES =
+    static final String[] NON_UNIQUE_US_ZONE_SCENARIO_ZONES =
             { "America/Denver", "America/Phoenix" };
 
-    public static final String US_COUNTRY_DEFAULT_ZONE_ID = "America/New_York";
+    static final String US_COUNTRY_DEFAULT_ZONE_ID = "America/New_York";
 
     // New Zealand is a country with multiple zones, but the default zone has the "boost" modifier
     // which means that NITZ isn't required to find the zone.
-    public static final Scenario NEW_ZEALAND_DEFAULT_SCENARIO = new Scenario.Builder()
+    static final Scenario NEW_ZEALAND_DEFAULT_SCENARIO = new Scenario.Builder()
             .setTimeZone("Pacific/Auckland")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("nz")
             .buildFrozen();
-    public static final Scenario NEW_ZEALAND_OTHER_SCENARIO = new Scenario.Builder()
+    static final Scenario NEW_ZEALAND_OTHER_SCENARIO = new Scenario.Builder()
             .setTimeZone("Pacific/Chatham")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("nz")
             .buildFrozen();
 
-    public static final String NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID = "Pacific/Auckland";
+    static final String NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID = "Pacific/Auckland";
 
     // A country with a single zone: the zone can be guessed from the country alone. CZ never uses
     // UTC so it can be used for testing bogus NITZ signal handling.
-    public static final Scenario CZECHIA_SCENARIO = new Scenario.Builder()
+    static final Scenario CZECHIA_SCENARIO = new Scenario.Builder()
             .setTimeZone("Europe/Prague")
             .setActualTimeUtc(2018, 1, 1, 12, 0, 0)
             .setCountryIso("cz")
             .buildFrozen();
 
-    public static final String CZECHIA_COUNTRY_DEFAULT_ZONE_ID = "Europe/Prague";
+    static final String CZECHIA_COUNTRY_DEFAULT_ZONE_ID = "Europe/Prague";
 
     /**
      * A scenario used during tests. Describes a fictional reality.
      */
-    public static class Scenario {
+    static class Scenario {
 
         private final boolean mFrozen;
         private TimeZone mZone;
         private String mNetworkCountryIsoCode;
         private long mActualTimeMillis;
 
-        public Scenario(boolean frozen, long timeMillis, String zoneId, String countryIsoCode) {
+        Scenario(boolean frozen, long timeMillis, String zoneId, String countryIsoCode) {
             mFrozen = frozen;
             mActualTimeMillis = timeMillis;
             mZone = zone(zoneId);
@@ -121,12 +121,12 @@ public final class NitzStateMachineTestSupport {
         }
 
         /** Creates an NITZ signal to match the scenario. */
-        public TimestampedValue<NitzData> createNitzSignal(long elapsedRealtimeClock) {
+        TimestampedValue<NitzData> createNitzSignal(long elapsedRealtimeClock) {
             return new TimestampedValue<>(elapsedRealtimeClock, createNitzData());
         }
 
         /** Creates an NITZ signal to match the scenario. */
-        public NitzData createNitzData() {
+        NitzData createNitzData() {
             int[] offsets = new int[2];
             mZone.getOffset(mActualTimeMillis, false /* local */, offsets);
             int zoneOffsetMillis = offsets[0] + offsets[1];
@@ -135,41 +135,32 @@ public final class NitzStateMachineTestSupport {
                     null /* emulatorHostTimeZone */);
         }
 
-        /** Creates a time signal to match the scenario. */
-        public TimestampedValue<Long> createTimeSignal(long elapsedRealtimeClock) {
-            return new TimestampedValue<>(elapsedRealtimeClock, mActualTimeMillis);
-        }
-
-        public String getNetworkCountryIsoCode() {
+        String getNetworkCountryIsoCode() {
             return mNetworkCountryIsoCode;
         }
 
-        public String getTimeZoneId() {
+        String getTimeZoneId() {
             return mZone.getID();
         }
 
-        public TimeZone getTimeZone() {
+        TimeZone getTimeZone() {
             return mZone;
         }
 
-        public long getActualTimeMillis() {
-            return mActualTimeMillis;
-        }
-
-        public Scenario incrementTime(long timeIncrementMillis) {
+        Scenario incrementTime(long timeIncrementMillis) {
             checkFrozen();
             mActualTimeMillis += timeIncrementMillis;
             return this;
         }
 
-        public Scenario changeCountry(String timeZoneId, String networkCountryIsoCode) {
+        Scenario changeCountry(String timeZoneId, String networkCountryIsoCode) {
             checkFrozen();
             mZone = zone(timeZoneId);
             mNetworkCountryIsoCode = networkCountryIsoCode;
             return this;
         }
 
-        public Scenario mutableCopy() {
+        Scenario mutableCopy() {
             return new Scenario(
                     false /* frozen */, mActualTimeMillis, mZone.getID(), mNetworkCountryIsoCode);
         }
@@ -180,37 +171,37 @@ public final class NitzStateMachineTestSupport {
             }
         }
 
-        public static class Builder {
+        static class Builder {
 
             private long mActualTimeMillis;
             private String mZoneId;
             private String mCountryIsoCode;
 
-            public Builder setActualTimeUtc(int year, int monthInYear, int day, int hourOfDay,
+            Builder setActualTimeUtc(int year, int monthInYear, int day, int hourOfDay,
                     int minute, int second) {
                 mActualTimeMillis = createUtcTime(year, monthInYear, day, hourOfDay, minute,
                         second);
                 return this;
             }
 
-            public Builder setTimeZone(String zoneId) {
+            Builder setTimeZone(String zoneId) {
                 mZoneId = zoneId;
                 return this;
             }
 
-            public Builder setCountryIso(String isoCode) {
+            Builder setCountryIso(String isoCode) {
                 mCountryIsoCode = isoCode;
                 return this;
             }
 
-            public Scenario buildFrozen() {
+            Scenario buildFrozen() {
                 return new Scenario(true /* frozen */, mActualTimeMillis, mZoneId, mCountryIsoCode);
             }
         }
     }
 
     /** A fake implementation of {@link DeviceState}. */
-    public static class FakeDeviceState implements DeviceState {
+    static class FakeDeviceState implements DeviceState {
 
         public boolean ignoreNitz;
         public int nitzUpdateDiffMillis;
@@ -218,7 +209,7 @@ public final class NitzStateMachineTestSupport {
         public long elapsedRealtime;
         public long currentTimeMillis;
 
-        public FakeDeviceState() {
+        FakeDeviceState() {
             // Set sensible defaults fake device state.
             ignoreNitz = false;
             nitzUpdateDiffMillis = 2000;
@@ -251,7 +242,7 @@ public final class NitzStateMachineTestSupport {
             return currentTimeMillis;
         }
 
-        public void simulateTimeIncrement(int timeIncrementMillis) {
+        void simulateTimeIncrement(int timeIncrementMillis) {
             if (timeIncrementMillis <= 0) {
                 fail("elapsedRealtime clock must go forwards");
             }
@@ -263,7 +254,7 @@ public final class NitzStateMachineTestSupport {
 
     private NitzStateMachineTestSupport() {}
 
-    public static long createUtcTime(int year, int monthInYear, int day, int hourOfDay, int minute,
+    private static long createUtcTime(int year, int monthInYear, int day, int hourOfDay, int minute,
             int second) {
         Calendar cal = new GregorianCalendar(zone("Etc/UTC"));
         cal.clear();
@@ -271,19 +262,19 @@ public final class NitzStateMachineTestSupport {
         return cal.getTimeInMillis();
     }
 
-    public static TelephonyTimeZoneSuggestion createEmptyTimeZoneSuggestion(int slotIndex) {
+    static TelephonyTimeZoneSuggestion createEmptyTimeZoneSuggestion(int slotIndex) {
         return new TelephonyTimeZoneSuggestion.Builder(slotIndex)
                 .addDebugInfo("Test")
                 .build();
     }
 
-    public static TelephonyTimeSuggestion createEmptyTimeSuggestion(int slotIndex) {
+    static TelephonyTimeSuggestion createEmptyTimeSuggestion(int slotIndex) {
         return new TelephonyTimeSuggestion.Builder(slotIndex)
                 .addDebugInfo("Test")
                 .build();
     }
 
-    public static TelephonyTimeSuggestion createTimeSuggestionFromNitzSignal(
+    static TelephonyTimeSuggestion createTimeSuggestionFromNitzSignal(
             int slotIndex, TimestampedValue<NitzData> nitzSignal) {
         return new TelephonyTimeSuggestion.Builder(slotIndex)
                 .setUtcTime(createTimeSignalFromNitzSignal(nitzSignal))
@@ -291,14 +282,14 @@ public final class NitzStateMachineTestSupport {
                 .build();
     }
 
-    public static TimestampedValue<Long> createTimeSignalFromNitzSignal(
+    private static TimestampedValue<Long> createTimeSignalFromNitzSignal(
             TimestampedValue<NitzData> nitzSignal) {
         return new TimestampedValue<>(
                 nitzSignal.getReferenceTimeMillis(),
                 nitzSignal.getValue().getCurrentTimeInMillis());
     }
 
-    public static TimeZone zone(String zoneId) {
+    private static TimeZone zone(String zoneId) {
         TimeZone timeZone = TimeZone.getFrozenTimeZone(zoneId);
         if (timeZone.getID().equals(TimeZone.UNKNOWN_ZONE_ID)) {
             fail(zoneId + " is not a valid zone");
