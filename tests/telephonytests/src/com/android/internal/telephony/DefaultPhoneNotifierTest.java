@@ -265,15 +265,4 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         assertEquals(3, cellLocationCapture.getValue().getInt("cid"));
         assertEquals(5, cellLocationCapture.getValue().getInt("psc"));
     }
-
-    @Test @SmallTest
-    public void testNotifyOtaspChanged() throws Exception {
-        mDefaultPhoneNotifierUT.notifyOtaspChanged(mPhone, TelephonyManager.OTASP_NEEDED);
-        verify(mTelephonyRegisteryMock).notifyOtaspChanged(eq(mPhone.getSubId()),
-                eq(TelephonyManager.OTASP_NEEDED));
-
-        mDefaultPhoneNotifierUT.notifyOtaspChanged(mPhone, TelephonyManager.OTASP_UNKNOWN);
-        verify(mTelephonyRegisteryMock).notifyOtaspChanged(eq(mPhone.getSubId()),
-                eq(TelephonyManager.OTASP_UNKNOWN));
-    }
 }
