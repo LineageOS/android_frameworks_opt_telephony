@@ -30,6 +30,7 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.TetheringManager;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Message;
@@ -226,9 +227,9 @@ public class DeviceStateMonitor extends Handler {
                     msg = obtainMessage(EVENT_CHARGING_STATE_CHANGED);
                     msg.arg1 = 0;   // not charging
                     break;
-                case ConnectivityManager.ACTION_TETHER_STATE_CHANGED:
+                case TetheringManager.ACTION_TETHER_STATE_CHANGED:
                     ArrayList<String> activeTetherIfaces = intent.getStringArrayListExtra(
-                            ConnectivityManager.EXTRA_ACTIVE_TETHER);
+                            TetheringManager.EXTRA_ACTIVE_TETHER);
 
                     boolean isTetheringOn = activeTetherIfaces != null
                             && activeTetherIfaces.size() > 0;
