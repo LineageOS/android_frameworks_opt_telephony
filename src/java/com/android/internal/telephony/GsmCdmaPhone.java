@@ -88,6 +88,7 @@ import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -194,6 +195,9 @@ public class GsmCdmaPhone extends Phone {
 
     // mEcmTimerResetRegistrants are informed after Ecm timer is canceled or re-started
     private final RegistrantList mEcmTimerResetRegistrants = new RegistrantList();
+
+    private final RegistrantList mVolteSilentRedialRegistrants = new RegistrantList();
+    private DialArgs mDialArgs = null;
 
     private String mImei;
     private String mImeiSv;
@@ -1264,6 +1268,7 @@ public class GsmCdmaPhone extends Phone {
 
         boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(getSubId(), dialString);
         Phone imsPhone = mImsPhone;
+        mDialArgs = dialArgs;
 
         CarrierConfigManager configManager =
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -4086,6 +4091,23 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void unregisterForEcmTimerReset(Handler h) {
         mEcmTimerResetRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForVolteSilentRedial(Handler h, int what, Object obj) {
+        mVolteSilentRedialRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForVolteSilentRedial(Handler h) {
+        mVolteSilentRedialRegistrants.remove(h);
+    }
+
+    public void notifyVolteSilentRedial(String dialString, int causeCode) {
+        logd("notifyVolteSilentRedial: dialString=" + dialString + " causeCode=" + causeCode);
+        AsyncResult ar = new AsyncResult(null,
+                new SilentRedialParam(dialString, causeCode, mDialArgs), null);
+        mVolteSilentRedialRegistrants.notifyRegistrants(ar);
     }
 
     /**
