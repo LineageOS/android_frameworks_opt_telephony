@@ -1552,6 +1552,22 @@ public class GsmCdmaCallTracker extends CallTracker {
                             TelephonyManager.getDefault().getNetworkType());
                 }
 
+                if (isEmcRetryCause(causeCode)) {
+                    String dialString = "";
+                    for(Connection conn : mForegroundCall.mConnections) {
+                        GsmCdmaConnection gsmCdmaConnection = (GsmCdmaConnection)conn;
+                        dialString = gsmCdmaConnection.getOrigDialString();
+                        gsmCdmaConnection.getCall().detach(gsmCdmaConnection);
+                        mDroppedDuringPoll.remove(gsmCdmaConnection);
+                    }
+                    mPhone.notifyVolteSilentRedial(dialString, causeCode);
+                    updatePhoneState();
+                    if (mDroppedDuringPoll.isEmpty()) {
+                        log("LAST_CALL_FAIL_CAUSE - no Dropped normal Call");
+                        return;
+                    }
+                }
+
                 for (int i = 0, s = mDroppedDuringPoll.size(); i < s ; i++) {
                     GsmCdmaConnection conn = mDroppedDuringPoll.get(i);
 
@@ -1756,6 +1772,14 @@ public class GsmCdmaCallTracker extends CallTracker {
     @Override
     public GsmCdmaPhone getPhone() {
         return mPhone;
+    }
+
+    private boolean isEmcRetryCause(int causeCode) {
+        if (causeCode == CallFailCause.EMC_REDIAL_ON_IMS ||
+            causeCode == CallFailCause.EMC_REDIAL_ON_VOWIFI) {
+            return true;
+        }
+        return false;
     }
 
     @UnsupportedAppUsage
