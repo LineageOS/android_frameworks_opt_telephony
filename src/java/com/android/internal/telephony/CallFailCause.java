@@ -440,6 +440,15 @@ public interface CallFailCause {
      */
     int WIFI_LOST                                        = 2507;
 
+    /**
+     * Indicates a call was disconnected because retry over volte is needed.
+     */
+    int EMC_REDIAL_ON_IMS                                = 3001;
+
+    /**
+     * Indicates a call was disconnected because retry over vowifi is needed.
+     */
+    int EMC_REDIAL_ON_VOWIFI                             = 3002;
 
     /* OEM specific error codes. To be used by OEMs when they don't want to
        reveal error code which would be replaced by ERROR_UNSPECIFIED */
