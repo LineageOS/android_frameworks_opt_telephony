@@ -54,8 +54,6 @@ public interface PhoneNotifier {
 
     void notifyDataActivity(Phone sender);
 
-    void notifyOtaspChanged(Phone sender, int otaspMode);
-
     void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
 
     /** Notify of change to PhysicalChannelConfiguration. */
