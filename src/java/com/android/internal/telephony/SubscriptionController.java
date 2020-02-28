@@ -534,6 +534,9 @@ public class SubscriptionController extends ISub.Stub {
         // cardId is the private ICCID/EID string, also known as the card string
         String cardId = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.CARD_ID));
+        // if cardId is an ICCID, strip off trailing Fs before exposing to user
+        // if cardId is an EID, it's all digits so this is fine
+        cardId = IccUtils.stripTrailingFs(cardId);
         String countryIso = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.ISO_COUNTRY_CODE));
         // publicCardId is the publicly exposed int card ID
@@ -3756,9 +3759,6 @@ public class SubscriptionController extends ISub.Stub {
                 throw new IllegalArgumentException(
                         "setSubscriptionEnabled not usable subId " + subId);
             }
-
-            // Nothing to do if it's already active or inactive.
-            if (enable == isActiveSubscriptionId(subId)) return true;
 
             SubscriptionInfo info = SubscriptionController.getInstance()
                     .getAllSubInfoList(mContext.getOpPackageName(), mContext.getAttributionTag())
