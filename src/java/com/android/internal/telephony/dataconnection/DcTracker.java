@@ -3960,18 +3960,23 @@ public class DcTracker extends Handler {
                 }
             }
             if (useLte) {
-                Pair<Integer, Integer> ltePair = mBandwidths.get("LTE");
+                Pair<Integer, Integer> ltePair = mBandwidths.get(DctConstants.RAT_NAME_LTE);
                 if (ltePair != null) {
-                    if (mBandwidths.containsKey("NR_NSA")) {
-                        mBandwidths.put("NR_NSA",
-                                new Pair<>(mBandwidths.get("NR_NSA").first, ltePair.second));
+                    if (mBandwidths.containsKey(DctConstants.RAT_NAME_NR_NSA)) {
+                        mBandwidths.put(DctConstants.RAT_NAME_NR_NSA, new Pair<>(
+                                mBandwidths.get(DctConstants.RAT_NAME_NR_NSA).first,
+                                ltePair.second));
                     }
-                    if (mBandwidths.containsKey("NR_NSA_MMWAVE")) {
-                        mBandwidths.put("NR_NSA_MMWAVE",
-                                new Pair<>(mBandwidths.get("NR_NSA_MMWAVE").first, ltePair.second));
+                    if (mBandwidths.containsKey(DctConstants.RAT_NAME_NR_NSA_MMWAVE)) {
+                        mBandwidths.put(DctConstants.RAT_NAME_NR_NSA_MMWAVE, new Pair<>(
+                                mBandwidths.get(DctConstants.RAT_NAME_NR_NSA_MMWAVE).first,
+                                ltePair.second));
                     }
                 }
             }
+        }
+        for (DataConnection dc : mDataConnections.values()) {
+            dc.sendMessage(DataConnection.EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED);
         }
     }
 
@@ -3980,7 +3985,7 @@ public class DcTracker extends Handler {
      * @param ratName RAT name from ServiceState#rilRadioTechnologyToString.
      * @return pair of downstream/upstream values (kbps), or null if the config is not defined.
      */
-    public Pair<Integer, Integer> getLinkBandwidths(String ratName) {
+    public Pair<Integer, Integer> getLinkBandwidthsFromCarrierConfig(String ratName) {
         return mBandwidths.get(ratName);
     }
 
