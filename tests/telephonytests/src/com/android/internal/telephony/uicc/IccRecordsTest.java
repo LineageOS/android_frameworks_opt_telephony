@@ -29,10 +29,16 @@
 
 package com.android.internal.telephony.uicc;
 
+import static com.android.internal.telephony.uicc.IccRecords.EVENT_APP_DETECTED;
+import static com.android.internal.telephony.uicc.IccRecords.EVENT_APP_READY;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.verify;
 
 import android.os.AsyncResult;
 import android.os.HandlerThread;
@@ -68,6 +74,10 @@ public class IccRecordsTest extends TelephonyTest {
         super.setUp(this.getClass().getSimpleName());
         new IccRecordsTestHandler(TAG).start();
         waitUntilReady();
+        verify(mUiccCardApplication3gpp).registerForReady(
+                mIccRecords, EVENT_APP_READY, null);
+        verify(mUiccCardApplication3gpp).registerForDetected(
+                mIccRecords, EVENT_APP_DETECTED, null);
     }
 
     @After
@@ -166,6 +176,23 @@ public class IccRecordsTest extends TelephonyTest {
         Log.d("IccRecordsTest", "Time (ms) for getIccSimChallengeResponse is " + timeSpent);
         assertTrue("getIccAuthentication should timeout",
                 timeSpent >= mSimulatedCommands.ICC_SIM_CHALLENGE_TIMEOUT_MILLIS);
+    }
+
+    @Test
+    public void testAppStateChange() {
+        assertFalse(mIccRecords.isLoaded());
+
+        mIccRecords.obtainMessage(EVENT_APP_READY).sendToTarget();
+        waitForLastHandlerAction(mIccRecords);
+        assertTrue(mIccRecords.isLoaded());
+
+        mIccRecords.obtainMessage(EVENT_APP_DETECTED).sendToTarget();
+        waitForLastHandlerAction(mIccRecords);
+        assertFalse(mIccRecords.isLoaded());
+
+        mIccRecords.obtainMessage(EVENT_APP_READY).sendToTarget();
+        waitForLastHandlerAction(mIccRecords);
+        assertTrue(mIccRecords.isLoaded());
     }
 
     @Test
