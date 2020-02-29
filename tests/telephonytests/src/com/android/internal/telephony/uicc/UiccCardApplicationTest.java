@@ -52,10 +52,13 @@ public class UiccCardApplicationTest extends TelephonyTest {
     private Handler mHandler;
     private int mAttemptsRemaining = -1;
     private CommandException mException = null;
+    private IccCardApplicationStatus.AppState mAppState;
     private static final int UICCCARDAPP_ENABLE_FDN_EVENT = 1;
     private static final int UICCCARDAPP_ENABLE_LOCK_EVENT = 2;
     private static final int UICCCARDAPP_CHANGE_PSW_EVENT = 3;
     private static final int UICCCARDAPP_SUPPLY_PIN_EVENT = 4;
+    private static final int EVENT_APP_STATE_DETECTED     = 5;
+    private static final int EVENT_APP_STATE_READY        = 6;
 
     @Before
     public void setUp() throws Exception {
@@ -82,6 +85,12 @@ public class UiccCardApplicationTest extends TelephonyTest {
                         if (mAttemptsRemaining != -1) {
                             logd("remaining Attempt:" + mAttemptsRemaining);
                         }
+                        break;
+                    case EVENT_APP_STATE_DETECTED:
+                        mAppState = IccCardApplicationStatus.AppState.APPSTATE_DETECTED;
+                        break;
+                    case EVENT_APP_STATE_READY:
+                        mAppState = IccCardApplicationStatus.AppState.APPSTATE_READY;
                         break;
                     default:
                         logd("Unknown Event " + msg.what);
@@ -191,5 +200,31 @@ public class UiccCardApplicationTest extends TelephonyTest {
         mUiccCardApplication.supplyPin("1111", mSupplyPin);
         processAllMessages();
         assertEquals(-1, mAttemptsRemaining);
+    }
+
+    @Test
+    @SmallTest
+    public void testAppStateChangeNotification() {
+        mUiccCardApplication.registerForDetected(mHandler, EVENT_APP_STATE_DETECTED, null);
+        mUiccCardApplication.registerForReady(mHandler, EVENT_APP_STATE_READY, null);
+        processAllMessages();
+        assertEquals(null, mAppState);
+
+        // Change to DETECTED state.
+        mUiccCardAppStatus.app_state = IccCardApplicationStatus.AppState.APPSTATE_DETECTED;
+        mUiccCardApplication.update(mUiccCardAppStatus, mContext, mSimulatedCommands);
+        processAllMessages();
+        assertEquals(IccCardApplicationStatus.AppState.APPSTATE_DETECTED, mAppState);
+        assertEquals(IccCardApplicationStatus.AppState.APPSTATE_DETECTED,
+                mUiccCardApplication.getState());
+
+        // Change to READY state.
+        mUiccCardAppStatus.app_state = IccCardApplicationStatus.AppState.APPSTATE_READY;
+        mUiccCardAppStatus.pin1 = IccCardStatus.PinState.PINSTATE_ENABLED_VERIFIED;
+        mUiccCardApplication.update(mUiccCardAppStatus, mContext, mSimulatedCommands);
+        processAllMessages();
+        assertEquals(IccCardApplicationStatus.AppState.APPSTATE_READY, mAppState);
+        assertEquals(IccCardApplicationStatus.AppState.APPSTATE_READY,
+                mUiccCardApplication.getState());
     }
 }

@@ -95,6 +95,7 @@ public class UiccCardApplication {
     private boolean mDestroyed;//set to true once this App is commanded to be disposed of.
 
     private RegistrantList mReadyRegistrants = new RegistrantList();
+    private RegistrantList mDetectedRegistrants = new RegistrantList();
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
     private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
 
@@ -174,6 +175,7 @@ public class UiccCardApplication {
                 }
                 notifyPinLockedRegistrantsIfNeeded(null);
                 notifyReadyRegistrantsIfNeeded(null);
+                notifyDetectedRegistrantsIfNeeded(null);
             } else {
                 if (mPin1State != oldPin1State)
                     queryPin1State();
@@ -445,6 +447,20 @@ public class UiccCardApplication {
         }
     }
 
+    public void registerForDetected(Handler h, int what, Object obj) {
+        synchronized (mLock) {
+            Registrant r = new Registrant(h, what, obj);
+            mDetectedRegistrants.add(r);
+            notifyDetectedRegistrantsIfNeeded(r);
+        }
+    }
+
+    public void unregisterForDetected(Handler h) {
+        synchronized (mLock) {
+            mDetectedRegistrants.remove(h);
+        }
+    }
+
     /**
      * Notifies handler of any transition into State.isPinLocked()
      */
@@ -501,6 +517,26 @@ public class UiccCardApplication {
                 mReadyRegistrants.notifyRegistrants();
             } else {
                 if (DBG) log("Notifying 1 registrant: READY");
+                r.notifyRegistrant(new AsyncResult(null, null, null));
+            }
+        }
+    }
+
+    /**
+     * Notifies specified registrant, assume mLock is held.
+     *
+     * @param r Registrant to be notified. If null - all registrants will be notified
+     */
+    private void notifyDetectedRegistrantsIfNeeded(Registrant r) {
+        if (mDestroyed) {
+            return;
+        }
+        if (mAppState == AppState.APPSTATE_DETECTED) {
+            if (r == null) {
+                if (DBG) log("Notifying registrants: DETECTED");
+                mDetectedRegistrants.notifyRegistrants();
+            } else {
+                if (DBG) log("Notifying 1 registrant: DETECTED");
                 r.notifyRegistrant(new AsyncResult(null, null, null));
             }
         }
