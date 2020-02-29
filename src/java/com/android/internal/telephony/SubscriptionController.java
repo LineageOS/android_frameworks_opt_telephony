@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_REMOTE_SERVICE_EXCEPTION;
 import static android.telephony.UiccSlotInfo.CARD_STATE_INFO_PRESENT;
 
 import android.Manifest;
@@ -35,11 +36,13 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.ParcelUuid;
+import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.RadioAccessFamily;
 import android.telephony.SubscriptionInfo;
@@ -2994,8 +2997,23 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            PhoneSwitcher.getInstance().trySetOpportunisticDataSubscription(
-                    subId, needValidation, callback);
+            PhoneSwitcher phoneSwitcher = PhoneSwitcher.getInstance();
+            if (phoneSwitcher == null) {
+                logd("Set preferred data sub: phoneSwitcher is null.");
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("a3ab0b9d-f2aa-4baf-911d-7096c0d4645a"),
+                        "Set preferred data sub: phoneSwitcher is null.");
+                if (callback != null) {
+                    try {
+                        callback.onComplete(SET_OPPORTUNISTIC_SUB_REMOTE_SERVICE_EXCEPTION);
+                    } catch (RemoteException exception) {
+                        logd("RemoteException " + exception);
+                    }
+                }
+                return;
+            }
+
+            phoneSwitcher.trySetOpportunisticDataSubscription(subId, needValidation, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -3007,7 +3025,15 @@ public class SubscriptionController extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
 
         try {
-            return PhoneSwitcher.getInstance().getOpportunisticDataSubscriptionId();
+            PhoneSwitcher phoneSwitcher = PhoneSwitcher.getInstance();
+            if (phoneSwitcher == null) {
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("a3ab0b9d-f2aa-4baf-911d-7096c0d4645a"),
+                        "Get preferred data sub: phoneSwitcher is null.");
+                return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+            }
+
+            return phoneSwitcher.getOpportunisticDataSubscriptionId();
         } finally {
             Binder.restoreCallingIdentity(token);
         }

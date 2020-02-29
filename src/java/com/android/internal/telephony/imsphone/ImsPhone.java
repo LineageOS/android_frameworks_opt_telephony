@@ -87,6 +87,7 @@ import com.android.ims.ImsManager;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -136,6 +137,7 @@ public class ImsPhone extends ImsPhoneBase {
     @VisibleForTesting
     public static final int EVENT_SERVICE_STATE_CHANGED             = EVENT_LAST + 8;
     private static final int EVENT_VOICE_CALL_ENDED                  = EVENT_LAST + 9;
+    private static final int EVENT_INITIATE_VOLTE_SILENT_REDIAL      = EVENT_LAST + 10;
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER  = 1; // cancel Ecm timer
@@ -334,6 +336,8 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
         // Force initial roaming state update later, on EVENT_CARRIER_CONFIG_CHANGED.
         // Settings provider or CarrierConfig may not be loaded now.
+
+        mDefaultPhone.registerForVolteSilentRedial(this, EVENT_INITIATE_VOLTE_SILENT_REDIAL, null);
     }
 
     //todo: get rid of this function. It is not needed since parentPhone obj never changes
@@ -355,6 +359,10 @@ public class ImsPhone extends ImsPhoneBase {
                         .unregisterForDataRegStateOrRatChanged(transport, this);
             }
             mDefaultPhone.unregisterForServiceStateChanged(this);
+        }
+
+        if (mDefaultPhone != null) {
+            mDefaultPhone.unregisterForVolteSilentRedial(this);
         }
     }
 
@@ -1597,6 +1605,36 @@ public class ImsPhone extends ImsPhoneBase {
                     updateRoamingState(sst.mSS);
                 }
                 break;
+            case EVENT_INITIATE_VOLTE_SILENT_REDIAL: {
+                if (VDBG) logd("EVENT_INITIATE_VOLTE_SILENT_REDIAL");
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null && ar.result != null) {
+                    SilentRedialParam result = (SilentRedialParam) ar.result;
+                    String dialString = result.dialString;
+                    int causeCode = result.causeCode;
+                    DialArgs dialArgs = result.dialArgs;
+                    if (VDBG) logd("dialString=" + dialString + " causeCode=" + causeCode);
+
+                    try {
+                        Connection cn = dial(dialString,
+                                updateDialArgsForVolteSilentRedial(dialArgs, causeCode));
+                        Rlog.d(LOG_TAG, "Notify volte redial connection changed cn: " + cn);
+                        if (mDefaultPhone != null) {
+                            // don't care it is null or not.
+                            mDefaultPhone.notifyRedialConnectionChanged(cn);
+                        }
+                    } catch (CallStateException e) {
+                        Rlog.e(LOG_TAG, "volte silent redial failed: " + e);
+                        if (mDefaultPhone != null) {
+                            mDefaultPhone.notifyRedialConnectionChanged(null);
+                        }
+                    }
+                } else {
+                    if (VDBG) logd("EVENT_INITIATE_VOLTE_SILENT_REDIAL" +
+                                   " has exception or empty result");
+                }
+                break;
+            }
 
             default:
                 super.handleMessage(msg);
@@ -2111,6 +2149,35 @@ public class ImsPhone extends ImsPhoneBase {
 
     public IccRecords getIccRecords() {
         return mDefaultPhone.getIccRecords();
+    }
+
+    public DialArgs updateDialArgsForVolteSilentRedial(DialArgs dialArgs, int causeCode) {
+        if (dialArgs != null) {
+            ImsPhone.ImsDialArgs.Builder imsDialArgsBuilder;
+            if (dialArgs instanceof ImsPhone.ImsDialArgs) {
+                imsDialArgsBuilder = ImsPhone.ImsDialArgs.Builder
+                                      .from((ImsPhone.ImsDialArgs) dialArgs);
+            } else {
+                imsDialArgsBuilder = ImsPhone.ImsDialArgs.Builder
+                                      .from(dialArgs);
+            }
+            Bundle extras = new Bundle(dialArgs.intentExtras);
+            if (causeCode == CallFailCause.EMC_REDIAL_ON_VOWIFI && isWifiCallingEnabled()) {
+                extras.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
+                        String.valueOf(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN));
+                logd("trigger VoWifi emergency call");
+                imsDialArgsBuilder.setIntentExtras(extras);
+            } else if (causeCode == CallFailCause.EMC_REDIAL_ON_IMS) {
+                logd("trigger VoLte emergency call");
+            }
+            return imsDialArgsBuilder.build();
+        }
+        return new DialArgs.Builder<>().build();
+    }
+
+    public boolean hasAliveCall() {
+        return (getForegroundCall().getState() != Call.State.IDLE ||
+                getBackgroundCall().getState() != Call.State.IDLE);
     }
 
     @Override
