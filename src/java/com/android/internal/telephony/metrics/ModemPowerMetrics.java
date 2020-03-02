@@ -17,15 +17,27 @@ package com.android.internal.telephony.metrics;
 
 import android.os.BatteryStatsManager;
 import android.os.connectivity.CellularBatteryStats;
+import android.telephony.CellSignalStrength;
+import android.telephony.ModemActivityInfo;
+import android.telephony.TelephonyManager;
 import android.text.format.DateUtils;
 
 import com.android.internal.telephony.nano.TelephonyProto.ModemPowerStats;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ModemPowerMetrics holds the modem power metrics and converts them to ModemPowerStats proto buf.
  * This proto buf is included in the Telephony proto buf.
  */
 public class ModemPowerMetrics {
+
+
+    private static final int DATA_CONNECTION_EMERGENCY_SERVICE =
+            TelephonyManager.getAllNetworkTypes().length + 1;
+    private static final int DATA_CONNECTION_OTHER = DATA_CONNECTION_EMERGENCY_SERVICE + 1;
+    private static final int NUM_DATA_CONNECTION_TYPES = DATA_CONNECTION_OTHER + 1;
 
     /* BatteryStatsManager API */
     private BatteryStatsManager mBatteryStatsManager;
@@ -47,25 +59,48 @@ public class ModemPowerMetrics {
                 / ((double) DateUtils.HOUR_IN_MILLIS);
             m.numPacketsTx = stats.getNumPacketsTx();
             m.cellularKernelActiveTimeMs = stats.getKernelActiveTimeMillis();
-            if (stats.getTimeInRxSignalStrengthLevelMicros() != null
-                    && stats.getTimeInRxSignalStrengthLevelMicros().length > 0) {
-                m.timeInVeryPoorRxSignalLevelMs = stats.getTimeInRxSignalStrengthLevelMicros()[0];
+
+            long timeInVeryPoorRxSignalLevelMs = stats.getTimeInRxSignalStrengthLevelMicros(
+                    CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN);
+            if (timeInVeryPoorRxSignalLevelMs >= 0) {
+                m.timeInVeryPoorRxSignalLevelMs = timeInVeryPoorRxSignalLevelMs;
             }
+
             m.sleepTimeMs = stats.getSleepTimeMillis();
             m.idleTimeMs = stats.getIdleTimeMillis();
             m.rxTimeMs = stats.getRxTimeMillis();
-            long[] t = stats.getTxTimeMillis();
-            m.txTimeMs = new long[t.length];
-            System.arraycopy(t, 0, m.txTimeMs, 0, t.length);
+
+            List<Long> txTimeMillis = new ArrayList<>();
+            for (int i = 0; i < ModemActivityInfo.TX_POWER_LEVELS; i++) {
+                long t = stats.getTxTimeMillis(i);
+                if (t >= 0) {
+                    txTimeMillis.add(t);
+                }
+            }
+            m.txTimeMs = txTimeMillis.stream().mapToLong(Long::longValue).toArray();
+
             m.numBytesTx = stats.getNumBytesTx();
             m.numPacketsRx = stats.getNumPacketsRx();
             m.numBytesRx = stats.getNumBytesRx();
-            long[] tr = stats.getTimeInRatMicros();
-            m.timeInRatMs = new long[tr.length];
-            System.arraycopy(tr, 0, m.timeInRatMs, 0, tr.length);
-            long[] trx = stats.getTimeInRxSignalStrengthLevelMicros();
-            m.timeInRxSignalStrengthLevelMs = new long[trx.length];
-            System.arraycopy(trx, 0, m.timeInRxSignalStrengthLevelMs, 0, trx.length);
+            List<Long> timeInRatMicros = new ArrayList<>();
+            for (int i = 0; i < NUM_DATA_CONNECTION_TYPES; i++) {
+                long tr = stats.getTimeInRatMicros(i);
+                if (tr >= 0) {
+                    timeInRatMicros.add(tr);
+                }
+            }
+            m.timeInRatMs = timeInRatMicros.stream().mapToLong(Long::longValue).toArray();
+
+            List<Long> rxSignalStrengthLevelMicros = new ArrayList<>();
+            for (int i = 0; i < CellSignalStrength.getNumSignalStrengthLevels(); i++) {
+                long rx = stats.getTimeInRxSignalStrengthLevelMicros(i);
+                if (rx >= 0) {
+                    rxSignalStrengthLevelMicros.add(rx);
+                }
+            }
+            m.timeInRxSignalStrengthLevelMs = rxSignalStrengthLevelMicros.stream().mapToLong(
+                    Long::longValue).toArray();
+
             m.monitoredRailEnergyConsumedMah = stats.getMonitoredRailChargeConsumedMaMillis()
                 / ((double) DateUtils.HOUR_IN_MILLIS);
         }
