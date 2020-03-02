@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
-import static android.telephony.TelephonyManager.EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED;
+import static android.telephony.TelephonyManager.EXTRA_ACTIVE_SIM_SUPPORTED_COUNT;
 
 import android.content.Context;
 import android.content.Intent;
@@ -28,12 +28,12 @@ import android.os.PowerManager;
 import android.os.RegistrantList;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
-import com.android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -407,7 +407,7 @@ public class PhoneConfigurationManager {
         notifyMultiSimConfigChange(numOfActiveModems);
 
         Intent intent = new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED);
-        intent.putExtra(EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED, numOfActiveModems);
+        intent.putExtra(EXTRA_ACTIVE_SIM_SUPPORTED_COUNT, numOfActiveModems);
         mContext.sendBroadcast(intent);
     }
 

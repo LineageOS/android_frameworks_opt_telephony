@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
-import static android.telephony.TelephonyManager.EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED;
+import static android.telephony.TelephonyManager.EXTRA_ACTIVE_SIM_SUPPORTED_COUNT;
 import static android.telephony.TelephonyManager.MODEM_COUNT_DUAL_MODEM;
 import static android.telephony.TelephonyManager.MODEM_COUNT_SINGLE_MODEM;
 
@@ -182,7 +182,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         Intent intent = intentCaptor.getValue();
         assertEquals(ACTION_MULTI_SIM_CONFIG_CHANGED, intent.getAction());
         assertEquals(MODEM_COUNT_DUAL_MODEM, intent.getIntExtra(
-                EXTRA_NUM_OF_ACTIVE_SIM_SUPPORTED, 0));
+                EXTRA_ACTIVE_SIM_SUPPORTED_COUNT, 0));
 
         // Verify RIL notification.
         verify(mMockCi).onSlotActiveStatusChange(true);
