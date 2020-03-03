@@ -19,12 +19,12 @@ package com.android.internal.telephony.nitz;
 import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY;
 import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET;
 
-import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.createEmptyTimeSuggestion;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.createEmptyTimeZoneSuggestion;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.createTimeSuggestionFromNitzSignal;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.createEmptyTimeSuggestion;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.createEmptyTimeZoneSuggestion;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.createTimeSuggestionFromNitzSignal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,11 +39,10 @@ import android.os.TimestampedValue;
 
 import com.android.internal.telephony.IndentingPrintWriter;
 import com.android.internal.telephony.NitzData;
-import com.android.internal.telephony.NitzStateMachineTestSupport.FakeDeviceState;
-import com.android.internal.telephony.NitzStateMachineTestSupport.Scenario;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.TimeZoneLookupHelper;
-import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.NitzSignalInputFilterPredicate;
+import com.android.internal.telephony.nitz.NitzStateMachineImpl.NitzSignalInputFilterPredicate;
+import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.FakeDeviceState;
+import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.Scenario;
 
 import org.junit.After;
 import org.junit.Before;
@@ -53,7 +52,7 @@ import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
-public class NewNitzStateMachineImplTest extends TelephonyTest {
+public class NitzStateMachineImplTest extends TelephonyTest {
 
     private static final int SLOT_INDEX = 99999;
     private static final TelephonyTimeZoneSuggestion EMPTY_TIME_ZONE_SUGGESTION =
@@ -65,7 +64,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
     private FakeDeviceState mFakeDeviceState;
     private TimeZoneSuggesterImpl mRealTimeZoneSuggester;
 
-    private NewNitzStateMachineImpl mNitzStateMachineImpl;
+    private NitzStateMachineImpl mNitzStateMachineImpl;
 
 
     @Before
@@ -90,7 +89,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
         TimeZoneLookupHelper timeZoneLookupHelper = new TimeZoneLookupHelper();
         mRealTimeZoneSuggester = new TimeZoneSuggesterImpl(mFakeDeviceState, timeZoneLookupHelper);
 
-        mNitzStateMachineImpl = new NewNitzStateMachineImpl(
+        mNitzStateMachineImpl = new NitzStateMachineImpl(
                 SLOT_INDEX, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
                 mFakeNewTimeServiceHelper);
 
@@ -645,7 +644,7 @@ public class NewNitzStateMachineImplTest extends TelephonyTest {
 
     /**
      * A fake implementation of {@link NewTimeServiceHelper} that enables tests to detect what
-     * {@link NewNitzStateMachineImpl} would do to a real device's state.
+     * {@link NitzStateMachineImpl} would do to a real device's state.
      */
     private static class FakeNewTimeServiceHelper implements NewTimeServiceHelper {
 
