@@ -2968,7 +2968,7 @@ public class DcTracker extends Handler {
             mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
             log("Notify carrier signal receivers with redirectUrl: " + redirectUrl);
         } else {
-            final boolean isValid = status == NetworkAgent.VALID_NETWORK;
+            final boolean isValid = status == NetworkAgent.VALIDATION_STATUS_VALID;
             final DataConnection dc = getDataConnectionByContextId(cid);
             if (!mDsRecoveryHandler.isRecoveryOnBadNetworkEnabled()) {
                 if (DBG) log("Skip data stall recovery on network status change with in threshold");
