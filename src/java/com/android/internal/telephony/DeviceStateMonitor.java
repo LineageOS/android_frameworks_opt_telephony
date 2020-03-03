@@ -866,10 +866,13 @@ public class DeviceStateMonitor extends Handler {
             10000,  // file downloading
             20000,  // 4K video streaming
             50000,  // LTE-Advanced speeds
+            75000,
             100000,
             200000, // 5G speeds
             500000,
-            1000000
+            1000000,
+            1500000,
+            2000000
     };
 
     /** Uplink reporting thresholds in kbps */
@@ -881,7 +884,9 @@ public class DeviceStateMonitor extends Handler {
             10000,  // file uploading
             20000,  // 4K video calling
             50000,
+            75000,
             100000,
-            200000
+            200000,
+            500000
     };
 }
