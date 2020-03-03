@@ -45,7 +45,6 @@ import android.app.IApplicationThread;
 import android.content.BroadcastReceiver;
 import android.content.IIntentReceiver;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -844,54 +843,6 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testNonNullTrackersInImsPhone() throws Exception {
         assertNotNull(mImsPhoneUT.getEmergencyNumberTracker());
         assertNotNull(mImsPhoneUT.getServiceStateTracker());
-    }
-
-    @Test
-    @SmallTest
-    public void testSendUssdAllowUssdOverImsInOutOfService() throws Exception {
-        Resources resources = mContext.getResources();
-
-        doReturn(true).when(resources).getBoolean(
-                com.android.internal.R.bool.config_allow_ussd_over_ims);
-        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getState();
-
-        mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
-        verify(mImsCT).sendUSSD(eq("*135#"), any());
-    }
-
-    @Test
-    @SmallTest
-    public void testSendUssdAllowUssdOverImsInService() throws Exception {
-        String errorCode = "";
-        Resources resources = mContext.getResources();
-
-        doReturn(true).when(resources).getBoolean(
-                com.android.internal.R.bool.config_allow_ussd_over_ims);
-        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getState();
-
-        try {
-            mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
-        } catch (CallStateException e) {
-            errorCode = e.getMessage();
-        }
-        assertEquals(Phone.CS_FALLBACK, errorCode);
-    }
-
-    @Test
-    @SmallTest
-    public void testSendUssdNotAllowUssdOverIms() throws Exception {
-        String errorCode = "";
-        Resources resources = mContext.getResources();
-
-        doReturn(false).when(resources).getBoolean(
-                com.android.internal.R.bool.config_allow_ussd_over_ims);
-
-        try {
-            mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
-        } catch (CallStateException e) {
-            errorCode = e.getMessage();
-        }
-        assertEquals(Phone.CS_FALLBACK, errorCode);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {
