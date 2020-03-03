@@ -1,0 +1,6 @@
+# NetworkFactory is included in telephony-common and services.net
+# Rename the non-jarjared, services.net version to avoid conflicts.
+# This causes two NetworkFactory classes to appear in the test package (one used
+# by services-net and one by telephony-common), similarly to what happens on a
+# real device, except that in the test they have different package names.
+rule android.net.NetworkFactory* android.net.services.NetworkFactory@1
