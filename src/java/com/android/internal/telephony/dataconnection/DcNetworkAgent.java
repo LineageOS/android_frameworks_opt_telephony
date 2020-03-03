@@ -17,16 +17,19 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.annotation.NonNull;
+import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
 import android.net.NattKeepalivePacketData;
 import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
@@ -68,11 +71,12 @@ public class DcNetworkAgent extends NetworkAgent {
     private NetworkInfo mNetworkInfo;
 
     DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
-            NetworkAgentConfig config, int factorySerialNumber, int transportType) {
-        super(dc.getHandler().getLooper(), phone.getContext(), "DcNetworkAgent", ni,
+            NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
+        super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
-                factorySerialNumber);
-        mTag = "DcNetworkAgent" + "-" + network.netId;
+                networkProvider);
+        register();
+        mTag = "DcNetworkAgent" + "-" + getNetwork().netId;
         mPhone = phone;
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
@@ -125,22 +129,22 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    protected synchronized void unwanted() {
+    public synchronized void onNetworkUnwanted() {
         if (mDataConnection == null) {
-            loge("Unwanted found called on no-owner DcNetworkAgent!");
+            loge("onNetworkUnwanted found called on no-owner DcNetworkAgent!");
             return;
         }
 
-        logd("unwanted called. Now tear down the data connection "
+        logd("onNetworkUnwanted called. Now tear down the data connection "
                 + mDataConnection.getName());
         mDataConnection.tearDownAll(Phone.REASON_RELEASED_BY_CONNECTIVITY_SERVICE,
                 DcTracker.RELEASE_TYPE_DETACH, null);
     }
 
     @Override
-    protected synchronized void pollLceData() {
+    public synchronized void onBandwidthUpdateRequested() {
         if (mDataConnection == null) {
-            loge("pollLceData called on no-owner DcNetworkAgent!");
+            loge("onBandwidthUpdateRequested called on no-owner DcNetworkAgent!");
             return;
         }
 
@@ -152,9 +156,9 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    protected synchronized void networkStatus(int status, String redirectUrl) {
+    public synchronized void onValidationStatus(int status, String redirectUrl) {
         if (mDataConnection == null) {
-            loge("networkStatus called on no-owner DcNetworkAgent!");
+            loge("onValidationStatus called on no-owner DcNetworkAgent!");
             return;
         }
 
@@ -167,6 +171,18 @@ public class DcNetworkAgent extends NetworkAgent {
         }
     }
 
+    private synchronized boolean isOwned(DataConnection dc, String reason) {
+        if (mDataConnection == null) {
+            loge(reason + " called on no-owner DcNetworkAgent!");
+            return false;
+        } else if (mDataConnection != dc) {
+            loge(reason + ": This agent belongs to "
+                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Set the network capabilities.
      *
@@ -175,14 +191,7 @@ public class DcNetworkAgent extends NetworkAgent {
      */
     public synchronized void sendNetworkCapabilities(NetworkCapabilities networkCapabilities,
                                                      DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendNetworkCapabilities called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendNetworkCapabilities: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
-        }
+        if (!isOwned(dc, "sendNetworkCapabilities")) return;
 
         if (!networkCapabilities.equals(mNetworkCapabilities)) {
             String logStr = "Changed from " + mNetworkCapabilities + " to "
@@ -215,14 +224,7 @@ public class DcNetworkAgent extends NetworkAgent {
      */
     public synchronized void sendLinkProperties(LinkProperties linkProperties,
                                                 DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendLinkProperties called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendLinkProperties: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
-        }
+        if (!isOwned(dc, "sendLinkProperties")) return;
         sendLinkProperties(linkProperties);
     }
 
@@ -233,14 +235,7 @@ public class DcNetworkAgent extends NetworkAgent {
      * @param dc The data connection that invokes this method.
      */
     public synchronized void sendNetworkScore(int score, DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendNetworkScore called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendNetworkScore: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
-        }
+        if (!isOwned(dc, "sendNetworkScore")) return;
         sendNetworkScore(score);
     }
 
@@ -251,16 +246,21 @@ public class DcNetworkAgent extends NetworkAgent {
      * @param dc The data connection that invokes this method.
      */
     public synchronized void sendNetworkInfo(NetworkInfo networkInfo, DataConnection dc) {
-        if (mDataConnection == null) {
-            loge("sendNetworkInfo called on no-owner DcNetworkAgent!");
-            return;
-        } else if (mDataConnection != dc) {
-            loge("sendNetworkInfo: This agent belongs to "
-                    + mDataConnection.getName() + ", ignored the request from " + dc.getName());
-            return;
+        if (!isOwned(dc, "sendNetworkInfo")) return;
+        final NetworkInfo.State oldState = mNetworkInfo.getState();
+        final NetworkInfo.State state = networkInfo.getState();
+        if (mNetworkInfo.getExtraInfo() != networkInfo.getExtraInfo()) {
+            setLegacyExtraInfo(networkInfo.getExtraInfo());
+        }
+        final int subType = networkInfo.getSubtype();
+        if (mNetworkInfo.getSubtype() != subType) {
+            setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
+        }
+        if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
+                && state == NetworkInfo.State.DISCONNECTED) {
+            unregister();
         }
         mNetworkInfo = networkInfo;
-        sendNetworkInfo(networkInfo);
     }
 
     /**
@@ -273,29 +273,30 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    protected synchronized void startSocketKeepalive(Message msg) {
+    public synchronized void onStartSocketKeepalive(int slot, int intervalSeconds,
+            @NonNull KeepalivePacketData packet) {
         if (mDataConnection == null) {
-            loge("startSocketKeepalive called on no-owner DcNetworkAgent!");
+            loge("onStartSocketKeepalive called on no-owner DcNetworkAgent!");
             return;
         }
 
-        if (msg.obj instanceof NattKeepalivePacketData) {
+        if (packet instanceof NattKeepalivePacketData) {
             mDataConnection.obtainMessage(DataConnection.EVENT_KEEPALIVE_START_REQUEST,
-                    msg.arg1, msg.arg2, msg.obj).sendToTarget();
+                    slot, intervalSeconds, packet).sendToTarget();
         } else {
-            onSocketKeepaliveEvent(msg.arg1, SocketKeepalive.ERROR_UNSUPPORTED);
+            sendSocketKeepaliveEvent(slot, SocketKeepalive.ERROR_UNSUPPORTED);
         }
     }
 
     @Override
-    protected synchronized void stopSocketKeepalive(Message msg) {
+    public synchronized void onStopSocketKeepalive(int slot) {
         if (mDataConnection == null) {
-            loge("stopSocketKeepalive called on no-owner DcNetworkAgent!");
+            loge("onStopSocketKeepalive called on no-owner DcNetworkAgent!");
             return;
         }
 
-        mDataConnection.obtainMessage(DataConnection.EVENT_KEEPALIVE_STOP_REQUEST,
-                msg.arg1, msg.arg2, msg.obj).sendToTarget();
+        mDataConnection.obtainMessage(DataConnection.EVENT_KEEPALIVE_STOP_REQUEST, slot)
+                .sendToTarget();
     }
 
     @Override
