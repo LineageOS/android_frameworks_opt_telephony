@@ -39,7 +39,6 @@ import com.android.internal.telephony.WspTypeDecoder;
 import com.android.internal.telephony.cdma.sms.BearerData;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.HexDump;
 
 import java.io.ByteArrayOutputStream;
@@ -79,9 +78,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             Phone phone, CdmaSMSDispatcher smsDispatcher) {
         super("CdmaInboundSmsHandler", context, storageMonitor, phone);
         mSmsDispatcher = smsDispatcher;
-        mCheckForDuplicatePortsInOmadmWapPush = TelephonyResourceUtils
-                .getTelephonyResources(context).getBoolean(
-                        com.android.telephony.resources.R.bool.config_duplicate_port_omadm_wappush);
+        mCheckForDuplicatePortsInOmadmWapPush = context.getResources().getBoolean(
+                com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
         mCellBroadcastServiceManager.enable();
