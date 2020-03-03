@@ -33,7 +33,6 @@ import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -50,7 +49,6 @@ import android.os.Message;
 import android.os.Process;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
-import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
@@ -469,7 +467,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testDial() throws Exception {
+    public void testDial() {
         try {
             mSST.mSS = mServiceState;
             doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
@@ -478,8 +476,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
             mCT.mBackgroundCall = mGsmCdmaCall;
             mCT.mRingingCall = mGsmCdmaCall;
             doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
-
-            replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
 
             Connection connection = mPhoneUT.dial("1234567890",
                     new PhoneInternalInterface.DialArgs.Builder().build());
@@ -1282,72 +1278,4 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 //        processAllMessages();
 //        verify(mMockCi, never()).enableUiccApplications(eq(true), messageCaptor.capture());
 //    }
-
-    @Test
-    @SmallTest
-    public void testSendUssdInService() throws Exception {
-        PhoneInternalInterface.DialArgs dialArgs = new PhoneInternalInterface.DialArgs
-                .Builder().setVideoState(VideoProfile.STATE_AUDIO_ONLY).build();
-
-        setupTestSendUssd(dialArgs);
-
-        // ServiceState is in service.
-        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getState();
-        mPhoneUT.dial("*135#", dialArgs);
-        verify(mMockCi).sendUSSD(eq("*135#"), any());
-    }
-
-    @Test
-    @SmallTest
-    public void testSendUssdInOutOfService() throws Exception {
-        PhoneInternalInterface.DialArgs dialArgs = new PhoneInternalInterface.DialArgs
-                .Builder().setVideoState(VideoProfile.STATE_AUDIO_ONLY).build();
-
-        setupTestSendUssd(dialArgs);
-
-        // ServiceState is out of service
-        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS)
-                .getState(); /* CS out of service */
-        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getDataRegState();
-        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_GSM).when(mSST.mSS)
-                .getRilDataRadioTechnology(); /* PS not in LTE */
-        mPhoneUT.dial("*135#", dialArgs);
-        verify(mMockCi).sendUSSD(eq("*135#"), any());
-    }
-
-    @Test
-    @SmallTest
-    public void testSendUssdInAirplaneMode() throws Exception {
-        PhoneInternalInterface.DialArgs dialArgs = new PhoneInternalInterface.DialArgs
-                .Builder().setVideoState(VideoProfile.STATE_AUDIO_ONLY).build();
-
-        setupTestSendUssd(dialArgs);
-
-        // ServiceState is airplane mode.
-        doReturn(ServiceState.STATE_POWER_OFF).when(mSST.mSS).getState(); /* CS POWER_OFF */
-        mPhoneUT.dial("*135#", dialArgs);
-        verify(mMockCi).sendUSSD(eq("*135#"), any());
-    }
-
-    private void setupTestSendUssd(PhoneInternalInterface.DialArgs dialArgs) throws Exception {
-        mPhoneUT.mCi = mMockCi;
-        ServiceState mImsServiceState = Mockito.mock(ServiceState.class);
-        CallStateException callStateException = Mockito.mock(CallStateException.class);
-
-        // Enable VoWiFi
-        doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
-        doReturn(true).when(mImsManager).isEnhanced4gLteModeSettingEnabledByUser();
-        doReturn(mImsServiceState).when(mImsPhone).getServiceState();
-        doReturn(ServiceState.STATE_IN_SERVICE).when(mImsServiceState).getState();
-        doReturn(true).when(mImsPhone).isWifiCallingEnabled();
-
-        // Disable UT/XCAP
-        doReturn(false).when(mImsPhone).isUtEnabled();
-
-        // Throw CallStateException(Phone.CS_FALLBACK) from ImsPhone.dial().
-        doReturn(Phone.CS_FALLBACK).when(callStateException).getMessage();
-        doThrow(callStateException).when(mImsPhone).dial("*135#", dialArgs);
-
-        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
-    }
 }
