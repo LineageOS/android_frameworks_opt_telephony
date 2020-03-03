@@ -100,8 +100,9 @@ public class DataConnectionReasons {
     // Disallowed reasons. There could be multiple reasons if data connection is not allowed.
     public enum DataDisallowedReasonType {
         // Soft failure reasons. Normally the reasons from users or policy settings.
-        DATA_DISABLED(false),                   // Data is disabled by the user or policy.
-        ROAMING_DISABLED(false),                // Data roaming is disabled by the user.
+        DATA_DISABLED(false),               // Data is disabled by the user or policy.
+        ROAMING_DISABLED(false),            // Data roaming is disabled by the user.
+        DEFAULT_DATA_UNSELECTED(false),     // Default data not selected.
 
         // Belows are all hard failure reasons.
         NOT_ATTACHED(true),
@@ -111,7 +112,6 @@ public class DataConnectionReasons {
         PS_RESTRICTED(true),
         UNDESIRED_POWER_STATE(true),
         INTERNAL_DATA_DISABLED(true),
-        DEFAULT_DATA_UNSELECTED(true),
         RADIO_DISABLED_BY_CARRIER(true),
         APN_NOT_CONNECTABLE(true),
         ON_IWLAN(true),

@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
+import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG;
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -41,10 +42,12 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
@@ -1193,8 +1196,16 @@ public class PhoneSwitcher extends Handler {
         // start validation on the subscription first.
         if (mValidator.isValidationFeatureSupported() && needValidation) {
             mSetOpptSubCallback = callback;
-            mValidator.validate(subIdToValidate, DEFAULT_VALIDATION_EXPIRATION_TIME,
-                    false, mValidationCallback);
+            long validationTimeout = DEFAULT_VALIDATION_EXPIRATION_TIME;
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfigForSubId(subIdToValidate);
+                if (b != null) {
+                    validationTimeout = b.getLong(KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG);
+                }
+            }
+            mValidator.validate(subIdToValidate, validationTimeout, false, mValidationCallback);
         } else {
             setOpportunisticSubscriptionInternal(subId);
             sendSetOpptCallbackHelper(callback, SET_OPPORTUNISTIC_SUB_SUCCESS);

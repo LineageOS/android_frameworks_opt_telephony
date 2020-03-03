@@ -242,6 +242,17 @@ message TelephonyServiceState {
     optional string numeric = 3;
   }
 
+  message NetworkRegistrationInfo {
+    // Network domain
+    optional Domain domain = 1;
+
+    // Network transport
+    optional Transport transport = 2;
+
+    // Radio access technology
+    optional RadioAccessTechnology rat = 3;
+  }
+
   // Roaming type
   enum RoamingType {
 
@@ -260,6 +271,29 @@ message TelephonyServiceState {
 
     // In international roaming network
     ROAMING_TYPE_INTERNATIONAL = 3;
+  }
+
+  // Domain type
+  enum Domain {
+    // Unknown
+    DOMAIN_UNKNOWN = 0;
+
+    // Circuit switching domain
+    DOMAIN_CS = 1;
+
+    // Packet switching domain
+    DOMAIN_PS = 2;
+  }
+
+  enum Transport {
+    // Unknown
+    TRANSPORT_UNKNOWN = 0;
+
+    // Transport type for Wireless Wide Area Networks (i.e. Cellular)
+    TRANSPORT_WWAN = 1;
+
+    // Transport type for Wireless Local Area Networks (i.e. Wifi)
+    TRANSPORT_WLAN = 2;
   }
 
   // Current registered operator
@@ -282,6 +316,9 @@ message TelephonyServiceState {
 
   // Current Channel Number
   optional int32 channel_number = 7;
+
+  // Network registration info
+  repeated NetworkRegistrationInfo networkRegistrationInfo = 10;
 }
 
 // Radio access families
@@ -331,6 +368,10 @@ enum RadioAccessTechnology {
   RAT_IWLAN = 18;
 
   RAT_LTE_CA = 19;
+
+  RAT_NR_NSA = 20;
+
+  RAT_NR_SA = 21;
 }
 
 // The information about IMS errors
@@ -745,6 +786,9 @@ message TelephonyEvent {
 
     // Emergency Number update event (Device HAL >= 1.4).
     EMERGENCY_NUMBER_REPORT = 21;
+
+    // Signal strength
+    SIGNAL_STRENGTH = 23;
   }
 
   enum ApnType {
@@ -1719,6 +1763,9 @@ message TelephonyEvent {
 
   // Updated Emergency Call info.
   optional EmergencyNumberInfo updated_emergency_number = 25;
+
+  // Signal strength
+  optional int32 signal_strength = 27;
 }
 
 message ActiveSubscriptionInfo {

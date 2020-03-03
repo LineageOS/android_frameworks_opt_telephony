@@ -66,6 +66,7 @@ import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -610,6 +611,33 @@ public class DcTrackerTest extends TelephonyTest {
         }
     }
 
+    // Test the unmetered APN setup when data is disabled.
+    @Test
+    @SmallTest
+    public void testTrySetupDataUnmeteredDefaultNotSelected() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_FOTA, new String[]{PhoneConstants.APN_TYPE_ALL});
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mIsub).getDefaultDataSubId();
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_DEFAULT});
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), any(DataProfile.class),
+                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                any(Message.class));
+    }
+
     // Test the normal data call setup scenario.
     @Test
     @MediumTest
@@ -765,7 +793,6 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(DctConstants.State.IDLE, mDct.getState(PhoneConstants.APN_TYPE_DEFAULT));
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(PhoneConstants.APN_TYPE_IMS));
     }
-
 
     @Test
     @MediumTest
@@ -1594,6 +1621,7 @@ public class DcTrackerTest extends TelephonyTest {
         ContentResolver resolver = mContext.getContentResolver();
         Settings.Global.putInt(resolver, Settings.Global.DATA_STALL_RECOVERY_ON_BAD_NETWORK, 1);
         Settings.System.putInt(resolver, "radio.data.stall.recovery.action", 0);
+        doReturn(new SignalStrength()).when(mPhone).getSignalStrength();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
@@ -1636,6 +1664,7 @@ public class DcTrackerTest extends TelephonyTest {
         Settings.Global.putLong(resolver,
                 Settings.Global.MIN_DURATION_BETWEEN_RECOVERY_STEPS_IN_MS, 100);
         Settings.System.putInt(resolver, "radio.data.stall.recovery.action", 1);
+        doReturn(new SignalStrength()).when(mPhone).getSignalStrength();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
@@ -1676,6 +1705,7 @@ public class DcTrackerTest extends TelephonyTest {
         Settings.Global.putLong(resolver,
                 Settings.Global.MIN_DURATION_BETWEEN_RECOVERY_STEPS_IN_MS, 100);
         Settings.System.putInt(resolver, "radio.data.stall.recovery.action", 2);
+        doReturn(new SignalStrength()).when(mPhone).getSignalStrength();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
@@ -1713,6 +1743,7 @@ public class DcTrackerTest extends TelephonyTest {
         Settings.Global.putLong(resolver,
                 Settings.Global.MIN_DURATION_BETWEEN_RECOVERY_STEPS_IN_MS, 100);
         Settings.System.putInt(resolver, "radio.data.stall.recovery.action", 3);
+        doReturn(new SignalStrength()).when(mPhone).getSignalStrength();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
