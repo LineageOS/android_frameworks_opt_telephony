@@ -24,8 +24,6 @@ import static android.net.NetworkStats.UID_ALL;
 
 import static com.android.testutils.NetworkStatsUtilsKt.assertNetworkStatsEquals;
 
-import static junit.framework.TestCase.fail;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -1014,19 +1012,13 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @SmallTest
     public void testNoHoldErrorMessageWhenCallDisconnected() {
         when(mImsPhoneConnection.getImsCall()).thenReturn(mImsCall);
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocationOnMock) {
-                fail("Error message showed when the call has already been disconnected!");
-                return null;
-            }
-        }).when(mImsPhoneConnection)
-                .onConnectionEvent(eq(android.telecom.Connection.EVENT_CALL_HOLD_FAILED), any());
         mCTUT.getConnections().add(mImsPhoneConnection);
         when(mImsPhoneConnection.getState()).thenReturn(ImsPhoneCall.State.DISCONNECTED);
-        ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_UNSPECIFIED,
+        final ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_UNSPECIFIED,
                 ImsReasonInfo.CODE_UNSPECIFIED, null);
         mCTUT.getImsCallListener().onCallHoldFailed(mImsPhoneConnection.getImsCall(), info);
+        verify(mImsPhoneConnection, never()).onConnectionEvent(
+                eq(android.telecom.Connection.EVENT_CALL_HOLD_FAILED), any());
     }
 
     @Test
