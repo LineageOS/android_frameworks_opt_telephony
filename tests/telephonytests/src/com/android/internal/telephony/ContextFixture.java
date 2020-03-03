@@ -64,6 +64,7 @@ import android.os.Handler;
 import android.os.IInterface;
 import android.os.PersistableBundle;
 import android.os.PowerWhitelistManager;
+import android.os.SystemConfigManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
@@ -257,6 +258,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mDownloadManager;
                 case Context.TELEPHONY_REGISTRY_SERVICE:
                     return mTelephonyRegistryManager;
+                case Context.SYSTEM_CONFIG_SERVICE:
+                    return mSystemConfigManager;
                 case Context.BATTERY_STATS_SERVICE:
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
@@ -285,6 +288,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.CONNECTIVITY_SERVICE;
             } else if (serviceClass == PowerWhitelistManager.class) {
                 return Context.POWER_WHITELIST_MANAGER;
+            } else if (serviceClass == SystemConfigManager.class) {
+                return Context.SYSTEM_CONFIG_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -619,6 +624,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final PackageInfo mPackageInfo = mock(PackageInfo.class);
     private final TelephonyRegistryManager mTelephonyRegistryManager =
         mock(TelephonyRegistryManager.class);
+    private final SystemConfigManager mSystemConfigManager = mock(SystemConfigManager.class);
     private final PowerWhitelistManager mPowerWhitelistManager = mock(PowerWhitelistManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
@@ -671,7 +677,7 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(mBundle).when(mCarrierConfigManager).getConfig();
 
         doReturn(mock(Network.class)).when(mConnectivityManager).registerNetworkAgent(
-                any(), any(), any(), any(), any(), any(), anyInt());
+                any(), any(), any(), any(), anyInt(), any(), anyInt());
 
         doReturn(true).when(mEuiccManager).isEnabled();
 
