@@ -24,17 +24,17 @@ import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.QUALITY_M
 import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET;
 import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.QUALITY_SINGLE_ZONE;
 
-import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_REALTIME_MILLIS;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.CZECHIA_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_DEFAULT_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_OTHER_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO_ZONES;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO2;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.US_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_REALTIME_MILLIS;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.CZECHIA_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NEW_ZEALAND_DEFAULT_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NEW_ZEALAND_OTHER_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO_ZONES;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO2;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.US_COUNTRY_DEFAULT_ZONE_ID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -43,11 +43,10 @@ import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.os.TimestampedValue;
 
 import com.android.internal.telephony.NitzData;
-import com.android.internal.telephony.NitzStateMachineTestSupport.FakeDeviceState;
-import com.android.internal.telephony.NitzStateMachineTestSupport.Scenario;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.TimeZoneLookupHelper;
-import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.TimeZoneSuggester;
+import com.android.internal.telephony.nitz.NitzStateMachineImpl.TimeZoneSuggester;
+import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.FakeDeviceState;
+import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.Scenario;
 
 import org.junit.After;
 import org.junit.Before;
