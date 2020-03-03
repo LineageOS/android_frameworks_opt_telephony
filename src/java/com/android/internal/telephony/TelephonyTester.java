@@ -401,6 +401,7 @@ public class TelephonyTester {
             }
             nri.setNrState(mServiceStateTestIntent.getIntExtra(EXTRA_NR_STATE,
                     NetworkRegistrationInfo.NR_STATE_NONE));
+            ss.addNetworkRegistrationInfo(nri);
             log("Override NR state with " + ss.getNrState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_RAT)) {
@@ -444,6 +445,7 @@ public class TelephonyTester {
             }
             nri.setRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_ROAMING_TYPE,
                     ServiceState.ROAMING_TYPE_UNKNOWN));
+            ss.addNetworkRegistrationInfo(nri);
             log("Override voice roaming type with " + ss.getVoiceRoamingType());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_ROAMING_TYPE)) {
@@ -457,6 +459,7 @@ public class TelephonyTester {
             }
             nri.setRoamingType(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_ROAMING_TYPE,
                     ServiceState.ROAMING_TYPE_UNKNOWN));
+            ss.addNetworkRegistrationInfo(nri);
             log("Override data roaming type with " + ss.getDataRoamingType());
         }
     }
