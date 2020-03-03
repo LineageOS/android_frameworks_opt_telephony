@@ -27,6 +27,7 @@ import android.telephony.Annotation.SrvccState;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
+import android.telephony.DisplayInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
@@ -209,6 +210,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData) {
         mTelephonyRegistryMgr.notifyOemHookRawEventForSubscriber(sender.getSubId(),
             sender.getPhoneId(), rawData);
+    }
+
+    @Override
+    public void notifyDisplayInfoChanged(Phone sender, DisplayInfo displayInfo) {
+        mTelephonyRegistryMgr.notifyDisplayInfoChanged(
+                sender.getSubId(), sender.getPhoneId(), displayInfo);
     }
 
     @Override

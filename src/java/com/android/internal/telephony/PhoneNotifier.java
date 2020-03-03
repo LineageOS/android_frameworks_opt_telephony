@@ -24,6 +24,7 @@ import android.telephony.Annotation.SrvccState;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
+import android.telephony.DisplayInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.emergency.EmergencyNumber;
@@ -87,6 +88,9 @@ public interface PhoneNotifier {
 
     /** Send a notification with an OEM hook payload */
     void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData);
+
+    /** Send a notification that the display info has changed */
+    void notifyDisplayInfoChanged(Phone sender, DisplayInfo displayInfo);
 
     /** Send a notification that the phone capability has changed */
     void notifyPhoneCapabilityChanged(PhoneCapability capability);
