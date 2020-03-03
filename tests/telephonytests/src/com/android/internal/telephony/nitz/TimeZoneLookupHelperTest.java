@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.nitz;
 
-import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_DEBUG_INFO;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_DEFAULT_BOOSTED;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_SINGLE_ZONE;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_DEBUG_INFO;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_DEFAULT_BOOSTED;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_SINGLE_ZONE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -31,7 +31,8 @@ import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 import android.timezone.CountryTimeZones.OffsetResult;
 
-import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
+import com.android.internal.telephony.NitzData;
+import com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult;
 
 import org.junit.Before;
 import org.junit.Test;

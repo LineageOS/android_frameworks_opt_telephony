@@ -16,10 +16,10 @@
 
 package com.android.internal.telephony.nitz;
 
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
 import static com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.createBogusElapsedRealtimeCheck;
 import static com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.createIgnoreNitzPropertyCheck;
 import static com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.createRateLimitCheck;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -29,11 +29,11 @@ import static org.junit.Assert.fail;
 import android.os.TimestampedValue;
 
 import com.android.internal.telephony.NitzData;
-import com.android.internal.telephony.NitzStateMachineTestSupport.FakeDeviceState;
-import com.android.internal.telephony.NitzStateMachineTestSupport.Scenario;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.NitzSignalInputFilterPredicateImpl;
 import com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.TrivalentPredicate;
+import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.FakeDeviceState;
+import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.Scenario;
 
 import org.junit.After;
 import org.junit.Before;

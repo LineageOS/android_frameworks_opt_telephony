@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.nitz;
 
-import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_DEBUG_INFO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.CZECHIA_COUNTRY_DEFAULT_ZONE_ID;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.CZECHIA_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_DEFAULT_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NEW_ZEALAND_OTHER_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO_ZONES;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO2;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_COUNTRY_DEFAULT_ZONE_ID;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
-import static com.android.internal.telephony.NitzStateMachineTestSupport.US_COUNTRY_DEFAULT_ZONE_ID;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_DEFAULT_BOOSTED;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_SINGLE_ZONE;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_DEBUG_INFO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.CZECHIA_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.CZECHIA_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NEW_ZEALAND_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NEW_ZEALAND_DEFAULT_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NEW_ZEALAND_OTHER_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.NON_UNIQUE_US_ZONE_SCENARIO_ZONES;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO2;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNITED_KINGDOM_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.US_COUNTRY_DEFAULT_ZONE_ID;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_DEFAULT_BOOSTED;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_SINGLE_ZONE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -40,7 +40,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.timezone.CountryTimeZones.OffsetResult;
 
-import com.android.internal.telephony.TimeZoneLookupHelper.CountryResult;
+import com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult;
 
 import org.junit.Before;
 import org.junit.Test;
