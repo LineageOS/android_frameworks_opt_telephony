@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.nitz;
 
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
-import static com.android.internal.telephony.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_DIFFERENT_OFFSETS;
+import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult.QUALITY_MULTIPLE_ZONES_SAME_OFFSET;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -29,6 +29,9 @@ import android.timezone.CountryTimeZones.OffsetResult;
 import android.timezone.CountryTimeZones.TimeZoneMapping;
 import android.timezone.TimeZoneFinder;
 
+import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.NitzData;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.List;
@@ -37,12 +40,13 @@ import java.util.Objects;
 /**
  * An interface to various time zone lookup behaviors.
  */
-// Non-final to allow mocking.
-public class TimeZoneLookupHelper {
+@VisibleForTesting
+public final class TimeZoneLookupHelper {
 
     /**
      * The result of looking up a time zone using country information.
      */
+    @VisibleForTesting
     public static final class CountryResult {
 
         @IntDef({ QUALITY_SINGLE_ZONE, QUALITY_DEFAULT_BOOSTED, QUALITY_MULTIPLE_ZONES_SAME_OFFSET,
@@ -109,6 +113,7 @@ public class TimeZoneLookupHelper {
     @Nullable
     private CountryTimeZones mLastCountryTimeZones;
 
+    @VisibleForTesting
     public TimeZoneLookupHelper() {}
 
     /**
@@ -119,6 +124,7 @@ public class TimeZoneLookupHelper {
      * returned in preference to other candidates. This method can return {@code null} if no
      * matching time zones are found.
      */
+    @VisibleForTesting
     @Nullable
     public OffsetResult lookupByNitzCountry(
             @NonNull NitzData nitzData, @NonNull String isoCountryCode) {
@@ -156,6 +162,7 @@ public class TimeZoneLookupHelper {
      * information provided by NITZ is incorrect. This method can return {@code null} if no matching
      * time zones are found.
      */
+    @VisibleForTesting
     @Nullable
     public OffsetResult lookupByNitz(@NonNull NitzData nitzData) {
         int utcOffsetMillis = nitzData.getLocalOffsetMillis();
@@ -186,6 +193,7 @@ public class TimeZoneLookupHelper {
      * {@code null} can be returned if a problem occurs during lookup, e.g. if the country code is
      * unrecognized, if the country is uninhabited, or if there is a problem with the data.
      */
+    @VisibleForTesting
     @Nullable
     public CountryResult lookupByCountry(@NonNull String isoCountryCode, long whenMillis) {
         CountryTimeZones countryTimeZones = getCountryTimeZones(isoCountryCode);
@@ -294,6 +302,7 @@ public class TimeZoneLookupHelper {
      * Returns {@code true} if the supplied (lower-case) ISO country code is for a country known to
      * use a raw offset of zero from UTC at the time specified.
      */
+    @VisibleForTesting
     public boolean countryUsesUtc(@NonNull String isoCountryCode, long whenMillis) {
         if (TextUtils.isEmpty(isoCountryCode)) {
             return false;
