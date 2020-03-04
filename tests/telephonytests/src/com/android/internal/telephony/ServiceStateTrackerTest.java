@@ -451,7 +451,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mContextFixture.getTestDouble(), times(3))
                 .sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
-        // We only want to verify the intent SPN_STRINGS_UPDATED_ACTION.
+        // We only want to verify the intent SERVICE_PROVIDERS_UPDATED.
         List<Intent> intents = intentArgumentCaptor.getAllValues();
         logd("Total " + intents.size() + " intents");
         for (Intent intent : intents) {
