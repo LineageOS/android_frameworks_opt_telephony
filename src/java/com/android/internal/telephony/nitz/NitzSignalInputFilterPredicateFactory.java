@@ -26,7 +26,7 @@ import android.os.TimestampedValue;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
-import com.android.internal.telephony.nitz.NewNitzStateMachineImpl.NitzSignalInputFilterPredicate;
+import com.android.internal.telephony.nitz.NitzStateMachineImpl.NitzSignalInputFilterPredicate;
 import com.android.telephony.Rlog;
 
 import java.util.Arrays;
@@ -34,14 +34,14 @@ import java.util.Objects;
 
 /**
  * A factory class for the {@link NitzSignalInputFilterPredicate} instance used by
- * {@link NewNitzStateMachineImpl}. This class is exposed for testing and provides access to various
+ * {@link NitzStateMachineImpl}. This class is exposed for testing and provides access to various
  * internal components.
  */
 @VisibleForTesting
 public final class NitzSignalInputFilterPredicateFactory {
 
-    private static final String LOG_TAG = NewNitzStateMachineImpl.LOG_TAG;
-    private static final boolean DBG = NewNitzStateMachineImpl.DBG;
+    private static final String LOG_TAG = NitzStateMachineImpl.LOG_TAG;
+    private static final boolean DBG = NitzStateMachineImpl.DBG;
     private static final String WAKELOCK_TAG = "NitzSignalInputFilterPredicateFactory";
 
     private NitzSignalInputFilterPredicateFactory() {}
