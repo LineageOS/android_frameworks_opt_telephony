@@ -1190,7 +1190,7 @@ public class RILTest extends TelephonyTest {
         CellInfoLte expected = new CellInfoLte();
         expected.setRegistered(false);
         expected.setTimeStamp(TIMESTAMP);
-        CellIdentityLte cil = new CellIdentityLte(CI, PCI, TAC, EARFCN, Collections.emptyList(),
+        CellIdentityLte cil = new CellIdentityLte(CI, PCI, TAC, EARFCN, new int[] {},
                 Integer.MAX_VALUE, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT,
                 Collections.emptyList(), null);
         CellSignalStrengthLte css = new CellSignalStrengthLte(
@@ -1380,7 +1380,7 @@ public class RILTest extends TelephonyTest {
         expected.setRegistered(false);
         expected.setTimeStamp(TIMESTAMP);
         CellIdentityLte cil = new CellIdentityLte(
-                CI, PCI, TAC, EARFCN, Collections.emptyList(), BANDWIDTH, MCC_STR, MNC_STR,
+                CI, PCI, TAC, EARFCN, new int[] {}, BANDWIDTH, MCC_STR, MNC_STR,
                 ALPHA_LONG, ALPHA_SHORT, Collections.emptyList(), null);
         CellSignalStrengthLte css = new CellSignalStrengthLte(
                 RSSI, RSRP, RSRQ, RSSNR, CQI, TIMING_ADVANCE);
@@ -1401,7 +1401,7 @@ public class RILTest extends TelephonyTest {
         CellInfoLte expected = new CellInfoLte();
         expected.setRegistered(false);
         expected.setTimeStamp(TIMESTAMP);
-        CellIdentityLte cil = new CellIdentityLte(CI, PCI, TAC, EARFCN, Collections.emptyList(),
+        CellIdentityLte cil = new CellIdentityLte(CI, PCI, TAC, EARFCN, new int[] {},
                 BANDWIDTH, MCC_STR, MNC_STR, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT,
                 Collections.emptyList(), null);
         CellSignalStrengthLte css = new CellSignalStrengthLte(
@@ -1426,7 +1426,7 @@ public class RILTest extends TelephonyTest {
         expected.setRegistered(false);
         expected.setTimeStamp(TIMESTAMP);
         CellIdentityLte cil = new CellIdentityLte(
-                CI, PCI, TAC, EARFCN, Collections.emptyList(), BANDWIDTH, null, null, ALPHA_LONG,
+                CI, PCI, TAC, EARFCN, new int[] {}, BANDWIDTH, null, null, ALPHA_LONG,
                 ALPHA_SHORT, Collections.emptyList(), null);
         CellSignalStrengthLte css = new CellSignalStrengthLte(
                 RSSI, RSRP, RSRQ, RSSNR, CQI, TIMING_ADVANCE);
@@ -1647,7 +1647,7 @@ public class RILTest extends TelephonyTest {
                 (CellSignalStrengthNr) cellInfoNr.getCellSignalStrength();
 
         CellIdentityNr expectedCellIdentity = new CellIdentityNr(PCI, TAC, NRARFCN,
-                Collections.emptyList(), MCC_STR, MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT,
+                new int[] {}, MCC_STR, MNC_STR, CI, ALPHA_LONG, ALPHA_SHORT,
                 Collections.emptyList());
         CellSignalStrengthNr expectedSignalStrength = new CellSignalStrengthNr(-RSRP, -RSRQ,
                 SIGNAL_NOISE_RATIO, -RSRP, -RSRQ, SIGNAL_NOISE_RATIO);
