@@ -32,7 +32,6 @@ import androidx.test.filters.SmallTest;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
 /** Unit tests for {@link NetworkScanResult}. */
@@ -54,7 +53,7 @@ public class NetworkScanResultTest {
         infos.add(gsm);
 
         CellIdentityLte cil = new CellIdentityLte(
-                10, 5, 200, 2000, Arrays.asList(1, 2), 10000, "001", "01", "test", "tst",
+                10, 5, 200, 2000, new int[] {1, 2}, 10000, "001", "01", "test", "tst",
                 Collections.emptyList(), null);
         CellSignalStrengthLte cssl = new CellSignalStrengthLte(15, 16, 17, 18, 19, 20);
         CellInfoLte lte = new CellInfoLte();
