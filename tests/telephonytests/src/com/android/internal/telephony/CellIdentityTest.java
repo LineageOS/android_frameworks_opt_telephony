@@ -25,9 +25,7 @@ import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 public class CellIdentityTest extends AndroidTestCase {
 
@@ -39,7 +37,7 @@ public class CellIdentityTest extends AndroidTestCase {
     private static final int TAC = 65535;
     // Absolute RF Channel Number ranges from 0 to 262140.
     private static final int EARFCN = 262140;
-    private static final List<Integer> BANDS = Arrays.asList(1, 2);
+    private static final int[] BANDS = new int[] {1, 2};
     private static final int BANDWIDTH = 5000;  // kHz
     private static final int MCC = 120;
     private static final int MNC = 260;

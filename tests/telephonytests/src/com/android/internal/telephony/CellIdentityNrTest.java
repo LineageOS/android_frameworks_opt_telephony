@@ -26,10 +26,8 @@ import android.test.AndroidTestCase;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 public class CellIdentityNrTest extends AndroidTestCase {
     private static final String MCC = "310";
@@ -42,8 +40,10 @@ public class CellIdentityNrTest extends AndroidTestCase {
     private static final int PCI = 123;
     private static final int TAC = 32767;
     private static final int NCI = 8675309;
-    private static final List<Integer> BANDS = new ArrayList<>(Arrays.asList(
-            AccessNetworkConstants.NgranBands.BAND_1, AccessNetworkConstants.NgranBands.BAND_1));
+    private static final int[] BANDS = new int[] {
+            AccessNetworkConstants.NgranBands.BAND_1,
+            AccessNetworkConstants.NgranBands.BAND_2
+    };
 
     @Test
     public void testGetMethod() {
@@ -112,7 +112,7 @@ public class CellIdentityNrTest extends AndroidTestCase {
         assertThat(anotherCellIdentityNr.getNrarfcn()).isEqualTo(NRARFCN);
         assertThat(anotherCellIdentityNr.getPci()).isEqualTo(PCI);
         assertThat(anotherCellIdentityNr.getTac()).isEqualTo(TAC);
-        assertThat(anotherCellIdentityNr.getBands()).isEqualTo(BANDS);
+        assertTrue(Arrays.equals(anotherCellIdentityNr.getBands(), BANDS));
         assertThat(anotherCellIdentityNr.getOperatorAlphaLong()).isEqualTo(ALPHAL);
         assertThat(anotherCellIdentityNr.getOperatorAlphaShort()).isEqualTo(ALPHAS);
         assertThat(anotherCellIdentityNr.getMccString()).isEqualTo(MCC);
