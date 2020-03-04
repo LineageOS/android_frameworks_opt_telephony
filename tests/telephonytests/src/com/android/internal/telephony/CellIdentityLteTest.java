@@ -22,9 +22,7 @@ import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 /** Unit tests for {@link CellIdentityLte}. */
 
@@ -38,7 +36,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
     private static final int TAC = 65535;
     // Absolute RF Channel Number ranges from 0 to 262140.
     private static final int EARFCN = 262140;
-    private static final List<Integer> BANDS = Arrays.asList(1, 2);
+    private static final int[] BANDS = new int[] {1, 2};
     private static final int MCC = 120;
     private static final int MNC = 260;
     private static final int BANDWIDTH = 5000;  // kHz
@@ -218,7 +216,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
         p.writeInt(PCI);
         p.writeInt(TAC);
         p.writeInt(EARFCN);
-        p.writeList(BANDS);
+        p.writeIntArray(BANDS);
         p.writeInt(BANDWIDTH);
         p.setDataPosition(0);
 
@@ -244,7 +242,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
         p.writeInt(PCI);
         p.writeInt(TAC);
         p.writeInt(EARFCN);
-        p.writeList(BANDS);
+        p.writeIntArray(BANDS);
         p.writeInt(BANDWIDTH);
         p.setDataPosition(0);
 
