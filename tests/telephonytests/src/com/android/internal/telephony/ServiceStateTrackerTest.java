@@ -2564,7 +2564,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     public void testShouldForceDisplayNoService_forceBasedOnLocale() {
         // set up unaffected locale (US) and clear the resource
-        doReturn("us").when(mLocaleTracker).getCurrentCountry();
+        doReturn("us").when(mLocaleTracker).getLastKnownCountryIso();
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_display_no_service_when_sim_unready,
                 new String[0]);
@@ -2574,11 +2574,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_display_no_service_when_sim_unready,
                 new String[]{"de"});
-        doReturn("us").when(mLocaleTracker).getCurrentCountry();
+        doReturn("us").when(mLocaleTracker).getLastKnownCountryIso();
         assertFalse(sst.shouldForceDisplayNoService());
 
         // mock the locale to Germany
-        doReturn("de").when(mLocaleTracker).getCurrentCountry();
+        doReturn("de").when(mLocaleTracker).getLastKnownCountryIso();
         assertTrue(sst.shouldForceDisplayNoService());
     }
 
