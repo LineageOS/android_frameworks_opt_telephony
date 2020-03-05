@@ -16,7 +16,9 @@
 package com.android.internal.telephony;
 
 import android.test.suitebuilder.annotation.SmallTest;
+
 import com.android.internal.telephony.VisualVoicemailSmsParser.WrappedMessageData;
+
 import junit.framework.TestCase;
 
 public class VisualVoicemailSmsParserTest extends TestCase {

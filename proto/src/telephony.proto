@@ -242,6 +242,17 @@ message TelephonyServiceState {
     optional string numeric = 3;
   }
 
+  message NetworkRegistrationInfo {
+    // Network domain
+    optional Domain domain = 1;
+
+    // Network transport
+    optional Transport transport = 2;
+
+    // Radio access technology
+    optional RadioAccessTechnology rat = 3;
+  }
+
   // Roaming type
   enum RoamingType {
 
@@ -302,6 +313,29 @@ message TelephonyServiceState {
     NR_STATE_CONNECTED = 3;
   }
 
+  // Domain type
+  enum Domain {
+    // Unknown
+    DOMAIN_UNKNOWN = 0;
+
+    // Circuit switching domain
+    DOMAIN_CS = 1;
+
+    // Packet switching domain
+    DOMAIN_PS = 2;
+  }
+
+  enum Transport {
+    // Unknown
+    TRANSPORT_UNKNOWN = 0;
+
+    // Transport type for Wireless Wide Area Networks (i.e. Cellular)
+    TRANSPORT_WWAN = 1;
+
+    // Transport type for Wireless Local Area Networks (i.e. Wifi)
+    TRANSPORT_WLAN = 2;
+  }
+
   // Current registered operator
   optional TelephonyOperator voice_operator = 1;
 
@@ -328,6 +362,9 @@ message TelephonyServiceState {
 
   // Current NR state
   optional NrState nr_state = 9;
+
+  // Network registration info
+  repeated NetworkRegistrationInfo networkRegistrationInfo = 10;
 }
 
 // Radio access families
