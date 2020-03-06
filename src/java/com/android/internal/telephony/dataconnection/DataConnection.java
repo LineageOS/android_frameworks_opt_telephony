@@ -1657,37 +1657,6 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    updateNetworkInfoSuspendState();
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
-                                DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
-                        mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
-                    }
-                    break;
-                case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
-                    boolean isUnmetered = (boolean) msg.obj;
-                    if (isUnmetered == mUnmeteredOverride) {
-                        break;
-                    }
-                    mUnmeteredOverride = isUnmetered;
-                    // fallthrough
-                case EVENT_NR_FREQUENCY_CHANGED:
-                case EVENT_DATA_CONNECTION_ROAM_ON:
-                case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED:
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
-                                DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
-                    }
-                    break;
-                case EVENT_KEEPALIVE_START_REQUEST:
-                case EVENT_KEEPALIVE_STOP_REQUEST:
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendSocketKeepaliveEvent(
-                                msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
-                    }
                     break;
                 default:
                     if (DBG) {
@@ -2262,9 +2231,38 @@ public class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
+                case EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    Pair<Integer, Integer> drsRatPair = (Pair<Integer, Integer>) ar.result;
+                    mDataRegState = drsRatPair.first;
+                    updateTcpBufferSizes(drsRatPair.second);
+                    mRilRat = drsRatPair.second;
+                    if (DBG) {
+                        log("DcActiveState: EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
+                                + " drs=" + mDataRegState
+                                + " mRilRat=" + mRilRat);
+                    }
+                    updateNetworkInfoSuspendState();
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
+                                DataConnection.this);
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
+                        mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
+                    boolean isUnmetered = (boolean) msg.obj;
+                    if (isUnmetered == mUnmeteredOverride) {
+                        retVal = HANDLED;
+                        break;
+                    }
+                    mUnmeteredOverride = isUnmetered;
+                    // fallthrough
+                case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
                 case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
