@@ -27,7 +27,6 @@ import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_T
 import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE_DUAL_CDMA;
 import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE_NONE;
 import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
-import static android.telephony.TelephonyManager.MODEM_COUNT_SINGLE_MODEM;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -493,7 +492,7 @@ public class MultiSimSettingController extends Handler {
         // set the primary to be default SIM and return.
         if (mPrimarySubList.size() == 1 && (change != PRIMARY_SUB_REMOVED
                 || ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE))
-                .getActiveModemCount() == MODEM_COUNT_SINGLE_MODEM)) {
+                .getActiveModemCount() == 1)) {
             int subId = mPrimarySubList.get(0);
             if (DBG) log("[updateDefaultValues] to only primary sub " + subId);
             mSubController.setDefaultDataSubId(subId);

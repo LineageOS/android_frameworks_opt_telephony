@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG;
-import static android.telephony.TelephonyManager.MODEM_COUNT_DUAL_MODEM;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
@@ -910,8 +909,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setSlotIndexToSubId(0, 1);
         setDefaultDataSubId(1);
 
-        setNumPhones(MODEM_COUNT_DUAL_MODEM, MODEM_COUNT_DUAL_MODEM);
-        AsyncResult result = new AsyncResult(null, MODEM_COUNT_DUAL_MODEM, null);
+        setNumPhones(2, 2);
+        AsyncResult result = new AsyncResult(null, 2, null);
         Message.obtain(mPhoneSwitcher, EVENT_MULTI_SIM_CONFIG_CHANGED, result).sendToTarget();
         processAllMessages();
 

@@ -20,7 +20,6 @@ import static android.telephony.PhoneStateListener.LISTEN_PHONE_CAPABILITY_CHANG
 import static android.telephony.PhoneStateListener.LISTEN_RADIO_POWER_STATE_CHANGED;
 import static android.telephony.PhoneStateListener.LISTEN_SRVCC_STATE_CHANGED;
 import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
-import static android.telephony.TelephonyManager.MODEM_COUNT_DUAL_MODEM;
 import static android.telephony.TelephonyManager.RADIO_POWER_OFF;
 import static android.telephony.TelephonyManager.RADIO_POWER_ON;
 import static android.telephony.TelephonyManager.RADIO_POWER_UNAVAILABLE;
@@ -272,14 +271,14 @@ public class TelephonyRegistryTest extends TelephonyTest {
         assertEquals(RADIO_POWER_UNAVAILABLE, mRadioPowerState);
 
         // Switch to DSDS and re-send RADIO_POWER_ON on phone 1. This time it should be notified.
-        doReturn(MODEM_COUNT_DUAL_MODEM).when(mTelephonyManager).getActiveModemCount();
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
         mContext.sendBroadcast(new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED));
         mTelephonyRegistry.notifyRadioPowerStateChanged(1, 1, RADIO_POWER_ON);
         processAllMessages();
         assertEquals(RADIO_POWER_ON, mRadioPowerState);
 
         // Switch back to single SIM mode and re-send on phone 0. This time it should be notified.
-        doReturn(MODEM_COUNT_DUAL_MODEM).when(mTelephonyManager).getActiveModemCount();
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
         mContext.sendBroadcast(new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED));
         mTelephonyRegistry.notifyRadioPowerStateChanged(0, 1, RADIO_POWER_OFF);
         processAllMessages();
