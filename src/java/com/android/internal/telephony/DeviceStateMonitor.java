@@ -25,7 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
-import android.hardware.radio.V1_2.IndicationFilter;
+import android.hardware.radio.V1_5.IndicationFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -380,13 +380,23 @@ public class DeviceStateMonitor extends Handler {
         // 1. The device is charging.
         // 2. When the screen is on.
         // 3. When data tethering is on.
-        // 4. When the update mode is IGNORE_SCREEN_OFF.
         if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
             return false;
         }
 
         // In all other cases, we turn off physical channel config update.
         return true;
+    }
+
+    /**
+     * @return True if BarryingInfo update should be turned off.
+     */
+    private boolean shouldTurnOffBarringInfo() {
+        // We should not turn off BarringInfo update if one of the following condition is true.
+        // 1. The device is charging.
+        // 2. When the screen is on.
+        // 3. When the tethering is on.
+        return !(mIsCharging || mIsScreenOn || mIsTetheringOn);
     }
 
     /**
@@ -435,18 +445,22 @@ public class DeviceStateMonitor extends Handler {
      * @param state True if enabled/on, otherwise disabled/off.
      */
     private void onUpdateDeviceState(int eventType, boolean state) {
+        boolean shouldPollBarringInfo = false;
         switch (eventType) {
             case EVENT_SCREEN_STATE_CHANGED:
                 if (mIsScreenOn == state) return;
+                shouldPollBarringInfo = shouldTurnOffBarringInfo();
                 mIsScreenOn = state;
                 break;
             case EVENT_CHARGING_STATE_CHANGED:
                 if (mIsCharging == state) return;
+                shouldPollBarringInfo = shouldTurnOffBarringInfo();
                 mIsCharging = state;
                 sendDeviceState(CHARGING_STATE, mIsCharging);
                 break;
             case EVENT_TETHERING_STATE_CHANGED:
                 if (mIsTetheringOn == state) return;
+                shouldPollBarringInfo = shouldTurnOffBarringInfo();
                 mIsTetheringOn = state;
                 break;
             case EVENT_POWER_SAVE_MODE_CHANGED:
@@ -499,7 +513,17 @@ public class DeviceStateMonitor extends Handler {
             newFilter |= IndicationFilter.PHYSICAL_CHANNEL_CONFIG;
         }
 
+        if (!shouldTurnOffBarringInfo()) {
+            newFilter |= IndicationFilter.BARRING_INFO;
+        }
+
         setUnsolResponseFilter(newFilter, false);
+
+        if (shouldPollBarringInfo) {
+            if (DBG) log("Manually pull barring info...", true);
+            // use a null message since we don't care of receiving response
+            mPhone.mCi.getBarringInfo(null);
+        }
     }
 
     /**
