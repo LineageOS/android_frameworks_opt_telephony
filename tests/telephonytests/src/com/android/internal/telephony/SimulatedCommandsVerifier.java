@@ -1454,4 +1454,8 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
 
     @Override
     public void unregisterUiccApplicationEnablementChanged(Handler h) {}
+
+    @Override
+    public void getBarringInfo(Message result) {
+    }
 }
