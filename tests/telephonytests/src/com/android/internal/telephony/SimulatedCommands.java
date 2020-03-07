@@ -2366,4 +2366,10 @@ public class SimulatedCommands extends BaseCommands
     public Handler getHandler() {
         return mHandlerThread.getThreadHandler();
     }
+
+    @Override
+    public void getBarringInfo(Message result) {
+        SimulatedCommandsVerifier.getInstance().getBarringInfo(result);
+        resultSuccess(result, null);
+    }
 }

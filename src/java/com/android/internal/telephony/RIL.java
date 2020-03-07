@@ -36,7 +36,6 @@ import android.hardware.radio.V1_0.HardwareConfigModem;
 import android.hardware.radio.V1_0.IRadio;
 import android.hardware.radio.V1_0.IccIo;
 import android.hardware.radio.V1_0.ImsSmsMessage;
-import android.hardware.radio.V1_0.IndicationFilter;
 import android.hardware.radio.V1_0.LceDataInfo;
 import android.hardware.radio.V1_0.MvnoType;
 import android.hardware.radio.V1_0.NvWriteItem;
@@ -52,6 +51,7 @@ import android.hardware.radio.V1_0.UusInfo;
 import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
 import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
 import android.hardware.radio.V1_5.AccessNetwork;
+import android.hardware.radio.V1_5.IndicationFilter;
 import android.hardware.radio.V1_5.RadioAccessNetworks;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.InetAddresses;
@@ -188,6 +188,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     // IRadio version
     private HalVersion mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
+
+    private static final int INDICATION_FILTERS_ALL_V1_0 =
+            IndicationFilter.SIGNAL_STRENGTH
+            | IndicationFilter.FULL_NETWORK_STATE
+            | IndicationFilter.DATA_CALL_DORMANCY_CHANGED;
+    private static final int INDICATION_FILTERS_ALL_V1_2 =
+            INDICATION_FILTERS_ALL_V1_0
+            | IndicationFilter.LINK_CAPACITY_ESTIMATE
+            | IndicationFilter.PHYSICAL_CHANNEL_CONFIG;
+    private static final  int INDICATION_FILTERS_ALL_V1_5 =
+            INDICATION_FILTERS_ALL_V1_2
+            | IndicationFilter.REGISTRATION_FAILURE
+            | IndicationFilter.BARRING_INFO;
 
     //***** Instance Variables
 
@@ -4633,19 +4646,30 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + filter);
             }
 
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+                try {
+                    android.hardware.radio.V1_5.IRadio radioProxy15 =
+                            (android.hardware.radio.V1_5.IRadio) radioProxy;
+
+                    filter &= INDICATION_FILTERS_ALL_V1_5;
+                    radioProxy15.setIndicationFilter_1_5(rr.mSerial, filter);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setIndicationFilter_1_5", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
                 try {
                     android.hardware.radio.V1_2.IRadio radioProxy12 =
                             (android.hardware.radio.V1_2.IRadio) radioProxy;
 
+                    filter &= INDICATION_FILTERS_ALL_V1_2;
                     radioProxy12.setIndicationFilter_1_2(rr.mSerial, filter);
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setIndicationFilter_1_2", e);
                 }
             } else {
                 try {
-                    int filter10 = filter & IndicationFilter.ALL;
-                    radioProxy.setIndicationFilter(rr.mSerial, filter10);
+                    filter &= INDICATION_FILTERS_ALL_V1_0;
+                    radioProxy.setIndicationFilter(rr.mSerial, filter);
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setIndicationFilter", e);
                 }
