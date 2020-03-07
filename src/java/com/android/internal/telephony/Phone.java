@@ -2318,6 +2318,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.nvResetConfig(3 /* factory NV reset */, response);
     }
 
+    /**
+     * Perform modem configuration erase. Used for network reset
+     *
+     * @param response Callback message.
+     */
+    public void eraseModemConfig(Message response) {
+        mCi.nvResetConfig(2 /* erase NV */, response);
+    }
+
     public void notifyDataActivity() {
         mNotifier.notifyDataActivity(this);
     }

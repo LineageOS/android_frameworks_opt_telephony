@@ -1385,11 +1385,8 @@ public class DcTracker extends Handler {
         // At this point, if data is not allowed, it must be because of the soft reasons. We
         // should start to check some special conditions that data will be allowed.
         if (!reasons.allowed()) {
-            // If the device is on IWLAN, then all data should be unmetered. Check if the transport
-            // is WLAN (for AP-assisted mode devices), or RAT equals IWLAN (for legacy mode devices)
-            if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
-                    || (mPhone.getTransportManager().isInLegacyMode()
-                    && dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)) {
+            // Check if the transport is WLAN ie wifi (for AP-assisted mode devices)
+            if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 reasons.add(DataAllowedReasonType.UNMETERED_APN);
             // Or if the data is on cellular, and the APN type is determined unmetered by the
             // configuration.
@@ -4526,6 +4523,9 @@ public class DcTracker extends Handler {
             if (getOverallState() == DctConstants.State.CONNECTED) {
                 // Go through a series of recovery steps, each action transitions to the next action
                 @RecoveryAction final int recoveryAction = getRecoveryAction();
+                final int signalStrength = mPhone.getSignalStrength().getLevel();
+                TelephonyMetrics.getInstance().writeSignalStrengthEvent(
+                        mPhone.getPhoneId(), signalStrength);
                 TelephonyMetrics.getInstance().writeDataStallEvent(
                         mPhone.getPhoneId(), recoveryAction);
                 broadcastDataStallDetected(recoveryAction);

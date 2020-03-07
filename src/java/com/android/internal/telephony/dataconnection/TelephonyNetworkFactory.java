@@ -338,16 +338,16 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 if (dcTracker != null) {
                     DataConnection dc = dcTracker.getDataConnectionByApnType(
                             ApnSetting.getApnTypeString(apnType));
-                    if (dc != null && (dc.isActive() || dc.isActivating())) {
+                    if (dc != null && (dc.isActive())) {
                         Message onCompleteMsg = mInternalHandler.obtainMessage(
                                 EVENT_DATA_HANDOVER_COMPLETED);
                         onCompleteMsg.getData().putParcelable(
                                 DcTracker.DATA_COMPLETE_MSG_EXTRA_NETWORK_REQUEST, networkRequest);
                         mPendingHandovers.put(onCompleteMsg, handoverParams);
-                        // TODO: Need to handle the case that the request is there, but there is no
-                        // actual data connections established.
                         requestNetworkInternal(networkRequest, DcTracker.REQUEST_TYPE_HANDOVER,
                                 targetTransport, onCompleteMsg);
+                        log("Requested handover " + ApnSetting.getApnTypeString(apnType) + " to "
+                                + AccessNetworkConstants.transportTypeToString(targetTransport));
                         handoverPending = true;
                     } else {
                         // Request is there, but no actual data connection. In this case, just move

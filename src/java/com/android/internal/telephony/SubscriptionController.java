@@ -46,6 +46,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.SimDisplayNameSource;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccSlotInfo;
@@ -1541,30 +1542,27 @@ public class SubscriptionController extends ISub.Stub {
      * @param nameSource Source of display name
      * @return int representing the priority. Higher value means higher priority.
      */
-    public static int getNameSourcePriority(int nameSource) {
-        switch (nameSource) {
-            case SubscriptionManager.NAME_SOURCE_USER_INPUT:
-                return 3;
-            case SubscriptionManager.NAME_SOURCE_CARRIER:
-                return 2;
-            case SubscriptionManager.NAME_SOURCE_SIM_SOURCE:
-                return 1;
-            case SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE:
-            default:
-                return 0;
-        }
+    public static int getNameSourcePriority(@SimDisplayNameSource int nameSource) {
+        int index = Arrays.asList(
+                SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE,
+                SubscriptionManager.NAME_SOURCE_SIM_PNN,
+                SubscriptionManager.NAME_SOURCE_SIM_SPN,
+                SubscriptionManager.NAME_SOURCE_CARRIER,
+                SubscriptionManager.NAME_SOURCE_USER_INPUT // user has highest priority.
+        ).indexOf(nameSource);
+        return (index < 0) ? 0 : index;
     }
 
     /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
-     * @param nameSource 0: NAME_SOURCE_DEFAULT_SOURCE, 1: NAME_SOURCE_SIM_SOURCE,
-     *                   2: NAME_SOURCE_USER_INPUT, 3: NAME_SOURCE_CARRIER
+     * @param nameSource SIM display name source
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNameUsingSrc(String displayName, int subId, int nameSource) {
+    public int setDisplayNameUsingSrc(String displayName, int subId,
+                                      @SimDisplayNameSource int nameSource) {
         if (DBG) {
             logd("[setDisplayName]+  displayName:" + displayName + " subId:" + subId
                 + " nameSource:" + nameSource);
@@ -1584,6 +1582,10 @@ public class SubscriptionController extends ISub.Stub {
                         && (getNameSourcePriority(subInfo.getNameSource())
                                 > getNameSourcePriority(nameSource)
                         || (displayName != null && displayName.equals(subInfo.getDisplayName())))) {
+                    logd("Name source " + subInfo.getNameSource() + "'s priority "
+                            + getNameSourcePriority(subInfo.getNameSource()) + " is greater than "
+                            + "name source " + nameSource + "'s priority "
+                            + getNameSourcePriority(nameSource) + ", return now.");
                     return 0;
                 }
             }

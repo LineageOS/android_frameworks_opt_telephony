@@ -41,8 +41,10 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CallQuality;
 import android.telephony.DisconnectCause;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
@@ -434,6 +436,11 @@ public class TelephonyMetrics {
                         + " Voice RAT " + event.serviceState.voiceRat
                         + " Channel Number " + event.serviceState.channelNumber
                         + ")");
+                for (int i = 0; i < event.serviceState.networkRegistrationInfo.length; i++) {
+                    pw.print("reg info: domain="
+                            + event.serviceState.networkRegistrationInfo[i].domain
+                            + ", rat=" + event.serviceState.networkRegistrationInfo[i].rat);
+                }
             } else {
                 pw.print(telephonyEventToString(event.type));
             }
@@ -908,6 +915,26 @@ public class TelephonyMetrics {
             ssProto.dataOperator.numeric = serviceState.getDataOperatorNumeric();
         }
 
+        // Log PS WWAN only because CS WWAN would be exactly the same as voiceRat, and PS WLAN
+        // would be always IWLAN in the rat field.
+        // Note that we intentionally do not log reg state because it changes too frequently that
+        // will grow the proto size too much.
+        List<TelephonyServiceState.NetworkRegistrationInfo> nriList = new ArrayList<>();
+        NetworkRegistrationInfo nri = serviceState.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        if (nri != null) {
+            TelephonyServiceState.NetworkRegistrationInfo nriProto =
+                    new TelephonyServiceState.NetworkRegistrationInfo();
+            nriProto.domain = TelephonyServiceState.Domain.DOMAIN_PS;
+            nriProto.transport = TelephonyServiceState.Transport.TRANSPORT_WWAN;
+            nriProto.rat = ServiceState.networkTypeToRilRadioTechnology(
+                    nri.getAccessNetworkTechnology());
+            nriList.add(nriProto);
+            ssProto.networkRegistrationInfo =
+                    new TelephonyServiceState.NetworkRegistrationInfo[nriList.size()];
+            nriList.toArray(ssProto.networkRegistrationInfo);
+        }
+
         ssProto.voiceRat = serviceState.getRilVoiceRadioTechnology();
         ssProto.dataRat = serviceState.getRilDataRadioTechnology();
         ssProto.channelNumber = serviceState.getChannelNumber();
@@ -1135,6 +1162,17 @@ public class TelephonyMetrics {
     public void writeDataStallEvent(int phoneId, int recoveryAction) {
         addTelephonyEvent(new TelephonyEventBuilder(phoneId)
                 .setDataStallRecoveryAction(recoveryAction).build());
+    }
+
+    /**
+     * Write SignalStrength event
+     *
+     * @param phoneId Phone id
+     * @param signalStrength Signal strength at the time of data stall recovery
+     */
+    public void writeSignalStrengthEvent(int phoneId, int signalStrength) {
+        addTelephonyEvent(new TelephonyEventBuilder(phoneId)
+                .setSignalStrength(signalStrength).build());
     }
 
     /**

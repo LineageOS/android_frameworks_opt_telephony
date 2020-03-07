@@ -30,6 +30,7 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -297,6 +298,38 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
         assertTrue(!mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
         assertEquals(0, mUiccCarrierPrivilegeRules.getPackageNames().size());
+    }
+
+    @Test
+    @SmallTest
+    public void testRetryARAM_shouldRetry() {
+        AsyncResult ar1 = new AsyncResult(
+                null,
+                new int[]{0, 105, -123},
+                new CommandException(CommandException.Error.NO_SUCH_ELEMENT));
+        assertTrue(mUiccCarrierPrivilegeRules.shouldRetry(ar1, 0));
+
+        AsyncResult ar2 = new AsyncResult(
+                null,
+                new int[]{0},
+                new CommandException(CommandException.Error.MISSING_RESOURCE));
+        assertTrue(mUiccCarrierPrivilegeRules.shouldRetry(ar2, 0));
+
+        AsyncResult ar3 = new AsyncResult(
+                null,
+                new int[]{0, 105, 153},
+                new CommandException(CommandException.Error.INTERNAL_ERR));
+        assertTrue(mUiccCarrierPrivilegeRules.shouldRetry(ar3, 0));
+    }
+
+    @Test
+    @SmallTest
+    public void testRetryARAM_shouldNotRetry() {
+        AsyncResult ar = new AsyncResult(
+                null,
+                new int[]{0, 106, -126},
+                new CommandException(CommandException.Error.NO_SUCH_ELEMENT));
+        assertTrue(!mUiccCarrierPrivilegeRules.shouldRetry(ar, 0));
     }
 
     private static final String ARAM = "A00000015141434C00";
