@@ -2395,4 +2395,8 @@ public class RadioResponse extends IRadioResponse.Stub {
             mRil.processResponseDone(rr, responseInfo, enabled);
         }
     }
+
+    public void setSystemSelectionChannelsResponse_1_5(RadioResponseInfo info) {
+        responseVoid(info);
+    }
 }
