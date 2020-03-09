@@ -34,8 +34,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.NetworkStats;
-import android.net.netstats.provider.AbstractNetworkStatsProvider;
-import android.net.netstats.provider.NetworkStatsProviderCallback;
+import android.net.netstats.provider.NetworkStatsProvider;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -260,16 +259,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /**
-     * A class implementing {@link AbstractNetworkStatsProvider} to report VT data usage to system.
+     * A class implementing {@link NetworkStatsProvider} to report VT data usage to system.
      */
     // TODO: Directly reports diff in updateVtDataUsage.
     @VisibleForTesting(visibility = PRIVATE)
-    public class VtDataUsageProvider extends AbstractNetworkStatsProvider {
+    public class VtDataUsageProvider extends NetworkStatsProvider {
         private int mToken = 0;
         private NetworkStats mIfaceSnapshot = new NetworkStats(0L, 0);
         private NetworkStats mUidSnapshot = new NetworkStats(0L, 0);
         @Override
-        public void requestStatsUpdate(int token) {
+        public void onRequestStatsUpdate(int token) {
             // If there is an ongoing VT call, request the latest VT usage from the modem. The
             // latest usage will return asynchronously so it won't be counted in this round, but it
             // will be eventually counted when next requestStatsUpdate is called.
@@ -284,19 +283,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             final NetworkStats ifaceDiff = mVtDataUsageSnapshot.subtract(mIfaceSnapshot);
             final NetworkStats uidDiff = mVtDataUsageUidSnapshot.subtract(mUidSnapshot);
-            mVtDataUsageProviderCb.onStatsUpdated(mToken, ifaceDiff, uidDiff);
+            mVtDataUsageProvider.notifyStatsUpdated(mToken, ifaceDiff, uidDiff);
             mIfaceSnapshot = mIfaceSnapshot.add(ifaceDiff);
             mUidSnapshot = mUidSnapshot.add(uidDiff);
             mToken = token;
         }
 
         @Override
-        public void setLimit(String iface, long quotaBytes) {
+        public void onSetLimit(String iface, long quotaBytes) {
             // No-op
         }
 
         @Override
-        public void setAlert(long quotaBytes) {
+        public void onSetAlert(long quotaBytes) {
             // No-op
         }
     }
@@ -436,7 +435,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private volatile NetworkStats mVtDataUsageSnapshot = null;
     private volatile NetworkStats mVtDataUsageUidSnapshot = null;
-    private final NetworkStatsProviderCallback mVtDataUsageProviderCb;
+    private final VtDataUsageProvider mVtDataUsageProvider = new VtDataUsageProvider();
 
     private final AtomicInteger mDefaultDialerUid = new AtomicInteger(NetworkStats.UID_ALL);
 
@@ -873,8 +872,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         final NetworkStatsManager statsManager =
                 (NetworkStatsManager) mPhone.getContext().getSystemService(
                         Context.NETWORK_STATS_SERVICE);
-        mVtDataUsageProviderCb = statsManager.registerNetworkStatsProvider(LOG_TAG,
-                new VtDataUsageProvider());
+        statsManager.registerNetworkStatsProvider(LOG_TAG, mVtDataUsageProvider);
 
         // Allow the executor to be specified for testing.
         mImsManagerConnector = new FeatureConnector<>(
@@ -1025,9 +1023,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
         mImsManagerConnector.disconnect();
 
-        if (mVtDataUsageProviderCb != null) {
-            mVtDataUsageProviderCb.unregister();
-        }
+        final NetworkStatsManager statsManager =
+                (NetworkStatsManager) mPhone.getContext().getSystemService(
+                        Context.NETWORK_STATS_SERVICE);
+        statsManager.unregisterNetworkStatsProvider(mVtDataUsageProvider);
     }
 
     @Override
