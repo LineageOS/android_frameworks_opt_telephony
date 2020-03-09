@@ -2211,7 +2211,8 @@ public class DcTrackerTest extends TelephonyTest {
 
         return true;
     }
-    @Test
+
+    /*@Test
     public void testNoApnContextsWhenDataIsDisabled() {
         doReturn(false).when(mTelephonyManager).isDataCapable();
         mDcTrackerTestHandler = new DcTrackerTestHandler(getClass().getSimpleName());
@@ -2226,5 +2227,5 @@ public class DcTrackerTest extends TelephonyTest {
         mDcTrackerTestHandler.start();
         waitUntilReady();
         assertTrue(mDct.getApnContexts().size() > 0);
-    }
+    }*/
 }
