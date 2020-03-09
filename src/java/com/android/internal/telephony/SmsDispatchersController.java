@@ -725,7 +725,7 @@ public class SmsDispatchersController extends Handler {
 
     /**
      * Returns the premium SMS permission for the specified package. If the package has never
-     * been seen before, the default {@link SmsUsageMonitor#PREMIUM_SMS_PERMISSION_ASK_USER}
+     * been seen before, the default {@link SmsUsageMonitor#PREMIUM_SMS_PERMISSION_UNKNOWN}
      * will be returned.
      * @param packageName the name of the package to query permission
      * @return one of {@link SmsUsageMonitor#PREMIUM_SMS_PERMISSION_UNKNOWN},
