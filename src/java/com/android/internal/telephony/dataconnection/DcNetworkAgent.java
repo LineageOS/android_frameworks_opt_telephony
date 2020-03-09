@@ -81,7 +81,7 @@ public class DcNetworkAgent extends NetworkAgent {
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
         mDataConnection = dc;
-        mNetworkInfo = ni;
+        mNetworkInfo = new NetworkInfo(ni);
         logd(mTag + " created for data connection " + dc.getName());
     }
 
@@ -258,9 +258,10 @@ public class DcNetworkAgent extends NetworkAgent {
         }
         if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
                 && state == NetworkInfo.State.DISCONNECTED) {
+            logd("Unregister from connectivity service");
             unregister();
         }
-        mNetworkInfo = networkInfo;
+        mNetworkInfo = new NetworkInfo(networkInfo);
     }
 
     /**
