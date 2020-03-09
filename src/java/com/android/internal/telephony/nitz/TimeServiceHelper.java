@@ -18,34 +18,36 @@ package com.android.internal.telephony.nitz;
 
 import android.annotation.NonNull;
 import android.app.timedetector.TelephonyTimeSuggestion;
-import android.app.timedetector.TimeDetector;
 import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.PrintWriter;
 
 /**
- * An interface to various time / time zone detection behaviors that should be centralized into
- * new services.
+ * An interface to various time / time zone detection behaviors that are centralized into services.
+ * This interface exists to separate out behavior to enable easier testing of the
+ * {@link NitzStateMachineImpl}.
  */
-public interface NewTimeServiceHelper {
+@VisibleForTesting
+public interface TimeServiceHelper {
 
     /**
-     * Suggests the time to the {@link TimeDetector}.
+     * Suggests the time to the time detector service.
      *
-     * @param suggestion the time
+     * @param suggestion the time suggestion
      */
     void suggestDeviceTime(@NonNull TelephonyTimeSuggestion suggestion);
 
     /**
-     * Suggests the time zone to the time zone detector.
+     * Suggests the time zone to the time zone detector service.
      *
      * <p>NOTE: The {@link TelephonyTimeZoneSuggestion} cannot be null. The zoneId it contains can
      * be null to indicate there is no active suggestion; this can be used to clear a previous
      * suggestion.
      *
-     * @param suggestion the time zone
+     * @param suggestion the time zone suggestion
      */
     void maybeSuggestDeviceTimeZone(@NonNull TelephonyTimeZoneSuggestion suggestion);
 
