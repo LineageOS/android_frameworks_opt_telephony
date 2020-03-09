@@ -330,6 +330,23 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param voiceRegResponse Current Voice registration response as defined by VoiceRegStateResult
+     *        in 1.5/types.hal
+     */
+    public void getVoiceRegistrationStateResponse_1_5(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_5.RegStateResult voiceRegResponse) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, voiceRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, voiceRegResponse);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
      *        types.hal
      */
@@ -379,6 +396,22 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
+     *        1.5/types.hal
+     */
+    public void getDataRegistrationStateResponse_1_5(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_5.RegStateResult dataRegResponse) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dataRegResponse);
+            }
+            mRil.processResponseDone(rr, responseInfo, dataRegResponse);
+        }
+    }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
