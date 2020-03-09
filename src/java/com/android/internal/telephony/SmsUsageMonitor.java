@@ -526,7 +526,7 @@ public class SmsUsageMonitor {
 
     /**
      * Returns the premium SMS permission for the specified package. If the package has never
-     * been seen before, the default {@link #PREMIUM_SMS_PERMISSION_ASK_USER}
+     * been seen before, the default {@link #PREMIUM_SMS_PERMISSION_UNKNOWN}
      * will be returned.
      * @param packageName the name of the package to query permission
      * @return one of {@link #PREMIUM_SMS_PERMISSION_UNKNOWN},
