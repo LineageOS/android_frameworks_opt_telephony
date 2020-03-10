@@ -328,71 +328,44 @@ public class DeviceStateMonitor extends Handler {
      * trigger the network update unsolicited response.
      */
     private boolean shouldTurnOffFullNetworkUpdate() {
-        // We should not turn off full network update if one of the following condition is true.
-        // 1. The device is charging.
-        // 2. When the screen is on.
-        // 3. When data tethering is on.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
-            return false;
-        }
-
-        // In all other cases, we turn off full network state update.
-        return true;
+        return shouldTurnOffHighPowerConsumptionIndications();
     }
 
     /**
      * @return True if data dormancy status update should be turned off.
      */
     private boolean shouldTurnOffDormancyUpdate() {
-        // We should not turn off data dormancy update if one of the following condition is true.
-        // 1. The device is charging.
-        // 2. When the screen is on.
-        // 3. When data tethering is on.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
-            return false;
-        }
-
-        // In all other cases, we turn off data dormancy update.
-        return true;
+        return shouldTurnOffHighPowerConsumptionIndications();
     }
 
     /**
      * @return True if link capacity estimate update should be turned off.
      */
     private boolean shouldTurnOffLinkCapacityEstimate() {
-        // We should not turn off link capacity update if one of the following condition is true.
-        // 1. The device is charging.
-        // 2. When the screen is on.
-        // 3. When data tethering is on.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
-            return false;
-        }
-
-        // In all other cases, we turn off link capacity update.
-        return true;
+        return shouldTurnOffHighPowerConsumptionIndications();
     }
 
     /**
      * @return True if physical channel config update should be turned off.
      */
     private boolean shouldTurnOffPhysicalChannelConfig() {
-        // We should not turn off physical channel update if one of the following condition is true.
-        // 1. The device is charging.
-        // 2. When the screen is on.
-        // 3. When data tethering is on.
-        if (mIsCharging || mIsScreenOn || mIsTetheringOn) {
-            return false;
-        }
-
-        // In all other cases, we turn off physical channel config update.
-        return true;
+        return shouldTurnOffHighPowerConsumptionIndications();
     }
 
     /**
      * @return True if BarryingInfo update should be turned off.
      */
     private boolean shouldTurnOffBarringInfo() {
-        // We should not turn off BarringInfo update if one of the following condition is true.
+        return shouldTurnOffHighPowerConsumptionIndications();
+    }
+
+    /**
+     * A common policy to determine if we should turn off unnecessary indications for power saving.
+     *
+     * @return True if the response filter update should be turned off.
+     */
+    private boolean shouldTurnOffHighPowerConsumptionIndications() {
+        // We should not turn off update if one of the following condition is true.
         // 1. The device is charging.
         // 2. When the screen is on.
         // 3. When the tethering is on.
