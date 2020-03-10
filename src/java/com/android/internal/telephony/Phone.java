@@ -4127,12 +4127,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.setSimCardPower(state, null, workSource);
     }
 
-    public void setRadioIndicationUpdateMode(int filters, int mode) {
-        if (mDeviceStateMonitor != null) {
-            mDeviceStateMonitor.setIndicationUpdateMode(filters, mode);
-        }
-    }
-
     public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
             String gid2, String pnn, String spn, String carrierPrivilegeRules, String apn) {
     }
