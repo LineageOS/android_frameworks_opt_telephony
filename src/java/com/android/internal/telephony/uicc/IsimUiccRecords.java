@@ -21,9 +21,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.telephony.Rlog;
 
@@ -328,7 +328,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     private void broadcastRefresh() {
         Intent intent = new Intent(INTENT_ISIM_REFRESH);
         log("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
-        intent.putExtra(PhoneConstants.PHONE_KEY, mParentApp.getPhoneId());
+        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mParentApp.getPhoneId());
         mContext.sendBroadcast(intent);
     }
 
