@@ -150,6 +150,8 @@ public class ImsPhone extends ImsPhoneBase {
         public static class Builder extends DialArgs.Builder<ImsDialArgs.Builder> {
             private android.telecom.Connection.RttTextStream mRttTextStream;
             private int mClirMode = CommandsInterface.CLIR_DEFAULT;
+            private int mRetryCallFailCause = ImsReasonInfo.CODE_UNSPECIFIED;
+            private int mRetryCallFailNetworkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
 
             public static ImsDialArgs.Builder from(DialArgs dialArgs) {
                 return new ImsDialArgs.Builder()
@@ -164,7 +166,9 @@ public class ImsPhone extends ImsPhoneBase {
                         .setVideoState(dialArgs.videoState)
                         .setIntentExtras(dialArgs.intentExtras)
                         .setRttTextStream(dialArgs.rttTextStream)
-                        .setClirMode(dialArgs.clirMode);
+                        .setClirMode(dialArgs.clirMode)
+                        .setRetryCallFailCause(dialArgs.retryCallFailCause)
+                        .setRetryCallFailNetworkType(dialArgs.retryCallFailNetworkType);
             }
 
             public ImsDialArgs.Builder setRttTextStream(
@@ -175,6 +179,16 @@ public class ImsPhone extends ImsPhoneBase {
 
             public ImsDialArgs.Builder setClirMode(int clirMode) {
                 this.mClirMode = clirMode;
+                return this;
+            }
+
+            public ImsDialArgs.Builder setRetryCallFailCause(int retryCallFailCause) {
+                this.mRetryCallFailCause = retryCallFailCause;
+                return this;
+            }
+
+            public ImsDialArgs.Builder setRetryCallFailNetworkType(int retryCallFailNetworkType) {
+                this.mRetryCallFailNetworkType = retryCallFailNetworkType;
                 return this;
             }
 
@@ -191,11 +205,15 @@ public class ImsPhone extends ImsPhoneBase {
 
         /** The CLIR mode to use */
         public final int clirMode;
+        public final int retryCallFailCause;
+        public final int retryCallFailNetworkType;
 
         private ImsDialArgs(ImsDialArgs.Builder b) {
             super(b);
             this.rttTextStream = b.mRttTextStream;
             this.clirMode = b.mClirMode;
+            this.retryCallFailCause = b.mRetryCallFailCause;
+            this.retryCallFailNetworkType = b.mRetryCallFailNetworkType;
         }
     }
 
