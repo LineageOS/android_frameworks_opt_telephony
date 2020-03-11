@@ -271,7 +271,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
             ret = new GsmMmiCode(phone, app);
             ret.mPoundString = dialString;
-        } else if (isTwoDigitShortCode(phone.getContext(), dialString)) {
+        } else if (isTwoDigitShortCode(phone.getContext(), phone.getSubId(), dialString)) {
             //Is a country-specific exception to short codes as defined in TS 22.030, 6.5.3.2
             ret = null;
         } else if (isShortCode(dialString, phone)) {
@@ -703,15 +703,16 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return mPoundString;
     }
 
-    static private boolean
-    isTwoDigitShortCode(Context context, String dialString) {
+    /**
+     * Check if the dial string match the two digital number pattern which defined by Carrier.
+     */
+    public static boolean isTwoDigitShortCode(Context context, int subId, String dialString) {
         Rlog.d(LOG_TAG, "isTwoDigitShortCode");
 
         if (dialString == null || dialString.length() > 2) return false;
 
         if (sTwoDigitNumberPattern == null) {
-            sTwoDigitNumberPattern = context.getResources().getStringArray(
-                    com.android.internal.R.array.config_twoDigitNumberPattern);
+            sTwoDigitNumberPattern = getTwoDigitNumberPattern(context, subId);
         }
 
         for (String dialnumber : sTwoDigitNumberPattern) {
@@ -723,6 +724,27 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
         Rlog.d(LOG_TAG, "Two Digit Number Pattern -false");
         return false;
+    }
+
+    private static String[] getTwoDigitNumberPattern(Context context, int subId) {
+        Rlog.d(LOG_TAG, "Get two digit number pattern: subId=" + subId);
+        String[] twoDigitNumberPattern = null;
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            PersistableBundle bundle = configManager.getConfigForSubId(subId);
+            if (bundle != null) {
+                Rlog.d(LOG_TAG, "Two Digit Number Pattern from carrir config");
+                twoDigitNumberPattern = bundle.getStringArray(CarrierConfigManager
+                        .KEY_MMI_TWO_DIGIT_NUMBER_PATTERN_STRING_ARRAY);
+            }
+        }
+
+        // Do NOT return null array
+        if (twoDigitNumberPattern == null) {
+            twoDigitNumberPattern = new String[0];
+        }
+        return twoDigitNumberPattern;
     }
 
     /**
