@@ -23,6 +23,7 @@ import android.app.timedetector.TimeDetector;
 import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.app.timezonedetector.TimeZoneDetector;
 import android.content.Context;
+import android.os.SystemClock;
 import android.os.TimestampedValue;
 import android.util.LocalLog;
 
@@ -34,9 +35,9 @@ import java.io.PrintWriter;
 import java.util.Objects;
 
 /**
- * The real implementation of {@link NewTimeServiceHelper}.
+ * The real implementation of {@link TimeServiceHelper}.
  */
-public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
+public final class TimeServiceHelperImpl implements TimeServiceHelper {
 
     private final int mSlotIndex;
     private final TimeDetector mTimeDetector;
@@ -53,7 +54,7 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
     @NonNull
     private TelephonyTimeZoneSuggestion mLastSuggestedTimeZone;
 
-    public NewTimeServiceHelperImpl(@NonNull Phone phone) {
+    public TimeServiceHelperImpl(@NonNull Phone phone) {
         mSlotIndex = phone.getPhoneId();
         Context context = Objects.requireNonNull(phone.getContext());
         mTimeDetector = Objects.requireNonNull(context.getSystemService(TimeDetector.class));
@@ -99,8 +100,11 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
 
     @Override
     public void dumpLogs(IndentingPrintWriter ipw) {
-        ipw.println("NewTimeServiceHelperImpl:");
+        ipw.println("TimeServiceHelperImpl:");
         ipw.increaseIndent();
+        ipw.println("SystemClock.elapsedRealtime()=" + SystemClock.elapsedRealtime());
+        ipw.println("System.currentTimeMillis()=" + System.currentTimeMillis());
+
         ipw.println("Time Logs:");
         ipw.increaseIndent();
         mTimeLog.dump(ipw);
@@ -115,6 +119,6 @@ public final class NewTimeServiceHelperImpl implements NewTimeServiceHelper {
 
     @Override
     public void dumpState(PrintWriter pw) {
-        pw.println(" NewTimeServiceHelperImpl.mLastSuggestedTimeZone=" + mLastSuggestedTimeZone);
+        pw.println(" TimeServiceHelperImpl.mLastSuggestedTimeZone=" + mLastSuggestedTimeZone);
     }
 }
