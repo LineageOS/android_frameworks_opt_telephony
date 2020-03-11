@@ -51,6 +51,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.telephony.Rlog;
 
@@ -294,7 +295,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
             ret = new ImsPhoneMmiCode(phone);
             ret.mPoundString = dialString;
-        } else if (isTwoDigitShortCode(phone.getContext(), dialString)) {
+        } else if (GsmMmiCode.isTwoDigitShortCode(phone.getContext(), phone.getSubId(),
+                dialString)) {
             //Is a country-specific exception to short codes as defined in TS 22.030, 6.5.3.2
             ret = null;
         } else if (isShortCode(dialString, phone)) {
@@ -582,28 +584,6 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     @Override
     public String getDialString() {
         return mPoundString;
-    }
-
-    static private boolean
-    isTwoDigitShortCode(Context context, String dialString) {
-        Rlog.d(LOG_TAG, "isTwoDigitShortCode");
-
-        if (dialString == null || dialString.length() > 2) return false;
-
-        if (sTwoDigitNumberPattern == null) {
-            sTwoDigitNumberPattern = context.getResources().getStringArray(
-                    com.android.internal.R.array.config_twoDigitNumberPattern);
-        }
-
-        for (String dialnumber : sTwoDigitNumberPattern) {
-            Rlog.d(LOG_TAG, "Two Digit Number Pattern " + dialnumber);
-            if (dialString.equals(dialnumber)) {
-                Rlog.d(LOG_TAG, "Two Digit Number Pattern -true");
-                return true;
-            }
-        }
-        Rlog.d(LOG_TAG, "Two Digit Number Pattern -false");
-        return false;
     }
 
     /**
