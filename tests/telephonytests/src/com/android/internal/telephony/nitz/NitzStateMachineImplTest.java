@@ -60,7 +60,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     private static final TelephonyTimeSuggestion EMPTY_TIME_SUGGESTION =
             createEmptyTimeSuggestion(SLOT_INDEX);
 
-    private FakeNewTimeServiceHelper mFakeNewTimeServiceHelper;
+    private FakeTimeServiceHelper mFakeTimeServiceHelper;
     private FakeDeviceState mFakeDeviceState;
     private TimeZoneSuggesterImpl mRealTimeZoneSuggester;
 
@@ -69,12 +69,12 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        TelephonyTest.logd("NewNitzStateMachineImplTest +Setup!");
-        super.setUp("NewNitzStateMachineImplTest");
+        TelephonyTest.logd("NitzStateMachineImplTest +Setup!");
+        super.setUp("NitzStateMachineImplTest");
 
         // In tests we use a fake impls for NewTimeServiceHelper and DeviceState.
         mFakeDeviceState = new FakeDeviceState();
-        mFakeNewTimeServiceHelper = new FakeNewTimeServiceHelper(mFakeDeviceState);
+        mFakeTimeServiceHelper = new FakeTimeServiceHelper(mFakeDeviceState);
 
         // In tests we disable NITZ signal input filtering. The real NITZ signal filter is tested
         // independently. This makes constructing test data simpler: we can be sure the signals
@@ -91,7 +91,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
         mNitzStateMachineImpl = new NitzStateMachineImpl(
                 SLOT_INDEX, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
-                mFakeNewTimeServiceHelper);
+                mFakeTimeServiceHelper);
 
         TelephonyTest.logd("NewNitzStateMachineImplTest -Setup!");
     }
@@ -574,22 +574,22 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         }
 
         private void justVerifyTimeWasNotSuggested() {
-            mFakeNewTimeServiceHelper.suggestedTimes.assertHasNotBeenSet();
+            mFakeTimeServiceHelper.suggestedTimes.assertHasNotBeenSet();
         }
 
         private void justVerifyTimeZoneWasSuggested(
                 TelephonyTimeZoneSuggestion timeZoneSuggestion) {
-            mFakeNewTimeServiceHelper.suggestedTimeZones.assertHasBeenSet();
-            mFakeNewTimeServiceHelper.suggestedTimeZones.assertLatestEquals(timeZoneSuggestion);
+            mFakeTimeServiceHelper.suggestedTimeZones.assertHasBeenSet();
+            mFakeTimeServiceHelper.suggestedTimeZones.assertLatestEquals(timeZoneSuggestion);
         }
 
         private void justVerifyTimeWasSuggested(TelephonyTimeSuggestion timeSuggestion) {
-            mFakeNewTimeServiceHelper.suggestedTimes.assertChangeCount(1);
-            mFakeNewTimeServiceHelper.suggestedTimes.assertLatestEquals(timeSuggestion);
+            mFakeTimeServiceHelper.suggestedTimes.assertChangeCount(1);
+            mFakeTimeServiceHelper.suggestedTimes.assertLatestEquals(timeSuggestion);
         }
 
         private void commitStateChanges() {
-            mFakeNewTimeServiceHelper.commitState();
+            mFakeTimeServiceHelper.commitState();
         }
     }
 
@@ -643,10 +643,10 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     }
 
     /**
-     * A fake implementation of {@link NewTimeServiceHelper} that enables tests to detect what
+     * A fake implementation of {@link TimeServiceHelper} that enables tests to detect what
      * {@link NitzStateMachineImpl} would do to a real device's state.
      */
-    private static class FakeNewTimeServiceHelper implements NewTimeServiceHelper {
+    private static class FakeTimeServiceHelper implements TimeServiceHelper {
 
         private final FakeDeviceState mFakeDeviceState;
 
@@ -654,7 +654,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         public final TestState<TelephonyTimeSuggestion> suggestedTimes = new TestState<>();
         public final TestState<TelephonyTimeZoneSuggestion> suggestedTimeZones = new TestState<>();
 
-        FakeNewTimeServiceHelper(FakeDeviceState fakeDeviceState) {
+        FakeTimeServiceHelper(FakeDeviceState fakeDeviceState) {
             mFakeDeviceState = fakeDeviceState;
         }
 
