@@ -104,7 +104,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
      */
     private final TimeZoneSuggester mTimeZoneSuggester;
     /** A facade to the time / time zone detection services. */
-    private final NewTimeServiceHelper mNewTimeServiceHelper;
+    private final TimeServiceHelper mTimeServiceHelper;
 
     // Shared detection state.
 
@@ -136,7 +136,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         TimeZoneLookupHelper timeZoneLookupHelper = new TimeZoneLookupHelper();
         TimeZoneSuggester timeZoneSuggester =
                 new TimeZoneSuggesterImpl(deviceState, timeZoneLookupHelper);
-        NewTimeServiceHelper newTimeServiceHelper = new NewTimeServiceHelperImpl(phone);
+        TimeServiceHelper newTimeServiceHelper = new TimeServiceHelperImpl(phone);
         NitzSignalInputFilterPredicate nitzSignalFilter =
                 NitzSignalInputFilterPredicateFactory.create(phone.getContext(), deviceState);
         return new NitzStateMachineImpl(
@@ -151,10 +151,10 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     public NitzStateMachineImpl(int slotIndex,
             @NonNull NitzSignalInputFilterPredicate nitzSignalInputFilter,
             @NonNull TimeZoneSuggester timeZoneSuggester,
-            @NonNull NewTimeServiceHelper newTimeServiceHelper) {
+            @NonNull TimeServiceHelper newTimeServiceHelper) {
         mSlotIndex = slotIndex;
         mTimeZoneSuggester = Objects.requireNonNull(timeZoneSuggester);
-        mNewTimeServiceHelper = Objects.requireNonNull(newTimeServiceHelper);
+        mTimeServiceHelper = Objects.requireNonNull(newTimeServiceHelper);
         mNitzSignalInputFilter = Objects.requireNonNull(nitzSignalInputFilter);
     }
 
@@ -292,7 +292,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                         + ", nitzSignal=" + nitzSignal + ", suggestion=" + suggestion
                         + ", reason=" + reason);
             }
-            mNewTimeServiceHelper.maybeSuggestDeviceTimeZone(suggestion);
+            mTimeServiceHelper.maybeSuggestDeviceTimeZone(suggestion);
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "doTimeZoneDetection: Exception thrown"
                     + " mSlotIndex=" + mSlotIndex
@@ -325,7 +325,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                         + " nitzSignal=" + nitzSignal
                         + ", reason=" + reason);
             }
-            mNewTimeServiceHelper.suggestDeviceTime(builder.build());
+            mTimeServiceHelper.suggestDeviceTime(builder.build());
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "doTimeDetection: Exception thrown"
                     + " mSlotIndex=" + mSlotIndex
@@ -337,15 +337,15 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
 
     @Override
     public void dumpState(PrintWriter pw) {
-        pw.println(" NewNitzStateMachineImpl.mLatestNitzSignal=" + mLatestNitzSignal);
-        pw.println(" NewNitzStateMachineImpl.mCountryIsoCode=" + mCountryIsoCode);
-        mNewTimeServiceHelper.dumpState(pw);
+        pw.println(" NitzStateMachineImpl.mLatestNitzSignal=" + mLatestNitzSignal);
+        pw.println(" NitzStateMachineImpl.mCountryIsoCode=" + mCountryIsoCode);
+        mTimeServiceHelper.dumpState(pw);
         pw.flush();
     }
 
     @Override
     public void dumpLogs(FileDescriptor fd, IndentingPrintWriter ipw, String[] args) {
-        mNewTimeServiceHelper.dumpLogs(ipw);
+        mTimeServiceHelper.dumpLogs(ipw);
     }
 
     @Nullable
