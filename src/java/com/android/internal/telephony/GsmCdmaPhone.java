@@ -2079,6 +2079,9 @@ public class GsmCdmaPhone extends Phone {
             }
         } else {
             loge("getCallForwardingOption: not possible in CDMA without IMS");
+            AsyncResult.forMessage(onComplete, null,
+                    CommandException.fromRilErrno(RILConstants.REQUEST_NOT_SUPPORTED));
+            onComplete.sendToTarget();
         }
     }
 
@@ -2130,6 +2133,9 @@ public class GsmCdmaPhone extends Phone {
             }
         } else {
             loge("setCallForwardingOption: not possible in CDMA without IMS");
+            AsyncResult.forMessage(onComplete, null,
+                    CommandException.fromRilErrno(RILConstants.REQUEST_NOT_SUPPORTED));
+            onComplete.sendToTarget();
         }
     }
 
@@ -2256,6 +2262,9 @@ public class GsmCdmaPhone extends Phone {
             mCi.setCallWaiting(enable, serviceClass, onComplete);
         } else {
             loge("method setCallWaiting is NOT supported in CDMA without IMS!");
+            AsyncResult.forMessage(onComplete, null,
+                    CommandException.fromRilErrno(RILConstants.REQUEST_NOT_SUPPORTED));
+            onComplete.sendToTarget();
         }
     }
 
