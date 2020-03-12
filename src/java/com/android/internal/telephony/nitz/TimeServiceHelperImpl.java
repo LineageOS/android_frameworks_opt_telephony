@@ -23,6 +23,7 @@ import android.app.timedetector.TimeDetector;
 import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.app.timezonedetector.TimeZoneDetector;
 import android.content.Context;
+import android.os.SystemClock;
 import android.os.TimestampedValue;
 import android.util.LocalLog;
 
@@ -101,6 +102,9 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
     public void dumpLogs(IndentingPrintWriter ipw) {
         ipw.println("TimeServiceHelperImpl:");
         ipw.increaseIndent();
+        ipw.println("SystemClock.elapsedRealtime()=" + SystemClock.elapsedRealtime());
+        ipw.println("System.currentTimeMillis()=" + System.currentTimeMillis());
+
         ipw.println("Time Logs:");
         ipw.increaseIndent();
         mTimeLog.dump(ipw);
