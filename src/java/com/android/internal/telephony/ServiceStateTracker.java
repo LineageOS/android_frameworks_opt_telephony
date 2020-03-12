@@ -1013,11 +1013,28 @@ public class ServiceStateTracker extends Handler {
                 obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
     }
 
-    public void
-    setRadioPower(boolean power) {
-        mDesiredPowerState = power;
+    /**
+     * Turn on or off radio power.
+     */
+    public final void setRadioPower(boolean power) {
+        setRadioPower(power, false, false, false);
+    }
 
-        setPowerStateToDesired();
+    /**
+     * Turn on or off radio power with option to specify whether it's for emergency call.
+     * More details check {@link PhoneInternalInterface#setRadioPower(
+     * boolean, boolean, boolean, boolean)}.
+     */
+    public void setRadioPower(boolean power, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
+        log("setRadioPower forEmergencyCall " + forEmergencyCall + " forceApply " + forceApply);
+        if (power == mDesiredPowerState && !forceApply) {
+            log("setRadioPower mDesiredPowerState is already " + power + " Do nothing.");
+            return;
+        }
+
+        mDesiredPowerState = power;
+        setPowerStateToDesired(forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply);
     }
 
     /**
@@ -1026,7 +1043,14 @@ public class ServiceStateTracker extends Handler {
      * @param enable indicate if radio power is enabled or disabled from carrier action.
      */
     public void setRadioPowerFromCarrier(boolean enable) {
-        mRadioDisabledByCarrier = !enable;
+        boolean disableByCarrier = !enable;
+        if (mRadioDisabledByCarrier == disableByCarrier) {
+            log("setRadioPowerFromCarrier mRadioDisabledByCarrier is already "
+                    + disableByCarrier + " Do nothing.");
+            return;
+        }
+
+        mRadioDisabledByCarrier = disableByCarrier;
         setPowerStateToDesired();
     }
 
@@ -2831,6 +2855,11 @@ public class ServiceStateTracker extends Handler {
     }
 
     protected void setPowerStateToDesired() {
+        setPowerStateToDesired(false, false, false);
+    }
+
+    protected void setPowerStateToDesired(boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
         if (DBG) {
             String tmpLog = "mDeviceShuttingDown=" + mDeviceShuttingDown +
                     ", mDesiredPowerState=" + mDesiredPowerState +
@@ -2852,8 +2881,8 @@ public class ServiceStateTracker extends Handler {
 
         // If we want it on and it's off, turn it on
         if (mDesiredPowerState && !mRadioDisabledByCarrier
-                && mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
-            mCi.setRadioPower(true, null);
+                && (forceApply || mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF)) {
+            mCi.setRadioPower(true, forEmergencyCall, isSelectedPhoneForEmergencyCall, null);
         } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON) {
             // If it's on and available and we want it off gracefully
