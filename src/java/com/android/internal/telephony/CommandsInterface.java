@@ -1268,7 +1268,24 @@ public interface CommandsInterface {
     void writeSmsToRuim(int status, byte[] pdu, Message response);
 
     @UnsupportedAppUsage
-    void setRadioPower(boolean on, Message response);
+    default void setRadioPower(boolean on, Message response) {
+        setRadioPower(on, false, false, response);
+    }
+
+    /**
+     * Sets the radio power on/off state (off is sometimes
+     * called "airplane mode").
+     *
+     * @param on true means "on", false means "off".
+     * @param forEmergencyCall true means the purpose of turning radio power on is for emergency
+     *                         call. No effect if power is set false.
+     * @param isSelectedPhoneForEmergencyCall true means this phone / modem is selected to place
+     *                                  emergency call after turning power on. No effect if power
+     *                                  or forEmergency is set false.
+     * @param response sent when operation completes.
+     */
+    default void setRadioPower(boolean on, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, Message response) {}
 
     @UnsupportedAppUsage
     void acknowledgeLastIncomingGsmSms(boolean success, int cause, Message response);
