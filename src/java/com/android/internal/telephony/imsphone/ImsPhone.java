@@ -760,8 +760,10 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void setRadioPower(boolean on) {
-        mDefaultPhone.setRadioPower(on);
+    public void setRadioPower(boolean on, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
+        mDefaultPhone.setRadioPower(on, forEmergencyCall, isSelectedPhoneForEmergencyCall,
+                forceApply);
     }
 
     @Override
