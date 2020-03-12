@@ -680,14 +680,14 @@ public abstract class TelephonyTest {
         @Override
         public Bundle call(String method, String arg, Bundle extras) {
             switch (method) {
-                case BlockedNumberContract.METHOD_SHOULD_SYSTEM_BLOCK_NUMBER:
+                case BlockedNumberContract.SystemContract.METHOD_SHOULD_SYSTEM_BLOCK_NUMBER:
                     Bundle bundle = new Bundle();
                     int blockStatus = mBlockedNumbers.contains(arg)
                             ? BlockedNumberContract.STATUS_BLOCKED_IN_LIST
                             : BlockedNumberContract.STATUS_NOT_BLOCKED;
                     bundle.putInt(BlockedNumberContract.RES_BLOCK_STATUS, blockStatus);
                     return bundle;
-                case BlockedNumberContract.METHOD_NOTIFY_EMERGENCY_CONTACT:
+                case BlockedNumberContract.SystemContract.METHOD_NOTIFY_EMERGENCY_CONTACT:
                     mNumEmergencyContactNotifications++;
                     return new Bundle();
                 default:
