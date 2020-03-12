@@ -194,7 +194,7 @@ public final class NetworkScanRequestTracker {
         try {
             return SubscriptionController.getInstance()
                     .getAvailableSubscriptionInfoList(context.getOpPackageName(),
-                            context.getFeatureId()).stream()
+                            context.getAttributionTag()).stream()
                     .flatMap(NetworkScanRequestTracker::getAllowableMccMncsFromSubscriptionInfo)
                     .collect(Collectors.toSet());
         } finally {

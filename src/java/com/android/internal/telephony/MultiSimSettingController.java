@@ -406,7 +406,7 @@ public class MultiSimSettingController extends Handler {
         if (DBG) log("onSubscriptionGroupChanged");
 
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
-                groupUuid, mContext.getOpPackageName(), mContext.getFeatureId());
+                groupUuid, mContext.getOpPackageName(), mContext.getAttributionTag());
         if (infoList == null || infoList.isEmpty()) return;
 
         // Get a reference subscription to copy settings from.
@@ -470,7 +470,7 @@ public class MultiSimSettingController extends Handler {
 
         List<SubscriptionInfo> activeSubInfos = mSubController
                 .getActiveSubscriptionInfoList(mContext.getOpPackageName(),
-                        mContext.getFeatureId());
+                        mContext.getAttributionTag());
 
         if (ArrayUtils.isEmpty(activeSubInfos)) {
             mPrimarySubList.clear();
@@ -644,7 +644,7 @@ public class MultiSimSettingController extends Handler {
             if (phone != null && phone.isCdmaSubscriptionAppPresent()) {
                 cdmaPhoneCount++;
                 String simName = mSubController.getActiveSubscriptionInfo(
-                        subId, mContext.getOpPackageName(), mContext.getFeatureId())
+                        subId, mContext.getOpPackageName(), mContext.getAttributionTag())
                         .getDisplayName().toString();
                 if (TextUtils.isEmpty(simName)) {
                     // Fall back to carrier name.
@@ -702,7 +702,7 @@ public class MultiSimSettingController extends Handler {
         log("setUserDataEnabledForGroup subId " + subId + " enable " + enable);
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
-                mContext.getFeatureId());
+                mContext.getAttributionTag());
 
         if (infoList == null) return;
 
@@ -733,7 +733,7 @@ public class MultiSimSettingController extends Handler {
         SubscriptionController subController = SubscriptionController.getInstance();
         List<SubscriptionInfo> infoList = subController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
-                mContext.getFeatureId());
+                mContext.getAttributionTag());
 
         if (infoList == null) return;
 
@@ -781,7 +781,7 @@ public class MultiSimSettingController extends Handler {
         if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
 
         List<SubscriptionInfo> opptSubList = mSubController.getOpportunisticSubscriptions(
-                mContext.getOpPackageName(), mContext.getFeatureId());
+                mContext.getOpPackageName(), mContext.getAttributionTag());
 
         if (ArrayUtils.isEmpty(opptSubList)) return;
 

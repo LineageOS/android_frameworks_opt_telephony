@@ -172,8 +172,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
         PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
-        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), mContext.getFeatureId(),
-                mPhoneStateListener.callback,
+        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_PHONE_CAPABILITY_CHANGE, true);
         processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);
@@ -193,8 +193,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         when(mSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(activeSubs);
         int activeSubId = 0;
         mTelephonyRegistry.notifyActiveDataSubIdChanged(activeSubId);
-        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), mContext.getFeatureId(),
-                mPhoneStateListener.callback,
+        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE, true);
         processAllMessages();
         assertEquals(activeSubId, mActiveSubId);
@@ -221,7 +221,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySrvccStateChanged(1 /*subId*/, srvccState);
         // Should receive callback when listen is called that contains the latest notify result.
         mTelephonyRegistry.listenForSubscriber(1 /*subId*/, mContext.getOpPackageName(),
-                mContext.getFeatureId(), mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_SRVCC_STATE_CHANGED, true);
         processAllMessages();
         assertEquals(srvccState, mSrvccState);
@@ -246,7 +246,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
         try {
             mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
-                    mContext.getFeatureId(), mPhoneStateListener.callback,
+                    mContext.getAttributionTag(), mPhoneStateListener.callback,
                     LISTEN_SRVCC_STATE_CHANGED, true);
             fail();
         } catch (SecurityException e) {
@@ -260,7 +260,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Test
     public void testMultiSimConfigChange() {
         mTelephonyRegistry.listenForSubscriber(1, mContext.getOpPackageName(),
-                mContext.getFeatureId(), mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_RADIO_POWER_STATE_CHANGED, true);
         processAllMessages();
         assertEquals(RADIO_POWER_UNAVAILABLE, mRadioPowerState);
@@ -299,7 +299,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 new PreciseDataConnectionState(
                     0, 0, 0, "default", new LinkProperties(), 0, null));
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
-                mContext.getFeatureId(), mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
         processAllMessages();
         // Verify that the PDCS is reported for the only APN
@@ -316,13 +316,13 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         // Unregister the listener
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
-                mContext.getFeatureId(), mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_NONE, true);
         processAllMessages();
 
         // Re-register the listener and ensure that both APN types are reported
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
-                mContext.getFeatureId(), mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
         processAllMessages();
         assertEquals(mPhoneStateListener.invocationCount.get(), 4);
