@@ -514,7 +514,33 @@ public interface PhoneInternalInterface {
      *
      * @param power true means "on", false means "off".
      */
-    void setRadioPower(boolean power);
+    default void setRadioPower(boolean power) {
+        setRadioPower(power, false, false, false);
+    }
+
+    /**
+     * Sets the radio power on/off state with option to specify whether it's for emergency call
+     * (off is sometimes called "airplane mode"). Current state can be gotten via
+     * {@link #getServiceState()}.{@link
+     * android.telephony.ServiceState#getState() getState()}.
+     * <strong>Note: </strong>This request is asynchronous.
+     * getServiceState().getState() will not change immediately after this call.
+     * registerForServiceStateChanged() to find out when the
+     * request is complete.
+     *
+     * @param power true means "on", false means "off".
+     * @param forEmergencyCall true means the purpose of turning radio power on is for emergency
+     *                         call. No effect if power is set false.
+     * @param isSelectedPhoneForEmergencyCall true means this phone / modem is selected to place
+     *                                  emergency call after turning power on. No effect if power
+     *                                  or forEmergency is set false.
+     * @param forceApply true means always call setRadioPower HAL API without checking against
+     *                   current radio power state. It's needed when: radio was powered on into
+     *                   emergency call mode, to exit from that mode, we set radio
+     *                   power on again with forEmergencyCall being false.
+     */
+    default void setRadioPower(boolean power, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {}
 
     /**
      * Get the line 1 phone number (MSISDN). For CDMA phones, the MDN is returned

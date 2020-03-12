@@ -1239,6 +1239,17 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mMockCi, times(1)).enableUiccApplications(eq(true), any());
     }
 
+    @Test
+    @SmallTest
+    public void testSetRadioPower() throws Exception {
+        mPhoneUT.setRadioPower(false);
+        verify(mSST).setRadioPower(false, false, false, false);
+
+        // Turn on radio for emergency call.
+        mPhoneUT.setRadioPower(true, true, false, true);
+        verify(mSST).setRadioPower(true, true, false, true);
+    }
+
     // TODO: b/146181737 uncomment below test.
 //    @Test
 //    @SmallTest

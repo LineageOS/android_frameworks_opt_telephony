@@ -168,6 +168,9 @@ public class SimulatedCommands extends BaseCommands
     private SetupDataCallResult mSetupDataCallResult;
     private boolean mIsRadioPowerFailResponse = false;
 
+    public boolean mSetRadioPowerForEmergencyCall;
+    public boolean mSetRadioPowerAsSelectedPhoneForEmergencyCall;
+
     // mode for Icc Sim Authentication
     private int mAuthenticationMode;
     //***** Constructor
@@ -1268,11 +1271,15 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setRadioPower(boolean on, Message result) {
+    public void setRadioPower(boolean on, boolean forEmergencyCall,
+            boolean preferredForEmergencyCall, Message result) {
         if (mIsRadioPowerFailResponse) {
             resultFail(result, null, new RuntimeException("setRadioPower failed!"));
             return;
         }
+
+        mSetRadioPowerForEmergencyCall = forEmergencyCall;
+        mSetRadioPowerAsSelectedPhoneForEmergencyCall = preferredForEmergencyCall;
 
         if(on) {
             setRadioState(TelephonyManager.RADIO_POWER_ON, false /* forceNotifyRegistrants */);
