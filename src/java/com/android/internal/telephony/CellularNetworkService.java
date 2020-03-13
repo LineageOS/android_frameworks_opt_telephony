@@ -22,7 +22,6 @@ import android.hardware.radio.V1_0.RegState;
 import android.hardware.radio.V1_4.DataRegStateResult.VopsInfo.hidl_discriminator;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
@@ -41,8 +40,9 @@ import android.text.TextUtils;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 /**
  * Implementation of network services for Cellular. It's a service that handles network requests
@@ -63,12 +63,7 @@ public class CellularNetworkService extends NetworkService {
 
     private class CellularNetworkServiceProvider extends NetworkServiceProvider {
 
-        private final ConcurrentHashMap<Message, NetworkServiceCallback> mCallbackMap =
-                new ConcurrentHashMap<>();
-
-        private final Looper mLooper;
-
-        private final HandlerThread mHandlerThread;
+        private final Map<Message, NetworkServiceCallback> mCallbackMap = new HashMap<>();
 
         private final Handler mHandler;
 
@@ -79,10 +74,7 @@ public class CellularNetworkService extends NetworkService {
 
             mPhone = PhoneFactory.getPhone(getSlotIndex());
 
-            mHandlerThread = new HandlerThread(CellularNetworkService.class.getSimpleName());
-            mHandlerThread.start();
-            mLooper = mHandlerThread.getLooper();
-            mHandler = new Handler(mLooper) {
+            mHandler = new Handler(Looper.myLooper()) {
                 @Override
                 public void handleMessage(Message message) {
                     NetworkServiceCallback callback = mCallbackMap.remove(message);
@@ -497,7 +489,6 @@ public class CellularNetworkService extends NetworkService {
         @Override
         public void close() {
             mCallbackMap.clear();
-            mHandlerThread.quit();
             mPhone.mCi.unregisterForNetworkStateChanged(mHandler);
         }
     }
