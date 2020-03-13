@@ -30,10 +30,11 @@ import java.util.Arrays;
 import java.util.Collections;
 
 public class CellIdentityNrTest extends AndroidTestCase {
-    private static final String MCC = "310";
-    private static final String MNC = "260";
-    private static final String ANOTHER_MCC = "134";
-    private static final String ANOTHER_MNC = "256";
+    private static final String LOG_TAG = "CellIdentityNrTest";
+    private static final String MCC_STR = "310";
+    private static final String MNC_STR = "260";
+    private static final String ANOTHER_MCC_STR = "134";
+    private static final String ANOTHER_MNC_STR = "256";
     private static final String ALPHAL = "long operator name";
     private static final String ALPHAS = "lon";
     private static final int NRARFCN = 13456;
@@ -49,7 +50,7 @@ public class CellIdentityNrTest extends AndroidTestCase {
     public void testGetMethod() {
         // GIVEN an instance of CellIdentityNr
         CellIdentityNr cellIdentityNr =
-                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC, MNC, NCI, ALPHAL, ALPHAS,
+                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC_STR, MNC_STR, NCI, ALPHAL, ALPHAS,
                         Collections.emptyList());
 
         // THEN the get method should return correct value
@@ -59,20 +60,22 @@ public class CellIdentityNrTest extends AndroidTestCase {
         assertThat(cellIdentityNr.getTac()).isEqualTo(TAC);
         assertThat(cellIdentityNr.getOperatorAlphaLong()).isEqualTo(ALPHAL);
         assertThat(cellIdentityNr.getOperatorAlphaShort()).isEqualTo(ALPHAS);
-        assertThat(cellIdentityNr.getMccString()).isEqualTo(MCC);
-        assertThat(cellIdentityNr.getMncString()).isEqualTo(MNC);
-        assertThat(cellIdentityNr.getMncString()).isEqualTo(MNC);
+        assertThat(cellIdentityNr.getMccString()).isEqualTo(MCC_STR);
+        assertThat(cellIdentityNr.getMncString()).isEqualTo(MNC_STR);
         assertThat(cellIdentityNr.getNci()).isEqualTo(NCI);
+
+        String globalCi = MCC_STR + MNC_STR + "000" + Integer.toString(NCI, 16);
+        assertEquals(globalCi, cellIdentityNr.getGlobalCellId());
     }
 
     @Test
     public void testEquals_sameParameters() {
         // GIVEN an instance of CellIdentityNr, and create another object with the same parameters
         CellIdentityNr cellIdentityNr =
-                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC, MNC, NCI,
+                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC_STR, MNC_STR, NCI,
                         ALPHAL, ALPHAS, Collections.emptyList());
         CellIdentityNr anotherCellIdentityNr =
-                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC, MNC, NCI,
+                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC_STR, MNC_STR, NCI,
                         ALPHAL, ALPHAS, Collections.emptyList());
 
         // THEN this two objects are equivalent
@@ -83,10 +86,10 @@ public class CellIdentityNrTest extends AndroidTestCase {
     public void testEquals_differentParameters() {
         // GIVEN an instance of CellIdentityNr, and create another object with different parameters
         CellIdentityNr cellIdentityNr =
-                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC, MNC, NCI,
+                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC_STR, MNC_STR, NCI,
                         ALPHAL, ALPHAS, Collections.emptyList());
         CellIdentityNr anotherCellIdentityNr =
-                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC, MNC, NCI + 1,
+                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC_STR, MNC_STR, NCI + 1,
                         ALPHAL, ALPHAS, Collections.emptyList());
 
         // THEN this two objects are different
@@ -97,7 +100,7 @@ public class CellIdentityNrTest extends AndroidTestCase {
     public void testParcel() {
         // GIVEN an instance of CellIdentityNr
         CellIdentityNr cellIdentityNr =
-                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC, MNC, NCI,
+                new CellIdentityNr(PCI, TAC, NRARFCN, BANDS, MCC_STR, MNC_STR, NCI,
                         ALPHAL, ALPHAS, Collections.emptyList());
 
         // WHEN write the object to parcel and create another object with that parcel
@@ -115,8 +118,8 @@ public class CellIdentityNrTest extends AndroidTestCase {
         assertTrue(Arrays.equals(anotherCellIdentityNr.getBands(), BANDS));
         assertThat(anotherCellIdentityNr.getOperatorAlphaLong()).isEqualTo(ALPHAL);
         assertThat(anotherCellIdentityNr.getOperatorAlphaShort()).isEqualTo(ALPHAS);
-        assertThat(anotherCellIdentityNr.getMccString()).isEqualTo(MCC);
-        assertThat(anotherCellIdentityNr.getMncString()).isEqualTo(MNC);
+        assertThat(anotherCellIdentityNr.getMccString()).isEqualTo(MCC_STR);
+        assertThat(anotherCellIdentityNr.getMncString()).isEqualTo(MNC_STR);
         assertThat(anotherCellIdentityNr.getNci()).isEqualTo(NCI);
     }
 }
