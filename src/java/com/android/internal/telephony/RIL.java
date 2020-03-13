@@ -2349,7 +2349,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     android.hardware.radio.V1_5.RadioAccessSpecifier rasInHalFormat =
                             convertRadioAccessSpecifierToRadioHAL_1_5(ras);
                     if (rasInHalFormat == null) {
-                        return;
+                        AsyncResult.forMessage(result, null,
+                                CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                        result.sendToTarget();
                     }
                     request.specifiers.add(rasInHalFormat);
                 }
@@ -2383,7 +2385,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
                             convertRadioAccessSpecifierToRadioHAL(ras);
                     if (rasInHalFormat == null) {
-                        return;
+                        AsyncResult.forMessage(result, null,
+                                CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                        result.sendToTarget();
                     }
 
                     request.specifiers.add(rasInHalFormat);
@@ -2422,7 +2426,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
                             convertRadioAccessSpecifierToRadioHAL(ras);
                     if (rasInHalFormat == null) {
-                        return;
+                        AsyncResult.forMessage(result, null,
+                                CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                        result.sendToTarget();
                     }
 
                     request.specifiers.add(rasInHalFormat);
