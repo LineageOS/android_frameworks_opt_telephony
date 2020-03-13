@@ -113,6 +113,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+
 public class ServiceStateTrackerTest extends TelephonyTest {
     @Mock
     private ProxyController mProxyController;
@@ -355,6 +356,36 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(oldState
                 != (mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON));
+    }
+
+    @Test
+    @SmallTest
+    public void testSetRadioPowerOnForEmergencyCall() {
+        // Turn off radio first.
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
+
+        // Turn on radio for emergency call.
+        sst.setRadioPower(true, true, true, false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(mSimulatedCommands.mSetRadioPowerForEmergencyCall);
+        assertTrue(mSimulatedCommands.mSetRadioPowerAsSelectedPhoneForEmergencyCall);
+        assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
+
+        // If we try again without forceApply=true, no command should be sent to modem. Because
+        // radio power is already ON.
+        sst.setRadioPower(true, false, false, false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(mSimulatedCommands.mSetRadioPowerForEmergencyCall);
+        assertTrue(mSimulatedCommands.mSetRadioPowerAsSelectedPhoneForEmergencyCall);
+
+        // Call setRadioPower on with forceApply=true. ForEmergencyCall and isSelectedPhone should
+        // be cleared.
+        sst.setRadioPower(true, false, false, true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertFalse(mSimulatedCommands.mSetRadioPowerForEmergencyCall);
+        assertFalse(mSimulatedCommands.mSetRadioPowerAsSelectedPhoneForEmergencyCall);
     }
 
     @Test

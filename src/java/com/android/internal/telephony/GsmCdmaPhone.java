@@ -88,7 +88,6 @@ import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -1578,8 +1577,9 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void setRadioPower(boolean power) {
-        mSST.setRadioPower(power);
+    public void setRadioPower(boolean power, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
+        mSST.setRadioPower(power, forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply);
     }
 
     private void storeVoiceMailNumber(String number) {
@@ -2079,6 +2079,9 @@ public class GsmCdmaPhone extends Phone {
             }
         } else {
             loge("getCallForwardingOption: not possible in CDMA without IMS");
+            AsyncResult.forMessage(onComplete, null,
+                    CommandException.fromRilErrno(RILConstants.REQUEST_NOT_SUPPORTED));
+            onComplete.sendToTarget();
         }
     }
 
@@ -2130,6 +2133,9 @@ public class GsmCdmaPhone extends Phone {
             }
         } else {
             loge("setCallForwardingOption: not possible in CDMA without IMS");
+            AsyncResult.forMessage(onComplete, null,
+                    CommandException.fromRilErrno(RILConstants.REQUEST_NOT_SUPPORTED));
+            onComplete.sendToTarget();
         }
     }
 
@@ -2256,6 +2262,9 @@ public class GsmCdmaPhone extends Phone {
             mCi.setCallWaiting(enable, serviceClass, onComplete);
         } else {
             loge("method setCallWaiting is NOT supported in CDMA without IMS!");
+            AsyncResult.forMessage(onComplete, null,
+                    CommandException.fromRilErrno(RILConstants.REQUEST_NOT_SUPPORTED));
+            onComplete.sendToTarget();
         }
     }
 

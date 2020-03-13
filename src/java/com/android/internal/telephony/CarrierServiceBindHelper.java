@@ -282,6 +282,7 @@ public class CarrierServiceBindHelper {
                                 Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE,
                                 (r) -> mHandler.post(r),
                                 connection)) {
+                    log("service bound");
                     mServiceBound = true;
                     return;
                 }
@@ -340,7 +341,12 @@ public class CarrierServiceBindHelper {
             if (mServiceBound) {
                 log("Unbinding from carrier app");
                 mServiceBound = false;
-                mContext.unbindService(connection);
+                try {
+                    mContext.unbindService(connection);
+                } catch (IllegalArgumentException e) {
+                    //TODO(b/151328766): Figure out why we unbind without binding
+                    loge("Tried to unbind without binding e=" + e);
+                }
             } else {
                 log("Not bound, skipping unbindService call");
             }
