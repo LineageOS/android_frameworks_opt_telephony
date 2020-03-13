@@ -4205,26 +4205,35 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     /**
+     * Contacts the ImsService directly for capability information.  May be slow.
      * @return true if the IMS capability for the specified registration technology is currently
      * available.
      */
-    public boolean isImsCapabilityAvailable(int capability, int regTech) {
-        return (getImsRegistrationTech() == regTech) && mMmTelCapabilities.isCapable(capability);
+    public boolean isImsCapabilityAvailable(int capability, int regTech) throws ImsException {
+        if (mImsManager != null) {
+            return mImsManager.queryMmTelCapabilityStatus(capability, regTech);
+        } else {
+            return false;
+        }
     }
 
     public boolean isVolteEnabled() {
-        return isImsCapabilityAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+        return isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
                 ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
     }
 
     public boolean isVowifiEnabled() {
-        return isImsCapabilityAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+        return isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
                 ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
     }
 
     public boolean isVideoCallEnabled() {
         // Currently no reliance on transport technology.
         return mMmTelCapabilities.isCapable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
+    }
+
+    private boolean isImsCapabilityInCacheAvailable(int capability, int regTech) {
+        return (getImsRegistrationTech() == regTech) && mMmTelCapabilities.isCapable(capability);
     }
 
     @Override
