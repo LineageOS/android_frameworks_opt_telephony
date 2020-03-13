@@ -455,7 +455,7 @@ public class DataEnabledSettings {
 
     private static boolean isStandAloneOpportunistic(int subId, Context context) {
         SubscriptionInfo info = SubscriptionController.getInstance().getActiveSubscriptionInfo(
-                subId, context.getOpPackageName(), context.getFeatureId());
+                subId, context.getOpPackageName(), context.getAttributionTag());
         return (info != null) && info.isOpportunistic() && info.getGroupUuid() == null;
     }
 
