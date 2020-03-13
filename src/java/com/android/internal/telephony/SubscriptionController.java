@@ -435,7 +435,8 @@ public class SubscriptionController extends ISub.Stub {
      * @return null if there isn't a match, or subscription info if there is one.
      */
     public SubscriptionInfo getSubInfoForIccId(String iccId) {
-        List<SubscriptionInfo> info = getSubInfo(SubscriptionManager.ICC_ID + "=" + iccId, null);
+        List<SubscriptionInfo> info = getSubInfo(
+                SubscriptionManager.ICC_ID + "=\'" + iccId + "\'", null);
         if (info == null || info.size() == 0) return null;
         // Should be at most one subscription with the iccid.
         return info.get(0);
