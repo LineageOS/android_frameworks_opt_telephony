@@ -104,7 +104,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         mSubscriptionControllerUT = SubscriptionController.init(mContext);
         mCallingPackage = mContext.getOpPackageName();
-        mCallingFeature = mContext.getFeatureId();
+        mCallingFeature = mContext.getAttributionTag();
 
         doReturn(1).when(mProxyController).getMaxRafSupported();
         mContextFixture.putIntArrayResource(android.R.array.simColors, new int[]{5});
@@ -731,7 +731,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         List<SubscriptionInfo> subInfoList =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoList(mContext.getOpPackageName(),
-                        mContext.getFeatureId());
+                        mContext.getAttributionTag());
 
         // Put sub3 into slot 1 to make sub2 inactive.
         mContextFixture.addCallingOrSelfPermission(
@@ -937,7 +937,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(mSubscriptionControllerUT.isActiveSubId(1));
         assertTrue(mSubscriptionControllerUT.isActiveSubId(2));
         assertTrue(TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, 1,
-                mContext.getOpPackageName(), mContext.getFeatureId(), "getSubscriptionsInGroup"));
+                mContext.getOpPackageName(), mContext.getAttributionTag(),
+                "getSubscriptionsInGroup"));
 
         int[] subIdList = new int[] {1};
         ParcelUuid groupUuid = mSubscriptionControllerUT.createSubscriptionGroup(
@@ -946,7 +947,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         // Sub 1 and sub 2 should be in same group.
         List<SubscriptionInfo> infoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
-                groupUuid, mContext.getOpPackageName(), mContext.getFeatureId());
+                groupUuid, mContext.getOpPackageName(), mContext.getAttributionTag());
         assertNotEquals(null, infoList);
         assertEquals(1, infoList.size());
         assertEquals(1, infoList.get(0).getSubscriptionId());
@@ -956,7 +957,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.addSubscriptionsIntoGroup(
                 subIdList, groupUuid, mContext.getOpPackageName());
         infoList = mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid,
-                mContext.getOpPackageName(), mContext.getFeatureId());
+                mContext.getOpPackageName(), mContext.getAttributionTag());
         assertEquals(2, infoList.size());
         assertEquals(2, infoList.get(1).getSubscriptionId());
 
@@ -965,7 +966,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.removeSubscriptionsFromGroup(
                 subIdList, groupUuid, mContext.getOpPackageName());
         infoList = mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid,
-                mContext.getOpPackageName(), mContext.getFeatureId());
+                mContext.getOpPackageName(), mContext.getAttributionTag());
         assertEquals(1, infoList.size());
         assertEquals(2, infoList.get(0).getSubscriptionId());
 
@@ -974,7 +975,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.addSubscriptionsIntoGroup(
                 subIdList, groupUuid, mContext.getOpPackageName());
         infoList = mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid,
-                mContext.getOpPackageName(), mContext.getFeatureId());
+                mContext.getOpPackageName(), mContext.getAttributionTag());
         assertEquals(1, infoList.size());
         assertEquals(1, infoList.get(0).getSubscriptionId());
     }
