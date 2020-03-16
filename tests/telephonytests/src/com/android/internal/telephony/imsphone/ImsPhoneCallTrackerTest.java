@@ -24,6 +24,8 @@ import static android.net.NetworkStats.UID_ALL;
 
 import static com.android.testutils.NetworkStatsUtilsKt.assertNetworkStatsEquals;
 
+import static junit.framework.Assert.assertNotNull;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -46,15 +48,17 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.annotation.Nullable;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.NetworkStats;
 import android.net.NetworkStats.Entry;
-import android.net.netstats.provider.NetworkStatsProviderCallback;
+import android.net.netstats.provider.INetworkStatsProviderCallback;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.RemoteException;
 import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
@@ -107,8 +111,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsCall mImsCall;
     private ImsCall mSecondImsCall;
     private Bundle mBundle = new Bundle();
-    private final ArgumentCaptor<VtDataUsageProvider> mVtDataUsageProviderCaptor =
-            ArgumentCaptor.forClass(VtDataUsageProvider.class);
+    @Nullable private VtDataUsageProvider mVtDataUsageProvider;
     @Mock
     private ImsCallSession mImsCallSession;
     @Mock
@@ -120,7 +123,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Mock
     private ImsPhoneConnection mImsPhoneConnection;
     @Mock
-    private NetworkStatsProviderCallback mVtDataUsageProviderCb;
+    private INetworkStatsProviderCallback mVtDataUsageProviderCb;
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -226,9 +229,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         doNothing().when(mImsManager).addNotifyStatusChangedCallbackIfAvailable(any());
 
-        doReturn(mVtDataUsageProviderCb).when(mStatsManager).registerNetworkStatsProvider(
-                anyString(), any());
-
         mCTUT = new ImsPhoneCallTracker(mImsPhone, Runnable::run);
         mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
         mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
@@ -244,8 +244,14 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 "service not allowed in this location",
                 ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION);
         mCTUT.setDataEnabled(true);
+
+        final ArgumentCaptor<VtDataUsageProvider> vtDataUsageProviderCaptor =
+                ArgumentCaptor.forClass(VtDataUsageProvider.class);
         verify(mStatsManager).registerNetworkStatsProvider(anyString(),
-                mVtDataUsageProviderCaptor.capture());
+                vtDataUsageProviderCaptor.capture());
+        mVtDataUsageProvider = vtDataUsageProviderCaptor.getValue();
+        assertNotNull(mVtDataUsageProvider);
+        mVtDataUsageProvider.setProviderCallbackBinder(mVtDataUsageProviderCb);
 
         logd("ImsPhoneCallTracker initiated");
         processAllMessages();
@@ -1023,10 +1029,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testVtDataUsageProvider() {
-        final VtDataUsageProvider provider = mVtDataUsageProviderCaptor.getValue();
-
-        provider.requestStatsUpdate(11);
+    public void testVtDataUsageProvider() throws RemoteException {
+        mVtDataUsageProvider.onRequestStatsUpdate(11);
 
         // Verify that requestStatsUpdate triggers onStatsUpdated, where the initial token should
         // be reported with current stats.
@@ -1040,7 +1044,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         // Make another request, and verify stats updated accordingly, with previously issued token.
         reset(mVtDataUsageProviderCb);
-        provider.requestStatsUpdate(13);
+        mVtDataUsageProvider.onRequestStatsUpdate(13);
         assertVtDataUsageUpdated(11, 25, 25);
 
         // Update accumulated data usage twice. updateVtDataUsage takes accumulated stats from
@@ -1048,22 +1052,23 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         reset(mVtDataUsageProviderCb);
         mCTUT.updateVtDataUsage(call, 70);
         mCTUT.updateVtDataUsage(call, 91);
-        verify(mVtDataUsageProviderCb, never()).onStatsUpdated(anyInt(), any(), any());
+        verify(mVtDataUsageProviderCb, never()).notifyStatsUpdated(anyInt(), any(), any());
 
         // Verify that diff stats from last update is reported accordingly.
-        provider.requestStatsUpdate(13);
+        mVtDataUsageProvider.onRequestStatsUpdate(13);
         // Rounding error occurs so (70-51)/2 + (91-70)/2 = 19 is expected for both direction.
         assertVtDataUsageUpdated(13, 19, 19);
     }
 
-    private void assertVtDataUsageUpdated(int expectedToken, long rxBytes, long txBytes) {
+    private void assertVtDataUsageUpdated(int expectedToken, long rxBytes, long txBytes)
+            throws RemoteException {
         final ArgumentCaptor<NetworkStats> ifaceStatsCaptor = ArgumentCaptor.forClass(
                 NetworkStats.class);
         final ArgumentCaptor<NetworkStats> uidStatsCaptor = ArgumentCaptor.forClass(
                 NetworkStats.class);
 
-        verify(mVtDataUsageProviderCb).onStatsUpdated(eq(expectedToken), ifaceStatsCaptor.capture(),
-                uidStatsCaptor.capture());
+        verify(mVtDataUsageProviderCb).notifyStatsUpdated(eq(expectedToken),
+                ifaceStatsCaptor.capture(), uidStatsCaptor.capture());
 
         // Default dialer's package uid is not set during test, thus the uid stats looks the same
         // as iface stats and the records are always merged into the same entry.
