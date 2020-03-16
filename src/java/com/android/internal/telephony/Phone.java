@@ -413,6 +413,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private boolean mUnitTestMode;
 
+    private final CarrierPrivilegesTracker mCarrierPrivilegesTracker;
+
     public IccRecords getIccRecords() {
         return mIccRecords.get();
     }
@@ -533,6 +535,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         */
         mIsVoiceCapable = ((TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE))
                 .isVoiceCapable();
+
+        mCarrierPrivilegesTracker = new CarrierPrivilegesTracker(mLooper, this, mContext);
 
         /**
          *  Some RIL's don't always send RIL_UNSOL_CALL_RING so it needs
@@ -4197,6 +4201,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return RIL.RADIO_HAL_VERSION_UNKNOWN;
     }
 
+    /** @hide */
+    public CarrierPrivilegesTracker getCarrierPrivilegesTracker() {
+        return mCarrierPrivilegesTracker;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
@@ -4233,6 +4242,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
         pw.println(" isInEmergencySmsMode=" + isInEmergencySmsMode());
         pw.println(" service state=" + getServiceState());
+        String privilegedUids = Arrays.toString(mCarrierPrivilegesTracker.mPrivilegedUids);
+        pw.println(" administratorUids=" + privilegedUids);
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 

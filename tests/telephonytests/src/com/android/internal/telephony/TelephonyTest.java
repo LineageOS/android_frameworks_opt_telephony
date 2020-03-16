@@ -273,6 +273,8 @@ public abstract class TelephonyTest {
     protected IccCard mIccCard;
     @Mock
     protected NetworkStatsManager mStatsManager;
+    @Mock
+    protected CarrierPrivilegesTracker mCarrierPrivilegesTracker;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -489,6 +491,7 @@ public abstract class TelephonyTest {
         doReturn(mTransportManager).when(mPhone).getTransportManager();
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
+        doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
 
         //mUiccController
