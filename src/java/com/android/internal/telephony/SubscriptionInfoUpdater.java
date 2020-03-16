@@ -435,7 +435,7 @@ public class SubscriptionInfoUpdater extends Handler {
         UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
         if (slot == null || slot.getIccId() == null) return false;
         SubscriptionInfo info = SubscriptionController.getInstance()
-                .getSubInfoForIccId(slot.getIccId());
+                .getSubInfoForIccId(IccUtils.stripTrailingFs(slot.getIccId()));
         return info != null && !info.areUiccApplicationsEnabled();
     }
 
