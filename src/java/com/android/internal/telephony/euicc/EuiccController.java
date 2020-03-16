@@ -15,8 +15,6 @@
  */
 package com.android.internal.telephony.euicc;
 
-import static com.android.internal.telephony.euicc.EuiccConnector.BIND_TIMEOUT_MILLIS;
-
 import android.Manifest;
 import android.Manifest.permission;
 import android.annotation.NonNull;
@@ -72,6 +70,11 @@ public class EuiccController extends IEuiccController.Stub {
     /** Extra set on resolution intents containing the {@link EuiccOperation}. */
     @VisibleForTesting
     static final String EXTRA_OPERATION = "operation";
+
+    /**
+     * Time out for {@link #dump(FileDescriptor, PrintWriter, String[])}
+     */
+    private static final int EUICC_DUMP_TIME_OUT_SECONDS = 5;
 
     // Aliases so line lengths stay short.
     private static final int OK = EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK;
@@ -1312,8 +1315,8 @@ public class EuiccController extends IEuiccController.Stub {
                 }
             });
 
-            // Wait up to 30 seconds
-            if (!countDownLatch.await(BIND_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+            // Wait up to 5 seconds
+            if (!countDownLatch.await(EUICC_DUMP_TIME_OUT_SECONDS, TimeUnit.SECONDS)) {
                 pw.println("===== EUICC SERVICE TIMEOUT =====");
             }
         } catch (InterruptedException e) {
