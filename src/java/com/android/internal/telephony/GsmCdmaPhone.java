@@ -175,7 +175,7 @@ public class GsmCdmaPhone extends Phone {
     private SIMRecords mSimRecords;
 
     // For non-persisted manual network selection
-    private String mManualNetworkSelectionPlmn = "";
+    private String mManualNetworkSelectionPlmn;
 
     //Common
     // Instance Variables
@@ -1917,7 +1917,7 @@ public class GsmCdmaPhone extends Phone {
             mManualNetworkSelectionPlmn = nsm.operatorNumeric;
         } else {
         //on Phone0 in emergency mode (no SIM), or in some races then clear the cache
-            mManualNetworkSelectionPlmn = "";
+            mManualNetworkSelectionPlmn = null;
             Rlog.e(LOG_TAG, "Cannot update network selection due to invalid subId "
                     + subId);
         }

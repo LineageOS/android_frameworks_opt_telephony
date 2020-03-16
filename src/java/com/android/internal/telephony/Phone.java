@@ -1944,7 +1944,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  Retrieves manually selected network info.
      */
     public String getManualNetworkSelectionPlmn() {
-        return "";
+        return null;
     }
 
 
