@@ -3561,6 +3561,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /*
+     * This function is for CSFB SS. GsmCdmaPhone overrides this function.
+     */
+    public void setCallWaiting(boolean enable, int serviceClass, Message onComplete) {
+    }
+
+    /*
      * Returns the subscription id.
      */
     @UnsupportedAppUsage
