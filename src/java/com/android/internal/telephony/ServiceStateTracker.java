@@ -2046,18 +2046,16 @@ public class ServiceStateTracker extends Handler {
             }
         }
 
-        int newNrState = regInfo.getNrState();
+        int oldNrState = regInfo.getNrState();
+        int newNrState = oldNrState;
         if (hasNrSecondaryServingCell) {
-            if (regInfo.getNrState() == NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED) {
-                newNrState = NetworkRegistrationInfo.NR_STATE_CONNECTED;
-            }
+            newNrState = NetworkRegistrationInfo.NR_STATE_CONNECTED;
         } else {
-            if (regInfo.getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
-                newNrState = NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED;
-            }
+            regInfo.updateNrState();
+            newNrState = regInfo.getNrState();
         }
 
-        boolean hasChanged = newNrState != regInfo.getNrState();
+        boolean hasChanged = newNrState != oldNrState;
         regInfo.setNrState(newNrState);
         ss.addNetworkRegistrationInfo(regInfo);
         return hasChanged;
