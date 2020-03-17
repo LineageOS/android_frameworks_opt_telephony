@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.ServiceState.STATE_IN_SERVICE;
+
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_ASYNC;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_SYNC;
@@ -480,6 +482,60 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return false;
     }
 
+    static boolean isPinPukCommand(String sc) {
+        return sc != null && (sc.equals(SC_PIN) || sc.equals(SC_PIN2)
+                || sc.equals(SC_PUK) || sc.equals(SC_PUK2));
+    }
+
+    /**
+     * Whether the dial string is supplementary service code.
+     *
+     * @param dialString The dial string.
+     * @return true if the dial string is supplementary service code, and {@code false} otherwise.
+     */
+    public static boolean isSuppServiceCodes(String dialString, Phone phone) {
+        if (phone != null && phone.getServiceState().getVoiceRoaming()
+                && phone.getDefaultPhone().supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming()) {
+            /* The CDMA MMI coded dialString will be converted to a 3GPP MMI Coded dialString
+               so that it can be processed by the matcher and code below
+             */
+            dialString = convertCdmaMmiCodesTo3gppMmiCodes(dialString);
+        }
+
+        Matcher m = sPatternSuppService.matcher(dialString);
+        if (m.matches()) {
+            String sc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
+            if (isServiceCodeCallForwarding(sc)) {
+                return true;
+            } else if (isServiceCodeCallBarring(sc)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_CFUT)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_CLIP)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_CLIR)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_COLP)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_COLR)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_CNAP)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_BS_MT)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_BAICa)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_PWD)) {
+                return true;
+            } else if (sc != null && sc.equals(SC_WAIT)) {
+                return true;
+            } else if (isPinPukCommand(sc)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static String
     scToBarringFacility(String sc) {
         if (sc == null) {
@@ -645,8 +701,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      * @return true if the Service Code is PIN/PIN2/PUK/PUK2-related
      */
     public boolean isPinPukCommand() {
-        return mSc != null && (mSc.equals(SC_PIN) || mSc.equals(SC_PIN2)
-                              || mSc.equals(SC_PUK) || mSc.equals(SC_PUK2));
+        return isPinPukCommand(mSc);
     }
 
     /**
@@ -1001,11 +1056,28 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (mPoundString != null) {
-                // USSD codes are not supported over IMS due to modem limitations; send over the CS
-                // pipe instead.  This should be fixed in the future.
-                Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
-                        + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe.");
-                throw new CallStateException(Phone.CS_FALLBACK);
+                if (mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.config_allow_ussd_over_ims)) {
+                    // We'll normally send USSD over the CS pipe, but if it happens that
+                    // the CS phone is out of service, we'll just try over IMS instead.
+                    if (mPhone.getDefaultPhone().getServiceStateTracker().mSS.getState()
+                            == STATE_IN_SERVICE) {
+                        Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
+                                + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe "
+                                + "(allowed over ims).");
+                        throw new CallStateException(Phone.CS_FALLBACK);
+                    } else {
+                        Rlog.i(LOG_TAG, "processCode: CS is out of service, sending ussd string '"
+                                + Rlog.pii(LOG_TAG, mPoundString) + "' over IMS pipe.");
+                        sendUssd(mPoundString);
+                    }
+                } else {
+                    // USSD codes are not supported over IMS due to modem limitations; send over
+                    // the CS pipe instead.  This should be fixed in the future.
+                    Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
+                            + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe.");
+                    throw new CallStateException(Phone.CS_FALLBACK);
+                }
             } else {
                 Rlog.d(LOG_TAG, "processCode: invalid or unsupported MMI");
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
