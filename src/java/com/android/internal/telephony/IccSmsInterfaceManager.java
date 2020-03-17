@@ -1503,6 +1503,8 @@ public class IccSmsInterfaceManager {
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("Enabled GSM channels: " + mCellBroadcastRangeManager);
+        pw.println("Enabled CDMA channels: " + mCdmaBroadcastRangeManager);
         pw.println("CellBroadcast log:");
         mCellBroadcastLocalLog.dump(fd, pw, args);
         pw.println("SMS dispatcher controller log:");
