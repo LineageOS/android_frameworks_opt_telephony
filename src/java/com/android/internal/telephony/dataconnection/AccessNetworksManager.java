@@ -161,7 +161,6 @@ public class AccessNetworksManager extends Handler {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             if (DBG) log("onServiceDisconnected " + name);
-            mIQualifiedNetworksService.asBinder().unlinkToDeath(mDeathRecipient, 0);
             mTargetBindingPackageName = null;
         }
     }
