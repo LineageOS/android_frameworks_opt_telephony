@@ -1054,6 +1054,78 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_OK, 0 /* detailedCode */);
     }
 
+    @Test
+    public void testAddExtrasToResultIntent_withSmdxOperationCode_normal_case() {
+        // Same setup as testGetDownloadableSubscriptionMetadata_error
+        setHasWriteEmbeddedPermission(true);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(0xA8b1051 /* result */,
+                        null /* subscription */);
+        callGetDownloadableSubscriptionMetadata(SUBSCRIPTION, true /* complete */, result);
+
+        assertEquals(mController.mExtrasIntent.getIntExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE, -1),
+                EuiccManager.OPERATION_SMDX_SUBJECT_REASON_CODE);
+        assertEquals(mController.mExtrasIntent.getStringExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_SUBJECT_CODE), "8.11.1");
+        assertEquals(mController.mExtrasIntent.getStringExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_REASON_CODE), "5.1");
+
+    }
+
+    @Test
+    public void testAddExtrasToResultIntent_withSmdxOperationCode_general_case() {
+        // Same setup as testGetDownloadableSubscriptionMetadata_error
+        setHasWriteEmbeddedPermission(true);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(0xA123456 /* result */,
+                        null /* subscription */);
+        callGetDownloadableSubscriptionMetadata(SUBSCRIPTION, true /* complete */, result);
+
+        assertEquals(mController.mExtrasIntent.getIntExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE, -1),
+                EuiccManager.OPERATION_SMDX_SUBJECT_REASON_CODE);
+        assertEquals(mController.mExtrasIntent.getStringExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_SUBJECT_CODE), "1.2.3");
+        assertEquals(mController.mExtrasIntent.getStringExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_REASON_CODE), "4.5.6");
+
+    }
+
+    @Test
+    public void testAddExtrasToResultIntent_withSmdxOperationCode_and_padding() {
+        // Same setup as testGetDownloadableSubscriptionMetadata_error
+        setHasWriteEmbeddedPermission(true);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(0xA003006 /* result */,
+                        null /* subscription */);
+        callGetDownloadableSubscriptionMetadata(SUBSCRIPTION, true /* complete */, result);
+
+        assertEquals(mController.mExtrasIntent.getIntExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE, -1),
+                EuiccManager.OPERATION_SMDX_SUBJECT_REASON_CODE);
+        assertEquals(mController.mExtrasIntent.getStringExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_SUBJECT_CODE), "3");
+        assertEquals(mController.mExtrasIntent.getStringExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_REASON_CODE), "6");
+    }
+
+    @Test
+    public void testAddExtrasToResultIntent_withOperationCode() {
+        // Same setup as testGetDownloadableSubscriptionMetadata_error
+        setHasWriteEmbeddedPermission(true);
+        GetDownloadableSubscriptionMetadataResult result =
+                new GetDownloadableSubscriptionMetadataResult(0x12345678 /* result */,
+                        null /* subscription */);
+        callGetDownloadableSubscriptionMetadata(SUBSCRIPTION, true /* complete */, result);
+
+        assertEquals(mController.mExtrasIntent.getIntExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE, -1),
+                0x12);
+        assertEquals(mController.mExtrasIntent.getIntExtra(
+                EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_ERROR_CODE, -1), 0x345678);
+    }
+
     private void setGetEidPermissions(
             boolean hasPhoneStatePrivileged, boolean hasCarrierPrivileges) throws Exception {
         doReturn(hasPhoneStatePrivileged
