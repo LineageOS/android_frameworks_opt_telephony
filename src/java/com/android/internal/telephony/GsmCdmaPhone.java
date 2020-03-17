@@ -2253,6 +2253,19 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
+        int serviceClass = CommandsInterface.SERVICE_CLASS_VOICE;
+        CarrierConfigManager configManager = (CarrierConfigManager)
+            getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfigForSubId(getSubId());
+        if (b != null) {
+            serviceClass = b.getInt(CarrierConfigManager.KEY_CALL_WAITING_SERVICE_CLASS_INT,
+                    CommandsInterface.SERVICE_CLASS_VOICE);
+        }
+        setCallWaiting(enable, serviceClass, onComplete);
+    }
+
+    @Override
+    public void setCallWaiting(boolean enable, int serviceClass, Message onComplete) {
         if (isPhoneTypeGsm() || isImsUtEnabledOverCdma()) {
             Phone imsPhone = mImsPhone;
             if ((imsPhone != null)
@@ -2260,14 +2273,6 @@ public class GsmCdmaPhone extends Phone {
                     || imsPhone.isUtEnabled())) {
                 imsPhone.setCallWaiting(enable, onComplete);
                 return;
-            }
-            int serviceClass = CommandsInterface.SERVICE_CLASS_VOICE;
-            CarrierConfigManager configManager = (CarrierConfigManager)
-                    getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle b = configManager.getConfigForSubId(getSubId());
-            if (b != null) {
-                serviceClass = b.getInt(CarrierConfigManager.KEY_CALL_WAITING_SERVICE_CLASS_INT,
-                        CommandsInterface.SERVICE_CLASS_VOICE);
             }
             mCi.setCallWaiting(enable, serviceClass, onComplete);
         } else {
