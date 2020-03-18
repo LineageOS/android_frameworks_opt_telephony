@@ -279,7 +279,9 @@ public class CarrierServiceBindHelper {
             try {
                 if (mContext.createContextAsUser(Process.myUserHandle(), 0)
                         .bindService(carrierService,
-                                Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE,
+                                Context.BIND_AUTO_CREATE
+                                | Context.BIND_FOREGROUND_SERVICE
+                                | Context.BIND_INCLUDE_CAPABILITIES,
                                 (r) -> mHandler.post(r),
                                 connection)) {
                     log("service bound");
