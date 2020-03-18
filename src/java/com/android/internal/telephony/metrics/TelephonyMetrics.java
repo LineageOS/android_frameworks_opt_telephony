@@ -2130,8 +2130,8 @@ public class TelephonyMetrics {
             cq.maxRelativeJitterMillis = callQuality.getMaxRelativeJitter();
             cq.codecType = convertImsCodec(callQuality.getCodecType());
             cq.rtpInactivityDetected = callQuality.isRtpInactivityDetected();
-            cq.rxSilenceDetected = callQuality.isIncomingSilenceDetected();
-            cq.txSilenceDetected = callQuality.isOutgoingSilenceDetected();
+            cq.rxSilenceDetected = callQuality.isIncomingSilenceDetectedAtCallSetup();
+            cq.txSilenceDetected = callQuality.isOutgoingSilenceDetectedAtCallSetup();
         }
         return cq;
     }
