@@ -107,7 +107,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mCallingFeature = mContext.getAttributionTag();
 
         doReturn(1).when(mProxyController).getMaxRafSupported();
-        mContextFixture.putIntArrayResource(android.R.array.simColors, new int[]{5});
+        mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[]{5});
     }
 
     @After
