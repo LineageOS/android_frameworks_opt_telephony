@@ -24,6 +24,7 @@ import android.os.ServiceManager;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
+import android.telephony.BarringInfo;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
@@ -270,6 +271,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             @NonNull String chosenPlmn, int domain, int causeCode, int additionalCauseCode) {
         mTelephonyRegistryMgr.notifyRegistrationFailed(sender.getPhoneId(), sender.getSubId(),
                 cellIdentity, chosenPlmn, domain, causeCode, additionalCauseCode);
+    }
+
+    @Override
+    public void notifyBarringInfoChanged(Phone sender, BarringInfo barringInfo) {
+        mTelephonyRegistryMgr.notifyBarringInfoChanged(sender.getPhoneId(), sender.getSubId(),
+                barringInfo);
     }
 
     /**

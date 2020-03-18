@@ -2496,4 +2496,29 @@ public interface CommandsInterface {
     default List<ClientRequestStats> getClientRequestStats() {
         return null;
     }
+
+    /**
+     * Registers the handler for RIL_UNSOL_BARRING_INFO_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForBarringInfoChanged(Handler h, int what, Object obj) {};
+
+    /**
+     * Unregisters the handler for RIL_UNSOL_BARRING_INFO_CHANGED events.
+     *
+     * @param h Handler for notification message.
+     */
+    default void unregisterForBarringInfoChanged(Handler h) {};
+
+    /**
+     * Get all the barring info for the current camped cell applicable to the current user.
+     *
+     * AsyncResult.result is the object of {@link android.telephony.BarringInfo}.
+     *
+     * @param result Message will be sent back to handler and result.obj will be the AsycResult.
+     */
+    default void getBarringInfo(Message result) {};
 }

@@ -88,6 +88,7 @@ import android.hardware.radio.V1_4.IRadioIndication;
 import android.os.AsyncResult;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.RadioPowerState;
+import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -997,6 +998,25 @@ public class RadioIndication extends IRadioIndication.Stub {
                         new RegistrationFailedEvent(ci, chosenPlmn, domain,
                                 causeCode, additionalCauseCode),
                         null));
+    }
+
+    /**
+     * Indicate that BarringInfo has changed for the current cell and user.
+     *
+     * @param cellIdentity a CellIdentity the CellIdentity of the Cell
+     * @param barringInfos the updated barring information from the current cell, filtered for the
+     *        current PLMN and access class / access category.
+     */
+    public void barringInfoChanged(int indicationType,
+            android.hardware.radio.V1_5.CellIdentity cellIdentity,
+            List<android.hardware.radio.V1_5.BarringInfo> barringInfos) {
+        mRil.processIndication(indicationType);
+
+        CellIdentity ci = CellIdentity.create(cellIdentity);
+        BarringInfo cbi = BarringInfo.create(cellIdentity, barringInfos);
+
+        mRil.mBarringInfoChangedRegistrants.notifyRegistrants(
+                new AsyncResult(null, cbi, null));
     }
 
     /**

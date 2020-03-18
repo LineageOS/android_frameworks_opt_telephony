@@ -34,6 +34,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PUK2;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_ACTIVITY_INFO;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_BARRING_INFO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_CELL_INFO_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_CURRENT_CALLS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HARDWARE_CONFIG;
@@ -1076,6 +1077,23 @@ public class RILTest extends TelephonyTest {
 
         // The wake lock should be released after processed the time out event.
         assertFalse(mRILInstance.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+    }
+
+    @Test
+    public void testGetBarringInfo() throws Exception {
+        // Not supported on Radio 1.0.
+        mRILUnderTest.getBarringInfo(obtainMessage());
+        verify(mRadioProxy, never()).getBarringInfo(anyInt());
+
+        // Make radio version 1.5 to support the operation.
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+        mRILUnderTest.getBarringInfo(obtainMessage());
+        verify(mRadioProxy).getBarringInfo(mSerialNumberCaptor.capture());
+        verifyRILResponse(
+                mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_BARRING_INFO);
     }
 
     @Test
