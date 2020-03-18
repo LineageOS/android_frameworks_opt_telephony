@@ -446,6 +446,16 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param setupDataCallResult Response to data call setup as defined by setupDataCallResult in
+     *                            1.5/types.hal
+     */
+    public void setupDataCallResponse_1_5(RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_5.SetupDataCallResult setupDataCallResult) {
+        responseSetupDataCall(responseInfo, setupDataCallResult);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param iccIo ICC io operation response as defined by IccIoResult in types.hal
      */
     public void iccIOForAppResponse(RadioResponseInfo responseInfo,
@@ -596,6 +606,13 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setNetworkSelectionModeManualResponse_1_5(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param networkInfos List of network operator information as OperatorInfos defined in
@@ -622,6 +639,15 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startNetworkScanResponse_1_4(RadioResponseInfo responseInfo) {
+        responseScanStatus(responseInfo);
+    }
+
+    /**
+     * The same method as startNetworkScanResponse_1_5.
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void startNetworkScanResponse_1_5(RadioResponseInfo responseInfo) {
         responseScanStatus(responseInfo);
     }
 
@@ -705,6 +731,16 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getDataCallListResponse_1_4(RadioResponseInfo responseInfo,
             ArrayList<android.hardware.radio.V1_4.SetupDataCallResult> dataCallResultList) {
+        responseDataCallList(responseInfo, dataCallResultList);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dataCallResultList Response to get data call list as defined by setupDataCallResult in
+     *                           1.5/types.hal
+     */
+    public void getDataCallListResponse_1_5(RadioResponseInfo responseInfo,
+            ArrayList<android.hardware.radio.V1_5.SetupDataCallResult> dataCallResultList) {
         responseDataCallList(responseInfo, dataCallResultList);
     }
 
@@ -1147,6 +1183,13 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setInitialAttachApnResponse_1_5(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param isRegistered false = not registered, true = registered
@@ -1278,6 +1321,13 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setDataProfileResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setDataProfileResponse_1_5(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
 
@@ -1469,6 +1519,13 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setLinkCapacityReportingCriteriaResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setLinkCapacityReportingCriteriaResponse_1_5(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
 
