@@ -335,25 +335,20 @@ public class RadioIndication extends IRadioIndication.Stub {
     /** Indicates current data call list. */
     public void dataCallListChanged(int indicationType,
             ArrayList<android.hardware.radio.V1_0.SetupDataCallResult> dcList) {
-        mRil.processIndication(indicationType);
-
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
-
-        ArrayList<DataCallResponse> response = RIL.convertDataCallResultList(dcList);
-        mRil.mDataCallListChangedRegistrants.notifyRegistrants(
-                new AsyncResult(null, response, null));
+        responseDataCallListChanged(indicationType, dcList);
     }
 
     /** Indicates current data call list with radio HAL 1.4. */
     public void dataCallListChanged_1_4(int indicationType,
             ArrayList<android.hardware.radio.V1_4.SetupDataCallResult> dcList) {
-        mRil.processIndication(indicationType);
+        responseDataCallListChanged(indicationType, dcList);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
+    }
 
-        ArrayList<DataCallResponse> response = RIL.convertDataCallResultList(dcList);
-        mRil.mDataCallListChangedRegistrants.notifyRegistrants(
-                new AsyncResult(null, response, null));
+    /** Indicates current data call list with radio HAL 1.5. */
+    public void dataCallListChanged_1_5(int indicationType,
+            ArrayList<android.hardware.radio.V1_5.SetupDataCallResult> dcList) {
+        responseDataCallListChanged(indicationType, dcList);
     }
 
     public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {
@@ -1143,5 +1138,15 @@ public class RadioIndication extends IRadioIndication.Stub {
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
+    }
+
+    private void responseDataCallListChanged(int indicationType, List<?> dcList) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
+
+        ArrayList<DataCallResponse> response = RIL.convertDataCallResultList(dcList);
+        mRil.mDataCallListChangedRegistrants.notifyRegistrants(
+                new AsyncResult(null, response, null));
     }
 }
