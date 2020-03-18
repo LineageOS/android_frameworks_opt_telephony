@@ -26,6 +26,7 @@ import android.os.Binder;
 import android.service.carrier.CarrierMessagingService;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.telephony.Rlog;
 
 /**
@@ -138,21 +139,11 @@ public class SmsPermissions {
      */
     public boolean checkCallingOrSelfCanGetSmscAddress(String callingPackage, String message) {
         // Allow it to the default SMS app always.
-        if (!isDefaultSmsPackage(callingPackage)) {
-            try {
-                // Allow it with READ_PRIVILEGED_PHONE_STATE or Carrier Privileges
-                TelephonyPermissions
+        if (!isCallerDefaultSmsPackage(callingPackage)) {
+            TelephonyPermissions
                         .enforeceCallingOrSelfReadPrivilegedPhoneStatePermissionOrCarrierPrivilege(
                                 mContext, mPhone.getSubId(), message);
-            } catch (SecurityException e) { // To avoid crashing applications
-                loge(message + ": Neither " + callingPackage + " is the default SMS app"
-                        + " nor the caller has "
-                        + android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE
-                        + ", or carrier privileges", e);
-                return false;
-            }
         }
-
         return true;
     }
 
@@ -167,25 +158,44 @@ public class SmsPermissions {
      */
     public boolean checkCallingOrSelfCanSetSmscAddress(String callingPackage, String message) {
         // Allow it to the default SMS app always.
-        if (!isDefaultSmsPackage(callingPackage)) {
-            try {
-                // Allow it with MODIFY_PHONE_STATE or Carrier Privileges
-                TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
-                        mContext, mPhone.getSubId(), message);
-            } catch (SecurityException e) { // To avoid crashing applications
-                loge(message + ": Neither " + callingPackage + " is the default SMS app"
-                        + " nor the caller has " + android.Manifest.permission.MODIFY_PHONE_STATE
-                        + ", or carrier privileges", e);
-                return false;
-            }
+        if (!isCallerDefaultSmsPackage(callingPackage)) {
+            // Allow it with MODIFY_PHONE_STATE or Carrier Privileges
+            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                    mContext, mPhone.getSubId(), message);
         }
-
         return true;
     }
 
     /** Check if a package is default SMS app. */
-    public boolean isDefaultSmsPackage(String packageName) {
-        return SmsApplication.isDefaultSmsApplication(mContext, packageName);
+    @VisibleForTesting
+    public boolean isCallerDefaultSmsPackage(String packageName) {
+        if (packageNameMatchesCallingUid(packageName)) {
+            return SmsApplication.isDefaultSmsApplication(mContext, packageName);
+        }
+        return false;
+    }
+
+    /**
+     * Check if the passed in packageName belongs to the calling uid.
+     * @param packageName name of the package to check
+     * @return true if package belongs to calling uid, false otherwise
+     */
+    @VisibleForTesting
+    public boolean packageNameMatchesCallingUid(String packageName) {
+        try {
+            if (Binder.getCallingUid()
+                    != mContext.getPackageManager().getPackageUid(packageName, 0)) {
+                Log.e(LOG_TAG, "packageNameMatchesCallingUid: " + packageName + " uid "
+                        + mContext.getPackageManager().getPackageUid(packageName, 0)
+                        + " does not match calling uid " + Binder.getCallingUid());
+                return false;
+            }
+        } catch (PackageManager.NameNotFoundException ex) {
+            Log.e(LOG_TAG, "packageNameMatchesCallingUid: packageName " + packageName
+                    + " not found");
+            return false;
+        }
+        return true;
     }
 
     @UnsupportedAppUsage

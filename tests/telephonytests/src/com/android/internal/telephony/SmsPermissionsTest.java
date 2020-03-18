@@ -21,13 +21,19 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 
 import android.Manifest;
 import android.app.AppOpsManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 
 import org.junit.After;
 import org.junit.Before;
@@ -76,7 +82,7 @@ public class SmsPermissionsTest extends TelephonyTest {
                 }
 
                 @Override
-                public boolean isDefaultSmsPackage(String packageName) {
+                public boolean isCallerDefaultSmsPackage(String packageName) {
                     return mCallerIsDefaultSmsPackage;
                 }
             };
@@ -205,7 +211,12 @@ public class SmsPermissionsTest extends TelephonyTest {
         Mockito.when(mMockContext.checkCallingOrSelfPermission(
                     Manifest.permission.READ_PRIVILEGED_PHONE_STATE))
                 .thenReturn(PERMISSION_DENIED);
-        assertFalse(mSmsPermissionsTest.checkCallingOrSelfCanGetSmscAddress(PACKAGE, MESSAGE));
+        try {
+            mSmsPermissionsTest.checkCallingOrSelfCanGetSmscAddress(PACKAGE, MESSAGE);
+            fail();
+        } catch (SecurityException e) {
+            // expected
+        }
     }
     @Test
     public void testCheckCallingOrSelfCanSetSmscAddressPermissions_defaultSmsApp() {
@@ -231,6 +242,39 @@ public class SmsPermissionsTest extends TelephonyTest {
                 mTelephonyManager);
         Mockito.when(mMockContext.checkCallingOrSelfPermission(
                 Manifest.permission.MODIFY_PHONE_STATE)).thenReturn(PERMISSION_DENIED);
-        assertFalse(mSmsPermissionsTest.checkCallingOrSelfCanSetSmscAddress(PACKAGE, MESSAGE));
+        try {
+            assertFalse(mSmsPermissionsTest.checkCallingOrSelfCanSetSmscAddress(PACKAGE, MESSAGE));
+            fail();
+        } catch (SecurityException e) {
+            // expected
+        }
+    }
+
+    @Test
+    public void testPackageNameMatchesCallingUid() {
+        PackageManager mockPackageManager = mock(PackageManager.class);
+        doReturn(mockPackageManager).when(mMockContext).getPackageManager();
+
+        // test matching case
+        try {
+            doReturn(Binder.getCallingUid()).when(mockPackageManager)
+                    .getPackageUid(eq(PACKAGE), anyInt());
+        } catch (Exception e) {
+            Log.e(TAG, "testPackageNameMatchesCallingUid: unable to setup mocks");
+            fail();
+        }
+        assertTrue(new SmsPermissions(mMockPhone, mMockContext, mMockAppOps)
+                .packageNameMatchesCallingUid(PACKAGE));
+
+        // test mis-match case
+        try {
+            doReturn(Binder.getCallingUid() + 1).when(mockPackageManager)
+                    .getPackageUid(eq(PACKAGE), anyInt());
+        } catch (Exception e) {
+            Log.e(TAG, "testPackageNameMatchesCallingUid: unable to setup mocks");
+            fail();
+        }
+        assertFalse(new SmsPermissions(mMockPhone, mMockContext, mMockAppOps)
+                .packageNameMatchesCallingUid(PACKAGE));
     }
 }
