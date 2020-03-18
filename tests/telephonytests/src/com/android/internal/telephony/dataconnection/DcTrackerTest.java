@@ -1818,7 +1818,6 @@ public class DcTrackerTest extends TelephonyTest {
             plans.add(SubscriptionPlan.Builder
                     .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
                             Period.ofMonths(1))
-                    .setTitle("Some NR 5G unmetered workaround plan")
                     .setDataLimit(SubscriptionPlan.BYTES_UNLIMITED,
                             SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED)
                     .setNetworkTypes(new int[] {TelephonyManager.NETWORK_TYPE_NR})
@@ -1827,7 +1826,6 @@ public class DcTrackerTest extends TelephonyTest {
         plans.add(SubscriptionPlan.Builder
                 .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
                         Period.ofMonths(1))
-                .setTitle("Some 5GB Plan")
                 .setDataLimit(1_000_000_000, SubscriptionPlan.LIMIT_BEHAVIOR_DISABLED)
                 .setDataUsage(500_000_000, System.currentTimeMillis())
                 .build());
