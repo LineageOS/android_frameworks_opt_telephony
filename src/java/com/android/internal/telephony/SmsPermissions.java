@@ -122,7 +122,8 @@ public class SmsPermissions {
      *                           permission revoked at runtime.
      * @return whether the caller has the OP_SEND_SMS AppOps bit.
      */
-    public boolean checkCallingOrSelfCanSendSms(String callingPackage, String message) {
+    public boolean checkCallingOrSelfCanSendSms(String callingPackage, String callingAttributionTag,
+            String message) {
         mContext.enforceCallingOrSelfPermission(Manifest.permission.SEND_SMS, message);
         return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage)
                 == AppOpsManager.MODE_ALLOWED;
