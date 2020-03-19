@@ -416,10 +416,11 @@ public class IccSmsInterfaceManager {
      * A permissions check before passing to {@link IccSmsInterfaceManager#sendDataInternal}.
      * This method checks if the calling package or itself has the permission to send the data sms.
      */
-    public void sendDataWithSelfPermissions(String callingPackage, String destAddr, String scAddr,
-            int destPort, byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean isForVvm) {
-        if (!mSmsPermissions.checkCallingOrSelfCanSendSms(callingPackage, "Sending SMS message")) {
+    public void sendDataWithSelfPermissions(String callingPackage, String callingAttributionTag,
+            String destAddr, String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, boolean isForVvm) {
+        if (!mSmsPermissions.checkCallingOrSelfCanSendSms(callingPackage, callingAttributionTag,
+                "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
@@ -500,10 +501,11 @@ public class IccSmsInterfaceManager {
      * A permissions check before passing to {@link IccSmsInterfaceManager#sendTextInternal}.
      * This method checks if the calling package or itself has the permission to send the sms.
      */
-    public void sendTextWithSelfPermissions(String callingPackage, String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessage, boolean isForVvm) {
-        if (!mSmsPermissions.checkCallingOrSelfCanSendSms(callingPackage, "Sending SMS message")) {
+    public void sendTextWithSelfPermissions(String callingPackage, String callingAttributeTag,
+            String destAddr, String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, boolean persistMessage, boolean isForVvm) {
+        if (!mSmsPermissions.checkCallingOrSelfCanSendSms(callingPackage, callingAttributeTag,
+                "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
@@ -624,11 +626,12 @@ public class IccSmsInterfaceManager {
      *  Any Other values including negative considered as Invalid Validity Period of the message.
      */
 
-    public void sendTextWithOptions(String callingPackage, String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp, int priority, boolean expectMore,
-            int validityPeriod) {
-        if (!mSmsPermissions.checkCallingOrSelfCanSendSms(callingPackage, "Sending SMS message")) {
+    public void sendTextWithOptions(String callingPackage, String callingAttributionTag,
+            String destAddr, String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, boolean persistMessageForNonDefaultSmsApp, int priority,
+            boolean expectMore, int validityPeriod) {
+        if (!mSmsPermissions.checkCallingOrSelfCanSendSms(callingPackage, callingAttributionTag,
+                "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
