@@ -1304,7 +1304,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(mSubscriptionControllerUT.getNameSourcePriority(
                 SubscriptionManager.NAME_SOURCE_SIM_PNN)
                 > mSubscriptionControllerUT.getNameSourcePriority(
-                SubscriptionManager.NAME_SOURCE_DEFAULT));
+                SubscriptionManager.NAME_SOURCE_CARRIER_ID));
     }
 
 
