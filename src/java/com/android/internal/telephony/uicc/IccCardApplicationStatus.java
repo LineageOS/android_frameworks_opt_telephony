@@ -116,7 +116,16 @@ public class IccCardApplicationStatus {
         PERSOSUBSTATE_RUIM_HRPD_PUK,
         PERSOSUBSTATE_RUIM_CORPORATE_PUK,
         PERSOSUBSTATE_RUIM_SERVICE_PROVIDER_PUK,
-        PERSOSUBSTATE_RUIM_RUIM_PUK;
+        PERSOSUBSTATE_RUIM_RUIM_PUK,
+        PERSOSUBSTATE_SIM_SPN,
+        PERSOSUBSTATE_SIM_SPN_PUK,
+        PERSOSUBSTATE_SIM_SP_EHPLMN,
+        PERSOSUBSTATE_SIM_ICCID,
+        PERSOSUBSTATE_SIM_ICCID_PUK,
+        PERSOSUBSTATE_SIM_IMPI,
+        PERSOSUBSTATE_SIM_IMPI_PUK,
+        PERSOSUBSTATE_SIM_NS_SP,
+        PERSOSUBSTATE_SIM_NS_SP_PUK;
 
         boolean isPersoSubStateUnknown() {
             return this == PERSOSUBSTATE_UNKNOWN;
@@ -205,6 +214,15 @@ public class IccCardApplicationStatus {
             case 22: newSubState = PersoSubState.PERSOSUBSTATE_RUIM_CORPORATE_PUK; break;
             case 23: newSubState = PersoSubState.PERSOSUBSTATE_RUIM_SERVICE_PROVIDER_PUK; break;
             case 24: newSubState = PersoSubState.PERSOSUBSTATE_RUIM_RUIM_PUK; break;
+            case 25: newSubState = PersoSubState.PERSOSUBSTATE_SIM_SPN; break;
+            case 26: newSubState = PersoSubState.PERSOSUBSTATE_SIM_SPN_PUK; break;
+            case 27: newSubState = PersoSubState.PERSOSUBSTATE_SIM_SP_EHPLMN; break;
+            case 28: newSubState = PersoSubState.PERSOSUBSTATE_SIM_ICCID; break;
+            case 29: newSubState = PersoSubState.PERSOSUBSTATE_SIM_ICCID_PUK; break;
+            case 30: newSubState = PersoSubState.PERSOSUBSTATE_SIM_IMPI; break;
+            case 31: newSubState = PersoSubState.PERSOSUBSTATE_SIM_IMPI_PUK; break;
+            case 32: newSubState = PersoSubState.PERSOSUBSTATE_SIM_NS_SP; break;
+            case 33: newSubState = PersoSubState.PERSOSUBSTATE_SIM_NS_SP_PUK; break;
             default:
                 newSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
                 loge("PersoSubstateFromRILInt: bad substate: " + substate
