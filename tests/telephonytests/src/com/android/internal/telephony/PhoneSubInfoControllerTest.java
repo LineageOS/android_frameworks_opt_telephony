@@ -60,7 +60,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(true).when(mSubscriptionController).isActiveSubId(0, TAG, FEATURE_ID);
         doReturn(true).when(mSubscriptionController).isActiveSubId(1, TAG, FEATURE_ID);
         doReturn(new int[]{0, 1}).when(mSubscriptionManager)
-                .getActiveAndHiddenSubscriptionIdList();
+                .getCompleteActiveSubscriptionIdList();
 
         mServiceManagerMockedServices.put("isub", mSubscriptionController);
         doReturn(mSubscriptionController).when(mSubscriptionController)
