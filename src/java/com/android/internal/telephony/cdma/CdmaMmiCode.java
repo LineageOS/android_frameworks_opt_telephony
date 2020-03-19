@@ -16,6 +16,13 @@
 
 package com.android.internal.telephony.cdma;
 
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_REGISTRATION;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_NOT_REACHABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_NO_REPLY;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
@@ -379,5 +386,55 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
     @Override
     public ResultReceiver getUssdCallbackReceiver() {
         return null;
+    }
+
+    public static String getCallForwardingPrefixAndNumber(int action, int reason, String number) {
+        String prefixWithNum = "";
+        switch(reason) {
+            case CF_REASON_UNCONDITIONAL: {
+                if (action == CF_ACTION_REGISTRATION) {
+                    prefixWithNum = "*72" + number;
+                } else if (action == CF_ACTION_DISABLE) {
+                    prefixWithNum = "*720";
+                }
+                break;
+            }
+            case CF_REASON_BUSY: {
+                if (action == CF_ACTION_REGISTRATION) {
+                    prefixWithNum = "*90" + number;
+                } else if (action == CF_ACTION_DISABLE) {
+                    prefixWithNum = "*900";
+                }
+                break;
+            }
+            case CF_REASON_NO_REPLY: {
+                if (action == CF_ACTION_REGISTRATION) {
+                    prefixWithNum = "*92" + number;
+                } else if (action == CF_ACTION_DISABLE) {
+                    prefixWithNum = "*920";
+                }
+                break;
+            }
+            case CF_REASON_NOT_REACHABLE: {
+                if (action == CF_ACTION_REGISTRATION) {
+                    prefixWithNum = "*68" + number;
+                } else if (action == CF_ACTION_DISABLE) {
+                    prefixWithNum = "*680";
+                }
+                break;
+            }
+            default:
+                Rlog.d(LOG_TAG, "getCallForwardingPrefix not match any prefix");
+                break;
+        }
+        return prefixWithNum;
+    }
+
+    public static String getCallWaitingPrefix(boolean enable) {
+        if (enable) {
+            return "*74";
+        } else {
+            return "*740";
+        }
     }
 }
