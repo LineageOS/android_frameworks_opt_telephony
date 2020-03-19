@@ -25,11 +25,11 @@ import android.telephony.BarringInfo;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
-import android.telephony.DisplayInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
@@ -202,9 +202,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDisplayInfoChanged(Phone sender, DisplayInfo displayInfo) {
+    public void notifyDisplayInfoChanged(Phone sender, TelephonyDisplayInfo telephonyDisplayInfo) {
         mTelephonyRegistryMgr.notifyDisplayInfoChanged(sender.getPhoneId(), sender.getSubId(),
-                displayInfo);
+                telephonyDisplayInfo);
     }
 
     @Override
