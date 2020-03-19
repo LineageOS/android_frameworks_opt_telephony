@@ -25,9 +25,9 @@ import android.telephony.BarringInfo;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
-import android.telephony.DisplayInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseDataConnectionState;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -88,7 +88,7 @@ public interface PhoneNotifier {
     void notifyUserMobileDataStateChanged(Phone sender, boolean state);
 
     /** Send a notification that the display info has changed */
-    void notifyDisplayInfoChanged(Phone sender, DisplayInfo displayInfo);
+    void notifyDisplayInfoChanged(Phone sender, TelephonyDisplayInfo telephonyDisplayInfo);
 
     /** Send a notification that the phone capability has changed */
     void notifyPhoneCapabilityChanged(PhoneCapability capability);
