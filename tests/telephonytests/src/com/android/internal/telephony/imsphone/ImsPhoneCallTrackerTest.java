@@ -609,7 +609,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 stringCaptor.capture(), anyInt());
 
         try {
-            mCTUT.dial(dialString, VideoProfile.STATE_AUDIO_ONLY, null);
+            mCTUT.dial(dialString, new ImsPhone.ImsDialArgs.Builder().setIsEmergency(true).build());
 
             ArgumentCaptor<ImsCallProfile> profileCaptor = ArgumentCaptor.forClass(
                     ImsCallProfile.class);
