@@ -582,43 +582,4 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         assertEquals(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA,
                 intent.getIntExtra(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE, -1));
     }
-
-    @Test
-    @SmallTest
-    // b/146446143
-    public void testGroupChangeOnInactiveSub_shouldNotMarkAsDefaultDataSub() throws Exception {
-        // Make sub1 and sub3 as active sub.
-        doReturn(false).when(mSubControllerMock).isActiveSubId(2);
-        doReturn(true).when(mSubControllerMock).isActiveSubId(3);
-        doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(2);
-        doReturn(1).when(mSubControllerMock).getPhoneId(3);
-        doReturn(3).when(mPhoneMock2).getSubId();
-        List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1, mSubInfo3);
-        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
-                nullable(String.class));
-        doReturn(new int[]{1, 3}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
-        doReturn(Arrays.asList(mSubInfo2, mSubInfo3, mSubInfo4)).when(mSubControllerMock)
-                .getSubscriptionsInGroup(any(), anyString(), nullable(String.class));
-
-        // Sub 3 and sub 2's mobile data are enabled, and sub 3 is the default data sub.
-        doReturn(3).when(mSubControllerMock).getDefaultDataSubId();
-        GlobalSettingsHelper.setBoolean(mContext, Settings.Global.MOBILE_DATA, 1, false);
-        GlobalSettingsHelper.setBoolean(mContext, Settings.Global.MOBILE_DATA, 2, true);
-        GlobalSettingsHelper.setBoolean(mContext, Settings.Global.MOBILE_DATA, 3, true);
-        doReturn(false).when(mPhoneMock1).isUserDataEnabled();
-        doReturn(true).when(mPhoneMock2).isUserDataEnabled();
-        // Sub 2 should have mobile data off, but it shouldn't happen until carrier configs are
-        // loaded on both subscriptions.
-        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
-        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0, 1);
-        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 3);
-        processAllMessages();
-
-        // Mark sub3 as oppt and notify grouping
-        doReturn(true).when(mSubControllerMock).isOpportunistic(3);
-        mMultiSimSettingControllerUT.notifySubscriptionGroupChanged(mGroupUuid1);
-        processAllMessages();
-        // Shouldn't mark sub 2 as default data, as sub 2 is in active.
-        verify(mSubControllerMock, never()).setDefaultDataSubId(2);
-    }
 }
