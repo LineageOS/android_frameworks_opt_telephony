@@ -304,7 +304,7 @@ public class ServiceStateTest extends TestCase {
         NetworkRegistrationInfo wwanVoiceRegState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 0, 0, 0, false,
-                null, null, true, 0, 0, 0);
+                null, null, "", true, 0, 0, 0);
 
         LteVopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
@@ -335,7 +335,7 @@ public class ServiceStateTest extends TestCase {
 
         wwanDataRegState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                0, 0, 0, true, null, null, 0, false, false, false, lteVopsSupportInfo, false);
+                0, 0, 0, true, null, null, "", 0, false, false, false, lteVopsSupportInfo, false);
         ss.addNetworkRegistrationInfo(wwanDataRegState);
         assertEquals(ss.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN), wwanDataRegState);

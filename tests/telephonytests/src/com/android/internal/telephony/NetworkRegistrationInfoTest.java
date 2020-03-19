@@ -43,6 +43,7 @@ public class NetworkRegistrationInfoTest {
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
                 .setAvailableServices(Arrays.asList(NetworkRegistrationInfo.SERVICE_TYPE_DATA))
                 .setCellIdentity(new CellIdentityLte())
+                .setRegisteredPlmn("12345")
                 .build();
 
         Parcel p = Parcel.obtain();
@@ -51,5 +52,20 @@ public class NetworkRegistrationInfoTest {
 
         NetworkRegistrationInfo newNrs = NetworkRegistrationInfo.CREATOR.createFromParcel(p);
         assertEquals(nri, newNrs);
+    }
+
+
+    @Test
+    @SmallTest
+    public void testDefaultValues() {
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder().build();
+        assertEquals("", nri.getRegisteredPlmn());
+    }
+
+    @Test
+    @SmallTest
+    public void testBuilder() {
+        assertEquals("12345", new NetworkRegistrationInfo.Builder()
+                .setRegisteredPlmn("12345").build().getRegisteredPlmn());
     }
 }
