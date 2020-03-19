@@ -70,14 +70,14 @@ public class NotificationChannelController {
         alertChannel.setSound(Settings.System.DEFAULT_NOTIFICATION_URI,
                 new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
         // allow users to block notifications from system
-        alertChannel.setBlockableSystem(true);
+        alertChannel.setBlockable(true);
 
         final NotificationChannel mobileDataStatusChannel = new NotificationChannel(
                 CHANNEL_ID_MOBILE_DATA_STATUS,
                 context.getText(R.string.notification_channel_mobile_data_status),
                 NotificationManager.IMPORTANCE_LOW);
         // allow users to block notifications from system
-        mobileDataStatusChannel.setBlockableSystem(true);
+        mobileDataStatusChannel.setBlockable(true);
 
         final NotificationChannel simChannel = new NotificationChannel(
                 CHANNEL_ID_SIM,
