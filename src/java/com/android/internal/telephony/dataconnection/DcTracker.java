@@ -72,7 +72,6 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DataFailCause;
-import android.telephony.DisplayInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.PreciseDataConnectionState;
@@ -81,6 +80,7 @@ import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.SubscriptionPlan;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
@@ -335,8 +335,8 @@ public class DcTracker extends Handler {
     /* Used to check whether phone was recently connected to 5G. */
     private boolean m5GWasConnected = false;
 
-    /* Used to determine DisplayInfo to send to SysUI. */
-    private DisplayInfo mDisplayInfo = null;
+    /* Used to determine TelephonyDisplayInfo to send to SysUI. */
+    private TelephonyDisplayInfo mTelephonyDisplayInfo = null;
     private final Map<String, Integer> m5GIconMapping = new HashMap<>();
     private String mDataIconPattern = "";
 
@@ -3850,7 +3850,7 @@ public class DcTracker extends Handler {
                 if (!reevaluateUnmeteredConnections()) {
                     // always update on ServiceState changed so MobileSignalController gets
                     // accurate display info
-                    mPhone.notifyDisplayInfoChanged(mDisplayInfo);
+                    mPhone.notifyDisplayInfoChanged(mTelephonyDisplayInfo);
                 }
                 break;
             case DctConstants.EVENT_5G_TIMER_HYSTERESIS:
@@ -3993,11 +3993,11 @@ public class DcTracker extends Handler {
                     if (DBG) log("Invalid 5G icon configuration, config = " + pair);
                     continue;
                 }
-                int value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+                int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
                 if (kv[1].equals("5g")) {
-                    value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
+                    value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
                 } else if (kv[1].equals("5g_plus")) {
-                    value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
+                    value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
                 }
                 m5GIconMapping.put(kv[0], value);
             }
@@ -4192,13 +4192,13 @@ public class DcTracker extends Handler {
     }
 
     private boolean updateDisplayInfo() {
-        int displayNetworkType = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+        int displayNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         int dataNetworkType = mPhone.getServiceState().getDataNetworkType();
         if (mPhone.getServiceState().getNrState() != NetworkRegistrationInfo.NR_STATE_NONE
                 || dataNetworkType == TelephonyManager.NETWORK_TYPE_NR || mHysteresis) {
             // process NR display network type
             displayNetworkType = getNrDisplayType();
-            if (displayNetworkType == DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
+            if (displayNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
                 // use LTE values if 5G values aren't defined
                 displayNetworkType = getLteDisplayType();
             }
@@ -4207,10 +4207,11 @@ public class DcTracker extends Handler {
             // process LTE display network type
             displayNetworkType = getLteDisplayType();
         }
-        DisplayInfo displayInfo = new DisplayInfo(dataNetworkType, displayNetworkType);
-        if (!displayInfo.equals(mDisplayInfo)) {
-            mDisplayInfo = displayInfo;
-            mPhone.notifyDisplayInfoChanged(displayInfo);
+        TelephonyDisplayInfo telephonyDisplayInfo =
+                new TelephonyDisplayInfo(dataNetworkType, displayNetworkType);
+        if (!telephonyDisplayInfo.equals(mTelephonyDisplayInfo)) {
+            mTelephonyDisplayInfo = telephonyDisplayInfo;
+            mPhone.notifyDisplayInfoChanged(telephonyDisplayInfo);
             return true;
         }
         return false;
@@ -4241,21 +4242,21 @@ public class DcTracker extends Handler {
 
         for (String key : keys) {
             if (m5GIconMapping.containsKey(key)
-                    && m5GIconMapping.get(key) != DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
+                    && m5GIconMapping.get(key) != TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
                 return m5GIconMapping.get(key);
             }
         }
-        return DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+        return TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
     }
 
     private int getLteDisplayType() {
-        int value = DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+        int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         if (mPhone.getServiceState().getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
                 || mPhone.getServiceState().isUsingCarrierAggregation()) {
-            value = DisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA;
+            value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA;
         }
         if (isLteEnhancedAvailable()) {
-            value = DisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO;
+            value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO;
         }
         return value;
     }
