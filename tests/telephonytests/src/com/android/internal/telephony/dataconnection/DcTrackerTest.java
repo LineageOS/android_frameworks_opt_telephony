@@ -65,13 +65,13 @@ import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
-import android.telephony.DisplayInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionPlan;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
@@ -2084,7 +2084,8 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Test
     public void testGetNrDisplayType() {
-        ArgumentCaptor<DisplayInfo> captor = ArgumentCaptor.forClass(DisplayInfo.class);
+        ArgumentCaptor<TelephonyDisplayInfo> captor =
+                ArgumentCaptor.forClass(TelephonyDisplayInfo.class);
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
 
         // set up 5G icon configuration
@@ -2102,7 +2103,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(1)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 captor.getValue().getOverrideNetworkType());
 
         // NR NSA, restricted
@@ -2111,7 +2112,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(2)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 captor.getValue().getOverrideNetworkType());
 
         // NR NSA, not restricted
@@ -2120,7 +2121,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(3)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
                 captor.getValue().getOverrideNetworkType());
 
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
@@ -2131,7 +2132,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(4)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
                 captor.getValue().getOverrideNetworkType());
 
         // NR NSA, millimeter wave frequency
@@ -2140,13 +2141,14 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(5)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
                 captor.getValue().getOverrideNetworkType());
     }
 
     @Test
     public void testGetLteDisplayType() {
-        ArgumentCaptor<DisplayInfo> captor = ArgumentCaptor.forClass(DisplayInfo.class);
+        ArgumentCaptor<TelephonyDisplayInfo> captor =
+                ArgumentCaptor.forClass(TelephonyDisplayInfo.class);
 
         // normal LTE
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
@@ -2154,7 +2156,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(1)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 captor.getValue().getOverrideNetworkType());
 
         // LTE CA
@@ -2163,7 +2165,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(2)).notifyDisplayInfoChanged(captor.capture());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
                 captor.getValue().getOverrideNetworkType());
 
         // TODO: LTE ADVANCED PRO
@@ -2171,16 +2173,18 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateDisplayInfo() {
-        ArgumentCaptor<DisplayInfo> captor = ArgumentCaptor.forClass(DisplayInfo.class);
+        ArgumentCaptor<TelephonyDisplayInfo> captor =
+                ArgumentCaptor.forClass(TelephonyDisplayInfo.class);
         doReturn(TelephonyManager.NETWORK_TYPE_HSPAP).when(mServiceState).getDataNetworkType();
 
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_SERVICE_STATE_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         verify(mPhone, times(1)).notifyDisplayInfoChanged(captor.capture());
-        DisplayInfo displayInfo = captor.getValue();
-        assertEquals(TelephonyManager.NETWORK_TYPE_HSPAP, displayInfo.getNetworkType());
-        assertEquals(DisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, displayInfo.getOverrideNetworkType());
+        TelephonyDisplayInfo telephonyDisplayInfo = captor.getValue();
+        assertEquals(TelephonyManager.NETWORK_TYPE_HSPAP, telephonyDisplayInfo.getNetworkType());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                telephonyDisplayInfo.getOverrideNetworkType());
     }
 
     /**
