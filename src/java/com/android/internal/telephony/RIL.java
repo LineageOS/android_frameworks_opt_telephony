@@ -6545,6 +6545,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
+     * Convert CellInfo defined in 1.5/types.hal to CellInfo type.
+     * @param records List of CellInfo defined in 1.5/types.hal.
+     * @return List of converted CellInfo object.
+     */
+    @VisibleForTesting
+    public static ArrayList<CellInfo> convertHalCellInfoList_1_5(
+            ArrayList<android.hardware.radio.V1_5.CellInfo> records) {
+        ArrayList<CellInfo> response = new ArrayList<>(records.size());
+
+        final long nanotime = SystemClock.elapsedRealtimeNanos();
+        for (android.hardware.radio.V1_5.CellInfo record : records) {
+            response.add(CellInfo.create(record, nanotime));
+        }
+        return response;
+    }
+
+    /**
      * Convert SetupDataCallResult defined in 1.0, 1.4, or 1.5 types.hal into DataCallResponse
      * @param dcResult setup data call result
      * @return converted DataCallResponse object
