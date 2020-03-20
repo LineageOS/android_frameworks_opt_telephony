@@ -4978,9 +4978,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             req.cid = contextId;
 
-            if (packetData.dstAddress instanceof Inet4Address) {
+            if (packetData.getDstAddress() instanceof Inet4Address) {
                 req.type = android.hardware.radio.V1_1.KeepaliveType.NATT_IPV4;
-            } else if (packetData.dstAddress instanceof Inet6Address) {
+            } else if (packetData.getDstAddress() instanceof Inet6Address) {
                 req.type = android.hardware.radio.V1_1.KeepaliveType.NATT_IPV6;
             } else {
                 AsyncResult.forMessage(result, null,
@@ -4989,12 +4989,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return;
             }
 
+            final InetAddress srcAddress = packetData.getSrcAddress();
+            final InetAddress dstAddress = packetData.getDstAddress();
             appendPrimitiveArrayToArrayList(
-                    packetData.srcAddress.getAddress(), req.sourceAddress);
-            req.sourcePort = packetData.srcPort;
+                    srcAddress.getAddress(), req.sourceAddress);
+            req.sourcePort = packetData.getSrcPort();
             appendPrimitiveArrayToArrayList(
-                    packetData.dstAddress.getAddress(), req.destinationAddress);
-            req.destinationPort = packetData.dstPort;
+                    dstAddress.getAddress(), req.destinationAddress);
+            req.destinationPort = packetData.getDstPort();
             req.maxKeepaliveIntervalMillis = intervalMillis;
 
             radioProxy11.startKeepalive(rr.mSerial, req);
