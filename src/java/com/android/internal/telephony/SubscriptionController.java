@@ -3677,6 +3677,7 @@ public class SubscriptionController extends ISub.Stub {
         if (!hasSubscriberIdentifierAccess(subInfo.getSubscriptionId(), callingPackage, message)) {
             result = new SubscriptionInfo(subInfo);
             result.clearIccId();
+            result.clearCardString();
         }
         return result;
     }
