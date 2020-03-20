@@ -22,7 +22,6 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
 import android.text.TextUtils;
 
@@ -165,52 +164,6 @@ public abstract class CallTracker extends Handler {
         if (DBG_POLL) log("checkNoOperationsPending: pendingOperations=" +
                 mPendingOperations);
         return mPendingOperations == 0;
-    }
-
-    /**
-     * Routine called from dial to check if the number is a test Emergency number
-     * and if so remap the number. This allows a short emergency number to be remapped
-     * to a regular number for testing how the frameworks handles emergency numbers
-     * without actually calling an emergency number.
-     *
-     * This is not a full test and is not a substitute for testing real emergency
-     * numbers but can be useful.
-     *
-     * To use this feature set a system property ril.test.emergencynumber to a pair of
-     * numbers separated by a colon. If the first number matches the number parameter
-     * this routine returns the second number. Example:
-     *
-     * ril.test.emergencynumber=112:1-123-123-45678
-     *
-     * To test Dial 112 take call then hang up on MO device to enter ECM
-     * see RIL#processSolicited RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND
-     *
-     * @param dialString to test if it should be remapped
-     * @return the same number or the remapped number.
-     */
-    protected String checkForTestEmergencyNumber(String dialString) {
-        String testEn = SystemProperties.get("ril.test.emergencynumber");
-        if (DBG_POLL) {
-            log("checkForTestEmergencyNumber: dialString=" + dialString +
-                " testEn=" + testEn);
-        }
-        if (!TextUtils.isEmpty(testEn)) {
-            String values[] = testEn.split(":");
-            log("checkForTestEmergencyNumber: values.length=" + values.length);
-            if (values.length == 2) {
-                if (values[0].equals(
-                        android.telephony.PhoneNumberUtils.stripSeparators(dialString))) {
-                    // mCi will be null for ImsPhoneCallTracker.
-                    if (mCi != null) {
-                        mCi.testingEmergencyCall();
-                    }
-                    log("checkForTestEmergencyNumber: remap " +
-                            dialString + " to " + values[1]);
-                    dialString = values[1];
-                }
-            }
-        }
-        return dialString;
     }
 
     protected String convertNumberIfNecessary(Phone phone, String dialNumber) {
