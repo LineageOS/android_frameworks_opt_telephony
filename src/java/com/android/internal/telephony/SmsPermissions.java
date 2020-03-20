@@ -125,7 +125,8 @@ public class SmsPermissions {
     public boolean checkCallingOrSelfCanSendSms(String callingPackage, String callingAttributionTag,
             String message) {
         mContext.enforceCallingOrSelfPermission(Manifest.permission.SEND_SMS, message);
-        return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage)
+        return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage,
+                callingAttributionTag, null)
                 == AppOpsManager.MODE_ALLOWED;
     }
 
