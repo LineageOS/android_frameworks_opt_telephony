@@ -1269,7 +1269,14 @@ public class GsmCdmaPhone extends Phone {
         if (!isPhoneTypeGsm() && dialArgs.uusInfo != null) {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
-
+        String possibleEmergencyNumber = checkForTestEmergencyNumber(dialString);
+        // Record if the dialed number was swapped for a test emergency number.
+        boolean isDialedNumberSwapped = !TextUtils.equals(dialString, possibleEmergencyNumber);
+        if (isDialedNumberSwapped) {
+            logi("dialString replaced for possible emergency number: " + dialString + " -> "
+                    + possibleEmergencyNumber);
+            dialString = possibleEmergencyNumber;
+        }
         boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(getSubId(), dialString);
         Phone imsPhone = mImsPhone;
         mDialArgs = dialArgs;
@@ -1302,6 +1309,7 @@ public class GsmCdmaPhone extends Phone {
 
         if (DBG) {
             logd("useImsForCall=" + useImsForCall
+                    + ", isEmergency=" + isEmergency
                     + ", useImsForEmergency=" + useImsForEmergency
                     + ", useImsForUt=" + useImsForUt
                     + ", isUt=" + isMmiCode
@@ -1376,7 +1384,11 @@ public class GsmCdmaPhone extends Phone {
                 "cannot dial voice call in out of service");
         }
         if (DBG) logd("Trying (non-IMS) CS call");
-
+        if (isDialedNumberSwapped && isEmergency) {
+            // Triggers ECM when CS call ends only for test emergency calls using
+            // ril.test.emergencynumber.
+            mCi.testingEmergencyCall();
+        }
         if (isPhoneTypeGsm()) {
             return dialInternal(dialString, new DialArgs.Builder<>()
                     .setIntentExtras(dialArgs.intentExtras)
@@ -3991,6 +4003,42 @@ public class GsmCdmaPhone extends Phone {
             mSST.pollState();
         }
         return status;
+    }
+
+    /**
+     * This allows a short number to be remapped to a test emergency number for testing how the
+     * frameworks handles Emergency Callback Mode without actually calling an emergency number.
+     *
+     * This is not a full test and is not a substitute for testing real emergency
+     * numbers but can be useful.
+     *
+     * To use this feature, first set a test emergency number using
+     * adb shell cmd phone emergency-number-test-mode -a 1-555-555-1212
+     *
+     * and then set the system property ril.test.emergencynumber to a pair of
+     * numbers separated by a colon. If the first number matches the number parameter
+     * this routine returns the second number. Example:
+     *
+     * ril.test.emergencynumber=411:1-555-555-1212
+     *
+     * To test Dial 411 take call then hang up on MO device to enter ECM.
+     *
+     * @param dialString to test if it should be remapped
+     * @return the same number or the remapped number.
+     */
+    private String checkForTestEmergencyNumber(String dialString) {
+        String testEn = SystemProperties.get("ril.test.emergencynumber");
+        if (!TextUtils.isEmpty(testEn)) {
+            String[] values = testEn.split(":");
+            logd("checkForTestEmergencyNumber: values.length=" + values.length);
+            if (values.length == 2) {
+                if (values[0].equals(PhoneNumberUtils.stripSeparators(dialString))) {
+                    logd("checkForTestEmergencyNumber: remap " + dialString + " to " + values[1]);
+                    dialString = values[1];
+                }
+            }
+        }
+        return dialString;
     }
 
     /**
