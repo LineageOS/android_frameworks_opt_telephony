@@ -29,6 +29,8 @@ import android.net.SocketKeepalive;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.SparseArray;
@@ -249,10 +251,19 @@ public class DcNetworkAgent extends NetworkAgent {
         if (!isOwned(dc, "sendNetworkInfo")) return;
         final NetworkInfo.State oldState = mNetworkInfo.getState();
         final NetworkInfo.State state = networkInfo.getState();
-        if (mNetworkInfo.getExtraInfo() != networkInfo.getExtraInfo()) {
-            setLegacyExtraInfo(networkInfo.getExtraInfo());
+        String extraInfo = dc.getApnSetting().getApnName();
+        if (mNetworkInfo.getExtraInfo() != extraInfo) {
+            setLegacyExtraInfo(extraInfo);
         }
-        final int subType = networkInfo.getSubtype();
+
+        final ServiceState serviceState = mPhone.getServiceState();
+        NetworkRegistrationInfo nri = serviceState.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        int subType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (nri != null) {
+            subType = nri.getAccessNetworkTechnology();
+        }
+
         if (mNetworkInfo.getSubtype() != subType) {
             setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
         }
