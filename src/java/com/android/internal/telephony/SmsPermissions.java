@@ -113,8 +113,8 @@ public class SmsPermissions {
     public boolean checkCallingCanSendSms(String callingPackage, String callingAttributionTag,
             String message) {
         mContext.enforceCallingPermission(Manifest.permission.SEND_SMS, message);
-        return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage)
-                == AppOpsManager.MODE_ALLOWED;
+        return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage,
+                callingAttributionTag, null) == AppOpsManager.MODE_ALLOWED;
     }
 
     /**
