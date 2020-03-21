@@ -47,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 public class SmsPermissionsTest extends TelephonyTest {
     private static final String PACKAGE = "com.example.package";
+    private static final String ATTRIBUTION_TAG = null;
     private static final String MESSAGE = "msg";
 
     private HandlerThread mHandlerThread;
@@ -104,7 +105,7 @@ public class SmsPermissionsTest extends TelephonyTest {
     @Test
     public void testCheckCallingSendTextPermissions_persist_grant() {
         assertTrue(mSmsPermissionsTest.checkCallingCanSendText(
-                true /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE));
+                true /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
     }
 
     @Test
@@ -113,7 +114,8 @@ public class SmsPermissionsTest extends TelephonyTest {
                 .enforceCallingPermission(Manifest.permission.SEND_SMS, MESSAGE);
         try {
             mSmsPermissionsTest.checkCallingCanSendText(
-                    true /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE);
+                    true /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG,
+                    MESSAGE);
             fail();
         } catch (SecurityException e) {
             // expected
@@ -122,11 +124,12 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Test
     public void testCheckCallingSendTextPermissions_persist_noAppOps() {
-        Mockito.when(mMockAppOps.noteOp(
-                AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE))
+        Mockito.when(
+                mMockAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE,
+                        ATTRIBUTION_TAG, null))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
         assertFalse(mSmsPermissionsTest.checkCallingCanSendText(
-                true /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE));
+                true /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
     }
 
     @Test
@@ -137,18 +140,19 @@ public class SmsPermissionsTest extends TelephonyTest {
                 .enforceCallingPermission(Manifest.permission.MODIFY_PHONE_STATE, MESSAGE);
         Mockito.doThrow(new SecurityException(MESSAGE)).when(mMockContext)
                 .enforceCallingPermission(Manifest.permission.SEND_SMS, MESSAGE);
-        Mockito.when(mMockAppOps.noteOp(
-                AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE))
+        Mockito.when(
+                mMockAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE,
+                        ATTRIBUTION_TAG, null))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
 
         assertTrue(mSmsPermissionsTest.checkCallingCanSendText(
-                false /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE));
+                false /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
     }
 
     @Test
     public void testCheckCallingSendTextPermissions_noPersist_grantViaModifyAndSend() {
         assertTrue(mSmsPermissionsTest.checkCallingCanSendText(
-                false /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE));
+                false /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
     }
 
     @Test
@@ -157,7 +161,8 @@ public class SmsPermissionsTest extends TelephonyTest {
                 .enforceCallingPermission(Manifest.permission.MODIFY_PHONE_STATE, MESSAGE);
         try {
             mSmsPermissionsTest.checkCallingCanSendText(
-                    false /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE);
+                    false /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG,
+                    MESSAGE);
             fail();
         } catch (SecurityException e) {
             // expected
@@ -170,7 +175,8 @@ public class SmsPermissionsTest extends TelephonyTest {
                 .enforceCallingPermission(Manifest.permission.SEND_SMS, MESSAGE);
         try {
             mSmsPermissionsTest.checkCallingCanSendText(
-                    false /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE);
+                    false /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG,
+                    MESSAGE);
             fail();
         } catch (SecurityException e) {
             // expected
@@ -179,11 +185,12 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Test
     public void testCheckCallingSendTextPermissions_noPersist_noAppOps() {
-        Mockito.when(mMockAppOps.noteOp(
-                AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE))
+        Mockito.when(
+                mMockAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE,
+                        ATTRIBUTION_TAG, null))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
         assertFalse(mSmsPermissionsTest.checkCallingCanSendText(
-                false /* persistMessageForNonDefaultSmsApp */, PACKAGE, MESSAGE));
+                false /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
     }
 
     @Test

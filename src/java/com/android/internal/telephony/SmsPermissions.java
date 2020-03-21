@@ -60,7 +60,8 @@ public class SmsPermissions {
      * @return true unless the caller has all necessary permissions but has a revoked AppOps bit.
      */
     public boolean checkCallingCanSendText(
-            boolean persistMessageForNonDefaultSmsApp, String callingPackage, String message) {
+            boolean persistMessageForNonDefaultSmsApp, String callingPackage,
+            String callingAttributionTag, String message) {
         // TODO(b/75978989): Should we allow IMS/carrier apps for persisted messages as well?
         if (!persistMessageForNonDefaultSmsApp) {
             try {
@@ -72,7 +73,7 @@ public class SmsPermissions {
                         android.Manifest.permission.MODIFY_PHONE_STATE, message);
             }
         }
-        return checkCallingCanSendSms(callingPackage, message);
+        return checkCallingCanSendSms(callingPackage, callingAttributionTag, message);
     }
 
     /**
@@ -109,10 +110,11 @@ public class SmsPermissions {
      *                           permission revoked at runtime.
      * @return whether the caller has the OP_SEND_SMS AppOps bit.
      */
-    public boolean checkCallingCanSendSms(String callingPackage, String message) {
+    public boolean checkCallingCanSendSms(String callingPackage, String callingAttributionTag,
+            String message) {
         mContext.enforceCallingPermission(Manifest.permission.SEND_SMS, message);
-        return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage)
-                == AppOpsManager.MODE_ALLOWED;
+        return mAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), callingPackage,
+                callingAttributionTag, null) == AppOpsManager.MODE_ALLOWED;
     }
 
     /**

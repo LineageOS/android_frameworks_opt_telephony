@@ -429,13 +429,26 @@ public class IccSmsInterfaceManager {
     }
 
     /**
-     * A permissions check before passing to {@link IccSmsInterfaceManager#sendDataInternal}.
-     * This method checks only if the calling package has the permission to send the data sms.
+     * @deprecated Use {@link #sendData(String, String, String, String, int, byte[], PendingIntent,
+     * PendingIntent)} instead.
      */
+    @Deprecated
     @UnsupportedAppUsage
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        if (!mSmsPermissions.checkCallingCanSendSms(callingPackage, "Sending SMS message")) {
+        sendData(callingPackage, null, destAddr, scAddr, destPort, data,
+                sentIntent, deliveryIntent);
+    }
+
+    /**
+     * A permissions check before passing to {@link IccSmsInterfaceManager#sendDataInternal}.
+     * This method checks only if the calling package has the permission to send the data sms.
+     */
+    public void sendData(String callingPackage, String callingAttributionTag,
+            String destAddr, String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        if (!mSmsPermissions.checkCallingCanSendSms(callingPackage, callingAttributionTag,
+                "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
@@ -703,12 +716,12 @@ public class IccSmsInterfaceManager {
      *                 Used for logging and diagnostics purposes. The id may be 0.
      */
 
-    public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
-            List<String> parts, List<PendingIntent> sentIntents,
+    public void sendMultipartText(String callingPackage, String callingAttributionTag,
+            String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp,
             long messageId) {
-        sendMultipartTextWithOptions(callingPackage, destAddr, scAddr, parts, sentIntents,
-                deliveryIntents, persistMessageForNonDefaultSmsApp,
+        sendMultipartTextWithOptions(callingPackage, callingAttributionTag, destAddr, scAddr, parts,
+                sentIntents, deliveryIntents, persistMessageForNonDefaultSmsApp,
                 SMS_MESSAGE_PRIORITY_NOT_SPECIFIED, false /* expectMore */,
                 SMS_MESSAGE_PERIOD_NOT_SPECIFIED,
                 messageId);
@@ -763,12 +776,12 @@ public class IccSmsInterfaceManager {
      *                 Used for logging and diagnostics purposes. The id may be 0.
      */
 
-    public void sendMultipartTextWithOptions(String callingPackage, String destAddr,
-            String scAddr, List<String> parts, List<PendingIntent> sentIntents,
+    public void sendMultipartTextWithOptions(String callingPackage, String callingAttributionTag,
+            String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp,
             int priority, boolean expectMore, int validityPeriod, long messageId) {
-        if (!mSmsPermissions.checkCallingCanSendText(
-                persistMessageForNonDefaultSmsApp, callingPackage, "Sending SMS message")) {
+        if (!mSmsPermissions.checkCallingCanSendText(persistMessageForNonDefaultSmsApp,
+                callingPackage, callingAttributionTag, "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntents);
             return;
         }
@@ -1283,10 +1296,22 @@ public class IccSmsInterfaceManager {
         return mDispatchersController.getImsSmsFormat();
     }
 
+    /**
+     * @deprecated Use {@link #sendStoredText(String, String, Uri, String, PendingIntent,
+     * PendingIntent)} instead
+     */
+    @Deprecated
     @UnsupportedAppUsage
     public void sendStoredText(String callingPkg, Uri messageUri, String scAddress,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        if (!mSmsPermissions.checkCallingCanSendSms(callingPkg, "Sending SMS message")) {
+        sendStoredText(callingPkg, null, messageUri, scAddress, sentIntent, deliveryIntent);
+    }
+
+    public void sendStoredText(String callingPkg, String callingAttributionTag,
+            Uri messageUri, String scAddress, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        if (!mSmsPermissions.checkCallingCanSendSms(callingPkg, callingAttributionTag,
+                "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
@@ -1315,10 +1340,23 @@ public class IccSmsInterfaceManager {
                 0L /* messageId */);
     }
 
+    /**
+     * @deprecated Use {@link #sendStoredMultipartText(String, String, Uri, String, List, List)}
+     * instead
+     */
+    @Deprecated
     @UnsupportedAppUsage
     public void sendStoredMultipartText(String callingPkg, Uri messageUri, String scAddress,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
-        if (!mSmsPermissions.checkCallingCanSendSms(callingPkg, "Sending SMS message")) {
+        sendStoredMultipartText(callingPkg, null, messageUri, scAddress, sentIntents,
+                deliveryIntents);
+    }
+
+    public void sendStoredMultipartText(String callingPkg,
+            String callingAttributionTag, Uri messageUri, String scAddress,
+            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
+        if (!mSmsPermissions.checkCallingCanSendSms(callingPkg, callingAttributionTag,
+                "Sending SMS message")) {
             returnUnspecifiedFailure(sentIntents);
             return;
         }
