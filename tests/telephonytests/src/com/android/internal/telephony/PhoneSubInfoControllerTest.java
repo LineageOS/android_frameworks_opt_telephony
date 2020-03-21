@@ -105,6 +105,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         // The READ_PRIVILEGED_PHONE_STATE permission or passing a device / profile owner access
         // check is required to access device identifiers. Since neither of those are true for this
         // test each case will result in a SecurityException being thrown.
+        setIdentifierAccess(false);
         doReturn("353626073736741").when(mPhone).getDeviceId();
         doReturn("353626073736742").when(mSecondPhone).getDeviceId();
 
@@ -188,6 +189,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
         // those are true for this test each case will result in a SecurityException being thrown.
+        setIdentifierAccess(false);
         doReturn("aaa@example.com").when(mPhone).getNai();
         doReturn("bbb@example.com").when(mSecondPhone).getNai();
 
@@ -270,6 +272,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access device identifiers. Since none of
         // those are true for this test each case will result in a SecurityException being thrown.
+        setIdentifierAccess(false);
         doReturn("990000862471854").when(mPhone).getImei();
         doReturn("990000862471855").when(mSecondPhone).getImei();
 
@@ -412,6 +415,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
         // those are true for this test each case will result in a SecurityException being thrown.
+        setIdentifierAccess(false);
         doReturn("310260426283121").when(mPhone).getSubscriberId();
         doReturn("310260426283122").when(mSecondPhone).getSubscriberId();
 
@@ -496,6 +500,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         // The READ_PRIVILEGED_PHONE_STATE permission, carrier privileges, or passing a device /
         // profile owner access check is required to access subscriber identifiers. Since none of
         // those are true for this test each case will result in a SecurityException being thrown.
+        setIdentifierAccess(false);
         doReturn("8991101200003204510").when(mPhone).getIccSerialNumber();
         doReturn("8991101200003204511").when(mSecondPhone).getIccSerialNumber();
 
