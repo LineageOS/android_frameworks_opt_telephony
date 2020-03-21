@@ -124,8 +124,9 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Test
     public void testCheckCallingSendTextPermissions_persist_noAppOps() {
-        Mockito.when(mMockAppOps.noteOp(
-                AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE))
+        Mockito.when(
+                mMockAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE,
+                        ATTRIBUTION_TAG, null))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
         assertFalse(mSmsPermissionsTest.checkCallingCanSendText(
                 true /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
@@ -139,8 +140,9 @@ public class SmsPermissionsTest extends TelephonyTest {
                 .enforceCallingPermission(Manifest.permission.MODIFY_PHONE_STATE, MESSAGE);
         Mockito.doThrow(new SecurityException(MESSAGE)).when(mMockContext)
                 .enforceCallingPermission(Manifest.permission.SEND_SMS, MESSAGE);
-        Mockito.when(mMockAppOps.noteOp(
-                AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE))
+        Mockito.when(
+                mMockAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE,
+                        ATTRIBUTION_TAG, null))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
 
         assertTrue(mSmsPermissionsTest.checkCallingCanSendText(
@@ -183,8 +185,9 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Test
     public void testCheckCallingSendTextPermissions_noPersist_noAppOps() {
-        Mockito.when(mMockAppOps.noteOp(
-                AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE))
+        Mockito.when(
+                mMockAppOps.noteOp(AppOpsManager.OPSTR_SEND_SMS, Binder.getCallingUid(), PACKAGE,
+                        ATTRIBUTION_TAG, null))
                 .thenReturn(AppOpsManager.MODE_ERRORED);
         assertFalse(mSmsPermissionsTest.checkCallingCanSendText(
                 false /* persistMessageForNonDefaultSmsApp */, PACKAGE, ATTRIBUTION_TAG, MESSAGE));
