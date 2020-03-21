@@ -126,18 +126,30 @@ public class SmsController extends ISmsImplBase {
         }
     }
 
+    /**
+     * @deprecated Use {@link #sendDataForSubscriber(int, String, String, String, String, int,
+     * byte[], PendingIntent, PendingIntent)} instead
+     */
+    @Deprecated
     @UnsupportedAppUsage
-    @Override
     public void sendDataForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
+        sendDataForSubscriber(subId, callingPackage, null, destAddr, scAddr, destPort, data,
+                sentIntent, deliveryIntent);
+    }
+
+    @Override
+    public void sendDataForSubscriber(int subId, String callingPackage,
+            String callingAttributionTag, String destAddr, String scAddr, int destPort, byte[] data,
+            PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendData(callingPackage, destAddr, scAddr, destPort, data,
-                    sentIntent, deliveryIntent);
+            iccSmsIntMgr.sendData(callingPackage, callingAttributionTag, destAddr, scAddr, destPort,
+                    data, sentIntent, deliveryIntent);
         } else {
             Rlog.e(LOG_TAG, "sendDataForSubscriber iccSmsIntMgr is null for"
                     + " Subscription: " + subId);
@@ -165,14 +177,15 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
-    public void sendTextForSubscriber(int subId, String callingPackage, String destAddr,
-            String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
+    public void sendTextForSubscriber(int subId, String callingPackage,
+            String callingAttributionTag, String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent,
             boolean persistMessageForNonDefaultSmsApp) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
         if (!getSmsPermissions(subId).checkCallingCanSendText(persistMessageForNonDefaultSmsApp,
-                callingPackage, "Sending SMS message")) {
+                callingPackage, callingAttributionTag, "Sending SMS message")) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
             return;
         }
@@ -253,9 +266,10 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
-    public void sendMultipartTextForSubscriber(int subId, String callingPackage, String destAddr,
-            String scAddr, List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp) {
+    public void sendMultipartTextForSubscriber(int subId, String callingPackage,
+            String callingAttributionTag, String destAddr, String scAddr, List<String> parts,
+            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents,
+            boolean persistMessageForNonDefaultSmsApp) {
         // This is different from the checking of other method. It prefers the package name
         // returned by getCallPackage() for backward-compatibility.
         if (getCallingPackage() != null) {
@@ -263,8 +277,8 @@ public class SmsController extends ISmsImplBase {
         }
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendMultipartText(callingPackage, destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents, persistMessageForNonDefaultSmsApp);
+            iccSmsIntMgr.sendMultipartText(callingPackage, callingAttributionTag, destAddr, scAddr,
+                    parts, sentIntents, deliveryIntents, persistMessageForNonDefaultSmsApp);
         } else {
             Rlog.e(LOG_TAG, "sendMultipartTextForSubscriber iccSmsIntMgr is null for"
                     + " Subscription: " + subId);
@@ -274,17 +288,17 @@ public class SmsController extends ISmsImplBase {
 
     @Override
     public void sendMultipartTextForSubscriberWithOptions(int subId, String callingPackage,
-            String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents, boolean persistMessage, int priority,
-            boolean expectMore, int validityPeriod) {
+            String callingAttributionTag, String destAddr, String scAddr, List<String> parts,
+            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents,
+            boolean persistMessage, int priority, boolean expectMore, int validityPeriod) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, destAddr, scAddr, parts,
-                    sentIntents, deliveryIntents, persistMessage, priority, expectMore,
-                    validityPeriod);
+            iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, callingAttributionTag,
+                    destAddr, scAddr, parts, sentIntents, deliveryIntents, persistMessage, priority,
+                    expectMore, validityPeriod);
         } else {
             Rlog.e(LOG_TAG, "sendMultipartTextWithOptions iccSmsIntMgr is null for"
                     + " Subscription: " + subId);
@@ -490,12 +504,13 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
-    public void sendStoredText(int subId, String callingPkg, Uri messageUri, String scAddress,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+    public void sendStoredText(int subId, String callingPkg, String callingAttributionTag,
+            Uri messageUri, String scAddress, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendStoredText(callingPkg, messageUri, scAddress, sentIntent,
-                    deliveryIntent);
+            iccSmsIntMgr.sendStoredText(callingPkg, callingAttributionTag, messageUri, scAddress,
+                    sentIntent, deliveryIntent);
         } else {
             Rlog.e(LOG_TAG, "sendStoredText iccSmsIntMgr is null for subscription: " + subId);
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
@@ -503,13 +518,13 @@ public class SmsController extends ISmsImplBase {
     }
 
     @Override
-    public void sendStoredMultipartText(int subId, String callingPkg, Uri messageUri,
-            String scAddress, List<PendingIntent> sentIntents,
+    public void sendStoredMultipartText(int subId, String callingPkg, String callingAttributionTag,
+            Uri messageUri, String scAddress, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendStoredMultipartText(callingPkg, messageUri, scAddress, sentIntents,
-                    deliveryIntents);
+            iccSmsIntMgr.sendStoredMultipartText(callingPkg, callingAttributionTag, messageUri,
+                    scAddress, sentIntents, deliveryIntents);
         } else {
             Rlog.e(LOG_TAG, "sendStoredMultipartText iccSmsIntMgr is null for subscription: "
                     + subId);
