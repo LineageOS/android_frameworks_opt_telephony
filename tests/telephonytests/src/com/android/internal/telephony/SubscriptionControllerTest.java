@@ -1047,6 +1047,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
         setupMocksForTelephonyPermissions();
+        setIdentifierAccess(false);
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
@@ -1094,6 +1095,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
         setupMocksForTelephonyPermissions();
+        setIdentifierAccess(false);
 
         SubscriptionInfo subscriptionInfo =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoForSimSlotIndex(0,
@@ -1139,6 +1141,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
         setupMocksForTelephonyPermissions();
+        setIdentifierAccess(false);
 
         List<SubscriptionInfo> subInfoList =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage,
@@ -1189,6 +1192,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
         setupMocksForTelephonyPermissions();
+        setIdentifierAccess(false);
 
         List<SubscriptionInfo> subInfoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
                 groupUuid, mCallingPackage, mCallingFeature);
