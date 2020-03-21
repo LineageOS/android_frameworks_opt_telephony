@@ -1212,6 +1212,16 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     * @param cellInfo List of current cell information known to radio.
+     */
+    public void getCellInfoListResponse_1_5(
+            RadioResponseInfo responseInfo,
+            ArrayList<android.hardware.radio.V1_5.CellInfo> cellInfo) {
+        responseCellInfoList_1_5(responseInfo, cellInfo);
+    }
+
+    /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCellInfoListRateResponse(RadioResponseInfo responseInfo) {
@@ -2336,6 +2346,19 @@ public class RadioResponse extends IRadioResponse.Stub {
 
         if (rr != null) {
             ArrayList<CellInfo> ret = RIL.convertHalCellInfoList_1_4(cellInfo);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseCellInfoList_1_5(RadioResponseInfo responseInfo,
+            ArrayList<android.hardware.radio.V1_5.CellInfo> cellInfo) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            ArrayList<CellInfo> ret = RIL.convertHalCellInfoList_1_5(cellInfo);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }

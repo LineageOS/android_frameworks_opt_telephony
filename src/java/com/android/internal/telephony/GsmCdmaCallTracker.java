@@ -322,8 +322,8 @@ public class GsmCdmaCallTracker extends CallTracker {
             throw new CallStateException("cannot dial in current state");
         }
 
-        mPendingMO = new GsmCdmaConnection(mPhone, checkForTestEmergencyNumber(dialString),
-                this, mForegroundCall, isEmergencyCall);
+        mPendingMO = new GsmCdmaConnection(mPhone, dialString, this, mForegroundCall,
+                isEmergencyCall);
         if (intentExtras != null) {
             Rlog.d(LOG_TAG, "dialGsm - emergency dialer: " + intentExtras.getBoolean(
                     TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -445,8 +445,8 @@ public class GsmCdmaCallTracker extends CallTracker {
             return dialThreeWay(dialString, intentExtras);
         }
 
-        mPendingMO = new GsmCdmaConnection(mPhone, checkForTestEmergencyNumber(dialString),
-                this, mForegroundCall, isEmergencyCall);
+        mPendingMO = new GsmCdmaConnection(mPhone, dialString, this, mForegroundCall,
+                isEmergencyCall);
         if (intentExtras != null) {
             Rlog.d(LOG_TAG, "dialGsm - emergency dialer: " + intentExtras.getBoolean(
                     TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -502,8 +502,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             disableDataCallInEmergencyCall(dialString);
 
             // Attach the new connection to foregroundCall
-            mPendingMO = new GsmCdmaConnection(mPhone,
-                    checkForTestEmergencyNumber(dialString), this, mForegroundCall,
+            mPendingMO = new GsmCdmaConnection(mPhone, dialString, this, mForegroundCall,
                     mIsInEmergencyCall);
             if (intentExtras != null) {
                 Rlog.d(LOG_TAG, "dialThreeWay - emergency dialer " + intentExtras.getBoolean(
