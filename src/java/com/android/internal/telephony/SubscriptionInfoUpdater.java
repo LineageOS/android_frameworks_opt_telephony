@@ -884,10 +884,10 @@ public class SubscriptionInfoUpdater extends Handler {
             // If cardId = unsupported or unitialized, we have no reason to update DB.
             // Additionally, if the device does not support cardId for default eUICC, the CARD_ID
             // field should not contain the EID
-            if (cardId >= 0 && UiccController.getInstance().getCardIdForDefaultEuicc()
+            UiccController uiccController = UiccController.getInstance();
+            if (cardId >= 0 && uiccController.getCardIdForDefaultEuicc()
                     != TelephonyManager.UNSUPPORTED_CARD_ID) {
-                values.put(SubscriptionManager.CARD_ID,
-                        mEuiccManager.createForCardId(cardId).getEid());
+                values.put(SubscriptionManager.CARD_ID, uiccController.convertToCardString(cardId));
             }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
