@@ -107,7 +107,6 @@ public class GsmCdmaCallTracker extends CallTracker {
     private boolean mPendingCallInEcm;
     private boolean mIsInEmergencyCall;
     private int mPendingCallClirMode;
-    private boolean mIsEcmTimerCanceled;
     private int m3WayCallFlashDelay;
 
     /**
@@ -189,7 +188,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             mPendingCallInEcm = false;
             mIsInEmergencyCall = false;
             mPendingCallClirMode = CommandsInterface.CLIR_DEFAULT;
-            mIsEcmTimerCanceled = false;
+            mPhone.setEcmCanceledForEmergency(false /*isCanceled*/);
             m3WayCallFlashDelay = 0;
             mCi.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
         }
@@ -369,12 +368,6 @@ public class GsmCdmaCallTracker extends CallTracker {
     @UnsupportedAppUsage
     private void handleEcmTimer(int action) {
         mPhone.handleTimerInEmergencyCallbackMode(action);
-        switch(action) {
-            case GsmCdmaPhone.CANCEL_ECM_TIMER: mIsEcmTimerCanceled = true; break;
-            case GsmCdmaPhone.RESTART_ECM_TIMER: mIsEcmTimerCanceled = false; break;
-            default:
-                Rlog.e(LOG_TAG, "handleEcmTimer, unsupported action " + action);
-        }
     }
 
     //CDMA
@@ -435,7 +428,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
         // Cancel Ecm timer if a second emergency call is originating in Ecm mode
         if (isPhoneInEcmMode && isEmergencyCall) {
-            handleEcmTimer(GsmCdmaPhone.CANCEL_ECM_TIMER);
+            mPhone.handleTimerInEmergencyCallbackMode(GsmCdmaPhone.CANCEL_ECM_TIMER);
         }
 
         // The new call must be assigned to the foreground call.
@@ -862,8 +855,9 @@ public class GsmCdmaCallTracker extends CallTracker {
                         mHangupPendingMO = false;
 
                         // Re-start Ecm timer when an uncompleted emergency call ends
-                        if (!isPhoneTypeGsm() && mIsEcmTimerCanceled) {
-                            handleEcmTimer(GsmCdmaPhone.RESTART_ECM_TIMER);
+                        if (!isPhoneTypeGsm() && mPhone.isEcmCanceledForEmergency()) {
+                            mPhone.handleTimerInEmergencyCallbackMode(
+                                    GsmCdmaPhone.RESTART_ECM_TIMER);
                         }
 
                         try {
@@ -953,8 +947,8 @@ public class GsmCdmaCallTracker extends CallTracker {
                     }
 
                     // Re-start Ecm timer when the connected emergency call ends
-                    if (mIsEcmTimerCanceled) {
-                        handleEcmTimer(GsmCdmaPhone.RESTART_ECM_TIMER);
+                    if (mPhone.isEcmCanceledForEmergency()) {
+                        mPhone.handleTimerInEmergencyCallbackMode(GsmCdmaPhone.RESTART_ECM_TIMER);
                     }
                     // If emergency call is not going through while dialing
                     checkAndEnableDataCallAfterEmergencyCallDropped();
@@ -1816,7 +1810,6 @@ public class GsmCdmaCallTracker extends CallTracker {
             pw.println(" mPendingCallInEcm=" + mPendingCallInEcm);
             pw.println(" mIsInEmergencyCall=" + mIsInEmergencyCall);
             pw.println(" mPendingCallClirMode=" + mPendingCallClirMode);
-            pw.println(" mIsEcmTimerCanceled=" + mIsEcmTimerCanceled);
         }
 
     }
