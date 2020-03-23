@@ -1772,12 +1772,14 @@ public class ImsPhone extends ImsPhoneBase {
             case CANCEL_ECM_TIMER:
                 removeCallbacks(mExitEcmRunnable);
                 ((GsmCdmaPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.TRUE);
+                setEcmCanceledForEmergency(true /*isCanceled*/);
                 break;
             case RESTART_ECM_TIMER:
                 long delayInMillis = TelephonyProperties.ecm_exit_timer()
                         .orElse(DEFAULT_ECM_EXIT_TIMER_VALUE);
                 postDelayed(mExitEcmRunnable, delayInMillis);
                 ((GsmCdmaPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.FALSE);
+                setEcmCanceledForEmergency(false /*isCanceled*/);
                 break;
             default:
                 loge("handleTimerInEmergencyCallbackMode, unsupported action " + action);
