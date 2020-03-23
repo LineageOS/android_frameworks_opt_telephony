@@ -135,6 +135,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
  * {@hide}
@@ -4141,18 +4142,17 @@ public class DcTracker extends Handler {
             return false;
         }
 
-        long bitmask = TelephonyManager.getBitMaskForNetworkType(networkType);
         boolean isGeneralUnmetered = true;
         for (SubscriptionPlan plan : mSubscriptionPlans) {
-            // check plan applies to given network type
-            if ((plan.getNetworkTypesBitMask() & bitmask) == bitmask) {
-                // check plan is general or specific
-                if (plan.getNetworkTypes() == null) {
-                    if (!isPlanUnmetered(plan)) {
-                        // metered takes precedence over unmetered for safety
-                        isGeneralUnmetered = false;
-                    }
-                } else {
+            // check plan is general or specific
+            if (plan.getNetworkTypes() == null) {
+                if (!isPlanUnmetered(plan)) {
+                    // metered takes precedence over unmetered for safety
+                    isGeneralUnmetered = false;
+                }
+            } else {
+                // check plan applies to given network type
+                if (IntStream.of(plan.getNetworkTypes()).anyMatch(n -> n == networkType)) {
                     // ensure network type unknown returns general value
                     if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
                         // there is only 1 specific plan per network type, so return value if found
