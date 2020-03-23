@@ -20,7 +20,7 @@ import static android.hardware.radio.V1_0.DeviceStateType.LOW_DATA_EXPECTED;
 import static android.hardware.radio.V1_0.DeviceStateType.POWER_SAVE_MODE;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -33,7 +33,7 @@ import static java.util.Arrays.asList;
 
 import android.annotation.IntDef;
 import android.content.Intent;
-import android.hardware.radio.V1_2.IndicationFilter;
+import android.hardware.radio.V1_5.IndicationFilter;
 import android.net.ConnectivityManager;
 import android.os.BatteryManager;
 import android.os.Message;
@@ -65,7 +65,8 @@ public class DeviceStateMonitorTest extends TelephonyTest {
             | IndicationFilter.FULL_NETWORK_STATE
             | IndicationFilter.DATA_CALL_DORMANCY_CHANGED
             | IndicationFilter.LINK_CAPACITY_ESTIMATE
-            | IndicationFilter.PHYSICAL_CHANNEL_CONFIG;
+            | IndicationFilter.PHYSICAL_CHANNEL_CONFIG
+            | IndicationFilter.BARRING_INFO;
 
     // INDICATION_FILTERS_ALL but excludes Indication.SIGNAL_STRENGTH
     private static final int INDICATION_FILTERS_WHEN_TETHERING_ON =
@@ -193,7 +194,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         ArgumentCaptor<Integer> acIndicationFilter = ArgumentCaptor.forClass(Integer.class);
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
                 acIndicationFilter.capture(), nullable(Message.class));
-        assertTrue((acIndicationFilter.getValue() & indicationFilter) != 0);
+        assertNotEquals((acIndicationFilter.getValue() & indicationFilter), 0);
 
         // Turn off the state again
         updateState(state, STATE_OFF);
@@ -335,5 +336,33 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         updateState(STATE_TYPE_CHARGING, STATE_OFF);
         assertEquals(
                 DeviceStateMonitor.CELL_INFO_INTERVAL_SHORT_MS, mDSM.computeCellInfoMinInterval());
+    }
+
+    @Test
+    public void testGetBarringInfo() {
+        // At beginning, all states off. Now turn screen on
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+
+        ArgumentCaptor<Integer> acBarringInfo = ArgumentCaptor.forClass(Integer.class);
+        verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(acBarringInfo.capture(),
+                nullable(Message.class));
+        assertNotEquals((acBarringInfo.getValue() & IndicationFilter.BARRING_INFO), 0);
+        verify(mSimulatedCommandsVerifier).getBarringInfo(nullable(Message.class));
+
+        reset(mSimulatedCommandsVerifier);
+
+        // Turn screen off
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        verify(mSimulatedCommandsVerifier, never()).getBarringInfo(nullable(Message.class));
+        verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(acBarringInfo.capture(),
+                nullable(Message.class));
+        assertEquals((acBarringInfo.getValue() & IndicationFilter.BARRING_INFO), 0);
+
+        reset(mSimulatedCommandsVerifier);
+
+        // Turn tethering on, then screen on, getBarringInfo() should only be called once
+        updateState(STATE_TYPE_TETHERING, STATE_ON);
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+        verify(mSimulatedCommandsVerifier).getBarringInfo(nullable(Message.class));
     }
 }
