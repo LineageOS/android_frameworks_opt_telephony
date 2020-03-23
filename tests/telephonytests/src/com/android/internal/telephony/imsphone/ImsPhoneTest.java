@@ -41,9 +41,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
-import android.app.IApplicationThread;
 import android.content.BroadcastReceiver;
-import android.content.IIntentReceiver;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.AsyncResult;
@@ -122,6 +120,8 @@ public class ImsPhoneTest extends TelephonyTest {
     private static final int EVENT_INCOMING_RING = 3;
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 4;
 
+    private boolean mIsPhoneUtInEcm = false;
+
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
@@ -149,6 +149,12 @@ public class ImsPhoneTest extends TelephonyTest {
         mImsPhoneUT.registerForIncomingRing(mTestHandler,
                 EVENT_INCOMING_RING, null);
         doReturn(mImsUtInterface).when(mImsCT).getUtInterface();
+        // When the mock GsmCdmaPhone gets setIsInEcbm called, ensure isInEcm matches.
+        doAnswer(invocation -> {
+            mIsPhoneUtInEcm = (Boolean) invocation.getArguments()[0];
+            return null;
+        }).when(mPhone).setIsInEcm(anyBoolean());
+        doAnswer(invocation -> mIsPhoneUtInEcm).when(mPhone).isInEcm();
         processAllMessages();
     }
 
@@ -552,74 +558,45 @@ public class ImsPhoneTest extends TelephonyTest {
         assertEquals(msg, messageArgumentCaptor.getValue().obj);
     }
 
-    @FlakyTest
     @Test
-    @Ignore
     public void testEcbm() throws Exception {
-        ImsEcbmStateListener imsEcbmStateListener = mImsPhoneUT.getImsEcbmStateListener();
-
-        // verify handling of emergency callback mode
-        imsEcbmStateListener.onECBMEntered();
-
-        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mIActivityManager, atLeast(1)).broadcastIntent(eq((IApplicationThread)null),
-                intentArgumentCaptor.capture(),
-                eq((String)null),
-                eq((IIntentReceiver)null),
-                eq(Activity.RESULT_OK),
-                eq((String)null),
-                eq((Bundle)null),
-                eq((String[])null),
-                anyInt(),
-                eq((Bundle)null),
-                eq(false),
-                eq(true),
-                anyInt());
-
-        Intent intent = intentArgumentCaptor.getValue();
-        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(true, intent.getBooleanExtra(
-                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
-
-        // verify that wakeLock is acquired in ECM
-        assertEquals(true, mImsPhoneUT.getWakeLock().isHeld());
-
         mImsPhoneUT.setOnEcbModeExitResponse(mTestHandler, EVENT_EMERGENCY_CALLBACK_MODE_EXIT,
                 null);
 
-        // verify handling of emergency callback mode exit
+        ImsEcbmStateListener imsEcbmStateListener = mImsPhoneUT.getImsEcbmStateListener();
+        imsEcbmStateListener.onECBMEntered();
+        verify(mPhone).setIsInEcm(true);
+
+        verifyEcbmIntentWasSent(1 /*times*/, true /*inEcm*/);
+        // verify that wakeLock is acquired in ECM
+        assertTrue(mImsPhoneUT.getWakeLock().isHeld());
+
         imsEcbmStateListener.onECBMExited();
+        verify(mPhone).setIsInEcm(false);
 
-        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
-        verify(mIActivityManager, atLeast(2)).broadcastIntent(eq((IApplicationThread)null),
-                intentArgumentCaptor.capture(),
-                eq((String)null),
-                eq((IIntentReceiver)null),
-                eq(Activity.RESULT_OK),
-                eq((String)null),
-                eq((Bundle)null),
-                eq((String[])null),
-                anyInt(),
-                eq((Bundle)null),
-                eq(false),
-                eq(true),
-                anyInt());
-
-        intent = intentArgumentCaptor.getValue();
-        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
-        assertEquals(false, intent.getBooleanExtra(
-                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, true));
+        verifyEcbmIntentWasSent(2/*times*/, false /*inEcm*/);
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
-
         // verify EcmExitRespRegistrant is notified
         verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(),
                 anyLong());
         assertEquals(EVENT_EMERGENCY_CALLBACK_MODE_EXIT, messageArgumentCaptor.getValue().what);
 
         // verify wakeLock released
-        assertEquals(false, mImsPhoneUT.getWakeLock().isHeld());
+        assertFalse(mImsPhoneUT.getWakeLock().isHeld());
+    }
+
+    private void verifyEcbmIntentWasSent(int times, boolean isInEcm) throws Exception {
+        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeast(times)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                any());
+
+        Intent intent = intentArgumentCaptor.getValue();
+        assertNotNull(intent);
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(isInEcm, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
     }
 
     @Test
