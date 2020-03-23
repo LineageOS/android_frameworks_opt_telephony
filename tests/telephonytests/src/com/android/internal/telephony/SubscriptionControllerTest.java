@@ -1042,7 +1042,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testGetActiveSubscriptionInfoWithReadPhoneState() throws Exception {
         // If the calling package only has the READ_PHONE_STATE permission then
         // getActiveSubscriptionInfo should still return a result but the ICC ID should not be
-        // available.
+        // available via getIccId or getCardString.
         testInsertSim();
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
@@ -1054,6 +1054,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 subId, mCallingPackage, mCallingFeature);
         assertNotNull(subscriptionInfo);
         assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getIccId());
+        assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getCardString());
     }
 
     @Test
@@ -1067,6 +1068,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 subId, mCallingPackage, mCallingFeature);
         assertNotNull(subscriptionInfo);
         assertTrue(subscriptionInfo.getIccId().length() > 0);
+        assertTrue(subscriptionInfo.getCardString().length() > 0);
     }
 
     @Test
@@ -1090,7 +1092,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testGetActiveSubscriptionInfoForSimSlotIndexWithReadPhoneState() throws Exception {
         // If the calling package only has the READ_PHONE_STATE permission then
         // getActiveSubscriptionInfoForSimlSlotIndex should still return the SubscriptionInfo but
-        // the ICC ID should not be available.
+        // the ICC ID should not be available via getIccId or getCardString.
         testInsertSim();
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
@@ -1102,6 +1104,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
                         mCallingPackage, mCallingFeature);
         assertNotNull(subscriptionInfo);
         assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getIccId());
+        assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getCardString());
     }
 
     @Test
@@ -1116,6 +1119,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
                         mCallingPackage, mCallingFeature);
         assertNotNull(subscriptionInfo);
         assertTrue(subscriptionInfo.getIccId().length() > 0);
+        assertTrue(subscriptionInfo.getCardString().length() > 0);
     }
 
     @Test
@@ -1136,7 +1140,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testGetActiveSubscriptionInfoListWithReadPhoneState() throws Exception {
         // If the calling package only has the READ_PHONE_STATE permission then
         // getActiveSubscriptionInfoList should still return the list of SubscriptionInfo objects
-        // but the ICC ID should not be available.
+        // but the ICC ID should not be available via getIccId or getCardString.
         testInsertSim();
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
@@ -1149,6 +1153,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertEquals(UNAVAILABLE_ICCID, info.getIccId());
+            assertEquals(UNAVAILABLE_ICCID, info.getCardString());
         }
     }
 
@@ -1164,6 +1169,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertTrue(info.getIccId().length() > 0);
+            assertTrue(info.getCardString().length() > 0);
         }
     }
 
@@ -1187,7 +1193,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testGetSubscriptionsInGroupWithReadPhoneState() throws Exception {
         // If the calling package only has the READ_PHONE_STATE permission then
         // getSubscriptionsInGroup should still return the list of SubscriptionInfo objects
-        // but the ICC ID should not be available.
+        // but the ICC ID should not be available via getIccId or getCardString.
         ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
@@ -1199,6 +1205,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertEquals(UNAVAILABLE_ICCID, info.getIccId());
+            assertEquals(UNAVAILABLE_ICCID, info.getCardString());
         }
     }
 
@@ -1213,6 +1220,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertTrue(info.getIccId().length() > 0);
+            assertTrue(info.getCardString().length() > 0);
         }
     }
 
