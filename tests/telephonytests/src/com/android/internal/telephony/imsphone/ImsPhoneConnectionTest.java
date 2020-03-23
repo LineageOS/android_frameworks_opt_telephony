@@ -94,7 +94,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testImsConnectionSanity() {
+    public void testImsIncomingConnectionCorrectness() {
         logd("Testing initial state of MT ImsPhoneConnection");
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
 
@@ -107,6 +107,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         assertNull(mConnectionUT.getOrigDialString());
         assertFalse(mConnectionUT.isMultiparty());
         assertFalse(mConnectionUT.isConferenceHost());
+        assertEquals(android.telecom.Connection.VERIFICATION_STATUS_PASSED,
+                mConnectionUT.getNumberVerificationStatus());
         verify(mForeGroundCall, times(1)).attach((Connection) any(),
                 eq(ImsPhoneCall.State.INCOMING));
 
@@ -372,5 +374,21 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mImsCallProfile.setCallExtra(ImsCallProfile.EXTRA_OI, updateAddress);
         mConnectionUT.updateAddressDisplay(mImsCall);
         assertEquals(inputAddress, mConnectionUT.getAddress());
+    }
+
+    @Test
+    @SmallTest
+    public void testConvertVerificationStatus() {
+        assertEquals(android.telecom.Connection.VERIFICATION_STATUS_FAILED,
+                ImsPhoneConnection.toTelecomVerificationStatus(
+                        ImsCallProfile.VERIFICATION_STATUS_FAILED));
+        assertEquals(android.telecom.Connection.VERIFICATION_STATUS_PASSED,
+                ImsPhoneConnection.toTelecomVerificationStatus(
+                        ImsCallProfile.VERIFICATION_STATUS_PASSED));
+        assertEquals(android.telecom.Connection.VERIFICATION_STATUS_NOT_VERIFIED,
+                ImsPhoneConnection.toTelecomVerificationStatus(
+                        ImsCallProfile.VERIFICATION_STATUS_NOT_VERIFIED));
+        assertEquals(android.telecom.Connection.VERIFICATION_STATUS_NOT_VERIFIED,
+                ImsPhoneConnection.toTelecomVerificationStatus(90210));
     }
 }
