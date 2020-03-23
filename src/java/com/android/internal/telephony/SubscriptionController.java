@@ -3750,6 +3750,7 @@ public class SubscriptionController extends ISub.Stub {
                 callingFeatureId, message)) {
             result = new SubscriptionInfo(subInfo);
             result.clearIccId();
+            result.clearCardString();
         }
         return result;
     }
