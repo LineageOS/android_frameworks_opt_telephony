@@ -31,6 +31,7 @@ import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.AnomalyReporter;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -47,6 +48,9 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * This class represents a network agent which is communication channel between
@@ -75,6 +79,11 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private NetworkInfo mNetworkInfo;
 
+    // For debugging IMS redundant network agent issue.
+    private static List<DcNetworkAgent> sNetworkAgents = new ArrayList<>();
+
+    private static int sRedundantTimes = 0;
+
     DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
             NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
         super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
@@ -90,7 +99,29 @@ public class DcNetworkAgent extends NetworkAgent {
         setLegacyExtraInfo(dc.getApnSetting().getApnName());
         int subType = getNetworkType();
         setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
+        // TODO: Remove after b/151487565 is fixed.
+        sNetworkAgents.add(this);
+        checkRedundantIms();
         logd(mTag + " created for data connection " + dc.getName());
+    }
+
+    // This is a temp code to catch the multiple IMS network agents issue.
+    // TODO: Remove after b/151487565 is fixed.
+    private void checkRedundantIms() {
+        if (sNetworkAgents.stream()
+                .filter(n -> n.mNetworkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_IMS))
+                .count() > 1) {
+            sRedundantTimes++;
+            if (sRedundantTimes == 5) { // When it occurs 5 times.
+                String message = "Multiple IMS network agents detected.";
+                log(message);
+                // Using fixed UUID to avoid duplicate bugreport notification
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("a5cf4881-75ae-4129-a25d-71bc4293f493"),
+                        message);
+            }
+        }
     }
 
     /**
@@ -269,6 +300,7 @@ public class DcNetworkAgent extends NetworkAgent {
         if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
                 && state == NetworkInfo.State.DISCONNECTED) {
             logd("Unregister from connectivity service");
+            sNetworkAgents.remove(this);
             unregister();
         }
         mNetworkInfo = new NetworkInfo(networkInfo);
