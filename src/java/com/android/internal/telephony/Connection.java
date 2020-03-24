@@ -185,6 +185,10 @@ public abstract class Connection {
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
     @UnsupportedAppUsage
     protected String mAddress;     // MAY BE NULL!!!
+    // The VERSTAT number verification status; defaults to not verified.
+    protected @android.telecom.Connection.VerificationStatus int mNumberVerificationStatus =
+            android.telecom.Connection.VERIFICATION_STATUS_NOT_VERIFIED;
+
     @UnsupportedAppUsage
     protected String mDialString;          // outgoing calls only
     protected String[] mParticipantsToDial;// outgoing calls only
@@ -1404,5 +1408,21 @@ public abstract class Connection {
      */
     public int getAudioCodec() {
         return mAudioCodec;
+    }
+
+    /**
+     * @return The number verification status; only applicable for IMS calls.
+     */
+    public @android.telecom.Connection.VerificationStatus int getNumberVerificationStatus() {
+        return mNumberVerificationStatus;
+    }
+
+    /**
+     * Sets the number verification status.
+     * @param verificationStatus The new verification status
+     */
+    public void setNumberVerificationStatus(
+            @android.telecom.Connection.VerificationStatus int verificationStatus) {
+        mNumberVerificationStatus = verificationStatus;
     }
 }
