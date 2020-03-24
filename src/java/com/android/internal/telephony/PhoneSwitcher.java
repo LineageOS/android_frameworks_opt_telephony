@@ -59,6 +59,7 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
+import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
 import com.android.internal.telephony.dataconnection.DcRequest;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
@@ -154,7 +155,7 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    private final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
+    private final List<DcRequest> mPrioritizedDcRequests = new ArrayList<>();
     private final RegistrantList mActivePhoneRegistrants;
     private final SubscriptionController mSubscriptionController;
     private final Context mContext;
@@ -691,7 +692,8 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
-        final DcRequest dcRequest = DcRequest.create(networkRequest);
+        final DcRequest dcRequest =
+                DcRequest.create(networkRequest, createApnRepository(networkRequest));
         if (dcRequest != null) {
             if (!mPrioritizedDcRequests.contains(dcRequest)) {
                 collectRequestNetworkMetrics(networkRequest);
@@ -704,7 +706,8 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onReleaseNetwork(NetworkRequest networkRequest) {
-        final DcRequest dcRequest = DcRequest.create(networkRequest);
+        final DcRequest dcRequest =
+                DcRequest.create(networkRequest, createApnRepository(networkRequest));
         if (dcRequest != null) {
             if (mPrioritizedDcRequests.remove(dcRequest)) {
                 onEvaluate(REQUESTS_CHANGED, "netReleased");
@@ -712,6 +715,21 @@ public class PhoneSwitcher extends Handler {
                 log("Removed DcRequest, size: " + mPrioritizedDcRequests.size());
             }
         }
+    }
+
+    private ApnConfigTypeRepository createApnRepository(NetworkRequest networkRequest) {
+        int phoneIdForRequest = phoneIdForRequest(networkRequest);
+        int subId = mSubscriptionController.getSubIdUsingPhoneId(phoneIdForRequest);
+        CarrierConfigManager configManager = (CarrierConfigManager) mContext
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+
+        PersistableBundle carrierConfig;
+        if (configManager != null) {
+            carrierConfig = configManager.getConfigForSubId(subId);
+        } else {
+            carrierConfig = null;
+        }
+        return new ApnConfigTypeRepository(carrierConfig);
     }
 
     private void removeDefaultNetworkChangeCallback() {
