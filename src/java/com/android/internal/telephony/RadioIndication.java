@@ -84,7 +84,7 @@ import android.hardware.radio.V1_0.SsInfoData;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
-import android.hardware.radio.V1_4.IRadioIndication;
+import android.hardware.radio.V1_5.IRadioIndication;
 import android.os.AsyncResult;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.RadioPowerState;
@@ -1022,7 +1022,7 @@ public class RadioIndication extends IRadioIndication.Stub {
      */
     public void barringInfoChanged(int indicationType,
             android.hardware.radio.V1_5.CellIdentity cellIdentity,
-            List<android.hardware.radio.V1_5.BarringInfo> barringInfos) {
+            ArrayList<android.hardware.radio.V1_5.BarringInfo> barringInfos) {
         mRil.processIndication(indicationType);
 
         CellIdentity ci = CellIdentity.create(cellIdentity);
