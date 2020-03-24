@@ -195,6 +195,8 @@ public class ImsPhoneConnection extends Connection implements
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_OIR));
             mCnapNamePresentation = ImsCallProfile.OIRToPresentation(
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
+            setNumberVerificationStatus(toTelecomVerificationStatus(
+                    imsCall.getCallProfile().getCallerNumberVerificationStatus()));
             updateMediaCapabilities(imsCall);
         } else {
             mNumberPresentation = PhoneConstants.PRESENTATION_UNKNOWN;
@@ -1492,5 +1494,25 @@ public class ImsPhoneConnection extends Connection implements
         Rlog.i(LOG_TAG, "setLocalVideoCapable: mIsLocalVideoCapable = " + mIsLocalVideoCapable
                 + "; updating local video availability.");
         updateMediaCapabilities(getImsCall());
+    }
+
+    /**
+     * Converts an {@link ImsCallProfile} verification status to a
+     * {@link android.telecom.Connection} verification status.
+     * @param verificationStatus The {@link ImsCallProfile} verification status.
+     * @return The telecom verification status.
+     */
+    public static @android.telecom.Connection.VerificationStatus int toTelecomVerificationStatus(
+            @ImsCallProfile.VerificationStatus int verificationStatus) {
+        switch (verificationStatus) {
+            case ImsCallProfile.VERIFICATION_STATUS_PASSED:
+                return android.telecom.Connection.VERIFICATION_STATUS_PASSED;
+            case ImsCallProfile.VERIFICATION_STATUS_FAILED:
+                return android.telecom.Connection.VERIFICATION_STATUS_FAILED;
+            case ImsCallProfile.VERIFICATION_STATUS_NOT_VERIFIED:
+                // fall through on purpose
+            default:
+                return android.telecom.Connection.VERIFICATION_STATUS_NOT_VERIFIED;
+        }
     }
 }
