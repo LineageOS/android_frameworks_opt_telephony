@@ -4294,8 +4294,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" isInEmergencySmsMode=" + isInEmergencySmsMode());
         pw.println(" isEcmCanceledForEmergency=" + isEcmCanceledForEmergency());
         pw.println(" service state=" + getServiceState());
-        String privilegedUids = Arrays.toString(mCarrierPrivilegesTracker.mPrivilegedUids);
-        pw.println(" administratorUids=" + privilegedUids);
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
@@ -4415,6 +4413,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             }
 
             pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (getCarrierPrivilegesTracker() != null) {
+            pw.println("CarrierPrivilegesTracker:");
+            getCarrierPrivilegesTracker().dump(fd, pw, args);
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
