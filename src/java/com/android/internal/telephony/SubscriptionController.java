@@ -219,6 +219,9 @@ public class SubscriptionController extends ISub.Stub {
         // clear SLOT_INDEX for all subs
         clearSlotIndexForSubInfoRecords();
 
+        // Cache Setting values
+        cacheSettingValues();
+
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
@@ -252,6 +255,26 @@ public class SubscriptionController extends ISub.Stub {
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.INVALID_SIM_SLOT_INDEX);
         mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value, null, null);
+    }
+
+    /**
+     * Cache the Settings values by reading these values from Setting from disk to prevent disk I/O
+     * access during the API calling. This is based on an assumption that the Settings system will
+     * itself cache this value after the first read and thus only the first read after boot will
+     * access the disk.
+     */
+    private void cacheSettingValues() {
+        Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
     }
 
     @UnsupportedAppUsage
