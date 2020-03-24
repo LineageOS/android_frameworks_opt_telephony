@@ -1813,7 +1813,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public boolean isImsCapabilityAvailable(int capability, int regTech) {
+    public boolean isImsCapabilityAvailable(int capability, int regTech) throws ImsException {
         return mCT.isImsCapabilityAvailable(capability, regTech);
     }
 
