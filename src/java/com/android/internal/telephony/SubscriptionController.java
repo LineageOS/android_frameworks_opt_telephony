@@ -284,6 +284,20 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Returns whether the {@code callingPackage} has access to the phone number on the specified
+     * {@code subId} using the provided {@code message} in any resulting SecurityException.
+     */
+    private boolean hasPhoneNumberAccess(int subId, String callingPackage, String callingFeatureId,
+            String message) {
+        try {
+            return TelephonyPermissions.checkCallingOrSelfReadPhoneNumber(mContext, subId,
+                    callingPackage, callingFeatureId, message);
+        } catch (SecurityException e) {
+            return false;
+        }
+    }
+
+    /**
      * Broadcast when SubscriptionInfo has changed
      * FIXME: Hopefully removed if the API council accepts SubscriptionInfoListener
      */
@@ -3746,11 +3760,20 @@ public class SubscriptionController extends ISub.Stub {
     private SubscriptionInfo conditionallyRemoveIdentifiers(SubscriptionInfo subInfo,
             String callingPackage, String callingFeatureId, String message) {
         SubscriptionInfo result = subInfo;
-        if (!hasSubscriberIdentifierAccess(subInfo.getSubscriptionId(), callingPackage,
-                callingFeatureId, message)) {
+        int subId = subInfo.getSubscriptionId();
+        boolean hasIdentifierAccess = hasSubscriberIdentifierAccess(subId, callingPackage,
+                callingFeatureId, message);
+        boolean hasPhoneNumberAccess = hasPhoneNumberAccess(subId, callingPackage, callingFeatureId,
+                message);
+        if (!hasIdentifierAccess || !hasPhoneNumberAccess) {
             result = new SubscriptionInfo(subInfo);
-            result.clearIccId();
-            result.clearCardString();
+            if (!hasIdentifierAccess) {
+                result.clearIccId();
+                result.clearCardString();
+            }
+            if (!hasPhoneNumberAccess) {
+                result.clearNumber();
+            }
         }
         return result;
     }
