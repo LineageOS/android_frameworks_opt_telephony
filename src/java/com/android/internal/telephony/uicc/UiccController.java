@@ -753,6 +753,19 @@ public class UiccController extends Handler {
     }
 
     /**
+     * Converts an integer cardId (public card ID) to a card string.
+     * @param cardId to convert
+     * @return cardString, or null if the cardId is not valid
+     */
+    public String convertToCardString(int cardId) {
+        if (cardId < 0 || cardId >= mCardStrings.size()) {
+            log("convertToCardString: cardId " + cardId + " is not valid");
+            return null;
+        }
+        return mCardStrings.get(cardId);
+    }
+
+    /**
      * Converts the card string (the ICCID/EID, formerly named card ID) to the public int cardId.
      * If the given cardString is an ICCID, trailing Fs will be automatically stripped before trying
      * to match to a card ID.
