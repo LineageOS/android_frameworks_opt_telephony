@@ -46,6 +46,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
+import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsService;
@@ -54,6 +55,7 @@ import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.ArrayMap;
 import android.util.ArraySet;
 
 import com.android.internal.telephony.PhoneConfigurationManager;
@@ -68,6 +70,7 @@ import org.mockito.Mock;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -89,6 +92,7 @@ public class ImsResolverTest extends ImsTestBase {
             "TestCarrier2Pkg", "Carrier2ImsService");
 
     private static final int NUM_MAX_SLOTS = 2;
+    private static final String TAG = ImsResolverTest.class.getSimpleName();
 
     @Mock
     Context mMockContext;
@@ -100,6 +104,8 @@ public class ImsResolverTest extends ImsTestBase {
     ImsResolver.TelephonyManagerProxy mTestTelephonyManagerProxy;
     @Mock
     CarrierConfigManager mMockCarrierConfigManager;
+    @Mock
+    UserManager mMockUserManager;
     @Mock
     ImsResolver.ImsDynamicQueryManagerFactory mMockQueryManagerFactory;
     @Mock
@@ -547,6 +553,61 @@ public class ImsResolverTest extends ImsTestBase {
         featureSet.addAll(convertToHashSet(features, 1));
         verify(controller).changeImsServiceFeatures(featureSet);
         verify(controller, never()).unbind();
+    }
+
+    /**
+     * Test that the dynamic ims services are bound in the event that the user is not yet unlocked
+     * but the carrier config changed event is fired.
+     * @throws RemoteException
+     */
+    @Test
+    @SmallTest
+    public void testDeviceDynamicQueryBindsOnCarrierConfigChanged() throws RemoteException {
+        //Set package names with no features set in metadata
+        List<ResolveInfo> info = new ArrayList<>();
+        info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, new HashSet<>(), true));
+        info.add(getResolveInfo(TEST_DEVICE2_DEFAULT_NAME, new HashSet<>(), true));
+        info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true));
+        setupPackageQuery(info);
+
+        //setupResolver
+        setupResolver(1 /*numSlots*/, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
+                TEST_DEVICE2_DEFAULT_NAME.getPackageName());
+
+        //Set controllers
+        ImsServiceController deviceController = mock(ImsServiceController.class);
+        ImsServiceController deviceController2 = mock(ImsServiceController.class);
+        ImsServiceController carrierController = mock(ImsServiceController.class);
+
+        Map<String, ImsServiceController> controllerMap = new ArrayMap<>();
+        controllerMap.put(TEST_DEVICE_DEFAULT_NAME.getPackageName(), deviceController);
+        controllerMap.put(TEST_DEVICE2_DEFAULT_NAME.getPackageName(), deviceController2);
+        controllerMap.put(TEST_CARRIER_DEFAULT_NAME.getPackageName(), carrierController);
+        setImsServiceControllerFactory(controllerMap);
+
+        //Set features to device ims services
+        Set<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatures1 =
+                convertToFeatureSlotPairs(0, ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE,
+                        ImsResolver.METADATA_MMTEL_FEATURE);
+
+        Set<ImsFeatureConfiguration.FeatureSlotPair> deviceFeatures2 =
+                convertToFeatureSlotPairs(0, ImsResolver.METADATA_RCS_FEATURE);
+
+        startBindNoCarrierConfig(1);
+        mLooper.processAllMessages();
+        // ensure that startQuery was called
+        verify(mMockQueryManager, times(1)).startQuery(eq(TEST_DEVICE_DEFAULT_NAME),
+                any(String.class));
+
+        verify(mMockQueryManager, times(1)).startQuery(eq(TEST_DEVICE2_DEFAULT_NAME),
+                any(String.class));
+
+        mDynamicQueryListener.onComplete(TEST_DEVICE_DEFAULT_NAME, deviceFeatures1);
+        mDynamicQueryListener.onComplete(TEST_DEVICE2_DEFAULT_NAME, deviceFeatures2);
+        mLooper.processAllMessages();
+
+        verify(deviceController, times(2)).bind(eq(deviceFeatures1));
+        verify(deviceController2, times(1)).bind(eq(deviceFeatures2));
     }
 
     /**
@@ -1581,6 +1642,12 @@ public class ImsResolverTest extends ImsTestBase {
         when(mMockContext.createContextAsUser(any(), eq(0))).thenReturn(mMockContext);
         when(mMockContext.getSystemService(eq(Context.CARRIER_CONFIG_SERVICE))).thenReturn(
                 mMockCarrierConfigManager);
+        when(mMockContext.getSystemService(eq(Context.USER_SERVICE))).thenReturn(mMockUserManager);
+
+        //If this is not false, then HANDLER_BOOT_COMPLETE is fired now but the controller factories
+        //used in the test methods aren't created in time.
+        when(mMockUserManager.isUserUnlocked()).thenReturn(false);
+
         // Support configs for MSIM always in case we are testing dynamic sim slot config changes.
         mCarrierConfigs = new PersistableBundle[NUM_MAX_SLOTS];
         for (int i = 0; i < NUM_MAX_SLOTS; i++) {
@@ -1719,6 +1786,22 @@ public class ImsResolverTest extends ImsTestBase {
         mLooper.processAllMessages();
     }
 
+    private void setImsServiceControllerFactory(Map<String, ImsServiceController> controllerMap) {
+        mTestImsResolver.setImsServiceControllerFactory(
+                new ImsResolver.ImsServiceControllerFactory() {
+                    @Override
+                    public String getServiceInterface() {
+                        return ImsService.SERVICE_INTERFACE;
+                    }
+
+                    @Override
+                    public ImsServiceController create(Context context, ComponentName componentName,
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                        return controllerMap.get(componentName.getPackageName());
+                    }
+                });
+    }
+
     private void setImsServiceControllerFactory(ImsServiceController deviceController,
             ImsServiceController carrierController) {
         mTestImsResolver.setImsServiceControllerFactory(
@@ -1842,6 +1925,11 @@ public class ImsResolverTest extends ImsTestBase {
                 .map(f -> new ImsFeatureConfiguration.FeatureSlotPair(slotId,
                         metadataStringToFeature(f)))
                 .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    private HashSet<ImsFeatureConfiguration.FeatureSlotPair> convertToFeatureSlotPairs(
+            int slotId, String... features) {
+        return convertToHashSet(new ArraySet<>(features), slotId);
     }
 
     private int metadataStringToFeature(String f) {
