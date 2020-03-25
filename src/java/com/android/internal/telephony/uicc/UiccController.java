@@ -124,6 +124,7 @@ public class UiccController extends Handler {
     private static final int EVENT_SIM_REFRESH = 8;
     private static final int EVENT_EID_READY = 9;
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 10;
+    // NOTE: any new EVENT_* values must be added to eventToString.
 
     // this needs to be here, because on bootup we dont know which index maps to which UiccSlot
     @UnsupportedAppUsage
@@ -207,14 +208,11 @@ public class UiccController extends Handler {
         if (DBG) log("Creating UiccController");
         mContext = c;
         mCis = PhoneFactory.getCommandsInterfaces();
-        if (DBG) {
-            String logStr = "config_num_physical_slots = " + c.getResources().getInteger(
-                    com.android.internal.R.integer.config_num_physical_slots);
-            log(logStr);
-            sLocalLog.log(logStr);
-        }
         int numPhysicalSlots = c.getResources().getInteger(
                 com.android.internal.R.integer.config_num_physical_slots);
+        if (DBG) {
+            logWithLocalLog("config_num_physical_slots = " + numPhysicalSlots);
+        }
         // Minimum number of physical slot count should be equals to or greater than phone count,
         // if it is less than phone count use phone count as physical slot count.
         if (numPhysicalSlots < mCis.length) {
@@ -362,6 +360,7 @@ public class UiccController extends Handler {
 
     /** Map logicalSlot to physicalSlot, and activate the physicalSlot if it is inactive. */
     public void switchSlots(int[] physicalSlots, Message response) {
+        logWithLocalLog("switchSlots: " + Arrays.toString(physicalSlots));
         mRadioConfig.setSimSlotsMapping(physicalSlots, response);
     }
 
@@ -467,14 +466,15 @@ public class UiccController extends Handler {
     public void handleMessage (Message msg) {
         synchronized (mLock) {
             Integer phoneId = getCiIndex(msg);
+            String eventName = eventToString(msg.what);
 
             if (phoneId < 0 || phoneId >= mCis.length) {
                 Rlog.e(LOG_TAG, "Invalid phoneId : " + phoneId + " received with event "
-                        + msg.what);
+                        + eventName);
                 return;
             }
 
-            sLocalLog.log("handleMessage: Received " + msg.what + " for phoneId " + phoneId);
+            logWithLocalLog("handleMessage: Received " + eventName + " for phoneId " + phoneId);
 
             AsyncResult ar = (AsyncResult)msg.obj;
             switch (msg.what) {
@@ -541,14 +541,18 @@ public class UiccController extends Handler {
     private void onMultiSimConfigChanged() {
         int prevActiveModemCount = mCis.length;
         mCis = PhoneFactory.getCommandsInterfaces();
+        int newActiveModemCount = mCis.length;
+
+        logWithLocalLog("onMultiSimConfigChanged: prevActiveModemCount " + prevActiveModemCount
+                + ", newActiveModemCount " + newActiveModemCount);
 
         // Resize array.
-        mPhoneIdToSlotId = copyOf(mPhoneIdToSlotId, mCis.length);
+        mPhoneIdToSlotId = copyOf(mPhoneIdToSlotId, newActiveModemCount);
 
         // Register for new active modem for ss -> ds switch.
         // For ds -> ss switch, there's no need to unregister as the mCis should unregister
         // everything itself.
-        for (int i = prevActiveModemCount; i < mCis.length; i++) {
+        for (int i = prevActiveModemCount; i < newActiveModemCount; i++) {
             mPhoneIdToSlotId[i] = INVALID_SLOT_ID;
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
 
@@ -588,6 +592,22 @@ public class UiccController extends Handler {
             }
         }
         return index;
+    }
+
+    private static String eventToString(int event) {
+        switch (event) {
+            case EVENT_ICC_STATUS_CHANGED: return "ICC_STATUS_CHANGED";
+            case EVENT_SLOT_STATUS_CHANGED: return "SLOT_STATUS_CHANGED";
+            case EVENT_GET_ICC_STATUS_DONE: return "GET_ICC_STATUS_DONE";
+            case EVENT_GET_SLOT_STATUS_DONE: return "GET_SLOT_STATUS_DONE";
+            case EVENT_RADIO_ON: return "RADIO_ON";
+            case EVENT_RADIO_AVAILABLE: return "RADIO_AVAILABLE";
+            case EVENT_RADIO_UNAVAILABLE: return "RADIO_UNAVAILABLE";
+            case EVENT_SIM_REFRESH: return "SIM_REFRESH";
+            case EVENT_EID_READY: return "EID_READY";
+            case EVENT_MULTI_SIM_CONFIG_CHANGED: return "MULTI_SIM_CONFIG_CHANGED";
+            default: return "UNKNOWN(" + event + ")";
+        }
     }
 
     // Easy to use API
@@ -654,7 +674,7 @@ public class UiccController extends Handler {
 
         IccCardStatus status = (IccCardStatus)ar.result;
 
-        sLocalLog.log("onGetIccCardStatusDone: phoneId " + index + " IccCardStatus: " + status);
+        logWithLocalLog("onGetIccCardStatusDone: phoneId " + index + " IccCardStatus: " + status);
 
         int slotId = status.physicalSlotIndex;
         if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
@@ -714,10 +734,8 @@ public class UiccController extends Handler {
                 if (mDefaultEuiccCardId == UNINITIALIZED_CARD_ID
                         || mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
                     mDefaultEuiccCardId = convertToPublicCardId(cardString);
-                    String logStr = "IccCardStatus eid=" + cardString + " slot=" + slotId
-                            + " mDefaultEuiccCardId=" + mDefaultEuiccCardId;
-                    sLocalLog.log(logStr);
-                    log(logStr);
+                    logWithLocalLog("IccCardStatus eid=" + cardString + " slot=" + slotId
+                            + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
                 }
             }
         }
@@ -878,10 +896,8 @@ public class UiccController extends Handler {
                 sLocalLog.log(logStr);
             } else {
                 // REQUEST_NOT_SUPPORTED
-                logStr = "onGetSlotStatusDone: request not supported; marking "
-                        + "mIsSlotStatusSupported to false";
-                log(logStr);
-                sLocalLog.log(logStr);
+                logWithLocalLog("onGetSlotStatusDone: request not supported; marking "
+                        + "mIsSlotStatusSupported to false");
                 mIsSlotStatusSupported = false;
             }
             return;
@@ -893,6 +909,7 @@ public class UiccController extends Handler {
             log("onGetSlotStatusDone: No change in slot status");
             return;
         }
+        logWithLocalLog("onGetSlotStatusDone: " + status);
 
         sLastSlotStatus = status;
 
@@ -961,10 +978,8 @@ public class UiccController extends Handler {
                 if (!mUiccSlots[i].isRemovable() && !isDefaultEuiccCardIdSet) {
                     isDefaultEuiccCardIdSet = true;
                     mDefaultEuiccCardId = convertToPublicCardId(eid);
-                    String logStr = "Using eid=" + eid + " in slot=" + i
-                            + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId;
-                    sLocalLog.log(logStr);
-                    log(logStr);
+                    logWithLocalLog("Using eid=" + eid + " in slot=" + i
+                            + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId);
                 }
             }
         }
@@ -1059,8 +1074,7 @@ public class UiccController extends Handler {
         }
 
         IccRefreshResponse resp = (IccRefreshResponse) ar.result;
-        log("onSimRefresh: " + resp);
-        sLocalLog.log("onSimRefresh: " + resp);
+        logWithLocalLog("onSimRefresh: index " + index + ", " + resp);
 
         if (resp == null) {
             Rlog.e(LOG_TAG, "onSimRefresh: received without input");
@@ -1133,18 +1147,14 @@ public class UiccController extends Handler {
                 || mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
             if (!mUiccSlots[slotId].isRemovable()) {
                 mDefaultEuiccCardId = convertToPublicCardId(eid);
-                String logStr = "onEidReady: eid=" + eid + " slot=" + slotId
-                        + " mDefaultEuiccCardId=" + mDefaultEuiccCardId;
-                sLocalLog.log(logStr);
-                log(logStr);
+                logWithLocalLog("onEidReady: eid=" + eid + " slot=" + slotId
+                        + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
             } else if (!mHasActiveBuiltInEuicc) {
                 // we only set a removable eUICC to the default if there are no active non-removable
                 // eUICCs
                 mDefaultEuiccCardId = convertToPublicCardId(eid);
-                String logStr = "onEidReady: eid=" + eid + " from removable eUICC in slot="
-                        + slotId + " mDefaultEuiccCardId=" + mDefaultEuiccCardId;
-                sLocalLog.log(logStr);
-                log(logStr);
+                logWithLocalLog("onEidReady: eid=" + eid + " from removable eUICC in slot=" + slotId
+                        + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
             }
         }
         card.unregisterForEidReady(this);
@@ -1190,6 +1200,11 @@ public class UiccController extends Handler {
     @UnsupportedAppUsage
     private void log(String string) {
         Rlog.d(LOG_TAG, string);
+    }
+
+    private void logWithLocalLog(String string) {
+        Rlog.d(LOG_TAG, string);
+        sLocalLog.log(string);
     }
 
     public void addCardLog(String data) {
