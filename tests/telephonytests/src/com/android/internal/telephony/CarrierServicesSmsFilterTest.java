@@ -76,7 +76,6 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         if (Looper.myLooper() == null) {
             Looper.prepare();
-            Looper.loop();
         }
         mCarrierServicesSmsFilterUT = new CarrierServicesSmsFilter(
                 mContext, mPhone, new byte[][]{SMS_PDU},
