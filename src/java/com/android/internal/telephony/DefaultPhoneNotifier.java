@@ -208,12 +208,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyOemHookRawEventForSubscriber(Phone sender, byte[] rawData) {
-        mTelephonyRegistryMgr.notifyOemHookRawEventForSubscriber(sender.getSubId(),
-            sender.getPhoneId(), rawData);
-    }
-
-    @Override
     public void notifyDisplayInfoChanged(Phone sender, DisplayInfo displayInfo) {
         mTelephonyRegistryMgr.notifyDisplayInfoChanged(sender.getPhoneId(), sender.getSubId(),
                 displayInfo);
