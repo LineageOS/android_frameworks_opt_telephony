@@ -21,10 +21,8 @@ import android.app.AppOpsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.service.carrier.CarrierMessagingService;
-import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.telephony.Rlog;
@@ -84,21 +82,11 @@ public class SmsPermissions {
      * </ul>
      */
     public void enforceCallerIsImsAppOrCarrierApp(String message) {
-        int callingUid = Binder.getCallingUid();
-        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
-                new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-        try {
-            if (carrierImsPackage != null
-                    && callingUid == mContext.getPackageManager().getPackageUid(
-                    carrierImsPackage, 0)) {
-                return;
-            }
-        } catch (PackageManager.NameNotFoundException e) {
-            if (Rlog.isLoggable("SMS", Log.DEBUG)) {
-                loge("Cannot find configured carrier ims package");
-            }
+        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext,
+                mPhone, new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+        if (carrierImsPackage != null && packageNameMatchesCallingUid(carrierImsPackage)) {
+            return;
         }
-
         TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(
                 mContext, mPhone.getSubId(), message);
     }
@@ -187,19 +175,13 @@ public class SmsPermissions {
     @VisibleForTesting
     public boolean packageNameMatchesCallingUid(String packageName) {
         try {
-            if (Binder.getCallingUid()
-                    != mContext.getPackageManager().getPackageUid(packageName, 0)) {
-                Log.e(LOG_TAG, "packageNameMatchesCallingUid: " + packageName + " uid "
-                        + mContext.getPackageManager().getPackageUid(packageName, 0)
-                        + " does not match calling uid " + Binder.getCallingUid());
-                return false;
-            }
-        } catch (PackageManager.NameNotFoundException ex) {
-            Log.e(LOG_TAG, "packageNameMatchesCallingUid: packageName " + packageName
-                    + " not found");
+            ((AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE))
+                    .checkPackage(Binder.getCallingUid(), packageName);
+            // If checkPackage doesn't throw an exception then we are the given package
+            return true;
+        } catch (SecurityException e) {
             return false;
         }
-        return true;
     }
 
     @UnsupportedAppUsage
