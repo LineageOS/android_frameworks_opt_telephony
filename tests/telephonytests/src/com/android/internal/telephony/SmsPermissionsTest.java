@@ -21,19 +21,17 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import android.Manifest;
 import android.app.AppOpsManager;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.util.Log;
 
 import org.junit.After;
 import org.junit.Before;
@@ -259,28 +257,17 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Test
     public void testPackageNameMatchesCallingUid() {
-        PackageManager mockPackageManager = mock(PackageManager.class);
-        doReturn(mockPackageManager).when(mMockContext).getPackageManager();
+        AppOpsManager mockAppOpsManager = mock(AppOpsManager.class);
+        Mockito.when(mMockContext.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(
+                mockAppOpsManager);
 
         // test matching case
-        try {
-            doReturn(Binder.getCallingUid()).when(mockPackageManager)
-                    .getPackageUid(eq(PACKAGE), anyInt());
-        } catch (Exception e) {
-            Log.e(TAG, "testPackageNameMatchesCallingUid: unable to setup mocks");
-            fail();
-        }
         assertTrue(new SmsPermissions(mMockPhone, mMockContext, mMockAppOps)
                 .packageNameMatchesCallingUid(PACKAGE));
 
         // test mis-match case
-        try {
-            doReturn(Binder.getCallingUid() + 1).when(mockPackageManager)
-                    .getPackageUid(eq(PACKAGE), anyInt());
-        } catch (Exception e) {
-            Log.e(TAG, "testPackageNameMatchesCallingUid: unable to setup mocks");
-            fail();
-        }
+        SecurityException e = new SecurityException("Test exception");
+        doThrow(e).when(mockAppOpsManager).checkPackage(anyInt(), anyString());
         assertFalse(new SmsPermissions(mMockPhone, mMockContext, mMockAppOps)
                 .packageNameMatchesCallingUid(PACKAGE));
     }
