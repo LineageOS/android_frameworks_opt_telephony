@@ -219,6 +219,9 @@ public class SubscriptionController extends ISub.Stub {
         // clear SLOT_INDEX for all subs
         clearSlotIndexForSubInfoRecords();
 
+        // Cache Setting values
+        cacheSettingValues();
+
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
 
@@ -254,6 +257,26 @@ public class SubscriptionController extends ISub.Stub {
         mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value, null, null);
     }
 
+    /**
+     * Cache the Settings values by reading these values from Setting from disk to prevent disk I/O
+     * access during the API calling. This is based on an assumption that the Settings system will
+     * itself cache this value after the first read and thus only the first read after boot will
+     * access the disk.
+     */
+    private void cacheSettingValues() {
+        Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+    }
+
     @UnsupportedAppUsage
     protected void enforceModifyPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
@@ -279,6 +302,20 @@ public class SubscriptionController extends ISub.Stub {
             // A SecurityException indicates that the calling package is targeting at least the
             // minimum level that enforces identifier access restrictions and the new access
             // requirements are not met.
+            return false;
+        }
+    }
+
+    /**
+     * Returns whether the {@code callingPackage} has access to the phone number on the specified
+     * {@code subId} using the provided {@code message} in any resulting SecurityException.
+     */
+    private boolean hasPhoneNumberAccess(int subId, String callingPackage, String callingFeatureId,
+            String message) {
+        try {
+            return TelephonyPermissions.checkCallingOrSelfReadPhoneNumber(mContext, subId,
+                    callingPackage, callingFeatureId, message);
+        } catch (SecurityException e) {
             return false;
         }
     }
@@ -3746,11 +3783,20 @@ public class SubscriptionController extends ISub.Stub {
     private SubscriptionInfo conditionallyRemoveIdentifiers(SubscriptionInfo subInfo,
             String callingPackage, String callingFeatureId, String message) {
         SubscriptionInfo result = subInfo;
-        if (!hasSubscriberIdentifierAccess(subInfo.getSubscriptionId(), callingPackage,
-                callingFeatureId, message)) {
+        int subId = subInfo.getSubscriptionId();
+        boolean hasIdentifierAccess = hasSubscriberIdentifierAccess(subId, callingPackage,
+                callingFeatureId, message);
+        boolean hasPhoneNumberAccess = hasPhoneNumberAccess(subId, callingPackage, callingFeatureId,
+                message);
+        if (!hasIdentifierAccess || !hasPhoneNumberAccess) {
             result = new SubscriptionInfo(subInfo);
-            result.clearIccId();
-            result.clearCardString();
+            if (!hasIdentifierAccess) {
+                result.clearIccId();
+                result.clearCardString();
+            }
+            if (!hasPhoneNumberAccess) {
+                result.clearNumber();
+            }
         }
         return result;
     }

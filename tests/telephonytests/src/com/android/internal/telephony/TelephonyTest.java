@@ -400,6 +400,8 @@ public abstract class TelephonyTest {
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
+        mImsCallProfile.setCallerNumberVerificationStatus(
+                ImsCallProfile.VERIFICATION_STATUS_PASSED);
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
@@ -734,13 +736,18 @@ public abstract class TelephonyTest {
     }
 
     protected void setupMocksForTelephonyPermissions() throws Exception {
+        setupMocksForTelephonyPermissions(TAG, Build.VERSION_CODES.Q);
+    }
+
+    protected void setupMocksForTelephonyPermissions(String packageName, int targetSdkVersion)
+            throws Exception {
         // If the calling package does not meet the new requirements for device identifier access
         // TelephonyPermissions will query the PackageManager for the ApplicationInfo of the package
         // to determine the target SDK. For apps targeting Q a SecurityException is thrown
         // regardless of if the package satisfies the previous requirements for device ID access.
-        mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
-        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(TAG), anyInt(),
-                any());
+        mApplicationInfo.targetSdkVersion = targetSdkVersion;
+        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(packageName),
+                anyInt(), any());
 
         // TelephonyPermissions uses a SystemAPI to check if the calling package meets any of the
         // generic requirements for device identifier access (currently READ_PRIVILEGED_PHONE_STATE,
