@@ -165,7 +165,9 @@ import org.mockito.Mock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -263,6 +265,12 @@ public class RILTest extends TelephonyTest {
     private static final int BEARER_BITMASK = 123123;
     private static final int MTU = 1234;
     private static final boolean PERSISTENT = true;
+
+    private static final String[] ADDITIONAL_PLMNS = new String[] {"00101", "001001", "12345"};
+
+    private static final boolean CSG_INDICATION = true;
+    private static final String HOME_NODEB_NAME = "Android Network";
+    private static final int CSG_IDENTITY = 0xC0FFEE;
 
     @Before
     public void setUp() throws Exception {
@@ -1284,16 +1292,24 @@ public class RILTest extends TelephonyTest {
         assertEquals(expected, cellInfoWcdma);
     }
 
+    private static void initializeCellIdentityTdscdma_1_2(
+            android.hardware.radio.V1_2.CellIdentityTdscdma cid) {
+        cid.base.lac = LAC;
+        cid.base.cid = CID;
+        cid.base.cpid = PSC;
+        cid.base.mcc = MCC_STR;
+        cid.base.mnc = MNC_STR;
+        cid.uarfcn = UARFCN;
+        cid.operatorNames.alphaLong = ALPHA_LONG;
+        cid.operatorNames.alphaShort = ALPHA_SHORT;
+    }
+
     @Test
     public void testConvertHalCellInfoListForTdscdma() {
         android.hardware.radio.V1_2.CellInfoTdscdma cellinfo =
                 new android.hardware.radio.V1_2.CellInfoTdscdma();
-        cellinfo.cellIdentityTdscdma.base.lac = LAC;
-        cellinfo.cellIdentityTdscdma.base.cid = CID;
-        cellinfo.cellIdentityTdscdma.base.cpid = PSC;
-        cellinfo.cellIdentityTdscdma.uarfcn = UARFCN;
-        cellinfo.cellIdentityTdscdma.base.mcc = MCC_STR;
-        cellinfo.cellIdentityTdscdma.base.mnc = MNC_STR;
+        initializeCellIdentityTdscdma_1_2(cellinfo.cellIdentityTdscdma);
+
         cellinfo.signalStrengthTdscdma.signalStrength = RSSI_ASU;
         cellinfo.signalStrengthTdscdma.bitErrorRate = BIT_ERROR_RATE;
         cellinfo.signalStrengthTdscdma.rscp = RSCP_ASU;
@@ -1316,7 +1332,7 @@ public class RILTest extends TelephonyTest {
         expected.setTimeStamp(TIMESTAMP);
         expected.setCellConnectionStatus(CellInfo.CONNECTION_NONE);
         CellIdentityTdscdma ci = new CellIdentityTdscdma(
-                MCC_STR, MNC_STR, LAC, CID, PSC, UARFCN, EMPTY_ALPHA_LONG, EMPTY_ALPHA_SHORT,
+                MCC_STR, MNC_STR, LAC, CID, PSC, UARFCN, ALPHA_LONG, ALPHA_SHORT,
                 Collections.emptyList(), null);
         CellSignalStrengthTdscdma cs = new CellSignalStrengthTdscdma(
                 RSSI, BIT_ERROR_RATE, RSCP);
@@ -1550,9 +1566,7 @@ public class RILTest extends TelephonyTest {
     @Test
     public void testConvertHalCellInfoList_1_2ForWcdmaWithEmptyMccMnc() {
         // MCC/MNC will be set as INT_MAX if unknown
-        ArrayList<CellInfo> ret = getCellInfoListForWcdma(
-                String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MAX_VALUE),
-                ALPHA_LONG, ALPHA_SHORT);
+        ArrayList<CellInfo> ret = getCellInfoListForWcdma(null, null, ALPHA_LONG, ALPHA_SHORT);
 
         assertEquals(1, ret.size());
         CellInfoWcdma cellInfoWcdma = (CellInfoWcdma) ret.get(0);
@@ -1653,6 +1667,155 @@ public class RILTest extends TelephonyTest {
 
         assertEquals(expectedCellIdentity, cellIdentityNr);
         assertEquals(expectedSignalStrength, signalStrengthNr);
+    }
+
+    private static android.hardware.radio.V1_5.ClosedSubscriberGroupInfo getHalCsgInfo() {
+        android.hardware.radio.V1_5.ClosedSubscriberGroupInfo csgInfo =
+                new android.hardware.radio.V1_5.ClosedSubscriberGroupInfo();
+
+        csgInfo.csgIndication = CSG_INDICATION;
+        csgInfo.homeNodebName = HOME_NODEB_NAME;
+        csgInfo.csgIdentity = CSG_IDENTITY;
+
+        return csgInfo;
+    }
+
+    private static void initializeCellIdentityLte_1_5(
+            android.hardware.radio.V1_5.CellIdentityLte id,
+            boolean addAdditionalPlmns, boolean addCsgInfo) {
+
+        initializeCellIdentityLte_1_2(id.base);
+
+        if (addAdditionalPlmns) {
+            id.additionalPlmns = new ArrayList<>(
+                    Arrays.asList(ADDITIONAL_PLMNS));
+        }
+
+        if (addCsgInfo) {
+            id.optionalCsgInfo.csgInfo(getHalCsgInfo());
+        }
+    }
+
+    @Test
+    public void testCellIdentityLte_1_5_CsgInfo() {
+        android.hardware.radio.V1_5.CellIdentityLte halCellIdentity =
+                new android.hardware.radio.V1_5.CellIdentityLte();
+        initializeCellIdentityLte_1_5(halCellIdentity, false, true);
+
+        CellIdentityLte cellIdentity = new CellIdentityLte(halCellIdentity);
+
+        assertEquals(CSG_INDICATION,
+                cellIdentity.getClosedSubscriberGroupInfo().getCsgIndicator());
+        assertEquals(HOME_NODEB_NAME,
+                cellIdentity.getClosedSubscriberGroupInfo().getHomeNodebName());
+        assertEquals(CSG_IDENTITY,
+                cellIdentity.getClosedSubscriberGroupInfo().getCsgIdentity());
+    }
+
+    @Test
+    public void testCellIdentityLte_1_5_MultiPlmn() {
+        android.hardware.radio.V1_5.CellIdentityLte halCellIdentity =
+                new android.hardware.radio.V1_5.CellIdentityLte();
+        initializeCellIdentityLte_1_5(halCellIdentity, true, false);
+
+        CellIdentityLte cellIdentity = new CellIdentityLte(halCellIdentity);
+
+        Set<String> additionalPlmns = new HashSet<>();
+        Collections.addAll(additionalPlmns, ADDITIONAL_PLMNS);
+
+        assertEquals(cellIdentity.getAdditionalPlmns(), additionalPlmns);
+    }
+
+    private static void initializeCellIdentityWcdma_1_5(
+            android.hardware.radio.V1_5.CellIdentityWcdma id,
+            boolean addAdditionalPlmns, boolean addCsgInfo) {
+
+        initializeCellIdentityWcdma_1_2(id.base);
+
+        if (addAdditionalPlmns) {
+            id.additionalPlmns = new ArrayList<>(
+                    Arrays.asList(ADDITIONAL_PLMNS));
+        }
+
+        if (addCsgInfo) {
+            id.optionalCsgInfo.csgInfo(getHalCsgInfo());
+        }
+    }
+
+    @Test
+    public void testCellIdentityWcdma_1_5_CsgInfo() {
+        android.hardware.radio.V1_5.CellIdentityWcdma halCellIdentity =
+                new android.hardware.radio.V1_5.CellIdentityWcdma();
+        initializeCellIdentityWcdma_1_5(halCellIdentity, false, true);
+
+        CellIdentityWcdma cellIdentity = new CellIdentityWcdma(halCellIdentity);
+
+        assertEquals(CSG_INDICATION,
+                cellIdentity.getClosedSubscriberGroupInfo().getCsgIndicator());
+        assertEquals(HOME_NODEB_NAME,
+                cellIdentity.getClosedSubscriberGroupInfo().getHomeNodebName());
+        assertEquals(CSG_IDENTITY,
+                cellIdentity.getClosedSubscriberGroupInfo().getCsgIdentity());
+    }
+
+    @Test
+    public void testCellIdentityWcdma_1_5_MultiPlmn() {
+        android.hardware.radio.V1_5.CellIdentityWcdma halCellIdentity =
+                new android.hardware.radio.V1_5.CellIdentityWcdma();
+        initializeCellIdentityWcdma_1_5(halCellIdentity, true, false);
+
+        CellIdentityWcdma cellIdentity = new CellIdentityWcdma(halCellIdentity);
+
+        Set<String> additionalPlmns = new HashSet<>();
+        Collections.addAll(additionalPlmns, ADDITIONAL_PLMNS);
+
+        assertEquals(cellIdentity.getAdditionalPlmns(), additionalPlmns);
+    }
+
+    private static void initializeCellIdentityTdscdma_1_5(
+            android.hardware.radio.V1_5.CellIdentityTdscdma id,
+            boolean addAdditionalPlmns, boolean addCsgInfo) {
+
+        initializeCellIdentityTdscdma_1_2(id.base);
+
+        if (addAdditionalPlmns) {
+            id.additionalPlmns = new ArrayList<>(
+                    Arrays.asList(ADDITIONAL_PLMNS));
+        }
+
+        if (addCsgInfo) {
+            id.optionalCsgInfo.csgInfo(getHalCsgInfo());
+        }
+    }
+
+    @Test
+    public void testCellIdentityTdscdma_1_5_CsgInfo() {
+        android.hardware.radio.V1_5.CellIdentityTdscdma halCellIdentity =
+                new android.hardware.radio.V1_5.CellIdentityTdscdma();
+        initializeCellIdentityTdscdma_1_5(halCellIdentity, false, true);
+
+        CellIdentityTdscdma cellIdentity = new CellIdentityTdscdma(halCellIdentity);
+
+        assertEquals(CSG_INDICATION,
+                cellIdentity.getClosedSubscriberGroupInfo().getCsgIndicator());
+        assertEquals(HOME_NODEB_NAME,
+                cellIdentity.getClosedSubscriberGroupInfo().getHomeNodebName());
+        assertEquals(CSG_IDENTITY,
+                cellIdentity.getClosedSubscriberGroupInfo().getCsgIdentity());
+    }
+
+    @Test
+    public void testCellIdentityTdscdma_1_5_MultiPlmn() {
+        android.hardware.radio.V1_5.CellIdentityTdscdma halCellIdentity =
+                new android.hardware.radio.V1_5.CellIdentityTdscdma();
+        initializeCellIdentityTdscdma_1_5(halCellIdentity, true, false);
+
+        CellIdentityTdscdma cellIdentity = new CellIdentityTdscdma(halCellIdentity);
+
+        Set<String> additionalPlmns = new HashSet<>();
+        Collections.addAll(additionalPlmns, ADDITIONAL_PLMNS);
+
+        assertEquals(cellIdentity.getAdditionalPlmns(), additionalPlmns);
     }
 
     @Test
@@ -1846,23 +2009,31 @@ public class RILTest extends TelephonyTest {
         }
     }
 
+    private static void initializeCellIdentityLte_1_2(
+            android.hardware.radio.V1_2.CellIdentityLte id) {
+        // 1.0 fields
+        id.base.mcc = MCC_STR;
+        id.base.mnc = MNC_STR;
+        id.base.ci = CI;
+        id.base.pci = PCI;
+        id.base.tac = TAC;
+        id.base.earfcn = EARFCN;
+
+        // 1.2 fields
+        id.bandwidth = BANDWIDTH;
+        id.operatorNames.alphaLong = ALPHA_LONG;
+        id.operatorNames.alphaShort = ALPHA_SHORT;
+    }
+
     private static void initializeCellInfoLte_1_2(android.hardware.radio.V1_2.CellInfoLte lte) {
-        lte.cellIdentityLte.base.ci = CI;
-        lte.cellIdentityLte.base.pci = PCI;
-        lte.cellIdentityLte.base.tac = TAC;
-        lte.cellIdentityLte.base.earfcn = EARFCN;
-        lte.cellIdentityLte.bandwidth = BANDWIDTH;
+        initializeCellIdentityLte_1_2(lte.cellIdentityLte);
+
         lte.signalStrengthLte.signalStrength = RSSI_ASU;
         lte.signalStrengthLte.rsrp = -RSRP;
         lte.signalStrengthLte.rsrq = -RSRQ;
         lte.signalStrengthLte.rssnr = RSSNR;
         lte.signalStrengthLte.cqi = CQI;
         lte.signalStrengthLte.timingAdvance = TIMING_ADVANCE;
-
-        lte.cellIdentityLte.operatorNames.alphaLong = ALPHA_LONG;
-        lte.cellIdentityLte.operatorNames.alphaShort = ALPHA_SHORT;
-        lte.cellIdentityLte.base.mcc = MCC_STR;
-        lte.cellIdentityLte.base.mnc = MNC_STR;
     }
 
     private ArrayList<CellInfo> getCellInfoListForLTE(
@@ -1918,18 +2089,31 @@ public class RILTest extends TelephonyTest {
         return RIL.convertHalCellInfoList_1_2(records);
     }
 
+    private static void initializeCellIdentityWcdma_1_2(
+            android.hardware.radio.V1_2.CellIdentityWcdma cid) {
+        initializeCellIdentityWcdma_1_2(cid, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT);
+    }
+
+    private static void initializeCellIdentityWcdma_1_2(
+            android.hardware.radio.V1_2.CellIdentityWcdma cid,
+                String mcc, String mnc, String alphaLong, String alphaShort) {
+        cid.base.lac = LAC;
+        cid.base.cid = CID;
+        cid.base.psc = PSC;
+        cid.base.uarfcn = UARFCN;
+        cid.base.mcc = mcc;
+        cid.base.mnc = mnc;
+        cid.operatorNames.alphaLong = alphaLong;
+        cid.operatorNames.alphaShort = alphaShort;
+    }
+
     private ArrayList<CellInfo> getCellInfoListForWcdma(
             String mcc, String mnc, String alphaLong, String alphaShort) {
         android.hardware.radio.V1_2.CellInfoWcdma cellinfo =
                 new android.hardware.radio.V1_2.CellInfoWcdma();
-        cellinfo.cellIdentityWcdma.base.lac = LAC;
-        cellinfo.cellIdentityWcdma.base.cid = CID;
-        cellinfo.cellIdentityWcdma.base.psc = PSC;
-        cellinfo.cellIdentityWcdma.base.uarfcn = UARFCN;
-        cellinfo.cellIdentityWcdma.base.mcc = mcc;
-        cellinfo.cellIdentityWcdma.base.mnc = mnc;
-        cellinfo.cellIdentityWcdma.operatorNames.alphaLong = alphaLong;
-        cellinfo.cellIdentityWcdma.operatorNames.alphaShort = alphaShort;
+        initializeCellIdentityWcdma_1_2(
+                cellinfo.cellIdentityWcdma, mcc, mnc, alphaLong, alphaShort);
+
         cellinfo.signalStrengthWcdma.base.signalStrength = RSSI_ASU;
         cellinfo.signalStrengthWcdma.base.bitErrorRate = BIT_ERROR_RATE;
         cellinfo.signalStrengthWcdma.rscp = RSCP_ASU;
