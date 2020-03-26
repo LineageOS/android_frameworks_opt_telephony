@@ -34,6 +34,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -405,6 +406,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // Persistent Logging
     private final LocalLog mEventLog = new LocalLog(50);
 
+    private boolean mBootCompletedHandlerRan = false;
+
     // Synchronize all events on a handler to ensure that the cache includes the most recent
     // version of the installed ImsServices.
     private Handler mHandler = new Handler(Looper.getMainLooper(), (msg) -> {
@@ -420,9 +423,12 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 break;
             }
             case HANDLER_BOOT_COMPLETE: {
-                mEventLog.log("handling BOOT_COMPLETE");
-                // Re-evaluate bound services for all slots after requerying packagemanager
-                maybeAddedImsService(null /*packageName*/);
+                if (!mBootCompletedHandlerRan) {
+                    mBootCompletedHandlerRan = true;
+                    mEventLog.log("handling BOOT_COMPLETE");
+                    // Re-evaluate bound services for all slots after requerying packagemanager
+                    maybeAddedImsService(null /*packageName*/);
+                }
                 break;
             }
             case HANDLER_CONFIG_CHANGED: {
@@ -539,8 +545,17 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         mReceiverContext.registerReceiver(mAppChangedReceiver, appChangedFilter);
         mReceiverContext.registerReceiver(mConfigChangedReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-        mReceiverContext.registerReceiver(mBootCompleted, new IntentFilter(
-                Intent.ACTION_BOOT_COMPLETED));
+
+        UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        if (userManager.isUserUnlocked()) {
+            mHandler.obtainMessage(HANDLER_BOOT_COMPLETE, null).sendToTarget();
+        } else {
+            mReceiverContext.registerReceiver(mBootCompleted, new IntentFilter(
+                    Intent.ACTION_BOOT_COMPLETED));
+            if (userManager.isUserUnlocked()) {
+                mHandler.obtainMessage(HANDLER_BOOT_COMPLETE, null).sendToTarget();
+            }
+        }
     }
 
     @VisibleForTesting
@@ -1179,6 +1194,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     // Called from handler ONLY.
     private void carrierConfigChanged(int slotId) {
+        updateBoundDeviceServices();
+
         if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
             // not specified, update carrier override cache and possibly rebind on all slots.
             for (int i = 0; i < mNumSlots; i++) {
@@ -1188,11 +1205,28 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         updateBoundServices(slotId, getImsPackageOverrideConfig(slotId));
     }
 
+    private void updateBoundDeviceServices() {
+        Log.d(TAG, "updateBoundDeviceServices: called");
+        ArrayMap<String, ImsServiceInfo> featureDynamicImsPackages = new ArrayMap<>();
+        for (int f = ImsFeature.FEATURE_EMERGENCY_MMTEL; f < ImsFeature.FEATURE_MAX; f++) {
+            String packageName = getDeviceConfiguration(f);
+            ImsServiceInfo serviceInfo = getImsServiceInfoFromCache(packageName);
+            if (serviceInfo != null && !serviceInfo.featureFromMetadata
+                    && !featureDynamicImsPackages.containsKey(packageName)) {
+                featureDynamicImsPackages.put(packageName, serviceInfo);
+
+                Log.d(TAG, "updateBoundDeviceServices: Schedule query for package=" + packageName);
+                scheduleQueryForFeatures(featureDynamicImsPackages.get(packageName));
+            }
+        }
+    }
+
     private void updateBoundServices(int slotId, Map<Integer, String> featureMap) {
         if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX || slotId >= mNumSlots) {
             return;
         }
         boolean hasConfigChanged = false;
+        boolean didQuerySchedule = false;
         for (int f = ImsFeature.FEATURE_EMERGENCY_MMTEL; f < ImsFeature.FEATURE_MAX; f++) {
             String overridePackageName = getOverridePackageName(slotId, f);
             String oldPackageName = getCarrierConfiguredPackageName(slotId, f);
@@ -1207,20 +1241,28 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                         ImsFeature.FEATURE_LOG_MAP.getOrDefault(f, "invalid"), slotId));
                 newPackageName = overridePackageName;
             }
-            mEventLog.log("updateBoundServices - carrier package changed: "
-                    + oldPackageName + " -> " + newPackageName + " on slot " + slotId);
+
             setCarrierConfiguredPackageName(newPackageName, slotId, f);
             // Carrier config may have not changed, but we still want to kick off a recalculation
             // in case there has been a change to the supported device features.
             ImsServiceInfo info = getImsServiceInfoFromCache(newPackageName);
+            mEventLog.log("updateBoundServices - carrier package changed: "
+                    + oldPackageName + " -> " + newPackageName + " on slot " + slotId
+                    + ", hasConfigChanged=" + hasConfigChanged);
             if (info == null || info.featureFromMetadata) {
                 hasConfigChanged = true;
             } else {
                 // Config will change when this query completes
                 scheduleQueryForFeatures(info);
+                didQuerySchedule = true;
             }
         }
         if (hasConfigChanged) calculateFeatureConfigurationChange();
+
+        if (hasConfigChanged && didQuerySchedule) {
+            mEventLog.log("[warning] updateBoundServices - both hasConfigChange and query "
+                    + "scheduled on slot " + slotId);
+        }
     }
 
     private @NonNull Map<Integer, String> getImsPackageOverrideConfig(int slotId) {
@@ -1384,6 +1426,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         service.replaceFeatures(features);
         // Wait until all queries have completed before changing the configuration to reduce churn.
         if (!mFeatureQueryManager.isQueryInProgress()) {
+            if (mHandler.hasMessages(HANDLER_DYNAMIC_FEATURE_CHANGE)) {
+                mEventLog.log("[warning] dynamicQueryComplete - HANDLER_DYNAMIC_FEATURE_CHANGE "
+                        + "pending with calculateFeatureConfigurationChange()");
+            }
             calculateFeatureConfigurationChange();
         }
     }
