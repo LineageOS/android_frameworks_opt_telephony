@@ -788,6 +788,13 @@ public abstract class TelephonyTest {
                 anyInt());
     }
 
+    protected void setCarrierPrivileges(boolean hasCarrierPrivileges) {
+        doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
+        doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS).when(
+                mTelephonyManager).getCarrierPrivilegeStatus(anyInt());
+    }
+
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {
         final CountDownLatch lock = new CountDownLatch(1);
         h.post(lock::countDown);
