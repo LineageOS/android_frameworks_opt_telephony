@@ -377,10 +377,8 @@ public class CatService extends Handler implements AppInterface {
 
         // Log all proactive commands.
         if (isProactiveCmd) {
-            if (mUiccController != null) {
-                mUiccController.addCardLog("ProactiveCommand mSlotId=" + mSlotId +
-                        " cmdParams=" + cmdParams);
-            }
+            UiccController.addLocalLog("CatService[" + mSlotId + "]: ProactiveCommand " +
+                    " cmdParams=" + cmdParams);
         }
 
         CharSequence message;
