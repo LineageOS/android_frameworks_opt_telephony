@@ -1726,7 +1726,7 @@ public class UiccProfile extends IccCard {
 
     private void logWithLocalLog(String msg) {
         Rlog.d(LOG_TAG, msg);
-        if (DBG) UiccController.sLocalLog.log("UiccProfile[" + mPhoneId + "]: " + msg);
+        if (DBG) UiccController.addLocalLog("UiccProfile[" + mPhoneId + "]: " + msg);
     }
 
     /**
