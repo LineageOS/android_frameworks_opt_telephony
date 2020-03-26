@@ -1714,6 +1714,60 @@ public class RILTest extends TelephonyTest {
         result14.mtu = 1500;
 
         assertEquals(response, RIL.convertDataCallResult(result14));
+
+        // Test V1.5 SetupDataCallResult
+        android.hardware.radio.V1_5.SetupDataCallResult result15 =
+                new android.hardware.radio.V1_5.SetupDataCallResult();
+        result15.cause = android.hardware.radio.V1_4.DataCallFailCause.NONE;
+        result15.suggestedRetryTime = -1;
+        result15.cid = 0;
+        result15.active = android.hardware.radio.V1_4.DataConnActiveStatus.ACTIVE;
+        result15.type = android.hardware.radio.V1_4.PdpProtocolType.IPV4V6;
+        result15.ifname = "ifname";
+
+        android.hardware.radio.V1_5.LinkAddress la1 = new android.hardware.radio.V1_5.LinkAddress();
+        la1.address = "10.0.2.15";
+        la1.properties = 0;
+        la1.deprecationTime = -1;
+        la1.expirationTime = -1;
+
+        android.hardware.radio.V1_5.LinkAddress la2 = new android.hardware.radio.V1_5.LinkAddress();
+        la2.address = "2607:fb90:a620:651d:eabe:f8da:c107:44be/64";
+        la2.properties = 0;
+        la2.deprecationTime = -1;
+        la2.expirationTime = -1;
+        result15.addresses = new ArrayList<>(Arrays.asList(la1, la2));
+        result15.dnses = new ArrayList<>(Arrays.asList("10.0.2.3", "fd00:976a::9"));
+        result15.gateways = new ArrayList<>(Arrays.asList("10.0.2.15", "fe80::2"));
+        result15.pcscf = new ArrayList<>(Arrays.asList(
+                "fd00:976a:c206:20::6", "fd00:976a:c206:20::9", "fd00:976a:c202:1d::9"));
+        result15.mtuV4 = 1500;
+        result15.mtuV6 = 3000;
+
+        response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setSuggestedRetryTime(-1)
+                .setId(0)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress("10.0.2.15"), 32),
+                        new LinkAddress("2607:fb90:a620:651d:eabe:f8da:c107:44be/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
+                .setMtuV4(1500)
+                .setMtuV6(3000)
+                .setVersion(5)
+                .build();
+
+        assertEquals(response, RIL.convertDataCallResult(result15));
     }
 
     @Test

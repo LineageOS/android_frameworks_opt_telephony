@@ -6563,6 +6563,38 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
+    private static LinkAddress createLinkAddressFromString(String addressString) {
+        return createLinkAddressFromString(addressString, 0, LinkAddress.LIFETIME_UNKNOWN,
+                LinkAddress.LIFETIME_UNKNOWN);
+    }
+
+    private static LinkAddress createLinkAddressFromString(String addressString, int properties,
+            long deprecationTime, long expirationTime) {
+        addressString = addressString.trim();
+        InetAddress address = null;
+        int prefixLength = -1;
+        try {
+            String[] pieces = addressString.split("/", 2);
+            address = InetAddresses.parseNumericAddress(pieces[0]);
+            if (pieces.length == 1) {
+                prefixLength = (address instanceof Inet4Address) ? 32 : 128;
+            } else if (pieces.length == 2) {
+                prefixLength = Integer.parseInt(pieces[1]);
+            }
+        } catch (NullPointerException e) {            // Null string.
+        } catch (ArrayIndexOutOfBoundsException e) {  // No prefix length.
+        } catch (NumberFormatException e) {           // Non-numeric prefix.
+        } catch (IllegalArgumentException e) {        // Invalid IP address.
+        }
+
+        if (address == null || prefixLength == -1) {
+            throw new IllegalArgumentException("Invalid link address " + addressString);
+        }
+
+        return new LinkAddress(address, prefixLength, properties, 0,
+                deprecationTime, expirationTime);
+    }
+
     /**
      * Convert SetupDataCallResult defined in 1.0, 1.4, or 1.5 types.hal into DataCallResponse
      * @param dcResult setup data call result
@@ -6632,9 +6664,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             active = result.active;
             protocolType = result.type;
             ifname = result.ifname;
-            laList = result.addresses.stream().map(a -> new LinkAddress(
-                    InetAddresses.parseNumericAddress(a.address), 0, a.properties, 0,
-                    a.deprecationTime, a.expirationTime)).collect(Collectors.toList());
+            laList = result.addresses.stream().map(la -> createLinkAddressFromString(
+                    la.address, la.properties, la.deprecationTime, la.expirationTime))
+                    .collect(Collectors.toList());
 
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
@@ -6652,24 +6684,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             // Process address
             if (addresses != null) {
                 for (String address : addresses) {
-                    address = address.trim();
-                    if (address.isEmpty()) continue;
-
-                    try {
-                        LinkAddress la;
-                        // Check if the address contains prefix length. If yes, LinkAddress
-                        // can parse that.
-                        if (address.split("/").length == 2) {
-                            la = new LinkAddress(address);
-                        } else {
-                            InetAddress ia = InetAddresses.parseNumericAddress(address);
-                            la = new LinkAddress(ia, (ia instanceof Inet4Address) ? 32 : 128);
-                        }
-
-                        laList.add(la);
-                    } catch (IllegalArgumentException e) {
-                        Rlog.e(RILJ_LOG_TAG, "Unknown address: " + address, e);
-                    }
+                    laList.add(createLinkAddressFromString(address));
                 }
             }
         }

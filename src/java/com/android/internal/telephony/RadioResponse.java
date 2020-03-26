@@ -192,6 +192,18 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseInts(responseInfo, retriesRemaining);
     }
 
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error
+     * @param persoType SIM Personalisation type
+     * @param remainingRetries postiive values indicates number of retries remaining,
+     * must be equal to -1 if number of retries is infinite.
+     */
+    public void supplySimDepersonalizationResponse(RadioResponseInfo info,
+            int persoType, int remainingRetries) {
+        //short-term stub method
+    }
+
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param calls Current call list
@@ -1544,6 +1556,13 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setIndicationFilterResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setIndicationFilterResponse_1_5(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
 
