@@ -22,7 +22,6 @@ import static android.Manifest.permission.READ_SMS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -60,7 +59,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(true).when(mSubscriptionController).isActiveSubId(0, TAG, FEATURE_ID);
         doReturn(true).when(mSubscriptionController).isActiveSubId(1, TAG, FEATURE_ID);
         doReturn(new int[]{0, 1}).when(mSubscriptionManager)
-                .getActiveSubscriptionIdList(anyBoolean());
+                .getCompleteActiveSubscriptionIdList();
 
         mServiceManagerMockedServices.put("isub", mSubscriptionController);
         doReturn(mSubscriptionController).when(mSubscriptionController)
