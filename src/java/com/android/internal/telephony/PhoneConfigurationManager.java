@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RegistrantList;
+import android.os.storage.StorageManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
@@ -100,19 +101,14 @@ public class PhoneConfigurationManager {
 
         mPhones = PhoneFactory.getPhones();
 
-        /*
-         * To support FDE (deprecated), additional check is needed:
-         *
-         * if (!StorageManager.inCryptKeeperBounce()) {
-         *     // for loop below
-         * } else {
-         *     for (Phone phone : mPhones) {
-         *         phone.mCi.registerForOn(mHandler, Phone.EVENT_RADIO_ON, phone);
-         *     }
-         * }
-         */
-        for (Phone phone : mPhones) {
-            phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
+        if (!StorageManager.inCryptKeeperBounce()) {
+            for (Phone phone : mPhones) {
+                phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
+            }
+        } else {
+            for (Phone phone : mPhones) {
+                phone.mCi.registerForOn(mHandler, Phone.EVENT_RADIO_ON, phone);
+            }
         }
     }
 
