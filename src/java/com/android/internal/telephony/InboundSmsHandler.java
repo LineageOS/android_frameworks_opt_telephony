@@ -39,6 +39,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -49,8 +50,11 @@ import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerWhitelistManager;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.os.storage.StorageManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
@@ -661,22 +665,18 @@ public abstract class InboundSmsHandler extends StateMachine {
             return Intents.RESULT_SMS_HANDLED;
         }
 
-//        // onlyCore indicates if the device is in cryptkeeper
-//        boolean onlyCore = false;
-//        try {
-//            onlyCore = IPackageManager.Stub.asInterface(
-//                    TelephonyFrameworkInitializer
-//                            .getTelephonyServiceManager()
-//                            .getPackageManagerServiceRegisterer()
-//                            .get()).
-//                    isOnlyCoreApps();
-//        } catch (RemoteException e) {
-//        }
-//        if (onlyCore) {
-//            // Device is unable to receive SMS in encrypted state
-//            log("Received a short message in encrypted state. Rejecting.");
-//            return Intents.RESULT_SMS_RECEIVED_WHILE_ENCRYPTED;
-//        }
+        // onlyCore indicates if the device is in cryptkeeper
+        boolean onlyCore = false;
+        try {
+            onlyCore = IPackageManager.Stub.asInterface(ServiceManager.getService("package"))
+                    .isOnlyCoreApps();
+        } catch (RemoteException e) {
+        }
+        if (onlyCore) {
+            // Device is unable to receive SMS in encrypted state
+            log("Received a short message in encrypted state. Rejecting.");
+            return Intents.RESULT_SMS_RECEIVED_WHILE_ENCRYPTED;
+        }
 
         int result = dispatchMessageRadioSpecific(smsb);
 
@@ -1059,9 +1059,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     @UnsupportedAppUsage
     private void showNewMessageNotification() {
         // Do not show the notification on non-FBE devices.
-        // if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
-        //     return;
-        // }
+        if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
+            return;
+        }
         log("Show new message notification.");
         PendingIntent intent = PendingIntent.getBroadcast(
             mContext,
