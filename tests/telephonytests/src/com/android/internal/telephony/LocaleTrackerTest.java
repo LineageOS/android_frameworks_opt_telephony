@@ -173,6 +173,7 @@ public class LocaleTrackerTest extends TelephonyTest {
         sendServiceState(ServiceState.STATE_IN_SERVICE);
         mLocaleTracker.updateOperatorNumeric(US_MCC + FAKE_MNC);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getLastKnownCountryIso());
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
         assertFalse(mLocaleTracker.isTracking());
 
@@ -180,6 +181,7 @@ public class LocaleTrackerTest extends TelephonyTest {
         mLocaleTracker.updateOperatorNumeric("");
         processAllMessages();
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getLastKnownCountryIso());
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
         sendServiceState(ServiceState.STATE_POWER_OFF);
         assertFalse(mLocaleTracker.isTracking());
@@ -188,6 +190,7 @@ public class LocaleTrackerTest extends TelephonyTest {
         mLocaleTracker.updateOperatorNumeric("");
         processAllMessages();
         assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getLastKnownCountryIso());
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE,
                 COUNTRY_CODE_UNAVAILABLE});
     }
