@@ -4039,16 +4039,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return getLocaleFromCarrierProperties();
     }
 
-    public void updateDataConnectionTracker() {
-        if (mTransportManager != null) {
-            for (int transport : mTransportManager.getAvailableTransports()) {
-                if (getDcTracker(transport) != null) {
-                    getDcTracker(transport).update();
-                }
-            }
-        }
-    }
-
     public boolean updateCurrentCarrierInProvider() {
         return false;
     }
@@ -4241,6 +4231,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return ((RIL) mCi).getHalVersion();
         }
         return RIL.RADIO_HAL_VERSION_UNKNOWN;
+    }
+
+    /**
+     * Get the SIM's MCC/MNC
+     *
+     * @return MCC/MNC in string format, empty string if not available.
+     */
+    @NonNull
+    public String getOperatorNumeric() {
+        return "";
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
