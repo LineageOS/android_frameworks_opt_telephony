@@ -308,7 +308,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         mSubscriptionControllerUT.setDefaultDataSubId(1);
 
-        verify(mPhone, times(1)).updateDataConnectionTracker();
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
         verify(mContext, times(1)).sendStickyBroadcastAsUser(
                 captorIntent.capture(), eq(UserHandle.ALL));
