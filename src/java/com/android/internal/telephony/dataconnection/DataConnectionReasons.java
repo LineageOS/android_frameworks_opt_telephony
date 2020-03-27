@@ -106,7 +106,7 @@ public class DataConnectionReasons {
 
         // Belows are all hard failure reasons.
         NOT_ATTACHED(true),
-        RECORD_NOT_LOADED(true),
+        SIM_NOT_READY(true),
         INVALID_PHONE_STATE(true),
         CONCURRENT_VOICE_DATA_NOT_ALLOWED(true),
         PS_RESTRICTED(true),
