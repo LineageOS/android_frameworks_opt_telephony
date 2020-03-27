@@ -16,13 +16,38 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.CarrierConfigManager.EXTRA_SLOT_INDEX;
+import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
+import static android.telephony.CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY;
+import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+
 import android.annotation.NonNull;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.UserInfo;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.UserManager;
+import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionManager;
+import android.util.ArrayMap;
+import android.util.ArraySet;
+import android.util.IntArray;
 import android.util.Log;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * CarrierPrivilegesTracker will track the Carrier Privileges for a specific {@link Phone}.
@@ -44,12 +69,66 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     private static final int ACTION_UNREGISTER_LISTENER = 2;
 
+    /**
+     * Action for tracking when Carrier Configs are updated.
+     * arg1: Subscription Id for the Carrier Configs update being broadcast
+     * arg2: Slot Index for the Carrier Configs update being broadcast
+     */
+    private static final int ACTION_CARRIER_CONFIG_CERTS_UPDATED = 3;
+
+    private final Context mContext;
+    private final Phone mPhone;
+    private final CarrierConfigManager mCarrierConfigManager;
+    private final PackageManager mPackageManager;
+    private final UserManager mUserManager;
     private final RegistrantList mRegistrantList;
+    private final Set<String> mCarrierConfigCerts;
+
+    // Map of PackageName -> Certificate hashes for that Package
+    private final Map<String, Set<String>> mInstalledPackageCerts;
     private int[] mPrivilegedUids;
 
-    public CarrierPrivilegesTracker(@NonNull Looper looper) {
+    private final BroadcastReceiver mIntentReceiver =
+            new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    if (action == null) return;
+
+                    switch (action) {
+                        case CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED: {
+                            Bundle extras = intent.getExtras();
+                            int slotIndex = extras.getInt(EXTRA_SLOT_INDEX);
+                            int subId =
+                                    extras.getInt(
+                                            EXTRA_SUBSCRIPTION_INDEX, INVALID_SUBSCRIPTION_ID);
+                            sendMessage(
+                                    obtainMessage(
+                                            ACTION_CARRIER_CONFIG_CERTS_UPDATED,
+                                            subId,
+                                            slotIndex));
+                            break;
+                        }
+                    }
+                }
+            };
+
+    public CarrierPrivilegesTracker(
+            @NonNull Looper looper, @NonNull Phone phone, @NonNull Context context) {
         super(looper);
+        mContext = context;
+        mCarrierConfigManager = context.getSystemService(CarrierConfigManager.class);
+        mPackageManager = context.getSystemService(PackageManager.class);
+        mUserManager = context.getSystemService(UserManager.class);
+        mPhone = phone;
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mContext.registerReceiver(mIntentReceiver, filter);
+
         mRegistrantList = new RegistrantList();
+        mCarrierConfigCerts = new ArraySet<>();
+        mInstalledPackageCerts = new ArrayMap<>();
         mPrivilegedUids = new int[0];
     }
 
@@ -62,6 +141,10 @@ public class CarrierPrivilegesTracker extends Handler {
             }
             case ACTION_UNREGISTER_LISTENER: {
                 handleUnregisterListener((Handler) msg.obj);
+                break;
+            }
+            case ACTION_CARRIER_CONFIG_CERTS_UPDATED: {
+                handleCarrierConfigUpdated(msg.arg1, msg.arg2);
                 break;
             }
             default: {
@@ -78,6 +161,82 @@ public class CarrierPrivilegesTracker extends Handler {
 
     private void handleUnregisterListener(Handler handler) {
         mRegistrantList.remove(handler);
+    }
+
+    private void handleCarrierConfigUpdated(int subId, int slotIndex) {
+        if (slotIndex != mPhone.getPhoneId()) return;
+
+        Set<String> updatedCarrierConfigCerts = new ArraySet<>();
+
+        // Carrier Config broadcasts with INVALID_SUBSCRIPTION_ID when the SIM is removed. This is
+        // an expected event. When this happens, clear the certificates from the previous configs.
+        if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
+            if (mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
+                String[] carrierConfigCerts =
+                        carrierConfigs.getStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
+
+                if (carrierConfigCerts != null) {
+                    for (String cert : carrierConfigCerts) {
+                        updatedCarrierConfigCerts.add(cert.toUpperCase());
+                    }
+                }
+            }
+        }
+
+        maybeUpdateCertsAndNotifyRegistrants(mCarrierConfigCerts, updatedCarrierConfigCerts);
+    }
+
+    private void maybeUpdateCertsAndNotifyRegistrants(
+            Set<String> currentCerts, Set<String> updatedCerts) {
+        if (!currentCerts.equals(updatedCerts)) {
+            currentCerts.clear();
+            currentCerts.addAll(updatedCerts);
+
+            int[] currentPrivilegedUids = getCurrentPrivilegedUids();
+
+            // Sort UIDs for the equality check
+            Arrays.sort(currentPrivilegedUids);
+            if (!Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) {
+                mPrivilegedUids = currentPrivilegedUids;
+                mRegistrantList.notifyResult(mPrivilegedUids);
+            }
+        }
+    }
+
+    private int[] getCurrentPrivilegedUids() {
+        Set<Integer> privilegedUids = new ArraySet<>();
+        for (Map.Entry<String, Set<String>> e : mInstalledPackageCerts.entrySet()) {
+            if (isPackagePrivileged(e.getValue())) {
+                List<UserInfo> users = mUserManager.getUsers();
+                for (UserInfo user : users) {
+                    try {
+                        int uid =
+                                mPackageManager.getPackageUidAsUser(
+                                        e.getKey(), user.getUserHandle().getIdentifier());
+                        privilegedUids.add(uid);
+                    } catch (NameNotFoundException exception) {
+                        // Didn't find package. Continue looking at other packages
+                        Log.e(TAG, "Unable to find uid for package: " + e.getKey());
+                    }
+                }
+            }
+        }
+
+        IntArray result = new IntArray(privilegedUids.size());
+        for (int uid : privilegedUids) {
+            result.add(uid);
+        }
+        return result.toArray();
+    }
+
+    private boolean isPackagePrivileged(Set<String> certs) {
+        for (String cert : certs) {
+            if (mCarrierConfigCerts.contains(cert)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
