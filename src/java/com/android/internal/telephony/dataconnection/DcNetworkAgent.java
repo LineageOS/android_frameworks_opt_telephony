@@ -47,6 +47,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -315,7 +316,7 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    public synchronized void onStartSocketKeepalive(int slot, int intervalSeconds,
+    public synchronized void onStartSocketKeepalive(int slot, @NonNull Duration interval,
             @NonNull KeepalivePacketData packet) {
         if (mDataConnection == null) {
             loge("onStartSocketKeepalive called on no-owner DcNetworkAgent!");
@@ -324,7 +325,7 @@ public class DcNetworkAgent extends NetworkAgent {
 
         if (packet instanceof NattKeepalivePacketData) {
             mDataConnection.obtainMessage(DataConnection.EVENT_KEEPALIVE_START_REQUEST,
-                    slot, intervalSeconds, packet).sendToTarget();
+                    slot, (int) interval.getSeconds(), packet).sendToTarget();
         } else {
             sendSocketKeepaliveEvent(slot, SocketKeepalive.ERROR_UNSUPPORTED);
         }
