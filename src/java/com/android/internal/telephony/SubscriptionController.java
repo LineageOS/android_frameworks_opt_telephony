@@ -1309,9 +1309,6 @@ public class SubscriptionController extends ISub.Stub {
                     if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
                 }
 
-                // Once the records are loaded, notify DcTracker
-                PhoneFactory.getPhone(slotIndex).updateDataConnectionTracker();
-
                 if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIndexToSubIds.size());
             }
 
@@ -2423,9 +2420,6 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
-            // FIXME is this still needed?
-            updateAllDataConnectionTrackers();
-
             int previousDefaultSub = getDefaultSubId();
             Settings.Global.putInt(mContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
@@ -2436,17 +2430,6 @@ public class SubscriptionController extends ISub.Stub {
             }
         } finally {
             Binder.restoreCallingIdentity(identity);
-        }
-    }
-
-    @UnsupportedAppUsage
-    private void updateAllDataConnectionTrackers() {
-        // Tell Phone Proxies to update data connection tracker
-        int len = TelephonyManager.from(mContext).getActiveModemCount();
-        if (DBG) logd("[updateAllDataConnectionTrackers] activeModemCount=" + len);
-        for (int phoneId = 0; phoneId < len; phoneId++) {
-            if (DBG) logd("[updateAllDataConnectionTrackers] phoneId=" + phoneId);
-            PhoneFactory.getPhone(phoneId).updateDataConnectionTracker();
         }
     }
 
