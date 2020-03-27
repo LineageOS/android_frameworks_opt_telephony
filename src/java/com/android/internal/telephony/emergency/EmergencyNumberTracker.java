@@ -147,21 +147,13 @@ public class EmergencyNumberTracker extends Handler {
                     logd("ACTION_NETWORK_COUNTRY_CHANGED: PhoneId: " + phoneId + " CountryIso: "
                             + countryIso);
 
-                    boolean isInApm = false;
-                    ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
-                    if (serviceStateTracker != null) {
-                        if (serviceStateTracker.getServiceState().getState()
-                                == ServiceState.STATE_POWER_OFF) {
-                            isInApm = true;
-                        }
-                    }
                     // Sometimes the country is updated as an empty string when the network signal
                     // is lost; though we may not call emergency when there is no signal, we want
                     // to keep the old country iso to provide country-related emergency numbers,
                     // because they think they are still in that country. We don't need to update
                     // country change in this case. We will still need to update the empty string
                     // if device is in APM.
-                    if (TextUtils.isEmpty(countryIso) && !isInApm) {
+                    if (TextUtils.isEmpty(countryIso) && !isAirplaneModeEnabled()) {
                         return;
                     }
 
@@ -271,12 +263,29 @@ public class EmergencyNumberTracker extends Handler {
         }
     }
 
+    private boolean isAirplaneModeEnabled() {
+        ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
+        if (serviceStateTracker != null) {
+            if (serviceStateTracker.getServiceState().getState()
+                    == ServiceState.STATE_POWER_OFF) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void initializeDatabaseEmergencyNumberList() {
         // If country iso has been cached when listener is set, don't need to cache the initial
         // country iso and initial database.
         if (mCountryIso == null) {
-            updateEmergencyCountryIso(getInitialCountryIso().toLowerCase());
-            cacheEmergencyDatabaseByCountry(mCountryIso);
+            String countryForDatabaseCache = getInitialCountryIso().toLowerCase();
+            updateEmergencyCountryIso(countryForDatabaseCache);
+            // Use the last known country to cache the database in APM
+            if (TextUtils.isEmpty(countryForDatabaseCache)
+                    && isAirplaneModeEnabled()) {
+                countryForDatabaseCache = getCountryIsoForCachingDatabase();
+            }
+            cacheEmergencyDatabaseByCountry(countryForDatabaseCache);
         }
     }
 
@@ -567,6 +576,12 @@ public class EmergencyNumberTracker extends Handler {
         logd("updateEmergencyNumberListDatabaseAndNotify(): receiving countryIso: "
                 + countryIso);
         updateEmergencyCountryIso(countryIso.toLowerCase());
+        // Use cached country iso in APM to load emergency number database.
+        if (TextUtils.isEmpty(countryIso) && isAirplaneModeEnabled()) {
+            countryIso = getCountryIsoForCachingDatabase();
+            logd("updateEmergencyNumberListDatabaseAndNotify(): using cached APM country "
+                    + countryIso);
+        }
         cacheEmergencyDatabaseByCountry(countryIso);
         writeUpdatedEmergencyNumberListMetrics(mEmergencyNumberListFromDatabase);
         if (!DBG) {
@@ -781,6 +796,17 @@ public class EmergencyNumberTracker extends Handler {
 
     public String getEmergencyCountryIso() {
         return mCountryIso;
+    }
+
+    private String getCountryIsoForCachingDatabase() {
+        ServiceStateTracker sst = mPhone.getServiceStateTracker();
+        if (sst != null) {
+            LocaleTracker lt = sst.getLocaleTracker();
+            if (lt != null) {
+                return lt.getLastKnownCountryIso();
+            }
+        }
+        return "";
     }
 
     public int getEmergencyNumberDbVersion() {
