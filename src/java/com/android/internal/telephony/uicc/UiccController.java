@@ -32,6 +32,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.storage.StorageManager;
 import android.preference.PreferenceManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
@@ -49,6 +50,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -189,7 +191,7 @@ public class UiccController extends Handler {
     private RadioConfig mRadioConfig;
 
     // LocalLog buffer to hold important SIM related events for debugging
-    static LocalLog sLocalLog = new LocalLog(100);
+    private static LocalLog sLocalLog = new LocalLog(TelephonyUtils.IS_DEBUGGABLE ? 250 : 100);
 
     /**
      * API to make UiccController singleton if not already created.
@@ -228,16 +230,11 @@ public class UiccController extends Handler {
         for (int i = 0; i < mCis.length; i++) {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
 
-            /*
-             * To support FDE (deprecated), additional check is needed:
-             *
-             * if (!StorageManager.inCryptKeeperBounce()) {
-             *     mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
-             * } else {
-             *     mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
-             * }
-             */
-            mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
+            if (!StorageManager.inCryptKeeperBounce()) {
+                mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
+            } else {
+                mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
+            }
 
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, i);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, i);
@@ -886,14 +883,11 @@ public class UiccController extends Handler {
         }
         Throwable e = ar.exception;
         if (e != null) {
-            String logStr;
             if (!(e instanceof CommandException) || ((CommandException) e).getCommandError()
                     != CommandException.Error.REQUEST_NOT_SUPPORTED) {
                 // this is not expected; there should be no exception other than
                 // REQUEST_NOT_SUPPORTED
-                logStr = "Unexpected error getting slot status: " + ar.exception;
-                Rlog.e(LOG_TAG, logStr);
-                sLocalLog.log(logStr);
+                logeWithLocalLog("Unexpected error getting slot status: " + ar.exception);
             } else {
                 // REQUEST_NOT_SUPPORTED
                 logWithLocalLog("onGetSlotStatusDone: request not supported; marking "
@@ -920,10 +914,8 @@ public class UiccController extends Handler {
 
         int numSlots = status.size();
         if (mUiccSlots.length < numSlots) {
-            String logStr = "The number of the physical slots reported " + numSlots
-                    + " is greater than the expectation " + mUiccSlots.length + ".";
-            Rlog.e(LOG_TAG, logStr);
-            sLocalLog.log(logStr);
+            logeWithLocalLog("The number of the physical slots reported " + numSlots
+                    + " is greater than the expectation " + mUiccSlots.length);
             numSlots = mUiccSlots.length;
         }
 
@@ -937,7 +929,6 @@ public class UiccController extends Handler {
                 if (!isValidPhoneIndex(iss.logicalSlotIndex)) {
                     Rlog.e(LOG_TAG, "Skipping slot " + i + " as phone " + iss.logicalSlotIndex
                                + " is not available to communicate with this slot");
-
                 } else {
                     mPhoneIdToSlotId[iss.logicalSlotIndex] = i;
                 }
@@ -1204,10 +1195,16 @@ public class UiccController extends Handler {
 
     private void logWithLocalLog(String string) {
         Rlog.d(LOG_TAG, string);
-        sLocalLog.log(string);
+        sLocalLog.log("UiccController: " + string);
     }
 
-    public void addCardLog(String data) {
+    private void logeWithLocalLog(String string) {
+        Rlog.e(LOG_TAG, string);
+        sLocalLog.log("UiccController: " + string);
+    }
+
+    /** The supplied log should also indicate the caller to avoid ambiguity. */
+    public static void addLocalLog(String data) {
         sLocalLog.log(data);
     }
 
