@@ -21,6 +21,7 @@ import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_NR;
 import static android.telephony.data.ApnSetting.PROTOCOL_IPV4V6;
 import static android.telephony.data.ApnSetting.TYPE_DEFAULT;
+import static android.telephony.data.ApnSetting.TYPE_IA;
 
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_DEFAULT;
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_INVALID;
@@ -1312,6 +1313,11 @@ public class DcTracker extends Handler {
 
         DataConnectionReasons reasons = new DataConnectionReasons();
 
+        int requestApnType = 0;
+        if (apnContext != null) {
+            requestApnType = apnContext.getApnTypeBitmask();
+        }
+
         // Step 1: Get all environment conditions.
         final boolean internalDataEnabled = mDataEnabledSettings.isInternalDataEnabled();
         boolean attachedState = mAttached.get();
@@ -1328,8 +1334,7 @@ public class DcTracker extends Handler {
                 SubscriptionManager.getDefaultDataSubscriptionId());
 
         boolean isMeteredApnType = apnContext == null
-                || ApnSettingUtils.isMeteredApnType(ApnSetting.getApnTypesBitmaskFromString(
-                        apnContext.getApnType()) , mPhone);
+                || ApnSettingUtils.isMeteredApnType(requestApnType, mPhone);
 
         PhoneConstants.State phoneState = PhoneConstants.State.IDLE;
         // Note this is explicitly not using mPhone.getState.  See b/19090488.
@@ -1345,7 +1350,7 @@ public class DcTracker extends Handler {
 
         // Step 2: Special handling for emergency APN.
         if (apnContext != null
-                && apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY)
+                && requestApnType == ApnSetting.TYPE_EMERGENCY
                 && apnContext.isConnectable()) {
             // If this is an emergency APN, as long as the APN is connectable, we
             // should allow it.
@@ -1363,8 +1368,8 @@ public class DcTracker extends Handler {
 
         // In legacy mode, if RAT is IWLAN then don't allow default/IA PDP at all.
         // Rest of APN types can be evaluated for remaining conditions.
-        if ((apnContext != null && (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)
-                || apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IA)))
+        if ((apnContext != null && requestApnType == TYPE_DEFAULT
+                || requestApnType == TYPE_IA)
                 && mPhone.getTransportManager().isInLegacyMode()
                 && dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
             reasons.add(DataDisallowedReasonType.ON_IWLAN);
@@ -1415,7 +1420,7 @@ public class DcTracker extends Handler {
         }
 
         boolean isDataEnabled = apnContext == null ? mDataEnabledSettings.isDataEnabled()
-                : mDataEnabledSettings.isDataEnabled(apnContext.getApnTypeBitmask());
+                : mDataEnabledSettings.isDataEnabled(requestApnType);
 
         if (!isDataEnabled) {
             reasons.add(DataDisallowedReasonType.DATA_DISABLED);
@@ -1440,7 +1445,7 @@ public class DcTracker extends Handler {
             // Or if the data is on cellular, and the APN type is determined unmetered by the
             // configuration.
             } else if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                    && !isMeteredApnType) {
+                    && !isMeteredApnType && requestApnType != TYPE_DEFAULT) {
                 reasons.add(DataAllowedReasonType.UNMETERED_APN);
             }
 
