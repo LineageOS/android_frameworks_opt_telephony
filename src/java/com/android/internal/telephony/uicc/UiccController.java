@@ -34,6 +34,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.storage.StorageManager;
 import android.preference.PreferenceManager;
+import android.sysprop.TelephonyProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccCardInfo;
@@ -212,6 +213,7 @@ public class UiccController extends Handler {
         mCis = PhoneFactory.getCommandsInterfaces();
         int numPhysicalSlots = c.getResources().getInteger(
                 com.android.internal.R.integer.config_num_physical_slots);
+        numPhysicalSlots = TelephonyProperties.sim_slots_count().orElse(numPhysicalSlots);
         if (DBG) {
             logWithLocalLog("config_num_physical_slots = " + numPhysicalSlots);
         }
