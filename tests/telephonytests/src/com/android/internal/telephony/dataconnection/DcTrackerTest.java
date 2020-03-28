@@ -33,6 +33,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -1040,6 +1041,8 @@ public class DcTrackerTest extends TelephonyTest {
 
     private void initApns(String targetApn, String[] canHandleTypes) {
         doReturn(targetApn).when(mApnContext).getApnType();
+        doReturn(ApnSetting.getApnTypesBitmaskFromString(mApnContext.getApnType()))
+                .when(mApnContext).getApnTypeBitmask();
         doReturn(true).when(mApnContext).isConnectable();
         ApnSetting apnSetting = createApnSetting(ApnSetting.getApnTypesBitmaskFromString(
                 TextUtils.join(",", canHandleTypes)));
@@ -1056,7 +1059,8 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testTrySetupDataEmergencyApn() throws Exception {
-        initApns(PhoneConstants.APN_TYPE_EMERGENCY, new String[]{PhoneConstants.APN_TYPE_ALL});
+        initApns(PhoneConstants.APN_TYPE_EMERGENCY,
+                new String[]{PhoneConstants.APN_TYPE_EMERGENCY});
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
@@ -1071,7 +1075,7 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testTrySetupDataXcapApn() throws Exception {
-        initApns(PhoneConstants.APN_TYPE_XCAP, new String[]{PhoneConstants.APN_TYPE_ALL});
+        initApns(PhoneConstants.APN_TYPE_XCAP, new String[]{PhoneConstants.APN_TYPE_XCAP});
 
         logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
@@ -1144,6 +1148,39 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
     }
+
+    // Test the unmetered default APN setup when data is disabled. Default APN should always honor
+    // the users's setting.
+    @Test
+    @SmallTest
+    public void testTrySetupDataUnmeteredDefaultDataDisabled() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+        //mDct.setUserDataEnabled(false);
+        doReturn(false).when(mDataEnabledSettings).isDataEnabled();
+        doReturn(false).when(mDataEnabledSettings).isDataEnabled(anyInt());
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{PhoneConstants.APN_TYPE_MMS});
+
+        logd("Sending EVENT_CARRIER_CONFIG_CHANGED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_CARRIER_CONFIG_CHANGED, 1, 0));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, mApnContext));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, never()).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), any(DataProfile.class),
+                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                any(Message.class));
+    }
+
 
     // Test the metered APN setup when data is disabled.
     @Test
