@@ -26,6 +26,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
+import android.net.Uri;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -46,6 +47,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -193,17 +195,17 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    public synchronized void onValidationStatus(int status, String redirectUrl) {
+    public synchronized void onValidationStatus(int status, Uri redirectUri) {
         if (mDataConnection == null) {
             loge("onValidationStatus called on no-owner DcNetworkAgent!");
             return;
         }
 
-        logd("validation status: " + status + " with redirection URL: " + redirectUrl);
+        logd("validation status: " + status + " with redirection URL: " + redirectUri);
         DcTracker dct = mPhone.getDcTracker(mTransportType);
         if (dct != null) {
             Message msg = dct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                    status, mDataConnection.getCid(), redirectUrl);
+                    status, mDataConnection.getCid(), redirectUri.toString());
             msg.sendToTarget();
         }
     }
@@ -314,7 +316,7 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    public synchronized void onStartSocketKeepalive(int slot, int intervalSeconds,
+    public synchronized void onStartSocketKeepalive(int slot, @NonNull Duration interval,
             @NonNull KeepalivePacketData packet) {
         if (mDataConnection == null) {
             loge("onStartSocketKeepalive called on no-owner DcNetworkAgent!");
@@ -323,7 +325,7 @@ public class DcNetworkAgent extends NetworkAgent {
 
         if (packet instanceof NattKeepalivePacketData) {
             mDataConnection.obtainMessage(DataConnection.EVENT_KEEPALIVE_START_REQUEST,
-                    slot, intervalSeconds, packet).sendToTarget();
+                    slot, (int) interval.getSeconds(), packet).sendToTarget();
         } else {
             sendSocketKeepaliveEvent(slot, SocketKeepalive.ERROR_UNSUPPORTED);
         }
