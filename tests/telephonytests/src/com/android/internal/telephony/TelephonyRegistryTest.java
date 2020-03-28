@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.content.Intent;
@@ -151,7 +152,12 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("TelephonyRegistryTest");
-        mTelephonyRegistry = new TelephonyRegistry(mContext);
+        TelephonyRegistry.ConfigurationProvider mockConfigurationProvider =
+                mock(TelephonyRegistry.ConfigurationProvider.class);
+        when(mockConfigurationProvider.getRegistrationLimit()).thenReturn(-1);
+        when(mockConfigurationProvider.isRegistrationLimitEnabledInPlatformCompat(anyInt()))
+                .thenReturn(false);
+        mTelephonyRegistry = new TelephonyRegistry(mContext, mockConfigurationProvider);
         addTelephonyRegistryService();
         mPhoneStateListener = new PhoneStateListenerWrapper();
         processAllMessages();
