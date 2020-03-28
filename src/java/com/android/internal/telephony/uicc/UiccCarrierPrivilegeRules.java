@@ -32,6 +32,7 @@ import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandException;
 import com.android.telephony.Rlog;
 
@@ -226,6 +227,14 @@ public class UiccCarrierPrivilegeRules extends Handler {
         // Open logical channel with ARA_D.
         mAIDInUse = ARAD;
         openChannel(mAIDInUse);
+    }
+
+    @VisibleForTesting
+    public UiccCarrierPrivilegeRules(List<UiccAccessRule> rules) {
+        mAccessRules = rules;
+        mState = new AtomicInteger(STATE_LOADED);
+        mRules = "";
+        mStatusMessage.log("Loaded from test rules.");
     }
 
     /**
