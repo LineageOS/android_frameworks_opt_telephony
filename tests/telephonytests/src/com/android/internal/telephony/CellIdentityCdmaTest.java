@@ -26,6 +26,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 /** Unit tests for {@link CellIdentityCdma}. */
 
 public class CellIdentityCdmaTest extends AndroidTestCase {
+    private static final String LOG_TAG = "CellIdentityCdmaTest";
 
     // Network Id ranges from 0 to 65535.
     private static final int NETWORK_ID  = 65535;
@@ -51,6 +52,10 @@ public class CellIdentityCdmaTest extends AndroidTestCase {
         assertEquals(LONGITUDE, ci.getLongitude());
         assertEquals(ALPHA_LONG, ci.getOperatorAlphaLong());
         assertEquals(ALPHA_SHORT, ci.getOperatorAlphaShort());
+
+        String globalCi = Integer.toString(SYSTEM_ID, 16) + Integer.toString(NETWORK_ID, 16)
+                + Integer.toString(BASESTATION_ID, 16);
+        assertEquals(globalCi, ci.getGlobalCellId());
     }
 
     @SmallTest
