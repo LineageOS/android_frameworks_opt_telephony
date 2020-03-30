@@ -72,6 +72,7 @@ import com.android.internal.telephony.LinkCapacityEstimate;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -611,9 +612,7 @@ public class DataConnection extends StateMachine {
         if (nri != null) {
             networkType = nri.getAccessNetworkTechnology();
             mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
-            if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_CARRIER_CONFIG_KEY)) {
-                updateLinkBandwidthsFromCarrierConfig(mRilRat);
-            }
+            updateLinkBandwidthsFromCarrierConfig(mRilRat);
         }
 
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
@@ -1134,9 +1133,12 @@ public class DataConnection extends StateMachine {
 
 
     private void updateLinkBandwidthsFromModem(LinkCapacityEstimate lce) {
+        if (DBG) log("updateLinkBandwidthsFromModem: lce=" + lce);
         boolean downlinkUpdated = false;
         boolean uplinkUpdated = false;
-        if (mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {
+        // LCE status deprecated in IRadio 1.2, so only check for IRadio < 1.2
+        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_2)
+                || mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {
             if (lce.downlinkCapacityKbps != LinkCapacityEstimate.INVALID) {
                 mDownlinkBandwidth = lce.downlinkCapacityKbps;
                 downlinkUpdated = true;
@@ -1146,7 +1148,6 @@ public class DataConnection extends StateMachine {
                 uplinkUpdated = true;
             }
         }
-        if (DBG) log("updateLinkBandwidthsFromModem");
         if (!downlinkUpdated || !uplinkUpdated) {
             String ratName = ServiceState.rilRadioTechnologyToString(mRilRat);
             if (mRilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
@@ -2074,9 +2075,7 @@ public class DataConnection extends StateMachine {
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED,
                     mNetworkInfo.getReason(), null);
             updateTcpBufferSizes(mRilRat);
-            if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_CARRIER_CONFIG_KEY)) {
-                updateLinkBandwidthsFromCarrierConfig(mRilRat);
-            }
+            updateLinkBandwidthsFromCarrierConfig(mRilRat);
 
             final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
             configBuilder.setLegacyType(ConnectivityManager.TYPE_MOBILE);
