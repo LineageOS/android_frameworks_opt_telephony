@@ -27,6 +27,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import java.util.Collections;
 
 public class CellIdentityTdscdmaTest extends AndroidTestCase {
+    private static final String LOG_TAG = "CellIdentityTdscdmaTest";
 
     // Cell identity ranges from 0 to 268435456.
     private static final int CI = 268435456;
@@ -63,6 +64,7 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
         assertEquals(CellInfo.UNAVAILABLE, ci.getUarfcn());
         assertNull(ci.getOperatorAlphaLong());
         assertNull(ci.getOperatorAlphaShort());
+        assertNull(ci.getGlobalCellId());
     }
 
     @SmallTest
@@ -81,6 +83,9 @@ public class CellIdentityTdscdmaTest extends AndroidTestCase {
         assertEquals(UARFCN, ci.getUarfcn());
         assertEquals(ALPHA_LONG, ci.getOperatorAlphaLong());
         assertEquals(ALPHA_SHORT, ci.getOperatorAlphaShort());
+
+        String globalCi = MCC_STR + MNC_STR + Integer.toString(LAC, 16) + Integer.toString(CID, 16);
+        assertEquals(globalCi, ci.getGlobalCellId());
     }
 
     @SmallTest

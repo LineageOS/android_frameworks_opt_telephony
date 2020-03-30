@@ -27,6 +27,7 @@ import java.util.Collections;
 /** Unit tests for {@link CellIdentityLte}. */
 
 public class CellIdentityLteTest extends AndroidTestCase {
+    private static final String LOG_TAG = "CellIdentityLteTest";
 
     // Cell identity ranges from 0 to 268435455.
     private static final int CI = 268435455;
@@ -64,6 +65,9 @@ public class CellIdentityLteTest extends AndroidTestCase {
         assertEquals(MCC_STR + MNC_STR, ci.getMobileNetworkOperator());
         assertEquals(ALPHA_LONG, ci.getOperatorAlphaLong());
         assertEquals(ALPHA_SHORT, ci.getOperatorAlphaShort());
+
+        String globalCi = MCC_STR + MNC_STR + Integer.toString(CI, 16);
+        assertEquals(globalCi, ci.getGlobalCellId());
     }
 
     @SmallTest
