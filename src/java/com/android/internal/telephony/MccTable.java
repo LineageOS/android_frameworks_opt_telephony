@@ -297,7 +297,6 @@ public final class MccTable {
                         mccmnc.substring(0, 3), mccmnc.substring(3))) {
                     Rlog.d(LOG_TAG, "updateMccMncConfiguration: update mccmnc="
                             + mccmnc + " failure");
-                    return;
                 } else {
                     Rlog.d(LOG_TAG, "updateMccMncConfiguration: update mccmnc="
                             + mccmnc + " success");
