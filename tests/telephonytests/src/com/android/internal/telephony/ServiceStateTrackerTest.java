@@ -929,6 +929,26 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testHasLocationChanged() {
+        CellIdentityCdma cellIdentity = null;
+        CellIdentityCdma newCellIdentity = null;
+
+        boolean hasLocationChanged = (cellIdentity == null ? newCellIdentity != null
+                : !cellIdentity.isSameCell(newCellIdentity));
+        assertFalse(hasLocationChanged);
+
+        cellIdentity = new CellIdentityCdma(1, 2, 3, 4, 5, "test", "tst");
+        hasLocationChanged = (cellIdentity == null ? newCellIdentity != null
+                : !cellIdentity.isSameCell(newCellIdentity));
+        assertTrue(hasLocationChanged);
+
+        newCellIdentity = new CellIdentityCdma(1, 2, 3, 4, 5, "test", "tst");
+        hasLocationChanged = (cellIdentity == null ? newCellIdentity != null
+                : !cellIdentity.isSameCell(newCellIdentity));
+        assertFalse(hasLocationChanged);
+    }
+
+    @Test
     @MediumTest
     public void testUpdatePhoneType() {
         doReturn(false).when(mPhone).isPhoneTypeGsm();
