@@ -30,7 +30,6 @@ import android.net.Uri;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
-import android.telephony.Annotation.NetworkType;
 import android.telephony.AnomalyReporter;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
@@ -96,9 +95,6 @@ public class DcNetworkAgent extends NetworkAgent {
         mTransportType = transportType;
         mDataConnection = dc;
         mNetworkInfo = new NetworkInfo(ni);
-        setLegacyExtraInfo(dc.getApnSetting().getApnName());
-        int subType = getNetworkType();
-        setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
         // TODO: Remove after b/151487565 is fixed.
         sNetworkAgents.add(this);
         checkRedundantIms();
@@ -293,7 +289,14 @@ public class DcNetworkAgent extends NetworkAgent {
             setLegacyExtraInfo(extraInfo);
         }
 
-        int subType = getNetworkType();
+        final ServiceState serviceState = mPhone.getServiceState();
+        NetworkRegistrationInfo nri = serviceState.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        int subType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (nri != null) {
+            subType = nri.getAccessNetworkTechnology();
+        }
+
         if (mNetworkInfo.getSubtype() != subType) {
             setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
         }
@@ -384,17 +387,6 @@ public class DcNetworkAgent extends NetworkAgent {
      */
     private void loge(String s) {
         Rlog.e(mTag, s);
-    }
-
-    private @NetworkType int getNetworkType() {
-        final ServiceState serviceState = mPhone.getServiceState();
-        NetworkRegistrationInfo nri = serviceState.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
-        int subType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        if (nri != null) {
-            subType = nri.getAccessNetworkTechnology();
-        }
-        return subType;
     }
 
     class DcKeepaliveTracker {
