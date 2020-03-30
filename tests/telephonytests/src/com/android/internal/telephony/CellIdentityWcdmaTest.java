@@ -26,6 +26,7 @@ import java.util.Collections;
 /** Unit tests for {@link CellIdentityWcdma}. */
 
 public class CellIdentityWcdmaTest extends AndroidTestCase {
+    private static final String LOG_TAG = "CellIdentityWcdmaTest";
 
     // Location Area Code ranges from 0 to 65535.
     private static final int LAC = 65535;
@@ -74,6 +75,10 @@ public class CellIdentityWcdmaTest extends AndroidTestCase {
         assertEquals(MCC_STR, ci.getMccString());
         assertEquals(mncWithThreeDigit, ci.getMncString());
         assertEquals(MCC_STR + mncWithThreeDigit, ci.getMobileNetworkOperator());
+
+        String globalCi = MCC_STR + mncWithThreeDigit + Integer.toString(LAC, 16)
+                + Integer.toString(CID, 16);
+        assertEquals(globalCi, ci.getGlobalCellId());
     }
 
     @SmallTest
