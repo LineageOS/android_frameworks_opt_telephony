@@ -393,6 +393,8 @@ public abstract class TelephonyTest {
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
+        mImsCallProfile.setCallerNumberVerificationStatus(
+                ImsCallProfile.VERIFICATION_STATUS_PASSED);
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
