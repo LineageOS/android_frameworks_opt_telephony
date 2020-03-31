@@ -55,9 +55,9 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.IntArray;
-import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.telephony.Rlog;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -187,7 +187,7 @@ public class CarrierPrivilegesTracker extends Handler {
                             Uri uri = intent.getData();
                             String pkgName = (uri != null) ? uri.getSchemeSpecificPart() : null;
                             if (TextUtils.isEmpty(pkgName)) {
-                                Log.e(TAG, "Failed to get package from Intent");
+                                Rlog.e(TAG, "Failed to get package from Intent");
                                 return;
                             }
 
@@ -264,7 +264,7 @@ public class CarrierPrivilegesTracker extends Handler {
                 break;
             }
             default: {
-                Log.e(TAG, "Received unknown msg type: " + msg.what);
+                Rlog.e(TAG, "Received unknown msg type: " + msg.what);
                 break;
             }
         }
@@ -346,7 +346,7 @@ public class CarrierPrivilegesTracker extends Handler {
         try {
             pkg = mPackageManager.getPackageInfo(pkgName, PackageManager.GET_SIGNING_CERTIFICATES);
         } catch (NameNotFoundException e) {
-            Log.e(TAG, "Error getting installed package: " + pkgName, e);
+            Rlog.e(TAG, "Error getting installed package: " + pkgName, e);
             return;
         }
 
@@ -372,7 +372,7 @@ public class CarrierPrivilegesTracker extends Handler {
 
     private void handlePackageRemoved(String pkgName) {
         if (mInstalledPackageCerts.remove(pkgName) == null) {
-            Log.e(TAG, "Unknown package was uninstalled: " + pkgName);
+            Rlog.e(TAG, "Unknown package was uninstalled: " + pkgName);
             return;
         }
         mCachedUids.remove(pkgName);
@@ -461,7 +461,7 @@ public class CarrierPrivilegesTracker extends Handler {
                 uids.add(mPackageManager.getPackageUidAsUser(pkgName, userId));
             } catch (NameNotFoundException exception) {
                 // Didn't find package. Continue looking at other packages
-                Log.e(TAG, "Unable to find uid for package " + pkgName + " and user " + userId);
+                Rlog.e(TAG, "Unable to find uid for package " + pkgName + " and user " + userId);
             }
         }
         mCachedUids.put(pkgName, uids);
@@ -473,8 +473,6 @@ public class CarrierPrivilegesTracker extends Handler {
      *
      * <p>After being registered, the Registrant will be notified with the current Carrier
      * Privileged UIDs for this Phone.
-     *
-     * @hide
      */
     public void registerCarrierPrivilegesListener(Handler h, int what, Object obj) {
         sendMessage(obtainMessage(ACTION_REGISTER_LISTENER, new Registrant(h, what, obj)));
@@ -482,8 +480,6 @@ public class CarrierPrivilegesTracker extends Handler {
 
     /**
      * Unregisters the given listener with this tracker.
-     *
-     * @hide
      */
     public void unregisterCarrierPrivilegesListener(Handler handler) {
         sendMessage(obtainMessage(ACTION_UNREGISTER_LISTENER, handler));
