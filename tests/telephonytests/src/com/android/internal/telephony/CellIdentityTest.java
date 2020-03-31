@@ -21,6 +21,7 @@ import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
 import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -155,5 +156,31 @@ public class CellIdentityTest extends AndroidTestCase {
         assertFalse(CellIdentity.isValidPlmn(PLMN_INVALID_SHORT));
         assertFalse(CellIdentity.isValidPlmn(PLMN_INVALID_LONG));
         assertFalse(CellIdentity.isValidPlmn(PLMN_INVALID_NON_NUM));
+    }
+
+    @SmallTest
+    public void testIsSameCell() {
+        int curCi = 268435455;
+        CellIdentity ciA = new CellIdentityLte(
+                curCi, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG,
+                ALPHA_SHORT, Collections.emptyList(), null);
+        CellIdentity ciB = new CellIdentityLte(
+                curCi, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG,
+                ALPHA_SHORT, Collections.emptyList(), null);
+        CellIdentity ciC = new CellIdentityLte(
+                curCi, PCI, TAC, EARFCN, BANDS, BANDWIDTH, null, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList(), null);
+        CellIdentity ciD = new CellIdentityLte(
+                -1, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList(), null);
+        assertTrue(ciA.isSameCell(ciB));
+        assertFalse(ciA.isSameCell(null));
+        assertFalse(ciA.isSameCell(ciC));
+        assertFalse(ciA.isSameCell(ciD));
+
+        CellIdentityNr cellIdentityNr =
+                new CellIdentityNr(PCI, TAC, EARFCN, BANDS, MCC_STR, MNC_STR, curCi, ALPHA_LONG,
+                ALPHA_SHORT, Collections.emptyList());
+        assertFalse(ciA.isSameCell(cellIdentityNr));
     }
 }
