@@ -4340,8 +4340,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    private boolean containsAllApns(ArrayList<ApnSetting> oldApnList,
-                                    ArrayList<ApnSetting> newApnList) {
+    private boolean containsAllApns(List<ApnSetting> oldApnList, List<ApnSetting> newApnList) {
         for (ApnSetting newApnSetting : newApnList) {
             boolean canHandle = false;
             for (ApnSetting oldApnSetting : oldApnList) {
@@ -4369,35 +4368,28 @@ public class DcTracker extends Handler {
                 return;
             }
             for (ApnContext apnContext : mApnContexts.values()) {
-                boolean cleanupRequired = false;
+                boolean cleanupRequired = true;
                 if (!apnContext.isDisconnected()) {
-                    ArrayList<ApnSetting> currentWaitingApns = apnContext.getWaitingApns();
                     ArrayList<ApnSetting> waitingApns = buildWaitingApns(
                             apnContext.getApnType(), getDataRat());
-                    if (VDBG) log("new waitingApns:" + waitingApns);
-                    if ((currentWaitingApns != null)
-                            && ((waitingApns.size() != currentWaitingApns.size())
-                            // Check if the existing waiting APN list can cover the newly built APN
-                            // list. If yes, then we don't need to tear down the existing data call.
-                            // TODO: We probably need to rebuild APN list when roaming status
-                            //  changes.
-                            || !containsAllApns(currentWaitingApns, waitingApns))) {
-                        if (VDBG) log("new waiting apn is different for " + apnContext);
-                        apnContext.setWaitingApns(waitingApns);
-                        ApnSetting apnSetting = apnContext.getApnSetting();
-                        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)) {
-                            if ((getPreferredApn() == null)
-                                    || !apnSetting.equals(getPreferredApn())) {
-                                cleanupRequired = true;
-                            }
-                        } else if (!waitingApns.contains(apnSetting)) {
-                            cleanupRequired = true;
+                    apnContext.setWaitingApns(waitingApns);
+                    for (ApnSetting apnSetting : waitingApns) {
+                        if (apnSetting.equals(apnContext.getApnSetting(),
+                                mPhone.getServiceState().getDataRoamingFromRegistration())) {
+                            cleanupRequired = false;
+                            break;
                         }
-                        if (cleanupRequired) {
-                            if (VDBG) log("cleanUpConnectionsOnUpdatedApns for " + apnContext);
-                            apnContext.setReason(reason);
-                            cleanUpConnectionInternal(true, RELEASE_TYPE_DETACH, apnContext);
+                    }
+
+                    if (cleanupRequired) {
+                        if (DBG) {
+                            log("cleanUpConnectionsOnUpdatedApns: APN type "
+                                    + apnContext.getApnType() + " clean up is required. The new "
+                                    + "waiting APN list " + waitingApns + " does not cover "
+                                    + apnContext.getApnSetting());
                         }
+                        apnContext.setReason(reason);
+                        cleanUpConnectionInternal(true, RELEASE_TYPE_DETACH, apnContext);
                     }
                 }
             }
