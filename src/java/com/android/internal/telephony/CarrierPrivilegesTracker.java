@@ -126,6 +126,8 @@ public class CarrierPrivilegesTracker extends Handler {
     private final UserManager mUserManager;
     private final TelephonyManager mTelephonyManager;
     private final RegistrantList mRegistrantList;
+
+    // Stores certificate hashes for Carrier Config-loaded certs. Certs must be UPPERCASE.
     private final Set<String> mCarrierConfigCerts;
 
     // TODO(b/151981841): Use Set<UiccAccessRule> to also check for package names loaded from SIM
@@ -136,6 +138,8 @@ public class CarrierPrivilegesTracker extends Handler {
 
     // Map of PackageName -> UIDs for that Package
     private final Map<String, Set<Integer>> mCachedUids;
+
+    // Privileged UIDs must be kept in sorted order for update-checks.
     protected int[] mPrivilegedUids;
 
     private final BroadcastReceiver mIntentReceiver =
@@ -236,7 +240,9 @@ public class CarrierPrivilegesTracker extends Handler {
                 break;
             }
             case ACTION_CARRIER_CONFIG_CERTS_UPDATED: {
-                handleCarrierConfigUpdated(msg.arg1, msg.arg2);
+                int subId = msg.arg1;
+                int slotIndex = msg.arg2;
+                handleCarrierConfigUpdated(subId, slotIndex);
                 break;
             }
             case ACTION_SIM_STATE_UPDATED: {
@@ -280,6 +286,7 @@ public class CarrierPrivilegesTracker extends Handler {
 
         // Carrier Config broadcasts with INVALID_SUBSCRIPTION_ID when the SIM is removed. This is
         // an expected event. When this happens, clear the certificates from the previous configs.
+        // The certs will be cleared in maybeUpdateCertsAndNotifyRegistrants() below.
         if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             updatedCarrierConfigCerts = getCarrierConfigCerts(subId);
         }
@@ -344,12 +351,7 @@ public class CarrierPrivilegesTracker extends Handler {
         }
 
         updateCertsForPackage(pkg);
-        try {
-            mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
-        } catch (NameNotFoundException exception) {
-            // Didn't find package. Continue looking at other packages
-            Log.e(TAG, "Unable to find uid for package: " + pkg.packageName);
-        }
+        mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
 
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
@@ -403,35 +405,30 @@ public class CarrierPrivilegesTracker extends Handler {
 
     private void maybeUpdateCertsAndNotifyRegistrants(
             Set<String> currentCerts, Set<String> updatedCerts) {
-        if (!currentCerts.equals(updatedCerts)) {
-            currentCerts.clear();
-            currentCerts.addAll(updatedCerts);
+        if (currentCerts.equals(updatedCerts)) return;
 
-            maybeUpdatePrivilegedUidsAndNotifyRegistrants();
-        }
+        currentCerts.clear();
+        currentCerts.addAll(updatedCerts);
+
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
 
     private void maybeUpdatePrivilegedUidsAndNotifyRegistrants() {
-        int[] currentPrivilegedUids = getCurrentPrivilegedUids();
+        int[] currentPrivilegedUids = getCurrentPrivilegedUidsForAllUsers();
 
         // Sort UIDs for the equality check
         Arrays.sort(currentPrivilegedUids);
-        if (!Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) {
-            mPrivilegedUids = currentPrivilegedUids;
-            mRegistrantList.notifyResult(mPrivilegedUids);
-        }
+        if (Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) return;
+
+        mPrivilegedUids = currentPrivilegedUids;
+        mRegistrantList.notifyResult(mPrivilegedUids);
     }
 
-    private int[] getCurrentPrivilegedUids() {
+    private int[] getCurrentPrivilegedUidsForAllUsers() {
         Set<Integer> privilegedUids = new ArraySet<>();
         for (Map.Entry<String, Set<String>> e : mInstalledPackageCerts.entrySet()) {
             if (isPackagePrivileged(e.getValue())) {
-                try {
-                    privilegedUids.addAll(getUidsForPackage(e.getKey()));
-                } catch (NameNotFoundException exception) {
-                    // Didn't find package. Continue looking at other packages
-                    Log.e(TAG, "Unable to find uid for package: " + e.getKey());
-                }
+                privilegedUids.addAll(getUidsForPackage(e.getKey()));
             }
         }
 
@@ -442,16 +439,16 @@ public class CarrierPrivilegesTracker extends Handler {
         return result.toArray();
     }
 
+    /**
+     * Returns true iff there is an overlap between the provided certificate hashes and the
+     * certificate hashes stored in mCarrierConfigCerts and mUiccCerts.
+     */
     private boolean isPackagePrivileged(Set<String> certs) {
-        for (String cert : certs) {
-            if (mCarrierConfigCerts.contains(cert) || mUiccCerts.contains(cert)) {
-                return true;
-            }
-        }
-        return false;
+        return !Collections.disjoint(mCarrierConfigCerts, certs)
+                || !Collections.disjoint(mUiccCerts, certs);
     }
 
-    private Set<Integer> getUidsForPackage(String pkgName) throws NameNotFoundException {
+    private Set<Integer> getUidsForPackage(String pkgName) {
         if (mCachedUids.containsKey(pkgName)) {
             return mCachedUids.get(pkgName);
         }
@@ -459,9 +456,13 @@ public class CarrierPrivilegesTracker extends Handler {
         Set<Integer> uids = new ArraySet<>();
         List<UserInfo> users = mUserManager.getUsers();
         for (UserInfo user : users) {
-            uids.add(
-                    mPackageManager.getPackageUidAsUser(
-                            pkgName, user.getUserHandle().getIdentifier()));
+            int userId = user.getUserHandle().getIdentifier();
+            try {
+                uids.add(mPackageManager.getPackageUidAsUser(pkgName, userId));
+            } catch (NameNotFoundException exception) {
+                // Didn't find package. Continue looking at other packages
+                Log.e(TAG, "Unable to find uid for package " + pkgName + " and user " + userId);
+            }
         }
         mCachedUids.put(pkgName, uids);
         return uids;
