@@ -32,9 +32,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.Signature;
 import android.content.pm.UserInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -46,10 +49,14 @@ import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccAccessRule;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.IntArray;
 import android.util.Log;
+
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -63,6 +70,9 @@ import java.util.Set;
  */
 public class CarrierPrivilegesTracker extends Handler {
     private static final String TAG = CarrierPrivilegesTracker.class.getSimpleName();
+
+    private static final String SHA_1 = "SHA-1";
+    private static final String SHA_256 = "SHA-256";
 
     /**
      * Action to register a Registrant with this Tracker.
@@ -90,6 +100,12 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     private static final int ACTION_SIM_STATE_UPDATED = 4;
 
+    /**
+     * Action for tracking when a package is installed or replaced on the device.
+     * obj: String package name that was installed or replaced on the device.
+     */
+    private static final int ACTION_PACKAGE_ADDED_OR_REPLACED = 5;
+
     private final Context mContext;
     private final Phone mPhone;
     private final CarrierConfigManager mCarrierConfigManager;
@@ -104,6 +120,9 @@ public class CarrierPrivilegesTracker extends Handler {
 
     // Map of PackageName -> Certificate hashes for that Package
     private final Map<String, Set<String>> mInstalledPackageCerts;
+
+    // Map of PackageName -> UIDs for that Package
+    private final Map<String, Set<Integer>> mCachedUids;
     private int[] mPrivilegedUids;
 
     private final BroadcastReceiver mIntentReceiver =
@@ -141,6 +160,18 @@ public class CarrierPrivilegesTracker extends Handler {
                             sendMessage(obtainMessage(ACTION_SIM_STATE_UPDATED, slotId, simState));
                             break;
                         }
+                        case Intent.ACTION_PACKAGE_ADDED: // fall through
+                        case Intent.ACTION_PACKAGE_REPLACED: {
+                            Uri uri = intent.getData();
+                            String pkgName = (uri != null) ? uri.getSchemeSpecificPart() : null;
+                            if (TextUtils.isEmpty(pkgName)) {
+                                Log.e(TAG, "Failed to get package from Intent");
+                                return;
+                            }
+
+                            sendMessage(obtainMessage(ACTION_PACKAGE_ADDED_OR_REPLACED, pkgName));
+                            break;
+                        }
                     }
                 }
             };
@@ -159,12 +190,15 @@ public class CarrierPrivilegesTracker extends Handler {
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_REPLACED);
         mContext.registerReceiver(mIntentReceiver, filter);
 
         mRegistrantList = new RegistrantList();
         mCarrierConfigCerts = new ArraySet<>();
         mUiccCerts = new ArraySet<>();
         mInstalledPackageCerts = new ArrayMap<>();
+        mCachedUids = new ArrayMap<>();
         mPrivilegedUids = new int[0];
     }
 
@@ -185,6 +219,11 @@ public class CarrierPrivilegesTracker extends Handler {
             }
             case ACTION_SIM_STATE_UPDATED: {
                 handleSimStateChanged(msg.arg1, msg.arg2);
+                break;
+            }
+            case ACTION_PACKAGE_ADDED_OR_REPLACED: {
+                String pkgName = (String) msg.obj;
+                handlePackageAddedOrReplaced(pkgName);
                 break;
             }
             default: {
@@ -248,20 +287,55 @@ public class CarrierPrivilegesTracker extends Handler {
         maybeUpdateCertsAndNotifyRegistrants(mUiccCerts, updatedUiccCerts);
     }
 
+    private void handlePackageAddedOrReplaced(String pkgName) {
+        PackageInfo pkg;
+        try {
+            pkg = mPackageManager.getPackageInfo(pkgName, PackageManager.GET_SIGNING_CERTIFICATES);
+        } catch (NameNotFoundException e) {
+            Log.e(TAG, "Error getting installed package: " + pkgName, e);
+            return;
+        }
+
+        Set<String> certs = new ArraySet<>();
+        List<Signature> signatures = UiccAccessRule.getSignatures(pkg);
+        for (Signature signature : signatures) {
+            byte[] sha1 = UiccAccessRule.getCertHash(signature, SHA_1);
+            certs.add(IccUtils.bytesToHexString(sha1).toUpperCase());
+
+            byte[] sha256 = UiccAccessRule.getCertHash(signature, SHA_256);
+            certs.add(IccUtils.bytesToHexString(sha256).toUpperCase());
+        }
+
+        mInstalledPackageCerts.put(pkg.packageName, certs);
+
+        try {
+            mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
+        } catch (NameNotFoundException exception) {
+            // Didn't find package. Continue looking at other packages
+            Log.e(TAG, "Unable to find uid for package: " + pkg.packageName);
+        }
+
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
     private void maybeUpdateCertsAndNotifyRegistrants(
             Set<String> currentCerts, Set<String> updatedCerts) {
         if (!currentCerts.equals(updatedCerts)) {
             currentCerts.clear();
             currentCerts.addAll(updatedCerts);
 
-            int[] currentPrivilegedUids = getCurrentPrivilegedUids();
+            maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+        }
+    }
 
-            // Sort UIDs for the equality check
-            Arrays.sort(currentPrivilegedUids);
-            if (!Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) {
-                mPrivilegedUids = currentPrivilegedUids;
-                mRegistrantList.notifyResult(mPrivilegedUids);
-            }
+    private void maybeUpdatePrivilegedUidsAndNotifyRegistrants() {
+        int[] currentPrivilegedUids = getCurrentPrivilegedUids();
+
+        // Sort UIDs for the equality check
+        Arrays.sort(currentPrivilegedUids);
+        if (!Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) {
+            mPrivilegedUids = currentPrivilegedUids;
+            mRegistrantList.notifyResult(mPrivilegedUids);
         }
     }
 
@@ -269,17 +343,11 @@ public class CarrierPrivilegesTracker extends Handler {
         Set<Integer> privilegedUids = new ArraySet<>();
         for (Map.Entry<String, Set<String>> e : mInstalledPackageCerts.entrySet()) {
             if (isPackagePrivileged(e.getValue())) {
-                List<UserInfo> users = mUserManager.getUsers();
-                for (UserInfo user : users) {
-                    try {
-                        int uid =
-                                mPackageManager.getPackageUidAsUser(
-                                        e.getKey(), user.getUserHandle().getIdentifier());
-                        privilegedUids.add(uid);
-                    } catch (NameNotFoundException exception) {
-                        // Didn't find package. Continue looking at other packages
-                        Log.e(TAG, "Unable to find uid for package: " + e.getKey());
-                    }
+                try {
+                    privilegedUids.addAll(getUidsForPackage(e.getKey()));
+                } catch (NameNotFoundException exception) {
+                    // Didn't find package. Continue looking at other packages
+                    Log.e(TAG, "Unable to find uid for package: " + e.getKey());
                 }
             }
         }
@@ -298,6 +366,22 @@ public class CarrierPrivilegesTracker extends Handler {
             }
         }
         return false;
+    }
+
+    private Set<Integer> getUidsForPackage(String pkgName) throws NameNotFoundException {
+        if (mCachedUids.containsKey(pkgName)) {
+            return mCachedUids.get(pkgName);
+        }
+
+        Set<Integer> uids = new ArraySet<>();
+        List<UserInfo> users = mUserManager.getUsers();
+        for (UserInfo user : users) {
+            uids.add(
+                    mPackageManager.getPackageUidAsUser(
+                            pkgName, user.getUserHandle().getIdentifier()));
+        }
+        mCachedUids.put(pkgName, uids);
+        return uids;
     }
 
     /**
