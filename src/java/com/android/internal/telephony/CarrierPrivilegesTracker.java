@@ -45,6 +45,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.UserHandle;
 import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -59,6 +60,7 @@ import android.util.Log;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -111,6 +113,11 @@ public class CarrierPrivilegesTracker extends Handler {
      * obj: String package name that was installed on the device.
      */
     private static final int ACTION_PACKAGE_REMOVED = 6;
+
+    /**
+     * Action used to initialize the state of the Tracker.
+     */
+    private static final int ACTION_INITIALIZE_TRACKER = 7;
 
     private final Context mContext;
     private final Phone mPhone;
@@ -212,6 +219,8 @@ public class CarrierPrivilegesTracker extends Handler {
         mInstalledPackageCerts = new ArrayMap<>();
         mCachedUids = new ArrayMap<>();
         mPrivilegedUids = new int[0];
+
+        sendMessage(obtainMessage(ACTION_INITIALIZE_TRACKER));
     }
 
     @Override
@@ -243,6 +252,10 @@ public class CarrierPrivilegesTracker extends Handler {
                 handlePackageRemoved(pkgName);
                 break;
             }
+            case ACTION_INITIALIZE_TRACKER: {
+                handleInitializeTracker();
+                break;
+            }
             default: {
                 Log.e(TAG, "Received unknown msg type: " + msg.what);
                 break;
@@ -262,46 +275,62 @@ public class CarrierPrivilegesTracker extends Handler {
     private void handleCarrierConfigUpdated(int subId, int slotIndex) {
         if (slotIndex != mPhone.getPhoneId()) return;
 
-        Set<String> updatedCarrierConfigCerts = new ArraySet<>();
+        Set<String> updatedCarrierConfigCerts = Collections.EMPTY_SET;
 
         // Carrier Config broadcasts with INVALID_SUBSCRIPTION_ID when the SIM is removed. This is
         // an expected event. When this happens, clear the certificates from the previous configs.
         if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
-            if (mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
-                String[] carrierConfigCerts =
-                        carrierConfigs.getStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
-
-                if (carrierConfigCerts != null) {
-                    for (String cert : carrierConfigCerts) {
-                        updatedCarrierConfigCerts.add(cert.toUpperCase());
-                    }
-                }
-            }
+            updatedCarrierConfigCerts = getCarrierConfigCerts(subId);
         }
 
         maybeUpdateCertsAndNotifyRegistrants(mCarrierConfigCerts, updatedCarrierConfigCerts);
     }
 
+    private Set<String> getCarrierConfigCerts(int subId) {
+        PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
+        if (!mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
+            return Collections.EMPTY_SET;
+        }
+
+        Set<String> updatedCarrierConfigCerts = new ArraySet<>();
+        String[] carrierConfigCerts =
+                carrierConfigs.getStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
+
+        if (carrierConfigCerts != null) {
+            for (String cert : carrierConfigCerts) {
+                updatedCarrierConfigCerts.add(cert.toUpperCase());
+            }
+        }
+        return updatedCarrierConfigCerts;
+    }
+
     private void handleSimStateChanged(int slotId, int simState) {
         if (slotId != mPhone.getPhoneId()) return;
 
-        Set<String> updatedUiccCerts = new ArraySet<>();
+        Set<String> updatedUiccCerts = Collections.EMPTY_SET;
 
         // Only include the UICC certs if the SIM is fully loaded
         if (simState == SIM_STATE_LOADED) {
-            TelephonyManager telMan = mTelephonyManager.createForSubscriptionId(mPhone.getSubId());
-            if (telMan.hasIccCard(mPhone.getPhoneId())) {
-                List<String> uiccCerts = telMan.getCertsFromCarrierPrivilegeAccessRules();
-                if (uiccCerts != null) {
-                    for (String cert : uiccCerts) {
-                        updatedUiccCerts.add(cert.toUpperCase());
-                    }
-                }
-            }
+            updatedUiccCerts = getSimCerts();
         }
 
         maybeUpdateCertsAndNotifyRegistrants(mUiccCerts, updatedUiccCerts);
+    }
+
+    private Set<String> getSimCerts() {
+        Set<String> updatedUiccCerts = Collections.EMPTY_SET;
+        TelephonyManager telMan = mTelephonyManager.createForSubscriptionId(mPhone.getSubId());
+
+        if (telMan.hasIccCard(mPhone.getPhoneId())) {
+            updatedUiccCerts = new ArraySet<>();
+            List<String> uiccCerts = telMan.getCertsFromCarrierPrivilegeAccessRules();
+            if (uiccCerts != null) {
+                for (String cert : uiccCerts) {
+                    updatedUiccCerts.add(cert.toUpperCase());
+                }
+            }
+        }
+        return updatedUiccCerts;
     }
 
     private void handlePackageAddedOrReplaced(String pkgName) {
@@ -313,6 +342,18 @@ public class CarrierPrivilegesTracker extends Handler {
             return;
         }
 
+        updateCertsForPackage(pkg);
+        try {
+            mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
+        } catch (NameNotFoundException exception) {
+            // Didn't find package. Continue looking at other packages
+            Log.e(TAG, "Unable to find uid for package: " + pkg.packageName);
+        }
+
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
+    private void updateCertsForPackage(PackageInfo pkg) {
         Set<String> certs = new ArraySet<>();
         List<Signature> signatures = UiccAccessRule.getSignatures(pkg);
         for (Signature signature : signatures) {
@@ -324,15 +365,6 @@ public class CarrierPrivilegesTracker extends Handler {
         }
 
         mInstalledPackageCerts.put(pkg.packageName, certs);
-
-        try {
-            mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
-        } catch (NameNotFoundException exception) {
-            // Didn't find package. Continue looking at other packages
-            Log.e(TAG, "Unable to find uid for package: " + pkg.packageName);
-        }
-
-        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
 
     private void handlePackageRemoved(String pkgName) {
@@ -342,6 +374,29 @@ public class CarrierPrivilegesTracker extends Handler {
         }
         mCachedUids.remove(pkgName);
 
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
+    private void handleInitializeTracker() {
+        // Cache CarrierConfig Certs
+        mCarrierConfigCerts.addAll(getCarrierConfigCerts(mPhone.getSubId()));
+
+        // Cache SIM certs
+        mUiccCerts.addAll(getSimCerts());
+
+        // Cache all installed packages and their certs
+        int flags =
+                PackageManager.MATCH_DISABLED_COMPONENTS
+                        | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
+                        | PackageManager.GET_SIGNING_CERTIFICATES;
+        List<PackageInfo> installedPackages =
+                mPackageManager.getInstalledPackagesAsUser(
+                        flags, UserHandle.SYSTEM.getIdentifier());
+        for (PackageInfo pkg : installedPackages) {
+            updateCertsForPackage(pkg);
+        }
+
+        // Okay because no registrants exist yet
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
 
