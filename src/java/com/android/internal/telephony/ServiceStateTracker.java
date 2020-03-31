@@ -858,27 +858,39 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Notify all mDataConnectionRatChangeRegistrants using an
-     * AsyncResult in msg.obj where AsyncResult#result contains the
-     * new RAT as an Integer Object.
+     * Get registration info
+     *
+     * @param transport The transport type
+     * @return Pair of registration info including {@link ServiceState.RegState} and
+     * {@link RilRadioTechnology}.
+     *
      */
-    protected void notifyDataRegStateRilRadioTechnologyChanged(int transport) {
+    @Nullable
+    private Pair<Integer, Integer> getRegistrationInfo(@TransportType int transport) {
         NetworkRegistrationInfo nrs = mSS.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, transport);
         if (nrs != null) {
             int rat = ServiceState.networkTypeToRilRadioTechnology(
                     nrs.getAccessNetworkTechnology());
             int drs = regCodeToServiceState(nrs.getRegistrationState());
-            if (DBG) {
-                log("notifyDataRegStateRilRadioTechnologyChanged: drs=" + drs + " rat=" + rat);
-            }
+            return new Pair<>(drs, rat);
+        }
+        return null;
+    }
 
-            RegistrantList registrantList = mDataRegStateOrRatChangedRegistrants.get(transport);
-            if (registrantList != null) {
-                registrantList.notifyResult(new Pair<>(drs, rat));
+    /**
+     * Notify all mDataConnectionRatChangeRegistrants using an
+     * AsyncResult in msg.obj where AsyncResult#result contains the
+     * new RAT as an Integer Object.
+     */
+    protected void notifyDataRegStateRilRadioTechnologyChanged(@TransportType int transport) {
+        RegistrantList registrantList = mDataRegStateOrRatChangedRegistrants.get(transport);
+        if (registrantList != null) {
+            Pair<Integer, Integer> registrationInfo = getRegistrationInfo(transport);
+            if (registrationInfo != null) {
+                registrantList.notifyResult(registrationInfo);
             }
         }
-        setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
     }
 
     /**
@@ -3487,6 +3499,7 @@ public class ServiceStateTracker extends Handler {
                     // Update all transports if preference changed so that consumers can be notified
                     // that ServiceState#getRilDataRadioTechnology has changed.
                     || hasDataTransportPreferenceChanged) {
+                setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
                 notifyDataRegStateRilRadioTechnologyChanged(transport);
                 mPhone.notifyAllActiveDataConnections();
             }
@@ -4482,7 +4495,10 @@ public class ServiceStateTracker extends Handler {
             mDataRegStateOrRatChangedRegistrants.put(transport, new RegistrantList());
         }
         mDataRegStateOrRatChangedRegistrants.get(transport).add(r);
-        notifyDataRegStateRilRadioTechnologyChanged(transport);
+        Pair<Integer, Integer> registrationInfo = getRegistrationInfo(transport);
+        if (registrationInfo != null) {
+            r.notifyResult(registrationInfo);
+        }
     }
 
     /**
