@@ -178,7 +178,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @VisibleForTesting
     protected static final int EVENT_ICC_CHANGED                    = 30;
     // Single Radio Voice Call Continuity
-    private static final int EVENT_SRVCC_STATE_CHANGED              = 31;
+    @VisibleForTesting
+    protected static final int EVENT_SRVCC_STATE_CHANGED             = 31;
     private static final int EVENT_INITIATE_SILENT_REDIAL           = 32;
     private static final int EVENT_RADIO_NOT_AVAILABLE              = 33;
     private static final int EVENT_UNSOL_OEM_HOOK_RAW               = 34;
@@ -290,6 +291,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // Keep track of whether or not the phone is in Emergency Callback Mode for Phone and
     // subclasses
     protected boolean mIsPhoneInEcmState = false;
+    // Keep track of the case where ECM was cancelled to place another outgoing emergency call.
+    // We will need to restart it after the emergency call ends.
+    protected boolean mEcmCanceledForEmergency = false;
     private volatile long mTimeLastEmergencySmsSentMs = EMERGENCY_SMS_NO_TIME_RECORDED;
 
     // Variable to cache the video capability. When RAT changes, we lose this info and are unable
@@ -997,9 +1001,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (from.isInEmergencyCall()) {
             setIsInEmergencyCall();
         }
+        setEcmCanceledForEmergency(from.isEcmCanceledForEmergency());
     }
 
     protected void migrate(RegistrantList to, RegistrantList from) {
+        if (from == null) {
+            // May be null in some cases, such as testing.
+            return;
+        }
         from.removeCleared();
         for (int i = 0, n = from.size(); i < n; i++) {
             Registrant r = (Registrant) from.get(i);
@@ -2504,6 +2513,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             TelephonyProperties.in_ecm_mode(isInEcm);
         }
         mIsPhoneInEcmState = isInEcm;
+    }
+
+    /**
+     * @return true if this Phone is in an emergency call that caused emergency callback mode to be
+     * canceled, false if not.
+     */
+    public boolean isEcmCanceledForEmergency() {
+        return mEcmCanceledForEmergency;
+    }
+
+    /**
+     * Set whether or not this Phone has an active emergency call that was placed during emergency
+     * callback mode and caused it to be temporarily canceled.
+     * @param isCanceled true if an emergency call was placed that caused ECM to be canceled, false
+     *                   if it is not in this state.
+     */
+    public void setEcmCanceledForEmergency(boolean isCanceled) {
+        mEcmCanceledForEmergency = isCanceled;
     }
 
     @UnsupportedAppUsage
@@ -4232,6 +4259,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
         pw.println(" isInEmergencySmsMode=" + isInEmergencySmsMode());
+        pw.println(" isEcmCanceledForEmergency=" + isEcmCanceledForEmergency());
         pw.println(" service state=" + getServiceState());
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
