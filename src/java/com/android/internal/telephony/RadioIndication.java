@@ -328,6 +328,10 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NUMBER_LIST, response);
 
+        // Cache emergency number list from last indication.
+        mRil.cacheEmergencyNumberListIndication(response);
+
+        // Notify emergency number list from radio to registrants
         mRil.mEmergencyNumberListRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
     }
