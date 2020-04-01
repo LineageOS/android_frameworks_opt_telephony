@@ -468,7 +468,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private boolean mIsInEmergencyCall = false;
     private boolean mIsDataEnabled = false;
-    private boolean mIsEcmTimerCanceled = false;
 
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
@@ -1200,7 +1199,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         boolean holdBeforeDial = prepareForDialing(dialArgs);
 
         if (isPhoneInEcmMode && isEmergencyNumber) {
-            handleEcmTimer(ImsPhone.CANCEL_ECM_TIMER);
+            mPhone.handleTimerInEmergencyCallbackMode(ImsPhone.CANCEL_ECM_TIMER);
         }
 
         // If the call is to an emergency number and the carrier does not support video emergency
@@ -1408,16 +1407,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @UnsupportedAppUsage
     private void handleEcmTimer(int action) {
         mPhone.handleTimerInEmergencyCallbackMode(action);
-        switch (action) {
-            case ImsPhone.CANCEL_ECM_TIMER:
-                mIsEcmTimerCanceled = true;
-                break;
-            case ImsPhone.RESTART_ECM_TIMER:
-                mIsEcmTimerCanceled = false;
-                break;
-            default:
-                log("handleEcmTimer, unsupported action " + action);
-        }
     }
 
     private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState,
@@ -2326,8 +2315,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
 
             if (!isEmergencyCallInList) {
-                if (mIsEcmTimerCanceled) {
-                    handleEcmTimer(ImsPhone.RESTART_ECM_TIMER);
+                if (mPhone.isEcmCanceledForEmergency()) {
+                    mPhone.handleTimerInEmergencyCallbackMode(ImsPhone.RESTART_ECM_TIMER);
                 }
                 mIsInEmergencyCall = false;
                 mPhone.sendEmergencyCallStateChange(false);
@@ -3768,7 +3757,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private void resetState() {
         mIsInEmergencyCall = false;
-        mIsEcmTimerCanceled = false;
+        mPhone.setEcmCanceledForEmergency(false);
     }
 
     //****** Overridden from Handler
@@ -4127,8 +4116,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.increaseIndent();
         mOperationLocalLog.dump(pw);
         pw.decreaseIndent();
-        pw.println(" mIsEcmTimerCanceled=" + mIsEcmTimerCanceled);
-
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
