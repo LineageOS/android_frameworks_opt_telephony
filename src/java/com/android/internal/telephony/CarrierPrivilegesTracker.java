@@ -32,9 +32,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.Signature;
 import android.content.pm.UserInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -42,16 +45,22 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.UserHandle;
 import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccAccessRule;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.IntArray;
-import android.util.Log;
+
+import com.android.internal.telephony.uicc.IccUtils;
+import com.android.telephony.Rlog;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,6 +72,9 @@ import java.util.Set;
  */
 public class CarrierPrivilegesTracker extends Handler {
     private static final String TAG = CarrierPrivilegesTracker.class.getSimpleName();
+
+    private static final String SHA_1 = "SHA-1";
+    private static final String SHA_256 = "SHA-256";
 
     /**
      * Action to register a Registrant with this Tracker.
@@ -90,6 +102,23 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     private static final int ACTION_SIM_STATE_UPDATED = 4;
 
+    /**
+     * Action for tracking when a package is installed or replaced on the device.
+     * obj: String package name that was installed or replaced on the device.
+     */
+    private static final int ACTION_PACKAGE_ADDED_OR_REPLACED = 5;
+
+    /**
+     * Action for tracking when a package is uninstalled on the device.
+     * obj: String package name that was installed on the device.
+     */
+    private static final int ACTION_PACKAGE_REMOVED = 6;
+
+    /**
+     * Action used to initialize the state of the Tracker.
+     */
+    private static final int ACTION_INITIALIZE_TRACKER = 7;
+
     private final Context mContext;
     private final Phone mPhone;
     private final CarrierConfigManager mCarrierConfigManager;
@@ -97,6 +126,8 @@ public class CarrierPrivilegesTracker extends Handler {
     private final UserManager mUserManager;
     private final TelephonyManager mTelephonyManager;
     private final RegistrantList mRegistrantList;
+
+    // Stores certificate hashes for Carrier Config-loaded certs. Certs must be UPPERCASE.
     private final Set<String> mCarrierConfigCerts;
 
     // TODO(b/151981841): Use Set<UiccAccessRule> to also check for package names loaded from SIM
@@ -104,7 +135,12 @@ public class CarrierPrivilegesTracker extends Handler {
 
     // Map of PackageName -> Certificate hashes for that Package
     private final Map<String, Set<String>> mInstalledPackageCerts;
-    private int[] mPrivilegedUids;
+
+    // Map of PackageName -> UIDs for that Package
+    private final Map<String, Set<Integer>> mCachedUids;
+
+    // Privileged UIDs must be kept in sorted order for update-checks.
+    protected int[] mPrivilegedUids;
 
     private final BroadcastReceiver mIntentReceiver =
             new BroadcastReceiver() {
@@ -141,6 +177,23 @@ public class CarrierPrivilegesTracker extends Handler {
                             sendMessage(obtainMessage(ACTION_SIM_STATE_UPDATED, slotId, simState));
                             break;
                         }
+                        case Intent.ACTION_PACKAGE_ADDED: // fall through
+                        case Intent.ACTION_PACKAGE_REPLACED: // fall through
+                        case Intent.ACTION_PACKAGE_REMOVED: {
+                            int what =
+                                    (action.equals(Intent.ACTION_PACKAGE_REMOVED))
+                                            ? ACTION_PACKAGE_REMOVED
+                                            : ACTION_PACKAGE_ADDED_OR_REPLACED;
+                            Uri uri = intent.getData();
+                            String pkgName = (uri != null) ? uri.getSchemeSpecificPart() : null;
+                            if (TextUtils.isEmpty(pkgName)) {
+                                Rlog.e(TAG, "Failed to get package from Intent");
+                                return;
+                            }
+
+                            sendMessage(obtainMessage(what, pkgName));
+                            break;
+                        }
                     }
                 }
             };
@@ -149,23 +202,30 @@ public class CarrierPrivilegesTracker extends Handler {
             @NonNull Looper looper, @NonNull Phone phone, @NonNull Context context) {
         super(looper);
         mContext = context;
-        mCarrierConfigManager = context.getSystemService(CarrierConfigManager.class);
-        mPackageManager = context.getSystemService(PackageManager.class);
-        mUserManager = context.getSystemService(UserManager.class);
-        mTelephonyManager = context.getSystemService(TelephonyManager.class);
+        mCarrierConfigManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        mPackageManager = mContext.getPackageManager();
+        mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mPhone = phone;
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         mContext.registerReceiver(mIntentReceiver, filter);
 
         mRegistrantList = new RegistrantList();
         mCarrierConfigCerts = new ArraySet<>();
         mUiccCerts = new ArraySet<>();
         mInstalledPackageCerts = new ArrayMap<>();
+        mCachedUids = new ArrayMap<>();
         mPrivilegedUids = new int[0];
+
+        sendMessage(obtainMessage(ACTION_INITIALIZE_TRACKER));
     }
 
     @Override
@@ -180,15 +240,31 @@ public class CarrierPrivilegesTracker extends Handler {
                 break;
             }
             case ACTION_CARRIER_CONFIG_CERTS_UPDATED: {
-                handleCarrierConfigUpdated(msg.arg1, msg.arg2);
+                int subId = msg.arg1;
+                int slotIndex = msg.arg2;
+                handleCarrierConfigUpdated(subId, slotIndex);
                 break;
             }
             case ACTION_SIM_STATE_UPDATED: {
                 handleSimStateChanged(msg.arg1, msg.arg2);
                 break;
             }
+            case ACTION_PACKAGE_ADDED_OR_REPLACED: {
+                String pkgName = (String) msg.obj;
+                handlePackageAddedOrReplaced(pkgName);
+                break;
+            }
+            case ACTION_PACKAGE_REMOVED: {
+                String pkgName = (String) msg.obj;
+                handlePackageRemoved(pkgName);
+                break;
+            }
+            case ACTION_INITIALIZE_TRACKER: {
+                handleInitializeTracker();
+                break;
+            }
             default: {
-                Log.e(TAG, "Received unknown msg type: " + msg.what);
+                Rlog.e(TAG, "Received unknown msg type: " + msg.what);
                 break;
             }
         }
@@ -206,81 +282,153 @@ public class CarrierPrivilegesTracker extends Handler {
     private void handleCarrierConfigUpdated(int subId, int slotIndex) {
         if (slotIndex != mPhone.getPhoneId()) return;
 
-        Set<String> updatedCarrierConfigCerts = new ArraySet<>();
+        Set<String> updatedCarrierConfigCerts = Collections.EMPTY_SET;
 
         // Carrier Config broadcasts with INVALID_SUBSCRIPTION_ID when the SIM is removed. This is
         // an expected event. When this happens, clear the certificates from the previous configs.
+        // The certs will be cleared in maybeUpdateCertsAndNotifyRegistrants() below.
         if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
-            if (mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
-                String[] carrierConfigCerts =
-                        carrierConfigs.getStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
-
-                if (carrierConfigCerts != null) {
-                    for (String cert : carrierConfigCerts) {
-                        updatedCarrierConfigCerts.add(cert.toUpperCase());
-                    }
-                }
-            }
+            updatedCarrierConfigCerts = getCarrierConfigCerts(subId);
         }
 
         maybeUpdateCertsAndNotifyRegistrants(mCarrierConfigCerts, updatedCarrierConfigCerts);
     }
 
+    private Set<String> getCarrierConfigCerts(int subId) {
+        PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
+        if (!mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
+            return Collections.EMPTY_SET;
+        }
+
+        Set<String> updatedCarrierConfigCerts = new ArraySet<>();
+        String[] carrierConfigCerts =
+                carrierConfigs.getStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
+
+        if (carrierConfigCerts != null) {
+            for (String cert : carrierConfigCerts) {
+                updatedCarrierConfigCerts.add(cert.toUpperCase());
+            }
+        }
+        return updatedCarrierConfigCerts;
+    }
+
     private void handleSimStateChanged(int slotId, int simState) {
         if (slotId != mPhone.getPhoneId()) return;
 
-        Set<String> updatedUiccCerts = new ArraySet<>();
+        Set<String> updatedUiccCerts = Collections.EMPTY_SET;
 
         // Only include the UICC certs if the SIM is fully loaded
         if (simState == SIM_STATE_LOADED) {
-            TelephonyManager telMan = mTelephonyManager.createForSubscriptionId(mPhone.getSubId());
-            if (telMan.hasIccCard(mPhone.getPhoneId())) {
-                List<String> uiccCerts = telMan.getCertsFromCarrierPrivilegeAccessRules();
-                if (uiccCerts != null) {
-                    for (String cert : uiccCerts) {
-                        updatedUiccCerts.add(cert.toUpperCase());
-                    }
-                }
-            }
+            updatedUiccCerts = getSimCerts();
         }
 
         maybeUpdateCertsAndNotifyRegistrants(mUiccCerts, updatedUiccCerts);
     }
 
-    private void maybeUpdateCertsAndNotifyRegistrants(
-            Set<String> currentCerts, Set<String> updatedCerts) {
-        if (!currentCerts.equals(updatedCerts)) {
-            currentCerts.clear();
-            currentCerts.addAll(updatedCerts);
+    private Set<String> getSimCerts() {
+        Set<String> updatedUiccCerts = Collections.EMPTY_SET;
+        TelephonyManager telMan = mTelephonyManager.createForSubscriptionId(mPhone.getSubId());
 
-            int[] currentPrivilegedUids = getCurrentPrivilegedUids();
-
-            // Sort UIDs for the equality check
-            Arrays.sort(currentPrivilegedUids);
-            if (!Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) {
-                mPrivilegedUids = currentPrivilegedUids;
-                mRegistrantList.notifyResult(mPrivilegedUids);
+        if (telMan.hasIccCard(mPhone.getPhoneId())) {
+            updatedUiccCerts = new ArraySet<>();
+            List<String> uiccCerts = telMan.getCertsFromCarrierPrivilegeAccessRules();
+            if (uiccCerts != null) {
+                for (String cert : uiccCerts) {
+                    updatedUiccCerts.add(cert.toUpperCase());
+                }
             }
         }
+        return updatedUiccCerts;
     }
 
-    private int[] getCurrentPrivilegedUids() {
+    private void handlePackageAddedOrReplaced(String pkgName) {
+        PackageInfo pkg;
+        try {
+            pkg = mPackageManager.getPackageInfo(pkgName, PackageManager.GET_SIGNING_CERTIFICATES);
+        } catch (NameNotFoundException e) {
+            Rlog.e(TAG, "Error getting installed package: " + pkgName, e);
+            return;
+        }
+
+        updateCertsForPackage(pkg);
+        mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
+
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
+    private void updateCertsForPackage(PackageInfo pkg) {
+        Set<String> certs = new ArraySet<>();
+        List<Signature> signatures = UiccAccessRule.getSignatures(pkg);
+        for (Signature signature : signatures) {
+            byte[] sha1 = UiccAccessRule.getCertHash(signature, SHA_1);
+            certs.add(IccUtils.bytesToHexString(sha1).toUpperCase());
+
+            byte[] sha256 = UiccAccessRule.getCertHash(signature, SHA_256);
+            certs.add(IccUtils.bytesToHexString(sha256).toUpperCase());
+        }
+
+        mInstalledPackageCerts.put(pkg.packageName, certs);
+    }
+
+    private void handlePackageRemoved(String pkgName) {
+        if (mInstalledPackageCerts.remove(pkgName) == null) {
+            Rlog.e(TAG, "Unknown package was uninstalled: " + pkgName);
+            return;
+        }
+        mCachedUids.remove(pkgName);
+
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
+    private void handleInitializeTracker() {
+        // Cache CarrierConfig Certs
+        mCarrierConfigCerts.addAll(getCarrierConfigCerts(mPhone.getSubId()));
+
+        // Cache SIM certs
+        mUiccCerts.addAll(getSimCerts());
+
+        // Cache all installed packages and their certs
+        int flags =
+                PackageManager.MATCH_DISABLED_COMPONENTS
+                        | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
+                        | PackageManager.GET_SIGNING_CERTIFICATES;
+        List<PackageInfo> installedPackages =
+                mPackageManager.getInstalledPackagesAsUser(
+                        flags, UserHandle.SYSTEM.getIdentifier());
+        for (PackageInfo pkg : installedPackages) {
+            updateCertsForPackage(pkg);
+        }
+
+        // Okay because no registrants exist yet
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
+    private void maybeUpdateCertsAndNotifyRegistrants(
+            Set<String> currentCerts, Set<String> updatedCerts) {
+        if (currentCerts.equals(updatedCerts)) return;
+
+        currentCerts.clear();
+        currentCerts.addAll(updatedCerts);
+
+        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+    }
+
+    private void maybeUpdatePrivilegedUidsAndNotifyRegistrants() {
+        int[] currentPrivilegedUids = getCurrentPrivilegedUidsForAllUsers();
+
+        // Sort UIDs for the equality check
+        Arrays.sort(currentPrivilegedUids);
+        if (Arrays.equals(mPrivilegedUids, currentPrivilegedUids)) return;
+
+        mPrivilegedUids = currentPrivilegedUids;
+        mRegistrantList.notifyResult(mPrivilegedUids);
+    }
+
+    private int[] getCurrentPrivilegedUidsForAllUsers() {
         Set<Integer> privilegedUids = new ArraySet<>();
         for (Map.Entry<String, Set<String>> e : mInstalledPackageCerts.entrySet()) {
             if (isPackagePrivileged(e.getValue())) {
-                List<UserInfo> users = mUserManager.getUsers();
-                for (UserInfo user : users) {
-                    try {
-                        int uid =
-                                mPackageManager.getPackageUidAsUser(
-                                        e.getKey(), user.getUserHandle().getIdentifier());
-                        privilegedUids.add(uid);
-                    } catch (NameNotFoundException exception) {
-                        // Didn't find package. Continue looking at other packages
-                        Log.e(TAG, "Unable to find uid for package: " + e.getKey());
-                    }
-                }
+                privilegedUids.addAll(getUidsForPackage(e.getKey()));
             }
         }
 
@@ -291,13 +439,33 @@ public class CarrierPrivilegesTracker extends Handler {
         return result.toArray();
     }
 
+    /**
+     * Returns true iff there is an overlap between the provided certificate hashes and the
+     * certificate hashes stored in mCarrierConfigCerts and mUiccCerts.
+     */
     private boolean isPackagePrivileged(Set<String> certs) {
-        for (String cert : certs) {
-            if (mCarrierConfigCerts.contains(cert) || mUiccCerts.contains(cert)) {
-                return true;
+        return !Collections.disjoint(mCarrierConfigCerts, certs)
+                || !Collections.disjoint(mUiccCerts, certs);
+    }
+
+    private Set<Integer> getUidsForPackage(String pkgName) {
+        if (mCachedUids.containsKey(pkgName)) {
+            return mCachedUids.get(pkgName);
+        }
+
+        Set<Integer> uids = new ArraySet<>();
+        List<UserInfo> users = mUserManager.getUsers();
+        for (UserInfo user : users) {
+            int userId = user.getUserHandle().getIdentifier();
+            try {
+                uids.add(mPackageManager.getPackageUidAsUser(pkgName, userId));
+            } catch (NameNotFoundException exception) {
+                // Didn't find package. Continue looking at other packages
+                Rlog.e(TAG, "Unable to find uid for package " + pkgName + " and user " + userId);
             }
         }
-        return false;
+        mCachedUids.put(pkgName, uids);
+        return uids;
     }
 
     /**
@@ -305,8 +473,6 @@ public class CarrierPrivilegesTracker extends Handler {
      *
      * <p>After being registered, the Registrant will be notified with the current Carrier
      * Privileged UIDs for this Phone.
-     *
-     * @hide
      */
     public void registerCarrierPrivilegesListener(Handler h, int what, Object obj) {
         sendMessage(obtainMessage(ACTION_REGISTER_LISTENER, new Registrant(h, what, obj)));
@@ -314,8 +480,6 @@ public class CarrierPrivilegesTracker extends Handler {
 
     /**
      * Unregisters the given listener with this tracker.
-     *
-     * @hide
      */
     public void unregisterCarrierPrivilegesListener(Handler handler) {
         sendMessage(obtainMessage(ACTION_UNREGISTER_LISTENER, handler));
