@@ -26,6 +26,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
+import android.net.Uri;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -162,17 +163,17 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     @Override
-    public synchronized void onValidationStatus(int status, String redirectUrl) {
+    public synchronized void onValidationStatus(int status, Uri redirectUri) {
         if (mDataConnection == null) {
             loge("onValidationStatus called on no-owner DcNetworkAgent!");
             return;
         }
 
-        logd("validation status: " + status + " with redirection URL: " + redirectUrl);
+        logd("validation status: " + status + " with redirection URL: " + redirectUri);
         DcTracker dct = mPhone.getDcTracker(mTransportType);
         if (dct != null) {
             Message msg = dct.obtainMessage(DctConstants.EVENT_NETWORK_STATUS_CHANGED,
-                    status, mDataConnection.getCid(), redirectUrl);
+                    status, mDataConnection.getCid(), redirectUri.toString());
             msg.sendToTarget();
         }
     }
