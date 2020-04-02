@@ -49,6 +49,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.SimState;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
@@ -1156,7 +1157,13 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private static String simStateString(int state) {
+    /**
+     * Convert SIM state into string
+     *
+     * @param state SIM state
+     * @return SIM state in string format
+     */
+    public static String simStateString(@SimState int state) {
         switch (state) {
             case TelephonyManager.SIM_STATE_UNKNOWN:
                 return "UNKNOWN";
