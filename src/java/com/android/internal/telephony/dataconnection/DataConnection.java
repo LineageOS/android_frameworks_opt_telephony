@@ -2157,7 +2157,7 @@ public class DataConnection extends StateMachine {
                 // All network agents start out in CONNECTING mode, but DcNetworkAgents are
                 // created when the network is already connected. Hence, send the connected
                 // notification immediately.
-                mNetworkAgent.setConnected();
+                mNetworkAgent.markConnected();
             }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
