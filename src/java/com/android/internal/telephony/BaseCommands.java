@@ -26,6 +26,10 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * {@hide}
@@ -143,6 +147,11 @@ public abstract class BaseCommands implements CommandsInterface {
     @UnsupportedAppUsage
     protected Registrant mSsRegistrant;
     protected Registrant mRegistrationFailedRegistrant;
+
+    // Lock that mLastEmergencyNumberListIndication uses.
+    private Object mLastEmergencyNumberListIndicationLock = new Object();
+    // Cache last emergency number list indication from radio
+    private final List<EmergencyNumber> mLastEmergencyNumberListIndication = new ArrayList<>();
 
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
@@ -803,6 +812,14 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void registerForEmergencyNumberList(Handler h, int what, Object obj) {
         mEmergencyNumberListRegistrants.addUnique(h, what, obj);
+        // Notify the last emergency number list from radio to new registrants because they may
+        // miss the latest indication (e.g. constructed in a delay after HAL is registrated).
+        List<EmergencyNumber> lastEmergencyNumberListIndication =
+                getLastEmergencyNumberListIndication();
+        if (lastEmergencyNumberListIndication != null) {
+            mEmergencyNumberListRegistrants.notifyRegistrants(new AsyncResult(
+                    null, getLastEmergencyNumberListIndication(), null));
+        }
     }
 
     @Override
@@ -857,6 +874,20 @@ public abstract class BaseCommands implements CommandsInterface {
                     && (oldState == TelephonyManager.RADIO_POWER_ON)) {
                 mOffOrNotAvailRegistrants.notifyRegistrants();
             }
+        }
+    }
+
+    protected void cacheEmergencyNumberListIndication(
+            List<EmergencyNumber> emergencyNumberListIndication) {
+        synchronized (mLastEmergencyNumberListIndicationLock) {
+            mLastEmergencyNumberListIndication.clear();
+            mLastEmergencyNumberListIndication.addAll(emergencyNumberListIndication);
+        }
+    }
+
+    private List<EmergencyNumber> getLastEmergencyNumberListIndication() {
+        synchronized (mLastEmergencyNumberListIndicationLock) {
+            return new ArrayList<>(mLastEmergencyNumberListIndication);
         }
     }
 
