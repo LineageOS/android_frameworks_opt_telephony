@@ -622,6 +622,15 @@ public class SubscriptionInfoUpdater extends Handler {
             logd("SIM" + (phoneId + 1) + " hot plug out, absentAndInactive=" + absentAndInactive);
         }
         sIccId[phoneId] = ICCID_STRING_FOR_NO_SIM;
+        int[] subIds = SubscriptionController.getInstance().getSubId(phoneId);
+        if (subIds != null && subIds.length > 0) {
+            // When a SIM is unplugged, mark uicc applications enabled. This is to make sure when
+            // user unplugs and re-inserts the SIM card, we re-enable it.
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, true);
+            sContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                    SubscriptionController.getSelectionForSubIdList(subIds), null);
+        }
         updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
         // Do not broadcast if the SIM is absent and inactive, because the logical phoneId here is
         // no longer correct

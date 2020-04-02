@@ -15,6 +15,8 @@
  */
 package com.android.internal.telephony;
 
+import static android.telephony.SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -187,6 +189,12 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         verify(mConfigManager).updateConfigForPhoneId(eq(FAKE_SUB_ID_1),
                 eq(IccCardConstants.INTENT_VALUE_ICC_ABSENT));
         verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
+        ArgumentCaptor<ContentValues> valueCapture = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider).update(any(), valueCapture.capture(),
+                eq(UNIQUE_KEY_SUBSCRIPTION_ID + " IN (" + FAKE_SUB_ID_1 + ")"), any());
+        boolean uiccApplicationsEnabled = valueCapture.getValue()
+                .getAsBoolean(SubscriptionManager.UICC_APPLICATIONS_ENABLED);
+        assertTrue(uiccApplicationsEnabled);
     }
 
     @Test
