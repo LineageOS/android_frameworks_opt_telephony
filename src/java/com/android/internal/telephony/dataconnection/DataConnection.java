@@ -2206,8 +2206,6 @@ public class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
-                case EVENT_DATA_CONNECTION_ROAM_ON:
-                case EVENT_DATA_CONNECTION_ROAM_OFF:
                 case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
                     boolean isUnmetered = (boolean) msg.obj;
                     if (isUnmetered == mUnmeteredOverride) {
@@ -2216,6 +2214,8 @@ public class DataConnection extends StateMachine {
                     }
                     mUnmeteredOverride = isUnmetered;
                     // fallthrough
+                case EVENT_DATA_CONNECTION_ROAM_ON:
+                case EVENT_DATA_CONNECTION_ROAM_OFF:
                 case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
                     updateNetworkInfo();
                     if (mNetworkAgent != null) {
