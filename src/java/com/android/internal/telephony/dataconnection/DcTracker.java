@@ -2595,8 +2595,7 @@ public class DcTracker extends Handler {
         // since we don't want to unset user preference from system update, pass true as the default
         // value if shared pref does not exist and set shared pref to false explicitly from factory
         // reset.
-        if (!sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)
-                && Settings.Global.getInt(mResolver, Settings.Global.DEVICE_PROVISIONED, 0) == 0) {
+        if (!sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)) {
             sp.edit().putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, false).commit();
         }
         return sp.getBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, true);
