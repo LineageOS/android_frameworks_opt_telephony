@@ -1723,6 +1723,7 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
+                    updateNetworkInfo();
                     break;
                 default:
                     if (DBG) {
@@ -1733,6 +1734,19 @@ public class DataConnection extends StateMachine {
 
             return retVal;
         }
+    }
+
+    private void updateNetworkInfo() {
+        final ServiceState state = mPhone.getServiceState();
+
+        NetworkRegistrationInfo nri = state.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        int subtype = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (nri != null) {
+            subtype = nri.getAccessNetworkTechnology();
+        }
+
+        mNetworkInfo.setSubtype(subtype, TelephonyManager.getNetworkTypeName(subtype));
     }
 
     private void updateNetworkInfoSuspendState() {
@@ -2076,6 +2090,8 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
 
+            updateNetworkInfo();
+
             // If we were retrying there maybe more than one, otherwise they'll only be one.
             notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE,
                     Phone.REASON_CONNECTED);
@@ -2091,6 +2107,7 @@ public class DataConnection extends StateMachine {
 
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED,
                     mNetworkInfo.getReason(), null);
+            mNetworkInfo.setExtraInfo(mApnSetting.getApnName());
             updateTcpBufferSizes(mRilRat);
             updateLinkBandwidthsFromCarrierConfig(mRilRat);
 
@@ -2357,6 +2374,7 @@ public class DataConnection extends StateMachine {
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
                 case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
+                    updateNetworkInfo();
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
@@ -2378,6 +2396,7 @@ public class DataConnection extends StateMachine {
                 }
                 case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
                 case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
+                    updateNetworkInfo();
                     updateNetworkInfoSuspendState();
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
