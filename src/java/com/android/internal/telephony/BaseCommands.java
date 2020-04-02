@@ -818,7 +818,7 @@ public abstract class BaseCommands implements CommandsInterface {
                 getLastEmergencyNumberListIndication();
         if (lastEmergencyNumberListIndication != null) {
             mEmergencyNumberListRegistrants.notifyRegistrants(new AsyncResult(
-                    null, getLastEmergencyNumberListIndication(), null));
+                    null, lastEmergencyNumberListIndication, null));
         }
     }
 
