@@ -433,6 +433,13 @@ public class TelephonyComponentFactory {
         return PhoneSwitcher.make(maxDataAttachModemCount, context, looper);
     }
 
+    /**
+     * Create a new DisplayInfoController.
+     */
+    public DisplayInfoController makeDisplayInfoController(Phone phone) {
+        return new DisplayInfoController(phone);
+    }
+
     public MultiSimSettingController initMultiSimSettingController(Context c,
             SubscriptionController sc) {
         return MultiSimSettingController.init(c, sc);
