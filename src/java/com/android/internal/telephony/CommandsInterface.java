@@ -36,6 +36,7 @@ import android.telephony.emergency.EmergencyNumber;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 
 import java.util.List;
 
@@ -852,6 +853,8 @@ public interface CommandsInterface {
     void changeBarringPassword(String facility, String oldPwd, String newPwd, Message result);
 
     void supplyNetworkDepersonalization(String netpin, Message result);
+
+    void supplySimDepersonalization(PersoSubState persoType, String controlKey, Message result);
 
     /**
      *  returned message
