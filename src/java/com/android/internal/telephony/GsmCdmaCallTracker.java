@@ -1462,8 +1462,15 @@ public class GsmCdmaCallTracker extends CallTracker {
                         if (msg.what == EVENT_SWITCH_RESULT) {
                             Connection connection = mForegroundCall.getLatestConnection();
                             if (connection != null) {
-                                connection.onConnectionEvent(
-                                        android.telecom.Connection.EVENT_CALL_SWITCH_FAILED, null);
+                                if (mBackgroundCall.getState() != GsmCdmaCall.State.HOLDING) {
+                                    connection.onConnectionEvent(
+                                            android.telecom.Connection.EVENT_CALL_HOLD_FAILED,
+                                            null);
+                                } else {
+                                    connection.onConnectionEvent(
+                                            android.telecom.Connection.EVENT_CALL_SWITCH_FAILED,
+                                            null);
+                                }
                             }
                         }
                         mPhone.notifySuppServiceFailed(getFailedService(msg.what));
