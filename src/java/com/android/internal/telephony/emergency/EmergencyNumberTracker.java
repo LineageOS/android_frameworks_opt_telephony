@@ -494,6 +494,11 @@ public class EmergencyNumberTracker extends Handler {
         // Read the OTA emergency number database
         List<EmergencyNumber> updatedOtaEmergencyNumberList = new ArrayList<>();
         try {
+            // If OTA File partition is not available, try to reload the default one.
+            if (mEmergencyNumberDbOtaFileInputStream == null) {
+                mEmergencyNumberDbOtaFileInputStream = new FileInputStream(
+                      new File(Environment.getDataDirectory(), EMERGENCY_NUMBER_DB_OTA_FILE_PATH));
+            }
             inputStream = new BufferedInputStream(mEmergencyNumberDbOtaFileInputStream);
             allEccMessages = ProtobufEccData.AllInfo.parseFrom(readInputStreamToByteArray(
                     new GZIPInputStream(inputStream)));
@@ -509,7 +514,7 @@ public class EmergencyNumberTracker extends Handler {
             }
             EmergencyNumber.mergeSameNumbersInEmergencyNumberList(updatedOtaEmergencyNumberList);
         } catch (IOException ex) {
-            loge("Cache ota emergency database failure: " + ex);
+            loge("Cache ota emergency database IOException: " + ex);
         } finally {
             // close quietly by catching non-runtime exceptions.
             if (inputStream != null) {
