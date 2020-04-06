@@ -60,6 +60,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsConferenceState;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
@@ -483,6 +484,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mIsViLteDataMetered = false;
     private boolean mAlwaysPlayRemoteHoldTone = false;
     private boolean mAutoRetryFailedWifiEmergencyCall = false;
+    private boolean mSupportCepOnPeer = true;
     // Tracks the state of our background/foreground calls while a call hold/swap operation is
     // in progress. Values listed above.
     private HoldSwapState mHoldSwitchingState = HoldSwapState.INACTIVE;
@@ -1368,6 +1370,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 CarrierConfigManager.KEY_ALWAYS_PLAY_REMOTE_HOLD_TONE_BOOL);
         mAutoRetryFailedWifiEmergencyCall = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_AUTO_RETRY_FAILED_WIFI_EMERGENCY_CALL);
+        mSupportCepOnPeer = carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_SUPPORT_IMS_CONFERENCE_EVENT_PACKAGE_ON_PEER_BOOL);
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -3295,6 +3299,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return;
             }
 
+            if (!mSupportCepOnPeer && !call.isConferenceHost()) {
+                logi("onConferenceParticipantsStateChanged - ignore CEP on peer");
+                return;
+            }
+
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 updateConferenceParticipantsTiming(participants);
@@ -4112,6 +4121,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mCallQualityMetrics=" + mCallQualityMetrics);
         pw.println(" mCallQualityMetricsHistory=" + mCallQualityMetricsHistory);
         pw.println(" mIsConferenceEventPackageHandlingEnabled=" + mIsConferenceEventPackageEnabled);
+        pw.println(" mSupportCepOnPeer=" + mSupportCepOnPeer);
         pw.println(" Event Log:");
         pw.increaseIndent();
         mOperationLocalLog.dump(pw);
@@ -4794,6 +4804,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @Override
     public ImsPhone getPhone() {
         return mPhone;
+    }
+
+    @VisibleForTesting
+    public void setSupportCepOnPeer(boolean isSupported) {
+        mSupportCepOnPeer = isSupported;
+    }
+
+    /**
+     * Injects a test conference state into an ongoing IMS call.
+     * @param state The injected state.
+     */
+    public void injectTestConferenceState(@NonNull ImsConferenceState state) {
+        List<ConferenceParticipant> participants = ImsCall.parseConferenceState(state);
+        for (ImsPhoneConnection connection : getConnections()) {
+            connection.updateConferenceParticipants(participants);
+        }
     }
 
     /**
