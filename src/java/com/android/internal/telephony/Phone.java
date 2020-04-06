@@ -2139,6 +2139,21 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         int modemRaf = getRadioAccessFamily();
         int rafFromType = RadioAccessFamily.getRafFromNetworkType(networkType);
 
+        long allowedNetworkTypes = -1;
+        if (SubscriptionController.getInstance() != null) {
+            String result = SubscriptionController.getInstance().getSubscriptionProperty(
+                    getSubId(),
+                    SubscriptionManager.ALLOWED_NETWORK_TYPES);
+
+            if (result != null) {
+                try {
+                    allowedNetworkTypes = Long.parseLong(result);
+                } catch (NumberFormatException err) {
+                    Rlog.d(LOG_TAG, "allowedNetworkTypes NumberFormat exception");
+                }
+            }
+        }
+
         if (modemRaf == RadioAccessFamily.RAF_UNKNOWN
                 || rafFromType == RadioAccessFamily.RAF_UNKNOWN) {
             Rlog.d(LOG_TAG, "setPreferredNetworkType: Abort, unknown RAF: "
@@ -2153,12 +2168,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return;
         }
 
-        int filteredRaf = (rafFromType & modemRaf);
+        int filteredRaf = (int) (rafFromType & modemRaf & allowedNetworkTypes);
         int filteredType = RadioAccessFamily.getNetworkTypeFromRaf(filteredRaf);
 
         Rlog.d(LOG_TAG, "setPreferredNetworkType: networkType = " + networkType
                 + " modemRaf = " + modemRaf
                 + " rafFromType = " + rafFromType
+                + " allowedNetworkTypes = " + allowedNetworkTypes
                 + " filteredType = " + filteredType);
 
         mCi.setPreferredNetworkType(filteredType, response);
