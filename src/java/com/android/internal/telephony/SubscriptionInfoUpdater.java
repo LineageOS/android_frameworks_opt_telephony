@@ -44,7 +44,6 @@ import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
-import android.telephony.RadioAccessFamily;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -536,18 +535,6 @@ public class SubscriptionInfoUpdater extends Handler {
                     }
 
                     // Set the modem network mode
-                    long allowedNetworkTypes = -1;
-                    try {
-                        allowedNetworkTypes = Long.parseLong(
-                                SubscriptionController.getInstance().getSubscriptionProperty(subId,
-                                        SubscriptionManager.ALLOWED_NETWORK_TYPES));
-                    } catch (NumberFormatException err) {
-                        logd("NumberFormat exception");
-                    }
-
-                    long networkTypeBitMask = RadioAccessFamily.getRafFromNetworkType(networkType);
-                    networkType = RadioAccessFamily.getNetworkTypeFromRaf(
-                            (int) (networkTypeBitMask & allowedNetworkTypes));
                     PhoneFactory.getPhone(phoneId).setPreferredNetworkType(networkType, null);
 
                     // Only support automatic selection mode on SIM change.
