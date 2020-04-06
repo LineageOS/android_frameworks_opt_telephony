@@ -249,13 +249,18 @@ public class SubscriptionController extends ISub.Stub {
 
         public void set(int newValue) {
             mValue = newValue;
-            invalidateDefaultSubIdCaches();
         }
     }
 
     private static WatchedSlotIndexToSubIds sSlotIndexToSubIds = new WatchedSlotIndexToSubIds();
     protected static WatchedInt sDefaultFallbackSubId =
-            new WatchedInt(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+            new WatchedInt(SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+        @Override
+        public void set(int newValue) {
+            super.set(newValue);
+            invalidateDefaultSubIdCaches();
+        }
+    };
 
     @UnsupportedAppUsage
     private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
@@ -333,6 +338,7 @@ public class SubscriptionController extends ISub.Stub {
         // Initial invalidate activates caching.
         invalidateDefaultSubIdCaches();
         invalidateDefaultDataSubIdCaches();
+        invalidateActiveDataSubIdCaches();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
@@ -4056,6 +4062,7 @@ public class SubscriptionController extends ISub.Stub {
         Settings.Global.putInt(mContext.getContentResolver(), name, value);
         if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION) {
             invalidateDefaultDataSubIdCaches();
+            invalidateActiveDataSubIdCaches();
             invalidateDefaultSubIdCaches();
         } else if (name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
             invalidateDefaultSubIdCaches();
@@ -4083,6 +4090,15 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @hide
      */
+    protected static void invalidateActiveDataSubIdCaches() {
+        if (sCachingEnabled) {
+            SubscriptionManager.invalidateActiveDataSubIdCaches();
+        }
+    }
+
+    /**
+     * @hide
+     */
     @VisibleForTesting
     public static void disableCaching() {
         sCachingEnabled = false;
@@ -4091,9 +4107,8 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @hide
      */
+    @VisibleForTesting
     public static void enableCaching() {
         sCachingEnabled = true;
     }
-
-
 }
