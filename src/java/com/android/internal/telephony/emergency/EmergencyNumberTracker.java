@@ -39,6 +39,7 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.HalVersion;
 import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -700,7 +701,7 @@ public class EmergencyNumberTracker extends Handler {
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             return Collections.unmodifiableList(mEmergencyNumberList);
         } else {
-            return getEmergencyNumberListFromEccListAndTest();
+            return getEmergencyNumberListFromEccListDatabaseAndTest();
         }
     }
 
@@ -738,7 +739,7 @@ public class EmergencyNumberTracker extends Handler {
             return false;
         } else {
             return isEmergencyNumberFromEccList(number, exactMatch)
-                    || isEmergencyNumberForTest(number);
+                    || isEmergencyNumberFromDatabase(number) || isEmergencyNumberForTest(number);
         }
     }
 
@@ -858,15 +859,18 @@ public class EmergencyNumberTracker extends Handler {
     private List<EmergencyNumber> getEmergencyNumberListWithPrefix(
             List<EmergencyNumber> emergencyNumberList) {
         List<EmergencyNumber> emergencyNumberListWithPrefix = new ArrayList<>();
-        for (EmergencyNumber num : emergencyNumberList) {
-            for (String prefix : mEmergencyNumberPrefix) {
-                // If an emergency number has started with the prefix, no need to apply the prefix.
-                if (!num.getNumber().startsWith(prefix)) {
-                    emergencyNumberListWithPrefix.add(new EmergencyNumber(
+        if (emergencyNumberList != null) {
+            for (EmergencyNumber num : emergencyNumberList) {
+                for (String prefix : mEmergencyNumberPrefix) {
+                    // If an emergency number has started with the prefix,
+                    // no need to apply the prefix.
+                    if (!num.getNumber().startsWith(prefix)) {
+                        emergencyNumberListWithPrefix.add(new EmergencyNumber(
                             prefix + num.getNumber(), num.getCountryIso(),
                             num.getMnc(), num.getEmergencyServiceCategoryBitmask(),
                             num.getEmergencyUrns(), num.getEmergencyNumberSourceBitmask(),
                             num.getEmergencyCallRouting()));
+                    }
                 }
             }
         }
@@ -876,6 +880,26 @@ public class EmergencyNumberTracker extends Handler {
     private boolean isEmergencyNumberForTest(String number) {
         number = PhoneNumberUtils.stripSeparators(number);
         for (EmergencyNumber num : mEmergencyNumberListFromTestMode) {
+            if (num.getNumber().equals(number)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isEmergencyNumberFromDatabase(String number) {
+        if (!mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+            return false;
+        }
+        number = PhoneNumberUtils.stripSeparators(number);
+        for (EmergencyNumber num : mEmergencyNumberListFromDatabase) {
+            if (num.getNumber().equals(number)) {
+                return true;
+            }
+        }
+        List<EmergencyNumber> emergencyNumberListFromDatabaseWithPrefix =
+                getEmergencyNumberListWithPrefix(mEmergencyNumberListFromDatabase);
+        for (EmergencyNumber num : emergencyNumberListFromDatabaseWithPrefix) {
             if (num.getNumber().equals(number)) {
                 return true;
             }
@@ -1074,9 +1098,17 @@ public class EmergencyNumberTracker extends Handler {
         notifyEmergencyNumberList();
     }
 
-    private List<EmergencyNumber> getEmergencyNumberListFromEccListAndTest() {
+    private List<EmergencyNumber> getEmergencyNumberListFromEccListDatabaseAndTest() {
         List<EmergencyNumber> mergedEmergencyNumberList = getEmergencyNumberListFromEccList();
+        if (mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+            loge("getEmergencyNumberListFromEccListDatabaseAndTest: radio indication is"
+                    + " unavailable in 1.4 HAL.");
+            mergedEmergencyNumberList.addAll(mEmergencyNumberListFromDatabase);
+            mergedEmergencyNumberList.addAll(getEmergencyNumberListWithPrefix(
+                    mEmergencyNumberListFromDatabase));
+        }
         mergedEmergencyNumberList.addAll(getEmergencyNumberListTestMode());
+        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
         return mergedEmergencyNumberList;
     }
 
