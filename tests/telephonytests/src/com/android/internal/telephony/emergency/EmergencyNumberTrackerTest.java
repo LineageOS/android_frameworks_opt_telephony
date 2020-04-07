@@ -17,6 +17,7 @@
 package com.android.internal.telephony.emergency;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
@@ -25,6 +26,9 @@ import android.telephony.emergency.EmergencyNumber;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import androidx.test.InstrumentationRegistry;
+
+import com.android.internal.telephony.HalVersion;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
@@ -62,6 +66,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("EmergencyNumberTrackerTest +Setup!");
         super.setUp("EmergencyNumberTrackerTest");
+        mContext = InstrumentationRegistry.getTargetContext();
+
         doReturn(mContext).when(mPhone).getContext();
         doReturn(0).when(mPhone).getPhoneId();
 
@@ -187,6 +193,48 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         processAllMessages();
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("ca"));
         assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("us"));
+    }
+
+    /**
+     * In 1.3 or less HAL. we should not use database number.
+     */
+    @Test
+    public void testUsingEmergencyNumberDatabaseWheneverHal_1_3() {
+        doReturn(new HalVersion(1, 3)).when(mPhone).getHalVersion();
+
+        sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
+        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        processAllMessages();
+
+        boolean hasDatabaseNumber = false;
+        for (EmergencyNumber number : mEmergencyNumberTrackerMock.getEmergencyNumberList()) {
+            if (number.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
+                hasDatabaseNumber = true;
+                break;
+            }
+        }
+        assertFalse(hasDatabaseNumber);
+    }
+
+    /**
+     * In 1.4 or above HAL, we should use database number.
+     */
+    @Test
+    public void testUsingEmergencyNumberDatabaseWheneverHal_1_4() {
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+
+        sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
+        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        processAllMessages();
+
+        boolean hasDatabaseNumber = false;
+        for (EmergencyNumber number : mEmergencyNumberTrackerMock.getEmergencyNumberList()) {
+            if (number.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
+                hasDatabaseNumber = true;
+                break;
+            }
+        }
+        assertTrue(hasDatabaseNumber);
     }
 
     @Test
