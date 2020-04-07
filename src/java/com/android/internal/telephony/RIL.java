@@ -949,6 +949,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     handleRadioProxyExceptionForRR(rr, "supplySimDepersonalization", e);
                 }
             }
+        } else {
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
         }
     }
 
