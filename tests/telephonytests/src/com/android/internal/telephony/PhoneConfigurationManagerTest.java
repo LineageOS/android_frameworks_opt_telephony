@@ -18,8 +18,6 @@ package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
 import static android.telephony.TelephonyManager.EXTRA_ACTIVE_SIM_SUPPORTED_COUNT;
-import static android.telephony.TelephonyManager.MODEM_COUNT_DUAL_MODEM;
-import static android.telephony.TelephonyManager.MODEM_COUNT_SINGLE_MODEM;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -91,17 +89,17 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetPhoneCount() throws Exception {
-        init(MODEM_COUNT_SINGLE_MODEM);
-        doReturn(MODEM_COUNT_SINGLE_MODEM).when(mTelephonyManager).getActiveModemCount();
-        assertEquals(MODEM_COUNT_SINGLE_MODEM, mPcm.getPhoneCount());
-        doReturn(MODEM_COUNT_DUAL_MODEM).when(mTelephonyManager).getActiveModemCount();
-        assertEquals(MODEM_COUNT_DUAL_MODEM, mPcm.getPhoneCount());
+        init(1);
+        doReturn(1).when(mTelephonyManager).getActiveModemCount();
+        assertEquals(1, mPcm.getPhoneCount());
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
+        assertEquals(2, mPcm.getPhoneCount());
     }
 
     @Test
     @SmallTest
     public void testEnablePhone() throws Exception {
-        init(MODEM_COUNT_SINGLE_MODEM);
+        init(1);
         // Phone is null. No crash.
         mPcm.enablePhone(null, true, null);
 
@@ -113,7 +111,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetDsdsCapability() throws Exception {
-        init(MODEM_COUNT_SINGLE_MODEM);
+        init(1);
         assertEquals(PhoneCapability.DEFAULT_SSSS_CAPABILITY, mPcm.getStaticPhoneCapability());
 
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
@@ -130,24 +128,24 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSwitchMultiSimConfig_notDsdsCapable_shouldFail() throws Exception {
-        init(MODEM_COUNT_SINGLE_MODEM);
+        init(1);
         assertEquals(PhoneCapability.DEFAULT_SSSS_CAPABILITY, mPcm.getStaticPhoneCapability());
 
         // Try switching to dual SIM. Shouldn't work as we haven't indicated DSDS is supported.
-        mPcm.switchMultiSimConfig(MODEM_COUNT_DUAL_MODEM);
+        mPcm.switchMultiSimConfig(2);
         verify(mMockRadioConfig, never()).setModemsConfig(anyInt(), any());
     }
 
     @Test
     @SmallTest
     public void testSwitchMultiSimConfig_dsdsCapable_noRebootRequired() throws Exception {
-        init(MODEM_COUNT_SINGLE_MODEM);
+        init(1);
         // Register for multi SIM config change.
         mPcm.registerForMultiSimConfigChange(mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
         verify(mHandler, never()).sendMessageAtTime(any(), anyLong());
 
         // Try switching to dual SIM. Shouldn't work as we haven't indicated DSDS is supported.
-        mPcm.switchMultiSimConfig(MODEM_COUNT_DUAL_MODEM);
+        mPcm.switchMultiSimConfig(2);
         verify(mMockRadioConfig, never()).setModemsConfig(anyInt(), any());
 
         // Send static capability back to indicate DSDS is supported.
@@ -156,9 +154,9 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
         // Try to switch to DSDS.
         setRebootRequiredForConfigSwitch(false);
-        mPcm.switchMultiSimConfig(MODEM_COUNT_DUAL_MODEM);
+        mPcm.switchMultiSimConfig(2);
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-        verify(mMockRadioConfig).setModemsConfig(eq(MODEM_COUNT_DUAL_MODEM), captor.capture());
+        verify(mMockRadioConfig).setModemsConfig(eq(2), captor.capture());
 
         // Send message back to indicate switch success.
         Message message = captor.getValue();
@@ -167,21 +165,21 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         processAllMessages();
 
         // Verify set system property being called.
-        verify(mMi).setMultiSimProperties(MODEM_COUNT_DUAL_MODEM);
-        verify(mMi).notifyPhoneFactoryOnMultiSimConfigChanged(any(), eq(MODEM_COUNT_DUAL_MODEM));
+        verify(mMi).setMultiSimProperties(2);
+        verify(mMi).notifyPhoneFactoryOnMultiSimConfigChanged(any(), eq(2));
 
         // Capture and verify registration notification.
         verify(mHandler).sendMessageAtTime(captor.capture(), anyLong());
         message = captor.getValue();
         assertEquals(EVENT_MULTI_SIM_CONFIG_CHANGED, message.what);
-        assertEquals(MODEM_COUNT_DUAL_MODEM, ((AsyncResult) message.obj).result);
+        assertEquals(2, ((AsyncResult) message.obj).result);
 
         // Capture and verify broadcast.
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContext).sendBroadcast(intentCaptor.capture());
         Intent intent = intentCaptor.getValue();
         assertEquals(ACTION_MULTI_SIM_CONFIG_CHANGED, intent.getAction());
-        assertEquals(MODEM_COUNT_DUAL_MODEM, intent.getIntExtra(
+        assertEquals(2, intent.getIntExtra(
                 EXTRA_ACTIVE_SIM_SUPPORTED_COUNT, 0));
 
         // Verify RIL notification.

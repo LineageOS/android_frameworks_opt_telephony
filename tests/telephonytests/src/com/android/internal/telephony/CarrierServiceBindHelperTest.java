@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.TelephonyManager.MODEM_COUNT_DUAL_MODEM;
-import static android.telephony.TelephonyManager.MODEM_COUNT_SINGLE_MODEM;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.clearInvocations;
@@ -41,7 +38,7 @@ public class CarrierServiceBindHelperTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        doReturn(MODEM_COUNT_SINGLE_MODEM).when(mTelephonyManager).getActiveModemCount();
+        doReturn(1).when(mTelephonyManager).getActiveModemCount();
     }
 
     @After
@@ -55,30 +52,30 @@ public class CarrierServiceBindHelperTest extends TelephonyTest {
     public void testMultiSimConfigChanged() throws Exception {
         clearInvocations(mPhoneConfigurationManager);
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
-        assertEquals(MODEM_COUNT_SINGLE_MODEM, mCarrierServiceBindHelper.mBindings.size());
-        assertEquals(MODEM_COUNT_SINGLE_MODEM, mCarrierServiceBindHelper.mLastSimState.size());
+        assertEquals(1, mCarrierServiceBindHelper.mBindings.size());
+        assertEquals(1, mCarrierServiceBindHelper.mLastSimState.size());
         assertNotNull(mCarrierServiceBindHelper.mBindings.get(0));
         assertNotNull(mCarrierServiceBindHelper.mLastSimState.get(0));
 
         // Verify registration of EVENT_MULTI_SIM_CONFIG_CHANGED.
-        doReturn(MODEM_COUNT_DUAL_MODEM).when(mTelephonyManager).getActiveModemCount();
-        PhoneConfigurationManager.notifyMultiSimConfigChange(MODEM_COUNT_DUAL_MODEM);
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
+        PhoneConfigurationManager.notifyMultiSimConfigChange(2);
         processAllMessages();
 
-        assertEquals(MODEM_COUNT_DUAL_MODEM, mCarrierServiceBindHelper.mBindings.size());
-        assertEquals(MODEM_COUNT_DUAL_MODEM, mCarrierServiceBindHelper.mLastSimState.size());
+        assertEquals(2, mCarrierServiceBindHelper.mBindings.size());
+        assertEquals(2, mCarrierServiceBindHelper.mLastSimState.size());
         assertNotNull(mCarrierServiceBindHelper.mBindings.get(0));
         assertNotNull(mCarrierServiceBindHelper.mBindings.get(1));
         assertNotNull(mCarrierServiceBindHelper.mLastSimState.get(0));
         assertNotNull(mCarrierServiceBindHelper.mLastSimState.get(1));
 
         // Switch back to single SIM.
-        doReturn(MODEM_COUNT_SINGLE_MODEM).when(mTelephonyManager).getActiveModemCount();
-        PhoneConfigurationManager.notifyMultiSimConfigChange(MODEM_COUNT_SINGLE_MODEM);
+        doReturn(1).when(mTelephonyManager).getActiveModemCount();
+        PhoneConfigurationManager.notifyMultiSimConfigChange(1);
         processAllMessages();
 
-        assertEquals(MODEM_COUNT_SINGLE_MODEM, mCarrierServiceBindHelper.mBindings.size());
-        assertEquals(MODEM_COUNT_SINGLE_MODEM, mCarrierServiceBindHelper.mLastSimState.size());
+        assertEquals(1, mCarrierServiceBindHelper.mBindings.size());
+        assertEquals(1, mCarrierServiceBindHelper.mLastSimState.size());
         assertNotNull(mCarrierServiceBindHelper.mBindings.get(0));
         assertNotNull(mCarrierServiceBindHelper.mLastSimState.get(0));
     }
