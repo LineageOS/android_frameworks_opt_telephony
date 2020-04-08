@@ -83,6 +83,7 @@ import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.SimState;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
@@ -105,6 +106,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SettingsObserver;
+import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataAllowedReasonType;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataDisallowedReasonType;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
@@ -337,7 +339,8 @@ public class DcTracker extends Handler {
     private final Map<String, Integer> m5GIconMapping = new HashMap<>();
     private String mDataIconPattern = "";
 
-    private int mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    @SimState
+    private int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
 
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver () {
         @Override
@@ -366,10 +369,29 @@ public class DcTracker extends Handler {
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
                 if (DBG) log("Provisioning apn alarm");
                 onActionIntentProvisioningApnAlarm(intent);
+            } else if (action.equals(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)
+                    || action.equals(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED)) {
+                if (mPhone.getPhoneId() == intent.getIntExtra(SubscriptionManager.EXTRA_SLOT_INDEX,
+                        SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
+                    int simState = intent.getIntExtra(TelephonyManager.EXTRA_SIM_STATE,
+                            TelephonyManager.SIM_STATE_UNKNOWN);
+                    sendMessage(obtainMessage(DctConstants.EVENT_SIM_STATE_UPDATED, simState, 0));
+                }
             } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                sendMessage(obtainMessage(DctConstants.EVENT_CARRIER_CONFIG_CHANGED,
-                        intent.getIntExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,
-                                SubscriptionManager.INVALID_SUBSCRIPTION_ID), 0));
+                if (mPhone.getPhoneId() == intent.getIntExtra(CarrierConfigManager.EXTRA_SLOT_INDEX,
+                        SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
+                    if (intent.getBooleanExtra(
+                            CarrierConfigManager.EXTRA_REBROADCAST_ON_UNLOCK, false)) {
+                        // Ignore the rebroadcast one to prevent multiple carrier config changed
+                        // event during boot up.
+                        return;
+                    }
+                    int subId = intent.getIntExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,
+                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                    if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                        sendEmptyMessage(DctConstants.EVENT_CARRIER_CONFIG_CHANGED);
+                    }
+                }
             } else {
                 if (DBG) log("onReceive: Unknown action=" + action);
             }
@@ -602,6 +624,8 @@ public class DcTracker extends Handler {
     private ConcurrentHashMap<String, Pair<Integer, Integer>> mBandwidths =
             new ConcurrentHashMap<>();
 
+    private boolean mConfigReady = false;
+
     /**
      * Handles changes to the APN db.
      */
@@ -682,6 +706,8 @@ public class DcTracker extends Handler {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        filter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
+        filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
 
         mDataEnabledSettings = mPhone.getDataEnabledSettings();
 
@@ -2205,8 +2231,11 @@ public class DcTracker extends Handler {
         removeMessages(DctConstants.EVENT_DATA_RECONNECT, apnContext);
     }
 
-    private void onSubscriptionChanged() {
-        if (DBG) log("onSubscriptionChanged");
+    /**
+     * Read configuration. Note this must be called after carrier config is ready.
+     */
+    private void readConfiguration() {
+        log("readConfiguration");
         if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
             // Auto attach is for cellular only.
             mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
@@ -2217,19 +2246,48 @@ public class DcTracker extends Handler {
         setDefaultDataRoamingEnabled();
         read5GConfiguration();
         registerSettingsObserver();
-
-        createAllApnList();
-        setDataProfilesAsNeeded();
-        if (mPhone.getSubId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            setInitialAttachApn();
-        }
-        mPhone.notifyAllActiveDataConnections();
-        setupDataOnAllConnectableApns(Phone.REASON_SIM_LOADED, RetryFailures.ALWAYS);
+        mConfigReady = true;
     }
 
-    private void onSimNotReady() {
-        if (DBG) log("onSimNotReady");
+    /**
+     * @return {@code true} if carrier config has been applied.
+     */
+    private boolean isCarrierConfigApplied() {
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
+            if (b != null) {
+                return CarrierConfigManager.isConfigForIdentifiedCarrier(b);
+            }
+        }
+        return false;
+    }
 
+    private void onCarrierConfigChanged() {
+        if (DBG) log("onCarrierConfigChanged");
+
+        if (!isCarrierConfigApplied()) {
+            log("onCarrierConfigChanged: Carrier config is not ready yet.");
+            return;
+        }
+
+        readConfiguration();
+
+        if (mSimState == TelephonyManager.SIM_STATE_LOADED) {
+            createAllApnList();
+            setDataProfilesAsNeeded();
+            setInitialAttachApn();
+            setupDataOnAllConnectableApns(Phone.REASON_CARRIER_CHANGE, RetryFailures.ALWAYS);
+        } else {
+            log("onCarrierConfigChanged: SIM is not loaded yet.");
+        }
+    }
+
+    private void onSimAbsent() {
+        if (DBG) log("onSimAbsent");
+
+        mConfigReady = false;
         cleanUpAllConnectionsInternal(true, Phone.REASON_SIM_NOT_READY);
         mAllApnSettings.clear();
         mAutoAttachOnCreationConfig = false;
@@ -2238,6 +2296,27 @@ public class DcTracker extends Handler {
         // In no-sim case, we should still send the emergency APN to the modem, if there is any.
         createAllApnList();
         setDataProfilesAsNeeded();
+    }
+
+    private void onSimStateUpdated(@SimState int simState) {
+        mSimState = simState;
+
+        if (DBG) {
+            log("onSimStateUpdated: state=" + SubscriptionInfoUpdater.simStateString(mSimState));
+        }
+
+        if (mSimState == TelephonyManager.SIM_STATE_ABSENT) {
+            onSimAbsent();
+        } else if (mSimState == TelephonyManager.SIM_STATE_LOADED) {
+            if (mConfigReady) {
+                createAllApnList();
+                setDataProfilesAsNeeded();
+                setInitialAttachApn();
+                setupDataOnAllConnectableApns(Phone.REASON_SIM_LOADED, RetryFailures.ALWAYS);
+            } else {
+                log("onSimStateUpdated: config not ready yet.");
+            }
+        }
     }
 
     private DataConnection checkForCompatibleDataConnection(ApnContext apnContext) {
@@ -2391,11 +2470,16 @@ public class DcTracker extends Handler {
         }
         apnContext.setEnabled(true);
         apnContext.resetErrorCodeRetries();
-        if (trySetupData(apnContext, requestType)) {
-            addRequestNetworkCompleteMsg(onCompleteMsg, apnType);
+
+        if (mConfigReady || apnContext.getApnTypeBitmask() == ApnSetting.TYPE_EMERGENCY) {
+            if (trySetupData(apnContext, requestType)) {
+                addRequestNetworkCompleteMsg(onCompleteMsg, apnType);
+            } else {
+                sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType,
+                        requestType, DataFailCause.NONE);
+            }
         } else {
-            sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType,
-                    requestType, DataFailCause.NONE);
+            log("onEnableApn: config not ready yet.");
         }
     }
 
@@ -3761,7 +3845,11 @@ public class DcTracker extends Handler {
                 reevaluateUnmeteredConnections();
                 break;
             case DctConstants.EVENT_CARRIER_CONFIG_CHANGED:
-                onCarrierConfigChanged(msg.arg1);
+                onCarrierConfigChanged();
+                break;
+            case DctConstants.EVENT_SIM_STATE_UPDATED:
+                int simState = msg.arg1;
+                onSimStateUpdated(simState);
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
@@ -4063,6 +4151,7 @@ public class DcTracker extends Handler {
         TelephonyDisplayInfo telephonyDisplayInfo =
                 new TelephonyDisplayInfo(dataNetworkType, displayNetworkType);
         if (!telephonyDisplayInfo.equals(mTelephonyDisplayInfo)) {
+            log("Display info changed. " + telephonyDisplayInfo);
             mTelephonyDisplayInfo = telephonyDisplayInfo;
             mPhone.notifyDisplayInfoChanged(telephonyDisplayInfo);
             return true;
@@ -4147,6 +4236,8 @@ public class DcTracker extends Handler {
         pw.flush();
         pw.println(" mRequestedApnType=" + mRequestedApnType);
         pw.println(" mPhone=" + mPhone.getPhoneName());
+        pw.println(" mConfigReady=" + mConfigReady);
+        pw.println(" mSimState=" + SubscriptionInfoUpdater.simStateString(mSimState));
         pw.println(" mActivity=" + mActivity);
         pw.println(" mState=" + mState);
         pw.println(" mTxPkts=" + mTxPkts);
@@ -5125,21 +5216,5 @@ public class DcTracker extends Handler {
 
         updateLinkBandwidths(bandwidths, useLte);
         update5GIconMapping(nr5GIconConfiguration);
-    }
-
-    // This handles carrier config changed event. We intentionally to use this for SIM loaded/absent
-    // event. There are several data setup related configuration stored in carrier config. We have
-    // to wait carrier config ready before we can setup a data.
-    private void onCarrierConfigChanged(int subId) {
-        // TODO: Remove this check after b/152149072 is fixed because carrier config might
-        // actually change without sub id change.
-        if (mSubId == subId) return;
-        mSubId = subId;
-        if (DBG) log("onCarrierConfigChanged subId=" + subId);
-        if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            onSubscriptionChanged();
-        } else {
-            onSimNotReady();
-        }
     }
 }
