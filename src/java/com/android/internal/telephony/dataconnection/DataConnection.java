@@ -95,6 +95,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -181,6 +182,8 @@ public class DataConnection extends StateMachine {
     private final String mTagSuffix;
 
     private final LocalLog mHandoverLocalLog = new LocalLog(100);
+
+    private int[] mAdministratorUids = new int[0];
 
     /**
      * Used internally for saving connecting parameters.
@@ -329,8 +332,8 @@ public class DataConnection extends StateMachine {
     static final int EVENT_DATA_CONNECTION_METEREDNESS_CHANGED = BASE + 28;
     static final int EVENT_NR_FREQUENCY_CHANGED = BASE + 29;
     static final int EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED = BASE + 30;
-    private static final int CMD_TO_STRING_COUNT =
-            EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED - BASE + 1;
+    static final int EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED = BASE + 31;
+    private static final int CMD_TO_STRING_COUNT = EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -372,6 +375,8 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_NR_FREQUENCY_CHANGED - BASE] = "EVENT_NR_FREQUENCY_CHANGED";
         sCmdToString[EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED - BASE] =
                 "EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED";
+        sCmdToString[EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED - BASE] =
+                "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1413,6 +1418,8 @@ public class DataConnection extends StateMachine {
                 mNetworkInfo.getDetailedState() == NetworkInfo.DetailedState.SUSPENDED;
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !suspended);
 
+        result.setAdministratorUids(mAdministratorUids);
+
         return result;
     }
 
@@ -1941,6 +1948,10 @@ public class DataConnection extends StateMachine {
             // tear down the connection through networkAgent unwanted callback if all requests for
             // this connection are going away.
             mRestrictedNetworkOverride = shouldRestrictNetwork();
+
+            mPhone.getCarrierPrivilegesTracker()
+                    .registerCarrierPrivilegesListener(
+                            getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2028,6 +2039,12 @@ public class DataConnection extends StateMachine {
                         default:
                             throw new RuntimeException("Unknown SetupResult, should not happen");
                     }
+                    retVal = HANDLED;
+                    break;
+                case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
+                    AsyncResult asyncResult = (AsyncResult) msg.obj;
+                    int[] administratorUids = (int[]) asyncResult.result;
+                    mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
                     retVal = HANDLED;
                     break;
                 default:
@@ -2207,6 +2224,8 @@ public class DataConnection extends StateMachine {
 
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
+
+            mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
         }
 
         @Override
@@ -2527,6 +2546,19 @@ public class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
+                case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
+                    AsyncResult asyncResult = (AsyncResult) msg.obj;
+                    int[] administratorUids = (int[]) asyncResult.result;
+                    mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
+
+                    // Administrator UIDs changed, so update NetworkAgent with new
+                    // NetworkCapabilities
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(
+                                getNetworkCapabilities(), DataConnection.this);
+                    }
+                    retVal = HANDLED;
+                    break;
                 default:
                     if (VDBG) {
                         log("DcActiveState not handled msg.what=" + getWhatToString(msg.what));
