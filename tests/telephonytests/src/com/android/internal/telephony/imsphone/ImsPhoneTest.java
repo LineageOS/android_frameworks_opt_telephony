@@ -70,6 +70,7 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.imsphone.ImsPhone.SS;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyIntents;
@@ -474,11 +475,15 @@ public class ImsPhoneTest extends TelephonyTest {
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mImsUtInterface).queryCLIR(messageArgumentCaptor.capture());
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        SS ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
 
         mImsPhoneUT.setOutgoingCallerIdDisplay(1234, msg);
         verify(mImsUtInterface).updateCLIR(eq(1234), messageArgumentCaptor.capture());
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
     }
 
     @FlakyTest
@@ -508,12 +513,16 @@ public class ImsPhoneTest extends TelephonyTest {
 
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mImsUtInterface).queryCallWaiting(messageArgumentCaptor.capture());
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        SS ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
 
         mImsPhoneUT.setCallWaiting(true, msg);
         verify(mImsUtInterface).updateCallWaiting(eq(true),
                 eq(CommandsInterface.SERVICE_CLASS_VOICE), messageArgumentCaptor.capture());
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
     }
 
     @Test
@@ -544,14 +553,18 @@ public class ImsPhoneTest extends TelephonyTest {
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mImsUtInterface).queryCallBarring(eq(ImsUtImplBase.CALL_BARRING_ALL_OUTGOING),
                 messageArgumentCaptor.capture(), eq(CommandsInterface.SERVICE_CLASS_NONE));
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        SS ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
 
         mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOIC, true, "abc", msg,
                 CommandsInterface.SERVICE_CLASS_NONE);
         verify(mImsUtInterface).updateCallBarring(eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL),
                 eq(CommandsInterface.CF_ACTION_ENABLE), messageArgumentCaptor.capture(),
                 (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE), eq("abc"));
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
 
         mImsPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOICxH, false, "abc", msg,
                 CommandsInterface.SERVICE_CLASS_NONE);
@@ -559,7 +572,9 @@ public class ImsPhoneTest extends TelephonyTest {
                 eq(ImsUtImplBase.CALL_BARRING_OUTGOING_INTL_EXCL_HOME),
                 eq(CommandsInterface.CF_ACTION_DISABLE), messageArgumentCaptor.capture(),
                 (String[]) eq(null), eq(CommandsInterface.SERVICE_CLASS_NONE), eq("abc"));
-        assertEquals(msg, messageArgumentCaptor.getValue().obj);
+        assertNotNull(messageArgumentCaptor.getValue().obj);
+        ss = (SS) messageArgumentCaptor.getValue().obj;
+        assertEquals(msg, ss.mOnComplete);
     }
 
     @Test
