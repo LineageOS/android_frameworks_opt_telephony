@@ -200,14 +200,18 @@ public class MultiSimSettingController extends Handler {
      * Notify MOBILE_DATA of a subscription is changed.
      */
     public void notifyUserDataEnabled(int subId, boolean enable) {
-        obtainMessage(EVENT_USER_DATA_ENABLED, subId, enable ? 1 : 0).sendToTarget();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            obtainMessage(EVENT_USER_DATA_ENABLED, subId, enable ? 1 : 0).sendToTarget();
+        }
     }
 
     /**
      * Notify DATA_ROAMING of a subscription is changed.
      */
     public void notifyRoamingDataEnabled(int subId, boolean enable) {
-        obtainMessage(EVENT_ROAMING_DATA_ENABLED, subId, enable ? 1 : 0).sendToTarget();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            obtainMessage(EVENT_ROAMING_DATA_ENABLED, subId, enable ? 1 : 0).sendToTarget();
+        }
     }
 
     /**
