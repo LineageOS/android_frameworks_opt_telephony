@@ -2010,8 +2010,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (DBG) {
             log("updatePhoneState pendingMo = " + (mPendingMO == null ? "null"
                     : mPendingMO.getState()) + ", fg= " + mForegroundCall.getState() + "("
-                    + mForegroundCall.getConnections().size() + "), bg= " + mBackgroundCall
-                    .getState() + "(" + mBackgroundCall.getConnections().size() + ")");
+                    + mForegroundCall.getConnectionsCount() + "), bg= " + mBackgroundCall
+                    .getState() + "(" + mBackgroundCall.getConnectionsCount() + ")");
             log("updatePhoneState oldState=" + oldState + ", newState=" + mState);
         }
 
@@ -2171,7 +2171,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             throws CallStateException {
         if (DBG) log("hangup call - reason=" + rejectReason);
 
-        if (call.getConnections().size() == 0) {
+        if (call.getConnectionsCount() == 0) {
             throw new CallStateException("no connections");
         }
 
@@ -2235,10 +2235,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     void callEndCleanupHandOverCallIfAny() {
-        if (mHandoverCall.mConnections.size() > 0) {
+        List<Connection> connections = mHandoverCall.getConnections();
+        if (connections.size() > 0) {
             if (DBG) log("callEndCleanupHandOverCallIfAny, mHandoverCall.mConnections="
-                    + mHandoverCall.mConnections);
-            mHandoverCall.mConnections.clear();
+                    + mHandoverCall.getConnections());
+            mHandoverCall.clearConnections();
             mConnections.clear();
             mState = PhoneConstants.State.IDLE;
         }
@@ -3707,22 +3708,23 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     private void transferHandoverConnections(ImsPhoneCall call) {
-        if (call.mConnections != null) {
-            for (Connection c : call.mConnections) {
+        if (call.getConnections() != null) {
+            for (Connection c : call.getConnections()) {
                 c.mPreHandoverState = call.mState;
                 log ("Connection state before handover is " + c.getStateBeforeHandover());
             }
         }
-        if (mHandoverCall.mConnections == null ) {
+        if (mHandoverCall.getConnections() == null) {
             mHandoverCall.mConnections = call.mConnections;
         } else { // Multi-call SRVCC
             mHandoverCall.mConnections.addAll(call.mConnections);
         }
-        if (mHandoverCall.mConnections != null) {
+        mHandoverCall.copyConnectionFrom(call);
+        if (mHandoverCall.getConnections() != null) {
             if (call.getImsCall() != null) {
                 call.getImsCall().close();
             }
-            for (Connection c : mHandoverCall.mConnections) {
+            for (Connection c : mHandoverCall.getConnections()) {
                 ((ImsPhoneConnection)c).changeParent(mHandoverCall);
                 ((ImsPhoneConnection)c).releaseWakeLock();
             }
@@ -3731,7 +3733,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             log ("Call is alive and state is " + call.mState);
             mHandoverCall.mState = call.mState;
         }
-        call.mConnections.clear();
+        call.clearConnections();
         call.mState = ImsPhoneCall.State.IDLE;
         if (mPendingMO != null) {
             // If the call is handed over before moving to alerting (i.e. e911 CSFB redial), clear
