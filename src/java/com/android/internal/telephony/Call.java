@@ -85,7 +85,9 @@ public abstract class Call {
     public State mState = State.IDLE;
 
     @UnsupportedAppUsage
-    public ArrayList<Connection> mConnections = new ArrayList<Connection>();
+    public ArrayList<Connection> mConnections = new ArrayList<>();
+
+    private Object mLock = new Object();
 
     /* Instance Methods */
 
@@ -94,7 +96,30 @@ public abstract class Call {
      */
 
     @UnsupportedAppUsage
-    public abstract List<Connection> getConnections();
+    public ArrayList<Connection> getConnections() {
+        synchronized (mLock) {
+            return (ArrayList<Connection>) mConnections.clone();
+        }
+    }
+
+    /**
+     * Get mConnections field from another Call instance.
+     * @param other
+     */
+    public void copyConnectionFrom(Call other) {
+        mConnections = other.getConnections();
+    }
+
+    /**
+     * Get connections count of this instance.
+     * @return the count to return
+     */
+    public int getConnectionsCount() {
+        synchronized (mLock) {
+            return mConnections.size();
+        }
+    }
+
     @UnsupportedAppUsage
     public abstract Phone getPhone();
     @UnsupportedAppUsage
@@ -127,6 +152,37 @@ public abstract class Call {
         }
 
         return connections.size() > 0;
+    }
+
+    /**
+     * removeConnection
+     *
+     * @param conn the connection to be removed
+     */
+    public void removeConnection(Connection conn) {
+        synchronized (mLock) {
+            mConnections.remove(conn);
+        }
+    }
+
+    /**
+     * addConnection
+     *
+     * @param conn the connection to be added
+     */
+    public void addConnection(Connection conn) {
+        synchronized (mLock) {
+            mConnections.add(conn);
+        }
+    }
+
+    /**
+     * clearConnection
+     */
+    public void clearConnections() {
+        synchronized (mLock) {
+            mConnections.clear();
+        }
     }
 
     /**
@@ -289,14 +345,13 @@ public abstract class Call {
      * Called when it's time to clean up disconnected Connection objects
      */
     public void clearDisconnected() {
-        for (int i = mConnections.size() - 1 ; i >= 0 ; i--) {
-            Connection c = mConnections.get(i);
-            if (c.getState() == State.DISCONNECTED) {
-                mConnections.remove(i);
+        for (Connection conn : getConnections()) {
+            if (conn.getState() == State.DISCONNECTED) {
+                removeConnection(conn);
             }
         }
 
-        if (mConnections.size() == 0) {
+        if (getConnectionsCount() == 0) {
             setState(State.IDLE);
         }
     }
