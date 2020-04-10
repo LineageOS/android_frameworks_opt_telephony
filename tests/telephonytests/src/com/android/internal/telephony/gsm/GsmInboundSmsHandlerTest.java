@@ -373,9 +373,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
 
-        // verify no filter was invoked.
-        // TODO(b/136262737): Adjust test once blocked SMSes are passed through filters too.
-        verifySmsFiltersInvoked(never());
+        // Filter should still be invoked.
+        verifySmsFiltersInvoked(times(1));
     }
 
     @Test
@@ -384,7 +383,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // Configure the first filter to drop the SMS.
         when(mSmsFilter.filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any()))
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any()))
                 .thenAnswer((Answer<Boolean>) invocation -> {
                     mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_COMPLETE);
                     return true;
@@ -400,7 +399,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // verify second filter was never invoked.
         verify(mSmsFilter2, never()).filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 
     @Test
@@ -409,7 +408,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // Have the first filter indicate it matched without completing the flow.
         when(mSmsFilter.filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any())).thenReturn(true);
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any()))
+                .thenReturn(true);
 
         transitionFromStartupToIdle();
 
@@ -422,12 +422,12 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // Verify the first filter was invoked with the right set of remaining filters.
         verify(mSmsFilter).filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), eq(Collections.singletonList(mSmsFilter2)));
+                anyBoolean(), anyBoolean(), eq(Collections.singletonList(mSmsFilter2)));
 
         // Verify second filter was never invoked.
         verify(mSmsFilter2, never()).filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
 
         // Clean up by completing the broadcast, as an asynchronous filter must do.
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_COMPLETE);
@@ -861,8 +861,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
-        // TODO(b/136262737): Adjust test once blocked SMSes are passed through filters too.
-        verifySmsFiltersInvoked(never());
+        // Filter should still be invoked.
+        verifySmsFiltersInvoked(times(1));
     }
 
     @Test
@@ -913,8 +913,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
-        // TODO(b/136262737): Adjust test once blocked SMSes are passed through filters too.
-        verifySmsFiltersInvoked(never());
+        // Filter should still be invoked.
+        verifySmsFiltersInvoked(times(1));
     }
 
     @Test
@@ -923,7 +923,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // Configure the first filter to drop the SMS.
         when(mSmsFilter.filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any()))
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any()))
                 .thenAnswer((Answer<Boolean>) invocation -> {
                     mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_COMPLETE);
                     return true;
@@ -961,7 +961,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         // verify second filter was never invoked.
         verify(mSmsFilter2, never()).filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 
     @Test
@@ -1113,9 +1113,9 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private void verifySmsFiltersInvoked(VerificationMode verificationMode) {
         verify(mSmsFilter, verificationMode).filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
         verify(mSmsFilter2, verificationMode).filterSms(any(byte[][].class), anyInt(),
                 any(InboundSmsTracker.class), any(InboundSmsHandler.SmsBroadcastReceiver.class),
-                anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
+                anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 }

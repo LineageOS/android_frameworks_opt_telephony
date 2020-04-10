@@ -1013,16 +1013,21 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
-        if (block) {
-            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
-                    DELETE_PERMANENTLY);
-            return false;
-        }
-
+        // Always invoke SMS filters, even if the number ends up being blocked, to prevent
+        // surprising bugs due to blocking numbers that happen to be used for visual voicemail SMS
+        // or other carrier system messages.
         boolean filterInvoked = filterSms(
-            pdus, destPort, tracker, resultReceiver, true /* userUnlocked */);
+                pdus, destPort, tracker, resultReceiver, true /* userUnlocked */, block);
 
         if (!filterInvoked) {
+            // Block now if the filter wasn't invoked. Otherwise, it will be the responsibility of
+            // the filter to delete the SMS once processing completes.
+            if (block) {
+                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
+                        DELETE_PERMANENTLY);
+                return false;
+            }
+
             dispatchSmsDeliveryIntent(pdus, format, destPort, resultReceiver,
                     tracker.isClass0(), tracker.getSubId(), tracker.getMessageId());
         }
@@ -1049,7 +1054,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (destPort == -1) {
             // This is a regular SMS - hand it to the carrier or system app for filtering.
             boolean filterInvoked = filterSms(
-                pdus, destPort, tracker, resultReceiver, false /* userUnlocked */);
+                    pdus, destPort, tracker, resultReceiver, false /* userUnlocked */,
+                    false /* block */);
             if (filterInvoked) {
                 // filter invoked, wait for it to return the result.
                 return true;
@@ -1108,40 +1114,55 @@ public abstract class InboundSmsHandler extends StateMachine {
     private List<SmsFilter> createDefaultSmsFilters() {
         List<SmsFilter> smsFilters = new ArrayList<>(3);
         smsFilters.add(
-                (pdus, destPort, tracker, resultReceiver, userUnlocked, remainingFilters) -> {
+                (pdus, destPort, tracker, resultReceiver, userUnlocked, block, remainingFilters)
+                        -> {
                     CarrierServicesSmsFilterCallback filterCallback =
                             new CarrierServicesSmsFilterCallback(
                                     pdus, destPort, tracker, tracker.getFormat(), resultReceiver,
                                     userUnlocked,
                                     tracker.isClass0(), tracker.getSubId(), tracker.getMessageId(),
-                                    remainingFilters);
+                                    block, remainingFilters);
                     CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
                             mContext, mPhone, pdus, destPort, tracker.getFormat(),
                             filterCallback, getName(), mLocalLog);
                     return carrierServicesFilter.filter();
                 });
         smsFilters.add(
-                (pdus, destPort, tracker, resultReceiver, userUnlocked, remainingFilters) -> {
+                (pdus, destPort, tracker, resultReceiver, userUnlocked, block, remainingFilters)
+                        -> {
                     if (VisualVoicemailSmsFilter.filter(
                             mContext, pdus, tracker.getFormat(), destPort, tracker.getSubId())) {
                         log("Visual voicemail SMS dropped");
-                        dropSms(resultReceiver);
+                        dropFilteredSms(tracker, resultReceiver, block);
                         return true;
                     }
                     return false;
                 });
         smsFilters.add(
-                (pdus, destPort, tracker, resultReceiver, userUnlocked, remainingFilters) -> {
+                (pdus, destPort, tracker, resultReceiver, userUnlocked, block, remainingFilters)
+                        -> {
                     MissedIncomingCallSmsFilter missedIncomingCallSmsFilter =
                             new MissedIncomingCallSmsFilter(mPhone);
                     if (missedIncomingCallSmsFilter.filter(pdus, tracker.getFormat())) {
                         log("Missed incoming call SMS received.");
-                        dropSms(resultReceiver);
+                        dropFilteredSms(tracker, resultReceiver, block);
                         return true;
                     }
                     return false;
                 });
         return smsFilters;
+    }
+
+    private void dropFilteredSms(
+            InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean block) {
+        if (block) {
+            deleteFromRawTable(
+                    tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
+                    DELETE_PERMANENTLY);
+            sendMessage(EVENT_BROADCAST_COMPLETE);
+        } else {
+            dropSms(resultReceiver);
+        }
     }
 
     /**
@@ -1153,17 +1174,18 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return true if a filter is invoked and the SMS processing flow is diverted, false otherwise.
      */
     private boolean filterSms(byte[][] pdus, int destPort,
-            InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
-        return filterSms(pdus, destPort, tracker, resultReceiver, userUnlocked, mSmsFilters);
+            InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked,
+            boolean block) {
+        return filterSms(pdus, destPort, tracker, resultReceiver, userUnlocked, block, mSmsFilters);
     }
 
     private static boolean filterSms(byte[][] pdus, int destPort,
             InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked,
-            List<SmsFilter> filters) {
+            boolean block, List<SmsFilter> filters) {
         ListIterator<SmsFilter> iterator = filters.listIterator();
         while (iterator.hasNext()) {
             SmsFilter smsFilter = iterator.next();
-            if (smsFilter.filterSms(pdus, destPort, tracker, resultReceiver, userUnlocked,
+            if (smsFilter.filterSms(pdus, destPort, tracker, resultReceiver, userUnlocked, block,
                     filters.subList(iterator.nextIndex(), filters.size()))) {
                 return true;
             }
@@ -1601,11 +1623,13 @@ public abstract class InboundSmsHandler extends StateMachine {
         private final boolean mIsClass0;
         private final int mSubId;
         private final long mMessageId;
+        private final boolean mBlock;
         private final List<SmsFilter> mRemainingFilters;
 
         CarrierServicesSmsFilterCallback(byte[][] pdus, int destPort, InboundSmsTracker tracker,
                 String smsFormat, SmsBroadcastReceiver smsBroadcastReceiver, boolean userUnlocked,
-                boolean isClass0, int subId, long messageId, List<SmsFilter> remainingFilters) {
+                boolean isClass0, int subId, long messageId, boolean block,
+                List<SmsFilter> remainingFilters) {
             mPdus = pdus;
             mDestPort = destPort;
             mTracker = tracker;
@@ -1615,35 +1639,51 @@ public abstract class InboundSmsHandler extends StateMachine {
             mIsClass0 = isClass0;
             mSubId = subId;
             mMessageId = messageId;
+            mBlock = block;
             mRemainingFilters = remainingFilters;
         }
 
         @Override
         public void onFilterComplete(int result) {
             logv("onFilterComplete: result is " + result);
-            if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
-                // Message isn't dropped, so run it through the remaining filters.
-                if (filterSms(mPdus, mDestPort, mTracker, mSmsBroadcastReceiver, mUserUnlocked,
-                        mRemainingFilters)) {
-                    return;
-                }
 
-                if (mUserUnlocked) {
-                    dispatchSmsDeliveryIntent(
-                            mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver, mIsClass0, mSubId,
-                            mMessageId);
-                } else {
-                    // Don't do anything further, leave the message in the raw table if the
-                    // credential-encrypted storage is still locked and show the new message
-                    // notification if the message is visible to the user.
-                    if (!isSkipNotifyFlagSet(result)) {
-                        showNewMessageNotification();
-                    }
-                    sendMessage(EVENT_BROADCAST_COMPLETE);
-                }
+            boolean carrierRequestedDrop =
+                    (result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) != 0;
+            if (carrierRequestedDrop) {
+                // Carrier app asked the platform to drop the SMS. Drop it from the database and
+                // complete processing.
+                dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+                return;
+            }
+
+            boolean filterInvoked = filterSms(mPdus, mDestPort, mTracker, mSmsBroadcastReceiver,
+                    mUserUnlocked, mBlock, mRemainingFilters);
+            if (filterInvoked) {
+                // A remaining filter has assumed responsibility for further message processing.
+                return;
+            }
+
+            // Now that all filters have been invoked, drop the message if it is blocked.
+            // TODO(b/156910035): Remove mUserUnlocked once we stop showing the new message
+            // notification for blocked numbers.
+            if (mUserUnlocked && mBlock) {
+                dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+                return;
+            }
+
+            // Message matched no filters and is not blocked, so complete processing.
+            if (mUserUnlocked) {
+                dispatchSmsDeliveryIntent(
+                        mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver, mIsClass0, mSubId,
+                        mMessageId);
             } else {
-                // Drop this SMS.
-                dropSms(mSmsBroadcastReceiver);
+                // Don't do anything further, leave the message in the raw table if the
+                // credential-encrypted storage is still locked and show the new message
+                // notification if the message is visible to the user.
+                if (!isSkipNotifyFlagSet(result)) {
+                    showNewMessageNotification();
+                }
+                sendMessage(EVENT_BROADCAST_COMPLETE);
             }
         }
     }
@@ -1902,9 +1942,20 @@ public abstract class InboundSmsHandler extends StateMachine {
         /**
          * Returns true if a filter is invoked and the SMS processing flow should be diverted, false
          * otherwise.
+         *
+         * <p>If the filter can immediately determine that the message matches, it must call
+         * {@link #dropFilteredSms} to drop the message from the database once it has been
+         * processed.
+         *
+         * <p>If the filter must perform some asynchronous work to determine if the message matches,
+         * it should return true to defer processing. Once it has made a determination, if it finds
+         * the message matches, it must call {@link #dropFilteredSms}. If the message does not
+         * match, it must be passed through {@code remainingFilters} and either dropped if the
+         * remaining filters all return false or if {@code block} is true, or else it must be
+         * broadcast.
          */
         boolean filterSms(byte[][] pdus, int destPort, InboundSmsTracker tracker,
-                SmsBroadcastReceiver resultReceiver, boolean userUnlocked,
+                SmsBroadcastReceiver resultReceiver, boolean userUnlocked, boolean block,
                 List<SmsFilter> remainingFilters);
     }
 }
