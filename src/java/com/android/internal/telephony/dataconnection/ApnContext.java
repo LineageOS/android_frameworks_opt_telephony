@@ -57,7 +57,7 @@ public class ApnContext {
 
     private DctConstants.State mState;
 
-    private final int mPriority;
+    private int mPriority;
 
     private ApnSetting mApnSetting;
 
@@ -158,6 +158,14 @@ public class ApnContext {
      */
     public int getPriority() {
         return mPriority;
+    }
+
+    /**
+     * Updates the priority of this context.
+     * @param priority The priority of the APN type
+     */
+    public void setPriority(int priority) {
+        mPriority = priority;
     }
 
     /**
@@ -611,9 +619,10 @@ public class ApnContext {
     @Override
     public synchronized String toString() {
         // We don't print mDataConnection because its recursive.
-        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" +
-                mRetryManager.getWaitingApns() + "}" + " mApnSetting={" + mApnSetting +
-                "} mReason=" + mReason + " mDataEnabled=" + mDataEnabled + "}";
+        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={"
+                    + mRetryManager.getWaitingApns() + " priority=" + mPriority + "}"
+                    + " mApnSetting={" + mApnSetting
+                    + "} mReason=" + mReason + " mDataEnabled=" + mDataEnabled + "}";
     }
 
     private void log(String s) {

@@ -20,13 +20,14 @@ import android.telephony.Annotation;
 
 /**
  * Container of network configuration settings relevant for telephony module.
+ *
  */
-class ApnConfigType {
+public class ApnConfigType {
 
     private final int mType;
     private final int mPriority;
 
-    ApnConfigType(@Annotation.ApnType int type, int priority) {
+    public ApnConfigType(@Annotation.ApnType int type, int priority) {
         mType = type;
         mPriority = priority;
     }
@@ -35,7 +36,7 @@ class ApnConfigType {
      * Returns the apn type of this config type
      * @return Type of apn.
      */
-    int getType() {
+    public int getType() {
         return mType;
     }
 
@@ -43,7 +44,7 @@ class ApnConfigType {
      * Returns the priority of this apn config type.
      * @return The priority of this apn.
      */
-    int getPriority() {
+    public int getPriority() {
         return mPriority;
     }
 }
