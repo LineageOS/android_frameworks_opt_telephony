@@ -36,6 +36,7 @@ import android.os.storage.StorageManager;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccCardInfo;
 import android.text.TextUtils;
@@ -637,23 +638,33 @@ public class UiccController extends Handler {
         }
     }
 
-    static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
-            int phoneId) {
-        updateInternalIccState(context, state, reason, phoneId, false);
+    static void updateInternalIccStateForInactiveSlot(
+            Context context, int prevActivePhoneId, String iccId) {
+        if (SubscriptionManager.isValidPhoneId(prevActivePhoneId)) {
+            // Mark SIM state as ABSENT on previously phoneId.
+            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
+                    Context.TELEPHONY_SERVICE);
+            telephonyManager.setSimStateForPhone(prevActivePhoneId,
+                    IccCardConstants.State.ABSENT.toString());
+        }
+
+        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
+        if (subInfoUpdator != null) {
+            subInfoUpdator.updateInternalIccStateForInactiveSlot(prevActivePhoneId, iccId);
+        } else {
+            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
+        }
     }
 
-    // absentAndInactive is a special case when we need to update subscriptions but don't want to
-    // broadcast a state change
     static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
-            int phoneId, boolean absentAndInactive) {
+            int phoneId) {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
                 Context.TELEPHONY_SERVICE);
         telephonyManager.setSimStateForPhone(phoneId, state.toString());
 
         SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
         if (subInfoUpdator != null) {
-            subInfoUpdator.updateInternalIccState(getIccStateIntentString(state),
-                    reason, phoneId, absentAndInactive);
+            subInfoUpdator.updateInternalIccState(getIccStateIntentString(state), reason, phoneId);
         } else {
             Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
