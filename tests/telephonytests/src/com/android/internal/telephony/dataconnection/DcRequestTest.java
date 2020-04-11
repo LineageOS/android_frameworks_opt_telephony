@@ -18,18 +18,25 @@ package com.android.internal.telephony.dataconnection;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.when;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
+import android.telephony.data.ApnSetting;
 
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+
 
 public class DcRequestTest extends TelephonyTest {
+
+    @Mock
+    ApnConfigTypeRepository mApnConfigTypeRepo;
 
     @Before
     public void setUp() throws Exception {
@@ -49,26 +56,15 @@ public class DcRequestTest extends TelephonyTest {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                         .build();
 
-        DcRequest dcRequest = DcRequest.create(request);
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_DEFAULT))
+                .thenReturn(new ApnConfigType(ApnSetting.TYPE_DEFAULT, 0));
+        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
 
         assertEquals(0, dcRequest.priority);
     }
 
     @Test
-    public void whenNetworkRequestMmsThenPriorityTwo() {
-        NetworkRequest request =
-                new NetworkRequest.Builder()
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
-                        .build();
-
-        DcRequest dcRequest = DcRequest.create(request);
-
-        assertEquals(2, dcRequest.priority);
-    }
-
-    @Test
-    public void whenNetworkRequestMcxThenPriorityThree() {
+    public void whenNetworkRequestMcxThenApnConfigTypeMcxPriorityReturned() {
         NetworkRequest request =
                 new NetworkRequest.Builder()
                         .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
@@ -77,9 +73,10 @@ public class DcRequestTest extends TelephonyTest {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
                         .build();
 
-        DcRequest dcRequest = DcRequest.create(request);
-
-        assertEquals(3, dcRequest.priority);
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_MCX))
+                .thenReturn(new ApnConfigType(ApnSetting.TYPE_MCX, 21));
+        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        assertEquals(21, dcRequest.priority);
     }
 
     @Test
@@ -89,9 +86,9 @@ public class DcRequestTest extends TelephonyTest {
                         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
                         .build();
-
-        DcRequest dcRequest = DcRequest.create(request);
-
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_NONE))
+                .thenReturn(null);
+        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
         assertNull(dcRequest);
     }
 
@@ -103,9 +100,10 @@ public class DcRequestTest extends TelephonyTest {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
                         .build();
 
-        DcRequest dcRequest = DcRequest.create(request);
-
-        assertEquals(3, dcRequest.priority);
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_MCX))
+                .thenReturn(new ApnConfigType(ApnSetting.TYPE_MCX, 11));
+        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        assertEquals(11, dcRequest.priority);
     }
 
     @Test
@@ -120,7 +118,10 @@ public class DcRequestTest extends TelephonyTest {
                         .setNetworkSpecifier(telephonyNetworkSpecifier)
                         .build();
 
-        DcRequest dcRequest = DcRequest.create(request);
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_NONE))
+                .thenReturn(null);
+
+        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
 
         assertNull(dcRequest);
     }
