@@ -320,9 +320,12 @@ public class DcTracker extends Handler {
     private long mWatchdogTimeMs = 1000 * 60 * 60;
 
     /* Default for whether 5G frequencies are considered unmetered */
-    private boolean mAllUnmetered = false;
-    private boolean mMmwaveUnmetered = false;
-    private boolean mSub6Unmetered = false;
+    private boolean mNrNsaAllUnmetered = false;
+    private boolean mNrNsaMmwaveUnmetered = false;
+    private boolean mNrNsaSub6Unmetered = false;
+    private boolean mNrSaAllUnmetered = false;
+    private boolean mNrSaMmwaveUnmetered = false;
+    private boolean mNrSaSub6Unmetered = false;
 
     /* Used to check whether 5G timers are currently active and waiting to go off */
     private boolean mHysteresis = false;
@@ -4034,10 +4037,15 @@ public class DcTracker extends Handler {
 
     private boolean reevaluateUnmeteredConnections() {
         log("reevaluateUnmeteredConnections");
-        if (isNetworkTypeUnmetered(NETWORK_TYPE_NR) || isFrequencyRangeUnmetered()) {
-            if (DBG) log("NR NSA is unmetered");
-            if (mPhone.getServiceState().getNrState()
-                    == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
+        int networkType = ServiceState.rilRadioTechnologyToNetworkType(getDataRat());
+        boolean nrUnmetered = isNetworkTypeUnmetered(NETWORK_TYPE_NR);
+        boolean nrNsaUnmetered = isNrNsaFrequencyRangeUnmetered();
+        boolean nrSaUnmetered = isNrSaFrequencyRangeUnmetered();
+        if (nrUnmetered || nrNsaUnmetered || nrSaUnmetered) {
+            if (DBG) log("NR is unmetered");
+            if ((nrUnmetered || nrNsaUnmetered) && mPhone.getServiceState().getNrState()
+                    == NetworkRegistrationInfo.NR_STATE_CONNECTED
+                    || (nrUnmetered || nrSaUnmetered) && networkType == NETWORK_TYPE_NR) {
                 if (!m5GWasConnected) { // 4G -> 5G
                     stopHysteresisAlarm();
                     setDataConnectionUnmetered(true);
@@ -4051,15 +4059,13 @@ public class DcTracker extends Handler {
                     if (!mHysteresis && !startHysteresisAlarm()) {
                         // hysteresis is not active but carrier does not support hysteresis
                         stopWatchdogAlarm();
-                        setDataConnectionUnmetered(isNetworkTypeUnmetered(
-                                mTelephonyManager.getNetworkType(mPhone.getSubId())));
+                        setDataConnectionUnmetered(isNetworkTypeUnmetered(networkType));
                     }
                     m5GWasConnected = false;
                 } else { // 4G -> 4G
                     if (!hasMessages(DctConstants.EVENT_5G_TIMER_HYSTERESIS)) {
                         stopWatchdogAlarm();
-                        setDataConnectionUnmetered(isNetworkTypeUnmetered(
-                                mTelephonyManager.getNetworkType(mPhone.getSubId())));
+                        setDataConnectionUnmetered(isNetworkTypeUnmetered(networkType));
                     }
                     // do nothing if waiting for hysteresis alarm to go off
                 }
@@ -4067,8 +4073,7 @@ public class DcTracker extends Handler {
         } else {
             stopWatchdogAlarm();
             stopHysteresisAlarm();
-            setDataConnectionUnmetered(isNetworkTypeUnmetered(
-                    mTelephonyManager.getNetworkType(mPhone.getSubId())));
+            setDataConnectionUnmetered(isNetworkTypeUnmetered(networkType));
             m5GWasConnected = false;
         }
         return updateDisplayInfo();
@@ -4117,17 +4122,27 @@ public class DcTracker extends Handler {
                 || plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED);
     }
 
-    private boolean isFrequencyRangeUnmetered() {
-        boolean nrConnected = mPhone.getServiceState().getNrState()
-                == NetworkRegistrationInfo.NR_STATE_CONNECTED;
-        if (mMmwaveUnmetered || mSub6Unmetered) {
+    private boolean isNrNsaFrequencyRangeUnmetered() {
+        if (mNrNsaMmwaveUnmetered || mNrNsaSub6Unmetered) {
             int frequencyRange = mPhone.getServiceState().getNrFrequencyRange();
             boolean mmwave = frequencyRange == ServiceState.FREQUENCY_RANGE_MMWAVE;
             // frequency range LOW, MID, or HIGH
             boolean sub6 = frequencyRange != ServiceState.FREQUENCY_RANGE_UNKNOWN && !mmwave;
-            return (mMmwaveUnmetered && mmwave || mSub6Unmetered && sub6) && nrConnected;
+            return mNrNsaMmwaveUnmetered && mmwave || mNrNsaSub6Unmetered && sub6;
         } else {
-            return mAllUnmetered && nrConnected;
+            return mNrNsaAllUnmetered;
+        }
+    }
+
+    private boolean isNrSaFrequencyRangeUnmetered() {
+        if (mNrSaMmwaveUnmetered || mNrSaSub6Unmetered) {
+            int frequencyRange = mPhone.getServiceState().getNrFrequencyRange();
+            boolean mmwave = frequencyRange == ServiceState.FREQUENCY_RANGE_MMWAVE;
+            // frequency range LOW, MID, or HIGH
+            boolean sub6 = frequencyRange != ServiceState.FREQUENCY_RANGE_UNKNOWN && !mmwave;
+            return mNrSaMmwaveUnmetered && mmwave || mNrSaSub6Unmetered && sub6;
+        } else {
+            return mNrSaAllUnmetered;
         }
     }
 
@@ -5204,12 +5219,18 @@ public class DcTracker extends Handler {
                         CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT);
                 mWatchdogTimeMs = b.getLong(
                         CarrierConfigManager.KEY_5G_WATCHDOG_TIME_MS_LONG);
-                mAllUnmetered = b.getBoolean(
+                mNrNsaAllUnmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_NSA_BOOL);
-                mMmwaveUnmetered = b.getBoolean(
+                mNrNsaMmwaveUnmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_NSA_MMWAVE_BOOL);
-                mSub6Unmetered = b.getBoolean(
+                mNrNsaSub6Unmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_NSA_SUB6_BOOL);
+                mNrSaAllUnmetered = b.getBoolean(
+                        CarrierConfigManager.KEY_UNMETERED_NR_SA_BOOL);
+                mNrSaMmwaveUnmetered = b.getBoolean(
+                        CarrierConfigManager.KEY_UNMETERED_NR_SA_MMWAVE_BOOL);
+                mNrSaSub6Unmetered = b.getBoolean(
+                        CarrierConfigManager.KEY_UNMETERED_NR_SA_SUB6_BOOL);
             }
         }
 
