@@ -154,12 +154,10 @@ public class UiccSlot extends Handler {
             if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
                 // TODO: (b/79432584) evaluate whether should broadcast card state change
                 // even if it's inactive.
+                UiccController.updateInternalIccStateForInactiveSlot(mContext, mPhoneId, mIccId);
                 if (mActive) {
                     mActive = false;
                     mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
-                    UiccController.updateInternalIccState(
-                            mContext, IccCardConstants.State.ABSENT, null, mPhoneId,
-                            true /* special notification for absent card in an inactive slot */);
                     mPhoneId = INVALID_PHONE_ID;
                     nullifyUiccCard(true /* sim state is unknown */);
                 }
