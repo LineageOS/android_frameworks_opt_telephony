@@ -2158,4 +2158,42 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
                 any(Message.class));
     }
+
+    @Test
+    public void testApnConfigRepositoryUpdatedOnCarrierConfigChange() throws Exception {
+        assertPriority(ApnSetting.TYPE_CBS_STRING, 2);
+        assertPriority(ApnSetting.TYPE_MMS_STRING, 2);
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_APN_PRIORITY_STRING_ARRAY,
+                new String[] {
+                        ApnSetting.TYPE_CBS_STRING + ":11",
+                        ApnSetting.TYPE_MMS_STRING + ":19",
+                });
+
+        sendInitializationEvents();
+
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
+        mContext.sendBroadcast(intent);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        assertPriority(ApnSetting.TYPE_CBS_STRING, 11);
+        assertPriority(ApnSetting.TYPE_MMS_STRING, 19);
+
+        //Ensure apns are in sorted order.
+        ApnContext lastApnContext = null;
+        for (ApnContext apnContext : mDct.getApnContexts()) {
+            if (lastApnContext != null) {
+                assertTrue(apnContext.getPriority() <= lastApnContext.getPriority());
+            }
+            lastApnContext = apnContext;
+        }
+    }
+
+    private void assertPriority(String type, int priority) {
+        assertEquals(priority, mDct.getApnContexts().stream()
+                .filter(x -> x.getApnType().equals(type))
+                .findFirst().get().getPriority());
+    }
 }
