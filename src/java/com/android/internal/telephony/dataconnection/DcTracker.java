@@ -263,7 +263,7 @@ public class DcTracker extends Handler {
 
     /** kept in sync with mApnContexts
      * Higher numbers are higher priority and sorted so highest priority is first */
-    private final ArrayList<ApnContext> mPrioritySortedApnContexts = new ArrayList<>();
+    private ArrayList<ApnContext> mPrioritySortedApnContexts = new ArrayList<>();
 
     /** all APN settings applicable to the current carrier */
     private ArrayList<ApnSetting> mAllApnSettings = new ArrayList<>();
@@ -614,10 +614,10 @@ public class DcTracker extends Handler {
     private HashMap<String, Integer> mApnToDataConnectionId = new HashMap<String, Integer>();
 
     /** Phone.APN_TYPE_* ===> ApnContext */
-    private final ConcurrentHashMap<String, ApnContext> mApnContexts =
+    private ConcurrentHashMap<String, ApnContext> mApnContexts =
             new ConcurrentHashMap<String, ApnContext>();
 
-    private final SparseArray<ApnContext> mApnContextsByType = new SparseArray<ApnContext>();
+    private SparseArray<ApnContext> mApnContextsByType = new SparseArray<ApnContext>();
 
     private int mDisconnectPendingCount = 0;
 
@@ -990,6 +990,19 @@ public class DcTracker extends Handler {
     }
 
     private void initApnContexts() {
+        PersistableBundle carrierConfig;
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            carrierConfig = configManager.getConfigForSubId(mPhone.getSubId());
+        } else {
+            carrierConfig = null;
+        }
+        initApnContexts(carrierConfig);
+    }
+
+    //Blows away any existing apncontexts that may exist, only use in ctor.
+    private void initApnContexts(PersistableBundle carrierConfig) {
         if (!mTelephonyManager.isDataCapable()) {
             log("initApnContexts: isDataCapable == false.  No Apn Contexts loaded");
             return;
@@ -997,23 +1010,56 @@ public class DcTracker extends Handler {
 
         log("initApnContexts: E");
         // Load device network attributes from resources
-        final Collection<ApnConfigType> types = ApnConfigTypeRepository.getDefault().getTypes();
+        final Collection<ApnConfigType> types =
+                new ApnConfigTypeRepository(carrierConfig).getTypes();
+
         for (ApnConfigType apnConfigType : types) {
-            addApnContext(apnConfigType);
+            ApnContext apnContext = new ApnContext(mPhone, apnConfigType.getType(), mLogTag, this,
+                    apnConfigType.getPriority());
+            mPrioritySortedApnContexts.add(apnContext);
+            mApnContexts.put(apnContext.getApnType(), apnContext);
+            mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType()),
+                    apnContext);
+
             log("initApnContexts: apnContext=" + ApnSetting.getApnTypeString(
                     apnConfigType.getType()));
         }
         mPrioritySortedApnContexts.sort((c1, c2) -> c2.getPriority() - c1.getPriority());
-        if (VDBG) log("initApnContexts: X mApnContexts=" + mApnContexts);
+        logSortedApnContexts();
     }
 
-    private void addApnContext(ApnConfigType apnContextType) {
-        ApnContext apnContext = new ApnContext(mPhone, apnContextType.getType(), mLogTag, this,
-                apnContextType.getPriority());
-        mApnContexts.put(apnContext.getApnType(), apnContext);
-        mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType()),
-                apnContext);
-        mPrioritySortedApnContexts.add(apnContext);
+    private void sortApnContextByPriority() {
+        if (!mTelephonyManager.isDataCapable()) {
+            log("sortApnContextByPriority: isDataCapable == false.  No Apn Contexts loaded");
+            return;
+        }
+
+        PersistableBundle carrierConfig;
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            carrierConfig = configManager.getConfigForSubId(mPhone.getSubId());
+        } else {
+            carrierConfig = null;
+        }
+
+        log("sortApnContextByPriority: E");
+        // Load device network attributes from resources
+        final Collection<ApnConfigType> types =
+                new ApnConfigTypeRepository(carrierConfig).getTypes();
+        for (ApnConfigType apnConfigType : types) {
+            if (mApnContextsByType.contains(apnConfigType.getType())) {
+                ApnContext apnContext = mApnContextsByType.get(apnConfigType.getType());
+                apnContext.setPriority(apnConfigType.getPriority());
+            }
+        }
+
+        //Doing sorted in a different list to keep thread safety
+        ArrayList<ApnContext> prioritySortedApnContexts =
+                new ArrayList<>(mPrioritySortedApnContexts);
+        prioritySortedApnContexts.sort((c1, c2) -> c2.getPriority() - c1.getPriority());
+        mPrioritySortedApnContexts = prioritySortedApnContexts;
+        logSortedApnContexts();
     }
 
     public LinkProperties getLinkProperties(String apnType) {
@@ -1060,7 +1106,7 @@ public class DcTracker extends Handler {
 
     @VisibleForTesting
     public Collection<ApnContext> getApnContexts() {
-        return mApnContexts.values();
+        return mPrioritySortedApnContexts;
     }
 
     /** Return active ApnSetting of a specific apnType */
@@ -2281,6 +2327,7 @@ public class DcTracker extends Handler {
             createAllApnList();
             setDataProfilesAsNeeded();
             setInitialAttachApn();
+            sortApnContextByPriority();
             setupDataOnAllConnectableApns(Phone.REASON_CARRIER_CHANGE, RetryFailures.ALWAYS);
         } else {
             log("onCarrierConfigChanged: SIM is not loaded yet.");
@@ -4240,6 +4287,23 @@ public class DcTracker extends Handler {
 
     private void loge(String s) {
         Rlog.e(mLogTag, s);
+    }
+
+    private void logSortedApnContexts() {
+        if (VDBG) {
+            log("initApnContexts: X mApnContexts=" + mApnContexts);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("sorted apncontexts -> [");
+            for (ApnContext apnContext : mPrioritySortedApnContexts) {
+                sb.append(apnContext);
+                sb.append(", ");
+
+                log("sorted list");
+            }
+            sb.append("]");
+            log(sb.toString());
+        }
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
