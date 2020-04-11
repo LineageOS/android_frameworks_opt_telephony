@@ -38,7 +38,6 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SmsCbMessage;
@@ -174,22 +173,13 @@ public class IccSmsInterfaceManager {
     };
 
     protected IccSmsInterfaceManager(Phone phone) {
-        this(phone, phone.getContext(),
-                (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE),
-                (UserManager) phone.getContext().getSystemService(Context.USER_SERVICE),
-                new SmsDispatchersController(
-                        phone, phone.mSmsStorageMonitor, phone.mSmsUsageMonitor));
-    }
-
-    @VisibleForTesting
-    public IccSmsInterfaceManager(
-            Phone phone, Context context, AppOpsManager appOps, UserManager userManager,
-            SmsDispatchersController dispatchersController) {
         mPhone = phone;
-        mContext = context;
-        mAppOps = appOps;
-        mDispatchersController = dispatchersController;
-        mSmsPermissions = new SmsPermissions(phone, context, appOps);
+        mContext = phone.getContext();
+        mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mDispatchersController =
+                new SmsDispatchersController(
+                        phone, phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
+        mSmsPermissions = new SmsPermissions(phone, mContext, mAppOps);
 
         mContext.registerReceiver(
                 new BroadcastReceiver() {
