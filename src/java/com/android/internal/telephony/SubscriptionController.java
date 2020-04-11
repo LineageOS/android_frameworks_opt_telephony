@@ -1493,9 +1493,10 @@ public class SubscriptionController extends ISub.Stub {
         value.put(SubscriptionManager.CARRIER_NAME, "");
         value.put(SubscriptionManager.CARD_ID, uniqueId);
         value.put(SubscriptionManager.SUBSCRIPTION_TYPE, subscriptionType);
-        if (isSubscriptionForRemoteSim(subscriptionType)) {
+        if (!TextUtils.isEmpty(displayName)) {
             value.put(SubscriptionManager.DISPLAY_NAME, displayName);
-        } else {
+        }
+        if (!isSubscriptionForRemoteSim(subscriptionType)) {
             UiccCard card = mUiccController.getUiccCardForPhone(slotIndex);
             if (card != null) {
                 String cardId = card.getCardId();

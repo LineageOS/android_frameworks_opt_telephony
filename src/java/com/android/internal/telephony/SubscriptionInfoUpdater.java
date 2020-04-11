@@ -92,6 +92,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_IMSI = 11;
     private static final int EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS = 12;
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 13;
+    private static final int EVENT_INACTIVE_SLOT_ICC_STATE_CHANGED = 14;
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
 
@@ -177,14 +178,24 @@ public class SubscriptionInfoUpdater extends Handler {
     /**
      * Update subscriptions when given a new ICC state.
      */
-    public void updateInternalIccState(String simStatus, String reason, int phoneId,
-            boolean absentAndInactive) {
+    public void updateInternalIccState(String simStatus, String reason, int phoneId) {
         logd("updateInternalIccState to simStatus " + simStatus + " reason " + reason
                 + " phoneId " + phoneId);
         int message = internalIccStateToMessage(simStatus);
         if (message != EVENT_INVALID) {
-            sendMessage(obtainMessage(message, phoneId, absentAndInactive ? 1 : 0, reason));
+            sendMessage(obtainMessage(message, phoneId, 0, reason));
         }
+    }
+
+    /**
+     * Update subscriptions if needed when there's a change in inactive slot.
+     * @param prevActivePhoneId is the corresponding phoneId of the slot if slot was previously
+     *                          active. It could be INVALID if it was already inactive.
+     * @param iccId iccId in that slot, if any.
+     */
+    public void updateInternalIccStateForInactiveSlot(int prevActivePhoneId, String iccId) {
+        sendMessage(obtainMessage(EVENT_INACTIVE_SLOT_ICC_STATE_CHANGED, prevActivePhoneId,
+                0, iccId));
     }
 
     private int internalIccStateToMessage(String simStatus) {
@@ -247,7 +258,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_ABSENT:
-                handleSimAbsent(msg.arg1, msg.arg2);
+                handleSimAbsent(msg.arg1);
+                break;
+
+            case EVENT_INACTIVE_SLOT_ICC_STATE_CHANGED:
+                handleInactiveSlotIccStateChange(msg.arg1, (String) msg.obj);
                 break;
 
             case EVENT_SIM_LOCKED:
@@ -583,10 +598,31 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void handleSimAbsent(int phoneId, int absentAndInactive) {
-        if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
-            logd("SIM" + (phoneId + 1) + " hot plug out, absentAndInactive=" + absentAndInactive);
+    /**
+     * PhoneId is the corresponding phoneId of the slot if slot was previously active.
+     * It could be INVALID if it was already inactive.
+     */
+    private void handleInactiveSlotIccStateChange(int phoneId, String iccId) {
+        // If phoneId is valid, it means the physical slot was active in that phoneId. In this case,
+        // we clear (mark inactive) the subscription in db on that phone.
+        if (SubscriptionManager.isValidPhoneId(phoneId)) {
+            if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                logd("Slot of SIM" + (phoneId + 1) + " becomes inactive");
+            }
+            cleanSubscriptionInPhone(phoneId);
         }
+        if (!TextUtils.isEmpty(iccId)) {
+            // If iccId is new, add a subscription record in the db.
+            String strippedIccId = IccUtils.stripTrailingFs(iccId);
+            if (SubscriptionController.getInstance().getSubInfoForIccId(strippedIccId) == null) {
+                SubscriptionController.getInstance().insertEmptySubInfoRecord(
+                        strippedIccId, "CARD", SubscriptionManager.INVALID_PHONE_INDEX,
+                        SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+            }
+        }
+    }
+
+    private void cleanSubscriptionInPhone(int phoneId) {
         sIccId[phoneId] = ICCID_STRING_FOR_NO_SIM;
         int[] subIds = SubscriptionController.getInstance().getSubId(phoneId);
         if (subIds != null && subIds.length > 0) {
@@ -598,15 +634,23 @@ public class SubscriptionInfoUpdater extends Handler {
                     SubscriptionController.getSelectionForSubIdList(subIds), null);
         }
         updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
-        // Do not broadcast if the SIM is absent and inactive, because the logical phoneId here is
-        // no longer correct
-        if (absentAndInactive == 0) {
-            broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
-            broadcastSimCardStateChanged(phoneId, TelephonyManager.SIM_STATE_ABSENT);
-            broadcastSimApplicationStateChanged(phoneId, TelephonyManager.SIM_STATE_UNKNOWN);
-            updateSubscriptionCarrierId(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
-            updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+    }
+
+    private void handleSimAbsent(int phoneId) {
+        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
+            logd("handleSimAbsent on invalid phoneId");
+            return;
         }
+        if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
+            logd("SIM" + (phoneId + 1) + " hot plug out");
+        }
+        cleanSubscriptionInPhone(phoneId);
+
+        broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
+        broadcastSimCardStateChanged(phoneId, TelephonyManager.SIM_STATE_ABSENT);
+        broadcastSimApplicationStateChanged(phoneId, TelephonyManager.SIM_STATE_UNKNOWN);
+        updateSubscriptionCarrierId(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+        updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
 
     private void handleSimError(int phoneId) {
