@@ -1064,6 +1064,39 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertVtDataUsageUpdated(13, 19, 19);
     }
 
+    @Test
+    @SmallTest
+    public void testHangupHandoverCall() throws RemoteException {
+        doReturn("1").when(mImsCallSession).getCallId();
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        assertFalse(mCTUT.mRingingCall.isRinging());
+        // mock a MT call
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        verify(mImsPhone, times(1)).notifyNewRingingConnection((Connection) any());
+        verify(mImsPhone, times(1)).notifyIncomingRing();
+        assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
+        assertTrue(mCTUT.mRingingCall.isRinging());
+        assertEquals(1, mCTUT.mRingingCall.getConnections().size());
+        ImsPhoneConnection connection =
+                (ImsPhoneConnection) mCTUT.mRingingCall.getConnections().get(0);
+        connection.addListener(mImsPhoneConnectionListener);
+
+        // Move the connection to the handover state.
+        mCTUT.notifySrvccState(Call.SrvccState.COMPLETED);
+        assertEquals(1, mCTUT.mHandoverCall.getConnections().size());
+
+        // No need to go through all the rigamarole of the mocked termination we normally do; we
+        // can confirm the hangup gets processed without all that.
+        doNothing().when(mImsCall).terminate(anyInt());
+
+        try {
+            mCTUT.hangup(mCTUT.mHandoverCall);
+        } catch (CallStateException e) {
+            Assert.fail("CallStateException not expected");
+        }
+        assertEquals(DisconnectCause.LOCAL, connection.getDisconnectCause());
+    }
+
     private void assertVtDataUsageUpdated(int expectedToken, long rxBytes, long txBytes)
             throws RemoteException {
         final ArgumentCaptor<NetworkStats> ifaceStatsCaptor = ArgumentCaptor.forClass(

@@ -2196,6 +2196,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (Phone.DEBUG_PHONE) {
                 log("(backgnd) hangup waiting or background");
             }
+        } else if (call == mHandoverCall) {
+            if (Phone.DEBUG_PHONE) {
+                log("(handover) hangup handover (SRVCC) call");
+            }
         } else {
             throw new CallStateException ("ImsPhoneCall " + call +
                     "does not belong to ImsPhoneCallTracker " + this);
@@ -3743,8 +3747,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
-    /* package */
-    void notifySrvccState(Call.SrvccState state) {
+    /**
+     * Notify of a change to SRVCC state
+     * @param state the new SRVCC state.
+     */
+    public void notifySrvccState(Call.SrvccState state) {
         if (DBG) log("notifySrvccState state=" + state);
 
         mSrvccState = state;
