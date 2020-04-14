@@ -1007,6 +1007,7 @@ public class ImsPhoneConnection extends Connection implements
                                 + negotiatedCallProfile);
                         mRttTextHandler.tearDown();
                         mRttTextHandler = null;
+                        mRttTextStream = null;
                         onRttTerminated();
                         changed = true;
                     }
