@@ -674,7 +674,7 @@ public class DcTracker extends Handler {
     private ArrayList<DataProfile> mLastDataProfileList = new ArrayList<>();
 
     /** RAT name ===> (downstream, upstream) bandwidth values from carrier config. */
-    private final ConcurrentHashMap<String, Pair<Integer, Integer>> mBandwidths =
+    private ConcurrentHashMap<String, Pair<Integer, Integer>> mBandwidths =
             new ConcurrentHashMap<>();
 
     /**
@@ -3936,40 +3936,37 @@ public class DcTracker extends Handler {
      * @param useLte For NR NSA, whether to use LTE value for upstream or not
      */
     private void updateLinkBandwidths(String[] bandwidths, boolean useLte) {
-        synchronized (mBandwidths) {
-            mBandwidths.clear();
-            for (String config : bandwidths) {
-                int downstream = 14;
-                int upstream = 14;
-                String[] kv = config.split(":");
-                if (kv.length == 2) {
-                    String[] split = kv[1].split(",");
-                    if (split.length == 2) {
-                        try {
-                            downstream = Integer.parseInt(split[0]);
-                            upstream = Integer.parseInt(split[1]);
-                        } catch (NumberFormatException ignored) {
-                        }
+        ConcurrentHashMap<String, Pair<Integer, Integer>> temp = new ConcurrentHashMap<>();
+        for (String config : bandwidths) {
+            int downstream = 14;
+            int upstream = 14;
+            String[] kv = config.split(":");
+            if (kv.length == 2) {
+                String[] split = kv[1].split(",");
+                if (split.length == 2) {
+                    try {
+                        downstream = Integer.parseInt(split[0]);
+                        upstream = Integer.parseInt(split[1]);
+                    } catch (NumberFormatException ignored) {
                     }
-                    mBandwidths.put(kv[0], new Pair<>(downstream, upstream));
                 }
+                temp.put(kv[0], new Pair<>(downstream, upstream));
             }
-            if (useLte) {
-                Pair<Integer, Integer> ltePair = mBandwidths.get(DctConstants.RAT_NAME_LTE);
-                if (ltePair != null) {
-                    if (mBandwidths.containsKey(DctConstants.RAT_NAME_NR_NSA)) {
-                        mBandwidths.put(DctConstants.RAT_NAME_NR_NSA, new Pair<>(
-                                mBandwidths.get(DctConstants.RAT_NAME_NR_NSA).first,
-                                ltePair.second));
-                    }
-                    if (mBandwidths.containsKey(DctConstants.RAT_NAME_NR_NSA_MMWAVE)) {
-                        mBandwidths.put(DctConstants.RAT_NAME_NR_NSA_MMWAVE, new Pair<>(
-                                mBandwidths.get(DctConstants.RAT_NAME_NR_NSA_MMWAVE).first,
-                                ltePair.second));
-                    }
+        }
+        if (useLte) {
+            Pair<Integer, Integer> ltePair = temp.get(DctConstants.RAT_NAME_LTE);
+            if (ltePair != null) {
+                if (temp.containsKey(DctConstants.RAT_NAME_NR_NSA)) {
+                    temp.put(DctConstants.RAT_NAME_NR_NSA, new Pair<>(
+                            temp.get(DctConstants.RAT_NAME_NR_NSA).first, ltePair.second));
+                }
+                if (temp.containsKey(DctConstants.RAT_NAME_NR_NSA_MMWAVE)) {
+                    temp.put(DctConstants.RAT_NAME_NR_NSA_MMWAVE, new Pair<>(
+                            temp.get(DctConstants.RAT_NAME_NR_NSA_MMWAVE).first, ltePair.second));
                 }
             }
         }
+        mBandwidths = temp;
         for (DataConnection dc : mDataConnections.values()) {
             dc.sendMessage(DataConnection.EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED);
         }
