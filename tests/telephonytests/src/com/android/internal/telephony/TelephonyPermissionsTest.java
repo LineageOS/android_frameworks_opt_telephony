@@ -23,7 +23,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -220,7 +219,8 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
-    public void testCheckReadPhoneNumber_noPermissions() {
+    public void testCheckReadPhoneNumber_noPermissions() throws Exception {
+        setupMocksForDeviceIdentifiersErrorPath();
         try {
             TelephonyPermissions.checkReadPhoneNumber(
                     mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG);
@@ -231,7 +231,8 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
-    public void testCheckReadPhoneNumber_defaultSmsApp() {
+    public void testCheckReadPhoneNumber_defaultSmsApp() throws Exception {
+        setupMocksForDeviceIdentifiersErrorPath();
         when(mMockAppOps.noteOp(AppOpsManager.OPSTR_WRITE_SMS, UID, PACKAGE))
                 .thenReturn(AppOpsManager.MODE_ALLOWED);
         assertTrue(TelephonyPermissions.checkReadPhoneNumber(
@@ -239,7 +240,8 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
-    public void testCheckReadPhoneNumber_hasPrivilegedPhoneStatePermission() {
+    public void testCheckReadPhoneNumber_hasPrivilegedPhoneStatePermission() throws Exception {
+        setupMocksForDeviceIdentifiersErrorPath();
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, PID, UID, MSG);
         assertTrue(TelephonyPermissions.checkReadPhoneNumber(
@@ -247,7 +249,8 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
-    public void testCheckReadPhoneNumber_hasReadSms() {
+    public void testCheckReadPhoneNumber_hasReadSms() throws Exception {
+        setupMocksForDeviceIdentifiersErrorPath();
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_SMS, PID, UID, MSG);
         when(mMockAppOps.noteOp(AppOpsManager.OPSTR_READ_SMS, UID, PACKAGE))
@@ -257,7 +260,8 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
-    public void testCheckReadPhoneNumber_hasReadPhoneNumbers() {
+    public void testCheckReadPhoneNumber_hasReadPhoneNumbers() throws Exception {
+        setupMocksForDeviceIdentifiersErrorPath();
         doNothing().when(mMockContext).enforcePermission(
                 android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
         when(mMockAppOps.noteOp(AppOpsManager.OPSTR_READ_PHONE_NUMBERS, UID, PACKAGE))
