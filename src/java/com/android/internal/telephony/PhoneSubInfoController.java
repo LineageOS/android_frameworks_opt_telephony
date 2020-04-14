@@ -188,6 +188,8 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 callingFeatureId);
     }
 
+    // In R and beyond, READ_PHONE_NUMBERS includes READ_PHONE_NUMBERS and READ_SMS only.
+    // Prior to R, it also included READ_PHONE_STATE.  Maintain that for compatibility.
     public String getLine1NumberForSubscriber(int subId, String callingPackage,
             String callingFeatureId) {
         return callPhoneMethodForSubIdWithReadPhoneNumberCheck(
@@ -210,10 +212,12 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return getMsisdnForSubscriber(getDefaultSubscription(), callingPackage, callingFeatureId);
     }
 
+    // In R and beyond this will require READ_PHONE_NUMBERS.
+    // Prior to R it needed READ_PHONE_STATE.  Maintain that for compatibility.
     public String getMsisdnForSubscriber(int subId, String callingPackage,
             String callingFeatureId) {
-        return callPhoneMethodForSubIdWithReadCheck(subId, callingPackage, callingFeatureId,
-                "getMsisdn", (phone)-> phone.getMsisdn());
+        return callPhoneMethodForSubIdWithReadPhoneNumberCheck(
+                subId, callingPackage, callingFeatureId, "getMsisdn", (phone)-> phone.getMsisdn());
     }
 
     public String getVoiceMailNumber(String callingPackage, String callingFeatureId) {
