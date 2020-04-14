@@ -26,6 +26,7 @@ import static org.mockito.Mockito.doAnswer;
 import android.content.pm.Signature;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.telephony.UiccAccessRule;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -41,10 +42,16 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.util.List;
+
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
     private UiccCarrierPrivilegeRules mUiccCarrierPrivilegeRules;
+
+    private static final String ARAM = "A00000015141434C00";
+    private static final String ARAD = "A00000015144414300";
+    private static final String PKCS15_AID = "A000000063504B43532D3135";
 
     @Mock
     private UiccProfile mUiccProfile;
@@ -289,10 +296,6 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         assertTrue(!mUiccCarrierPrivilegeRules.shouldRetry(ar, 0));
     }
 
-    private static final String ARAM = "A00000015141434C00";
-    private static final String ARAD = "A00000015144414300";
-    private static final String PKCS15_AID = "A000000063504B43532D3135";
-
     @Test
     @SmallTest
     public void testAID_OnlyARAM() {
@@ -476,7 +479,7 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testAID_NeitherARAMorARAD() {
+    public void testAID_ARFFailed() {
         final String hexString =
                 "FF4045E243E135C114ABCD92CBB156B280FA4E1429A6ECEEB6E5C1BFE4CA1D636F6D2E676F6F676"
                         + "C652E616E64726F69642E617070732E6D79617070E30ADB080000000000000001";
@@ -515,8 +518,285 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         assertTrue(!mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
     }
 
+    @Test
+    @SmallTest
+    public void testAID_ARFSucceed() {
+        /**
+         * PKCS#15 application (AID: A0 00 00 00 63 50 4B 43 53 2D 31 35)
+         *   -ODF (5031)
+         *       A7 06 30 04 04 02 52 07
+         *   -DODF (5207)
+         *       A1 29 30 00 30 0F 0C 0D 47 50 20 53 45 20 41 63 63 20 43 74 6C A1 14 30 12
+         *       06 0A 2A 86 48 86 FC 6B 81 48 01 01 30 04 04 02 42 00
+         *   -EF ACMain (4200)
+         *       30 10 04 08 01 02 03 04 05 06 07 08 30 04 04 02 43 00
+         *   -EF ACRules (4300)
+         *       30 10 A0 08 04 06 A0 00 00 01 51 01 30 04 04 02 43 10
+         *   -EF ACConditions1 (4310)
+         *       30 22
+         *          04 20
+         *             B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51465350
+         *       30 22
+         *          04 20
+         *             4C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859
+         */
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                AsyncResult ar = new AsyncResult(null, null, null);
+                if (aid.equals(ARAM)) {
+                    message.arg2 = 1;
+                } else if (aid.equals(ARAD)) {
+                    message.arg2 = 0;
+                } else {
+                    // PKCS15
+                    ar = new AsyncResult(null, new int[]{2}, null);
+                }
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        // Select files
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xA4), eq(0x00),
+                eq(0x04), eq(0x02), anyString(), any(Message.class));
+
+        // Read binary - ODF
+        String odf = "A706300404025207";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(odf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("5031"), any(Message.class));
+
+        // Read binary - DODF
+        String dodf =
+                "A1293000300F0C0D4750205345204163632043746CA11"
+                        + "43012060A2A864886FC6B81480101300404024200";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(dodf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("5207"), any(Message.class));
+
+        // Read binary - ACMF
+        String acmf = "301004080102030405060708300404024300";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(acmf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("4200"), any(Message.class));
+
+        // Read binary - ACRF
+        String acrf = "3010A0080406FFFFFFFFFFFF300404024310";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(acrf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("4300"), any(Message.class));
+
+        // Read binary - ACCF
+        String accf =
+                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB514653503022042"
+                        + "04C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(accf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("4310"), any(Message.class));
+
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
+
+        assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+        assertEquals(2, mUiccCarrierPrivilegeRules.getAccessRules().size());
+        List<UiccAccessRule> accessRules = mUiccCarrierPrivilegeRules.getAccessRules();
+        UiccAccessRule accessRule1 = new UiccAccessRule(
+                IccUtils.hexStringToBytes(
+                        "B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51465350"),
+                "",
+                0x00);
+        assertTrue(accessRules.contains(accessRule1));
+        UiccAccessRule accessRule2 = new UiccAccessRule(
+                IccUtils.hexStringToBytes(
+                        "4C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859"),
+                "",
+                0x00);
+        assertTrue(accessRules.contains(accessRule2));
+    }
+
+    @Test
+    @SmallTest
+    public void testAID_ARFFallbackToACRF() {
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                String aid = (String) invocation.getArguments()[0];
+                Message message = (Message) invocation.getArguments()[2];
+                AsyncResult ar = new AsyncResult(null, null, null);
+                if (aid.equals(ARAM)) {
+                    message.arg2 = 1;
+                } else if (aid.equals(ARAD)) {
+                    message.arg2 = 0;
+                } else {
+                    // PKCS15
+                    ar = new AsyncResult(null, new int[]{2}, null);
+                }
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
+
+        // Select files
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xA4), eq(0x00),
+                eq(0x04), eq(0x02), anyString(), any(Message.class));
+
+        // Read binary ODF failed
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, new byte[]{});
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("5031"), any(Message.class));
+
+        // Read binary - ACRF
+        String acrf = "3010A0080406FFFFFFFFFFFF300404024310";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(acrf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("4300"), any(Message.class));
+
+        // Read binary - ACCF
+        String accf =
+                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB514653503022042"
+                        + "04C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859";
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[7];
+                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(accf));
+                AsyncResult ar = new AsyncResult(null, iir, null);
+                message.obj = ar;
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
+                eq(0x00), eq(0x00), eq("4310"), any(Message.class));
+
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message message = (Message) invocation.getArguments()[1];
+                message.sendToTarget();
+                return null;
+            }
+        }).when(mUiccProfile).iccCloseLogicalChannel(anyInt(), any(Message.class));
+
+        mUiccCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(mUiccProfile, null);
+        processAllMessages();
+
+        assertTrue(mUiccCarrierPrivilegeRules.hasCarrierPrivilegeRules());
+        assertEquals(2, mUiccCarrierPrivilegeRules.getAccessRules().size());
+        List<UiccAccessRule> accessRules = mUiccCarrierPrivilegeRules.getAccessRules();
+        UiccAccessRule accessRule1 = new UiccAccessRule(
+                IccUtils.hexStringToBytes(
+                        "B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51465350"),
+                "",
+                0x00);
+        assertTrue(accessRules.contains(accessRule1));
+        UiccAccessRule accessRule2 = new UiccAccessRule(
+                IccUtils.hexStringToBytes(
+                        "4C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859"),
+                "",
+                0x00);
+        assertTrue(accessRules.contains(accessRule2));
+    }
+
     private static final int P2 = 0x40;
     private static final int P2_EXTENDED_DATA = 0x60;
+
     @Test
     @SmallTest
     public void testAID_RetransmitLogicalChannel() {
