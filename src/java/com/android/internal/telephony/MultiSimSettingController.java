@@ -346,6 +346,22 @@ public class MultiSimSettingController extends Handler {
             return;
         }
 
+        // b/153860050 Occasionally we receive carrier config change broadcast without subId
+        // being specified in it. So here we do additional check to make sur we don't miss the
+        // subId.
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            int[] subIds = mSubController.getSubId(phoneId);
+            if (!ArrayUtils.isEmpty(subIds)) {
+                CarrierConfigManager cm = (CarrierConfigManager) mContext.getSystemService(
+                        mContext.CARRIER_CONFIG_SERVICE);
+                if (cm != null && cm.getConfigForSubId(subIds[0]) != null) {
+                    loge("onCarrierConfigChanged with invalid subId while subd "
+                            + subIds[0] + " is active and its config is loaded");
+                    subId = subIds[0];
+                }
+            }
+        }
+
         mCarrierConfigLoadedSubIds[phoneId] = subId;
         reEvaluateAll();
     }
