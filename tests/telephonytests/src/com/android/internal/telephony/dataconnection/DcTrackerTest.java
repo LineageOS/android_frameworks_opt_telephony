@@ -1855,9 +1855,9 @@ public class DcTrackerTest extends TelephonyTest {
         setUpSubscriptionPlans(true);
         setUpWatchdogTimer();
 
-        // Hysteresis active for 10s
+        // Hysteresis active for 100s
         doReturn(1).when(mPhone).getSubId();
-        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 10000);
+        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 100);
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
@@ -1925,9 +1925,9 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         assertFalse(getWatchdogStatus());
 
-        // Hysteresis active for 10s
+        // Hysteresis active for 100s
         doReturn(1).when(mPhone).getSubId();
-        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 10000);
+        mBundle.putInt(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_SEC_INT, 100);
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
