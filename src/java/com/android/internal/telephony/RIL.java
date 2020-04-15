@@ -6727,7 +6727,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         String[] pcscfs = null;
 
         List<LinkAddress> laList = new ArrayList<>();
-        int version;
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
@@ -6750,9 +6749,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (!TextUtils.isEmpty(result.pcscf)) {
                 pcscfs = result.pcscf.split("\\s+");
             }
-            mtu = result.mtu;
-            mtuV4 = mtuV6 = 0;
-            version = 0;
+            mtu = mtuV4 = mtuV6 = result.mtu;
+            if (addresses != null) {
+                for (String address : addresses) {
+                    laList.add(createLinkAddressFromString(address));
+                }
+            }
         } else if (dcResult instanceof android.hardware.radio.V1_4.SetupDataCallResult) {
             final android.hardware.radio.V1_4.SetupDataCallResult result =
                     (android.hardware.radio.V1_4.SetupDataCallResult) dcResult;
@@ -6766,9 +6768,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
-            mtu = result.mtu;
-            mtuV4 = mtuV6 = 0;
-            version = 4;
+            mtu = mtuV4 = mtuV6 = result.mtu;
+            if (addresses != null) {
+                for (String address : addresses) {
+                    laList.add(createLinkAddressFromString(address));
+                }
+            }
         } else if (dcResult instanceof android.hardware.radio.V1_5.SetupDataCallResult) {
             final android.hardware.radio.V1_5.SetupDataCallResult result =
                     (android.hardware.radio.V1_5.SetupDataCallResult) dcResult;
@@ -6785,22 +6790,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
-            mtu = 0;
+            mtu = Math.max(result.mtuV4, result.mtuV6);
             mtuV4 = result.mtuV4;
             mtuV6 = result.mtuV6;
-            version = 5;
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
-        }
-
-        if (version < 5) {
-            // Process address
-            if (addresses != null) {
-                for (String address : addresses) {
-                    laList.add(createLinkAddressFromString(address));
-                }
-            }
         }
 
         // Process dns
@@ -6862,7 +6857,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setMtu(mtu)
                 .setMtuV4(mtuV4)
                 .setMtuV6(mtuV6)
-                .setVersion(version)
                 .build();
     }
 

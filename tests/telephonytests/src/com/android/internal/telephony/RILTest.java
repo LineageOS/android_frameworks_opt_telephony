@@ -1855,6 +1855,8 @@ public class RILTest extends TelephonyTest {
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
                         InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
                 .setMtu(1500)
+                .setMtuV4(1500)
+                .setMtuV6(1500)
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result10));
@@ -1925,9 +1927,9 @@ public class RILTest extends TelephonyTest {
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
                         InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
+                .setMtu(3000)
                 .setMtuV4(1500)
                 .setMtuV6(3000)
-                .setVersion(5)
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result15));
