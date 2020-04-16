@@ -38,7 +38,9 @@ import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
 import android.os.ParcelUuid;
+import android.os.PersistableBundle;
 import android.provider.Settings;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -620,5 +622,35 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         processAllMessages();
         // Shouldn't mark sub 2 as default data, as sub 2 is in active.
         verify(mSubControllerMock, never()).setDefaultDataSubId(2);
+    }
+
+    @Test
+    @SmallTest
+    // b/146446143
+    public void testCarrierConfigChangeWithInvalidSubId_shouldAlwaysTryToGetSubId()
+            throws Exception {
+        doReturn(true).when(mPhoneMock1).isUserDataEnabled();
+        doReturn(true).when(mPhoneMock2).isUserDataEnabled();
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        processAllMessages();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0, 1);
+        // Notify carrier config change on phone1 without specifying subId.
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        processAllMessages();
+        // Nothing should happen as carrier config is not ready for sub 2.
+        verify(mDataEnabledSettingsMock2, never()).setUserDataEnabled(false);
+
+        // Still notify carrier config without specifying subId2, but this time subController
+        // and CarrierConfigManager have subId 2 active and ready.
+        doReturn(new int[] {2}).when(mSubControllerMock).getSubId(1);
+        CarrierConfigManager cm = (CarrierConfigManager) mContext.getSystemService(
+                mContext.CARRIER_CONFIG_SERVICE);
+        doReturn(new PersistableBundle()).when(cm).getConfigForSubId(2);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        processAllMessages();
+        // This time user data should be disabled on phone1.
+        verify(mDataEnabledSettingsMock2).setUserDataEnabled(false);
     }
 }
