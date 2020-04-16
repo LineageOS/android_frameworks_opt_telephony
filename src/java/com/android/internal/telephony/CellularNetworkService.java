@@ -216,14 +216,14 @@ public class CellularNetworkService extends NetworkService {
         }
 
         private NetworkRegistrationInfo createRegistrationStateFromVoiceRegState(Object result) {
-            int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
-            int domain = NetworkRegistrationInfo.DOMAIN_CS;
+            final int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+            final int domain = NetworkRegistrationInfo.DOMAIN_CS;
 
             // 1.5 at the top so that we can do an "early exit" from the method
             if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
                 return getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        domain,
+                        transportType,
                         (android.hardware.radio.V1_5.RegStateResult) result);
             } else if (result instanceof android.hardware.radio.V1_0.VoiceRegStateResult) {
                 android.hardware.radio.V1_0.VoiceRegStateResult voiceRegState =
@@ -277,9 +277,10 @@ public class CellularNetworkService extends NetworkService {
         }
 
         private NetworkRegistrationInfo createRegistrationStateFromDataRegState(Object result) {
-            int domain = NetworkRegistrationInfo.DOMAIN_PS;
+            final int domain = NetworkRegistrationInfo.DOMAIN_PS;
+            final int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+
             int regState = NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
-            int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
             int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
             int reasonForDenial = 0;
             boolean isUsingCarrierAggregation = false;
@@ -297,8 +298,8 @@ public class CellularNetworkService extends NetworkService {
             // 1.5 at the top so that we can do an "early exit" from the method
             if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
                 return getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        domain,
+                        transportType,
                         (android.hardware.radio.V1_5.RegStateResult) result);
             } else if (result instanceof android.hardware.radio.V1_0.DataRegStateResult) {
                 android.hardware.radio.V1_0.DataRegStateResult dataRegState =
