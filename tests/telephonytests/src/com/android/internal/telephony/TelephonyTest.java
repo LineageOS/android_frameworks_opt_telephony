@@ -632,6 +632,7 @@ public abstract class TelephonyTest {
         replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
+        replaceInstance(TelephonyManager.class, "sServiceHandleCacheEnabled", null, false);
         replaceInstance(PhoneFactory.class, "sMadeDefaults", null, true);
         replaceInstance(PhoneFactory.class, "sPhone", null, mPhone);
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
