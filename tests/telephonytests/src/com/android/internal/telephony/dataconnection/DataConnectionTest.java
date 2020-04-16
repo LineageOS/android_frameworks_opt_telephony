@@ -630,7 +630,6 @@ public class DataConnectionTest extends TelephonyTest {
         testConnectEvent();
 
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
-        assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_TEMPORARILY_NOT_METERED));
     }
 
     @Test
