@@ -2218,8 +2218,9 @@ public class ServiceStateTracker extends Handler {
                 // (2 or more cells) to a new cell if they camp for emergency service only.
                 if (serviceState == ServiceState.STATE_OUT_OF_SERVICE) {
                     mLastPhysicalChannelConfigList = null;
-                    nrHasChanged |= updateNrFrequencyRangeFromPhysicalChannelConfigs(null, mNewSS);
                 }
+                nrHasChanged |= updateNrFrequencyRangeFromPhysicalChannelConfigs(
+                        mLastPhysicalChannelConfigList, mNewSS);
                 nrHasChanged |= updateNrStateFromPhysicalChannelConfigs(
                         mLastPhysicalChannelConfigList, mNewSS);
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
