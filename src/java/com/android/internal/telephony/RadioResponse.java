@@ -45,6 +45,7 @@ import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
+import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
 import android.telephony.SignalStrength;
@@ -357,13 +358,26 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getVoiceRegistrationStateResponse_1_5(RadioResponseInfo responseInfo,
             android.hardware.radio.V1_5.RegStateResult voiceRegResponse) {
         RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, voiceRegResponse);
-            }
-            mRil.processResponseDone(rr, responseInfo, voiceRegResponse);
+        if (rr == null) {
+            return;
         }
+
+        if (responseInfo.error == RadioError.REQUEST_NOT_SUPPORTED) {
+            // Move the data needed for fallback call from rr which will be released soon
+            final int request = rr.getRequest();
+            final Message result = rr.getResult();
+
+            mRil.mRilHandler.post(() -> {
+                mRil.setCompatVersion(request, RIL.RADIO_HAL_VERSION_1_4);
+                mRil.getVoiceRegistrationState(result);
+            });
+
+            mRil.processResponseFallback(rr, responseInfo, voiceRegResponse);
+            return;
+        } else if (responseInfo.error == RadioError.NONE) {
+            sendMessageResponse(rr.mResult, voiceRegResponse);
+        }
+        mRil.processResponseDone(rr, responseInfo, voiceRegResponse);
     }
 
     /**
@@ -425,13 +439,26 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getDataRegistrationStateResponse_1_5(RadioResponseInfo responseInfo,
             android.hardware.radio.V1_5.RegStateResult dataRegResponse) {
         RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, dataRegResponse);
-            }
-            mRil.processResponseDone(rr, responseInfo, dataRegResponse);
+        if (rr == null) {
+            return;
         }
+
+        if (responseInfo.error == RadioError.REQUEST_NOT_SUPPORTED) {
+            // Move the data needed for fallback call from rr which will be released soon
+            final int request = rr.getRequest();
+            final Message result = rr.getResult();
+
+            mRil.mRilHandler.post(() -> {
+                mRil.setCompatVersion(request, RIL.RADIO_HAL_VERSION_1_4);
+                mRil.getDataRegistrationState(result);
+            });
+
+            mRil.processResponseFallback(rr, responseInfo, dataRegResponse);
+            return;
+        } else if (responseInfo.error == RadioError.NONE) {
+            sendMessageResponse(rr.mResult, dataRegResponse);
+        }
+        mRil.processResponseDone(rr, responseInfo, dataRegResponse);
     }
 
     /**
@@ -684,26 +711,26 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startNetworkScanResponse(RadioResponseInfo responseInfo) {
-        responseScanStatus(responseInfo);
+        responseScanStatus(responseInfo, null /*fallbackHalVersion*/);
     }
 
     /**
      * The same method as startNetworkScanResponse, except disallowing error codes
-     * OPERATION_NOT_ALLOWED and REQUEST_NOT_SUPPORTED.
+     * OPERATION_NOT_ALLOWED.
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startNetworkScanResponse_1_4(RadioResponseInfo responseInfo) {
-        responseScanStatus(responseInfo);
+        responseScanStatus(responseInfo, null /*fallbackHalVersion*/);
     }
 
     /**
-     * The same method as startNetworkScanResponse_1_5.
+     * The same method as startNetworkScanResponse_1_4.
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startNetworkScanResponse_1_5(RadioResponseInfo responseInfo) {
-        responseScanStatus(responseInfo);
+        responseScanStatus(responseInfo, RIL.RADIO_HAL_VERSION_1_4);
     }
 
     /**
@@ -711,7 +738,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void stopNetworkScanResponse(RadioResponseInfo responseInfo) {
-        responseScanStatus(responseInfo);
+        responseScanStatus(responseInfo, null /*fallbackHalVersion*/);
     }
 
     /**
@@ -2207,18 +2234,37 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
-    private void responseScanStatus(RadioResponseInfo responseInfo) {
+    private void responseScanStatus(RadioResponseInfo responseInfo, HalVersion fallbackHalVersion) {
         RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            NetworkScanResult nsr = null;
-            if (responseInfo.error == RadioError.NONE) {
-                nsr = new NetworkScanResult(
-                        NetworkScanResult.SCAN_STATUS_PARTIAL, RadioError.NONE, null);
-                sendMessageResponse(rr.mResult, nsr);
-            }
-            mRil.processResponseDone(rr, responseInfo, nsr);
+        if (rr == null) {
+            return;
         }
+
+        final boolean needFallback = responseInfo.error == RadioError.REQUEST_NOT_SUPPORTED
+                && fallbackHalVersion != null && rr.mArguments != null && rr.mArguments.length > 0
+                && rr.mArguments[0] instanceof NetworkScanRequest;
+        if (needFallback) {
+            // Move the data needed for fallback call from rr which will be released soon
+            final int request = rr.getRequest();
+            final Message result = rr.getResult();
+            final NetworkScanRequest scanRequest = (NetworkScanRequest) rr.mArguments[0];
+
+            mRil.mRilHandler.post(() -> {
+                mRil.setCompatVersion(request, RIL.RADIO_HAL_VERSION_1_4);
+                mRil.startNetworkScan(scanRequest, result);
+            });
+
+            mRil.processResponseFallback(rr, responseInfo, null);
+            return;
+        }
+
+        NetworkScanResult nsr = null;
+        if (responseInfo.error == RadioError.NONE) {
+            nsr = new NetworkScanResult(
+                    NetworkScanResult.SCAN_STATUS_PARTIAL, RadioError.NONE, null);
+            sendMessageResponse(rr.mResult, nsr);
+        }
+        mRil.processResponseDone(rr, responseInfo, nsr);
     }
 
     private void responseDataCallList(RadioResponseInfo responseInfo,
