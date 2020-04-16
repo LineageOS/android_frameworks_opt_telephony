@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 import static android.provider.Telephony.CarrierId;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -992,6 +993,44 @@ public class CarrierResolver extends Handler {
 
     // static helper function to get carrier id from mccmnc
     public static int getCarrierIdFromMccMnc(@NonNull Context context, String mccmnc) {
+        try (Cursor cursor = getCursorForMccMnc(context, mccmnc)) {
+            if (cursor == null || !cursor.moveToNext()) return TelephonyManager.UNKNOWN_CARRIER_ID;
+            if (VDBG) {
+                logd("[getCarrierIdFromMccMnc]- " + cursor.getCount()
+                        + " Records(s) in DB" + " mccmnc: " + mccmnc);
+            }
+            return cursor.getInt(cursor.getColumnIndex(CarrierId.CARRIER_ID));
+        } catch (Exception ex) {
+            loge("[getCarrierIdFromMccMnc]- ex: " + ex);
+        }
+        return TelephonyManager.UNKNOWN_CARRIER_ID;
+    }
+
+    /**
+     * Static helper function to get carrier name from mccmnc
+     * @param context Context
+     * @param mccmnc PLMN
+     * @return Carrier name string given mccmnc/PLMN
+     *
+     * @hide
+     */
+    @Nullable
+    public static String getCarrierNameFromMccMnc(@NonNull Context context, String mccmnc) {
+        try (Cursor cursor = getCursorForMccMnc(context, mccmnc)) {
+            if (cursor == null || !cursor.moveToNext()) return null;
+            if (VDBG) {
+                logd("[getCarrierNameFromMccMnc]- " + cursor.getCount()
+                        + " Records(s) in DB" + " mccmnc: " + mccmnc);
+            }
+            return cursor.getString(cursor.getColumnIndex(CarrierId.CARRIER_NAME));
+        } catch (Exception ex) {
+            loge("[getCarrierNameFromMccMnc]- ex: " + ex);
+        }
+        return null;
+    }
+
+    @Nullable
+    private static Cursor getCursorForMccMnc(@NonNull Context context, String mccmnc) {
         try {
             Cursor cursor = context.getContentResolver().query(
                     CarrierId.All.CONTENT_URI,
@@ -1007,25 +1046,11 @@ public class CarrierResolver extends Handler {
                             + CarrierId.All.APN + " is NULL",
                     /* selectionArgs */ new String[]{mccmnc},
                     null);
-            try {
-                if (cursor != null) {
-                    if (VDBG) {
-                        logd("[getCarrierIdFromMccMnc]- " + cursor.getCount()
-                                + " Records(s) in DB" + " mccmnc: " + mccmnc);
-                    }
-                    while (cursor.moveToNext()) {
-                        return cursor.getInt(cursor.getColumnIndex(CarrierId.CARRIER_ID));
-                    }
-                }
-            } finally {
-                if (cursor != null) {
-                    cursor.close();
-                }
-            }
+            return cursor;
         } catch (Exception ex) {
-            loge("[getCarrierIdFromMccMnc]- ex: " + ex);
+            loge("[getCursorForMccMnc]- ex: " + ex);
+            return null;
         }
-        return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
     private static boolean equals(String a, String b, boolean ignoreCase) {
