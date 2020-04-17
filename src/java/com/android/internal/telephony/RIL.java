@@ -20,6 +20,7 @@ import static com.android.internal.telephony.RILConstants.*;
 import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.hardware.radio.V1_0.Carrier;
@@ -132,6 +133,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -265,6 +267,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     final AtomicLong mRadioProxyCookie = new AtomicLong(0);
     final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
+
+    // Thread-safe HashMap to map from RIL_REQUEST_XXX constant to HalVersion.
+    // This is for Radio HAL Fallback Compatibility feature. When a RIL request
+    // is received, the HAL method from the mapping HalVersion here (if present),
+    // instead of the latest HalVersion, will be invoked.
+    private ConcurrentHashMap<Integer, HalVersion> mCompatOverrides =
+            new ConcurrentHashMap<>();
 
     //***** Events
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
@@ -430,6 +439,25 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         getRadioProxy(null);
         getOemHookProxy(null);
+    }
+
+    /** Set a radio HAL fallback compatibility override. */
+    @VisibleForTesting
+    public void setCompatVersion(int rilRequest, @NonNull HalVersion halVersion) {
+        HalVersion oldVersion = getCompatVersion(rilRequest);
+        // Do not allow to set same or greater verions
+        if (oldVersion != null && halVersion.greaterOrEqual(oldVersion)) {
+            riljLoge("setCompatVersion with equal or greater one, ignored, halVerion=" + halVersion
+                    + ", oldVerion=" + oldVersion);
+            return;
+        }
+        mCompatOverrides.put(rilRequest, halVersion);
+    }
+
+    /** Get a radio HAL fallback compatibility override, or null if not exist. */
+    @VisibleForTesting
+    public @Nullable HalVersion getCompatVersion(int rilRequest) {
+        return mCompatOverrides.getOrDefault(rilRequest, null);
     }
 
     /** Returns a {@link IRadio} instance or null if the service is not available. */
@@ -691,6 +719,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private RILRequest obtainRequest(int request, Message result, WorkSource workSource) {
         RILRequest rr = RILRequest.obtain(request, result, workSource);
+        addRequest(rr);
+        return rr;
+    }
+
+    private RILRequest obtainRequest(int request, Message result, WorkSource workSource,
+            Object... args) {
+        RILRequest rr = RILRequest.obtain(request, result, workSource, args);
         addRequest(rr);
         return rr;
     }
@@ -1458,7 +1493,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+            HalVersion overrideHalVersion = getCompatVersion(RIL_REQUEST_VOICE_REGISTRATION_STATE);
+            if (RILJ_LOGD) {
+                riljLog("getVoiceRegistrationState: overrideHalVersion=" + overrideHalVersion);
+            }
+            if ((overrideHalVersion == null
+                        || overrideHalVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5))
+                    && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                 final android.hardware.radio.V1_5.IRadio radioProxy15 =
                         (android.hardware.radio.V1_5.IRadio) radioProxy;
                 try {
@@ -1485,8 +1526,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+            HalVersion overrideHalVersion = getCompatVersion(RIL_REQUEST_DATA_REGISTRATION_STATE);
+            if (RILJ_LOGD) {
+                riljLog("getDataRegistrationState: overrideHalVersion=" + overrideHalVersion);
+            }
+            if ((overrideHalVersion == null
+                        || overrideHalVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5))
+                    && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                 final android.hardware.radio.V1_5.IRadio radioProxy15 =
                         (android.hardware.radio.V1_5.IRadio) radioProxy;
                 try {
@@ -2443,11 +2489,25 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rasInHalFormat;
     }
 
+    /**
+     * Radio HAL fallback compatibility feature (b/151106728) assumes that the input parameter
+     * networkScanRequest is immutable (read-only) here. Once the caller invokes the method, the
+     * parameter networkScanRequest should not be modified. This helps us keep a consistent and
+     * simple data model that avoid copying it in the scan result.
+     */
     @Override
-    public void startNetworkScan(NetworkScanRequest nsr, Message result) {
+    public void startNetworkScan(NetworkScanRequest networkScanRequest, Message result) {
+        final NetworkScanRequest nsr = networkScanRequest;
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+
+            HalVersion overrideHalVersion = getCompatVersion(RIL_REQUEST_START_NETWORK_SCAN);
+            if (RILJ_LOGD) {
+                riljLog("startNetworkScan: overrideHalVersion=" + overrideHalVersion);
+            }
+            if ((overrideHalVersion == null
+                        || overrideHalVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5))
+                    && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                 android.hardware.radio.V1_5.NetworkScanRequest request =
                         new android.hardware.radio.V1_5.NetworkScanRequest();
                 request.type = nsr.getScanType();
@@ -2469,7 +2529,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                 request.mccMncs.addAll(nsr.getPlmns());
                 RILRequest rr = obtainRequest(RIL_REQUEST_START_NETWORK_SCAN, result,
-                        mRILDefaultWorkSource);
+                        mRILDefaultWorkSource, nsr);
 
                 if (RILJ_LOGD) {
                     riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
@@ -5514,6 +5574,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
             rr.onError(responseInfo.error, ret);
         }
+        processResponseCleanUp(rr, responseInfo, ret);
+    }
+
+    /**
+     * This is a helper function to be called at the end of all RadioResponse callbacks for
+     * radio HAL fallback cases. It takes care of logging, decrementing wakelock if needed, and
+     * releases the request from memory pool. Unlike processResponseDone, it will not send
+     * error response to caller.
+     * @param rr RILRequest for which response callback was called
+     * @param responseInfo RadioResponseInfo received in the callback
+     * @param ret object to be returned to request sender
+     */
+    @VisibleForTesting
+    public void processResponseFallback(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
+        if (responseInfo.error == REQUEST_NOT_SUPPORTED && RILJ_LOGD) {
+            riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
+                    + " request not supported, falling back");
+        }
+        processResponseCleanUp(rr, responseInfo, ret);
+    }
+
+    private void processResponseCleanUp(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
         mMetrics.writeOnRilSolicitedResponse(mPhoneId, rr.mSerial, responseInfo.error,
                 rr.mRequest, ret);
         if (rr != null) {
@@ -6727,7 +6809,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         String[] pcscfs = null;
 
         List<LinkAddress> laList = new ArrayList<>();
-        int version;
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
@@ -6750,9 +6831,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (!TextUtils.isEmpty(result.pcscf)) {
                 pcscfs = result.pcscf.split("\\s+");
             }
-            mtu = result.mtu;
-            mtuV4 = mtuV6 = 0;
-            version = 0;
+            mtu = mtuV4 = mtuV6 = result.mtu;
+            if (addresses != null) {
+                for (String address : addresses) {
+                    laList.add(createLinkAddressFromString(address));
+                }
+            }
         } else if (dcResult instanceof android.hardware.radio.V1_4.SetupDataCallResult) {
             final android.hardware.radio.V1_4.SetupDataCallResult result =
                     (android.hardware.radio.V1_4.SetupDataCallResult) dcResult;
@@ -6766,9 +6850,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
-            mtu = result.mtu;
-            mtuV4 = mtuV6 = 0;
-            version = 4;
+            mtu = mtuV4 = mtuV6 = result.mtu;
+            if (addresses != null) {
+                for (String address : addresses) {
+                    laList.add(createLinkAddressFromString(address));
+                }
+            }
         } else if (dcResult instanceof android.hardware.radio.V1_5.SetupDataCallResult) {
             final android.hardware.radio.V1_5.SetupDataCallResult result =
                     (android.hardware.radio.V1_5.SetupDataCallResult) dcResult;
@@ -6785,22 +6872,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
-            mtu = 0;
+            mtu = Math.max(result.mtuV4, result.mtuV6);
             mtuV4 = result.mtuV4;
             mtuV6 = result.mtuV6;
-            version = 5;
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
-        }
-
-        if (version < 5) {
-            // Process address
-            if (addresses != null) {
-                for (String address : addresses) {
-                    laList.add(createLinkAddressFromString(address));
-                }
-            }
         }
 
         // Process dns
@@ -6862,7 +6939,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setMtu(mtu)
                 .setMtuV4(mtuV4)
                 .setMtuV6(mtuV6)
-                .setVersion(version)
                 .build();
     }
 

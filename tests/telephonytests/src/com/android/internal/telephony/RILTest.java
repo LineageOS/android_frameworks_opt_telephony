@@ -72,6 +72,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_AUTHEN
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_CLOSE_CHANNEL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_OPEN_CHANNEL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_LCE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE;
@@ -83,6 +84,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_WRITE_SMS_
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -142,6 +144,8 @@ import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
+import android.telephony.NetworkScanRequest;
+import android.telephony.RadioAccessSpecifier;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
@@ -169,6 +173,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -544,6 +549,108 @@ public class RILTest extends TelephonyTest {
                 RIL_REQUEST_VOICE_REGISTRATION_STATE);
     }
 
+    private RadioAccessSpecifier getRadioAccessSpecifier(CellInfo cellInfo) {
+        RadioAccessSpecifier ras;
+        if (cellInfo instanceof CellInfoLte) {
+            int ranLte = AccessNetworkConstants.AccessNetworkType.EUTRAN;
+            int[] lteChannels = {((CellInfoLte) cellInfo).getCellIdentity().getEarfcn()};
+            ras = new RadioAccessSpecifier(ranLte, null /* bands */, lteChannels);
+        } else if (cellInfo instanceof CellInfoWcdma) {
+            int ranLte = AccessNetworkConstants.AccessNetworkType.UTRAN;
+            int[] wcdmaChannels = {((CellInfoWcdma) cellInfo).getCellIdentity().getUarfcn()};
+            ras = new RadioAccessSpecifier(ranLte, null /* bands */, wcdmaChannels);
+        } else if (cellInfo instanceof CellInfoGsm) {
+            int ranGsm = AccessNetworkConstants.AccessNetworkType.GERAN;
+            int[] gsmChannels = {((CellInfoGsm) cellInfo).getCellIdentity().getArfcn()};
+            ras = new RadioAccessSpecifier(ranGsm, null /* bands */, gsmChannels);
+        } else {
+            ras = null;
+        }
+        return ras;
+    }
+
+    private NetworkScanRequest getNetworkScanRequestForTesting() {
+        // Construct a NetworkScanRequest for testing
+        List<CellInfo> allCellInfo = mTelephonyManager.getAllCellInfo();
+        List<RadioAccessSpecifier> radioAccessSpecifier = new ArrayList<>();
+        for (int i = 0; i < allCellInfo.size(); i++) {
+            RadioAccessSpecifier ras = getRadioAccessSpecifier(allCellInfo.get(i));
+            if (ras != null) {
+                radioAccessSpecifier.add(ras);
+            }
+        }
+        if (radioAccessSpecifier.size() == 0) {
+            RadioAccessSpecifier gsm = new RadioAccessSpecifier(
+                    AccessNetworkConstants.AccessNetworkType.GERAN,
+                    null /* bands */,
+                    null /* channels */);
+            radioAccessSpecifier.add(gsm);
+        }
+        RadioAccessSpecifier[] radioAccessSpecifierArray =
+                new RadioAccessSpecifier[radioAccessSpecifier.size()];
+        return new NetworkScanRequest(
+                NetworkScanRequest.SCAN_TYPE_ONE_SHOT /* scan type */,
+                radioAccessSpecifier.toArray(radioAccessSpecifierArray),
+                5 /* search periodicity */,
+                60 /* max search time */,
+                true /*enable incremental results*/,
+                5 /* incremental results periodicity */,
+                null /* List of PLMN ids (MCC-MNC) */);
+    }
+
+    @FlakyTest
+    @Test
+    public void testStartNetworkScanWithUnsupportedResponse() throws Exception {
+        // Use Radio HAL v1.5
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+        NetworkScanRequest nsr = getNetworkScanRequestForTesting();
+        mRILUnderTest.startNetworkScan(nsr, obtainMessage());
+
+        // Verify the v1.5 HAL methed is called firstly
+        verify(mRadioProxy).startNetworkScan_1_5(mSerialNumberCaptor.capture(), any());
+
+        // Before we find a way to trigger real RadioResponse method, emulate the behaivor.
+        Consumer<RILRequest> unsupportedResponseEmulator = rr -> {
+            mRILUnderTest.setCompatVersion(rr.getRequest(), RIL.RADIO_HAL_VERSION_1_4);
+            mRILUnderTest.startNetworkScan(nsr, Message.obtain(rr.getResult()));
+        };
+
+        verifyRILUnsupportedResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_START_NETWORK_SCAN, unsupportedResponseEmulator);
+
+        // Verify the fallback method is invoked
+        verify(mRadioProxy).startNetworkScan_1_4(eq(mSerialNumberCaptor.getValue() + 1), any());
+    }
+
+    @FlakyTest
+    @Test
+    public void testGetVoiceRegistrationStateWithUnsupportedResponse() throws Exception {
+        // Use Radio HAL v1.5
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+        mRILUnderTest.getVoiceRegistrationState(obtainMessage());
+
+        // Verify the v1.5 HAL method is called
+        verify(mRadioProxy).getVoiceRegistrationState_1_5(mSerialNumberCaptor.capture());
+
+        // Before we find a way to trigger real RadioResponse method, emulate the behaivor.
+        Consumer<RILRequest> unsupportedResponseEmulator = rr -> {
+            mRILUnderTest.setCompatVersion(rr.getRequest(), RIL.RADIO_HAL_VERSION_1_4);
+            mRILUnderTest.getVoiceRegistrationState(Message.obtain(rr.getResult()));
+        };
+
+        verifyRILUnsupportedResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_VOICE_REGISTRATION_STATE, unsupportedResponseEmulator);
+
+        // Verify the fallback method is invoked
+        verify(mRadioProxy).getVoiceRegistrationState(mSerialNumberCaptor.getValue() + 1);
+    }
+
     @FlakyTest
     @Test
     public void testGetDataRegistrationState() throws Exception {
@@ -551,6 +658,32 @@ public class RILTest extends TelephonyTest {
         verify(mRadioProxy).getDataRegistrationState(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DATA_REGISTRATION_STATE);
+    }
+
+    @FlakyTest
+    @Test
+    public void testGetDataRegistrationStateWithUnsupportedResponse() throws Exception {
+        // Use Radio HAL v1.5
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+
+        // Verify the v1.5 HAL method is called
+        mRILUnderTest.getDataRegistrationState(obtainMessage());
+        verify(mRadioProxy).getDataRegistrationState_1_5(mSerialNumberCaptor.capture());
+
+        // Before we find a way to trigger real RadioResponse method, emulate the behaivor.
+        Consumer<RILRequest> unsupportedResponseEmulator = rr -> {
+            mRILUnderTest.setCompatVersion(rr.getRequest(), RIL.RADIO_HAL_VERSION_1_4);
+            mRILUnderTest.getDataRegistrationState(Message.obtain(rr.getResult()));
+        };
+
+        verifyRILUnsupportedResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_DATA_REGISTRATION_STATE, unsupportedResponseEmulator);
+
+        // Verify the fallback method is invoked
+        verify(mRadioProxy).getDataRegistrationState(mSerialNumberCaptor.getValue() + 1);
     }
 
     @FlakyTest
@@ -1156,6 +1289,27 @@ public class RILTest extends TelephonyTest {
         ril.processResponseDone(rr, responseInfo, null);
         assertEquals(0, ril.getRilRequestList().size());
         assertFalse(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+    }
+
+    private static void verifyRILUnsupportedResponse(RIL ril, int serial, int requestType,
+            Consumer<RILRequest> unsupportedResponseEmulator) {
+        RadioResponseInfo responseInfo =
+                createFakeRadioResponseInfo(serial, RadioError.REQUEST_NOT_SUPPORTED,
+                        RadioResponseType.SOLICITED);
+
+        RILRequest rr = ril.processResponse(responseInfo);
+        assertNotNull(rr);
+
+        assertEquals(serial, rr.getSerial());
+        assertEquals(requestType, rr.getRequest());
+        assertTrue(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+
+        unsupportedResponseEmulator.accept(rr);
+
+        ril.processResponseDone(rr, responseInfo, null);
+
+        assertEquals(1, ril.getRilRequestList().size());
+        assertTrue(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
     }
 
     private static RadioResponseInfo createFakeRadioResponseInfo(int serial, int error, int type) {
@@ -1855,6 +2009,8 @@ public class RILTest extends TelephonyTest {
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
                         InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
                 .setMtu(1500)
+                .setMtuV4(1500)
+                .setMtuV6(1500)
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result10));
@@ -1925,9 +2081,9 @@ public class RILTest extends TelephonyTest {
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
                         InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
                         InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
+                .setMtu(3000)
                 .setMtuV4(1500)
                 .setMtuV6(3000)
-                .setVersion(5)
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result15));
@@ -2330,5 +2486,25 @@ public class RILTest extends TelephonyTest {
         verify(mRadioProxy).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT);
+    }
+
+    @Test
+    public void testSetGetCompatVersion() throws Exception {
+        final int testRequest = RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT;
+
+        // getCompactVersion should return null before first setting
+        assertNull(mRILUnderTest.getCompatVersion(testRequest));
+
+        // first time setting any valid HalVersion will success
+        mRILUnderTest.setCompatVersion(testRequest, RIL.RADIO_HAL_VERSION_1_4);
+        assertEquals(RIL.RADIO_HAL_VERSION_1_4, mRILUnderTest.getCompatVersion(testRequest));
+
+        // try to set a lower HalVersion will success
+        mRILUnderTest.setCompatVersion(testRequest, RIL.RADIO_HAL_VERSION_1_3);
+        assertEquals(RIL.RADIO_HAL_VERSION_1_3, mRILUnderTest.getCompatVersion(testRequest));
+
+        // try to set a greater HalVersion will not success
+        mRILUnderTest.setCompatVersion(testRequest, RIL.RADIO_HAL_VERSION_1_5);
+        assertEquals(RIL.RADIO_HAL_VERSION_1_3, mRILUnderTest.getCompatVersion(testRequest));
     }
 }
