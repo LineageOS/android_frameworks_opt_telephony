@@ -464,7 +464,9 @@ public class DeviceStateMonitor extends Handler {
             sendDeviceState(LOW_DATA_EXPECTED, mIsLowDataExpected);
         }
 
-        int newFilter = 0;
+        // Registration Failure is always reported.
+        int newFilter = IndicationFilter.REGISTRATION_FAILURE;
+
         if (shouldEnableSignalStrengthReports()) {
             newFilter |= IndicationFilter.SIGNAL_STRENGTH;
         }
