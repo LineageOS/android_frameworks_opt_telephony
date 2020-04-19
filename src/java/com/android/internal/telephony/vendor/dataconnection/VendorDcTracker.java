@@ -18,13 +18,12 @@ package com.android.internal.telephony.vendor.dataconnection;
 
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.dataconnection.DcTracker;
 
 import java.util.HashSet;
-import java.util.Iterator;
 
 public class VendorDcTracker extends DcTracker {
     private String LOG_TAG = "VendorDCT";
@@ -42,49 +41,9 @@ public class VendorDcTracker extends DcTracker {
         fillIccIdSet();
     }
 
-    protected boolean isRecordsLoaded() {
-        boolean recordsLoaded = false;
-
-        IccRecords r = mIccRecords.get();
-        if (r != null) {
-            recordsLoaded = r.getRecordsLoaded();
-        }
-
-        return recordsLoaded;
-    }
-
-    @Override
-    protected void onRecordsLoadedOrSubIdChanged() {
-        if (DBG) log("onRecordsLoaded: createAllApnList");
-        // Just support auto attach for WWAN only
-        if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-            mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
-                    .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
-        }
-
-        createAllApnList();
-        setDataProfilesAsNeeded();
-        // Send initial attach apn only if sim records are loaded
-        if (isRecordsLoaded()) {
-            setInitialAttachApn();
-        }
-        mPhone.notifyAllActiveDataConnections();
-        setupDataOnAllConnectableApns(Phone.REASON_SIM_LOADED, RetryFailures.ALWAYS);
-    }
-
     @Override
     protected boolean allowInitialAttachForOperator() {
-        IccRecords r = mIccRecords.get();
-        String iccId = (r != null) ? r.getIccId() : "";
-        if (iccId != null) {
-            Iterator<String> itr = mIccidSet.iterator();
-            while (itr.hasNext()) {
-                if (iccId.contains(itr.next())) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return mPhone.getSubId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
     // Support added to allow initial attach request with only default for a Carrier
