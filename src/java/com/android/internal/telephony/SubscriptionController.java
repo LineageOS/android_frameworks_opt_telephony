@@ -308,6 +308,13 @@ public class SubscriptionController extends ISub.Stub {
             accessRules = null;
         }
 
+        // Never return null so further processing doesn't need to null check
+        displayName = TextUtils.isEmpty(displayName) ? "" : displayName;
+        carrierName = TextUtils.isEmpty(carrierName) ? "" : carrierName;
+        number = TextUtils.isEmpty(number) ? "" : number;
+        cardId = TextUtils.isEmpty(cardId) ? "" : cardId;
+        countryIso = TextUtils.isEmpty(countryIso) ? "" : countryIso;
+
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             String cardIdToPrint = SubscriptionInfo.givePrintableIccid(cardId);
