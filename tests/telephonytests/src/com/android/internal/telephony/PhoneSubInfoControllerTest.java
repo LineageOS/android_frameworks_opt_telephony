@@ -29,6 +29,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 
 import android.app.AppOpsManager;
+import android.app.PropertyInvalidatedCache;
 import android.content.Context;
 import android.os.Build;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -51,6 +52,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        PropertyInvalidatedCache.disableForTestMode();
         /* mPhone -> PhoneId: 0 -> SubId:0
            mSecondPhone -> PhoneId:1 -> SubId: 1*/
         doReturn(0).when(mSubscriptionController).getPhoneId(eq(0));
