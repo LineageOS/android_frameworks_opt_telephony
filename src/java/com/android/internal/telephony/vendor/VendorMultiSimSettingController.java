@@ -18,17 +18,17 @@ package com.android.internal.telephony.vendor;
 
 import android.content.Context;
 import android.provider.Settings;
-import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionInfo;
+import android.telephony.TelephonyManager;
 import android.util.Log;
+
 import com.android.internal.telephony.GlobalSettingsHelper;
 import com.android.internal.telephony.MultiSimSettingController;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.SubscriptionController;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /*
  * Extending VendorMultiSimSettingController to override default
@@ -90,7 +90,8 @@ public class VendorMultiSimSettingController extends MultiSimSettingController {
                 // For active subscription, call setUserDataEnabled through DataEnabledSettings.
                 Phone phone = PhoneFactory.getPhone(mSubController.getPhoneId(currentSubId));
                 if (phone != null) {
-                    phone.getDataEnabledSettings().setUserDataEnabled(enable);
+                    phone.getDataEnabledSettings().setDataEnabled(
+                            TelephonyManager.DATA_ENABLED_REASON_USER, enable);
                 }
             } else {
                 // For inactive subscription, directly write into global settings.
