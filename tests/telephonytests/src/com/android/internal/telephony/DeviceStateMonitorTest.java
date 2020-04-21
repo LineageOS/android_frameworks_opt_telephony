@@ -55,8 +55,7 @@ import java.util.Map;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DeviceStateMonitorTest extends TelephonyTest {
-    // No indication filter set
-    private static final int INDICATION_FILTERS_NONE = 0;
+    private static final int INDICATION_FILTERS_MINIMUM = IndicationFilter.REGISTRATION_FAILURE;
 
     // All implemented indiation filters set so far
     // which is a subset of IndicationFilter.ALL
@@ -66,6 +65,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
             | IndicationFilter.DATA_CALL_DORMANCY_CHANGED
             | IndicationFilter.LINK_CAPACITY_ESTIMATE
             | IndicationFilter.PHYSICAL_CHANNEL_CONFIG
+            | IndicationFilter.REGISTRATION_FAILURE
             | IndicationFilter.BARRING_INFO;
 
     // INDICATION_FILTERS_ALL but excludes Indication.SIGNAL_STRENGTH
@@ -201,7 +201,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
 
         // Keep other states off, then no filter flag is on
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
-                eq(INDICATION_FILTERS_NONE), nullable(Message.class));
+                eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
     }
 
     @Test
@@ -235,7 +235,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         processAllMessages();
 
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
-                eq(INDICATION_FILTERS_NONE), nullable(Message.class));
+                eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
     }
 
     @Test
@@ -256,7 +256,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         processAllMessages();
 
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
-                eq(INDICATION_FILTERS_NONE), nullable(Message.class));
+                eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
 
         verify(mSimulatedCommandsVerifier).sendDeviceState(eq(LOW_DATA_EXPECTED),
                 eq(true), nullable(Message.class));
@@ -280,7 +280,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         processAllMessages();
 
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
-                eq(INDICATION_FILTERS_NONE), nullable(Message.class));
+                eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
         verify(mSimulatedCommandsVerifier).sendDeviceState(eq(LOW_DATA_EXPECTED),
                 eq(true), nullable(Message.class));
         verify(mSimulatedCommandsVerifier).sendDeviceState(eq(CHARGING_STATE),
