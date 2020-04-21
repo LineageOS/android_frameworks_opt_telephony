@@ -16,11 +16,13 @@
 
 package com.android.internal.telephony.vendor;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.Manifest;
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
@@ -38,6 +40,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 
 import java.util.Iterator;
@@ -54,6 +57,8 @@ public class VendorSubscriptionController extends SubscriptionController {
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
 
     private static int sNumPhones;
+
+    private static final int EVENT_UICC_APPS_ENABLEMENT_DONE = 101;
 
     private static final int PROVISIONED = 1;
     private static final int NOT_PROVISIONED = 0;
@@ -142,6 +147,51 @@ public class VendorSubscriptionController extends SubscriptionController {
         return retVal;
     }
 
+    @Override
+    public int setUiccApplicationsEnabled(boolean enabled, int subId) {
+        if (DBG) logd("[setUiccApplicationsEnabled]+ enabled:" + enabled + " subId:" + subId);
+
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
+
+        int result = mContext.getContentResolver().update(
+                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+
+        // Refresh the Cache of Active Subscription Info List
+        refreshCachedActiveSubscriptionInfoList();
+
+        notifySubscriptionInfoChanged();
+
+        if (isActiveSubId(subId)) {
+            Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+            phone.enableUiccApplications(enabled, Message.obtain(
+                    mSubscriptionHandler, EVENT_UICC_APPS_ENABLEMENT_DONE, enabled));
+        }
+
+        return result;
+    }
+
+    /*
+     * Handler Class
+     */
+    private Handler mSubscriptionHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case EVENT_UICC_APPS_ENABLEMENT_DONE: {
+                    logd("EVENT_UICC_APPS_ENABLEMENT_DONE");
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        logd("Received exception: " + ar.exception);
+                        return;
+                    }
+                    updateUserPreferences();
+                    break;
+                }
+            }
+        }
+    };
+
     protected boolean isRadioAvailableOnAllSubs() {
         for (int i = 0; i < sNumPhones; i++) {
             if (PhoneFactory.getPhone(i).mCi != null &&
@@ -202,16 +252,20 @@ public class VendorSubscriptionController extends SubscriptionController {
             return;
         }
 
+        final int defaultVoiceSubId = getDefaultVoiceSubId();
+        final int defaultDataSubId = getDefaultDataSubId();
+        final int defaultSmsSubId = getDefaultSmsSubId();
+
         //Get num of activated Subs and next available activated sub info.
         for (SubscriptionInfo subInfo : sil) {
-            if (getUiccProvisionStatus(subInfo.getSimSlotIndex()) == PROVISIONED) {
+            if (isUiccProvisioned(subInfo.getSimSlotIndex())) {
                 activeCount++;
                 if (mNextActivatedSub == null) mNextActivatedSub = subInfo;
             }
         }
         logd("updateUserPreferences:: active sub count = " + activeCount + " dds = "
-                 + getDefaultDataSubId() + " voice = " + getDefaultVoiceSubId() +
-                 " sms = " + getDefaultSmsSubId());
+                 + defaultDataSubId + " voice = " + defaultVoiceSubId +
+                 " sms = " + defaultSmsSubId);
 
         // If active SUB count is 1, Always Ask Prompt to be disabled and
         // preference fallback to the next available SUB.
@@ -226,10 +280,13 @@ public class VendorSubscriptionController extends SubscriptionController {
 
         handleDataPreference(mNextActivatedSub.getSubscriptionId());
 
-        if (!isSubProvisioned(getDefaultSmsSubId())) {
+        if ((defaultSmsSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                || activeCount == 1) && !isSubProvisioned(defaultSmsSubId)) {
             setDefaultSmsSubId(mNextActivatedSub.getSubscriptionId());
         }
-        if (!isSubProvisioned(getDefaultVoiceSubId())) {
+
+        if ((defaultVoiceSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                || activeCount == 1) && !isSubProvisioned(defaultVoiceSubId)) {
             setDefaultVoiceSubId(mNextActivatedSub.getSubscriptionId());
         }
 
@@ -283,9 +340,9 @@ public class VendorSubscriptionController extends SubscriptionController {
 
     }
 
-    protected int getUiccProvisionStatus(int slotId) {
-        // FIXME use valid SIM provision value
-        return PROVISIONED; 
+    protected boolean isUiccProvisioned(int slotId) {
+//        return isSubscriptionEnabled();
+        return true;
     }
 
     // This method returns true if subId and corresponding slotId is in valid
@@ -299,7 +356,7 @@ public class VendorSubscriptionController extends SubscriptionController {
                 loge(" Invalid slotId " + slotId + " or subId = " + subId);
                 isSubIdUsable = false;
             } else {
-                if (getUiccProvisionStatus(slotId) != PROVISIONED) {
+                if (!isUiccProvisioned(slotId)) {
                     isSubIdUsable = false;
                 }
                 loge("isSubProvisioned, state = " + isSubIdUsable + " subId = " + subId);

@@ -109,13 +109,13 @@ public class MultiSimSettingController extends Handler {
     // Subscription information is initially loaded.
     private static final int PRIMARY_SUB_INITIALIZED            = 6;
 
-    private final Context mContext;
-    private final SubscriptionController mSubController;
+    protected final Context mContext;
+    protected final SubscriptionController mSubController;
     // Keep a record of active primary (non-opportunistic) subscription list.
     @NonNull private List<Integer> mPrimarySubList = new ArrayList<>();
 
     /** The singleton instance. */
-    private static MultiSimSettingController sInstance = null;
+    protected static MultiSimSettingController sInstance = null;
 
     // This will be set true when handling EVENT_ALL_SUBSCRIPTIONS_LOADED. The reason of keeping
     // a local variable instead of calling SubscriptionInfoUpdater#isSubInfoInitialized is, there
@@ -288,7 +288,7 @@ public class MultiSimSettingController extends Handler {
      * If user is enabling a non-default non-opportunistic subscription, make it default
      * data subscription.
      */
-    private void onUserDataEnabled(int subId, boolean enable) {
+    protected void onUserDataEnabled(int subId, boolean enable) {
         if (DBG) log("onUserDataEnabled");
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
@@ -483,7 +483,7 @@ public class MultiSimSettingController extends Handler {
      * 4) If non above is met, clear the default value to INVALID.
      *
      */
-    private void updateDefaults() {
+    protected void updateDefaults() {
         if (DBG) log("updateDefaults");
 
         if (!isReadyToReevaluate()) return;
@@ -687,7 +687,7 @@ public class MultiSimSettingController extends Handler {
                 || change == PRIMARY_SUB_SWAPPED);
     }
 
-    private void disableDataForNonDefaultNonOpportunisticSubscriptions() {
+    protected void disableDataForNonDefaultNonOpportunisticSubscriptions() {
         if (!isReadyToReevaluate()) return;
 
         int defaultDataSub = mSubController.getDefaultDataSubId();
@@ -718,7 +718,7 @@ public class MultiSimSettingController extends Handler {
      * Make sure MOBILE_DATA of subscriptions in the same group with the subId
      * are synced.
      */
-    private void setUserDataEnabledForGroup(int subId, boolean enable) {
+    protected void setUserDataEnabledForGroup(int subId, boolean enable) {
         log("setUserDataEnabledForGroup subId " + subId + " enable " + enable);
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
