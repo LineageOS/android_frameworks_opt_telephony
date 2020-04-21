@@ -674,6 +674,7 @@ public class GsmCdmaConnection extends Connection {
         if (dc.audioQuality != mAudioCodec) {
             mAudioCodec = dc.audioQuality;
             mMetrics.writeAudioCodecGsmCdma(mOwner.getPhone().getPhoneId(), dc.audioQuality);
+            mOwner.getPhone().getVoiceCallSessionStats().onAudioCodecChanged(this, dc.audioQuality);
         }
 
         // A null cnapName should be the same as ""
