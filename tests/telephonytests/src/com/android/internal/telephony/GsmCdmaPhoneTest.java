@@ -129,6 +129,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
             PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
+        mPhoneUT.setVoiceCallSessionStats(mVoiceCallSessionStats);
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController).registerForIccChanged(eq(mPhoneUT), integerArgumentCaptor.capture(),
                 nullable(Object.class));
