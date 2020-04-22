@@ -16,11 +16,14 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
 import android.annotation.NonNull;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IBinder;
@@ -29,6 +32,7 @@ import android.os.RemoteCallback;
 import android.os.RemoteException;
 import android.telephony.CellBroadcastService;
 import android.telephony.ICellBroadcastService;
+import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
 import android.util.Pair;
@@ -37,6 +41,7 @@ import com.android.internal.telephony.cdma.SmsMessage;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 
 /**
  * Manages a single binding to the CellBroadcastService from the platform. In mSIM cases callers
@@ -203,8 +208,33 @@ public class CellBroadcastServiceManager {
 
     /** Returns the package name of the cell broadcast service, or null if there is none. */
     private String getCellBroadcastServicePackage() {
-        return mContext.getResources().getString(
-                com.android.internal.R.string.cellbroadcast_default_package);
+        PackageManager packageManager = mContext.getPackageManager();
+        List<ResolveInfo> cbsPackages = packageManager.queryIntentServices(
+                new Intent(CellBroadcastService.CELL_BROADCAST_SERVICE_INTERFACE),
+                PackageManager.MATCH_SYSTEM_ONLY);
+        if (cbsPackages.size() != 1) {
+            Log.e(TAG, "getCellBroadcastServicePackageName: found " + cbsPackages.size()
+                    + " CBS packages");
+        }
+        for (ResolveInfo info : cbsPackages) {
+            if (info.serviceInfo == null) continue;
+            String packageName = info.serviceInfo.packageName;
+            if (!TextUtils.isEmpty(packageName)) {
+                if (packageManager.checkPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+                        packageName) == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "getCellBroadcastServicePackageName: " + packageName);
+                    return packageName;
+                } else {
+                    Log.e(TAG, "getCellBroadcastServicePackageName: " + packageName
+                            + " does not have READ_PRIVILEGED_PHONE_STATE permission");
+                }
+            } else {
+                Log.e(TAG, "getCellBroadcastServicePackageName: found a CBS package but "
+                        + "packageName is null/empty");
+            }
+        }
+        Log.e(TAG, "getCellBroadcastServicePackageName: package name not found");
+        return null;
     }
 
     private class CellBroadcastServiceConnection implements ServiceConnection {
