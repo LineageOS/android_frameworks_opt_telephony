@@ -1232,8 +1232,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         }
         if (VDBG) log("getIccSimChallengeResponse: return rsp.authRsp");
 
-        return android.util.Base64.encodeToString(rsp.authRsp.payload,
-                android.util.Base64.NO_WRAP);
+        return rsp.authRsp.payload != null ? new String(rsp.authRsp.payload) : null;
     }
 
     /**
