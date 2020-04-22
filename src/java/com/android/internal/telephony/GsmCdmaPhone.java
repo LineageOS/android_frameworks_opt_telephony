@@ -89,6 +89,7 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
+import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -245,6 +246,7 @@ public class GsmCdmaPhone extends Phone {
 
         // phone type needs to be set before other initialization as other objects rely on it
         mPrecisePhoneType = precisePhoneType;
+        mVoiceCallSessionStats = new VoiceCallSessionStats(mPhoneId, this);
         initOnce(ci);
         initRatSpecific(precisePhoneType);
         // CarrierSignalAgent uses CarrierActionAgent in construction so it needs to be created
