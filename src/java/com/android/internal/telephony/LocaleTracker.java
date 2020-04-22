@@ -32,9 +32,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CellInfo;
-import android.telephony.CellInfoGsm;
-import android.telephony.CellInfoLte;
-import android.telephony.CellInfoWcdma;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -295,7 +292,7 @@ public class LocaleTracker extends Handler {
             Map<String, Integer> mccMap = new HashMap<>();
             int maxCount = 0;
             for (CellInfo cellInfo : mCellInfoList) {
-                String mcc = getNetworkMcc(cellInfo);
+                String mcc = cellInfo.getCellIdentity().getMccString();
                 if (mcc != null) {
                     int count = 1;
                     if (mccMap.containsKey(mcc)) {
@@ -330,9 +327,9 @@ public class LocaleTracker extends Handler {
             Map<MccMnc, Integer> mccMncMap = new HashMap<>();
             int maxCount = 0;
             for (CellInfo cellInfo : mCellInfoList) {
-                String mcc = getNetworkMcc(cellInfo);
+                String mcc = cellInfo.getCellIdentity().getMccString();
                 if (Objects.equals(mcc, mccToMatch)) {
-                    String mnc = getNetworkMnc(cellInfo);
+                    String mnc = cellInfo.getCellIdentity().getMncString();
                     MccMnc mccMnc = new MccMnc(mcc, mnc);
                     int count = 1;
                     if (mccMncMap.containsKey(mccMnc)) {
@@ -350,32 +347,6 @@ public class LocaleTracker extends Handler {
             }
         }
         return selectedMccMnc;
-    }
-
-    @Nullable
-    private static String getNetworkMcc(CellInfo cellInfo) {
-        String mccString = null;
-        if (cellInfo instanceof CellInfoGsm) {
-            mccString = ((CellInfoGsm) cellInfo).getCellIdentity().getMccString();
-        } else if (cellInfo instanceof CellInfoLte) {
-            mccString = ((CellInfoLte) cellInfo).getCellIdentity().getMccString();
-        } else if (cellInfo instanceof CellInfoWcdma) {
-            mccString = ((CellInfoWcdma) cellInfo).getCellIdentity().getMccString();
-        }
-        return mccString;
-    }
-
-    @Nullable
-    private static String getNetworkMnc(CellInfo cellInfo) {
-        String mccString = null;
-        if (cellInfo instanceof CellInfoGsm) {
-            mccString = ((CellInfoGsm) cellInfo).getCellIdentity().getMncString();
-        } else if (cellInfo instanceof CellInfoLte) {
-            mccString = ((CellInfoLte) cellInfo).getCellIdentity().getMncString();
-        } else if (cellInfo instanceof CellInfoWcdma) {
-            mccString = ((CellInfoWcdma) cellInfo).getCellIdentity().getMncString();
-        }
-        return mccString;
     }
 
     /**
