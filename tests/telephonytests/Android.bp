@@ -29,7 +29,6 @@ android_test {
     jarjar_rules: ":jarjar-rules-telephony-tests",
 
     test_suites: [
-        "mts",
         "device-tests",
     ],
 }
