@@ -66,6 +66,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsConferenceState;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
@@ -367,6 +368,48 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
         assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
         assertEquals(1, mCTUT.mForegroundCall.getConnections().size());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsCepOnPeer() throws Exception {
+        testImsMTCallAccept();
+        doReturn(false).when(mImsCall).isConferenceHost();
+        doReturn(true).when(mImsCall).isMultiparty();
+
+        injectConferenceState();
+
+        verify(mImsPhoneConnectionListener).onConferenceParticipantsChanged(any());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsNoCepOnPeer() throws Exception {
+        mCTUT.setSupportCepOnPeer(false);
+
+        testImsMTCallAccept();
+        doReturn(false).when(mImsCall).isConferenceHost();
+        doReturn(true).when(mImsCall).isMultiparty();
+
+        injectConferenceState();
+
+        verify(mImsPhoneConnectionListener, never()).onConferenceParticipantsChanged(any());
+    }
+
+    private void injectConferenceState() {
+        ImsPhoneConnection connection = mCTUT.getConnections().get(0);
+        connection.addListener(mImsPhoneConnectionListener);
+
+        ImsConferenceState state = new ImsConferenceState();
+        // Yuck
+        Bundle participant = new Bundle();
+        participant.putString(ImsConferenceState.USER, "sip:6505551212@fakeims.com");
+        participant.putString(ImsConferenceState.DISPLAY_TEXT, "yuck");
+        participant.putString(ImsConferenceState.ENDPOINT, "sip:6505551212@fakeims.com");
+        participant.putString(ImsConferenceState.STATUS, "connected");
+        state.mParticipants.put("sip:6505551212@fakeims.com", participant);
+
+        mImsCall.conferenceStateUpdated(state);
     }
 
     @Test
