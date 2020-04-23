@@ -1365,6 +1365,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             } else if (ar.exception instanceof ImsException) {
                 sb.append(getImsErrorMessage(ar));
             }
+        } else if ((int)ar.result == CommandsInterface.SS_STATUS_UNKNOWN) {
+            mState = State.FAILED;
+            sb = null;
         } else if (isActivate()) {
             mState = State.COMPLETE;
             if (mIsCallFwdReg) {
@@ -1508,6 +1511,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             else {
                 sb.append(getErrorMessage(ar));
             }
+        } else if (ar.result instanceof CallForwardInfo[] &&
+                   ((CallForwardInfo[]) ar.result)[0].status
+                    == CommandsInterface.SS_STATUS_UNKNOWN) {
+            sb = null;
+            mState = State.FAILED;
         } else {
             CallForwardInfo infos[];
 
@@ -1760,7 +1768,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             } else {
                 sb.append(getErrorMessage(ar));
             }
-
+        } else if ((ar.result instanceof int[]) &&
+                   ((int[])ar.result)[0] == CommandsInterface.SS_STATUS_UNKNOWN) {
+            sb = null;
         } else {
             int[] ints = (int[])ar.result;
 
