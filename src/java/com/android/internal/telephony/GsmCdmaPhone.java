@@ -2274,6 +2274,21 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public void queryCLIP(Message onComplete) {
+        Phone imsPhone = mImsPhone;
+        if (useSsOverIms(onComplete)) {
+            imsPhone.queryCLIP(onComplete);
+            return;
+        }
+
+        if (isPhoneTypeGsm()) {
+            mCi.queryCLIP(onComplete);
+        } else {
+            loge("queryCLIP: not possible in CDMA");
+        }
+    }
+
+    @Override
     public void getCallWaiting(Message onComplete) {
         Phone imsPhone = mImsPhone;
         if (useSsOverIms(onComplete)) {
