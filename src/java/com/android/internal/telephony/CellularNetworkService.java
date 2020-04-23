@@ -423,9 +423,9 @@ public class CellularNetworkService extends NetworkService {
                             .AccessTechnologySpecificInfo.EutranRegistrationInfo eutranInfo =
                                     regResult.accessTechnologySpecificInfo.eutranInfo();
 
-                    isEndcAvailable = eutranInfo.nrIndicators.isDcNrRestricted;
+                    isDcNrRestricted = eutranInfo.nrIndicators.isDcNrRestricted;
                     isNrAvailable = eutranInfo.nrIndicators.isNrAvailable;
-                    isDcNrRestricted = eutranInfo.nrIndicators.isEndcAvailable;
+                    isEndcAvailable = eutranInfo.nrIndicators.isEndcAvailable;
                     vopsInfo = convertHalLteVopsSupportInfo(
                             eutranInfo.lteVopsInfo.isVopsSupported,
                             eutranInfo.lteVopsInfo.isEmcBearerSupported);
