@@ -3800,6 +3800,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             transferHandoverConnections(mForegroundCall);
             transferHandoverConnections(mBackgroundCall);
             transferHandoverConnections(mRingingCall);
+            updatePhoneState();
         }
     }
 

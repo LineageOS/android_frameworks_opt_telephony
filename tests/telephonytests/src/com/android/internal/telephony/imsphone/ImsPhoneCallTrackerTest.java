@@ -1147,6 +1147,36 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(DisconnectCause.LOCAL, connection.getDisconnectCause());
     }
 
+    /**
+     * Verifies that the {@link ImsPhoneCallTracker#getState()} goes to IDLE when an SRVCC takes
+     * place.
+     * @throws RemoteException
+     */
+    @Test
+    @SmallTest
+    public void testTrackerStateOnHandover() throws RemoteException {
+        doReturn("1").when(mImsCallSession).getCallId();
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        assertFalse(mCTUT.mRingingCall.isRinging());
+        // mock a MT call
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        verify(mImsPhone, times(1)).notifyNewRingingConnection((Connection) any());
+        verify(mImsPhone, times(1)).notifyIncomingRing();
+        assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
+        assertTrue(mCTUT.mRingingCall.isRinging());
+        assertEquals(1, mCTUT.mRingingCall.getConnections().size());
+        ImsPhoneConnection connection =
+                (ImsPhoneConnection) mCTUT.mRingingCall.getConnections().get(0);
+        connection.addListener(mImsPhoneConnectionListener);
+
+        // Move the connection to the handover state.
+        mCTUT.notifySrvccState(Call.SrvccState.COMPLETED);
+        assertEquals(1, mCTUT.mHandoverCall.getConnections().size());
+
+        // Make sure the tracker states it's idle.
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+    }
+
     private void assertVtDataUsageUpdated(int expectedToken, long rxBytes, long txBytes)
             throws RemoteException {
         final ArgumentCaptor<NetworkStats> ifaceStatsCaptor = ArgumentCaptor.forClass(
