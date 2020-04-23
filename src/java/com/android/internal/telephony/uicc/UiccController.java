@@ -530,7 +530,9 @@ public class UiccController extends Handler {
                     break;
                 case EVENT_MULTI_SIM_CONFIG_CHANGED:
                     if (DBG) log("Received EVENT_MULTI_SIM_CONFIG_CHANGED");
-                    onMultiSimConfigChanged();
+                    int activeModemCount = (int) ((AsyncResult) msg.obj).result;
+                    onMultiSimConfigChanged(activeModemCount);
+                    break;
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
                     break;
@@ -538,10 +540,9 @@ public class UiccController extends Handler {
         }
     }
 
-    private void onMultiSimConfigChanged() {
+    private void onMultiSimConfigChanged(int newActiveModemCount) {
         int prevActiveModemCount = mCis.length;
         mCis = PhoneFactory.getCommandsInterfaces();
-        int newActiveModemCount = mCis.length;
 
         logWithLocalLog("onMultiSimConfigChanged: prevActiveModemCount " + prevActiveModemCount
                 + ", newActiveModemCount " + newActiveModemCount);
