@@ -3620,6 +3620,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void setCallWaiting(boolean enable, int serviceClass, Message onComplete) {
     }
 
+    public void queryCLIP(Message onComplete) {
+    }
+
     /*
      * Returns the subscription id.
      */
