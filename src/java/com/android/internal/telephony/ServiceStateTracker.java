@@ -2005,15 +2005,6 @@ public class ServiceStateTracker extends Handler {
         return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
-    private boolean isNrStateChanged(
-            NetworkRegistrationInfo oldRegState, NetworkRegistrationInfo newRegState) {
-        if (oldRegState == null || newRegState == null) {
-            return oldRegState != newRegState;
-        }
-
-        return oldRegState.getNrState() != newRegState.getNrState();
-    }
-
     private boolean updateNrFrequencyRangeFromPhysicalChannelConfigs(
             List<PhysicalChannelConfig> physicalChannelConfigs, ServiceState ss) {
         int newFrequencyRange = ServiceState.FREQUENCY_RANGE_UNKNOWN;
@@ -3235,11 +3226,7 @@ public class ServiceStateTracker extends Handler {
         boolean hasNrFrequencyRangeChanged =
                 mSS.getNrFrequencyRange() != mNewSS.getNrFrequencyRange();
 
-        boolean hasNrStateChanged = isNrStateChanged(
-                mSS.getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkType.EUTRAN),
-                mNewSS.getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkType.EUTRAN));
+        boolean hasNrStateChanged = mSS.getNrState() != mNewSS.getNrState();
 
         boolean hasLocationChanged = (mCellIdentity == null ? mNewCellIdentity != null
                 : !mCellIdentity.isSameCell(mNewCellIdentity));
@@ -3555,6 +3542,14 @@ public class ServiceStateTracker extends Handler {
 
         if (hasLocationChanged) {
             mPhone.notifyLocationChanged(getCellIdentity());
+        }
+
+        if (hasNrStateChanged) {
+            mNrStateChangedRegistrants.notifyRegistrants();
+        }
+
+        if (hasNrFrequencyRangeChanged) {
+            mNrFrequencyChangedRegistrants.notifyRegistrants();
         }
 
         if (mPhone.isPhoneTypeGsm()) {
