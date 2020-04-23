@@ -4849,11 +4849,20 @@ public class DcTracker extends Handler {
                 return false;
             }
 
+            // Skip recovery if it can cause a call to drop
+            if (mInVoiceCall && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
+                if (VDBG_STALL) log("skip data stall recovery as there is an active call");
+                return false;
+            }
+
             // Allow recovery if data is expected to work
             return mAttached.get() && isDataAllowed(null);
         }
 
         private void triggerRecovery() {
+            // Updating the recovery start time early to avoid race when
+            // the message is being processed in the Queue
+            mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
             sendMessage(obtainMessage(DctConstants.EVENT_DO_RECOVERY));
         }
 
@@ -4903,7 +4912,6 @@ public class DcTracker extends Handler {
                             + recoveryAction);
                 }
                 mSentSinceLastRecv = 0;
-                mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
             }
         }
 
