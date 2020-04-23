@@ -139,6 +139,7 @@ public class ImsPhone extends ImsPhoneBase {
     public static final int EVENT_SERVICE_STATE_CHANGED             = EVENT_LAST + 8;
     private static final int EVENT_VOICE_CALL_ENDED                  = EVENT_LAST + 9;
     private static final int EVENT_INITIATE_VOLTE_SILENT_REDIAL      = EVENT_LAST + 10;
+    private static final int EVENT_GET_CLIP_DONE                     = EVENT_LAST + 11;
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER  = 1; // cancel Ecm timer
@@ -332,7 +333,7 @@ public class ImsPhone extends ImsPhoneBase {
         @VisibleForTesting
         public Message mOnComplete;
 
-        // Default // Query CW, CLIR
+        // Default // Query CW, CLIR, CLIP
         SS(Message onComplete) {
             mOnComplete = onComplete;
         }
@@ -1129,6 +1130,21 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @Override
+    public void queryCLIP(Message onComplete) {
+        Message resp;
+        SS ss = new SS(onComplete);
+        resp = obtainMessage(EVENT_GET_CLIP_DONE, ss);
+
+        try {
+            Rlog.d(LOG_TAG, "ut.queryCLIP");
+            ImsUtInterface ut = mCT.getUtInterface();
+            ut.queryCLIP(resp);
+        } catch (ImsException e) {
+            sendErrorResponse(onComplete, e);
+        }
+    }
+
     @UnsupportedAppUsage
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason,
@@ -1711,6 +1727,9 @@ public class ImsPhone extends ImsPhoneBase {
             case EVENT_SET_CLIR_DONE:
                 mDefaultPhone.setOutgoingCallerIdDisplay(ss.mClirMode, ss.mOnComplete);
                 break;
+            case EVENT_GET_CLIP_DONE:
+                mDefaultPhone.queryCLIP(ss.mOnComplete);
+                break;
             default:
                 break;
         }
@@ -1773,6 +1792,16 @@ public class ImsPhone extends ImsPhoneBase {
                 }
                 if (ss != null) {
                     sendResponseOrRetryOnCsfbSs(ss, msg.what, ar.exception, clirInfo);
+                }
+                break;
+
+            case EVENT_GET_CLIP_DONE:
+                Bundle ssInfoResp = null;
+                if (ar.exception == null) {
+                    ssInfoResp = (Bundle) ar.result;
+                }
+                if (ss != null) {
+                    sendResponseOrRetryOnCsfbSs(ss, msg.what, ar.exception, ssInfoResp);
                 }
                 break;
 
