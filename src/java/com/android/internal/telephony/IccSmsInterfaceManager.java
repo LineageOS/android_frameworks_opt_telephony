@@ -1365,10 +1365,12 @@ public class IccSmsInterfaceManager {
                 0L /* messageId */);
     }
 
-    public int getSmsCapacityOnIcc() {
-        mContext.enforceCallingOrSelfPermission(
-                android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
-                "getSmsCapacityOnIcc");
+    public int getSmsCapacityOnIcc(String callingPackage, String callingFeatureId) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                mContext, mPhone.getSubId(), callingPackage, callingFeatureId,
+                "getSmsCapacityOnIcc")) {
+            return 0;
+        }
 
         int numberOnIcc = 0;
         if (mPhone.getIccRecordsLoaded()) {
