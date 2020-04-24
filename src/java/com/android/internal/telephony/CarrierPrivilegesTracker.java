@@ -55,15 +55,19 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.IntArray;
+import android.util.LocalLog;
 
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.telephony.Rlog;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 
 /**
  * CarrierPrivilegesTracker will track the Carrier Privileges for a specific {@link Phone}.
@@ -126,6 +130,7 @@ public class CarrierPrivilegesTracker extends Handler {
     private final UserManager mUserManager;
     private final TelephonyManager mTelephonyManager;
     private final RegistrantList mRegistrantList;
+    private final LocalLog mLocalLog;
 
     // Stores certificate hashes for Carrier Config-loaded certs. Certs must be UPPERCASE.
     private final Set<String> mCarrierConfigCerts;
@@ -140,7 +145,7 @@ public class CarrierPrivilegesTracker extends Handler {
     private final Map<String, Set<Integer>> mCachedUids;
 
     // Privileged UIDs must be kept in sorted order for update-checks.
-    protected int[] mPrivilegedUids;
+    private int[] mPrivilegedUids;
 
     private final BroadcastReceiver mIntentReceiver =
             new BroadcastReceiver() {
@@ -208,6 +213,7 @@ public class CarrierPrivilegesTracker extends Handler {
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mPhone = phone;
+        mLocalLog = new LocalLog(100);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
@@ -291,6 +297,10 @@ public class CarrierPrivilegesTracker extends Handler {
             updatedCarrierConfigCerts = getCarrierConfigCerts(subId);
         }
 
+        mLocalLog.log("CarrierConfigUpdated:"
+                + " subId=" + subId
+                + " slotIndex=" + slotIndex
+                + " updated CarrierConfig certs=" + updatedCarrierConfigCerts);
         maybeUpdateCertsAndNotifyRegistrants(mCarrierConfigCerts, updatedCarrierConfigCerts);
     }
 
@@ -322,6 +332,10 @@ public class CarrierPrivilegesTracker extends Handler {
             updatedUiccCerts = getSimCerts();
         }
 
+        mLocalLog.log("SIM State Changed:"
+                + " slotId=" + slotId
+                + " simState=" + simState
+                + " updated SIM-loaded certs=" + updatedUiccCerts);
         maybeUpdateCertsAndNotifyRegistrants(mUiccCerts, updatedUiccCerts);
     }
 
@@ -352,6 +366,9 @@ public class CarrierPrivilegesTracker extends Handler {
 
         updateCertsForPackage(pkg);
         mCachedUids.put(pkg.packageName, getUidsForPackage(pkg.packageName));
+        mLocalLog.log("Package added/replaced:"
+                + " pkg=" + Rlog.pii(TAG, pkgName)
+                + " cert hashes=" + mInstalledPackageCerts.get(pkgName));
 
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
@@ -377,6 +394,8 @@ public class CarrierPrivilegesTracker extends Handler {
         }
         mCachedUids.remove(pkgName);
 
+        mLocalLog.log("Package removed: pkg=" + Rlog.pii(TAG, pkgName));
+
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
 
@@ -401,6 +420,19 @@ public class CarrierPrivilegesTracker extends Handler {
 
         // Okay because no registrants exist yet
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
+
+        mLocalLog.log("Initializing state:"
+                + " CarrierConfig certs=" + mCarrierConfigCerts
+                + " SIM-loaded certs=" + mUiccCerts
+                + " installed pkgs=" + getObfuscatedPackages());
+    }
+
+    private String getObfuscatedPackages() {
+        StringJoiner obfuscatedPkgs = new StringJoiner(",", "{", "}");
+        for (Map.Entry<String, Set<String>> pkg : mInstalledPackageCerts.entrySet()) {
+            obfuscatedPkgs.add("pkg(" + Rlog.pii(TAG, pkg.getKey()) + ")=" + pkg.getValue());
+        }
+        return obfuscatedPkgs.toString();
     }
 
     private void maybeUpdateCertsAndNotifyRegistrants(
@@ -422,6 +454,8 @@ public class CarrierPrivilegesTracker extends Handler {
 
         mPrivilegedUids = currentPrivilegedUids;
         mRegistrantList.notifyResult(mPrivilegedUids);
+
+        mLocalLog.log("Privileged UIDs changed. New UIDs=" + Arrays.toString(mPrivilegedUids));
     }
 
     private int[] getCurrentPrivilegedUidsForAllUsers() {
@@ -466,6 +500,18 @@ public class CarrierPrivilegesTracker extends Handler {
         }
         mCachedUids.put(pkgName, uids);
         return uids;
+    }
+
+    /**
+     * Dump the local log buffer and other internal state of CarrierPrivilegesTracker.
+     */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("Dump of CarrierPrivilegesTracker");
+        pw.println("CarrierPrivilegesTracker - Log Begin ----");
+        mLocalLog.dump(fd, pw, args);
+        pw.println("CarrierPrivilegesTracker - Log End ----");
+        pw.println("CarrierPrivilegesTracker - Privileged UIDs: "
+                + Arrays.toString(mPrivilegedUids));
     }
 
     /**
