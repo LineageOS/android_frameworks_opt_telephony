@@ -461,7 +461,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSimLockWithIccId() throws Exception {
-        /* no need for IccId query */
+        // ICCID will be queried even if it is already available
+        doReturn("98106240020000000000").when(mIccRecord).getFullIccId();
 
         replaceInstance(SubscriptionInfoUpdater.class, "mIccId", null,
                 new String[]{"89012604200000000000"});
