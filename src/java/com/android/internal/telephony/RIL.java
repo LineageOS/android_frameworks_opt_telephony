@@ -2419,28 +2419,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
         android.hardware.radio.V1_1.RadioAccessSpecifier rasInHalFormat =
                 new android.hardware.radio.V1_1.RadioAccessSpecifier();
         rasInHalFormat.radioAccessNetwork = ras.getRadioAccessNetwork();
-        List<Integer> bands = null;
-        switch (ras.getRadioAccessNetwork()) {
-            case AccessNetworkType.GERAN:
-                bands = rasInHalFormat.geranBands;
-                break;
-            case AccessNetworkType.UTRAN:
-                bands = rasInHalFormat.utranBands;
-                break;
-            case AccessNetworkType.EUTRAN:
-                bands = rasInHalFormat.eutranBands;
-                break;
-            default:
-                Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.getRadioAccessNetwork()
-                        + " not supported on IRadio 1.1!");
-                return null;
-        }
-
+        ArrayList<Integer> bands = new ArrayList<>();
         if (ras.getBands() != null) {
             for (int band : ras.getBands()) {
                 bands.add(band);
             }
         }
+        switch (ras.getRadioAccessNetwork()) {
+            case AccessNetworkType.GERAN:
+                rasInHalFormat.geranBands = bands;
+                break;
+            case AccessNetworkType.UTRAN:
+                rasInHalFormat.utranBands = bands;
+                break;
+            case AccessNetworkType.EUTRAN:
+                rasInHalFormat.eutranBands = bands;
+                break;
+            default:
+                Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.getRadioAccessNetwork()
+                        + " not supported on IRadio < 1.5!");
+                return null;
+        }
+
         if (ras.getChannels() != null) {
             for (int channel : ras.getChannels()) {
                 rasInHalFormat.channels.add(channel);
@@ -2454,32 +2454,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
             convertRadioAccessSpecifierToRadioHAL_1_5(RadioAccessSpecifier ras) {
         android.hardware.radio.V1_5.RadioAccessSpecifier rasInHalFormat =
                 new android.hardware.radio.V1_5.RadioAccessSpecifier();
+        android.hardware.radio.V1_5.RadioAccessSpecifier.Bands bandsInHalFormat =
+                new android.hardware.radio.V1_5.RadioAccessSpecifier.Bands();
         rasInHalFormat.radioAccessNetwork = convertAntToRan(ras.getRadioAccessNetwork());
-        List<Integer> bands;
+        ArrayList<Integer> bands = new ArrayList<>();
+        if (ras.getBands() != null) {
+            for (int band : ras.getBands()) {
+                bands.add(band);
+            }
+        }
         switch (ras.getRadioAccessNetwork()) {
             case AccessNetworkType.GERAN:
-                bands = rasInHalFormat.bands.geranBands();
+                bandsInHalFormat.geranBands(bands);
                 break;
             case AccessNetworkType.UTRAN:
-                bands = rasInHalFormat.bands.utranBands();
+                bandsInHalFormat.utranBands(bands);
                 break;
             case AccessNetworkType.EUTRAN:
-                bands = rasInHalFormat.bands.eutranBands();
+                bandsInHalFormat.eutranBands(bands);
                 break;
             case AccessNetworkType.NGRAN:
-                bands = rasInHalFormat.bands.ngranBands();
+                bandsInHalFormat.ngranBands(bands);
                 break;
             default:
                 Log.wtf(RILJ_LOG_TAG, "radioAccessNetwork " + ras.getRadioAccessNetwork()
                         + " not supported on IRadio 1.5!");
                 return null;
         }
+        rasInHalFormat.bands = bandsInHalFormat;
 
-        if (ras.getBands() != null) {
-            for (int band : ras.getBands()) {
-                bands.add(band);
-            }
-        }
         if (ras.getChannels() != null) {
             for (int channel : ras.getChannels()) {
                 rasInHalFormat.channels.add(channel);
