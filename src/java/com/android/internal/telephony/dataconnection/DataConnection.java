@@ -1024,13 +1024,15 @@ public class DataConnection extends StateMachine {
             "122334,734003,2202010,32040,192239,576717";
     private static final String TCP_BUFFER_SIZES_NR =
             "2097152,6291456,16777216,512000,2097152,8388608";
+    private static final String TCP_BUFFER_SIZES_LTE_CA =
+            "4096,6291456,12582912,4096,1048576,2097152";
 
     private void updateTcpBufferSizes(int rilRat) {
         String sizes = null;
-        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA) {
-            // for now treat CA as LTE.  Plan to surface the extra bandwith in a more
-            // precise manner which should affect buffer sizes
-            rilRat = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        ServiceState ss = mPhone.getServiceState();
+        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE &&
+                ss.isUsingCarrierAggregation()) {
+            rilRat = ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA;
         }
         String ratName = ServiceState.rilRadioTechnologyToString(rilRat).toLowerCase(Locale.ROOT);
         // ServiceState gives slightly different names for EVDO tech ("evdo-rev.0" for ex)
@@ -1044,7 +1046,8 @@ public class DataConnection extends StateMachine {
         // NR 5G Non-Standalone use LTE cell as the primary cell, the ril technology is LTE in this
         // case. We use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
         if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                && rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()
+                && ((rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+                rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA) && isNRConnected())
                 && mPhone.getServiceStateTracker().getNrContextIds().contains(mCid)) {
             ratName = RAT_NAME_5G;
         }
@@ -1095,12 +1098,19 @@ public class DataConnection extends StateMachine {
                     sizes = TCP_BUFFER_SIZES_HSPA;
                     break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_LTE:
-                case ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA:
                     // Use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
                     if (RAT_NAME_5G.equals(ratName)) {
                         sizes = TCP_BUFFER_SIZES_NR;
                     } else {
                         sizes = TCP_BUFFER_SIZES_LTE;
+                    }
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA:
+                    // Use NR 5G TCP buffer size when connected to NR 5G Non-Standalone network.
+                    if (RAT_NAME_5G.equals(ratName)) {
+                        sizes = TCP_BUFFER_SIZES_NR;
+                    } else {
+                        sizes = TCP_BUFFER_SIZES_LTE_CA;
                     }
                     break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP:
