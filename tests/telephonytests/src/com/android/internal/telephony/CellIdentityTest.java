@@ -22,11 +22,15 @@ import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityNr;
+import android.telephony.CellIdentityTdscdma;
+import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class CellIdentityTest extends AndroidTestCase {
 
@@ -46,6 +50,9 @@ public class CellIdentityTest extends AndroidTestCase {
     private static final String MNC_STR = "260";
     private static final String ALPHA_LONG = "long";
     private static final String ALPHA_SHORT = "short";
+    private static final int CPID = 127;
+    private static final int UARFCN = 16383;
+    private static final int PSC = 511;
 
     // Network Id ranges from 0 to 65535.
     private static final int NETWORK_ID  = 65535;
@@ -182,5 +189,47 @@ public class CellIdentityTest extends AndroidTestCase {
                 new CellIdentityNr(PCI, TAC, EARFCN, BANDS, MCC_STR, MNC_STR, curCi, ALPHA_LONG,
                 ALPHA_SHORT, Collections.emptyList());
         assertFalse(ciA.isSameCell(cellIdentityNr));
+    }
+
+    @SmallTest
+    public void testGetMccMncString() {
+        List<CellIdentity> identities = new ArrayList<>(5);
+
+        CellIdentityGsm gsm = new CellIdentityGsm(MAX_LAC, MAX_CID, MAX_ARFCN, MAX_BSIC,
+                MCC_STR, MNC_STR, null, null, Collections.emptyList());
+        identities.add(gsm);
+
+        CellIdentityCdma cdma = new CellIdentityCdma(NETWORK_ID, SYSTEM_ID, BASESTATION_ID,
+                LONGITUDE, LATITUDE, ALPHA_LONG, ALPHA_SHORT);
+        identities.add(cdma);
+
+        CellIdentity lte = new CellIdentityLte(
+                CI, PCI, TAC, EARFCN, BANDS, BANDWIDTH, MCC_STR, MNC_STR, ALPHA_LONG, ALPHA_SHORT,
+                Collections.emptyList(), null);
+        identities.add(lte);
+
+        CellIdentityWcdma wcdma  = new CellIdentityWcdma(MAX_LAC, MAX_CID, PSC, UARFCN, MCC_STR,
+                MNC_STR, ALPHA_LONG, ALPHA_SHORT, Collections.emptyList(), null);
+        identities.add(wcdma);
+
+        CellIdentityTdscdma tdscdma = new CellIdentityTdscdma(MCC_STR, MNC_STR, MAX_LAC, MAX_CID,
+                CPID, UARFCN, ALPHA_LONG, ALPHA_SHORT, Collections.emptyList(), null);
+        identities.add(tdscdma);
+
+        CellIdentityNr nr = new CellIdentityNr(PCI, TAC, EARFCN, BANDS, MCC_STR, MNC_STR, CI,
+                ALPHA_LONG, ALPHA_SHORT, Collections.emptyList());
+        identities.add(nr);
+
+        for (CellIdentity identity : identities) {
+            final String mccStr = identity.getMccString();
+            final String mncStr = identity.getMncString();
+            if (identity instanceof CellIdentityCdma) {
+                assertNull(mccStr);
+                assertNull(mncStr);
+            } else {
+                assertEquals(MCC_STR, mccStr);
+                assertEquals(MNC_STR, mncStr);
+            }
+        }
     }
 }
