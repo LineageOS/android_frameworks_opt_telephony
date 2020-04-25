@@ -51,11 +51,13 @@ import android.os.Message;
 import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
+import android.os.UserManager;
 import android.permission.PermissionManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -300,6 +302,8 @@ public abstract class TelephonyTest {
     protected PackageManager mPackageManager;
     protected ConnectivityManager mConnectivityManager;
     protected AppOpsManager mAppOpsManager;
+    protected CarrierConfigManager mCarrierConfigManager;
+    protected UserManager mUserManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -409,6 +413,7 @@ public abstract class TelephonyTest {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
         TelephonyManager.disableServiceHandleCaching();
+        SubscriptionController.disableCaching();
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
@@ -436,6 +441,9 @@ public abstract class TelephonyTest {
                 mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         mPackageManager = mContext.getPackageManager();
         mAppOpsManager = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mCarrierConfigManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
 
         //mTelephonyComponentFactory
         doReturn(mTelephonyComponentFactory).when(mTelephonyComponentFactory).inject(anyString());
@@ -691,6 +699,7 @@ public abstract class TelephonyTest {
 
         restoreInstances();
         TelephonyManager.enableServiceHandleCaching();
+        SubscriptionController.enableCaching();
     }
 
     protected static void logd(String s) {
