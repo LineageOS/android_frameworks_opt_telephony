@@ -405,12 +405,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     isRetry,
                     pdu);
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
-                    ImsSmsImplBase.SEND_STATUS_OK);
+                    ImsSmsImplBase.SEND_STATUS_OK, tracker.mMessageId);
         } catch (ImsException e) {
             loge("sendSms failed. Falling back to PSTN. Error: " + e.getMessage());
             fallbackToPstn(token, tracker);
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
-                    ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK);
+                    ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK, tracker.mMessageId);
         }
     }
 

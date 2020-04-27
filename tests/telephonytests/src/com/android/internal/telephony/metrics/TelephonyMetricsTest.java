@@ -560,14 +560,17 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testWriteRilSendSms() throws Exception {
-        mMetrics.writeRilSendSms(mPhone.getPhoneId(), 1, 2, 1);
-        mMetrics.writeRilSendSms(mPhone.getPhoneId(), 4, 5, 2);
+        long fakeMessageId1 = 123123L;
+        long fakeMessageId2 = -987L;
 
-        SmsResponse response = new SmsResponse(0, null, 123);
+        mMetrics.writeRilSendSms(mPhone.getPhoneId(), 1, 2, 1, fakeMessageId1);
+        mMetrics.writeRilSendSms(mPhone.getPhoneId(), 4, 5, 2, fakeMessageId2);
+
+        SmsResponse response = new SmsResponse(0, null, 123, fakeMessageId1);
 
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 1, 0, RIL_REQUEST_SEND_SMS,
                 response);
-        response = new SmsResponse(0, null, 456);
+        response = new SmsResponse(0, null, 456, fakeMessageId2);
         mMetrics.writeOnRilSolicitedResponse(mPhone.getPhoneId(), 4, 0, RIL_REQUEST_SEND_SMS,
                 response);
         TelephonyLog log = buildProto();
@@ -583,21 +586,25 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(1, events[0].rilRequestId);
         assertEquals(2, events[0].tech);
         assertEquals(1, events[0].format);
+        assertEquals(fakeMessageId1, events[0].messageId);
 
         assertEquals(SmsSession.Event.Type.SMS_SEND, events[1].type);
         assertEquals(4, events[1].rilRequestId);
         assertEquals(5, events[1].tech);
         assertEquals(2, events[1].format);
+        assertEquals(fakeMessageId2, events[1].messageId);
 
         assertEquals(SmsSession.Event.Type.SMS_SEND_RESULT, events[2].type);
         assertEquals(1, events[2].rilRequestId);
         assertEquals(1, events[2].error);
         assertEquals(123, events[2].errorCode);
+        assertEquals(fakeMessageId1, events[2].messageId);
 
         assertEquals(SmsSession.Event.Type.SMS_SEND_RESULT, events[3].type);
         assertEquals(4, events[3].rilRequestId);
         assertEquals(1, events[3].error);
         assertEquals(456, events[3].errorCode);
+        assertEquals(fakeMessageId2, events[3].messageId);
     }
 
     // Test write phone state
