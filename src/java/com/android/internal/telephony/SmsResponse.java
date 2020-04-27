@@ -39,18 +39,26 @@ public class SmsResponse {
     @UnsupportedAppUsage
     public int mErrorCode;
 
+    public long mMessageId;
+
     @UnsupportedAppUsage
     public SmsResponse(int messageRef, String ackPdu, int errorCode) {
+        this(messageRef, ackPdu, errorCode, /* messageId= */ 0L);
+    }
+
+    public SmsResponse(int messageRef, String ackPdu, int errorCode, long messageId) {
         mMessageRef = messageRef;
         mAckPdu = ackPdu;
         mErrorCode = errorCode;
+        mMessageId = messageId;
     }
 
     @Override
     public String toString() {
         String ret = "{ mMessageRef = " + mMessageRef
                         + ", mErrorCode = " + mErrorCode
-                        + ", mAckPdu = " + mAckPdu
+                + ", mAckPdu = " + mAckPdu
+                + ", mMessageId = " + mMessageId
                         + "}";
         return ret;
     }

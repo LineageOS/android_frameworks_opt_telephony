@@ -1662,11 +1662,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.sendSms(rr.mSerial, msg);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP);
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "sendSMS", e);
             }
         }
+    }
+
+    /**
+     * Extract the outgoing sms messageId from the tracker, if there is one. This is specifically
+     * for SMS related APIs.
+     * @param result the result Message
+     * @return messageId unique identifier or 0 if there is no message id
+     */
+    public static long getOutgoingSmsMessageId(Message result) {
+        if (result == null || !(result.obj instanceof SMSDispatcher.SmsTracker)) {
+            return 0L;
+        }
+        long messageId = ((SMSDispatcher.SmsTracker) result.obj).mMessageId;
+        if (RILJ_LOGV) {
+            Rlog.d(RILJ_LOG_TAG, "getOutgoingSmsMessageId messageId: " + messageId);
+        }
+        return messageId;
     }
 
     @Override
@@ -1684,7 +1701,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.sendSMSExpectMore(rr.mSerial, msg);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP);
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "sendSMSExpectMore", e);
             }
@@ -3576,7 +3593,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 try {
                     radioProxy15.sendCdmaSmsExpectMore(rr.mSerial, msg);
                     mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
+                            getOutgoingSmsMessageId(result));
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
                 }
@@ -3602,7 +3620,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.sendCdmaSms(rr.mSerial, msg);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP2, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "sendCdmaSms", e);
             }
@@ -4127,7 +4145,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.sendImsSms(rr.mSerial, msg);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_IMS,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP);
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "sendImsGsmSms", e);
             }
@@ -4156,7 +4174,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.sendImsSms(rr.mSerial, msg);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_IMS,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP2, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "sendImsCdmaSms", e);
             }
@@ -5623,9 +5641,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void processResponseCleanUp(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
-        mMetrics.writeOnRilSolicitedResponse(mPhoneId, rr.mSerial, responseInfo.error,
-                rr.mRequest, ret);
         if (rr != null) {
+            mMetrics.writeOnRilSolicitedResponse(mPhoneId, rr.mSerial, responseInfo.error,
+                    rr.mRequest, ret);
             if (responseInfo.type == RadioResponseType.SOLICITED) {
                 decrementWakeLock(rr);
             }
