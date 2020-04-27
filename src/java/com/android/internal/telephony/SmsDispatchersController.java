@@ -510,12 +510,24 @@ public class SmsDispatchersController extends Handler {
         dispatcher.sendSms(tracker);
     }
 
+    /**
+     * SMS over IMS is supported if IMS is registered and SMS is supported on IMS.
+     *
+     * @return true if SMS over IMS is supported via an IMS Service or mIms is true for the older
+     *         implementation. Otherwise, false.
+     */
     public boolean isIms() {
-        return mIms;
+        return mImsSmsDispatcher.isAvailable() ? true : mIms;
     }
 
+    /**
+     * Gets SMS format supported on IMS.
+     *
+     * @return the SMS format from an IMS Service if available. Otherwise, mImsSmsFormat for the
+     *         older implementation.
+     */
     public String getImsSmsFormat() {
-        return mImsSmsFormat;
+        return mImsSmsDispatcher.isAvailable() ? mImsSmsDispatcher.getFormat() : mImsSmsFormat;
     }
 
     /**
@@ -531,7 +543,7 @@ public class SmsDispatchersController extends Handler {
             return (PhoneConstants.PHONE_TYPE_CDMA == mPhone.getPhoneType());
         }
         // IMS is registered with SMS support
-        return isCdmaFormat(mImsSmsFormat);
+        return isCdmaFormat(getImsSmsFormat());
     }
 
     /**
