@@ -374,26 +374,21 @@ public class SubscriptionInfoUpdater extends Handler {
             sIccId[phoneId] = null;
         }
 
-        String iccId = sIccId[phoneId];
-        if (iccId == null) {
-            IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
-            if (iccCard == null) {
-                logd("handleSimLocked: IccCard null");
-                return;
-            }
-            IccRecords records = iccCard.getIccRecords();
-            if (records == null) {
-                logd("handleSimLocked: IccRecords null");
-                return;
-            }
-            if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
-                logd("handleSimLocked: IccID null");
-                return;
-            }
-            sIccId[phoneId] = IccUtils.stripTrailingFs(records.getFullIccId());
-        } else {
-            logd("NOT Querying IccId its already set sIccid[" + phoneId + "]=" + iccId);
+        IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
+        if (iccCard == null) {
+            logd("handleSimLocked: IccCard null");
+            return;
         }
+        IccRecords records = iccCard.getIccRecords();
+        if (records == null) {
+            logd("handleSimLocked: IccRecords null");
+            return;
+        }
+        if (IccUtils.stripTrailingFs(records.getFullIccId()) == null) {
+            logd("handleSimLocked: IccID null");
+            return;
+        }
+        sIccId[phoneId] = IccUtils.stripTrailingFs(records.getFullIccId());
 
         updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
 
