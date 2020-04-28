@@ -35,6 +35,8 @@ import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SignalThresholdInfo;
@@ -82,6 +84,8 @@ public class DeviceStateMonitor extends Handler {
     private final Phone mPhone;
 
     private final LocalLog mLocalLog = new LocalLog(100);
+
+    private final RegistrantList mPhysicalChannelConfigRegistrants = new RegistrantList();
 
     private final NetworkRequest mWifiNetworkRequest =
             new NetworkRequest.Builder()
@@ -492,6 +496,13 @@ public class DeviceStateMonitor extends Handler {
             newFilter |= IndicationFilter.BARRING_INFO;
         }
 
+        // notify PhysicalChannelConfig registrants if state changes
+        if ((newFilter & IndicationFilter.PHYSICAL_CHANNEL_CONFIG)
+                != (mUnsolicitedResponseFilter & IndicationFilter.PHYSICAL_CHANNEL_CONFIG)) {
+            mPhysicalChannelConfigRegistrants.notifyResult(
+                    (newFilter & IndicationFilter.PHYSICAL_CHANNEL_CONFIG) != 0);
+        }
+
         setUnsolResponseFilter(newFilter, false);
 
         // Pull barring info AFTER setting filter, the order matters
@@ -653,6 +664,28 @@ public class DeviceStateMonitor extends Handler {
 
         log("No displays found", true);
         return false;
+    }
+
+    /**
+     * Register for PhysicalChannelConfig notifications changed. On change, msg.obj will be an
+     * AsyncResult with a boolean result. AsyncResult.result is true if notifications are enabled
+     * and false if they are disabled.
+     *
+     * @param h Handler to notify
+     * @param what msg.what when the message is delivered
+     * @param obj AsyncResult.userObj when the message is delivered
+     */
+    public void registerForPhysicalChannelConfigNotifChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mPhysicalChannelConfigRegistrants.add(r);
+    }
+
+    /**
+     * Unregister for PhysicalChannelConfig notifications changed.
+     * @param h Handler to notify
+     */
+    public void unregisterForPhysicalChannelConfigNotifChanged(Handler h) {
+        mPhysicalChannelConfigRegistrants.remove(h);
     }
 
     /**
