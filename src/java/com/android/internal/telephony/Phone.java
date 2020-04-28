@@ -315,6 +315,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private final String mActionDetached;
     private final String mActionAttached;
     protected DeviceStateMonitor mDeviceStateMonitor;
+    protected DisplayInfoController mDisplayInfoController;
     protected TransportManager mTransportManager;
     protected DataEnabledSettings mDataEnabledSettings;
     // Used for identify the carrier of current subscription
@@ -1811,6 +1812,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return The instance of transport manager
      */
     public TransportManager getTransportManager() {
+        return null;
+    }
+
+    /**
+     * Retrieves the DeviceStateMonitor of the phone instance.
+     */
+    public DeviceStateMonitor getDeviceStateMonitor() {
+        return null;
+    }
+
+    /**
+     * Retrieves the DisplayInfoController of the phone instance.
+     */
+    public DisplayInfoController getDisplayInfoController() {
         return null;
     }
 
@@ -4351,6 +4366,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (getEmergencyNumberTracker() != null) {
             try {
                 getEmergencyNumberTracker().dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (getDisplayInfoController() != null) {
+            try {
+                getDisplayInfoController().dump(fd, pw, args);
             } catch (Exception e) {
                 e.printStackTrace();
             }
