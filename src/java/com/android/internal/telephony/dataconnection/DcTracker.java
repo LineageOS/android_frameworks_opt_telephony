@@ -325,6 +325,7 @@ public class DcTracker extends Handler {
     private boolean mNrSaAllUnmetered = false;
     private boolean mNrSaMmwaveUnmetered = false;
     private boolean mNrSaSub6Unmetered = false;
+    private boolean mRoamingUnmetered = false;
 
     /* Used to check whether 5G timers are currently active and waiting to go off */
     private boolean mHysteresis = false;
@@ -4032,7 +4033,8 @@ public class DcTracker extends Handler {
         boolean nrUnmetered = isNetworkTypeUnmetered(NETWORK_TYPE_NR);
         boolean nrNsaUnmetered = isNrNsaFrequencyRangeUnmetered();
         boolean nrSaUnmetered = isNrSaFrequencyRangeUnmetered();
-        if (nrUnmetered || nrNsaUnmetered || nrSaUnmetered) {
+        if ((nrUnmetered || nrNsaUnmetered || nrSaUnmetered)
+                && !mPhone.getServiceState().getRoaming() || mRoamingUnmetered) {
             if (DBG) log("NR is unmetered");
             if ((nrUnmetered || nrNsaUnmetered) && mPhone.getServiceState().getNrState()
                     == NetworkRegistrationInfo.NR_STATE_CONNECTED
@@ -4156,7 +4158,7 @@ public class DcTracker extends Handler {
         TelephonyDisplayInfo telephonyDisplayInfo =
                 new TelephonyDisplayInfo(dataNetworkType, displayNetworkType);
         if (!telephonyDisplayInfo.equals(mTelephonyDisplayInfo)) {
-            log("Display info changed. " + telephonyDisplayInfo);
+            log("Display info changed: " + telephonyDisplayInfo);
             mTelephonyDisplayInfo = telephonyDisplayInfo;
             mPhone.notifyDisplayInfoChanged(telephonyDisplayInfo);
             return true;
@@ -5230,6 +5232,8 @@ public class DcTracker extends Handler {
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_MMWAVE_BOOL);
                 mNrSaSub6Unmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_SUB6_BOOL);
+                mRoamingUnmetered = b.getBoolean(
+                        CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
             }
         }
 
