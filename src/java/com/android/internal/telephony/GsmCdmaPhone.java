@@ -268,8 +268,16 @@ public class GsmCdmaPhone extends Phone {
                 this, this.mCi);
         mDataEnabledSettings = mTelephonyComponentFactory
                 .inject(DataEnabledSettings.class.getName()).makeDataEnabledSettings(this);
+        mDeviceStateMonitor = mTelephonyComponentFactory.inject(DeviceStateMonitor.class.getName())
+                .makeDeviceStateMonitor(this);
 
-        // DcTracker uses SST so needs to be created after it is instantiated
+        // DisplayInfoController creates an OverrideNetworkTypeController, which uses
+        // DeviceStateMonitor so needs to be crated after it is instantiated.
+        mDisplayInfoController = mTelephonyComponentFactory.inject(
+                DisplayInfoController.class.getName()).makeDisplayInfoController(this);
+
+        // DcTracker uses ServiceStateTracker and DisplayInfoController so needs to be created
+        // after they are instantiated
         for (int transport : mTransportManager.getAvailableTransports()) {
             mDcTrackers.put(transport, mTelephonyComponentFactory.inject(DcTracker.class.getName())
                     .makeDcTracker(this, transport));
@@ -283,14 +291,6 @@ public class GsmCdmaPhone extends Phone {
                 EVENT_SET_CARRIER_DATA_ENABLED, null, false);
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
-        mDeviceStateMonitor = mTelephonyComponentFactory.inject(DeviceStateMonitor.class.getName())
-                .makeDeviceStateMonitor(this);
-
-        // DisplayInfoController creates an OverrideNetworkTypeController, which uses
-        // DeviceStateMonitor so needs to be crated after it is instantiated.
-        mDisplayInfoController = mTelephonyComponentFactory.inject(
-                DisplayInfoController.class.getName()).makeDisplayInfoController(this);
-
         mSST.registerForVoiceRegStateOrRatChanged(this, EVENT_VRS_OR_RAT_CHANGED, null);
 
         mSettingsObserver = new SettingsObserver(context, this);
