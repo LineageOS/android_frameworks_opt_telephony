@@ -24,7 +24,6 @@ import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -180,6 +179,8 @@ public abstract class TelephonyTest {
     protected ImsManager mImsManager;
     @Mock
     protected DcTracker mDcTracker;
+    @Mock
+    protected DisplayInfoController mDisplayInfoController;
     @Mock
     protected GsmCdmaCall mGsmCdmaCall;
     @Mock
@@ -465,6 +466,8 @@ public abstract class TelephonyTest {
                 .makeIccPhoneBookInterfaceManager(nullable(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory)
                 .makeDcTracker(nullable(Phone.class), anyInt());
+        doReturn(mDisplayInfoController).when(mTelephonyComponentFactory)
+                .makeDisplayInfoController(nullable(Phone.class));
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
                 .makeWspTypeDecoder(nullable(byte[].class));
         doReturn(mImsCT).when(mTelephonyComponentFactory)
@@ -507,6 +510,8 @@ public abstract class TelephonyTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
+        doReturn(mDeviceStateMonitor).when(mPhone).getDeviceStateMonitor();
+        doReturn(mDisplayInfoController).when(mPhone).getDisplayInfoController();
         doReturn(mEmergencyNumberTracker).when(mPhone).getEmergencyNumberTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();

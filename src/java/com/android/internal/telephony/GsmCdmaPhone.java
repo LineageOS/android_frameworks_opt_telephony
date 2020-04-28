@@ -286,6 +286,11 @@ public class GsmCdmaPhone extends Phone {
         mDeviceStateMonitor = mTelephonyComponentFactory.inject(DeviceStateMonitor.class.getName())
                 .makeDeviceStateMonitor(this);
 
+        // DisplayInfoController creates an OverrideNetworkTypeController, which uses
+        // DeviceStateMonitor so needs to be crated after it is instantiated.
+        mDisplayInfoController = mTelephonyComponentFactory.inject(
+                DisplayInfoController.class.getName()).makeDisplayInfoController(this);
+
         mSST.registerForVoiceRegStateOrRatChanged(this, EVENT_VRS_OR_RAT_CHANGED, null);
 
         mSettingsObserver = new SettingsObserver(context, this);
@@ -583,6 +588,16 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public TransportManager getTransportManager() {
         return mTransportManager;
+    }
+
+    @Override
+    public DeviceStateMonitor getDeviceStateMonitor() {
+        return mDeviceStateMonitor;
+    }
+
+    @Override
+    public DisplayInfoController getDisplayInfoController() {
+        return mDisplayInfoController;
     }
 
     @Override

@@ -426,4 +426,11 @@ public class TelephonyComponentFactory {
             Looper looper) {
         return PhoneSwitcher.make(maxDataAttachModemCount, context, looper);
     }
+
+    /**
+     * Create a new DisplayInfoController.
+     */
+    public DisplayInfoController makeDisplayInfoController(Phone phone) {
+        return new DisplayInfoController(phone);
+    }
 }
