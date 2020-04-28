@@ -30,10 +30,7 @@ import android.net.Uri;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
-import android.telephony.Annotation.NetworkType;
 import android.telephony.AnomalyReporter;
-import android.telephony.NetworkRegistrationInfo;
-import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.SparseArray;
@@ -96,9 +93,6 @@ public class DcNetworkAgent extends NetworkAgent {
         mTransportType = transportType;
         mDataConnection = dc;
         mNetworkInfo = new NetworkInfo(ni);
-        setLegacyExtraInfo(dc.getApnSetting().getApnName());
-        int subType = getNetworkType();
-        setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
         // TODO: Remove after b/151487565 is fixed.
         sNetworkAgents.add(this);
         checkRedundantIms();
@@ -288,12 +282,10 @@ public class DcNetworkAgent extends NetworkAgent {
         if (!isOwned(dc, "sendNetworkInfo")) return;
         final NetworkInfo.State oldState = mNetworkInfo.getState();
         final NetworkInfo.State state = networkInfo.getState();
-        String extraInfo = dc.getApnSetting().getApnName();
-        if (mNetworkInfo.getExtraInfo() != extraInfo) {
-            setLegacyExtraInfo(extraInfo);
+        if (mNetworkInfo.getExtraInfo() != networkInfo.getExtraInfo()) {
+            setLegacyExtraInfo(networkInfo.getExtraInfo());
         }
-
-        int subType = getNetworkType();
+        int subType = networkInfo.getSubtype();
         if (mNetworkInfo.getSubtype() != subType) {
             setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
         }
@@ -384,17 +376,6 @@ public class DcNetworkAgent extends NetworkAgent {
      */
     private void loge(String s) {
         Rlog.e(mTag, s);
-    }
-
-    private @NetworkType int getNetworkType() {
-        final ServiceState serviceState = mPhone.getServiceState();
-        NetworkRegistrationInfo nri = serviceState.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
-        int subType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        if (nri != null) {
-            subType = nri.getAccessNetworkTechnology();
-        }
-        return subType;
     }
 
     class DcKeepaliveTracker {
