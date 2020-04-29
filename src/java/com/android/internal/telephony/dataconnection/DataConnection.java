@@ -1310,7 +1310,6 @@ public class DataConnection extends StateMachine {
     public NetworkCapabilities getNetworkCapabilities() {
         NetworkCapabilities result = new NetworkCapabilities();
         result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        boolean areAllApnsUnmetered = false;
 
         if (mApnSetting != null) {
             final String[] types = ApnSetting.getApnTypesStringFromBitmask(
@@ -1385,10 +1384,8 @@ public class DataConnection extends StateMachine {
             // DataConnection has the immutable NOT_METERED capability only if all APNs in the
             // APN setting are unmetered according to carrier config METERED_APN_TYPES_STRINGS.
             // All other cases should use the dynamic TEMPORARILY_NOT_METERED capability instead.
-            if (!ApnSettingUtils.isMetered(mApnSetting, mPhone)) {
-                result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-                areAllApnsUnmetered = true;
-            }
+            result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED,
+                    !ApnSettingUtils.isMetered(mApnSetting, mPhone));
 
             if (result.deduceRestrictedCapability()) {
                 result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
@@ -1414,14 +1411,12 @@ public class DataConnection extends StateMachine {
             result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
         }
 
-        // Mark TEMPORARILY_NOT_METERED in the following cases,
+        // Mark TEMPORARILY_NOT_METERED in the following cases:
         // 1. The non-restricted data is intended for unmetered use only.
         // 2. DcTracker set an unmetered override due to network/location (eg. 5G).
         // 3. SubscriptionManager set an unmetered override as requested by policy.
-        // 4. All attached APN contexts for this DataConnection are unmetered
         if ((mUnmeteredUseOnly && !mRestrictedNetworkOverride) || mUnmeteredOverride
-                || (mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_UNMETERED) != 0
-                || areAllApnsUnmetered) {
+                || (mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_UNMETERED) != 0) {
             result.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         } else {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
