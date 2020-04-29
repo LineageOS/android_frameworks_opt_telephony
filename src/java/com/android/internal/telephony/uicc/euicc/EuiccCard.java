@@ -99,6 +99,9 @@ public class EuiccCard extends UiccCard {
     private static final String DEV_CAP_EUTRAN = "eutran";
     private static final String DEV_CAP_NFC = "nfc";
     private static final String DEV_CAP_CRL = "crl";
+    private static final String DEV_CAP_NREPC = "nrepc";
+    private static final String DEV_CAP_NR5GC = "nr5gc";
+    private static final String DEV_CAP_EUTRAN5GC = "eutran5gc";
 
     // These interfaces are used for simplifying the code by leveraging lambdas.
     private interface ApduRequestBuilder {
@@ -1058,6 +1061,15 @@ public class EuiccCard extends UiccCard {
                 break;
             case DEV_CAP_CRL:
                 devCapBuilder.addChildAsBytes(Tags.TAG_CTX_7, versionBytes);
+                break;
+            case DEV_CAP_NREPC:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_9, versionBytes);
+                break;
+            case DEV_CAP_NR5GC:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_10, versionBytes);
+                break;
+            case DEV_CAP_EUTRAN5GC:
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_11, versionBytes);
                 break;
             default:
                 loge("Invalid device capability name: " + devCap);
