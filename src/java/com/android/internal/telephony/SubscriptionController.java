@@ -332,6 +332,7 @@ public class SubscriptionController extends ISub.Stub {
 
         // Initial invalidate activates caching.
         invalidateDefaultSubIdCaches();
+        invalidateDefaultDataSubIdCaches();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
@@ -2106,23 +2107,30 @@ public class SubscriptionController extends ISub.Stub {
     public int setUiccApplicationsEnabled(boolean enabled, int subId) {
         if (DBG) logd("[setUiccApplicationsEnabled]+ enabled:" + enabled + " subId:" + subId);
 
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
+        enforceModifyPhoneState("setUiccApplicationsEnabled");
 
-        int result = mContext.getContentResolver().update(
-                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+        long identity = Binder.clearCallingIdentity();
+        try {
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
 
-        // Refresh the Cache of Active Subscription Info List
-        refreshCachedActiveSubscriptionInfoList();
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
-        notifySubscriptionInfoChanged();
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
 
-        if (isActiveSubId(subId)) {
-            Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
-            phone.enableUiccApplications(enabled, null);
+            notifySubscriptionInfoChanged();
+
+            if (isActiveSubId(subId)) {
+                Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+                phone.enableUiccApplications(enabled, null);
+            }
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-
-        return result;
     }
 
     /**
@@ -4057,8 +4065,10 @@ public class SubscriptionController extends ISub.Stub {
      */
     private void setGlobalSetting(String name, int value) {
         Settings.Global.putInt(mContext.getContentResolver(), name, value);
-        if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION
-                 || name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
+        if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION) {
+            invalidateDefaultDataSubIdCaches();
+            invalidateDefaultSubIdCaches();
+        } else if (name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
             invalidateDefaultSubIdCaches();
         }
     }
@@ -4069,6 +4079,15 @@ public class SubscriptionController extends ISub.Stub {
     private static void invalidateDefaultSubIdCaches() {
         if (sCachingEnabled) {
             SubscriptionManager.invalidateDefaultSubIdCaches();
+        }
+    }
+
+    /**
+     * @hide
+     */
+    private static void invalidateDefaultDataSubIdCaches() {
+        if (sCachingEnabled) {
+            SubscriptionManager.invalidateDefaultDataSubIdCaches();
         }
     }
 
