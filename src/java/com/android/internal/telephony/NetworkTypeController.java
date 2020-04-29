@@ -69,7 +69,8 @@ public class NetworkTypeController extends StateMachine {
     private static final String STATE_ANY = "any";
     private static final String STATE_LEGACY = "legacy";
     private static final String[] ALL_STATES = { STATE_CONNECTED_MMWAVE, STATE_CONNECTED,
-            STATE_NOT_RESTRICTED_RRC_IDLE, STATE_NOT_RESTRICTED_RRC_CON, STATE_RESTRICTED };
+            STATE_NOT_RESTRICTED_RRC_IDLE, STATE_NOT_RESTRICTED_RRC_CON, STATE_RESTRICTED,
+            STATE_LEGACY };
 
     /** Stop all timers and go to current state. */
     public static final int EVENT_UPDATE = 0;
