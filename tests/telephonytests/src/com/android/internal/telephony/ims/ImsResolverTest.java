@@ -127,6 +127,7 @@ public class ImsResolverTest extends ImsTestBase {
     @After
     @Override
     public void tearDown() throws Exception {
+        mTestImsResolver.destroy();
         mTestImsResolver = null;
         mLooper.destroy();
         mLooper = null;
