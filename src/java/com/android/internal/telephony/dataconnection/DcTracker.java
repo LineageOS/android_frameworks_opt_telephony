@@ -2308,6 +2308,7 @@ public class DcTracker extends Handler {
             setDataProfilesAsNeeded();
             setInitialAttachApn();
             sortApnContextByPriority();
+            cleanUpConnectionsOnUpdatedApns(true, Phone.REASON_CARRIER_CHANGE);
             setupDataOnAllConnectableApns(Phone.REASON_CARRIER_CHANGE, RetryFailures.ALWAYS);
         } else {
             log("onCarrierConfigChanged: SIM is not loaded yet.");
