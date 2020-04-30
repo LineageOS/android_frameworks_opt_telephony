@@ -689,6 +689,8 @@ public abstract class TelephonyTest {
     }
 
     protected void tearDown() throws Exception {
+        // Ensure there are no references to handlers between tests.
+        PhoneConfigurationManager.unregisterAllMultiSimConfigChangeRegistrants();
         // unmonitor TestableLooper for TelephonyTest class
         if (mTestableLooper != null) {
             unmonitorTestableLooper(mTestableLooper);
