@@ -437,4 +437,10 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
             return "*740";
         }
     }
+
+    @Override
+    public boolean isNetworkInitiatedUssd() {
+        Rlog.w(LOG_TAG, "isNetworkInitiated is not implemented in CdmaMmiCode");
+        return false;
+    }
 }
