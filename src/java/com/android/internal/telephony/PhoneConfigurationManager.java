@@ -397,6 +397,13 @@ public class PhoneConfigurationManager {
         sMultiSimConfigChangeRegistrants.remove(h);
     }
 
+    /**
+     * Unregister for all multi-SIM configuration change events.
+     */
+    public static void unregisterAllMultiSimConfigChangeRegistrants() {
+        sMultiSimConfigChangeRegistrants.removeAll();
+    }
+
     private void broadcastMultiSimConfigChange(int numOfActiveModems) {
         log("broadcastSimSlotNumChange numOfActiveModems" + numOfActiveModems);
         // Notify internal registrants first.
