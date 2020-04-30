@@ -35,7 +35,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.ParcelUuid;
+import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.os.UserHandle;
@@ -263,6 +265,7 @@ public class SubscriptionController extends ISub.Stub {
     @UnsupportedAppUsage
     private int[] colorArr;
     private long mLastISubServiceRegTime;
+    private RegistrantList mUiccAppsEnableChangeRegList = new RegistrantList();
 
     // The properties that should be shared and synced across grouped subscriptions.
     private static final Set<String> GROUP_SHARING_PROPERTIES = new HashSet<>(Arrays.asList(
@@ -2120,17 +2123,36 @@ public class SubscriptionController extends ISub.Stub {
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
 
+            notifyUiccAppsEnableChanged();
             notifySubscriptionInfoChanged();
-
-            if (isActiveSubId(subId)) {
-                Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
-                phone.enableUiccApplications(enabled, null);
-            }
 
             return result;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+    }
+
+    /**
+     * Register to change of uicc applications enablement changes.
+     * @param notifyNow whether to notify target upon registration.
+     */
+    public void registerForUiccAppsEnabled(Handler handler, int what, Object object,
+            boolean notifyNow) {
+        mUiccAppsEnableChangeRegList.addUnique(handler, what, object);
+        if (notifyNow) {
+            handler.obtainMessage(what, object).sendToTarget();
+        }
+    }
+
+    /**
+     * Unregister to change of uicc applications enablement changes.
+     */
+    public void unregisterForUiccAppsEnabled(Handler handler) {
+        mUiccAppsEnableChangeRegList.remove(handler);
+    }
+
+    private void notifyUiccAppsEnableChanged() {
+        mUiccAppsEnableChangeRegList.notifyRegistrants();
     }
 
     /**
