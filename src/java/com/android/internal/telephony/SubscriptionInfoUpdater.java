@@ -356,6 +356,8 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_MULTI_SIM_CONFIG_CHANGED:
                 onMultiSimConfigChanged();
+                break;
+
             default:
                 logd("Unknown msg:" + msg.what);
         }
