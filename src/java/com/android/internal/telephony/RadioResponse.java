@@ -1406,7 +1406,19 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void requestIccSimAuthenticationResponse(RadioResponseInfo responseInfo,
                                                     android.hardware.radio.V1_0.IccIoResult
                                                             result) {
-        responseICC_IOBase64(responseInfo, result);
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            IccIoResult ret = new IccIoResult(
+                    result.sw1,
+                    result.sw2,
+                    TextUtils.isEmpty(result.simResponse)
+                            ? null : result.simResponse.getBytes());
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone(rr, responseInfo, ret);
+        }
     }
 
     /**
@@ -2464,24 +2476,6 @@ public class RadioResponse extends IRadioResponse.Stub {
 
         if (rr != null) {
             ArrayList<HardwareConfig> ret = RIL.convertHalHwConfigList(config, mRil);
-            if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, ret);
-            }
-            mRil.processResponseDone(rr, responseInfo, ret);
-        }
-    }
-
-    private void responseICC_IOBase64(RadioResponseInfo responseInfo,
-                                      android.hardware.radio.V1_0.IccIoResult result) {
-        RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            IccIoResult ret = new IccIoResult(
-                    result.sw1,
-                    result.sw2,
-                    (!(result.simResponse).equals(""))
-                            ? android.util.Base64.decode(result.simResponse,
-                            android.util.Base64.DEFAULT) : (byte[]) null);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
