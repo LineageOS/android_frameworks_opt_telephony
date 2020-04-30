@@ -301,6 +301,9 @@ public class GsmCdmaPhone extends Phone {
                 Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
                 EVENT_DEVICE_PROVISIONING_DATA_SETTING_CHANGE);
 
+        SubscriptionController.getInstance().registerForUiccAppsEnabled(this,
+                EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED, null, false);
+
         loadTtyMode();
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
     }
@@ -348,7 +351,8 @@ public class GsmCdmaPhone extends Phone {
         mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
-        mCi.registerUiccApplicationEnablementChanged(this, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
+        mCi.registerUiccApplicationEnablementChanged(this,
+                EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mCi.setOnRegistrationFailed(this, EVENT_REGISTRATION_FAILED, null);
@@ -945,6 +949,14 @@ public class GsmCdmaPhone extends Phone {
             // three way calls in CDMA will be handled by feature codes
             loge("conference: not possible in CDMA");
         }
+    }
+
+    @Override
+    public void dispose() {
+        // Note: this API is currently never called. We are defining actions here in case
+        // we need to dispose GsmCdmaPhone/Phone object.
+        super.dispose();
+        SubscriptionController.getInstance().unregisterForUiccAppsEnabled(this);
     }
 
     @Override
@@ -3103,7 +3115,7 @@ public class GsmCdmaPhone extends Phone {
                 }
                 break;
             case EVENT_GET_UICC_APPS_ENABLEMENT_DONE:
-            case EVENT_UICC_APPS_ENABLEMENT_CHANGED: {
+            case EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED:
                 ar = (AsyncResult) msg.obj;
                 if (ar == null) return;
                 if (ar.exception != null) {
@@ -3112,9 +3124,11 @@ public class GsmCdmaPhone extends Phone {
                 }
 
                 mUiccApplicationsEnabled = (Boolean) ar.result;
+            // Intentional falling through.
+            case EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED:
                 reapplyUiccAppsEnablementIfNeeded();
                 break;
-            }
+
             case EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE: {
                 ar = (AsyncResult) msg.obj;
                 if (ar == null || ar.exception == null) return;
