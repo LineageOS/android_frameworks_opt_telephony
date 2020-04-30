@@ -18,21 +18,35 @@ package com.android.internal.telephony;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 
+import android.os.PersistableBundle;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.CarrierConfigManager;
+import android.telephony.LteVopsSupportInfo;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
 
 /** Tests for RatRatcheter. */
-public class RatRatcheterTest {
+public class RatRatcheterTest extends TelephonyTest {
 
     private ServiceState mServiceState;
+    private PersistableBundle mBundle;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        super.setUp(getClass().getSimpleName());
         mServiceState = new ServiceState();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
     }
 
     @Test
@@ -67,5 +81,85 @@ public class RatRatcheterTest {
 
         assertFalse(updated);
         assertTrue(Arrays.equals(mServiceState.getCellBandwidths(), originalBandwidths));
+    }
+
+    private NetworkRegistrationInfo createNetworkRegistrationInfo(
+            int domain, int accessNetworkTechnology, boolean isUsingCarrierAggregation) {
+
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
+
+        return new NetworkRegistrationInfo(
+                domain,  // domain
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,  // transportType
+                0,  // registrationState
+                accessNetworkTechnology,  // accessNetworkTechnology
+                0,  // rejectCause
+                false,  // emergencyOnly
+                null,  // availableServices
+                null,  // cellIdentity
+                null,  // rplmn
+                0,  // maxDataCalls
+                false,  // isDcNrRestricted
+                false,  // isNrAvailable
+                false,  // isEndcAvailable
+                lteVopsSupportInfo,  // lteVopsSupportInfo
+                isUsingCarrierAggregation);  // isUsingCarrierAggregation
+    }
+
+    private void setNetworkRegistrationInfo(ServiceState ss, int accessNetworkTechnology) {
+
+        NetworkRegistrationInfo nri1;
+        NetworkRegistrationInfo nri2;
+
+        boolean isUsingCarrierAggregation = false;
+
+        if (accessNetworkTechnology == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+            isUsingCarrierAggregation = true;
+        }
+
+        nri1 = createNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                accessNetworkTechnology, isUsingCarrierAggregation);
+        nri2 = createNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+                accessNetworkTechnology, isUsingCarrierAggregation);
+
+        ss.addNetworkRegistrationInfo(nri1);
+        ss.addNetworkRegistrationInfo(nri2);
+    }
+
+    @Test
+    public void testRatchetIsFamily() {
+        ServiceState oldSS = new ServiceState();
+        ServiceState newSS = new ServiceState();
+
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putStringArray(CarrierConfigManager.KEY_RATCHET_RAT_FAMILIES,
+                new String[]{"14,19"});
+
+        setNetworkRegistrationInfo(oldSS, TelephonyManager.NETWORK_TYPE_LTE_CA);
+        setNetworkRegistrationInfo(newSS, TelephonyManager.NETWORK_TYPE_LTE);
+
+        RatRatcheter ratRatcheter = new RatRatcheter(mPhone);
+        ratRatcheter.ratchet(oldSS, newSS, false);
+
+        assertTrue(newSS.isUsingCarrierAggregation());
+    }
+
+    @Test
+    public void testRatchetIsNotFamily() {
+        ServiceState oldSS = new ServiceState();
+        ServiceState newSS = new ServiceState();
+
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putStringArray(CarrierConfigManager.KEY_RATCHET_RAT_FAMILIES, new String[]{});
+
+        setNetworkRegistrationInfo(oldSS, TelephonyManager.NETWORK_TYPE_LTE_CA);
+        setNetworkRegistrationInfo(newSS, TelephonyManager.NETWORK_TYPE_LTE);
+
+        RatRatcheter ratRatcheter = new RatRatcheter(mPhone);
+        ratRatcheter.ratchet(oldSS, newSS, false);
+
+        assertFalse(newSS.isUsingCarrierAggregation());
     }
 }
