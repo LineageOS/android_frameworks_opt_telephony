@@ -1429,6 +1429,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         } else {
             log("No carrier ImsReasonInfo mappings defined.");
+            if (!mImsReasonCodeMap.isEmpty()) {
+                mImsReasonCodeMap.clear();
+            }
         }
     }
 
