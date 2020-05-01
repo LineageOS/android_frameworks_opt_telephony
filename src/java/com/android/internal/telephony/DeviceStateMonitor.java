@@ -774,10 +774,10 @@ public class DeviceStateMonitor extends Handler {
          * These thresholds are taken from the LTE RSRQ defaults in {@link CarrierConfigManager}.
          */
         public static final int[] EUTRAN_RSRQ = new int[] {
-            -19,  /* SIGNAL_STRENGTH_POOR */
+            -20,  /* SIGNAL_STRENGTH_POOR */
             -17,  /* SIGNAL_STRENGTH_MODERATE */
             -14,  /* SIGNAL_STRENGTH_GOOD */
-            -12   /* SIGNAL_STRENGTH_GREAT */
+            -11   /* SIGNAL_STRENGTH_GREAT */
         };
 
         /**
@@ -819,9 +819,9 @@ public class DeviceStateMonitor extends Handler {
          */
         public static final int[] NGRAN_RSRSRQ = new int[] {
             -16, /* SIGNAL_STRENGTH_POOR */
-            -11, /* SIGNAL_STRENGTH_MODERATE */
+            -12, /* SIGNAL_STRENGTH_MODERATE */
             -9, /* SIGNAL_STRENGTH_GOOD */
-            -7  /* SIGNAL_STRENGTH_GREAT */
+            -6  /* SIGNAL_STRENGTH_GREAT */
         };
 
         /**
