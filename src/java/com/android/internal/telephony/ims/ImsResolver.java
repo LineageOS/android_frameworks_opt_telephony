@@ -606,6 +606,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         bindCarrierServicesIfAvailable();
     }
 
+    /**
+     * Destroys this ImsResolver. Used for tearing down static resources during testing.
+     */
+    @VisibleForTesting
+    public void destroy() {
+        PhoneConfigurationManager.unregisterForMultiSimConfigChange(mHandler);
+        mHandler.removeCallbacksAndMessages(null);
+    }
+
     // Only start the bind if there is an existing Carrier Configuration. Otherwise, wait for
     // carrier config changed.
     private void bindCarrierServicesIfAvailable() {
