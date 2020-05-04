@@ -1001,7 +1001,7 @@ public class UiccController extends Handler {
                     if (!TextUtils.isEmpty(eid)) {
                         isDefaultEuiccCardIdSet = true;
                         mDefaultEuiccCardId = convertToPublicCardId(eid);
-                        log("Using eid=" + eid + " from removable eUICC in slot="
+                        logWithLocalLog("Using eid=" + eid + " from removable eUICC in slot="
                                 + i + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId);
                         break;
                     }
@@ -1010,16 +1010,36 @@ public class UiccController extends Handler {
         }
 
         if (mHasBuiltInEuicc && !anyEuiccIsActive && !isDefaultEuiccCardIdSet) {
-            log("onGetSlotStatusDone: setting TEMPORARILY_UNSUPPORTED_CARD_ID");
+            logWithLocalLog(
+                    "onGetSlotStatusDone: mDefaultEuiccCardId=TEMPORARILY_UNSUPPORTED_CARD_ID");
             isDefaultEuiccCardIdSet = true;
             mDefaultEuiccCardId = TEMPORARILY_UNSUPPORTED_CARD_ID;
         }
 
 
         if (!isDefaultEuiccCardIdSet) {
-            // no known eUICCs at all (it's possible that an eUICC is inserted and we just don't
-            // know it's EID)
-            mDefaultEuiccCardId = UNINITIALIZED_CARD_ID;
+            if (mDefaultEuiccCardId >= 0) {
+                // if mDefaultEuiccCardId has already been set to an actual eUICC,
+                // don't overwrite mDefaultEuiccCardId unless that eUICC is no longer inserted
+                boolean defaultEuiccCardIdIsStillInserted = false;
+                String cardString = mCardStrings.get(mDefaultEuiccCardId);
+                for (UiccSlot slot : mUiccSlots) {
+                    if (cardString.equals(IccUtils.stripTrailingFs(slot.getEid()))) {
+                        defaultEuiccCardIdIsStillInserted = true;
+                    }
+                }
+                if (!defaultEuiccCardIdIsStillInserted) {
+                    logWithLocalLog("onGetSlotStatusDone: mDefaultEuiccCardId="
+                            + mDefaultEuiccCardId
+                            + " is no longer inserted. Setting mDefaultEuiccCardId=UNINITIALIZED");
+                    mDefaultEuiccCardId = UNINITIALIZED_CARD_ID;
+                }
+            } else {
+                // no known eUICCs at all (it's possible that an eUICC is inserted and we just don't
+                // know it's EID)
+                logWithLocalLog("onGetSlotStatusDone: mDefaultEuiccCardId=UNINITIALIZED");
+                mDefaultEuiccCardId = UNINITIALIZED_CARD_ID;
+            }
         }
 
         if (VDBG) logPhoneIdToSlotIdMapping();
