@@ -39,8 +39,6 @@ import android.text.TextUtils;
 
 import com.android.telephony.Rlog;
 
-import com.android.telephony.Rlog;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -425,9 +423,9 @@ public class CellularNetworkService extends NetworkService {
                             .AccessTechnologySpecificInfo.EutranRegistrationInfo eutranInfo =
                                     regResult.accessTechnologySpecificInfo.eutranInfo();
 
-                    isEndcAvailable = eutranInfo.nrIndicators.isDcNrRestricted;
+                    isDcNrRestricted = eutranInfo.nrIndicators.isDcNrRestricted;
                     isNrAvailable = eutranInfo.nrIndicators.isNrAvailable;
-                    isDcNrRestricted = eutranInfo.nrIndicators.isEndcAvailable;
+                    isEndcAvailable = eutranInfo.nrIndicators.isEndcAvailable;
                     vopsInfo = convertHalLteVopsSupportInfo(
                             eutranInfo.lteVopsInfo.isVopsSupported,
                             eutranInfo.lteVopsInfo.isEmcBearerSupported);
