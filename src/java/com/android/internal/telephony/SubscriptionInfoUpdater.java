@@ -106,7 +106,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static Context sContext = null;
     @UnsupportedAppUsage
 
-    private static String[] sIccId = new String[SUPPORTED_MODEM_COUNT];
+    protected static String[] sIccId = new String[SUPPORTED_MODEM_COUNT];
     private static int[] sSimCardState = new int[SUPPORTED_MODEM_COUNT];
     private static int[] sSimApplicationState = new int[SUPPORTED_MODEM_COUNT];
     private static boolean sIsSubInfoInitialized = false;
@@ -123,7 +123,7 @@ public class SubscriptionInfoUpdater extends Handler {
      * Runnable with a boolean parameter. This is used in
      * updateEmbeddedSubscriptions(List<Integer> cardIds, @Nullable UpdateEmbeddedSubsCallback).
      */
-    private interface UpdateEmbeddedSubsCallback {
+    protected interface UpdateEmbeddedSubsCallback {
         /**
          * Callback of the Runnable.
          * @param hasChanges Whether there is any subscription info change. If yes, we need to
@@ -216,7 +216,7 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     @UnsupportedAppUsage
-    private boolean isAllIccIdQueryDone() {
+    protected boolean isAllIccIdQueryDone() {
         for (int i = 0; i < TelephonyManager.getDefault().getActiveModemCount(); i++) {
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
@@ -293,15 +293,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_READY:
-                cardIds.add(getCardIdFromPhoneId(msg.arg1));
-                updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
-                    if (hasChanges) {
-                        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
-                    }
-                });
-                broadcastSimStateChanged(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_READY, null);
-                broadcastSimCardStateChanged(msg.arg1, TelephonyManager.SIM_STATE_PRESENT);
-                broadcastSimApplicationStateChanged(msg.arg1, TelephonyManager.SIM_STATE_NOT_READY);
+                handleSimReady(msg.arg1);
                 break;
 
             case EVENT_SIM_IMSI:
@@ -354,7 +346,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private int getCardIdFromPhoneId(int phoneId) {
+    protected int getCardIdFromPhoneId(int phoneId) {
         UiccController uiccController = UiccController.getInstance();
         UiccCard card = uiccController.getUiccCardForPhone(phoneId);
         if (card != null) {
@@ -368,7 +360,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 EVENT_REFRESH_EMBEDDED_SUBSCRIPTIONS, cardId, 0 /* arg2 */, callback));
     }
 
-    private void handleSimLocked(int phoneId, String reason) {
+    protected void handleSimLocked(int phoneId, String reason) {
         if (sIccId[phoneId] != null && sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
             logd("SIM" + (phoneId + 1) + " hot plug in");
             sIccId[phoneId] = null;
@@ -415,7 +407,22 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void handleSimNotReady(int phoneId) {
+    protected void handleSimReady(int phoneId) {
+        List<Integer> cardIds = new ArrayList<>();
+
+        cardIds.add(getCardIdFromPhoneId(phoneId));
+        updateEmbeddedSubscriptions(cardIds, (hasChanges) -> {
+        if (hasChanges) {
+            SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+        }
+        });
+        broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_READY, null);
+        broadcastSimCardStateChanged(phoneId, TelephonyManager.SIM_STATE_PRESENT);
+        broadcastSimApplicationStateChanged(phoneId, TelephonyManager.SIM_STATE_NOT_READY);
+    }
+
+
+    protected void handleSimNotReady(int phoneId) {
         logd("handleSimNotReady: phoneId: " + phoneId);
         boolean isFinalState = false;
 
@@ -451,7 +458,7 @@ public class SubscriptionInfoUpdater extends Handler {
         return info != null && !info.areUiccApplicationsEnabled();
     }
 
-    private void handleSimLoaded(int phoneId) {
+    protected void handleSimLoaded(int phoneId) {
         logd("handleSimLoaded: phoneId: " + phoneId);
 
         // The SIM should be loaded at this state, but it is possible in cases such as SIM being
@@ -633,7 +640,7 @@ public class SubscriptionInfoUpdater extends Handler {
         updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
     }
 
-    private void handleSimAbsent(int phoneId) {
+    protected void handleSimAbsent(int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             logd("handleSimAbsent on invalid phoneId");
             return;
@@ -650,7 +657,7 @@ public class SubscriptionInfoUpdater extends Handler {
         updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
 
-    private void handleSimError(int phoneId) {
+    protected void handleSimError(int phoneId) {
         if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
             logd("SIM" + (phoneId + 1) + " Error ");
         }
@@ -664,7 +671,7 @@ public class SubscriptionInfoUpdater extends Handler {
         updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
     }
 
-    private synchronized void updateSubscriptionInfoByIccId(int phoneId,
+    protected synchronized void updateSubscriptionInfoByIccId(int phoneId,
             boolean updateEmbeddedSubs) {
         logd("updateSubscriptionInfoByIccId:+ Start - phoneId: " + phoneId);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
@@ -1114,7 +1121,7 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     @UnsupportedAppUsage
-    private void broadcastSimStateChanged(int phoneId, String state, String reason) {
+    protected void broadcastSimStateChanged(int phoneId, String state, String reason) {
         Intent i = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         // TODO - we'd like this intent to have a single snapshot of all sim state,
         // but until then this should not use REPLACE_PENDING or we may lose
@@ -1131,7 +1138,7 @@ public class SubscriptionInfoUpdater extends Handler {
         IntentBroadcaster.getInstance().broadcastStickyIntent(sContext, i, phoneId);
     }
 
-    private void broadcastSimCardStateChanged(int phoneId, int state) {
+    protected void broadcastSimCardStateChanged(int phoneId, int state) {
         if (state != sSimCardState[phoneId]) {
             sSimCardState[phoneId] = state;
             Intent i = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
@@ -1149,7 +1156,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void broadcastSimApplicationStateChanged(int phoneId, int state) {
+    protected void broadcastSimApplicationStateChanged(int phoneId, int state) {
         // Broadcast if the state has changed, except if old state was UNKNOWN and new is NOT_READY,
         // because that's the initial state and a broadcast should be sent only on a transition
         // after SIM is PRESENT. The only exception is eSIM boot profile, where NOT_READY is the
