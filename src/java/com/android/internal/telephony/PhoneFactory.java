@@ -180,7 +180,9 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
                 TelephonyComponentFactory.getInstance().inject(SubscriptionController.class.
                         getName()).initSubscriptionController(context);
-                MultiSimSettingController.init(context, SubscriptionController.getInstance());
+                TelephonyComponentFactory.getInstance().inject(MultiSimSettingController.class.
+                        getName()).initMultiSimSettingController(context,
+                        SubscriptionController.getInstance());
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
@@ -215,8 +217,10 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 HandlerThread pfhandlerThread = new HandlerThread("PhoneFactoryHandlerThread");
                 pfhandlerThread.start();
-                sSubInfoRecordUpdater = new SubscriptionInfoUpdater(
-                        pfhandlerThread.getLooper(), context, sCommandsInterfaces);
+                sSubInfoRecordUpdater = TelephonyComponentFactory.getInstance().inject(
+                        SubscriptionInfoUpdater.class.getName()).
+                        makeSubscriptionInfoUpdater(pfhandlerThread.
+                        getLooper(), context, sCommandsInterfaces);
 
                 // Only bring up IMS if the device supports having an IMS stack.
                 if (context.getPackageManager().hasSystemFeature(
