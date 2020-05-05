@@ -699,7 +699,8 @@ public class MultiSimSettingController extends Handler {
                     && phone.isUserDataEnabled()
                     && !areSubscriptionsInSameGroup(defaultDataSub, phone.getSubId())) {
                 log("setting data to false on " + phone.getSubId());
-                phone.getDataEnabledSettings().setUserDataEnabled(false);
+                phone.getDataEnabledSettings().setDataEnabled(
+                        TelephonyManager.DATA_ENABLED_REASON_USER, false);
             }
         }
     }
