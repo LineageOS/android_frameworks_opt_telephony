@@ -341,6 +341,7 @@ public class SubscriptionController extends ISub.Stub {
         // Initial invalidate activates caching.
         invalidateDefaultSubIdCaches();
         invalidateDefaultDataSubIdCaches();
+        invalidateDefaultSmsSubIdCaches();
         invalidateActiveDataSubIdCaches();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
@@ -4099,6 +4100,8 @@ public class SubscriptionController extends ISub.Stub {
             invalidateDefaultSubIdCaches();
         } else if (name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
             invalidateDefaultSubIdCaches();
+        } else if (name == Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION) {
+            invalidateDefaultSmsSubIdCaches();
         }
     }
 
@@ -4117,6 +4120,15 @@ public class SubscriptionController extends ISub.Stub {
     private static void invalidateDefaultDataSubIdCaches() {
         if (sCachingEnabled) {
             SubscriptionManager.invalidateDefaultDataSubIdCaches();
+        }
+    }
+
+    /**
+     * @hide
+     */
+    private static void invalidateDefaultSmsSubIdCaches() {
+        if (sCachingEnabled) {
+            SubscriptionManager.invalidateDefaultSmsSubIdCaches();
         }
     }
 
