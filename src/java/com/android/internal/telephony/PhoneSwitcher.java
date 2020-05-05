@@ -58,6 +58,7 @@ import android.telephony.data.ApnSetting;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.SubscriptionController.WatchedInt;
 import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
 import com.android.internal.telephony.dataconnection.DcRequest;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -214,7 +215,14 @@ public class PhoneSwitcher extends Handler {
     protected int mPreferredDataPhoneId = SubscriptionManager.INVALID_PHONE_INDEX;
 
     // Subscription ID corresponds to mPreferredDataPhoneId.
-    private int mPreferredDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    private WatchedInt mPreferredDataSubId =
+            new WatchedInt(SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+        @Override
+        public void set(int newValue) {
+            super.set(newValue);
+            SubscriptionController.invalidateActiveDataSubIdCaches();
+        }
+    };
 
     // If non-null, An emergency call is about to be started, is ongoing, or has just ended and we
     // are overriding the DDS.
@@ -312,6 +320,7 @@ public class PhoneSwitcher extends Handler {
     public static PhoneSwitcher make(int maxDataAttachModemCount, Context context, Looper looper) {
         if (sPhoneSwitcher == null) {
             sPhoneSwitcher = new PhoneSwitcher(maxDataAttachModemCount, context, looper);
+            SubscriptionController.invalidateActiveDataSubIdCaches();
         }
 
         return sPhoneSwitcher;
@@ -441,10 +450,10 @@ public class PhoneSwitcher extends Handler {
             }
             case EVENT_PRIMARY_DATA_SUB_CHANGED: {
                 if (onEvaluate(REQUESTS_UNCHANGED, "primary data subId changed")) {
-                    logDataSwitchEvent(mPreferredDataSubId,
+                    logDataSwitchEvent(mPreferredDataSubId.get(),
                             TelephonyEvent.EventState.EVENT_STATE_START,
                             DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
-                    registerDefaultNetworkChangeCallback(mPreferredDataSubId,
+                    registerDefaultNetworkChangeCallback(mPreferredDataSubId.get(),
                             DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
                 }
                 break;
@@ -515,10 +524,10 @@ public class PhoneSwitcher extends Handler {
             // fall through
             case EVENT_DATA_ENABLED_CHANGED:
                 if (onEvaluate(REQUESTS_UNCHANGED, "EVENT_PRECISE_CALL_STATE_CHANGED")) {
-                    logDataSwitchEvent(mPreferredDataSubId,
+                    logDataSwitchEvent(mPreferredDataSubId.get(),
                             TelephonyEvent.EventState.EVENT_STATE_START,
                             DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
-                    registerDefaultNetworkChangeCallback(mPreferredDataSubId,
+                    registerDefaultNetworkChangeCallback(mPreferredDataSubId.get(),
                             DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
                 }
                 break;
@@ -1083,7 +1092,8 @@ public class PhoneSwitcher extends Handler {
             mPreferredDataPhoneId = phoneId;
         }
 
-        mPreferredDataSubId = mSubscriptionController.getSubIdUsingPhoneId(mPreferredDataPhoneId);
+        mPreferredDataSubId.set(
+                mSubscriptionController.getSubIdUsingPhoneId(mPreferredDataPhoneId));
     }
 
     private void transitionToEmergencyPhone() {
@@ -1097,8 +1107,8 @@ public class PhoneSwitcher extends Handler {
             mPreferredDataPhoneId = DEFAULT_EMERGENCY_PHONE_ID;
         }
 
-        if (mPreferredDataSubId != INVALID_SUBSCRIPTION_ID) {
-            mPreferredDataSubId = INVALID_SUBSCRIPTION_ID;
+        if (mPreferredDataSubId.get() != INVALID_SUBSCRIPTION_ID) {
+            mPreferredDataSubId.set(INVALID_SUBSCRIPTION_ID);
             notifyPreferredDataSubIdChanged();
         }
     }
@@ -1373,15 +1383,15 @@ public class PhoneSwitcher extends Handler {
     private void notifyPreferredDataSubIdChanged() {
         TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager) mContext
                 .getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
-        log("notifyPreferredDataSubIdChanged to " + mPreferredDataSubId);
-        telephonyRegistryManager.notifyActiveDataSubIdChanged(mPreferredDataSubId);
+        log("notifyPreferredDataSubIdChanged to " + mPreferredDataSubId.get());
+        telephonyRegistryManager.notifyActiveDataSubIdChanged(mPreferredDataSubId.get());
     }
 
     /**
      * @return The active data subscription id
      */
     public int getActiveDataSubId() {
-        return mPreferredDataSubId;
+        return mPreferredDataSubId.get();
     }
 
     // TODO (b/148396668): add an internal callback method to monitor phone capability change,
