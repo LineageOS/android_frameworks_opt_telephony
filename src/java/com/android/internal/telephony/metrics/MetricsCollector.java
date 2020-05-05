@@ -41,6 +41,7 @@ import com.android.telephony.Rlog;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Implements statsd pullers for Telephony.
@@ -81,6 +82,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private PersistAtomsStorage mStorage;
     private final StatsManager mStatsManager;
+    private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
         mStorage = new PersistAtomsStorage(context);
@@ -249,6 +251,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 .writeBoolean(session.rttEnabled)
                 .writeBoolean(session.isEmergency)
                 .writeBoolean(session.isRoaming)
+                // workaround: dimension required for keeping multiple pulled atoms
+                .writeInt(sRandom.nextInt())
                 .build();
     }
 
