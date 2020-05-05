@@ -3078,8 +3078,7 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SET_CARRIER_DATA_ENABLED:
                 ar = (AsyncResult) msg.obj;
                 boolean enabled = (boolean) ar.result;
-                mDataEnabledSettings.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_CARRIER,
-                        enabled);
+                mDataEnabledSettings.setCarrierDataEnabled(enabled);
                 break;
             case EVENT_DEVICE_PROVISIONED_CHANGE:
                 mDataEnabledSettings.updateProvisionedChanged();
