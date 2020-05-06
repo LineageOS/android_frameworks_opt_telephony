@@ -406,8 +406,12 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                     // If handover fails, we need to tear down the existing connection, so the
                     // new data connection can be re-established on the new transport. If we leave
                     // the existing data connection in current transport, then DCT and qualified
-                    // network service will be out of sync.
-                    : DcTracker.RELEASE_TYPE_NORMAL;
+                    // network service will be out of sync. Specifying release type to detach
+                    // the transport is moved to the other transport, but network request is still
+                    // there, connectivity service will not call unwanted to tear down the network.
+                    // We need explicitly tear down the data connection here so the new data
+                    // connection can be re-established on the other transport.
+                    : DcTracker.RELEASE_TYPE_DETACH;
             releaseNetworkInternal(networkRequest, releaseType, originTransport);
             mNetworkRequests.put(networkRequest, targetTransport);
         }
