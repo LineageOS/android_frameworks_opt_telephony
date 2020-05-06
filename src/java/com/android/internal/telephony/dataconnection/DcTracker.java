@@ -1651,7 +1651,8 @@ public class DcTracker extends Handler {
                 continue;
             }
 
-            if (shouldCleanUpConnection(apnContext, disableMeteredOnly)) {
+            if (shouldCleanUpConnection(apnContext, disableMeteredOnly,
+                    reason.equals(Phone.REASON_SINGLE_PDN_ARBITRATION))) {
                 // TODO - only do cleanup if not disconnected
                 if (apnContext.isDisconnected() == false) didDisconnect = true;
                 apnContext.setReason(reason);
@@ -1677,14 +1678,18 @@ public class DcTracker extends Handler {
         return didDisconnect;
     }
 
-    boolean shouldCleanUpConnection(ApnContext apnContext, boolean disableMeteredOnly) {
+    boolean shouldCleanUpConnection(ApnContext apnContext, boolean disableMeteredOnly,
+            boolean singlePdn) {
         if (apnContext == null) return false;
+
+        // If APN setting is not null and the reason is single PDN arbitration, clean up connection.
+        ApnSetting apnSetting = apnContext.getApnSetting();
+        if (apnSetting != null && singlePdn) return true;
 
         // If meteredOnly is false, clean up all connections.
         if (!disableMeteredOnly) return true;
 
         // If meteredOnly is true, and apnSetting is null or it's un-metered, no need to clean up.
-        ApnSetting apnSetting = apnContext.getApnSetting();
         if (apnSetting == null || !ApnSettingUtils.isMetered(apnSetting, mPhone)) return false;
 
         boolean isRoaming = mPhone.getServiceState().getDataRoaming();
@@ -4497,7 +4502,7 @@ public class DcTracker extends Handler {
                 }
                 setupDataOnConnectableApn(apnContext, Phone.REASON_DATA_ENABLED_OVERRIDE,
                         RetryFailures.ALWAYS);
-            } else if (shouldCleanUpConnection(apnContext, true)) {
+            } else if (shouldCleanUpConnection(apnContext, true, false)) {
                 apnContext.setReason(Phone.REASON_DATA_ENABLED_OVERRIDE);
                 cleanUpConnectionInternal(true, RELEASE_TYPE_DETACH, apnContext);
             }
