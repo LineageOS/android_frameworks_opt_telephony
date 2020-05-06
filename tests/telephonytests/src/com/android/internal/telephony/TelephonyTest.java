@@ -174,6 +174,8 @@ public abstract class TelephonyTest {
     @Mock
     protected DcTracker mDcTracker;
     @Mock
+    protected DisplayInfoController mDisplayInfoController;
+    @Mock
     protected GsmCdmaCall mGsmCdmaCall;
     @Mock
     protected ImsCall mImsCall;
@@ -446,6 +448,8 @@ public abstract class TelephonyTest {
                 .makeIccPhoneBookInterfaceManager(nullable(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory)
                 .makeDcTracker(nullable(Phone.class), anyInt());
+        doReturn(mDisplayInfoController).when(mTelephonyComponentFactory)
+                .makeDisplayInfoController(nullable(Phone.class));
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
                 .makeWspTypeDecoder(nullable(byte[].class));
         doReturn(mImsCT).when(mTelephonyComponentFactory)
@@ -490,6 +494,8 @@ public abstract class TelephonyTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(mCT).when(mPhone).getCallTracker();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
+        doReturn(mDeviceStateMonitor).when(mPhone).getDeviceStateMonitor();
+        doReturn(mDisplayInfoController).when(mPhone).getDisplayInfoController();
         doReturn(mEmergencyNumberTracker).when(mPhone).getEmergencyNumberTracker();
         doReturn(mCarrierSignalAgent).when(mPhone).getCarrierSignalAgent();
         doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();
