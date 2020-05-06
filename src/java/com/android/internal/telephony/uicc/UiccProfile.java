@@ -346,7 +346,12 @@ public class UiccProfile extends IccCard {
             if (isGsm) {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
             } else {
-                mCurrentAppType = UiccController.APP_FAM_3GPP2;
+                UiccCardApplication newApp = getApplication(UiccController.APP_FAM_3GPP2);
+                if(newApp != null) {
+                    mCurrentAppType = UiccController.APP_FAM_3GPP2;
+                } else {
+                    mCurrentAppType = UiccController.APP_FAM_3GPP;
+                }
             }
         }
     }
