@@ -244,7 +244,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    protected static class WatchedInt {
+    public static class WatchedInt {
         private int mValue;
 
         public WatchedInt(int initialValue) {
