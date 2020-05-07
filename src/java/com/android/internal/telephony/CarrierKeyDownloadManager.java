@@ -449,18 +449,14 @@ public class CarrierKeyDownloadManager extends Handler {
             for (int i = 0; i < keys.length(); i++) {
                 JSONObject key = keys.getJSONObject(i);
                 // Support both "public-key" and "certificate" String property.
-                // "certificate" is a more accurate description, however, the 3GPP draft spec
-                // S3-170116, "Privacy Protection for EAP-AKA" section 4.3 mandates the use of
-                // "public-key".
                 String cert = null;
                 if (key.has(JSON_CERTIFICATE)) {
                     cert = key.getString(JSON_CERTIFICATE);
                 } else {
                     cert = key.getString(JSON_CERTIFICATE_ALTERNATE);
                 }
-                // The 3GPP draft spec 3GPP draft spec S3-170116, "Privacy Protection for EAP-AKA"
-                // section 4.3, does not specify any key-type property. To be compatible with these
-                // networks, the logic defaults to WLAN type if not specified.
+                // The key-type property is optional, therefore, the default value is WLAN type if
+                // not specified.
                 int type = TelephonyManager.KEY_TYPE_WLAN;
                 if (key.has(JSON_TYPE)) {
                     String typeString = key.getString(JSON_TYPE);
