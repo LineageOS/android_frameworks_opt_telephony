@@ -3943,6 +3943,17 @@ public class SubscriptionController extends ISub.Stub {
             sSlotIndexToSubIds.clearSubIdList(slotIndex);
             sSlotIndexToSubIds.addToSubIdList(slotIndex, subId);
         }
+
+
+        // Remove the slot from sSlotIndexToSubIds if it has the same sub id with the added slot
+        for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
+            if (entry.getKey() != slotIndex && entry.getValue() != null
+                    && entry.getValue().contains(subId)) {
+                logdl("addToSubIdList - remove " + entry.getKey());
+                sSlotIndexToSubIds.remove(entry.getKey());
+            }
+        }
+
         if (DBG) logdl("slotIndex, subId combo is added to the map.");
         return true;
     }
