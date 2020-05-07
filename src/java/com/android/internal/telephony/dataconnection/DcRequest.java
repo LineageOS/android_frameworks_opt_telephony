@@ -46,13 +46,15 @@ public class DcRequest implements Comparable<DcRequest> {
      * Create a DcRequest based off of the network request.  If the network request is not cellular,
      * then null is returned and a warning is generated.
      * @param networkRequest sets the type of dc request
+     * @param apnConfigTypeRepository apn config types to match on the network request
      * @return corresponding DcRequest
      *
      */
     @Nullable
-    public static DcRequest create(@NonNull final NetworkRequest networkRequest) {
+    public static DcRequest create(@NonNull final NetworkRequest networkRequest,
+            @NonNull final ApnConfigTypeRepository apnConfigTypeRepository) {
         final int apnType = ApnContext.getApnTypeFromNetworkRequest(networkRequest);
-        final ApnConfigType apnConfigType = ApnConfigTypeRepository.getDefault().getByType(apnType);
+        final ApnConfigType apnConfigType = apnConfigTypeRepository.getByType(apnType);
         if (apnConfigType == null) {
             Rlog.d(LOG_TAG, "Non cellular request ignored: " + networkRequest.toString());
             checkForAnomalousNetworkRequest(networkRequest);
