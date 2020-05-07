@@ -781,7 +781,8 @@ public class MultiSimSettingController extends Handler {
             EuiccManager euiccManager = (EuiccManager)
                     mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
-                    PendingIntent.getService(mContext, 0, new Intent(), 0));
+                    PendingIntent.getService(
+                            mContext, 0, new Intent(), PendingIntent.FLAG_IMMUTABLE));
         }
     }
 
