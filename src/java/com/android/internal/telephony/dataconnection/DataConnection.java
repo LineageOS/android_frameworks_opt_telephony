@@ -694,11 +694,26 @@ public class DataConnection extends StateMachine {
         // old modem backward compatibility).
         boolean isModemRoaming = mPhone.getServiceState().getDataRoamingFromRegistration();
 
+        // If the apn is NOT metered, we will allow data roaming regardless of the setting.
+        boolean isUnmeteredApnType = !ApnSettingUtils.isMeteredApnType(
+                cp.mApnContext.getApnTypeBitmask(), mPhone);
+
         // Set this flag to true if the user turns on data roaming. Or if we override the roaming
         // state in framework, we should set this flag to true as well so the modem will not reject
         // the data call setup (because the modem actually thinks the device is roaming).
         boolean allowRoaming = mPhone.getDataRoamingEnabled()
-                || (isModemRoaming && !mPhone.getServiceState().getDataRoaming());
+                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()
+                || isUnmeteredApnType));
+
+        if (DBG) {
+            log("allowRoaming=" + allowRoaming
+                    + ", mPhone.getDataRoamingEnabled()=" + mPhone.getDataRoamingEnabled()
+                    + ", isModemRoaming=" + isModemRoaming
+                    + ", mPhone.getServiceState().getDataRoaming()="
+                    + mPhone.getServiceState().getDataRoaming()
+                    + ", isUnmeteredApnType=" + isUnmeteredApnType
+            );
+        }
 
         // Check if this data setup is a handover.
         LinkProperties linkProperties = null;
