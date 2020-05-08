@@ -1028,7 +1028,8 @@ public class UiccController extends Handler {
                 boolean defaultEuiccCardIdIsStillInserted = false;
                 String cardString = mCardStrings.get(mDefaultEuiccCardId);
                 for (UiccSlot slot : mUiccSlots) {
-                    if (cardString.equals(IccUtils.stripTrailingFs(slot.getEid()))) {
+                    if (cardString.equals(
+                            IccUtils.stripTrailingFs(slot.getUiccCard().getCardId()))) {
                         defaultEuiccCardIdIsStillInserted = true;
                     }
                 }
