@@ -89,8 +89,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         replaceInstance(Handler.class, "mLooper", mDisplayInfoController, Looper.myLooper());
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
-        doReturn(TelephonyManager.NETWORK_TYPE_BITMASK_NR)
-                .when(mTelephonyManager).getPreferredNetworkTypeBitmask();
     }
 
     @After

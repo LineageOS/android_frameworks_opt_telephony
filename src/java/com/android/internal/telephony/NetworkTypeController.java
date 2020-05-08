@@ -351,11 +351,6 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private @Annotation.OverrideNetworkType int getNrDisplayType() {
-        // Don't show 5G icon if preferred network type does not include 5G
-        if ((mTelephonyManager.getPreferredNetworkTypeBitmask()
-                & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
-            return TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-        }
         // Icon display keys in order of priority
         List<String> keys = new ArrayList<>();
         // TODO: Update for NR SA
