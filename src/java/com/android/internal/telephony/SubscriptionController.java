@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.telephony.TelephonyManager.MULTISIM_ALLOWED;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_REMOTE_SERVICE_EXCEPTION;
 import static android.telephony.UiccSlotInfo.CARD_STATE_INFO_PRESENT;
 
@@ -3725,7 +3726,22 @@ public class SubscriptionController extends ISub.Stub {
             // We need to send intents to Euicc if we are turning on an inactive slot.
             // Euicc will decide whether to ask user to switch to DSDS, or change SIM
             // slot mapping.
-            enableSubscriptionOverEuiccManager(subId, enable, physicalSlotIndex);
+            EuiccManager euiccManager =
+                    (EuiccManager) mContext.getSystemService(Context.EUICC_SERVICE);
+            if (euiccManager != null && euiccManager.isEnabled()) {
+                enableSubscriptionOverEuiccManager(subId, enable, physicalSlotIndex);
+            } else {
+                // Enable / disable uicc applications.
+                if (!info.areUiccApplicationsEnabled()) setUiccApplicationsEnabled(enable, subId);
+                // If euiccManager is not enabled, we try to switch to DSDS if possible,
+                // or switch slot if not.
+                if (mTelephonyManager.isMultiSimSupported() == MULTISIM_ALLOWED) {
+                    PhoneConfigurationManager.getInstance().switchMultiSimConfig(
+                            mTelephonyManager.getSupportedModemCount());
+                } else {
+                    UiccController.getInstance().switchSlots(new int[]{physicalSlotIndex}, null);
+                }
+            }
             return true;
         } else {
             // Enable / disable uicc applications.
