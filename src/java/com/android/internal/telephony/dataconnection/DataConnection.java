@@ -62,7 +62,6 @@ import android.telephony.data.DataServiceCallback;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
-import android.util.StatsLog;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -77,6 +76,7 @@ import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -1814,8 +1814,8 @@ public class DataConnection extends StateMachine {
         public void enter() {
             mTag += 1;
             if (DBG) log("DcInactiveState: enter() mTag=" + mTag);
-            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
-                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__INACTIVE,
+            TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__INACTIVE,
                     mPhone.getPhoneId(), mId,
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
@@ -1954,8 +1954,8 @@ public class DataConnection extends StateMachine {
     private class DcActivatingState extends State {
         @Override
         public void enter() {
-            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
-                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVATING,
+            TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVATING,
                     mPhone.getPhoneId(), mId,
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
@@ -2088,8 +2088,8 @@ public class DataConnection extends StateMachine {
 
         @Override public void enter() {
             if (DBG) log("DcActiveState: enter dc=" + DataConnection.this);
-            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
-                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVE,
+            TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVE,
                     mPhone.getPhoneId(), mId,
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
@@ -2601,8 +2601,8 @@ public class DataConnection extends StateMachine {
     private class DcDisconnectingState extends State {
         @Override
         public void enter() {
-            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
-                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTING,
+            TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTING,
                     mPhone.getPhoneId(), mId,
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
@@ -2659,8 +2659,9 @@ public class DataConnection extends StateMachine {
     private class DcDisconnectionErrorCreatingConnection extends State {
         @Override
         public void enter() {
-            StatsLog.write(StatsLog.MOBILE_CONNECTION_STATE_CHANGED,
-                    StatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTION_ERROR_CREATING_CONNECTION,
+            TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
+                    TelephonyStatsLog
+                            .MOBILE_CONNECTION_STATE_CHANGED__STATE__DISCONNECTION_ERROR_CREATING_CONNECTION,
                     mPhone.getPhoneId(), mId,
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
