@@ -87,7 +87,6 @@ import android.util.LocalLog;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
-import android.util.StatsLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -3399,7 +3398,7 @@ public class ServiceStateTracker extends Handler {
                 Context.TELEPHONY_SERVICE);
         if (anyDataRatChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
-            StatsLog.write(StatsLog.MOBILE_RADIO_TECHNOLOGY_CHANGED,
+            TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_RADIO_TECHNOLOGY_CHANGED,
                     ServiceState.rilRadioTechnologyToNetworkType(
                             mSS.getRilDataRadioTechnology()), mPhone.getPhoneId());
         }
