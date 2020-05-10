@@ -20,6 +20,7 @@ import android.Manifest.permission;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ComponentInfo;
@@ -72,6 +73,11 @@ public class EuiccController extends IEuiccController.Stub {
             EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR;
     private static final String EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION =
             EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DOWNLOADABLE_SUBSCRIPTION;
+
+    /** Restrictions limiting access to the PendingIntent */
+    private static final String RESOLUTION_ACTIVITY_PACKAGE_NAME = "com.android.phone";
+    private static final String RESOLUTION_ACTIVITY_CLASS_NAME =
+            "com.android.phone.euicc.EuiccResolutionUiDispatcherActivity";
 
     private static EuiccController sInstance;
 
@@ -1051,6 +1057,9 @@ public class EuiccController extends IEuiccController.Stub {
             String callingPackage, int resolvableErrors, boolean confirmationCodeRetried,
             EuiccOperation op, int cardId) {
         Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
+        intent.setPackage(RESOLUTION_ACTIVITY_PACKAGE_NAME);
+        intent.setComponent(new ComponentName(
+                        RESOLUTION_ACTIVITY_PACKAGE_NAME, RESOLUTION_ACTIVITY_CLASS_NAME));
         intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_RESOLUTION_ACTION,
                 resolutionAction);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CALLING_PACKAGE, callingPackage);
