@@ -315,9 +315,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY,
                 new int[] {
                     -16, /* SIGNAL_STRENGTH_POOR */
-                    -11, /* SIGNAL_STRENGTH_MODERATE */
+                    -12, /* SIGNAL_STRENGTH_MODERATE */
                     -9, /* SIGNAL_STRENGTH_GOOD */
-                    -7  /* SIGNAL_STRENGTH_GREAT */
+                    -6  /* SIGNAL_STRENGTH_GREAT */
                 });
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSSINR_THRESHOLDS_INT_ARRAY,
                 new int[] {
