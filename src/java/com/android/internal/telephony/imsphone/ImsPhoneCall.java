@@ -269,10 +269,14 @@ public class ImsPhoneCall extends Call {
         return (ImsPhoneConnection) connections.get(0);
     }
 
-    /*package*/ void
-    setMute(boolean mute) {
-        ImsCall imsCall = getFirstConnection() == null ?
-                null : getFirstConnection().getImsCall();
+    /**
+     * Sets the mute state of the call.
+     * @param mute {@code true} if the call could be muted; {@code false} otherwise.
+     */
+    @VisibleForTesting
+    public void setMute(boolean mute) {
+        ImsPhoneConnection connection = getFirstConnection();
+        ImsCall imsCall = connection == null ? null : connection.getImsCall();
         if (imsCall != null) {
             try {
                 imsCall.setMute(mute);
@@ -317,9 +321,9 @@ public class ImsPhoneCall extends Call {
      */
     @VisibleForTesting
     @UnsupportedAppUsage
-    public ImsCall
-    getImsCall() {
-        return (getFirstConnection() == null) ? null : getFirstConnection().getImsCall();
+    public ImsCall getImsCall() {
+        ImsPhoneConnection connection = getFirstConnection();
+        return (connection == null) ? null : connection.getImsCall();
     }
 
     /*package*/ static boolean isLocalTone(ImsCall imsCall) {
