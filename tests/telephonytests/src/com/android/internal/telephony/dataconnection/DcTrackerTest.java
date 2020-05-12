@@ -648,6 +648,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.enableApn(ApnSetting.TYPE_XCAP, DcTracker.REQUEST_TYPE_NORMAL, null);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(AccessNetworkType.EUTRAN), any(DataProfile.class),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
@@ -735,8 +737,8 @@ public class DcTrackerTest extends TelephonyTest {
                         mApnContext));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
@@ -778,8 +780,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_CHANGED, ar));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // expected tear down all metered DataConnections
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
@@ -830,8 +832,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_OVERRIDE_RULES_CHANGED).sendToTarget();
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // expected tear down all metered DataConnections
         verify(mSimulatedCommandsVerifier, times(2)).deactivateDataCall(
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
@@ -844,8 +846,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_OVERRIDE_RULES_CHANGED).sendToTarget();
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
@@ -889,8 +891,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_ROAMING_ON));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // expected tear down all metered DataConnections
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
@@ -988,8 +990,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_CHANGED, ar));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // Validate all metered data connections have been torn down
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
@@ -1055,8 +1057,6 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.enableApn(ApnSetting.TYPE_SUPL, DcTracker.REQUEST_TYPE_NORMAL, null);
 
         sendInitializationEvents();
-
-        waitForMs(200);
 
         // Assert that both APN_TYPE_SUPL & APN_TYPE_DEFAULT are connected even we only setup data
         // for APN_TYPE_SUPL
@@ -1148,6 +1148,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.requestNetwork(nr, DcTracker.REQUEST_TYPE_NORMAL, null);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(anyInt(), any(DataProfile.class),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
@@ -1174,6 +1176,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.requestNetwork(nr, DcTracker.REQUEST_TYPE_NORMAL, null);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(anyInt(), any(DataProfile.class),
                 eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
                 any(Message.class));
@@ -1275,8 +1279,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // Verify the disconnected data call due to rat change and retry manger schedule another
         // data call setup
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(
@@ -1292,8 +1296,8 @@ public class DcTrackerTest extends TelephonyTest {
                         mApnContext));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // Verify if RIL command was sent properly.
         verify(mSimulatedCommandsVerifier).setupDataCall(
                 eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
@@ -1397,8 +1401,8 @@ public class DcTrackerTest extends TelephonyTest {
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-
         // Verify data connection is on
         verify(mSimulatedCommandsVerifier, times(0)).deactivateDataCall(
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
@@ -1561,6 +1565,8 @@ public class DcTrackerTest extends TelephonyTest {
                 NetworkAgent.INVALID_NETWORK, 1, null));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         verify(mSimulatedCommandsVerifier, times(1)).getDataCallList(any(Message.class));
     }
 
@@ -1821,6 +1827,8 @@ public class DcTrackerTest extends TelephonyTest {
         // NetCapability should switch to unmetered when fr=SUB6 and SUB6 unmetered
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         verify(mDataConnection, times(2)).onMeterednessChanged(true);
 
         resetDataConnection(id);
@@ -1847,6 +1855,8 @@ public class DcTrackerTest extends TelephonyTest {
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         verify(mDataConnection, times(1)).onMeterednessChanged(false);
 
         resetDataConnection(id);
@@ -1971,8 +1981,9 @@ public class DcTrackerTest extends TelephonyTest {
                 anyInt(), anyInt());
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RAT_CHANGED, null));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
-        waitForMs(200);
 
+        // Data connection is running on a different thread. Have to wait.
+        waitForMs(200);
         // expected tear down all metered DataConnections
         verify(mSimulatedCommandsVerifier).deactivateDataCall(
                 eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
