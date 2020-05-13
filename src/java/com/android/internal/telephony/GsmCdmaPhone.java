@@ -166,6 +166,9 @@ public class GsmCdmaPhone extends Phone {
     // string to define how the carrier specifies its own ota sp number
     private String mCarrierOtaSpNumSchema;
     private Boolean mUiccApplicationsEnabled = null;
+    // keeps track of when we have triggered an emergency call due to the ril.test.emergencynumber
+    // param being set and we should generate a simulated exit from the modem upon exit of ECbM.
+    private boolean mIsTestingEmergencyCallbackMode = false;
     @VisibleForTesting
     public static int ENABLE_UICC_APPS_MAX_RETRIES = 3;
     private static final int REAPPLY_UICC_APPS_SETTING_RETRY_TIME_GAP_IN_MS = 5000;
@@ -1406,6 +1409,7 @@ public class GsmCdmaPhone extends Phone {
         if (isDialedNumberSwapped && isEmergency) {
             // Triggers ECM when CS call ends only for test emergency calls using
             // ril.test.emergencynumber.
+            mIsTestingEmergencyCallbackMode = true;
             mCi.testingEmergencyCall();
         }
         if (isPhoneTypeGsm()) {
@@ -3467,7 +3471,15 @@ public class GsmCdmaPhone extends Phone {
             if (mWakeLock.isHeld()) {
                 mWakeLock.release();
             }
-            mCi.exitEmergencyCallbackMode(null);
+            Message msg = null;
+            if (mIsTestingEmergencyCallbackMode) {
+                // prevent duplicate exit messages from happening due to this message being handled
+                // as well as an UNSOL when the modem exits ECbM. Instead, only register for this
+                // message callback when this is a test and we will not be receiving the UNSOL from
+                // the modem.
+                msg = obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE);
+            }
+            mCi.exitEmergencyCallbackMode(msg);
         }
     }
 
@@ -3507,8 +3519,9 @@ public class GsmCdmaPhone extends Phone {
         if (mEcmExitRespRegistrant != null) {
             mEcmExitRespRegistrant.notifyRegistrant(ar);
         }
-        // if exiting ecm success
-        if (ar.exception == null) {
+        // if exiting is successful or we are testing and the modem responded with an error upon
+        // exit, which may occur in some IRadio implementations.
+        if (ar.exception == null || mIsTestingEmergencyCallbackMode) {
             if (isInEcm()) {
                 setIsInEcm(false);
             }
@@ -3524,6 +3537,7 @@ public class GsmCdmaPhone extends Phone {
             mDataEnabledSettings.setInternalDataEnabled(true);
             notifyEmergencyCallRegistrants(false);
         }
+        mIsTestingEmergencyCallbackMode = false;
     }
 
     //CDMA
