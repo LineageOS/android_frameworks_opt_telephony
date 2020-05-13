@@ -514,7 +514,8 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        SmsResponse smsResponse = new SmsResponse(messageRef, null /* ackPdu */, NO_ERROR_CODE);
+        SmsResponse smsResponse = new SmsResponse(messageRef, null /* ackPdu */, NO_ERROR_CODE,
+                tracker.mMessageId);
 
         switch (result) {
             case CarrierMessagingService.SEND_STATUS_OK:

@@ -2157,7 +2157,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SmsResponse ret = new SmsResponse(sms.messageRef, sms.ackPDU, sms.errorCode);
+            long messageId = RIL.getOutgoingSmsMessageId(rr.mResult);
+            SmsResponse ret = new SmsResponse(sms.messageRef, sms.ackPDU, sms.errorCode, messageId);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }

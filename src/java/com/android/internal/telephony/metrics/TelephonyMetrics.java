@@ -1820,8 +1820,10 @@ public class TelephonyMetrics {
         } else {
 
             int errorCode = SmsResponse.NO_ERROR_CODE;
+            long messageId = 0L;
             if (response != null) {
                 errorCode = response.mErrorCode;
+                messageId = response.mMessageId;
             }
 
             smsSession.addEvent(new SmsSessionEventBuilder(
@@ -1829,6 +1831,7 @@ public class TelephonyMetrics {
                     .setErrorCode(errorCode)
                     .setRilErrno(rilError + 1)
                     .setRilRequestId(rilSerial)
+                    .setMessageId(messageId)
             );
 
             smsSession.decreaseExpectedResponse();
@@ -1856,7 +1859,7 @@ public class TelephonyMetrics {
                     SmsSession.Event.Type.SMS_SEND_RESULT)
                     .setImsServiceErrno(resultCode)
                     .setErrorCode(errorReason)
-                    .setMessageId((messageId))
+                    .setMessageId(messageId)
             );
 
             smsSession.decreaseExpectedResponse();
@@ -2237,14 +2240,17 @@ public class TelephonyMetrics {
      * @param rilSerial RIL request serial number
      * @param tech SMS RAT
      * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param messageId Unique id for this message.
      */
-    public synchronized void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
+    public synchronized void writeRilSendSms(int phoneId, int rilSerial, int tech, int format,
+            long messageId) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
 
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
                 .setTech(tech)
                 .setRilRequestId(rilSerial)
                 .setFormat(format)
+                .setMessageId(messageId)
         );
 
         smsSession.increaseExpectedResponse();
@@ -2259,14 +2265,16 @@ public class TelephonyMetrics {
      *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param resultCode The result of sending the new SMS to the vendor layer to be sent to the
      *         carrier network.
+     * @param messageId Unique id for this message.
      */
     public synchronized void writeImsServiceSendSms(int phoneId, String format,
-            @ImsSmsImplBase.SendStatusResult int resultCode) {
+            @ImsSmsImplBase.SendStatusResult int resultCode, long messageId) {
         InProgressSmsSession smsSession = startNewSmsSessionIfNeeded(phoneId);
         smsSession.addEvent(new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_SEND)
                 .setTech(SmsSession.Event.Tech.SMS_IMS)
                 .setImsServiceErrno(resultCode)
                 .setFormat(convertSmsFormat(format))
+                .setMessageId(messageId)
         );
 
         smsSession.increaseExpectedResponse();
