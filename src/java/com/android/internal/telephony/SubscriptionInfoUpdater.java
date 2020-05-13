@@ -576,10 +576,6 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        // Update set of enabled carrier apps now that the privilege rules may have changed.
-        CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
-                TelephonyManager.getDefault(), mCurrentlyActiveUserId, sContext);
-
         /**
          * The sim loading sequence will be
          *  1. ACTION_SUBINFO_CONTENT_CHANGE happens through updateSubscriptionInfoByIccId() above.

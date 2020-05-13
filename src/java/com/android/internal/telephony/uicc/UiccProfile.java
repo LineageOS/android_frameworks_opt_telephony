@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.Nullable;
+import android.app.ActivityManager;
 import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -48,6 +50,7 @@ import android.util.ArrayMap;
 import android.util.ArraySet;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CarrierAppUtils;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
@@ -106,6 +109,7 @@ public class UiccProfile extends IccCard {
     private final UiccCard mUiccCard; //parent
     private CatService mCatService;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
+    private UiccCarrierPrivilegeRules mTestOverrideCarrierPrivilegeRules;
     private boolean mDisposed = false;
 
     private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
@@ -128,6 +132,7 @@ public class UiccProfile extends IccCard {
     private static final int EVENT_SIM_IO_DONE = 12;
     private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 13;
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 14;
+    private static final int EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET = 15;
     // NOTE: any new EVENT_* values must be added to eventToString.
 
     private TelephonyManager mTelephonyManager;
@@ -243,6 +248,16 @@ public class UiccProfile extends IccCard {
                     }
                     AsyncResult.forMessage((Message) ar.userObj, ar.result, ar.exception);
                     ((Message) ar.userObj).sendToTarget();
+                    break;
+
+                case EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET:
+                    if (msg.obj == null) {
+                        mTestOverrideCarrierPrivilegeRules = null;
+                    } else {
+                        mTestOverrideCarrierPrivilegeRules =
+                                new UiccCarrierPrivilegeRules((List<UiccAccessRule>) msg.obj);
+                    }
+                    refresh();
                     break;
 
                 default:
@@ -1250,6 +1265,11 @@ public class UiccProfile extends IccCard {
     }
 
     private void onCarrierPrivilegesLoadedMessage() {
+        // Update set of enabled carrier apps now that the privilege rules may have changed.
+        ActivityManager am = mContext.getSystemService(ActivityManager.class);
+        CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                mTelephonyManager, am.getCurrentUser(), mContext);
+
         UsageStatsManager usm = (UsageStatsManager) mContext.getSystemService(
                 Context.USAGE_STATS_SERVICE);
         if (usm != null) {
@@ -1317,11 +1337,12 @@ public class UiccProfile extends IccCard {
         if (certPackageMap.isEmpty()) {
             return Collections.emptySet();
         }
-        if (mCarrierPrivilegeRules == null) {
+        UiccCarrierPrivilegeRules rules = getCarrierPrivilegeRules();
+        if (rules == null) {
             return Collections.emptySet();
         }
         Set<String> uninstalledCarrierPackages = new ArraySet<>();
-        List<UiccAccessRule> accessRules = mCarrierPrivilegeRules.getAccessRules();
+        List<UiccAccessRule> accessRules = rules.getAccessRules();
         for (UiccAccessRule accessRule : accessRules) {
             String certHexString = accessRule.getCertificateHexString().toUpperCase();
             String pkgName = certPackageMap.get(certHexString);
@@ -1661,6 +1682,9 @@ public class UiccProfile extends IccCard {
     /** Returns a reference to the current {@link UiccCarrierPrivilegeRules}. */
     private UiccCarrierPrivilegeRules getCarrierPrivilegeRules() {
         synchronized (mLock) {
+            if (mTestOverrideCarrierPrivilegeRules != null) {
+                return mTestOverrideCarrierPrivilegeRules;
+            }
             return mCarrierPrivilegeRules;
         }
     }
@@ -1728,11 +1752,14 @@ public class UiccProfile extends IccCard {
             case EVENT_ICC_RECORD_EVENTS: return "ICC_RECORD_EVENTS";
             case EVENT_OPEN_LOGICAL_CHANNEL_DONE: return "OPEN_LOGICAL_CHANNEL_DONE";
             case EVENT_CLOSE_LOGICAL_CHANNEL_DONE: return "CLOSE_LOGICAL_CHANNEL_DONE";
-            case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE: return "TRANSMIT_APDU_LOGICAL_CHANNEL_DONE";
+            case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE:
+                return "TRANSMIT_APDU_LOGICAL_CHANNEL_DONE";
             case EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE: return "TRANSMIT_APDU_BASIC_CHANNEL_DONE";
             case EVENT_SIM_IO_DONE: return "SIM_IO_DONE";
             case EVENT_CARRIER_PRIVILEGES_LOADED: return "CARRIER_PRIVILEGES_LOADED";
             case EVENT_CARRIER_CONFIG_CHANGED: return "CARRIER_CONFIG_CHANGED";
+            case EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET:
+                return "CARRIER_PRIVILEGES_TEST_OVERRIDE_SET";
             default: return "UNKNOWN(" + event + ")";
         }
     }
@@ -1757,6 +1784,19 @@ public class UiccProfile extends IccCard {
     @VisibleForTesting
     public void refresh() {
         mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_LOADED));
+    }
+
+    /**
+     * Set a test set of carrier privilege rules which will override the actual rules on the SIM.
+     *
+     * <p>May be null, in which case the rules on the SIM will be used and any previous overrides
+     * will be cleared.
+     *
+     * @see TelephonyManager#setCarrierTestOverride
+     */
+    public void setTestOverrideCarrierPrivilegeRules(@Nullable List<UiccAccessRule> rules) {
+        mHandler.sendMessage(
+                mHandler.obtainMessage(EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET, rules));
     }
 
     /**
@@ -1811,6 +1851,11 @@ public class UiccProfile extends IccCard {
         } else {
             pw.println(" mCarrierPrivilegeRules: " + mCarrierPrivilegeRules);
             mCarrierPrivilegeRules.dump(fd, pw, args);
+        }
+        if (mTestOverrideCarrierPrivilegeRules != null) {
+            pw.println(" mTestOverrideCarrierPrivilegeRules: "
+                    + mTestOverrideCarrierPrivilegeRules);
+            mTestOverrideCarrierPrivilegeRules.dump(fd, pw, args);
         }
         pw.println(" mCarrierPrivilegeRegistrants: size=" + mCarrierPrivilegeRegistrants.size());
         for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
