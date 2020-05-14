@@ -334,6 +334,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst = null;
         mSSTTestHandler.quit();
         mSSTTestHandler.join();
+        if (mCellularNetworkService != null) {
+            mCellularNetworkService.onDestroy();
+        }
         super.tearDown();
     }
 
