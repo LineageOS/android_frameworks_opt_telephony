@@ -873,6 +873,7 @@ public class ImsManagerTest extends TelephonyTest {
             fail("failed with " + ex);
         }
 
+        ((ImsManager.ImsExecutorFactory) imsManager.mExecutorFactory).destroy();
         imsManager.mExecutorFactory = Runnable::run;
 
         return imsManager;
