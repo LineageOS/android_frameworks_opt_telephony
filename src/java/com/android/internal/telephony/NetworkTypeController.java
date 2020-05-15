@@ -500,6 +500,8 @@ public class NetworkTypeController extends StateMachine {
                         transitionTo(mNrConnectedState);
                     } else if (isLte(rat) && isNrNotRestricted()) {
                         transitionWithTimerTo(isDataActive() ? mLteConnectedState : mIdleState);
+                    } else {
+                        updateOverrideNetworkType();
                     }
                     break;
                 case EVENT_NR_STATE_CHANGED:
