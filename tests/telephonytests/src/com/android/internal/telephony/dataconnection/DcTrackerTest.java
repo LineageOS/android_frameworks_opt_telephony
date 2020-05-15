@@ -164,8 +164,10 @@ public class DcTrackerTest extends TelephonyTest {
 
     private Message mMessage;
 
+    private CellularDataService mCellularDataService;
+
     private void addDataService() {
-        CellularDataService cellularDataService = new CellularDataService();
+        mCellularDataService = new CellularDataService();
         ServiceInfo serviceInfo = new ServiceInfo();
         serviceInfo.packageName = "com.android.phone";
         serviceInfo.permission = "android.permission.BIND_TELEPHONY_DATA_SERVICE";
@@ -174,7 +176,7 @@ public class DcTrackerTest extends TelephonyTest {
                 DataService.SERVICE_INTERFACE,
                 null,
                 "com.android.phone",
-                cellularDataService.mBinder,
+                mCellularDataService.mBinder,
                 serviceInfo,
                 filter);
     }
@@ -539,9 +541,11 @@ public class DcTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         logd("DcTrackerTest -tearDown");
         mDct.removeCallbacksAndMessages(null);
+        mDct.stopHandlerThread();
         mDct = null;
         mDcTrackerTestHandler.quit();
         mDcTrackerTestHandler.join();
+        mCellularDataService.onDestroy();
         waitForMs(100);
         super.tearDown();
     }

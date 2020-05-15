@@ -655,6 +655,7 @@ public class DcTracker extends Handler {
     private final int mTransportType;
 
     private DataStallRecoveryHandler mDsRecoveryHandler;
+    private HandlerThread mHandlerThread;
 
     /**
      * Request network completion message map. Key is the APN type, value is the list of completion
@@ -711,9 +712,9 @@ public class DcTracker extends Handler {
                 .getSystemService(Context.NETWORK_POLICY_SERVICE);
         mNetworkPolicyManager.registerSubscriptionCallback(mSubscriptionCallback);
 
-        HandlerThread dcHandlerThread = new HandlerThread("DcHandlerThread");
-        dcHandlerThread.start();
-        Handler dcHandler = new Handler(dcHandlerThread.getLooper());
+        mHandlerThread = new HandlerThread("DcHandlerThread");
+        mHandlerThread.start();
+        Handler dcHandler = new Handler(mHandlerThread.getLooper());
         mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler, tagSuffix);
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
@@ -828,6 +829,16 @@ public class DcTracker extends Handler {
         unregisterForAllEvents();
 
         destroyDataConnections();
+    }
+
+    /**
+     * Stop the internal handler thread
+     *
+     * TESTING ONLY
+     */
+    @VisibleForTesting
+    public void stopHandlerThread() {
+        mHandlerThread.quit();
     }
 
     private void unregisterForAllEvents() {

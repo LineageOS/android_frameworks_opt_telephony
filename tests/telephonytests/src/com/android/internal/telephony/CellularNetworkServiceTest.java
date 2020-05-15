@@ -89,6 +89,9 @@ public class CellularNetworkServiceTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        if (mCellularNetworkService != null) {
+            mCellularNetworkService.onDestroy();
+        }
         super.tearDown();
     }
 
