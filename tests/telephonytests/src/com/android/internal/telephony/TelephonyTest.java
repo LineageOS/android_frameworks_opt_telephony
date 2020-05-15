@@ -699,6 +699,7 @@ public abstract class TelephonyTest {
         for (TestableLooper looper : mTestableLoopers) {
             looper.destroy();
         }
+        TestableLooper.remove(TelephonyTest.this);
 
         mSimulatedCommands.dispose();
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
