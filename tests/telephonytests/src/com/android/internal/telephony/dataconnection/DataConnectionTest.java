@@ -99,6 +99,7 @@ public class DataConnectionTest extends TelephonyTest {
     private DataConnection mDc;
     private DataConnectionTestHandler mDataConnectionTestHandler;
     private DcController mDcc;
+    private CellularDataService mCellularDataService;
 
     private ApnSetting mApn1 = ApnSetting.makeApnSetting(
             2163,                   // id
@@ -261,7 +262,7 @@ public class DataConnectionTest extends TelephonyTest {
     }
 
     private void addDataService() {
-        CellularDataService cellularDataService = new CellularDataService();
+        mCellularDataService = new CellularDataService();
         ServiceInfo serviceInfo = new ServiceInfo();
         serviceInfo.packageName = "com.android.phone";
         serviceInfo.permission = "android.permission.BIND_TELEPHONY_DATA_SERVICE";
@@ -270,7 +271,7 @@ public class DataConnectionTest extends TelephonyTest {
                 DataService.SERVICE_INTERFACE,
                 null,
                 "com.android.phone",
-                cellularDataService.mBinder,
+                mCellularDataService.mBinder,
                 serviceInfo,
                 filter);
     }
@@ -323,6 +324,7 @@ public class DataConnectionTest extends TelephonyTest {
         mDcc = null;
         mDataConnectionTestHandler.quit();
         mDataConnectionTestHandler.join();
+        mCellularDataService.onDestroy();
         super.tearDown();
     }
 
