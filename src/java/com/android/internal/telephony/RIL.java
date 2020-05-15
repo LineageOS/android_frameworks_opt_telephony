@@ -228,7 +228,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     Object[] mLastNITZTimeInfo;
 
-    // When we are testing emergency calls
+    // When we are testing emergency calls using ril.test.emergencynumber, this will trigger test
+    // ECbM when the call is ended.
     @UnsupportedAppUsage
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
