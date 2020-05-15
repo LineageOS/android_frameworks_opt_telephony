@@ -64,6 +64,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mSmsDispatchersController.dispose();
         mSmsDispatchersController = null;
         super.tearDown();
     }
