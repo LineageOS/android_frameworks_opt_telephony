@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.annotation.IntDef;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.os.AsyncResult;
@@ -25,6 +26,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
+import android.telephony.CellIdentity;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -52,6 +54,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class IccRecords extends Handler implements IccConstants {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false; // STOPSHIP if true
+
+    public static final int PLMN_MIN_LENGTH = CellIdentity.MCC_LENGTH
+            + CellIdentity.MNC_MIN_LENGTH;
+    public static final int PLMN_MAX_LENGTH = CellIdentity.MCC_LENGTH
+            + CellIdentity.MNC_MAX_LENGTH;
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
     private static final String[] MCCMNC_CODES_HAVING_3DIGITS_MNC = {
@@ -147,6 +154,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // A list of PLMN in which the SPN shall be displayed.
     // Reference: 3GPP TS 31.102 Section 4.2.66
     protected String[] mSpdi;
+
+    // A list of PLMN Network Name (PNN).
+    // Reference: 3GPP TS 31.102 Section 4.2.58
+    protected PlmnNetworkName[] mPnns;
+
+    // Operator PLMN List (OPL).
+    // Reference: 3GPP TS 31.102 Section 4.2.59
+    protected OperatorPlmnInfo[] mOpl;
 
 
     // Carrier name display condition bitmask
@@ -695,6 +710,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
             }
         }
         return mPnnHomeName;
+    }
+
+    public PlmnNetworkName[] getPnns() {
+        return mPnns;
+    }
+
+    public OperatorPlmnInfo[] getOpl() {
+        return mOpl;
     }
 
     public void setMsisdnNumber(String alphaTag, String number,
@@ -1354,35 +1377,112 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
+     * Get network name in PNN for the provided PLMN and LAC/TAC.
+     *
+     * @param opls OPL.
+     * @param pnns PNN list.
+     * @param plmn PLMN.
+     * @param lacTac LAC/TAC
+     * @return network Name for the provided PLMN and LAC/TAC.
+     */
+    @Nullable public static String getNetworkNameForPlmnFromPnnOpl(PlmnNetworkName[] pnns,
+            OperatorPlmnInfo[] opls, @Nullable String plmn, int lacTac) {
+        if (opls == null || pnns == null || plmn == null || plmn.length() < PLMN_MIN_LENGTH
+                || plmn.length() > PLMN_MAX_LENGTH) {
+            return null;
+        }
+
+        for (OperatorPlmnInfo operatorPlmnInfo: opls) {
+            int pnnIdx = operatorPlmnInfo.getPnnIdx(plmn, lacTac);
+            if (pnnIdx >= 0) {
+                if (pnnIdx < pnns.length && pnns[pnnIdx] != null) {
+                    return pnns[pnnIdx].getName();
+                } else {
+                    Rlog.e("IccRecords", "Invalid PNN record for Record" + pnnIdx);
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Operator PLMN information. This contains the location area information or tracking area
      * that are used to associate a specific name contained in EF_PNN.
      *
      * Reference: 3GPP TS 31.102 section 4.2.59 EF_OPL
      */
     public static final class OperatorPlmnInfo {
-        // PLMN numeric that may contains wildcard character ".".
-        // For example, the pattern "123..." could match all PLMN which mcc is 123.
+        // PLMN numeric that may contains wildcard character "D".
+        // A BCD value of 'D' in any of the MCC and/or MNC digits shall be used to indicate
+        // a "wild" value for that corresponding MCC/MNC digit.
+        // For example, the pattern "123DDD" could match all PLMN which mcc is 123.
         public final String plmnNumericPattern;
-
         public final int lacTacStart;
         public final int lacTacEnd;
+        // Identifier of operator name in PNN to be displayed.
+        // 0 indicates that the name is to be taken from other sources, see 3GPP TS 22.101.
+        // pnnRecordId > 0 indicates record # (pnnRecordId - 1) in PNNs.
+        public final int pnnRecordId;
 
-        public final int plmnNetworkNameIndex;
-        public OperatorPlmnInfo(String plmnNumericPattern, int lacTacStart, int lacTacEnd,
-                                int plmnNetworkNameIndex) {
+        public OperatorPlmnInfo(@NonNull String plmnNumericPattern, int lacTacStart, int lacTacEnd,
+                                int pnnRecordId) {
             this.plmnNumericPattern = plmnNumericPattern;
             this.lacTacStart = lacTacStart;
             this.lacTacEnd = lacTacEnd;
-            this.plmnNetworkNameIndex = plmnNetworkNameIndex;
+            this.pnnRecordId = pnnRecordId;
+        }
+
+        /**
+         * Check whether provided plmn and lacTac matches the stored OperatorPlmnInfo.
+         *
+         * @return -1 if not matching.
+         */
+        public int getPnnIdx(@Nullable String plmn, int lacTac) {
+            if (plmn == null || plmn.length() != plmnNumericPattern.length()) return -1;
+
+            // Check whether PLMN matches with the plmnNumericPattern
+            // Character-by-character check is for performance reasons.
+            for (int i = 0; i < plmn.length(); i++) {
+                if (plmn.charAt(i) != plmnNumericPattern.charAt(i)
+                        && plmnNumericPattern.charAt(i) != 'D') {
+                    return -1;
+                }
+            }
+            // As defiend in 3GPP TS 31.102 section 4.2.59 , lacTacStart = 0 and lacTacEnd = 0xFFFE
+            // are used to indicate the entire range of LACs/TACs for the given PLMN.
+            if (lacTacStart == 0 && lacTacEnd == 0xFFFE) {
+                return pnnRecordId - 1;
+            }
+            if (lacTac < lacTacStart || lacTac > lacTacEnd) return -1;
+            return pnnRecordId - 1;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(plmnNumericPattern, lacTacStart, lacTacEnd,
+                    pnnRecordId);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof OperatorPlmnInfo)) return false;
+
+            OperatorPlmnInfo opi = (OperatorPlmnInfo) other;
+            return TextUtils.equals(plmnNumericPattern, opi.plmnNumericPattern)
+                    && lacTacStart == opi.lacTacStart
+                    && lacTacEnd == opi.lacTacEnd
+                    && pnnRecordId == opi.pnnRecordId;
         }
 
         @Override
         public String toString() {
-            return "{ plmnNumericPattern = " + plmnNumericPattern
-                    + "lacTacStart = " + lacTacStart
-                    + "lacTacEnd = " + lacTacEnd
-                    + "plmnNetworkNameIndex = " + plmnNetworkNameIndex
-                    + " }";
+            return "{plmnNumericPattern = " + plmnNumericPattern + ", "
+                    + "lacTacStart = " + lacTacStart + ", "
+                    + "lacTacEnd = " + lacTacEnd + ", "
+                    + "pnnRecordId = " + pnnRecordId
+                    + "}";
         }
     }
 
@@ -1398,9 +1498,36 @@ public abstract class IccRecords extends Handler implements IccConstants {
             this.shortName = shortName;
         }
 
+        /**
+         * Get the name stored in the PlmnNetworkName.
+         * @return the full name if it's available; otherwise, short Name.
+         */
+        @Nullable public String getName() {
+            if (!TextUtils.isEmpty(fullName)) {
+                return fullName;
+            } else {
+                return shortName;
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(fullName, shortName);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof PlmnNetworkName)) return false;
+
+            PlmnNetworkName pnn = (PlmnNetworkName) other;
+            return TextUtils.equals(fullName, pnn.fullName)
+                    && TextUtils.equals(shortName, pnn.shortName);
+        }
+
         @Override
         public String toString() {
-            return "{ fullName = " + fullName + " shortName = " + shortName + " }";
+            return "{fullName = " + fullName + ", shortName = " + shortName + "}";
         }
     }
 }
