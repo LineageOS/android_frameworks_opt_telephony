@@ -209,8 +209,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
     //***** Instance Variables
 
     @UnsupportedAppUsage
-    final WakeLock mWakeLock;           // Wake lock associated with request/response
-    final WakeLock mAckWakeLock;        // Wake lock associated with ack sent
+    @VisibleForTesting
+    public final WakeLock mWakeLock;           // Wake lock associated with request/response
+    @VisibleForTesting
+    public final WakeLock mAckWakeLock;        // Wake lock associated with ack sent
     final int mWakeLockTimeout;         // Timeout associated with request/response
     final int mAckWakeLockTimeout;      // Timeout associated with ack sent
     // The number of wakelock requests currently active.  Don't release the lock
@@ -228,7 +230,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     Object[] mLastNITZTimeInfo;
 
-    // When we are testing emergency calls
+    // When we are testing emergency calls using ril.test.emergencynumber, this will trigger test
+    // ECbM when the call is ended.
     @UnsupportedAppUsage
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
