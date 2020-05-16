@@ -19,6 +19,7 @@ package com.android.internal.telephony.uicc;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -35,7 +36,10 @@ import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
+import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
 
 import org.junit.After;
 import org.junit.Before;
@@ -285,5 +289,114 @@ public class SIMRecordsTest extends TelephonyTest {
         AsyncResult ar = (AsyncResult) message.obj;
         assertNull(ar.exception);
         assertNull(ar.result);
+    }
+
+    @Test
+    public void testGetEfPnn() {
+        ArrayList<byte[]> rawPnns = new ArrayList<byte[]>();
+        List<PlmnNetworkName> targetPnns = new ArrayList<PlmnNetworkName>();
+
+        String name = "Test 1";
+        rawPnns.add(encodePnn(name));
+        targetPnns.add(new PlmnNetworkName(name, null));
+        name = "Test 2";
+        rawPnns.add(encodePnn(name));
+        targetPnns.add(new PlmnNetworkName(name, null));
+
+        Message message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_PNN_DONE);
+        AsyncResult ar = AsyncResult.forMessage(message, rawPnns, null);
+        mSIMRecordsUT.handleMessage(message);
+        List<PlmnNetworkName> parsedPnns = Arrays.asList(mSIMRecordsUT.getPnns());
+
+        assertEquals(parsedPnns, targetPnns);
+    }
+
+    private static byte[] encodePnn(String name) {
+        byte[] gsm7BitName = new byte[] {};
+        try {
+            gsm7BitName = GsmAlphabet.stringToGsm7BitPacked(name);
+            gsm7BitName[0] = (byte) (name.length() % 8 | 0x80);
+        } catch (Exception ex) {
+            fail("SimRecordsTest: GsmAlphabet.stringToGsm7BitPacked() exception:" + ex);
+        }
+
+        byte[] encodedName = new byte[gsm7BitName.length + 2];
+        encodedName[0] = 0x43;
+        encodedName[1] = (byte) gsm7BitName.length;
+        System.arraycopy(gsm7BitName, 0, encodedName, 2, gsm7BitName.length);
+
+        return encodedName;
+    }
+
+    @Test
+    public void testGetEfOpl() {
+        ArrayList<byte[]> rawOpl = new ArrayList<byte[]>();
+        List<OperatorPlmnInfo> targetOpl = new ArrayList<OperatorPlmnInfo>();
+
+        // OperatorPlmnInfo 1
+        String plmn = "123456";
+        int lacTacStart = 0x0000;
+        int lacTacEnd = 0xFFFE;
+        int pnnIndex = 0;
+
+        rawOpl.add(encodeOpl(plmn, lacTacStart, lacTacEnd, pnnIndex));
+        targetOpl.add(new OperatorPlmnInfo(plmn, lacTacStart, lacTacEnd, pnnIndex));
+
+        Message message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_OPL_DONE);
+        AsyncResult ar = AsyncResult.forMessage(message, rawOpl, null);
+        mSIMRecordsUT.handleMessage(message);
+        List<OperatorPlmnInfo> parsedOpl = Arrays.asList(mSIMRecordsUT.getOpl());
+
+        assertEquals(targetOpl, parsedOpl);
+
+        // OperatorPlmnInfo 2
+        plmn = "123DDD";
+        lacTacStart = 0x0000;
+        lacTacEnd = 0xFFFE;
+        pnnIndex = 123;
+
+        rawOpl.add(encodeOpl(plmn, lacTacStart, lacTacEnd, pnnIndex));
+        targetOpl.add(new OperatorPlmnInfo(plmn, lacTacStart, lacTacEnd, pnnIndex));
+
+        message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_OPL_DONE);
+        ar = AsyncResult.forMessage(message, rawOpl, null);
+        mSIMRecordsUT.handleMessage(message);
+        parsedOpl = Arrays.asList(mSIMRecordsUT.getOpl());
+
+        assertEquals(targetOpl, parsedOpl);
+
+        // OperatorPlmnInfo 3
+        plmn = "123";
+        lacTacStart = 0x0000;
+        lacTacEnd = 0xFFFE;
+        pnnIndex = 123;
+
+        rawOpl.add(encodeOpl(plmn, lacTacStart, lacTacEnd, pnnIndex));
+
+        message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_OPL_DONE);
+        ar = AsyncResult.forMessage(message, rawOpl, null);
+        mSIMRecordsUT.handleMessage(message);
+        parsedOpl = Arrays.asList(mSIMRecordsUT.getOpl());
+
+        assertEquals(targetOpl, parsedOpl);
+    }
+
+    private byte[] encodeOpl(String plmn, int lacTacStart, int lacTacEnd, int pnnIndex) {
+        byte[] data = new byte[8];
+
+        if (plmn.length() == 5 || plmn.length() == 6) {
+            IccUtils.stringToBcdPlmn(plmn, data, 0);
+        } else {
+            data[0] = (byte) 0xFF;
+            data[1] = (byte) 0xFF;
+            data[2] = (byte) 0xFF;
+        }
+        data[3] = (byte) (lacTacStart >>> 8);
+        data[4] = (byte) lacTacStart;
+        data[5] = (byte) (lacTacEnd >>> 8);
+        data[6] = (byte) lacTacEnd;
+        data[7] = (byte) pnnIndex;
+
+        return data;
     }
 }

@@ -48,10 +48,15 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
+import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class IccRecordsTest extends TelephonyTest {
 
@@ -244,4 +249,102 @@ public class IccRecordsTest extends TelephonyTest {
         assertTrue("Two responses must be different.", !response.equals(response2));
     }
 
+    @Test
+    public void testOperatorPlmnInfo() {
+        String plmn = "123456";
+        int lacTacStart = 0x0000;
+        int lacTacEnd = 0xFFFE;
+        int pnnIndex = 2;
+
+        OperatorPlmnInfo opi = new OperatorPlmnInfo(plmn, lacTacStart, lacTacEnd, pnnIndex);
+        assertEquals(opi.getPnnIdx(plmn, lacTacStart), pnnIndex - 1);
+        assertEquals(opi.getPnnIdx(plmn, lacTacEnd), pnnIndex - 1);
+        assertEquals(opi.getPnnIdx(plmn, 0xFFFF), pnnIndex - 1);
+        assertEquals(opi.getPnnIdx("654321", 0xFFFF), -1);
+        assertEquals(opi.getPnnIdx("12345", 0xFFFF), -1);
+
+        lacTacStart = 0x0001;
+        lacTacEnd = 0x1FFF;
+        opi = new OperatorPlmnInfo(plmn, lacTacStart, lacTacEnd, pnnIndex);
+        assertEquals(opi.getPnnIdx(plmn, 2), pnnIndex - 1);
+        assertEquals(opi.getPnnIdx(plmn, 0x2FFF), -1);
+        assertEquals(opi.getPnnIdx(plmn, 0xFFFF), -1);
+
+        plmn = "123DDD";
+        opi = new OperatorPlmnInfo(plmn, lacTacStart, lacTacEnd, pnnIndex);
+        assertEquals(opi.getPnnIdx("123123", lacTacStart), pnnIndex - 1);
+        assertEquals(opi.getPnnIdx("12345", lacTacStart), -1);
+    }
+
+    @Test
+    public void testGetNetworkNameForPlmn() {
+        // Set up PNN
+        String fullName1 = "Name full 1";
+        String shortName1 = "Name short 1";
+        String fullName2 = "Name full 2";
+        String shortName2 = "Name short 2";
+        List<PlmnNetworkName> pnns = new ArrayList<PlmnNetworkName>();
+        pnns.add(new PlmnNetworkName(fullName1, shortName1));
+        pnns.add(new PlmnNetworkName(fullName2, shortName2));
+        pnns.add(new PlmnNetworkName(null, shortName2));
+        PlmnNetworkName[] pnnsArray = pnns.toArray(new PlmnNetworkName[0]);
+
+        // Set up OPL
+        String plmn1 = "345678";
+        String plmn2 = "456789";
+        String plmn3 = "567890";
+        int lacTacStart = 0x0000;
+        int lacTacEnd = 0xFFFE;
+        int pnnIndex = 1;
+        List<OperatorPlmnInfo> opl = new ArrayList<OperatorPlmnInfo>();
+        opl.add(new OperatorPlmnInfo(plmn1, lacTacStart, lacTacEnd, pnnIndex));
+        opl.add(new OperatorPlmnInfo(plmn2, lacTacStart, lacTacEnd, pnnIndex + 1));
+        opl.add(new OperatorPlmnInfo(plmn3, lacTacStart, lacTacEnd, pnnIndex + 2));
+        OperatorPlmnInfo[] oplArray = opl.toArray(new OperatorPlmnInfo[0]);
+
+        // Test
+        assertNull(IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray, null, 0));
+        assertEquals(fullName1, IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray,
+                plmn1, 0));
+        assertEquals(fullName2, IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray,
+                plmn2, 0));
+        assertEquals(shortName2, IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray,
+                plmn3, 0));
+    }
+
+    @Test
+    public void testGetNetworkNameForPlmnFromPnnOpl() {
+        // Set up PNN
+        String fullName1 = "Name full 1";
+        String shortName1 = "Name short 1";
+        String fullName2 = "Name full 2";
+        String shortName2 = "Name short 2";
+        List<PlmnNetworkName> pnns = new ArrayList<PlmnNetworkName>();
+        pnns.add(new PlmnNetworkName(fullName1, shortName1));
+        pnns.add(new PlmnNetworkName(fullName2, shortName2));
+        pnns.add(new PlmnNetworkName(null, shortName2));
+        PlmnNetworkName[] pnnsArray = pnns.toArray(new PlmnNetworkName[0]);
+
+        // Set up OPL
+        String plmn1 = "345678";
+        String plmn2 = "456789";
+        String plmn3 = "567890";
+        int lacTacStart = 0x0000;
+        int lacTacEnd = 0xFFFE;
+        int pnnIndex = 1;
+        List<OperatorPlmnInfo> opl = new ArrayList<OperatorPlmnInfo>();
+        opl.add(new OperatorPlmnInfo(plmn1, lacTacStart, lacTacEnd, pnnIndex));
+        opl.add(new OperatorPlmnInfo(plmn2, lacTacStart, lacTacEnd, pnnIndex + 1));
+        opl.add(new OperatorPlmnInfo(plmn3, lacTacStart, lacTacEnd, pnnIndex + 2));
+        OperatorPlmnInfo[] oplArray = opl.toArray(new OperatorPlmnInfo[0]);
+
+        // Test
+        assertNull(IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray, null, 0));
+        assertEquals(fullName1, IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray,
+                plmn1, 0));
+        assertEquals(fullName2, IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray,
+                plmn2, 0));
+        assertEquals(shortName2, IccRecords.getNetworkNameForPlmnFromPnnOpl(pnnsArray, oplArray,
+                plmn3, 0));
+    }
 }
