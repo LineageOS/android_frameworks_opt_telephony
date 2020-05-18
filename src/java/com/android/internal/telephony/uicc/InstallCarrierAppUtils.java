@@ -68,7 +68,8 @@ public class InstallCarrierAppUtils {
                 Settings.Global.INSTALL_CARRIER_APP_NOTIFICATION_PERSISTENT, 1) == 1;
 
         PendingIntent goToStore = PendingIntent.getActivity(context, 0,
-                getPlayStoreIntent(pkgName), PendingIntent.FLAG_UPDATE_CURRENT);
+                getPlayStoreIntent(pkgName), PendingIntent.FLAG_UPDATE_CURRENT
+                        | PendingIntent.FLAG_IMMUTABLE);
 
         Notification.Action goToStoreAction =
                 new Notification.Action.Builder(null, downloadButtonText, goToStore).build();
