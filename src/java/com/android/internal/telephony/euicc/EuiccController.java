@@ -397,9 +397,6 @@ public class EuiccController extends IEuiccController.Stub {
                     break;
                 default:
                     resultCode = ERROR;
-                    extrasIntent.putExtra(
-                            EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE,
-                            result.getResult());
                     addExtrasToResultIntent(extrasIntent, result.getResult());
                     break;
             }
@@ -477,20 +474,19 @@ public class EuiccController extends IEuiccController.Stub {
      * b) {@link EuiccManager#EXTRA_EMBEDDED_SUBSCRIPTION_SMDX_REASON_CODE} ->
      * ReasonCode[5.2.6.2] from GSMA (SGP.22 v2.2
      */
-    Intent addExtrasToResultIntent(Intent intent, int resultCode) {
+    private void addExtrasToResultIntent(Intent intent, int resultCode) {
         final int firstByteBitOffset = 24;
         int errorCodeMask = 0xFFFFFF;
-        int operationCodeMask = 0xFF << firstByteBitOffset;
+        int operationCode = resultCode >>> firstByteBitOffset;
 
         intent.putExtra(
                 EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_DETAILED_CODE, resultCode);
 
-        intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE,
-                (resultCode & operationCodeMask) >> firstByteBitOffset);
+        intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_OPERATION_CODE, operationCode);
 
         // check to see if the operation code is EuiccManager#OPERATION_SMDX_SUBJECT_REASON_CODE
-        final boolean isSmdxSubjectReasonCode = (resultCode >> firstByteBitOffset)
-                == EuiccManager.OPERATION_SMDX_SUBJECT_REASON_CODE;
+        final boolean isSmdxSubjectReasonCode =
+                (operationCode == EuiccManager.OPERATION_SMDX_SUBJECT_REASON_CODE);
 
         if (isSmdxSubjectReasonCode) {
             final Pair<String, String> subjectReasonCode = decodeSmdxSubjectAndReasonCode(
@@ -504,7 +500,6 @@ public class EuiccController extends IEuiccController.Stub {
             final int errorCode = resultCode & errorCodeMask;
             intent.putExtra(EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_ERROR_CODE, errorCode);
         }
-        return intent;
     }
 
     void downloadSubscription(int cardId, DownloadableSubscription subscription,
