@@ -187,8 +187,10 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     // The notitfication tag used when showing a notification. The combination of notification tag
     // and notification id should be unique within the phone app.
-    private static final String NOTIFICATION_TAG = "InboundSmsHandler";
-    private static final int NOTIFICATION_ID_NEW_MESSAGE = 1;
+    @VisibleForTesting
+    public static final String NOTIFICATION_TAG = "InboundSmsHandler";
+    @VisibleForTesting
+    public static final int NOTIFICATION_ID_NEW_MESSAGE = 1;
 
     /** URI for raw table of SMS provider. */
     protected static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
@@ -987,7 +989,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                     tracker,
                     (isWapPush ? new byte[][] {output.toByteArray()} : pdus),
                     destPort,
-                    resultReceiver);
+                    resultReceiver,
+                    block);
         }
 
         if (isWapPush) {
@@ -1045,7 +1048,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return true if an ordered broadcast was sent to the carrier app; false otherwise.
      */
     private boolean processMessagePartWithUserLocked(InboundSmsTracker tracker,
-            byte[][] pdus, int destPort, SmsBroadcastReceiver resultReceiver) {
+            byte[][] pdus, int destPort, SmsBroadcastReceiver resultReceiver, boolean block) {
         log("Credential-encrypted storage not available. Port: " + destPort);
         if (destPort == SmsHeader.PORT_WAP_PUSH && mWapPush.isWapPushForMms(pdus[0], this)) {
             showNewMessageNotification();
@@ -1055,14 +1058,15 @@ public abstract class InboundSmsHandler extends StateMachine {
             // This is a regular SMS - hand it to the carrier or system app for filtering.
             boolean filterInvoked = filterSms(
                     pdus, destPort, tracker, resultReceiver, false /* userUnlocked */,
-                    false /* block */);
+                    block);
             if (filterInvoked) {
                 // filter invoked, wait for it to return the result.
                 return true;
-            } else {
-                // filter not invoked, show the notification and do nothing further.
+            } else if (!block) {
+                // filter not invoked and message not blocked, show the notification and do nothing
+                // further. Even if the message is blocked, we keep it in the database so it can be
+                // reprocessed by filters once credential-encrypted storage is available.
                 showNewMessageNotification();
-                return false;
             }
         }
         return false;
@@ -1664,10 +1668,16 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
 
             // Now that all filters have been invoked, drop the message if it is blocked.
-            // TODO(b/156910035): Remove mUserUnlocked once we stop showing the new message
-            // notification for blocked numbers.
-            if (mUserUnlocked && mBlock) {
-                dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+            if (mBlock) {
+                // Only delete the message if the user is unlocked. Otherwise, we should reprocess
+                // the message after unlock so the filter has a chance to run while credential-
+                // encrypted storage is available.
+                if (mUserUnlocked) {
+                    dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+                } else {
+                    // Just complete handling of the message without dropping it.
+                    sendMessage(EVENT_BROADCAST_COMPLETE);
+                }
                 return;
             }
 

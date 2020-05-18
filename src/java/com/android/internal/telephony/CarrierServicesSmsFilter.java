@@ -43,7 +43,13 @@ import java.util.Set;
 
 /**
  * Filters incoming SMS with carrier services.
- * <p> A new instance must be created for filtering each message.
+ *
+ * <p>A new instance must be created for filtering each message.
+ *
+ * <p>Note that if a carrier services app is unavailable at the time a message is received because
+ * credential-encrypted storage is unavailable and it is not direct-boot aware, and the message ends
+ * up being handled by a filter further down the chain, that message will not be redelivered to the
+ * carrier app once the user unlocks the storage.
  */
 public class CarrierServicesSmsFilter {
     protected static final boolean DBG = true;
