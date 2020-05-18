@@ -2529,6 +2529,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         AsyncResult.forMessage(result, null,
                                 CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                         result.sendToTarget();
+                        return;
                     }
                     request.specifiers.add(rasInHalFormat);
                 }
@@ -2565,6 +2566,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         AsyncResult.forMessage(result, null,
                                 CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                         result.sendToTarget();
+                        return;
                     }
 
                     request.specifiers.add(rasInHalFormat);
@@ -2606,6 +2608,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         AsyncResult.forMessage(result, null,
                                 CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                         result.sendToTarget();
+                        return;
                     }
 
                     request.specifiers.add(rasInHalFormat);
