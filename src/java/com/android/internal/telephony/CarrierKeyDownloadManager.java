@@ -211,7 +211,7 @@ public class CarrierKeyDownloadManager extends Handler {
         int slotId = mPhone.getPhoneId();
         Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId);
         PendingIntent carrierKeyDownloadIntent = PendingIntent.getBroadcast(mContext, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         AlarmManager alarmManager =
                 (AlarmManager) mContext.getSystemService(mContext.ALARM_SERVICE);
         alarmManager.cancel(carrierKeyDownloadIntent);
@@ -271,7 +271,7 @@ public class CarrierKeyDownloadManager extends Handler {
                 Context.ALARM_SERVICE);
         Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId);
         PendingIntent carrierKeyDownloadIntent = PendingIntent.getBroadcast(mContext, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarmManager.set(AlarmManager.RTC_WAKEUP, minExpirationDate, carrierKeyDownloadIntent);
         Log.d(LOG_TAG, "setRenewelAlarm: action=" + intent.getAction() + " time="
                 + new Date(minExpirationDate));
