@@ -767,6 +767,22 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return null;
     }
 
+    /**
+     * Unregister a previously registered IImsServiceFeatureCallback through
+     * {@link #getImsServiceControllerAndListen(int, int, IImsServiceFeatureCallback)} .
+     * @param slotId The slot id associated with the ImsFeature.
+     * @param feature The {@link ImsFeature.FeatureType}
+     * @param callback The callback to be unregistered.
+     */
+    public void unregisterImsFeatureCallback(int slotId, int feature,
+            IImsServiceFeatureCallback callback) {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
+
+        if (controller != null) {
+            controller.removeImsServiceFeatureCallback(callback);
+        }
+    }
+
     // Used for testing only.
     public boolean overrideImsServiceConfiguration(int slotId, boolean isCarrierService,
             Map<Integer, String> featureConfig) {
