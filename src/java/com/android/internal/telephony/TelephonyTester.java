@@ -144,6 +144,7 @@ public class TelephonyTester {
     private static final String EXTRA_NR_FREQUENCY_RANGE = "nr_frequency_range";
     private static final String EXTRA_NR_STATE = "nr_state";
     private static final String EXTRA_OPERATOR = "operator";
+    private static final String EXTRA_OPERATOR_RAW = "operator_raw";
 
     private static final String ACTION_RESET = "reset";
 
@@ -402,6 +403,12 @@ public class TelephonyTester {
             String operator = mServiceStateTestIntent.getStringExtra(EXTRA_OPERATOR);
             ss.setOperatorName(operator, operator, "");
             log("Override operator with " + operator);
+        }
+        if (mServiceStateTestIntent.hasExtra(EXTRA_OPERATOR_RAW)) {
+            String operator_raw = mServiceStateTestIntent.getStringExtra(EXTRA_OPERATOR_RAW);
+            ss.setOperatorAlphaLongRaw(operator_raw);
+            ss.setOperatorAlphaShortRaw(operator_raw);
+            log("Override operator_raw with " + operator_raw);
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_NR_FREQUENCY_RANGE)) {
             ss.setNrFrequencyRange(mServiceStateTestIntent.getIntExtra(EXTRA_NR_FREQUENCY_RANGE,
