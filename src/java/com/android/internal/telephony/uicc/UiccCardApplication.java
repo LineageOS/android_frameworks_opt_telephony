@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -388,6 +389,18 @@ public class UiccCardApplication {
             if (mDestroyed) {
                 loge("Received message " + msg + "[" + msg.what
                         + "] while being destroyed. Ignoring.");
+                //When UiccCardApp dispose,unlock SIM PIN message and need return exception.
+                if (msg.what == EVENT_PIN1_PUK1_DONE) {
+                    ar = (AsyncResult) msg.obj;
+                    if (ar != null) {
+                        ar.exception = new CommandException(CommandException.Error.ABORTED);
+                        Message response = (Message) ar.userObj;
+                        if (response != null) {
+                            AsyncResult.forMessage(response).exception = ar.exception;
+                            response.sendToTarget();
+                        }
+                    }
+                }
                 return;
             }
 
