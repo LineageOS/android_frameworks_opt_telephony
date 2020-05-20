@@ -455,8 +455,26 @@ public class DataConnection extends StateMachine {
         return mApnSetting;
     }
 
-    void setLinkPropertiesHttpProxy(ProxyInfo proxy) {
-        mLinkProperties.setHttpProxy(proxy);
+    /**
+     * Update http proxy of link properties based on current apn setting
+     */
+    private void updateLinkPropertiesHttpProxy() {
+        if (mApnSetting == null
+                || TextUtils.isEmpty(mApnSetting.getProxyAddressAsString())) {
+            return;
+        }
+        try {
+            int port = mApnSetting.getProxyPort();
+            if (port == -1) {
+                port = 8080;
+            }
+            ProxyInfo proxy = ProxyInfo.buildDirectProxy(
+                    mApnSetting.getProxyAddressAsString(), port);
+            mLinkProperties.setHttpProxy(proxy);
+        } catch (NumberFormatException e) {
+            loge("onDataSetupComplete: NumberFormatException making ProxyProperties ("
+                    + mApnSetting.getProxyPort() + "): " + e);
+        }
     }
 
     public static class UpdateLinkPropertyResult {
@@ -2190,7 +2208,7 @@ public class DataConnection extends StateMachine {
                 final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
-
+                updateLinkPropertiesHttpProxy();
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this,
                         mPhone, mNetworkInfo, mScore, configBuilder.build(), provider,
                         mTransportType);
