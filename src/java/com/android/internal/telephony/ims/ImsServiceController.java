@@ -504,19 +504,28 @@ public class ImsServiceController {
      */
     public void addImsServiceFeatureCallback(IImsServiceFeatureCallback callback) {
         mImsStatusCallbacks.add(callback);
+        Set<ImsFeatureConfiguration.FeatureSlotPair> features;
         synchronized (mLock) {
             if (mImsFeatures == null || mImsFeatures.isEmpty()) {
                 return;
             }
-            // notify the new status callback of the features that are available.
-            try {
-                for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
-                    callback.imsFeatureCreated(i.slotId, i.featureType);
-                }
-            } catch (RemoteException e) {
-                Log.w(LOG_TAG, "addImsServiceFeatureCallback: exception notifying callback");
-            }
+            features = new HashSet<>(mImsFeatures);
         }
+        // notify the new status callback of the features that are available.
+        try {
+            for (ImsFeatureConfiguration.FeatureSlotPair i : features) {
+                callback.imsFeatureCreated(i.slotId, i.featureType);
+            }
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "addImsServiceFeatureCallback: exception notifying callback");
+        }
+    }
+
+    /**
+     * Removes a previously registered callback if it was associated with this feature.
+     */
+    public void removeImsServiceFeatureCallback(IImsServiceFeatureCallback callback) {
+        mImsStatusCallbacks.remove(callback);
     }
 
     public void enableIms(int slotId) {
