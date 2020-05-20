@@ -49,7 +49,6 @@ import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkPolicyManager;
 import android.net.NetworkRequest;
-import android.net.ProxyInfo;
 import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -2847,20 +2846,6 @@ public class DcTracker extends Handler {
                 if (DBG) {
                     log("onDataSetupComplete: success apn=" + (apn == null ? "unknown"
                             : apn.getApnName()));
-                }
-                if (apn != null && !TextUtils.isEmpty(apn.getProxyAddressAsString())) {
-                    try {
-                        int port = apn.getProxyPort();
-                        if (port == -1) {
-                            port = 8080;
-                        }
-                        ProxyInfo proxy = ProxyInfo.buildDirectProxy(
-                                apn.getProxyAddressAsString(), port);
-                        dataConnection.setLinkPropertiesHttpProxy(proxy);
-                    } catch (NumberFormatException e) {
-                        loge("onDataSetupComplete: NumberFormatException making ProxyProperties ("
-                                + apn.getProxyPort() + "): " + e);
-                    }
                 }
 
                 // everything is setup
