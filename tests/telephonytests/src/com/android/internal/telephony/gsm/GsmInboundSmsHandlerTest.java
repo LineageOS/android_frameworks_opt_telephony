@@ -244,6 +244,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
             i++;
         }
         assertFalse(mGsmInboundSmsHandler.getWakeLock().isHeld());
+        mGsmInboundSmsHandler.quit();
         mGsmInboundSmsHandler = null;
         mContentProvider.shutdown();
         super.tearDown();
