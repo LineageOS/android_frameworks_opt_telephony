@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static junit.framework.Assert.assertNotNull;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -62,6 +64,25 @@ public class ImsCallTest extends TelephonyTest {
                 ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN + "");
         assertTrue(mTestImsCall.isWifiCall());
         assertNotEquals(mTestImsCall.getNetworkType(), TelephonyManager.NETWORK_TYPE_LTE);
+    }
+
+    @Test
+    @SmallTest
+    public void testNullCallProfile() {
+        ImsCall imsCall = new ImsCall(mContext, null /* imsCallProfile */);
+        assertNotNull(imsCall);
+        assertFalse(imsCall.wasVideoCall());
+    }
+
+    @Test
+    @SmallTest
+    public void testNonNulllVideoProfile() {
+        ImsCallProfile profile = new ImsCallProfile();
+        profile.mCallType = ImsCallProfile.CALL_TYPE_VT_TX;
+
+        ImsCall imsCall = new ImsCall(mContext, profile);
+        assertNotNull(imsCall);
+        assertTrue(imsCall.wasVideoCall());
     }
 
     @Test
