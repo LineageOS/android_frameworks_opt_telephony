@@ -1470,6 +1470,11 @@ public class ImsPhone extends ImsPhoneBase {
         return cfInfo;
     }
 
+    @Override
+    public String getLine1Number() {
+        return mDefaultPhone.getLine1Number();
+    }
+
     /**
      * Used to Convert ImsCallForwardInfo[] to CallForwardInfo[].
      * Update received call forward status to default IccRecords.
