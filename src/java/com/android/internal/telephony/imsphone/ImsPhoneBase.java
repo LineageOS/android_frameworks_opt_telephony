@@ -337,11 +337,6 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public String getLine1Number() {
-        return null;
-    }
-
-    @Override
     public String getLine1AlphaTag() {
         return null;
     }
