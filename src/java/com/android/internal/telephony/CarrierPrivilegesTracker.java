@@ -77,6 +77,8 @@ import java.util.StringJoiner;
 public class CarrierPrivilegesTracker extends Handler {
     private static final String TAG = CarrierPrivilegesTracker.class.getSimpleName();
 
+    private static final boolean VDBG = false;
+
     private static final String SHA_1 = "SHA-1";
     private static final String SHA_256 = "SHA-256";
 
@@ -421,10 +423,13 @@ public class CarrierPrivilegesTracker extends Handler {
         // Okay because no registrants exist yet
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
 
-        mLocalLog.log("Initializing state:"
+        String msg = "Initializing state:"
                 + " CarrierConfig certs=" + mCarrierConfigCerts
-                + " SIM-loaded certs=" + mUiccCerts
-                + " installed pkgs=" + getObfuscatedPackages());
+                + " SIM-loaded certs=" + mUiccCerts;
+        if (VDBG) {
+            msg += " installed pkgs=" + getObfuscatedPackages();
+        }
+        mLocalLog.log(msg);
     }
 
     private String getObfuscatedPackages() {
@@ -512,6 +517,12 @@ public class CarrierPrivilegesTracker extends Handler {
         pw.println("CarrierPrivilegesTracker - Log End ----");
         pw.println("CarrierPrivilegesTracker - Privileged UIDs: "
                 + Arrays.toString(mPrivilegedUids));
+        pw.println("CarrierPrivilegesTracker - SIM-loaded Certs: " + mUiccCerts);
+        pw.println("CarrierPrivilegesTracker - CarrierPrivileged Certs: " + mCarrierConfigCerts);
+        if (VDBG) {
+            pw.println("CarrierPrivilegesTracker - Obfuscated Pkgs + Certs: "
+                    + getObfuscatedPackages());
+        }
     }
 
     /**
