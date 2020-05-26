@@ -22,14 +22,19 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
-import android.test.InstrumentationTestCase;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 
+
+import androidx.test.InstrumentationRegistry;
+import androidx.test.runner.AndroidJUnit4;
+
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -37,7 +42,8 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CarrierAppUtilsTest extends InstrumentationTestCase {
+@RunWith(AndroidJUnit4.class)
+public class CarrierAppUtilsTest {
     private static final String CARRIER_APP = "com.example.carrier";
     private static final ArraySet<String> CARRIER_APPS = new ArraySet<>();
     static {
@@ -59,11 +65,10 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     private SettingsMockContentProvider mContentProvider;
     private MockContentResolver mContentResolver;
 
-    @Override
+    @Before
     public void setUp() throws Exception {
-        super.setUp();
         System.setProperty("dexmaker.dexcache",
-                getInstrumentation().getTargetContext().getCacheDir().getPath());
+                InstrumentationRegistry.getTargetContext().getCacheDir().getPath());
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
         MockitoAnnotations.initMocks(this);
 
