@@ -4321,6 +4321,7 @@ public class DcTracker extends Handler {
                 | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN))
                 .setApnName("sos")
                 .setApnTypeBitmask(ApnSetting.TYPE_EMERGENCY)
+                .setCarrierEnabled(true)
                 .build();
     }
 
