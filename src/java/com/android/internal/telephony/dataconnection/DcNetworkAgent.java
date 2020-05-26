@@ -234,9 +234,9 @@ public class DcNetworkAgent extends NetworkAgent {
                 // only log metrics for DataConnection with NET_CAPABILITY_INTERNET
                 if (mNetworkCapabilities == null
                         || networkCapabilities.hasCapability(
-                                NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-                                        != mNetworkCapabilities.hasCapability(
-                                                NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) {
+                                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED)
+                        != mNetworkCapabilities.hasCapability(
+                                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED)) {
                     TelephonyMetrics.getInstance().writeNetworkCapabilitiesChangedEvent(
                             mPhone.getPhoneId(), networkCapabilities);
                 }
