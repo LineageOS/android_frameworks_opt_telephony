@@ -313,10 +313,10 @@ public class TelephonyMetricsTest extends TelephonyTest {
     @SmallTest
     public void testWriteNetworkCapabilitiesChangedEvent() throws Exception {
         NetworkCapabilities caps = new NetworkCapabilities();
-        caps.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        caps.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         mMetrics.writeNetworkCapabilitiesChangedEvent(mPhone.getPhoneId(), caps);
 
-        caps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        caps.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         mMetrics.writeNetworkCapabilitiesChangedEvent(mPhone.getPhoneId(), caps);
 
         TelephonyLog log = buildProto();
