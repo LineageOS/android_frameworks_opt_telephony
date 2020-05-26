@@ -37,6 +37,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -376,6 +378,61 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
 
         // Filter should still be invoked.
         verifySmsFiltersInvoked(times(1));
+    }
+
+    @Test
+    @MediumTest
+    public void testNewSmsWithUserLocked_notificationShown() {
+        // user locked
+        UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        doReturn(false).when(userManager).isUserUnlocked();
+
+        transitionFromStartupToIdle();
+
+        sendNewSms();
+
+        verify(mContext, never()).sendBroadcast(any(Intent.class));
+        assertEquals("IdleState", getCurrentState().getName());
+
+        // Filter should be invoked.
+        verifySmsFiltersInvoked(times(1));
+
+        // New message notification should be shown.
+        NotificationManager notificationManager =
+                (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        verify(notificationManager).notify(
+                eq(InboundSmsHandler.NOTIFICATION_TAG),
+                eq(InboundSmsHandler.NOTIFICATION_ID_NEW_MESSAGE),
+                any(Notification.class));
+    }
+
+    @Test
+    @MediumTest
+    public void testNewSmsFromBlockedNumberWithUserLocked_noNotificationShown() {
+        String blockedNumber = "1234567890";
+        mFakeBlockedNumberContentProvider.mBlockedNumbers.add(blockedNumber);
+
+        // user locked
+        UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        doReturn(false).when(userManager).isUserUnlocked();
+
+        transitionFromStartupToIdle();
+
+        sendNewSms();
+
+        verify(mContext, never()).sendBroadcast(any(Intent.class));
+        assertEquals("IdleState", getCurrentState().getName());
+
+        // Filter should be invoked.
+        verifySmsFiltersInvoked(times(1));
+
+        // No new message notification should be shown.
+        NotificationManager notificationManager =
+                (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        verify(notificationManager, never()).notify(
+                eq(InboundSmsHandler.NOTIFICATION_TAG),
+                eq(InboundSmsHandler.NOTIFICATION_ID_NEW_MESSAGE),
+                any(Notification.class));
     }
 
     @Test
