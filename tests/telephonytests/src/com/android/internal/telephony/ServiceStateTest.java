@@ -335,7 +335,7 @@ public class ServiceStateTest extends TestCase {
 
         wwanDataRegState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                0, 0, 0, true, null, null, "", 0, false, false, false, lteVopsSupportInfo, false);
+                0, 0, 0, true, null, null, "", 0, false, false, false, lteVopsSupportInfo);
         ss.addNetworkRegistrationInfo(wwanDataRegState);
         assertEquals(ss.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN), wwanDataRegState);
