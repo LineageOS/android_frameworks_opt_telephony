@@ -1277,15 +1277,13 @@ public class DataConnection extends StateMachine {
         }
 
         // If data is enabled, this data connection can't be for unmetered used only because
-        // everyone should be able to use it.
+        // everyone should be able to use it if:
+        // 1. Device is not roaming, or
+        // 2. Device is roaming and data roaming is turned on
         if (mPhone.getDataEnabledSettings().isDataEnabled()) {
-            return false;
-        }
-
-        // If the device is roaming and data roaming it turned on, then this data connection can't
-        // be for unmetered use only.
-        if (mDct.getDataRoamingEnabled() && mPhone.getServiceState().getDataRoaming()) {
-            return false;
+            if (!mPhone.getServiceState().getDataRoaming() || mDct.getDataRoamingEnabled()) {
+                return false;
+            }
         }
 
         // The data connection can only be unmetered used only if all attached APN contexts
