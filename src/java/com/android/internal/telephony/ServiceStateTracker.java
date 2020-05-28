@@ -1619,12 +1619,12 @@ public class ServiceStateTracker extends Handler {
                     mPhone.notifyPhysicalChannelConfiguration(list);
                     mLastPhysicalChannelConfigList = list;
                     boolean hasChanged = false;
-                    if (updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS)) {
-                        mNrFrequencyChangedRegistrants.notifyRegistrants();
-                        hasChanged = true;
-                    }
                     if (updateNrStateFromPhysicalChannelConfigs(list, mSS)) {
                         mNrStateChangedRegistrants.notifyRegistrants();
+                        hasChanged = true;
+                    }
+                    if (updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS)) {
+                        mNrFrequencyChangedRegistrants.notifyRegistrants();
                         hasChanged = true;
                     }
                     hasChanged |= RatRatcheter
