@@ -274,6 +274,10 @@ public class EuiccController extends IEuiccController.Stub {
      */
     @Override
     public void setSupportedCountries(boolean isSupported, @NonNull List<String> countriesList) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to set supported countries");
+        }
         if (isSupported) {
             mSupportedCountries = countriesList;
         } else {
@@ -294,6 +298,10 @@ public class EuiccController extends IEuiccController.Stub {
     @Override
     @NonNull
     public List<String> getSupportedCountries(boolean isSupported) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get supported countries");
+        }
         if (isSupported && mSupportedCountries != null) {
             return mSupportedCountries;
         } else if (!isSupported && mUnsupportedCountries != null) {
@@ -320,6 +328,10 @@ public class EuiccController extends IEuiccController.Stub {
      */
     @Override
     public boolean isSupportedCountry(@NonNull String countryIso) {
+        if (!callerCanWriteEmbeddedSubscriptions()) {
+            throw new SecurityException(
+                    "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to check if the country is supported");
+        }
         if (mSupportedCountries == null || mSupportedCountries.isEmpty()) {
             Log.i(TAG, "Using blacklist unsupportedCountries=" + mUnsupportedCountries);
             return !isEsimUnsupportedCountry(countryIso);
