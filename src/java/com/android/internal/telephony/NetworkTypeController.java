@@ -689,10 +689,16 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
+                    if (!isNrConnected()) {
+                        log("The nr state was changed. To update the state.");
+                        sendMessage(EVENT_NR_STATE_CHANGED);
+                    }
                     if (!isNrMmwave()) {
+                        // STATE_CONNECTED_MMWAVE -> STATE_CONNECTED
                         transitionWithTimerTo(mNrConnectedState);
                     } else {
-                        updateOverrideNetworkType();
+                        // STATE_CONNECTED -> STATE_CONNECTED_MMWAVE
+                        transitionTo(mNrConnectedState);
                     }
                     break;
                 case EVENT_DATA_ACTIVITY_CHANGED:
