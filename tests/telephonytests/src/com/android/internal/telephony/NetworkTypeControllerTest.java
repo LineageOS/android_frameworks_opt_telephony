@@ -88,6 +88,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         replaceInstance(Handler.class, "mLooper", mDisplayInfoController, Looper.myLooper());
+        doReturn((int) TelephonyManager.NETWORK_TYPE_BITMASK_NR).when(mPhone)
+                .getCachedPreferredNetworkType();
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
     }
 
