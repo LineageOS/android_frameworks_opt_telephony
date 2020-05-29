@@ -2200,12 +2200,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     *  Query the preferred network type setting
+     * Query the preferred network type setting
      *
      * @param response is callback message to report one of  NT_*_TYPE
      */
     public void getPreferredNetworkType(Message response) {
         mCi.getPreferredNetworkType(response);
+    }
+
+    /**
+     * Get the cached value of the preferred network type setting
+     */
+    public int getCachedPreferredNetworkType() {
+        if (mCi != null && mCi instanceof BaseCommands) {
+            return ((BaseCommands) mCi).mPreferredNetworkType;
+        } else {
+            return RILConstants.PREFERRED_NETWORK_MODE;
+        }
     }
 
     /**
