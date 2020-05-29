@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.PersistableBundle;
@@ -487,10 +488,9 @@ public class RetryManager {
 
     /**
      * Get the next APN setting for data call setup.
-     * @return APN setting to try
+     * @return APN setting to try. {@code null} if cannot find any APN,
      */
-    public ApnSetting getNextApnSetting() {
-
+    public @Nullable ApnSetting getNextApnSetting() {
         if (mWaitingApns == null || mWaitingApns.size() == 0) {
             log("Waiting APN list is null or empty.");
             return null;
@@ -517,8 +517,10 @@ public class RetryManager {
                 break;
             }
 
-            // If we've already cycled through all the APNs, that means there is no APN we can try
-            if (index == mCurrentApnIndex) return null;
+            // If all APNs have permanently failed, bail out.
+            if (mWaitingApns.stream().allMatch(ApnSetting::getPermanentFailed)) {
+                return null;
+            }
         }
 
         mCurrentApnIndex = index;
@@ -566,9 +568,8 @@ public class RetryManager {
                 break;
             }
 
-            // If we've already cycled through all the APNs, that means all APNs have
-            // permanently failed
-            if (index == mCurrentApnIndex) {
+            // If all APNs have permanently failed, bail out.
+            if (mWaitingApns.stream().allMatch(ApnSetting::getPermanentFailed)) {
                 log("All APNs have permanently failed.");
                 return NO_RETRY;
             }
