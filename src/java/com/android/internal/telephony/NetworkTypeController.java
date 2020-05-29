@@ -435,6 +435,9 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED:
                     AsyncResult result = (AsyncResult) msg.obj;
                     mIsPhysicalChannelConfigOn = (boolean) result.result;
+                    if (DBG) {
+                        log("mIsPhysicalChannelConfigOn changed to: " + mIsPhysicalChannelConfigOn);
+                    }
                     for (int event : ALL_EVENTS) {
                         removeMessages(event);
                     }
@@ -689,10 +692,16 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
+                    if (!isNrConnected()) {
+                        log("The nr state was changed. To update the state.");
+                        sendMessage(EVENT_NR_STATE_CHANGED);
+                    }
                     if (!isNrMmwave()) {
+                        // STATE_CONNECTED_MMWAVE -> STATE_CONNECTED
                         transitionWithTimerTo(mNrConnectedState);
                     } else {
-                        updateOverrideNetworkType();
+                        // STATE_CONNECTED -> STATE_CONNECTED_MMWAVE
+                        transitionTo(mNrConnectedState);
                     }
                     break;
                 case EVENT_DATA_ACTIVITY_CHANGED:
@@ -747,20 +756,26 @@ public class NetworkTypeController extends StateMachine {
 
     private void transitionToCurrentState() {
         int dataRat = mPhone.getServiceState().getDataNetworkType();
+        IState transitionState;
         if (dataRat == TelephonyManager.NETWORK_TYPE_NR || isNrConnected()) {
-            transitionTo(mNrConnectedState);
+            transitionState = mNrConnectedState;
             mPreviousState = isNrMmwave() ? STATE_CONNECTED_MMWAVE : STATE_CONNECTED;
         } else if (isLte(dataRat) && isNrNotRestricted()) {
             if (isDataActive()) {
-                transitionTo(mLteConnectedState);
+                transitionState = mLteConnectedState;
                 mPreviousState = STATE_NOT_RESTRICTED_RRC_CON;
             } else {
-                transitionTo(mIdleState);
+                transitionState = mIdleState;
                 mPreviousState = STATE_NOT_RESTRICTED_RRC_IDLE;
             }
         } else {
-            transitionTo(mLegacyState);
+            transitionState = mLegacyState;
             mPreviousState = isNrRestricted() ? STATE_RESTRICTED : STATE_LEGACY;
+        }
+        if (!transitionState.equals(getCurrentState())) {
+            transitionTo(transitionState);
+        } else {
+            updateOverrideNetworkType();
         }
     }
 
