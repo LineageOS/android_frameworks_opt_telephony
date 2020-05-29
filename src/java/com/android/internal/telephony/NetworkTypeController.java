@@ -575,8 +575,14 @@ public class NetworkTypeController extends StateMachine {
                     // ignore
                     break;
                 case EVENT_DATA_ACTIVITY_CHANGED:
-                    if (isDataActive()) {
-                        transitionWithTimerTo(mLteConnectedState);
+                    if (isNrNotRestricted()) {
+                        // NOT_RESTRICTED_RRC_IDLE -> NOT_RESTRICTED_RRC_CON
+                        if (isDataActive()) {
+                            transitionWithTimerTo(mLteConnectedState);
+                        }
+                    } else {
+                        log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
+                        sendMessage(EVENT_NR_STATE_CHANGED);
                     }
                     break;
                 default:
@@ -634,8 +640,14 @@ public class NetworkTypeController extends StateMachine {
                     // ignore
                     break;
                 case EVENT_DATA_ACTIVITY_CHANGED:
-                    if (!isDataActive()) {
-                        transitionWithTimerTo(mIdleState);
+                    if (isNrNotRestricted()) {
+                        // NOT_RESTRICTED_RRC_CON -> NOT_RESTRICTED_RRC_IDLE
+                        if (!isDataActive()) {
+                            transitionWithTimerTo(mIdleState);
+                        }
+                    } else {
+                        log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
+                        sendMessage(EVENT_NR_STATE_CHANGED);
                     }
                     break;
                 default:
@@ -693,8 +705,9 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
                     if (!isNrConnected()) {
-                        log("The nr state was changed. To update the state.");
+                        log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
                         sendMessage(EVENT_NR_STATE_CHANGED);
+                        break;
                     }
                     if (!isNrMmwave()) {
                         // STATE_CONNECTED_MMWAVE -> STATE_CONNECTED
@@ -705,7 +718,10 @@ public class NetworkTypeController extends StateMachine {
                     }
                     break;
                 case EVENT_DATA_ACTIVITY_CHANGED:
-                    // ignore
+                    if (!isNrConnected()) {
+                        log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
+                        sendMessage(EVENT_NR_STATE_CHANGED);
+                    }
                     break;
                 default:
                     return NOT_HANDLED;
