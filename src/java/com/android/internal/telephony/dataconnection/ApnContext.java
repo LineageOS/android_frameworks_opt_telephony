@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.annotation.Nullable;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Message;
@@ -225,10 +226,10 @@ public class ApnContext {
 
     /**
      * Get the next available APN to try.
-     * @return APN setting which will be used for data call setup. Return null if there is no
+     * @return APN setting which will be used for data call setup.{@code null} if there is no
      * APN can be retried.
      */
-    public ApnSetting getNextApnSetting() {
+    public @Nullable ApnSetting getNextApnSetting() {
         return mRetryManager.getNextApnSetting();
     }
 
