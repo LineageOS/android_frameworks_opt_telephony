@@ -21,6 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
@@ -35,6 +37,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionInfo;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -545,6 +548,47 @@ public class UiccProfileTest extends TelephonyTest {
             }
         }
         assertTrue(carrierFound);
+    }
+
+    @Mock
+    private SubscriptionInfo mSubscriptionInfo;
+
+    @Test
+    public void testSetOperatorBrandOverride() {
+        testUpdateUiccProfileApplication();
+        String fakeIccId = "1234567";
+        String fakeBrand = "operator";
+
+        mUiccProfile.getApplicationIndex(0).getIccRecords().mIccId = fakeIccId;
+        doReturn(fakeIccId).when(mSubscriptionInfo).getIccId();
+        doReturn(mSubscriptionInfo).when(mSubscriptionController)
+                .getActiveSubscriptionInfoForSimSlotIndex(eq(0), any(), any());
+
+        mUiccProfile.setOperatorBrandOverride(fakeBrand);
+        String brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
+                .getString("operator_branding_" + fakeIccId, null);
+        assertEquals(fakeBrand, brandInSharedPreference);
+    }
+
+    @Test
+    public void testSetOperatorBrandOverrideIccNotMatch() {
+        testUpdateUiccProfileApplication();
+        String fakeIccId1 = "1234567";
+        String fakeIccId2 = "7654321";
+        String fakeBrand = "operator";
+
+        mUiccProfile.getApplicationIndex(0).getIccRecords().mIccId = fakeIccId1;
+        doReturn(fakeIccId2).when(mSubscriptionInfo).getIccId();
+        doReturn(mSubscriptionInfo).when(mSubscriptionController)
+                .getActiveSubscriptionInfoForSimSlotIndex(eq(0), any(), any());
+
+        mUiccProfile.setOperatorBrandOverride(fakeBrand);
+        String brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
+                .getString("operator_branding_" + fakeIccId1, null);
+        assertNull(brandInSharedPreference);
+        brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
+                .getString("operator_branding_" + fakeIccId2, null);
+        assertNull(brandInSharedPreference);
     }
 
     @Test
