@@ -270,6 +270,22 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     /**
+     * Unregister the network agent from connectivity service.
+     *
+     * @param dc The data connection that invokes this method.
+     */
+    public synchronized void unregister(DataConnection dc) {
+        if (!isOwned(dc, "unregister")) return;
+
+        if (dc.getLinkProperties() != null
+                && !TextUtils.isEmpty(dc.getLinkProperties().getInterfaceName())) {
+            sInterfaceNames.remove(dc.getLinkProperties().getInterfaceName());
+        }
+        logd("Unregister from connectivity service");
+        super.unregister();
+    }
+
+    /**
      * Set the network info.
      *
      * @param networkInfo The network info.
@@ -288,12 +304,7 @@ public class DcNetworkAgent extends NetworkAgent {
         }
         if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
                 && state == NetworkInfo.State.DISCONNECTED) {
-            if (dc.getLinkProperties() != null
-                    && !TextUtils.isEmpty(dc.getLinkProperties().getInterfaceName())) {
-                sInterfaceNames.remove(dc.getLinkProperties().getInterfaceName());
-            }
-            logd("Unregister from connectivity service");
-            unregister();
+            unregister(dc);
         }
         mNetworkInfo = new NetworkInfo(networkInfo);
     }
