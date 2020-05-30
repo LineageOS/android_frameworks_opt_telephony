@@ -84,12 +84,13 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 7;
     private static final int EVENT_PRIMARY_TIMER_EXPIRED = 8;
     private static final int EVENT_SECONDARY_TIMER_EXPIRED = 9;
+    private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
     private static final int[] ALL_EVENTS = { EVENT_DATA_RAT_CHANGED, EVENT_NR_STATE_CHANGED,
             EVENT_NR_FREQUENCY_CHANGED, EVENT_DATA_ACTIVITY_CHANGED,
             EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED, EVENT_CARRIER_CONFIG_CHANGED,
             EVENT_PRIMARY_TIMER_EXPIRED, EVENT_SECONDARY_TIMER_EXPIRED };
 
-    private static final String[] sEvents = new String[EVENT_SECONDARY_TIMER_EXPIRED + 1];
+    private static final String[] sEvents = new String[EVENT_RADIO_OFF_OR_UNAVAILABLE + 1];
     static {
         sEvents[EVENT_UPDATE] = "EVENT_UPDATE";
         sEvents[EVENT_QUIT] = "EVENT_QUIT";
@@ -102,6 +103,7 @@ public class NetworkTypeController extends StateMachine {
         sEvents[EVENT_CARRIER_CONFIG_CHANGED] = "EVENT_CARRIER_CONFIG_CHANGED";
         sEvents[EVENT_PRIMARY_TIMER_EXPIRED] = "EVENT_PRIMARY_TIMER_EXPIRED";
         sEvents[EVENT_SECONDARY_TIMER_EXPIRED] = "EVENT_SECONDARY_TIMER_EXPIRED";
+        sEvents[EVENT_RADIO_OFF_OR_UNAVAILABLE] = "EVENT_RADIO_OFF_OR_UNAVAILABLE";
     }
 
     private final Phone mPhone;
@@ -170,6 +172,8 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private void registerForAllEvents() {
+        mPhone.registerForRadioOffOrNotAvailable(getHandler(),
+                EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
                 EVENT_DATA_RAT_CHANGED, null);
@@ -188,11 +192,12 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private void unRegisterForAllEvents() {
+        mPhone.unregisterForRadioOffOrNotAvailable(getHandler());
         mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler());
         mPhone.getServiceStateTracker().unregisterForNrStateChanged(getHandler());
         mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
-        mPhone.mDeviceStateMonitor.unregisterForPhysicalChannelConfigNotifChanged(getHandler());
+        mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
         if (mTelephonyManager != null) {
             mTelephonyManager.listen(mPhoneStateListener, 0);
@@ -351,6 +356,11 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private @Annotation.OverrideNetworkType int getNrDisplayType() {
+        // Don't show 5G icon if preferred network type does not include 5G
+        if ((mPhone.getCachedPreferredNetworkType() & TelephonyManager.NETWORK_TYPE_BITMASK_NR)
+                == 0) {
+            return TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+        }
         // Icon display keys in order of priority
         List<String> keys = new ArrayList<>();
         // TODO: Update for NR SA
@@ -462,6 +472,10 @@ public class NetworkTypeController extends StateMachine {
                     mSecondaryTimerState = "";
                     updateTimers();
                     updateOverrideNetworkType();
+                    break;
+                case EVENT_RADIO_OFF_OR_UNAVAILABLE:
+                    resetAllTimers();
+                    transitionTo(mLegacyState);
                     break;
                 default:
                     throw new RuntimeException("Received invalid event: " + msg.what);
