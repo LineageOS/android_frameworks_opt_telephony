@@ -1887,6 +1887,9 @@ public class ImsPhone extends ImsPhoneBase {
                         intent.getCharSequenceExtra(EXTRA_KEY_NOTIFICATION_MESSAGE);
 
                 Intent resultIntent = new Intent(Intent.ACTION_MAIN);
+                // Note: If the classname below is ever removed, the call to
+                // PendingIntent.getActivity should also specify FLAG_IMMUTABLE to ensure the
+                // pending intent cannot be tampered with.
                 resultIntent.setClassName("com.android.settings",
                         "com.android.settings.Settings$WifiCallingSettingsActivity");
                 resultIntent.putExtra(EXTRA_KEY_ALERT_SHOW, true);
@@ -1897,6 +1900,8 @@ public class ImsPhone extends ImsPhoneBase {
                                 mContext,
                                 0,
                                 resultIntent,
+                                // Note: Since resultIntent above specifies an explicit class name
+                                // we do not need to specify PendingIntent.FLAG_IMMUTABLE here.
                                 PendingIntent.FLAG_UPDATE_CURRENT
                         );
 
