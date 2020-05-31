@@ -1846,6 +1846,9 @@ public class SubscriptionController extends ISub.Stub {
                 EuiccManager euiccManager = ((EuiccManager)
                         mContext.getSystemService(Context.EUICC_SERVICE)).createForCardId(cardId);
                 euiccManager.updateSubscriptionNickname(subId, displayName,
+                        // This PendingIntent simply fulfills the requirement to pass in a callback;
+                        // we don't care about the result (hence 0 requestCode and no action
+                        // specified on the intent).
                         PendingIntent.getService(
                             mContext, 0 /* requestCode */, new Intent(), 0 /* flags */));
             }
