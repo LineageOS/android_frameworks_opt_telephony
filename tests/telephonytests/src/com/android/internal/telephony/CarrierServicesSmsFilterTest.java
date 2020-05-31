@@ -79,8 +79,7 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
         }
         mCarrierServicesSmsFilterUT = new CarrierServicesSmsFilter(
                 mContext, mPhone, new byte[][]{SMS_PDU},
-                0, "3gpp", mFilterCallback, getClass().getSimpleName(), new LocalLog(64)
-        );
+                0, "3gpp", mFilterCallback, getClass().getSimpleName(), new LocalLog(10), 1L);
     }
 
     @After
