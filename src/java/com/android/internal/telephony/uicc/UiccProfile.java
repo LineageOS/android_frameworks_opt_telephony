@@ -202,8 +202,13 @@ public class UiccProfile extends IccCard {
             logWithLocalLog("handleMessage: Received " + eventName + " for phoneId " + mPhoneId);
             switch (msg.what) {
                 case EVENT_NETWORK_LOCKED:
-                    mNetworkLockedRegistrants.notifyRegistrants(new AsyncResult(
-                            null, mUiccApplication.getPersoSubState().ordinal(), null));
+                    if (mUiccApplication != null) {
+                        mNetworkLockedRegistrants.notifyRegistrants(new AsyncResult(
+                                null, mUiccApplication.getPersoSubState().ordinal(), null));
+                    } else {
+                        log("EVENT_NETWORK_LOCKED: mUiccApplication is NULL, "
+                                + "mNetworkLockedRegistrants not notified.");
+                    }
                     // intentional fall through
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                 case EVENT_ICC_LOCKED:
@@ -786,8 +791,15 @@ public class UiccProfile extends IccCard {
             mNetworkLockedRegistrants.add(r);
 
             if (getState() == IccCardConstants.State.NETWORK_LOCKED) {
-                r.notifyRegistrant(
-                        new AsyncResult(null, mUiccApplication.getPersoSubState().ordinal(), null));
+                if (mUiccApplication != null) {
+                    r.notifyRegistrant(
+                            new AsyncResult(null, mUiccApplication.getPersoSubState().ordinal(),
+                                    null));
+
+                } else {
+                    log("registerForNetworkLocked: not notifying registrants, "
+                            + "mUiccApplication == null");
+                }
             }
         }
     }
