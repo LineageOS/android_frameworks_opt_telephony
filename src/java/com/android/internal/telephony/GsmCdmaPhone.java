@@ -3442,6 +3442,11 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    public int getOtasp() {
+        return mSST.getOtasp();
+    }
+
+    @Override
     public int getCdmaEriIconIndex() {
         if (isPhoneTypeGsm()) {
             return super.getCdmaEriIconIndex();

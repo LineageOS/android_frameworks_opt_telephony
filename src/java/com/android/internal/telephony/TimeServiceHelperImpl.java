@@ -34,18 +34,7 @@ import android.util.TimestampedValue;
  * An interface to various time / time zone detection behaviors that should be centralized into a
  * new service.
  */
-// Non-final to allow mocking.
-public class NewTimeServiceHelper {
-
-    /**
-     * Callback interface for automatic detection enable/disable changes.
-     */
-    public interface Listener {
-        /**
-         * Automatic time zone detection has been enabled or disabled.
-         */
-        void onTimeZoneDetectionChange(boolean enabled);
-    }
+public class TimeServiceHelperImpl implements TimeServiceHelper {
 
     private static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -56,16 +45,13 @@ public class NewTimeServiceHelper {
     private Listener mListener;
 
     /** Creates a TimeServiceHelper */
-    public NewTimeServiceHelper(Context context) {
+    public TimeServiceHelperImpl(Context context) {
         mContext = context;
         mCr = context.getContentResolver();
         mTimeDetector = context.getSystemService(TimeDetector.class);
     }
 
-    /**
-     * Sets a listener that will be called when the automatic time / time zone detection setting
-     * changes.
-     */
+    @Override
     public void setListener(Listener listener) {
         if (listener == null) {
             throw new NullPointerException("listener==null");
@@ -83,31 +69,23 @@ public class NewTimeServiceHelper {
                 });
     }
 
-    /**
-     * Returns the same value as {@link System#currentTimeMillis()}.
-     */
+    @Override
     public long currentTimeMillis() {
         return System.currentTimeMillis();
     }
 
-    /**
-     * Returns the same value as {@link SystemClock#elapsedRealtime()}.
-     */
+    @Override
     public long elapsedRealtime() {
         return SystemClock.elapsedRealtime();
     }
 
-    /**
-     * Returns true if the device has an explicit time zone set.
-     */
+    @Override
     public boolean isTimeZoneSettingInitialized() {
         return isTimeZoneSettingInitializedStatic();
 
     }
 
-    /**
-     * Returns true if automatic time zone detection is enabled in settings.
-     */
+    @Override
     public boolean isTimeZoneDetectionEnabled() {
         try {
             return Settings.Global.getInt(mCr, Settings.Global.AUTO_TIME_ZONE) > 0;
@@ -116,21 +94,12 @@ public class NewTimeServiceHelper {
         }
     }
 
-    /**
-     * Set the device time zone and send out a sticky broadcast so the system can
-     * determine if the timezone was set by the carrier.
-     *
-     * @param zoneId timezone set by carrier
-     */
+    @Override
     public void setDeviceTimeZone(String zoneId) {
         setDeviceTimeZoneStatic(mContext, zoneId);
     }
 
-    /**
-     * Suggest the time to the {@link TimeDetector}.
-     *
-     * @param signalTimeMillis the signal time as received from the network
-     */
+    @Override
     public void suggestDeviceTime(TimestampedValue<Long> signalTimeMillis) {
         TimeSignal timeSignal = new TimeSignal(TimeSignal.SOURCE_ID_NITZ, signalTimeMillis);
         mTimeDetector.suggestTime(timeSignal);

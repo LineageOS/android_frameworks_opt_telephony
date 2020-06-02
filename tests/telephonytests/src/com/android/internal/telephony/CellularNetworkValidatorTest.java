@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
@@ -58,6 +59,7 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
 
         doReturn(CAPABILITY_WITH_VALIDATION_SUPPORTED).when(mPhoneConfigurationManager)
                 .getCurrentPhoneCapability();
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
 
         mHandlerThread = new HandlerThread("PhoneSwitcherTestThread") {
             @Override

@@ -301,18 +301,10 @@ public class TelephonyComponentFactory {
     }
 
     /**
-     * Sets the NitzStateMachine implementation to use during implementation. This boolean
-     * should be removed once the new implementation is stable.
-     */
-    static final boolean USE_NEW_NITZ_STATE_MACHINE = true;
-
-    /**
      * Returns a new {@link NitzStateMachine} instance.
      */
     public NitzStateMachine makeNitzStateMachine(GsmCdmaPhone phone) {
-        return USE_NEW_NITZ_STATE_MACHINE
-                ? new NewNitzStateMachine(phone)
-                : new OldNitzStateMachine(phone);
+        return new NitzStateMachineImpl(phone);
     }
 
     public SimActivationTracker makeSimActivationTracker(Phone phone) {

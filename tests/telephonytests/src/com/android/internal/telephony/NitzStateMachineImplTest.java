@@ -42,7 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
-public class NewNitzStateMachineTest extends TelephonyTest {
+public class NitzStateMachineImplTest extends TelephonyTest {
 
     // A country with a single zone : the zone can be guessed from the country.
     // The UK uses UTC for part of the year so it is not good for detecting bogus NITZ signals.
@@ -76,14 +76,14 @@ public class NewNitzStateMachineTest extends TelephonyTest {
             .build();
 
     @Mock
-    private NewNitzStateMachine.DeviceState mDeviceState;
+    private NitzStateMachine.DeviceState mDeviceState;
 
     @Mock
-    private NewTimeServiceHelper mTimeServiceHelper;
+    private TimeServiceHelper mTimeServiceHelper;
 
     private TimeZoneLookupHelper mRealTimeZoneLookupHelper;
 
-    private NewNitzStateMachine mNitzStateMachine;
+    private NitzStateMachineImpl mNitzStateMachine;
 
     @Before
     public void setUp() throws Exception {
@@ -92,7 +92,7 @@ public class NewNitzStateMachineTest extends TelephonyTest {
 
         // In tests we use the real TimeZoneLookupHelper.
         mRealTimeZoneLookupHelper = new TimeZoneLookupHelper();
-        mNitzStateMachine = new NewNitzStateMachine(
+        mNitzStateMachine = new NitzStateMachineImpl(
                 mPhone, mTimeServiceHelper, mDeviceState, mRealTimeZoneLookupHelper);
 
         logd("ServiceStateTrackerTest -Setup!");
@@ -819,7 +819,7 @@ public class NewNitzStateMachineTest extends TelephonyTest {
         }
 
         void checkNoUnverifiedSetOperations() {
-            NewNitzStateMachineTest.checkNoUnverifiedSetOperations(mTimeServiceHelper);
+            NitzStateMachineImplTest.checkNoUnverifiedSetOperations(mTimeServiceHelper);
         }
     }
 
@@ -957,7 +957,7 @@ public class NewNitzStateMachineTest extends TelephonyTest {
     /**
      * Confirms all mTimeServiceHelper side effects were verified.
      */
-    private static void checkNoUnverifiedSetOperations(NewTimeServiceHelper mTimeServiceHelper) {
+    private static void checkNoUnverifiedSetOperations(TimeServiceHelper mTimeServiceHelper) {
         // We don't care about current auto time / time zone state retrievals / listening so we can
         // use "at least 0" times to indicate they don't matter.
         verify(mTimeServiceHelper, atLeast(0)).setListener(any());

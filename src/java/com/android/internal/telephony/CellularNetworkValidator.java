@@ -16,18 +16,34 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG;
+import static android.telephony.NetworkRegistrationInfo.DOMAIN_PS;
+
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Handler;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityLte;
+import android.telephony.CellInfo;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.SubscriptionManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
+
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class will validate whether cellular network verified by Connectivity's
@@ -36,6 +52,9 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
  */
 public class CellularNetworkValidator {
     private static final String LOG_TAG = "NetworkValidator";
+    // If true, upon validated network cache hit, we report validationDone only when
+    // network becomes available. Otherwise, we report validationDone immediately.
+    private static boolean sWaitForNetworkAvailableWhenCacheHit = false;
 
     // States of validator. Only one validation can happen at once.
     // IDLE: no validation going on.
@@ -49,6 +68,8 @@ public class CellularNetworkValidator {
 
     // Singleton instance.
     private static CellularNetworkValidator sInstance;
+    @VisibleForTesting
+    public static final long MAX_VALIDATION_CACHE_TTL = TimeUnit.DAYS.toMillis(1);
 
     private int mState = STATE_IDLE;
     private int mSubId;
@@ -65,6 +86,121 @@ public class CellularNetworkValidator {
     public ConnectivityNetworkCallback mNetworkCallback;
     @VisibleForTesting
     public Runnable mTimeoutCallback;
+    private final ValidatedNetworkCache mValidatedNetworkCache = new ValidatedNetworkCache();
+
+    private class ValidatedNetworkCache {
+        // A cache with fixed size. It remembers 10 most recently successfully validated networks.
+        private static final int VALIDATED_NETWORK_CACHE_SIZE = 10;
+        private final PriorityQueue<ValidatedNetwork> mValidatedNetworkPQ =
+                new PriorityQueue((Comparator<ValidatedNetwork>) (n1, n2) -> {
+                    if (n1.mValidationTimeStamp < n2.mValidationTimeStamp) {
+                        return -1;
+                    } else if (n1.mValidationTimeStamp > n2.mValidationTimeStamp) {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                });
+        private final Map<String, ValidatedNetwork> mValidatedNetworkMap = new HashMap();
+
+        private final class ValidatedNetwork {
+            ValidatedNetwork(String identity, long timeStamp) {
+                mValidationIdentity = identity;
+                mValidationTimeStamp = timeStamp;
+            }
+            void update(long timeStamp) {
+                mValidationTimeStamp = timeStamp;
+            }
+            final String mValidationIdentity;
+            long mValidationTimeStamp;
+        }
+
+        boolean isRecentlyValidated(int subId) {
+            long cacheTtl = getValidationCacheTtl(subId);
+            if (cacheTtl == 0) return false;
+
+            String networkIdentity = getValidationNetworkIdentity(subId);
+            if (networkIdentity == null || !mValidatedNetworkMap.containsKey(networkIdentity)) {
+                return false;
+            }
+            long validatedTime = mValidatedNetworkMap.get(networkIdentity).mValidationTimeStamp;
+            boolean recentlyValidated = System.currentTimeMillis() - validatedTime < cacheTtl;
+            logd("isRecentlyValidated on subId " + subId + " ? " + recentlyValidated);
+            return recentlyValidated;
+        }
+
+        void storeLastValidationResult(int subId, boolean validated) {
+            if (getValidationCacheTtl(subId) == 0) return;
+
+            String networkIdentity = getValidationNetworkIdentity(subId);
+            logd("storeLastValidationResult for subId " + subId
+                    + (validated ? " validated." : " not validated."));
+            if (networkIdentity == null) return;
+
+            if (!validated) {
+                // If validation failed, clear it from the cache.
+                mValidatedNetworkPQ.remove(mValidatedNetworkMap.get(networkIdentity));
+                mValidatedNetworkMap.remove(networkIdentity);
+                return;
+            }
+            long time =  System.currentTimeMillis();
+            ValidatedNetwork network = mValidatedNetworkMap.get(networkIdentity);
+            if (network != null) {
+                // Already existed in cache, update.
+                network.update(time);
+                // Re-add to re-sort.
+                mValidatedNetworkPQ.remove(network);
+                mValidatedNetworkPQ.add(network);
+            } else {
+                network = new ValidatedNetwork(networkIdentity, time);
+                mValidatedNetworkMap.put(networkIdentity, network);
+                mValidatedNetworkPQ.add(network);
+            }
+            // If exceeded max size, remove the one with smallest validation timestamp.
+            if (mValidatedNetworkPQ.size() > VALIDATED_NETWORK_CACHE_SIZE) {
+                ValidatedNetwork networkToRemove = mValidatedNetworkPQ.poll();
+                mValidatedNetworkMap.remove(networkToRemove.mValidationIdentity);
+            }
+        }
+
+        private String getValidationNetworkIdentity(int subId) {
+            if (!SubscriptionManager.isUsableSubscriptionId(subId)) return null;
+            Phone phone = PhoneFactory.getPhone(SubscriptionController.getInstance()
+                    .getPhoneId(subId));
+            if (phone == null) return null;
+
+            if (phone.getServiceState() == null) return null;
+
+            NetworkRegistrationInfo regInfo = phone.getServiceState().getNetworkRegistrationInfo(
+                    DOMAIN_PS, TRANSPORT_TYPE_WWAN);
+            if (regInfo == null || regInfo.getCellIdentity() == null) return null;
+
+            CellIdentity cellIdentity = regInfo.getCellIdentity();
+            // TODO: add support for other technologies.
+            if (cellIdentity.getType() != CellInfo.TYPE_LTE
+                    || cellIdentity.getMccString() == null || cellIdentity.getMncString() == null
+                    || ((CellIdentityLte) cellIdentity).getTac() == CellInfo.UNAVAILABLE) {
+                return null;
+            }
+
+            return cellIdentity.getMccString() + cellIdentity.getMncString() + "_"
+                    + ((CellIdentityLte) cellIdentity).getTac() + "_" + subId;
+        }
+
+        private long getValidationCacheTtl(int subId) {
+            long ttl = 0;
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfigForSubId(subId);
+                if (b != null) {
+                    ttl = b.getLong(KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG);
+                }
+            }
+            // Ttl can't be bigger than one day for now.
+            return Math.min(ttl, MAX_VALIDATION_CACHE_TTL);
+        }
+    }
 
     /**
      * Callback to pass in when starting validation.
@@ -119,8 +255,7 @@ public class CellularNetworkValidator {
         // If it's already validating the same subscription, do nothing.
         if (subId == mSubId) return;
 
-        Phone phone = PhoneFactory.getPhone(SubscriptionManager.getPhoneId(subId));
-        if (phone == null) {
+        if (!SubscriptionController.getInstance().isActiveSubId(subId)) {
             logd("Failed to start validation. Inactive subId " + subId);
             callback.onValidationResult(false, subId);
             return;
@@ -128,6 +263,12 @@ public class CellularNetworkValidator {
 
         if (isValidating()) {
             stopValidation();
+        }
+
+        if (!sWaitForNetworkAvailableWhenCacheHit && mValidatedNetworkCache
+                .isRecentlyValidated(subId)) {
+            callback.onValidationResult(true, subId);
+            return;
         }
 
         mState = STATE_VALIDATING;
@@ -146,6 +287,8 @@ public class CellularNetworkValidator {
 
         mTimeoutCallback = () -> {
             logd("timeout on subId " + subId + " validation.");
+            // Remember latest validated network.
+            mValidatedNetworkCache.storeLastValidationResult(subId, false);
             reportValidationResult(false, subId);
         };
 
@@ -235,27 +378,37 @@ public class CellularNetworkValidator {
         @Override
         public void onAvailable(Network network) {
             logd("network onAvailable " + network);
-            if (ConnectivityNetworkCallback.this.mSubId == CellularNetworkValidator.this.mSubId) {
-                TelephonyMetrics.getInstance().writeNetworkValidate(
-                        TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_AVAILABLE);
+            if (ConnectivityNetworkCallback.this.mSubId != CellularNetworkValidator.this.mSubId) {
+                return;
+            }
+            TelephonyMetrics.getInstance().writeNetworkValidate(
+                    TelephonyEvent.NetworkValidationState.NETWORK_VALIDATION_STATE_AVAILABLE);
+            if (mValidatedNetworkCache.isRecentlyValidated(mSubId)) {
+                reportValidationResult(true, ConnectivityNetworkCallback.this.mSubId);
             }
         }
 
         @Override
         public void onLosing(Network network, int maxMsToLive) {
             logd("network onLosing " + network + " maxMsToLive " + maxMsToLive);
+            mValidatedNetworkCache.storeLastValidationResult(
+                    ConnectivityNetworkCallback.this.mSubId, false);
             reportValidationResult(false, ConnectivityNetworkCallback.this.mSubId);
         }
 
         @Override
         public void onLost(Network network) {
             logd("network onLost " + network);
+            mValidatedNetworkCache.storeLastValidationResult(
+                    ConnectivityNetworkCallback.this.mSubId, false);
             reportValidationResult(false, ConnectivityNetworkCallback.this.mSubId);
         }
 
         @Override
         public void onUnavailable() {
             logd("onUnavailable");
+            mValidatedNetworkCache.storeLastValidationResult(
+                    ConnectivityNetworkCallback.this.mSubId, false);
             reportValidationResult(false, ConnectivityNetworkCallback.this.mSubId);
         }
 
@@ -264,6 +417,8 @@ public class CellularNetworkValidator {
                 NetworkCapabilities networkCapabilities) {
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
                 logd("onValidated");
+                mValidatedNetworkCache.storeLastValidationResult(
+                        ConnectivityNetworkCallback.this.mSubId, true);
                 reportValidationResult(true, ConnectivityNetworkCallback.this.mSubId);
             }
         }
