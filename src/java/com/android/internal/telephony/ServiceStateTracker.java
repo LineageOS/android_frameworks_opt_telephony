@@ -220,6 +220,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mImsCapabilityChangedRegistrants = new RegistrantList();
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
+    private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -1556,8 +1557,11 @@ public class ServiceStateTracker extends Handler {
                     }
                     mPhone.notifyPhysicalChannelConfiguration(list);
                     mLastPhysicalChannelConfigList = list;
-                    boolean hasChanged =
-                            updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
+                    boolean hasChanged = false;
+                    if (updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS)) {
+                        mNrFrequencyChangedRegistrants.notifyRegistrants();
+                        hasChanged = true;
+                    }
                     if (updateNrStateFromPhysicalChannelConfigs(list, mSS)) {
                         mNrStateChangedRegistrants.notifyRegistrants();
                         hasChanged = true;
@@ -5583,6 +5587,25 @@ public class ServiceStateTracker extends Handler {
      */
     public void unregisterForNrStateChanged(Handler h) {
         mNrStateChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for 5G NR frequency changed.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForNrFrequencyChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mNrFrequencyChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for 5G NR frequency changed.
+     * @param h handler to notify
+     */
+    public void unregisterForNrFrequencyChanged(Handler h) {
+        mNrFrequencyChangedRegistrants.remove(h);
     }
 
     /**

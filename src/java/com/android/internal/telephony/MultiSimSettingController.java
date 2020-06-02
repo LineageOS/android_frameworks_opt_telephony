@@ -284,7 +284,7 @@ public class MultiSimSettingController extends Handler {
 
         // If user is enabling a non-default non-opportunistic subscription, make it default.
         if (mSubController.getDefaultDataSubId() != subId && !mSubController.isOpportunistic(subId)
-                && enable) {
+                && enable && mSubController.isActiveSubId(subId)) {
             mSubController.setDefaultDataSubId(subId);
         }
     }

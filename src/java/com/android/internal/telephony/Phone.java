@@ -380,6 +380,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private final RegistrantList mCellInfoRegistrants = new RegistrantList();
 
+    private final RegistrantList mOtaspRegistrants = new RegistrantList();
+
     protected Registrant mPostDialHandler;
 
     protected final LocalLog mLocalLog;
@@ -2356,7 +2358,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     @UnsupportedAppUsage
     public void notifyOtaspChanged(int otaspMode) {
-        mNotifier.notifyOtaspChanged(this, otaspMode);
+        mOtaspRegistrants.notifyRegistrants(new AsyncResult(null, otaspMode, null));
     }
 
     public void notifyVoiceActivationStateChanged(int state) {
@@ -2751,6 +2753,42 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public  boolean isOtaSpNumber(String dialStr) {
         return false;
+    }
+
+    /**
+     * Register for notifications when OTA Service Provisioning mode has changed.
+     *
+     * <p>The mode is integer. {@link TelephonyManager#OTASP_UNKNOWN}
+     * means the value is currently unknown and the system should wait until
+     * {@link TelephonyManager#OTASP_NEEDED} or {@link TelephonyManager#OTASP_NOT_NEEDED} is
+     * received before making the decision to perform OTASP or not.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForOtaspChange(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        mOtaspRegistrants.addUnique(h, what, obj);
+        // notify first
+        new Registrant(h, what, obj).notifyRegistrant(new AsyncResult(null, getOtasp(), null));
+    }
+
+    /**
+     * Unegister for notifications when OTA Service Provisioning mode has changed.
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForOtaspChange(Handler h) {
+        mOtaspRegistrants.remove(h);
+    }
+
+    /**
+     * Returns the current OTA Service Provisioning mode.
+     *
+     * @see registerForOtaspChange
+     */
+    public int getOtasp() {
+        return TelephonyManager.OTASP_UNKNOWN;
     }
 
     /**

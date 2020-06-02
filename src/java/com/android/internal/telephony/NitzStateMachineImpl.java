@@ -35,7 +35,7 @@ import java.io.PrintWriter;
 /**
  * {@hide}
  */
-public final class NewNitzStateMachine implements NitzStateMachine {
+public final class NitzStateMachineImpl implements NitzStateMachine {
 
     private static final String LOG_TAG = ServiceStateTracker.LOG_TAG;
     private static final boolean DBG = ServiceStateTracker.DBG;
@@ -84,21 +84,21 @@ public final class NewNitzStateMachine implements NitzStateMachine {
     private final LocalLog mTimeZoneLog = new LocalLog(15);
     private final GsmCdmaPhone mPhone;
     private final DeviceState mDeviceState;
-    private final NewTimeServiceHelper mTimeServiceHelper;
+    private final TimeServiceHelper mTimeServiceHelper;
     private final TimeZoneLookupHelper mTimeZoneLookupHelper;
     /** Wake lock used while setting time of day. */
     private final PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "NitzStateMachine";
 
-    public NewNitzStateMachine(GsmCdmaPhone phone) {
+    public NitzStateMachineImpl(GsmCdmaPhone phone) {
         this(phone,
-                new NewTimeServiceHelper(phone.getContext()),
-                new DeviceState(phone),
+                new TimeServiceHelperImpl(phone.getContext()),
+                new DeviceStateImpl(phone),
                 new TimeZoneLookupHelper());
     }
 
     @VisibleForTesting
-    public NewNitzStateMachine(GsmCdmaPhone phone, NewTimeServiceHelper timeServiceHelper,
+    public NitzStateMachineImpl(GsmCdmaPhone phone, TimeServiceHelper timeServiceHelper,
             DeviceState deviceState, TimeZoneLookupHelper timeZoneLookupHelper) {
         mPhone = phone;
 
@@ -110,7 +110,7 @@ public final class NewNitzStateMachine implements NitzStateMachine {
         mDeviceState = deviceState;
         mTimeZoneLookupHelper = timeZoneLookupHelper;
         mTimeServiceHelper = timeServiceHelper;
-        mTimeServiceHelper.setListener(new NewTimeServiceHelper.Listener() {
+        mTimeServiceHelper.setListener(new TimeServiceHelper.Listener() {
             @Override
             public void onTimeZoneDetectionChange(boolean enabled) {
                 if (enabled) {
