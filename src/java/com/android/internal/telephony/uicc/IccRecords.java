@@ -30,6 +30,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.util.ArrayUtils;
@@ -112,7 +113,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
     protected int mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
 
-    protected String mIccId;  // Includes only decimals (no hex)
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
+    public String mIccId;  // Includes only decimals (no hex)
 
     protected String mFullIccId;  // Includes hex characters in ICCID
     protected String mMsisdn = null;  // My mobile number
