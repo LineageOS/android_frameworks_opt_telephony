@@ -67,7 +67,7 @@ public class VendorSubscriptionInfoUpdater extends SubscriptionInfoUpdater {
         return sInstance;
     }
 
-    private VendorSubscriptionInfoUpdater(Looper looper, Context context,
+    protected VendorSubscriptionInfoUpdater(Looper looper, Context context,
             CommandsInterface[] ci) {
         super(looper, context, ci);
         sContext = context;
