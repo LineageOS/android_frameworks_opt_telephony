@@ -19,6 +19,7 @@ package com.android.internal.telephony.vendor;
 import static android.telephony.SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
 import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.TelephonyManager.RADIO_POWER_UNAVAILABLE;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -42,6 +43,7 @@ import com.android.internal.telephony.CallManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.dataconnection.DcRequest;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.GsmCdmaCall;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
@@ -257,6 +259,7 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
 
         // Check to see if there is any active subscription on any phone
         boolean hasAnyActiveSubscription = false;
+        boolean hasSubRefreshedOnThePreferredPhone = false;
 
         // Check if phoneId to subId mapping is changed.
         for (int i = 0; i < mActiveModemCount; i++) {
@@ -267,6 +270,11 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
             if (sub != mPhoneSubscriptions[i]) {
                 sb.append(" phone[").append(i).append("] ").append(mPhoneSubscriptions[i]);
                 sb.append("->").append(sub);
+                if (SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId.get())
+                        && mPhoneSubscriptions[i] == mPreferredDataSubId.get()) {
+                    sb.append("sub refreshed");
+                    hasSubRefreshedOnThePreferredPhone = true;
+                }
                 mPhoneSubscriptions[i] = sub;
                 diffDetected = true;
             }
@@ -307,6 +315,9 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
             }
             mDdsSwitchState = DdsSwitchState.REQUIRED;
             diffDetected = true;
+        } else if (hasSubRefreshedOnThePreferredPhone) {
+            // Tell connectivity the real active data phone
+            notifyPreferredDataSubIdChanged();
         }
 
         if (diffDetected) {
@@ -405,10 +416,9 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
         return phoneId;
     }
 
-    private boolean isUiccProvisioned(int phoneId) {
+    protected boolean isUiccProvisioned(int phoneId) {
         boolean isUiccApplicationEnabled = true;
         // FIXME get the SubscriptionManager.UICC_APPLICATIONS_ENABLED value and use it here
-
         log("isUiccProvisioned: status= " + isUiccApplicationEnabled + " phoneid=" + phoneId);
         return mSubscriptionController.isActiveSubId(mPhoneSubscriptions[phoneId]) && isUiccApplicationEnabled; 
     }
@@ -475,27 +485,25 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
      */
     @Override
     protected boolean isPhoneInVoiceCall(Phone phone) {
-        if (!SystemProperties.getBoolean(PROPERTY_TEMP_DDSSWITCH, false)) {
-           return false;
-        } else {
-            if (phone == null) {
-                return false;
-            }
-
-            int phoneId = phone.getPhoneId();
-            return ((mFgCsCalls[phoneId].getState() != Call.State.IDLE &&
-                    mFgCsCalls[phoneId].getState() != Call.State.DISCONNECTED) ||
-                    (mBgCsCalls[phoneId].getState() != Call.State.IDLE &&
-                    mBgCsCalls[phoneId].getState() != Call.State.DISCONNECTED) ||
-                    (mRiCsCalls[phoneId].getState() != Call.State.IDLE &&
-                    mRiCsCalls[phoneId].getState() != Call.State.DISCONNECTED) ||
-                    (mFgImsCalls[phoneId].getState() != Call.State.IDLE &&
-                    mFgImsCalls[phoneId].getState() != Call.State.DISCONNECTED) ||
-                    (mBgImsCalls[phoneId].getState() != Call.State.IDLE &&
-                    mBgImsCalls[phoneId].getState() != Call.State.DISCONNECTED) ||
-                    (mRiImsCalls[phoneId].getState() != Call.State.IDLE &&
-                    mRiImsCalls[phoneId].getState() != Call.State.DISCONNECTED));
-         }
+        if (phone == null) {
+            return false;
+        }
+        boolean dataDuringCallsEnabled = false;
+        DataEnabledSettings dataEnabledSettings = phone.getDataEnabledSettings();
+        if (dataEnabledSettings != null) {
+            dataDuringCallsEnabled = dataEnabledSettings.isDataAllowedInVoiceCall();
+        }
+        if (!dataDuringCallsEnabled) {
+            log("isPhoneInVoiceCall: dataDuringCallsEnabled=" + dataDuringCallsEnabled);
+            return false;
+        }
+        int phoneId = phone.getPhoneId();
+        return (mFgCsCalls[phoneId].getState().isAlive() ||
+                mBgCsCalls[phoneId].getState().isAlive() ||
+                mRiCsCalls[phoneId].getState().isAlive() ||
+                mFgImsCalls[phoneId].getState().isAlive() ||
+                mBgImsCalls[phoneId].getState().isAlive() ||
+                mRiImsCalls[phoneId].getState().isAlive());
     }
 
     private void resetConnectFailureCount(int phoneId) {

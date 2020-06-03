@@ -24,7 +24,6 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.data.ApnSetting;
-import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -43,12 +42,12 @@ import com.android.internal.util.AsyncChannel;
 import android.database.Cursor;
 import android.content.Context;
 import android.os.PersistableBundle;
-import android.os.SystemProperties;
 import android.provider.Telephony;
 
 import java.util.HashSet;
+import java.util.Iterator;
 
-public final class VendorDcTracker extends DcTracker {
+public class VendorDcTracker extends DcTracker {
     private String LOG_TAG = "VendorDCT";
     private HashSet<String> mIccidSet = new HashSet<String>();
     private int mTransportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
@@ -84,7 +83,16 @@ public final class VendorDcTracker extends DcTracker {
 
     @Override
     protected boolean allowInitialAttachForOperator() {
-        return mPhone.getSubId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        String iccId = mPhone.getIccSerialNumber();
+        if (iccId != null) {
+            Iterator<String> itr = mIccidSet.iterator();
+            while (itr.hasNext()) {
+                if (iccId.contains(itr.next())) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private void fillIccIdSet() {
