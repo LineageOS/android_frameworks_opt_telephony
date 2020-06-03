@@ -37,6 +37,7 @@ import android.util.LocalLog;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.cellbroadcastservice.CellBroadcastStatsLog;
 import com.android.internal.telephony.cdma.SmsMessage;
 
 import java.io.FileDescriptor;
@@ -146,7 +147,11 @@ public class CellBroadcastServiceManager {
                         return;
                     }
                     if (sServiceConnection.mService == null) {
-                        Log.d(TAG, "No connection to CB module, ignoring message.");
+                        final String errorMessage = "sServiceConnection.mService is null, ignoring message.";
+                        Log.d(TAG, errorMessage);
+                        CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_ERROR,
+                                CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_ERROR__TYPE__NO_CONNECTION_TO_CB_SERVICE,
+                                errorMessage);
                         return;
                     }
                     try {
@@ -155,15 +160,24 @@ public class CellBroadcastServiceManager {
                                         sServiceConnection.mService);
                         if (msg.what == EVENT_NEW_GSM_SMS_CB) {
                             mLocalLog.log("GSM SMS CB for phone " + mPhone.getPhoneId());
+                            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_REPORTED,
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__TYPE__GSM,
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK);
                             cellBroadcastService.handleGsmCellBroadcastSms(mPhone.getPhoneId(),
                                     (byte[]) ((AsyncResult) msg.obj).result);
                         } else if (msg.what == EVENT_NEW_CDMA_SMS_CB) {
                             mLocalLog.log("CDMA SMS CB for phone " + mPhone.getPhoneId());
                             SmsMessage sms = (SmsMessage) msg.obj;
+                            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_REPORTED,
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__TYPE__CDMA,
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK);
                             cellBroadcastService.handleCdmaCellBroadcastSms(mPhone.getPhoneId(),
                                     sms.getEnvelopeBearerData(), sms.getEnvelopeServiceCategory());
                         } else if (msg.what == EVENT_NEW_CDMA_SCP_MESSAGE) {
                             mLocalLog.log("CDMA SCP message for phone " + mPhone.getPhoneId());
+                            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_REPORTED,
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__TYPE__CDMA_SPC,
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK);
                             Pair<SmsMessage, RemoteCallback> smsAndCallback =
                                     (Pair<SmsMessage, RemoteCallback>) msg.obj;
                             SmsMessage sms = smsAndCallback.first;
@@ -174,10 +188,13 @@ public class CellBroadcastServiceManager {
                                     callback);
                         }
                     } catch (RemoteException e) {
-                        Log.e(TAG, "Failed to connect to default app: "
-                                + mCellBroadcastServicePackage + " err: " + e.toString());
-                        mLocalLog.log("Failed to connect to default app: "
-                                + mCellBroadcastServicePackage + " err: " + e.toString());
+                        final String errorMessage = "Failed to connect to default app: "
+                                + mCellBroadcastServicePackage + " err: " + e.toString();
+                        Log.e(TAG, errorMessage);
+                        mLocalLog.log(errorMessage);
+                        CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_ERROR,
+                                CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_ERROR__TYPE__NO_CONNECTION_TO_CB_SERVICE,
+                                errorMessage);
                         mContext.unbindService(sServiceConnection);
                         sServiceConnection = null;
                     }
@@ -191,8 +208,12 @@ public class CellBroadcastServiceManager {
                         Context.BIND_AUTO_CREATE);
                 Log.d(TAG, "serviceWasBound=" + serviceWasBound);
                 if (!serviceWasBound) {
-                    Log.e(TAG, "Unable to bind to service");
-                    mLocalLog.log("Unable to bind to service");
+                    final String errorMessage = "Unable to bind to service";
+                    Log.e(TAG, errorMessage);
+                    mLocalLog.log(errorMessage);
+                    CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_ERROR,
+                            CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_ERROR__TYPE__NO_CONNECTION_TO_CB_SERVICE,
+                            errorMessage);
                     return;
                 }
             } else {
@@ -201,8 +222,12 @@ public class CellBroadcastServiceManager {
             mPhone.mCi.setOnNewGsmBroadcastSms(mModuleCellBroadcastHandler, EVENT_NEW_GSM_SMS_CB,
                     null);
         } else {
-            Log.e(TAG, "Unable to bind service; no cell broadcast service found");
-            mLocalLog.log("Unable to bind service; no cell broadcast service found");
+            final String errorMessage = "Unable to bind service; no cell broadcast service found";
+            Log.e(TAG, errorMessage);
+            mLocalLog.log(errorMessage);
+            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_ERROR,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_ERROR__TYPE__NO_CONNECTION_TO_CB_SERVICE,
+                    errorMessage);
         }
     }
 
