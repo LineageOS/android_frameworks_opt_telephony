@@ -61,6 +61,7 @@ java_library {
         ":framework-telephony-common-shared-srcs",
         ":net-utils-telephony-common-srcs",
         ":statslog-telephony-java-gen",
+        ":statslog-cellbroadcast-java-gen",
         "src/java/**/I*.aidl",
         "src/java/**/*.logtags",
     ],
