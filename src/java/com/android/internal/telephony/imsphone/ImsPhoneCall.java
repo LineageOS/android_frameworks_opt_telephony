@@ -397,6 +397,10 @@ public class ImsPhoneCall extends Call {
         }
     }
 
+    public boolean isRingbackTonePlaying() {
+        return mIsRingbackTonePlaying;
+    }
+
     private void takeOver(ImsPhoneCall that) {
         copyConnectionFrom(that);
         mState = that.mState;

@@ -1109,6 +1109,24 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testEndRingbackOnSrvcc() throws RemoteException {
+        mSecondImsCall.getCallProfile().mMediaProfile = new ImsStreamMediaProfile();
+        mSecondImsCall.getCallProfile().mMediaProfile.mAudioDirection =
+                ImsStreamMediaProfile.DIRECTION_INACTIVE;
+
+        startOutgoingCall();
+        mImsCallListener.onCallProgressing(mSecondImsCall);
+
+        assertTrue(mCTUT.mForegroundCall.isRingbackTonePlaying());
+
+        // Move the connection to the handover state.
+        mCTUT.notifySrvccState(Call.SrvccState.COMPLETED);
+
+        assertFalse(mCTUT.mForegroundCall.isRingbackTonePlaying());
+    }
+
+    @Test
+    @SmallTest
     public void testHangupHandoverCall() throws RemoteException {
         doReturn("1").when(mImsCallSession).getCallId();
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
