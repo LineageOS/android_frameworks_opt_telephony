@@ -3399,12 +3399,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
-                ImsPhoneCall imsPhoneCall = conn.getCall();
-                if (imsPhoneCall != null) {
-                    // We might be playing ringback on the handover connection; we should stop
-                    // playing it at this point (otherwise it could play indefinitely).
-                    imsPhoneCall.maybeStopRingback();
-                }
                 if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                     if (isHandoverToWifi) {
                         removeMessages(EVENT_CHECK_FOR_WIFI_HANDOVER);
@@ -3811,6 +3805,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mSrvccState = state;
 
         if (mSrvccState == Call.SrvccState.COMPLETED) {
+            // If the dialing call had ringback, ensure it stops now, otherwise it'll keep playing
+            // afer the SRVCC completes.
+            mForegroundCall.maybeStopRingback();
+
             resetState();
             transferHandoverConnections(mForegroundCall);
             transferHandoverConnections(mBackgroundCall);
