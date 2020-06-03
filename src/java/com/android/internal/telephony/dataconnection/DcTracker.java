@@ -2417,7 +2417,7 @@ public class DcTracker extends Handler {
         }
 
         PendingIntent alarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0,
-                                        intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         apnContext.setReconnectIntent(alarmIntent);
 
         // Use the exact timer instead of the inexact one to provide better user experience.
@@ -4869,7 +4869,7 @@ public class DcTracker extends Handler {
             Intent intent = new Intent(INTENT_DATA_STALL_ALARM);
             intent.putExtra(DATA_STALL_ALARM_TAG_EXTRA, mDataStallAlarmTag);
             mDataStallAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             mAlarmManager.set(AlarmManager.ELAPSED_REALTIME,
                     SystemClock.elapsedRealtime() + delayInMs, mDataStallAlarmIntent);
         } else {
@@ -4939,7 +4939,7 @@ public class DcTracker extends Handler {
         Intent intent = new Intent(INTENT_PROVISIONING_APN_ALARM);
         intent.putExtra(PROVISIONING_APN_ALARM_TAG_EXTRA, mProvisioningApnAlarmTag);
         mProvisioningApnAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delayInMs, mProvisioningApnAlarmIntent);
     }
