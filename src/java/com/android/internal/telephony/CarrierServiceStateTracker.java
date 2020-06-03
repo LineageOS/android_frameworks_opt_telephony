@@ -414,7 +414,7 @@ public class CarrierServiceStateTracker extends Handler {
             Intent notificationIntent = new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS);
             notificationIntent.putExtra("expandable", true);
             PendingIntent settingsIntent = PendingIntent.getActivity(context, 0, notificationIntent,
-                    PendingIntent.FLAG_ONE_SHOT);
+                    PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
             CharSequence title = context.getText(
                     com.android.internal.R.string.NetworkPreferenceSwitchTitle);
             CharSequence details = context.getText(
