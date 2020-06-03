@@ -28,6 +28,7 @@ import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneStateListener;
+import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
@@ -357,8 +358,8 @@ public class NetworkTypeController extends StateMachine {
 
     private @Annotation.OverrideNetworkType int getNrDisplayType() {
         // Don't show 5G icon if preferred network type does not include 5G
-        if ((mPhone.getCachedPreferredNetworkType() & TelephonyManager.NETWORK_TYPE_BITMASK_NR)
-                == 0) {
+        if ((RadioAccessFamily.getRafFromNetworkType(mPhone.getCachedPreferredNetworkType())
+                & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
             return TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         }
         // Icon display keys in order of priority
