@@ -158,6 +158,7 @@ public interface PhoneInternalInterface {
     static final String REASON_CSS_INDICATOR_CHANGED = "cssIndicatorChanged";
     static final String REASON_RELEASED_BY_CONNECTIVITY_SERVICE = "releasedByConnectivityService";
     static final String REASON_DATA_ENABLED_OVERRIDE = "dataEnabledOverride";
+    static final String REASON_IWLAN_DATA_SERVICE_DIED = "iwlanDataServiceDied";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = RILConstants.BAND_MODE_UNSPECIFIED; // automatic

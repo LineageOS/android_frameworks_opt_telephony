@@ -5034,6 +5034,14 @@ public class DcTracker extends Handler {
         if (bound) {
             mDcc.start();
         } else {
+            if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                boolean connPersistenceOnRestart = mPhone.getContext().getResources()
+                   .getBoolean(com.android
+                       .internal.R.bool.config_wlan_data_service_conn_persistence_on_restart);
+                if (!connPersistenceOnRestart) {
+                    cleanUpAllConnectionsInternal(false, Phone.REASON_IWLAN_DATA_SERVICE_DIED);
+                }
+            }
             mDcc.dispose();
         }
         mDataServiceBound = bound;
