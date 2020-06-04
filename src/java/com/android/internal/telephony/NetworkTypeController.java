@@ -344,6 +344,11 @@ public class NetworkTypeController extends StateMachine {
             if (DBG) log("Skip updating override network type since timer is active.");
             return;
         }
+        mOverrideNetworkType = getCurrentOverrideNetworkType();
+        mDisplayInfoController.updateTelephonyDisplayInfo();
+    }
+
+    private @Annotation.OverrideNetworkType int getCurrentOverrideNetworkType() {
         int displayNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         int dataNetworkType = mPhone.getServiceState().getDataNetworkType();
         // NR display is not accurate when physical channel config notifications are off
@@ -360,8 +365,7 @@ public class NetworkTypeController extends StateMachine {
             // Process LTE display network type
             displayNetworkType = getLteDisplayType();
         }
-        mOverrideNetworkType = displayNetworkType;
-        mDisplayInfoController.updateTelephonyDisplayInfo();
+        return displayNetworkType;
     }
 
     private @Annotation.OverrideNetworkType int getNrDisplayType() {
@@ -827,10 +831,11 @@ public class NetworkTypeController extends StateMachine {
 
     private void updateTimers() {
         String currentState = getCurrentState().getName();
-        if (mIsPrimaryTimerActive && mPrimaryTimerState.equals(currentState)) {
-            // remove primary timer if device goes back to the original state
+
+        if (mIsPrimaryTimerActive && getOverrideNetworkType() == getCurrentOverrideNetworkType()) {
+            // remove primary timer if device goes back to the original icon
             if (DBG) {
-                log("Remove primary timer since primary state and current state equal: "
+                log("Remove primary timer since icon of primary state and current icon equal: "
                         + mPrimaryTimerState);
             }
             removeMessages(EVENT_PRIMARY_TIMER_EXPIRED);
@@ -847,6 +852,10 @@ public class NetworkTypeController extends StateMachine {
             removeMessages(EVENT_SECONDARY_TIMER_EXPIRED);
             mIsSecondaryTimerActive = false;
             mSecondaryTimerState = "";
+        }
+
+        if (currentState.equals(STATE_CONNECTED_MMWAVE)) {
+            resetAllTimers();
         }
     }
 
@@ -980,11 +989,11 @@ public class NetworkTypeController extends StateMachine {
     }
 
     protected void log(String s) {
-        Rlog.d(TAG, s);
+        Rlog.d(TAG, "[" + mPhone.getPhoneId() + "] " + s);
     }
 
     protected void loge(String s) {
-        Rlog.e(TAG, s);
+        Rlog.e(TAG, "[" + mPhone.getPhoneId() + "] " + s);
     }
 
     @Override
@@ -1006,6 +1015,7 @@ public class NetworkTypeController extends StateMachine {
         super.dump(fd, pw, args);
         pw.flush();
         pw.increaseIndent();
+        pw.println("mSubId=" + mPhone.getSubId());
         pw.println("mOverrideTimerRules=" + mOverrideTimerRules.toString());
         pw.println("mLteEnhancedPattern=" + mLteEnhancedPattern);
         pw.println("mIsPhysicalChannelConfigOn=" + mIsPhysicalChannelConfigOn);
