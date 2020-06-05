@@ -33,6 +33,7 @@ import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
@@ -1265,45 +1266,47 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mSST).setRadioPower(true, true, false, true);
     }
 
-    // TODO: b/146181737 uncomment below test.
-//    @Test
-//    @SmallTest
-//    public void testReapplyUiccApplicationEnablementRetry() throws Exception {
-//        mPhoneUT.mCi = mMockCi;
-//        // Set SIM to be present, with a fake iccId, and notify enablement being false.
-//        doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
-//        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
-//        String iccId = "Fake iccId";
-//        doReturn(iccId).when(mUiccSlot).getIccId();
-//        Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_CHANGED,
-//                new AsyncResult(null, false, null)).sendToTarget();
-//        processAllMessages();
-//
-//        // Should try to enable uicc applications as by default hey are expected to be true.
-//        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
-//        verify(mMockCi).enableUiccApplications(eq(true), messageCaptor.capture());
-//        clearInvocations(mMockCi);
-//        // Send message back with SIM_BUSY exception. Should retry.
-//        AsyncResult.forMessage(messageCaptor.getValue(), null, new CommandException(
-//                CommandException.Error.SIM_BUSY));
-//        messageCaptor.getValue().sendToTarget();
-//        processAllMessages();
-//        // There should be a retry message.
-//        moveTimeForward(5000);
-//        processAllMessages();
-//        verify(mMockCi).enableUiccApplications(eq(true), messageCaptor.capture());
-//        clearInvocations(mMockCi);
-//
-//        // Send message back with NOT_SUPPORTED exception. Should retry.
-//        AsyncResult.forMessage(messageCaptor.getValue(), null, new CommandException(
-//                CommandException.Error.REQUEST_NOT_SUPPORTED));
-//        messageCaptor.getValue().sendToTarget();
-//        processAllMessages();
-//        // There should not be a retry message.
-//        moveTimeForward(5000);
-//        processAllMessages();
-//        verify(mMockCi, never()).enableUiccApplications(eq(true), messageCaptor.capture());
-//    }
+    @Test
+    @SmallTest
+    public void testReapplyUiccApplicationEnablementRetry() throws Exception {
+        mPhoneUT.mCi = mMockCi;
+        // Set SIM to be present, with a fake iccId, and notify enablement being false.
+        doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+        String iccId = "Fake iccId";
+        doReturn(iccId).when(mUiccSlot).getIccId();
+        Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
+                new AsyncResult(null, false, null)).sendToTarget();
+        processAllMessages();
+
+        // Should try to enable uicc applications as by default hey are expected to be true.
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi).enableUiccApplications(eq(true), messageCaptor.capture());
+        clearInvocations(mMockCi);
+        for (int i = 0; i < GsmCdmaPhone.ENABLE_UICC_APPS_MAX_RETRIES; i++) {
+            // Send message back with SIM_BUSY exception. Should retry.
+            AsyncResult.forMessage(messageCaptor.getValue(), null, new CommandException(
+                    CommandException.Error.SIM_BUSY));
+            messageCaptor.getValue().sendToTarget();
+            processAllMessages();
+            // There should be a retry message.
+            moveTimeForward(5000);
+            processAllMessages();
+            verify(mMockCi).enableUiccApplications(eq(true), messageCaptor.capture());
+            clearInvocations(mMockCi);
+        }
+
+        // Reaches max retries. Should NOT retry.
+        AsyncResult.forMessage(messageCaptor.getValue(), null, new CommandException(
+                CommandException.Error.SIM_BUSY));
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+        // There should NOT be a retry message.
+        moveTimeForward(5000);
+        processAllMessages();
+        verify(mMockCi, never()).enableUiccApplications(eq(true), messageCaptor.capture());
+        clearInvocations(mMockCi);
+    }
 
     @Test
     @SmallTest
