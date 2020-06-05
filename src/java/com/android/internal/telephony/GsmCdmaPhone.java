@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.CommandException.Error.GENERIC_FAILURE;
+import static com.android.internal.telephony.CommandException.Error.SIM_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ERASURE;
@@ -164,6 +166,9 @@ public class GsmCdmaPhone extends Phone {
     // string to define how the carrier specifies its own ota sp number
     private String mCarrierOtaSpNumSchema;
     private Boolean mUiccApplicationsEnabled = null;
+    @VisibleForTesting
+    public static int ENABLE_UICC_APPS_MAX_RETRIES = 3;
+    private static final int REAPPLY_UICC_APPS_SETTING_RETRY_TIME_GAP_IN_MS = 5000;
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -3100,24 +3105,27 @@ public class GsmCdmaPhone extends Phone {
                 mUiccApplicationsEnabled = (Boolean) ar.result;
             // Intentional falling through.
             case EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED:
-                reapplyUiccAppsEnablementIfNeeded();
+                reapplyUiccAppsEnablementIfNeeded(ENABLE_UICC_APPS_MAX_RETRIES);
                 break;
 
             case EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE: {
                 ar = (AsyncResult) msg.obj;
                 if (ar == null || ar.exception == null) return;
-                // TODO: b/146181737 don't throw exception and uncomment the retry below.
-                boolean expectedValue = (boolean) ar.userObj;
+                Pair<Boolean, Integer> userObject = (Pair) ar.userObj;
+                if (userObject == null) return;
+                boolean expectedValue = userObject.first;
+                int retries = userObject.second;
                 CommandException.Error error = ((CommandException) ar.exception).getCommandError();
-                throw new RuntimeException("Error received when re-applying uicc application"
+                loge("Error received when re-applying uicc application"
                         + " setting to " +  expectedValue + " on phone " + mPhoneId
-                        + " Error code: " + error);
-//                if (error == INTERNAL_ERR || error == SIM_BUSY) {
-//                    // Retry for certain errors, but not for others like RADIO_NOT_AVAILABLE or
-//                    // SIM_ABSENT, as they will trigger it whey they become available.
-//                    postDelayed(()->reapplyUiccAppsEnablementIfNeeded(), 1000);
-//                }
-//                break;
+                        + " Error code: " + error + " retry count left: " + retries);
+                if (retries > 0 && (error == GENERIC_FAILURE || error == SIM_BUSY)) {
+                    // Retry for certain errors, but not for others like RADIO_NOT_AVAILABLE or
+                    // SIM_ABSENT, as they will trigger it whey they become available.
+                    postDelayed(()->reapplyUiccAppsEnablementIfNeeded(retries - 1),
+                            REAPPLY_UICC_APPS_SETTING_RETRY_TIME_GAP_IN_MS);
+                }
+                break;
             }
             default:
                 super.handleMessage(msg);
@@ -3217,7 +3225,7 @@ public class GsmCdmaPhone extends Phone {
             }
         }
 
-        reapplyUiccAppsEnablementIfNeeded();
+        reapplyUiccAppsEnablementIfNeeded(ENABLE_UICC_APPS_MAX_RETRIES);
     }
 
     private void processIccRecordEvents(int eventCode) {
@@ -4400,7 +4408,7 @@ public class GsmCdmaPhone extends Phone {
         updateUiTtyMode(ttyMode);
     }
 
-    private void reapplyUiccAppsEnablementIfNeeded() {
+    private void reapplyUiccAppsEnablementIfNeeded(int retries) {
         UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
 
         // If no card is present or we don't have mUiccApplicationsEnabled yet, do nothing.
@@ -4422,7 +4430,8 @@ public class GsmCdmaPhone extends Phone {
         // configured state.
         if (expectedValue != mUiccApplicationsEnabled) {
             mCi.enableUiccApplications(expectedValue, Message.obtain(
-                    this, EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE, expectedValue));
+                    this, EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE,
+                    new Pair<Boolean, Integer>(expectedValue, retries)));
         }
     }
 
