@@ -1841,6 +1841,14 @@ message ActiveSubscriptionInfo {
 
   /** whether subscription is opportunistic (0 - false, 1 - true, -1 - unknown). */
   optional int32 is_opportunistic = 3;
+
+  /** The mccmnc associated with the subscription. Useful for differentiating
+   * between subscriptions with different mccmnc but same carrier_id (eg. Fi
+   * Sprint vs. Fi T-Mobile).*/
+  optional string sim_mccmnc = 4 /*[
+    (datapol.semantic_type) = ST_LOCATION,
+    (datapol.location_qualifier) = { precise_location: false }
+  ]*/;
 };
 
 enum SimState {
