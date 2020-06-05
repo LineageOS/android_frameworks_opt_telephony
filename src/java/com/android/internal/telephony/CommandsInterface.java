@@ -1558,9 +1558,15 @@ public interface CommandsInterface {
      * location information (lac and/or cid) has changed.
      *
      * @param enable true to enable, false to disable
+     * @param workSource calling WorkSource
      * @param response callback message
      */
-    void setLocationUpdates(boolean enable, Message response);
+    default void setLocationUpdates(boolean enable, WorkSource workSource, Message response) {}
+
+    /**
+     * To be deleted
+     */
+    default void setLocationUpdates(boolean enable, Message response) {}
 
     /**
      * Gets the default SMSC address.
