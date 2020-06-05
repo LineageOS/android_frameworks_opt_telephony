@@ -1211,6 +1211,9 @@ public class ImsPhoneConnection extends Connection implements
      * @param extras The ImsCallProfile extras.
      */
     private void updateImsCallRatFromExtras(Bundle extras) {
+        if (extras == null) {
+            return;
+        }
         if (extras.containsKey(ImsCallProfile.EXTRA_CALL_NETWORK_TYPE)
                 || extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)
                 || extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE_ALT)) {
@@ -1227,6 +1230,9 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     private void updateEmergencyCallFromExtras(Bundle extras) {
+        if (extras == null) {
+            return;
+        }
         if (extras.getBoolean(ImsCallProfile.EXTRA_EMERGENCY_CALL)) {
             setIsNetworkIdentifiedEmergencyCall(true);
         }
@@ -1255,7 +1261,9 @@ public class ImsPhoneConnection extends Connection implements
             updateImsCallRatFromExtras(extras);
             updateEmergencyCallFromExtras(extras);
             mExtras.clear();
-            mExtras.putAll(extras);
+            if (extras != null) {
+                mExtras.putAll(extras);
+            }
             setConnectionExtras(mExtras);
         }
         return changed;
