@@ -94,6 +94,18 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testNullExtras() {
+        mImsCallProfile.mCallExtras = null;
+        try {
+            mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall,
+                    false);
+        } catch (NullPointerException npe) {
+            Assert.fail("Should not get NPE updating extras.");
+        }
+    }
+
+    @Test
+    @SmallTest
     public void testImsIncomingConnectionCorrectness() {
         logd("Testing initial state of MT ImsPhoneConnection");
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mForeGroundCall, false);
