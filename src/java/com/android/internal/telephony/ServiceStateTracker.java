@@ -3204,6 +3204,10 @@ public class ServiceStateTracker extends Handler {
                 mTransportManager.getAvailableTransports().length);
         boolean anyDataRegChanged = false;
         boolean anyDataRatChanged = false;
+        boolean hasAlphaRawChanged =
+                mSS.getOperatorAlphaLongRaw() != mNewSS.getOperatorAlphaLongRaw()
+                        || mSS.getOperatorAlphaShortRaw() != mNewSS.getOperatorAlphaShortRaw();
+
         for (int transport : mTransportManager.getAvailableTransports()) {
             NetworkRegistrationInfo oldNrs = mSS.getNetworkRegistrationInfo(
                     NetworkRegistrationInfo.DOMAIN_PS, transport);
@@ -3233,7 +3237,10 @@ public class ServiceStateTracker extends Handler {
             boolean isNewCA = newNrs != null ? (newNrs.getDataSpecificInfo() != null
                     ? newNrs.getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
 
-            hasRilDataRadioTechnologyChanged.put(transport, oldRAT != newRAT || isOldCA != isNewCA);
+            // If the carrier enable KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING and the operator name
+            // match this pattern, the data rat display LteAdvanced indicator.
+            hasRilDataRadioTechnologyChanged.put(transport,
+                    oldRAT != newRAT || isOldCA != isNewCA || hasAlphaRawChanged);
             if (oldRAT != newRAT) {
                 anyDataRatChanged = true;
             }
@@ -5645,6 +5652,7 @@ public class ServiceStateTracker extends Handler {
             if (networkRegistrationInfos.get(i) != null) {
                 updateOperatorNameForCellIdentity(
                         networkRegistrationInfos.get(i).getCellIdentity());
+                servicestate.addNetworkRegistrationInfo(networkRegistrationInfos.get(i));
             }
         }
     }
