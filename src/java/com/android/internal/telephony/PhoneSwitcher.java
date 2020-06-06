@@ -154,7 +154,7 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
-    protected final List<DcRequest> mPrioritizedDcRequests = new ArrayList<DcRequest>();
+    protected final List<DcRequest> mPrioritizedDcRequests = new ArrayList<>();
     protected final RegistrantList mActivePhoneRegistrants;
     protected final SubscriptionController mSubscriptionController;
     protected final Context mContext;
