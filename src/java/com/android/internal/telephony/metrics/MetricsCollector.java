@@ -31,11 +31,11 @@ import android.content.Context;
 import android.util.StatsEvent;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.os.BackgroundThread;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
+import com.android.internal.util.ConcurrentUtils;
 import com.android.telephony.Rlog;
 
 import java.util.Arrays;
@@ -210,7 +210,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */
     private void registerAtom(int atomId, @Nullable StatsManager.PullAtomMetadata policy) {
-        mStatsManager.setPullAtomCallback(atomId, policy, BackgroundThread.getExecutor(), this);
+        mStatsManager.setPullAtomCallback(atomId, policy, ConcurrentUtils.DIRECT_EXECUTOR, this);
     }
 
     private static StatsEvent buildStatsEvent(RawVoiceCallRatUsage usage) {
