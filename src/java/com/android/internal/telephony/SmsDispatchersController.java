@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PERIOD_NOT_SPECIFIED;
-import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
 import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 import static com.android.internal.telephony.cdma.sms.BearerData.ERROR_NONE;
 import static com.android.internal.telephony.cdma.sms.BearerData.ERROR_TEMPORARY;
@@ -647,9 +645,8 @@ public class SmsDispatchersController extends Handler {
             long messageId) {
         if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
             mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
-                    messageUri, callingPkg, persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED, isForVvm,
-                    messageId);
+                    messageUri, callingPkg, persistMessage, priority, false /*expectMore*/,
+                    validityPeriod, isForVvm, messageId);
         } else {
             if (isCdmaMo()) {
                 mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
@@ -718,10 +715,8 @@ public class SmsDispatchersController extends Handler {
             long messageId) {
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents, messageUri, callingPkg, persistMessage,
-                    SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED,
-                    messageId);
+                    deliveryIntents, messageUri, callingPkg, persistMessage, priority,
+                    false /*expectMore*/, validityPeriod, messageId);
         } else {
             if (isCdmaMo()) {
                 mCdmaDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
