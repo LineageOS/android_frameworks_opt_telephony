@@ -160,8 +160,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     public void notifyDisconnectCause(Phone sender, int cause, int preciseCause) {
-        mTelephonyRegistryMgr.notifyDisconnectCause(sender.getSubId(), sender.getPhoneId(), cause,
-            preciseCause);
+        mTelephonyRegistryMgr.notifyDisconnectCause(sender.getPhoneId(), sender.getSubId(), cause,
+                preciseCause);
     }
 
     @Override
