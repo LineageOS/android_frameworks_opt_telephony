@@ -3714,11 +3714,13 @@ public class SubscriptionController extends ISub.Stub {
         if (slotsInfo == null) return false;
         for (int i = 0; i < slotsInfo.length; i++) {
             UiccSlotInfo curSlotInfo = slotsInfo[i];
-            if (curSlotInfo.getCardStateInfo() == CARD_STATE_INFO_PRESENT
-                    && TextUtils.equals(curSlotInfo.getCardId(), info.getCardString())) {
-                slotInfo = curSlotInfo;
-                physicalSlotIndex = i;
-                break;
+            if (curSlotInfo.getCardStateInfo() == CARD_STATE_INFO_PRESENT) {
+                if (TextUtils.equals(IccUtils.stripTrailingFs(curSlotInfo.getCardId()),
+                        IccUtils.stripTrailingFs(info.getCardString()))) {
+                    slotInfo = curSlotInfo;
+                    physicalSlotIndex = i;
+                    break;
+                }
             }
         }
 
