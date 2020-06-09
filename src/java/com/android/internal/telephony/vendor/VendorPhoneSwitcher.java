@@ -78,14 +78,14 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
     private DdsSwitchState mDdsSwitchState = DdsSwitchState.NONE;
     private final int USER_INITIATED_SWITCH = 0;
     private final int NONUSER_INITIATED_SWITCH = 1;
-    private final String PROPERTY_TEMP_DDSSWITCH = "persist.vendor.radio.enable_temp_dds";
-    private final GsmCdmaCall[] mFgCsCalls;
-    private final GsmCdmaCall[] mBgCsCalls;
-    private final GsmCdmaCall[] mRiCsCalls;
-    private final ImsPhone[] mImsPhones;
-    private final ImsPhoneCall[] mFgImsCalls;
-    private final ImsPhoneCall[] mBgImsCalls;
-    private final ImsPhoneCall[] mRiImsCalls;
+    protected final String PROPERTY_TEMP_DDSSWITCH = "persist.vendor.radio.enable_temp_dds";
+    protected final GsmCdmaCall[] mFgCsCalls;
+    protected final GsmCdmaCall[] mBgCsCalls;
+    protected final GsmCdmaCall[] mRiCsCalls;
+    protected final ImsPhone[] mImsPhones;
+    protected final ImsPhoneCall[] mFgImsCalls;
+    protected final ImsPhoneCall[] mBgImsCalls;
+    protected final ImsPhoneCall[] mRiImsCalls;
 
     private final int EVENT_ALLOW_DATA_FALSE_RESPONSE  = 201;
     private final int EVENT_ALLOW_DATA_TRUE_RESPONSE   = 202;
@@ -203,11 +203,15 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
             case EVENT_ALLOW_DATA_FALSE_RESPONSE: {
                 log("EVENT_ALLOW_DATA_FALSE_RESPONSE");
                 mWaitForDetachResponse = false;
-                for (int phoneId : mNewActivePhones) {
-                    activate(phoneId);
-                }
-                if (mNewActivePhones.contains(ddsPhoneId)) {
-                    mManualDdsSwitch = false;
+                if (mNewActivePhones != null) {
+                    for (int phoneId : mNewActivePhones) {
+                        activate(phoneId);
+                    }
+                    if (mNewActivePhones.contains(ddsPhoneId)) {
+                        mManualDdsSwitch = false;
+                    }
+                } else {
+                    log("mNewActivePhones is NULL");
                 }
                 break;
             }
