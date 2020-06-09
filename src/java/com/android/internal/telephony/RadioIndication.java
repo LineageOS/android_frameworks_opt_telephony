@@ -88,6 +88,7 @@ import android.hardware.radio.V1_5.IRadioIndication;
 import android.os.AsyncResult;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.RadioPowerState;
+import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
@@ -100,6 +101,7 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.emergency.EmergencyNumber;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
@@ -112,6 +114,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class RadioIndication extends IRadioIndication.Stub {
     RIL mRil;
@@ -1007,6 +1010,20 @@ public class RadioIndication extends IRadioIndication.Stub {
             int causeCode, int additionalCauseCode) {
         mRil.processIndication(indicationType);
 
+        if (cellIdentity == null
+                || TextUtils.isEmpty(chosenPlmn)
+                || (domain & NetworkRegistrationInfo.DOMAIN_CS_PS) == 0
+                || (domain & ~NetworkRegistrationInfo.DOMAIN_CS_PS) != 0
+                || causeCode < 0 || additionalCauseCode < 0
+                || (causeCode == Integer.MAX_VALUE && additionalCauseCode == Integer.MAX_VALUE)) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("f16e5703-6105-4341-9eb3-e68189156eb4"),
+                            "Invalid registrationFailed indication");
+
+            mRil.riljLoge("Invalid registrationFailed indication");
+            return;
+        }
+
         CellIdentity ci = CellIdentity.create(cellIdentity);
 
         mRil.mRegistrationFailedRegistrant.notifyRegistrant(
@@ -1028,6 +1045,15 @@ public class RadioIndication extends IRadioIndication.Stub {
             android.hardware.radio.V1_5.CellIdentity cellIdentity,
             ArrayList<android.hardware.radio.V1_5.BarringInfo> barringInfos) {
         mRil.processIndication(indicationType);
+
+        if (cellIdentity == null || barringInfos == null) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("645b16bb-c930-4c1c-9c5d-568696542e05"),
+                            "Invalid barringInfoChanged indication");
+
+            mRil.riljLoge("Invalid barringInfoChanged indication");
+            return;
+        }
 
         CellIdentity ci = CellIdentity.create(cellIdentity);
         BarringInfo cbi = BarringInfo.create(cellIdentity, barringInfos);
