@@ -57,10 +57,10 @@ public class SignalStrengthTest {
             -12 }; // SIGNAL_STRENGTH_GREAT
 
     private static final int[] DEFAULT_LTE_RSSNR_THRESHOLDS = {
-            -30,   // SIGNAL_STRENGTH_POOR
-            10,    // SIGNAL_STRENGTH_MODERATE
-            45,    // SIGNAL_STRENGTH_GOOD
-            130 }; // SIGNAL_STRENGTH_GREAT
+            -3,   // SIGNAL_STRENGTH_POOR
+            1,    // SIGNAL_STRENGTH_MODERATE
+            5,    // SIGNAL_STRENGTH_GOOD
+            13 }; // SIGNAL_STRENGTH_GREAT
 
     private static final int[] DEFAULT_5G_NR_SSRSRP_THRESHOLDS = {
             -125,  // SIGNAL_STRENGTH_POOR
@@ -244,20 +244,20 @@ public class SignalStrengthTest {
         ss = createSignalStrengthLteReportRsrq(-60, -35);
         assertEquals(SignalStrength.INVALID, ss.getLteRsrq());
 
-        // Input value of RSSNR: 301[dB]
-        ss = createSignalStrengthLteReportRssnr(-60, 301);
+        // Input value of RSSNR: 31[dB]
+        ss = createSignalStrengthLteReportRssnr(-60, 31);
         assertEquals(SignalStrength.INVALID, ss.getLteRssnr());
 
-        // Input value of RSSNR: 300[dB]
-        ss = createSignalStrengthLteReportRssnr(-60, 300);
-        assertEquals(300, ss.getLteRssnr());
+        // Input value of RSSNR: 30[dB]
+        ss = createSignalStrengthLteReportRssnr(-60, 30);
+        assertEquals(30, ss.getLteRssnr());
 
-        // Input value of RSSNR: -200[dB]
-        ss = createSignalStrengthLteReportRssnr(60, -200);
-        assertEquals(-200, ss.getLteRssnr());
+        // Input value of RSSNR: -20[dB]
+        ss = createSignalStrengthLteReportRssnr(60, -20);
+        assertEquals(-20, ss.getLteRssnr());
 
-        // Input value of RSSNR: -201[dB]
-        ss = createSignalStrengthLteReportRssnr(60, -201);
+        // Input value of RSSNR: -21[dB]
+        ss = createSignalStrengthLteReportRssnr(60, -21);
         assertEquals(SignalStrength.INVALID, ss.getLteRssnr());
     }
 
@@ -334,71 +334,71 @@ public class SignalStrengthTest {
     @Test
     public void testRssnrThresholds_rsrp_great() throws Exception {
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-98, -200).getLteLevel());
+                createSignalStrengthLteReportRssnr(-98, -20).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-98, -30).getLteLevel());
+                createSignalStrengthLteReportRssnr(-98, -3).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
-                createSignalStrengthLteReportRssnr(-98, 10).getLteLevel());
+                createSignalStrengthLteReportRssnr(-98, 1).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
-                createSignalStrengthLteReportRssnr(-98, 45).getLteLevel());
+                createSignalStrengthLteReportRssnr(-98, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GREAT,
-                createSignalStrengthLteReportRssnr(-98, 130).getLteLevel());
+                createSignalStrengthLteReportRssnr(-98, 13).getLteLevel());
     }
 
     @Test
     public void testRssnrThresholds_rsrp_good() throws Exception {
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-108, -200).getLteLevel());
+                createSignalStrengthLteReportRssnr(-108, -20).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-108, -30).getLteLevel());
+                createSignalStrengthLteReportRssnr(-108, -3).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
-                createSignalStrengthLteReportRssnr(-108, 10).getLteLevel());
+                createSignalStrengthLteReportRssnr(-108, 1).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
-                createSignalStrengthLteReportRssnr(-108, 45).getLteLevel());
+                createSignalStrengthLteReportRssnr(-108, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_GOOD,
-                createSignalStrengthLteReportRssnr(-108, 130).getLteLevel());
+                createSignalStrengthLteReportRssnr(-108, 13).getLteLevel());
     }
 
     @Test
     public void testRssnrThresholds_rsrp_moderate() throws Exception {
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-118, -200).getLteLevel());
+                createSignalStrengthLteReportRssnr(-118, -20).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-118, -30).getLteLevel());
+                createSignalStrengthLteReportRssnr(-118, -3).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
-                createSignalStrengthLteReportRssnr(-118, 10).getLteLevel());
+                createSignalStrengthLteReportRssnr(-118, 1).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
-                createSignalStrengthLteReportRssnr(-118, 45).getLteLevel());
+                createSignalStrengthLteReportRssnr(-118, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_MODERATE,
-                createSignalStrengthLteReportRssnr(-118, 130).getLteLevel());
+                createSignalStrengthLteReportRssnr(-118, 13).getLteLevel());
     }
 
     @Test
     public void testRssnrThresholds_rsrp_poor() throws Exception {
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-128, -200).getLteLevel());
+                createSignalStrengthLteReportRssnr(-128, -20).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-128, -30).getLteLevel());
+                createSignalStrengthLteReportRssnr(-128, -3).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-128, 10).getLteLevel());
+                createSignalStrengthLteReportRssnr(-128, 1).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-128, 45).getLteLevel());
+                createSignalStrengthLteReportRssnr(-128, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_POOR,
-                createSignalStrengthLteReportRssnr(-128, 130).getLteLevel());
+                createSignalStrengthLteReportRssnr(-128, 13).getLteLevel());
     }
 
     @Test
     public void testRssnrThresholds_rsrp_unknown() throws Exception {
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-138, -200).getLteLevel());
+                createSignalStrengthLteReportRssnr(-138, -20).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-138, -30).getLteLevel());
+                createSignalStrengthLteReportRssnr(-138, -3).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-138, 10).getLteLevel());
+                createSignalStrengthLteReportRssnr(-138, 1).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-138, 45).getLteLevel());
+                createSignalStrengthLteReportRssnr(-138, 5).getLteLevel());
         assertEquals(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                createSignalStrengthLteReportRssnr(-138, 130).getLteLevel());
+                createSignalStrengthLteReportRssnr(-138, 13).getLteLevel());
     }
 }
 
