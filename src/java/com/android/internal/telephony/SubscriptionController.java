@@ -1848,6 +1848,11 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     public int setMccMnc(String mccMnc, int subId) {
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            // Bail out if the subscription ID is not valid
+            return 0;
+        }
+
         String mccString = mccMnc.substring(0, 3);
         String mncString = mccMnc.substring(3);
         int mcc = 0;
@@ -1933,6 +1938,11 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     public int setCountryIso(String iso, int subId) {
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            // Bail out if the subscription ID is not valid
+            return 0;
+        }
+
         if (DBG) logd("[setCountryIso]+ iso:" + iso + " subId:" + subId);
         ContentValues value = new ContentValues();
         value.put(SubscriptionManager.ISO_COUNTRY_CODE, iso);
