@@ -1848,6 +1848,12 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     public int setMccMnc(String mccMnc, int subId) {
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            // Bail out if the subscription ID is not valid
+            logd("LINEAGE_DEBUG [setMccMnc] - invalid subId, bailing out");
+            return 0;
+        }
+
         String mccString = mccMnc.substring(0, 3);
         String mncString = mccMnc.substring(3);
         int mcc = 0;
@@ -1858,7 +1864,7 @@ public class SubscriptionController extends ISub.Stub {
         } catch (NumberFormatException e) {
             loge("[setMccMnc] - couldn't parse mcc/mnc: " + mccMnc);
         }
-        if (DBG) logd("[setMccMnc]+ mcc/mnc:" + mcc + "/" + mnc + " subId:" + subId);
+        logd("LINEAGE_DEBUG [setMccMnc]+ mcc/mnc:" + mcc + "/" + mnc + " subId:" + subId);
         ContentValues value = new ContentValues(4);
         value.put(SubscriptionManager.MCC, mcc);
         value.put(SubscriptionManager.MNC, mnc);
@@ -1933,7 +1939,13 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     public int setCountryIso(String iso, int subId) {
-        if (DBG) logd("[setCountryIso]+ iso:" + iso + " subId:" + subId);
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            // Bail out if the subscription ID is not valid
+            logd("LINEAGE_DEBUG [setCountryIso] - invalid subId, bailing out");
+            return 0;
+        }
+
+        logd("LINEAGE_DEBUG [setCountryIso]+ iso:" + iso + " subId:" + subId);
         ContentValues value = new ContentValues();
         value.put(SubscriptionManager.ISO_COUNTRY_CODE, iso);
 
