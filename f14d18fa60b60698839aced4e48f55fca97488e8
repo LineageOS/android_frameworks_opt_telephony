@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5b07ef48_c8f09c85",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1851,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2020-06-11T20:12:56Z",
+      "side": 1,
+      "message": "if (subid \u003d\u003d SubscriptionManager.INVALID_SUBSCRIPTION_ID) {\nhttps://developer.android.com/reference/android/telephony/SubscriptionManager#INVALID_SUBSCRIPTION_ID",
+      "range": {
+        "startLine": 1851,
+        "startChar": 8,
+        "endLine": 1851,
+        "endChar": 24
+      },
+      "revId": "f14d18fa60b60698839aced4e48f55fca97488e8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
