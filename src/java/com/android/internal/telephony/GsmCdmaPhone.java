@@ -402,8 +402,6 @@ public class GsmCdmaPhone extends Phone {
                 logd("update icc_operator_numeric=" + operatorNumeric);
                 tm.setSimOperatorNumericForPhone(mPhoneId, operatorNumeric);
 
-                SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
-
                 // Sets iso country property by retrieving from build-time system property
                 String iso = "";
                 try {
@@ -414,7 +412,14 @@ public class GsmCdmaPhone extends Phone {
 
                 logd("init: set 'gsm.sim.operator.iso-country' to iso=" + iso);
                 tm.setSimCountryIsoForPhone(mPhoneId, iso);
-                SubscriptionController.getInstance().setCountryIso(iso, getSubId());
+
+                // Skip if the subscription ID is not valid, because it can happen
+                // that the SIM is not loaded yet at this point.
+                final int subId = getSubId();
+                if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    SubscriptionController.getInstance().setMccMnc(operatorNumeric, subId);
+                    SubscriptionController.getInstance().setCountryIso(iso, subId);
+                }
 
                 // Updates MCC MNC device configuration information
                 logd("update mccmnc=" + operatorNumeric);
