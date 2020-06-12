@@ -1490,7 +1490,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 SubscriptionManager.NAME_SOURCE_CARRIER_ID));
     }
 
-
     @Test
     @SmallTest
     public void testGetAvailableSubscriptionList() throws Exception {
@@ -1514,6 +1513,36 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         // Active sub list should return 1 now.
         infoList = mSubscriptionControllerUT
+                .getActiveSubscriptionInfoList(mCallingPackage, mCallingFeature);
+        assertEquals(1, infoList.size());
+        assertEquals("456", infoList.get(0).getIccId());
+
+        // Available sub list should still return two.
+        infoList = mSubscriptionControllerUT
+                .getAvailableSubscriptionInfoList(mCallingPackage, mCallingFeature);
+        assertEquals(2, infoList.size());
+        assertEquals("123", infoList.get(0).getIccId());
+        assertEquals("456", infoList.get(1).getIccId());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetAvailableSubscriptionList_withTrailingF() throws Exception {
+        // TODO b/123300875 slot index 1 is not expected to be valid
+        mSubscriptionControllerUT.addSubInfoRecord("123", 1);   // sub 1
+        mSubscriptionControllerUT.addSubInfoRecord("456", 0);   // sub 2
+
+        // Remove "123" from active sim list but have it inserted.
+        UiccSlot[] uiccSlots = {mUiccSlot};
+        IccCardStatus.CardState cardState = CARDSTATE_PRESENT;
+        doReturn(uiccSlots).when(mUiccController).getUiccSlots();
+        doReturn(cardState).when(mUiccSlot).getCardState();
+        // IccId ends with a 'F' which should be ignored and taking into account.
+        doReturn("123F").when(mUiccSlot).getIccId();
+        mSubscriptionControllerUT.clearSubInfoRecord(1);
+
+        // Active sub list should return 1 now.
+        List<SubscriptionInfo> infoList = mSubscriptionControllerUT
                 .getActiveSubscriptionInfoList(mCallingPackage, mCallingFeature);
         assertEquals(1, infoList.size());
         assertEquals("456", infoList.get(0).getIccId());
