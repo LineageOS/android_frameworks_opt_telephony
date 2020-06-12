@@ -4718,9 +4718,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         workSource = getDeafultWorkSourceIfInvalid(workSource);
 
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy == null) {
-            return;
-        }
+        if (radioProxy == null) return;
 
         RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_CARRIERS, result, workSource);
 
@@ -4800,9 +4798,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         workSource = getDeafultWorkSourceIfInvalid(workSource);
 
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy == null) {
-            return;
-        }
+        if (radioProxy == null) return;
 
         RILRequest rr = obtainRequest(RIL_REQUEST_GET_ALLOWED_CARRIERS, result,
                 workSource);
@@ -5129,10 +5125,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             int contextId, KeepalivePacketData packetData, int intervalMillis, Message result) {
         checkNotNull(packetData, "KeepaliveRequest cannot be null.");
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy == null) {
-            riljLoge("Radio Proxy object is null!");
-            return;
-        }
+        if (radioProxy == null) return;
 
         if (mRadioVersion.less(RADIO_HAL_VERSION_1_1)) {
             if (result != null) {
@@ -5187,10 +5180,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void stopNattKeepalive(int sessionHandle, Message result) {
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy == null) {
-            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
-            return;
-        }
+        if (radioProxy == null) return;
 
         if (mRadioVersion.less(RADIO_HAL_VERSION_1_1)) {
             if (result != null) {
@@ -5252,14 +5242,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void enableUiccApplications(boolean enable, Message onCompleteMessage) {
         IRadio radioProxy = getRadioProxy(onCompleteMessage);
-        if (radioProxy == null) {
-            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
-            if (onCompleteMessage != null) {
-                AsyncResult.forMessage(onCompleteMessage, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                onCompleteMessage.sendToTarget();
-            }
-        }
+        if (radioProxy == null) return;
 
         if (mRadioVersion.less(RADIO_HAL_VERSION_1_5)) {
             if (onCompleteMessage != null) {
@@ -5293,14 +5276,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void areUiccApplicationsEnabled(Message onCompleteMessage) {
         IRadio radioProxy = getRadioProxy(onCompleteMessage);
-        if (radioProxy == null) {
-            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
-            if (onCompleteMessage != null) {
-                AsyncResult.forMessage(onCompleteMessage, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                onCompleteMessage.sendToTarget();
-            }
-        }
+        if (radioProxy == null) return;
 
         if (mRadioVersion.less(RADIO_HAL_VERSION_1_5)) {
             if (onCompleteMessage != null) {
@@ -5388,14 +5364,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getBarringInfo(Message result) {
         IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy == null) {
-            Rlog.e(RIL.RILJ_LOG_TAG, "Radio Proxy object is null!");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
-        }
+        if (radioProxy == null) return;
 
         if (mRadioVersion.less(RADIO_HAL_VERSION_1_5)) {
             if (result != null) {
