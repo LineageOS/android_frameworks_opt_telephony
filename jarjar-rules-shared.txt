@@ -19,3 +19,6 @@ rule com.android.internal.util.State* com.android.internal.telephony.State@1
 rule com.android.internal.util.StateMachine* com.android.internal.telephony.StateMachine@1
 rule com.android.internal.util.UserIcons* com.android.internal.telephony.UserIcons@1
 rule com.google.i18n.phonenumbers.** com.android.internal.telephony.phonenumbers.@1
+
+# Module library in frameworks/libs/net
+rule com.android.net.module.util.** com.android.internal.telephony.util.@1
