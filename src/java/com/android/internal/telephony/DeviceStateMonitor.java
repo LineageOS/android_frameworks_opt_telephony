@@ -854,15 +854,15 @@ public class DeviceStateMonitor extends Handler {
         };
 
         /**
-         * List of default 10*dB RSSNR thresholds for EUTRAN {@link AccessNetworkType}.
+         * List of default dB RSSNR thresholds for EUTRAN {@link AccessNetworkType}.
          *
          * These thresholds are taken from the LTE RSSNR defaults in {@link CarrierConfigManager}.
          */
         public static final int[] EUTRAN_RSSNR = new int[] {
-            -30,  /* SIGNAL_STRENGTH_POOR */
-            10,   /* SIGNAL_STRENGTH_MODERATE */
-            45,   /* SIGNAL_STRENGTH_GOOD */
-            130   /* SIGNAL_STRENGTH_GREAT */
+            -3,  /* SIGNAL_STRENGTH_POOR */
+            1,   /* SIGNAL_STRENGTH_MODERATE */
+            5,   /* SIGNAL_STRENGTH_GOOD */
+            13   /* SIGNAL_STRENGTH_GREAT */
         };
 
         /**
