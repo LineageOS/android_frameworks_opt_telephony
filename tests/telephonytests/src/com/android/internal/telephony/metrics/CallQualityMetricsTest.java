@@ -254,7 +254,7 @@ public class CallQualityMetricsTest extends TelephonyTest {
         // save good quality with high rssnr
         CallQuality cq1 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
                 CallQuality.CALL_QUALITY_EXCELLENT, 5000);
-        int rssnr1 = 300;
+        int rssnr1 = 30;
         // ignore everything except rssnr
         CellSignalStrengthLte lteSs1 = new CellSignalStrengthLte(0, 0, 0, rssnr1, 0, 0);
         SignalStrength ss1 = new SignalStrength(
@@ -270,7 +270,7 @@ public class CallQualityMetricsTest extends TelephonyTest {
         // save good quality with low rssnr
         CallQuality cq2 = constructCallQuality(CallQuality.CALL_QUALITY_EXCELLENT,
                 CallQuality.CALL_QUALITY_EXCELLENT, 10000);
-        int rssnr2 = -200;
+        int rssnr2 = -20;
         // ignore everything except rssnr
         CellSignalStrengthLte lteSs2 = new CellSignalStrengthLte(0, 0, 0, rssnr2, 0, 0);
         SignalStrength ss2 = new SignalStrength(
