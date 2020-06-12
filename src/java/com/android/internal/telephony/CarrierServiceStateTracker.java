@@ -33,6 +33,8 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
+import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.NetworkTypeBitMask;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.util.NotificationChannelController;
@@ -205,7 +207,51 @@ public class CarrierServiceStateTracker extends Handler {
             Rlog.e(LOG_TAG, "Unable to get PREFERRED_NETWORK_MODE.");
             return true;
         }
-        return (preferredNetworkSetting == RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA);
+
+        if (isNrSupported()) {
+            return (preferredNetworkSetting
+                    == RILConstants.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA);
+        } else {
+            return (preferredNetworkSetting == RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA);
+        }
+    }
+
+    private boolean isNrSupported() {
+        Context context = mPhone.getContext();
+        TelephonyManager tm = ((TelephonyManager) context.getSystemService(
+                Context.TELEPHONY_SERVICE)).createForSubscriptionId(mPhone.getSubId());
+
+        boolean isCarrierConfigEnabled = isCarrierConfigEnableNr(context);
+        boolean isRadioAccessFamilySupported = checkSupportedBitmask(
+                tm.getSupportedRadioAccessFamily(), TelephonyManager.NETWORK_TYPE_BITMASK_NR);
+        boolean isNrNetworkTypeAllowed = checkSupportedBitmask(
+                tm.getAllowedNetworkTypes(), TelephonyManager.NETWORK_TYPE_BITMASK_NR);
+
+        Rlog.i(LOG_TAG, "isNrSupported: " + " carrierConfigEnabled: " + isCarrierConfigEnabled
+                + ", AccessFamilySupported: " + isRadioAccessFamilySupported
+                + ", isNrNetworkTypeAllowed: " + isNrNetworkTypeAllowed);
+
+        return (isCarrierConfigEnabled && isRadioAccessFamilySupported && isNrNetworkTypeAllowed);
+    }
+
+    private boolean isCarrierConfigEnableNr(Context context) {
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+                context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (carrierConfigManager == null) {
+            Rlog.e(LOG_TAG, "isCarrierConfigEnableNr: CarrierConfigManager is null");
+            return false;
+        }
+        PersistableBundle config = carrierConfigManager.getConfigForSubId(mPhone.getSubId());
+        if (config == null) {
+            Rlog.e(LOG_TAG, "isCarrierConfigEnableNr: Cannot get config " + mPhone.getSubId());
+            return false;
+        }
+        return config.getBoolean(CarrierConfigManager.KEY_NR_ENABLED_BOOL);
+    }
+
+    private boolean checkSupportedBitmask(@NetworkTypeBitMask long supportedBitmask,
+            @NetworkTypeBitMask long targetBitmask) {
+        return (targetBitmask & supportedBitmask) == targetBitmask;
     }
 
     private void handleConfigChanges() {
