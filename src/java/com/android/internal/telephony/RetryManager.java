@@ -498,9 +498,10 @@ public class RetryManager {
 
         // If the modem had suggested a retry delay, we should retry the current APN again
         // (up to MAX_SAME_APN_RETRY times) instead of getting the next APN setting from
-        // our own list.
-        if (mModemSuggestedDelay != NO_SUGGESTED_RETRY_DELAY &&
-                mSameApnRetryCount < MAX_SAME_APN_RETRY) {
+        // our own list. If the APN waiting list has been reset before a setup data responses
+        // arrive (i.e. mCurrentApnIndex=-1), then ignore the modem suggested retry.
+        if (mCurrentApnIndex != -1 && mModemSuggestedDelay != NO_SUGGESTED_RETRY_DELAY
+                && mSameApnRetryCount < MAX_SAME_APN_RETRY) {
             mSameApnRetryCount++;
             return mWaitingApns.get(mCurrentApnIndex);
         }
@@ -665,6 +666,10 @@ public class RetryManager {
      * @param delay The delay in milliseconds
      */
     public void setModemSuggestedDelay(long delay) {
+        if (mCurrentApnIndex == -1) {
+            log("Waiting APN list has been reset. Ignore the value from modem.");
+            return;
+        }
         mModemSuggestedDelay = delay;
     }
 
