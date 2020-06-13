@@ -66,6 +66,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -896,6 +897,12 @@ public class SubscriptionController extends ISub.Stub {
                 selection += " OR " + SubscriptionManager.IS_EMBEDDED + "=1";
             }
 
+            List<String> iccIds = getIccIdsOfInsertedSims();
+            if (!iccIds.isEmpty()) {
+                selection += " OR ("  + getSelectionForIccIdList(iccIds.toArray(new String[0]))
+                        + ")";
+            }
+
             List<SubscriptionInfo> subList = getSubInfo(selection, null /* queryKey */);
 
             if (subList != null) {
@@ -910,6 +917,22 @@ public class SubscriptionController extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+    }
+
+    private List<String> getIccIdsOfInsertedSims() {
+        List<String> ret = new ArrayList<>();
+        UiccSlot[] uiccSlots = UiccController.getInstance().getUiccSlots();
+        if (uiccSlots == null) return ret;
+
+        for (UiccSlot uiccSlot : uiccSlots) {
+            if (uiccSlot != null && uiccSlot.getCardState() != null
+                    && uiccSlot.getCardState().isCardPresent()
+                    && !TextUtils.isEmpty(uiccSlot.getIccId())) {
+                ret.add(uiccSlot.getIccId());
+            }
+        }
+
+        return ret;
     }
 
     @Override
@@ -3366,6 +3389,23 @@ public class SubscriptionController extends ISub.Stub {
             selection.append(subId[i] + ", ");
         }
         selection.append(subId[subId.length - 1]);
+        selection.append(")");
+
+        return selection.toString();
+    }
+
+    /**
+     * Helper function to create selection argument of a list of subId.
+     * The result should be: "in (iccId1, iccId2, ...)".
+     */
+    private String getSelectionForIccIdList(String[] iccIds) {
+        StringBuilder selection = new StringBuilder();
+        selection.append(SubscriptionManager.ICC_ID);
+        selection.append(" IN (");
+        for (int i = 0; i < iccIds.length - 1; i++) {
+            selection.append("\"" + iccIds[i] + "\", ");
+        }
+        selection.append("\"" + iccIds[iccIds.length - 1] + "\"");
         selection.append(")");
 
         return selection.toString();
