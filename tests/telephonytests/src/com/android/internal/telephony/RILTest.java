@@ -2491,6 +2491,19 @@ public class RILTest extends TelephonyTest {
     }
 
     @Test
+    public void testAreUiccApplicationsEnabled_nullRadioProxy() throws Exception {
+        // Not supported on Radio 1.0.
+        doReturn(null).when(mRILUnderTest).getRadioProxy(any());
+        Message message = obtainMessage();
+        mRILUnderTest.areUiccApplicationsEnabled(message);
+        processAllMessages();
+        verify(mRadioProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        // Sending message is handled by getRadioProxy when proxy is null.
+        // areUiccApplicationsEnabled shouldn't explicitly send another callback.
+        assertEquals(null, message.obj);
+    }
+
+    @Test
     public void testSetGetCompatVersion() throws Exception {
         final int testRequest = RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT;
 
