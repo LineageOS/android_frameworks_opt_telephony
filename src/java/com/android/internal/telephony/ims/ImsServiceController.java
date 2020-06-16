@@ -72,8 +72,8 @@ public class ImsServiceController {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            mBackoff.stop();
             synchronized (mLock) {
+                mBackoff.stop();
                 mIsBound = true;
                 mIsBinding = false;
                 try {
@@ -89,8 +89,10 @@ public class ImsServiceController {
                 } catch (RemoteException e) {
                     mIsBound = false;
                     mIsBinding = false;
-                    // Remote exception means that the binder already died.
+                    // RemoteException means that the process holding the binder died or something
+                    // unexpected happened... try a full rebind.
                     cleanupConnection();
+                    unbindService();
                     startDelayedRebindToService();
                     mLocalLog.log("onConnected exception=" + e.getMessage() + ", retry in "
                             + mBackoff.getCurrentDelay() + " mS");
@@ -104,8 +106,8 @@ public class ImsServiceController {
         public void onServiceDisconnected(ComponentName name) {
             synchronized (mLock) {
                 mIsBinding = false;
+                cleanupConnection();
             }
-            cleanupConnection();
             mLocalLog.log("onServiceDisconnected");
             Log.w(LOG_TAG, "ImsService(" + name + "): onServiceDisconnected. Waiting...");
             // Service disconnected, but we are still technically bound. Waiting for reconnect.
@@ -116,14 +118,12 @@ public class ImsServiceController {
             synchronized (mLock) {
                 mIsBinding = false;
                 mIsBound = false;
-            }
-            if (mImsServiceConnection != null) {
                 // according to the docs, we should fully unbind before rebinding again.
-                mContext.unbindService(mImsServiceConnection);
+                cleanupConnection();
+                unbindService();
+                startDelayedRebindToService();
             }
-            cleanupConnection();
             Log.w(LOG_TAG, "ImsService(" + name + "): onBindingDied. Starting rebind...");
-            startDelayedRebindToService();
             mLocalLog.log("onBindingDied, retrying in " + mBackoff.getCurrentDelay() + " mS");
         }
 
@@ -133,19 +133,23 @@ public class ImsServiceController {
             mLocalLog.log("onNullBinding");
             synchronized (mLock) {
                 mIsBinding = false;
-                mIsBound = false;
+                // Service connection exists, so we are bound but the binder is null. Wait for
+                // ImsResolver to trigger the unbind here.
+                mIsBound = true;
+                cleanupConnection();
             }
-            cleanupConnection();
             if (mCallbacks != null) {
                 // Will trigger an unbind.
                 mCallbacks.imsServiceBindPermanentError(getComponentName());
             }
         }
 
-        // Does not clear features, just removes all active features.
+        // Does not clear feature configuration, just cleans up the active callbacks and
+        // invalidates remote FeatureConnections.
+        // This should only be called when locked
         private void cleanupConnection() {
             cleanupAllFeatures();
-            cleanUpService();
+            setServiceController(null);
         }
     }
 
@@ -427,18 +431,13 @@ public class ImsServiceController {
     public void unbind() throws RemoteException {
         synchronized (mLock) {
             mBackoff.stop();
-            if (mImsServiceConnection == null) {
-                return;
-            }
             // Clean up all features
             changeImsServiceFeatures(new HashSet<>());
             removeImsServiceFeatureCallbacks();
-            Log.i(LOG_TAG, "Unbinding ImsService: " + mComponentName);
-            mLocalLog.log("unbinding");
-            mContext.unbindService(mImsServiceConnection);
             mIsBound = false;
             mIsBinding = false;
-            cleanUpService();
+            setServiceController(null);
+            unbindService();
         }
     }
 
@@ -626,15 +625,6 @@ public class ImsServiceController {
     }
 
     /**
-     * @return true if the controller is currently bound.
-     */
-    public boolean isBound() {
-        synchronized (mLock) {
-            return mIsBound;
-        }
-    }
-
-    /**
      * Check to see if the service controller is available, overridden for compat versions,
      * @return true if available, false otherwise;
      */
@@ -650,6 +640,22 @@ public class ImsServiceController {
     // Only add a new rebind if there are no pending rebinds waiting.
     private void startDelayedRebindToService() {
         mBackoff.start();
+    }
+
+    private void unbindService() {
+        synchronized (mLock) {
+            if (mImsServiceConnection != null) {
+                Log.i(LOG_TAG, "Unbinding ImsService: " + mComponentName);
+                mLocalLog.log("unbinding: " + mComponentName);
+                mContext.unbindService(mImsServiceConnection);
+                mImsServiceConnection = null;
+            } else {
+                Log.i(LOG_TAG, "unbindService called on already unbound ImsService: "
+                        + mComponentName);
+                mLocalLog.log("Note: unbindService called with no ServiceConnection on "
+                        + mComponentName);
+            }
+        }
     }
 
     // Grant runtime permissions to ImsService. PermissionManager ensures that the ImsService is
@@ -778,8 +784,8 @@ public class ImsServiceController {
             // Don't update ImsService for emergency MMTEL feature.
             Log.i(LOG_TAG, "doesn't support emergency calling on slot " + featurePair.slotId);
         }
-        // Send callback to ImsServiceProxy to change supported ImsFeatures
-        // Ensure that ImsServiceProxy callback occurs after ImsResolver callback. If an
+        // Send callback to FeatureConnection to change supported ImsFeatures
+        // Ensure that FeatureConnection callback occurs after ImsResolver callback. If an
         // ImsManager requests the ImsService while it is being removed in ImsResolver, this
         // callback will clean it up after.
         sendImsFeatureRemovedCallback(featurePair.slotId, featurePair.featureType);
@@ -837,13 +843,6 @@ public class ImsServiceController {
             // remove all MmTelFeatureConnection callbacks, since we have already sent removed
             // callback.
             removeImsServiceFeatureCallbacks();
-        }
-    }
-
-    private void cleanUpService() {
-        synchronized (mLock) {
-            mImsServiceConnection = null;
-            setServiceController(null);
         }
     }
 
