@@ -5944,6 +5944,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     void writeMetricsSrvcc(int state) {
         mMetrics.writeRilSrvcc(mPhoneId, state);
+        PhoneFactory.getPhone(mPhoneId).getVoiceCallSessionStats().onRilSrvccStateChanged(state);
     }
 
     void writeMetricsModemRestartEvent(String reason) {

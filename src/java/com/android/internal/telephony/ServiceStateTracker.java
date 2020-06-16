@@ -1635,6 +1635,7 @@ public class ServiceStateTracker extends Handler {
                         mPhone.notifyServiceStateChanged(mSS);
                         TelephonyMetrics.getInstance().writeServiceStateChanged(
                                 mPhone.getPhoneId(), mSS);
+                        mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
                     }
                 }
                 break;
@@ -2218,6 +2219,7 @@ public class ServiceStateTracker extends Handler {
                 if (nrHasChanged) {
                     TelephonyMetrics.getInstance().writeServiceStateChanged(
                             mPhone.getPhoneId(), mSS);
+                    mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
                 }
 
                 if (mPhone.isPhoneTypeGsm()) {
@@ -3489,6 +3491,7 @@ public class ServiceStateTracker extends Handler {
 
         if (hasChanged || hasNrStateChanged) {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
+            mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
         }
 
         boolean shouldLogAttachedChange = false;
