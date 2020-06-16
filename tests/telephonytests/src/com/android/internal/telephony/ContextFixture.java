@@ -54,6 +54,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.Uri;
@@ -292,6 +293,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.SYSTEM_CONFIG_SERVICE;
             } else if (serviceClass == ActivityManager.class) {
                 return Context.ACTIVITY_SERVICE;
+            } else if (serviceClass == LocationManager.class) {
+                return Context.LOCATION_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -628,6 +631,7 @@ public class ContextFixture implements TestFixture<Context> {
         mock(TelephonyRegistryManager.class);
     private final SystemConfigManager mSystemConfigManager = mock(SystemConfigManager.class);
     private final PowerWhitelistManager mPowerWhitelistManager = mock(PowerWhitelistManager.class);
+    private final LocationManager mLocationManager = mock(LocationManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
