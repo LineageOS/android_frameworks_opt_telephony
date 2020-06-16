@@ -53,6 +53,7 @@ import com.android.server.TelephonyRegistry;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -373,6 +374,10 @@ public class TelephonyRegistryTest extends TelephonyTest {
     /**
      * Test listen to events that require READ_PRECISE_PHONE_STATE permission.
      */
+    // FIXME(b/159082270) - Simply not granting location permission doesn't fix the test because
+    // Location is soft-denied to apps that aren't in the foreground, and soft-denial currently
+    // short-circuits the test.
+    @Ignore("Skip due to b/159082270")
     @Test
     public void testReadPrecisePhoneStatePermission() {
         // Clear all permission grants for test.
