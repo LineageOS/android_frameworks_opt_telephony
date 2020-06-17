@@ -877,9 +877,12 @@ public class GsmCdmaCallTracker extends CallTracker {
                     }
 
                     mConnections[i] = new GsmCdmaConnection(mPhone, dc, this, i);
+                    log("New connection is not mPendingMO. Creating new GsmCdmaConnection,"
+                            + " objId=" + System.identityHashCode(mConnections[i]));
 
                     Connection hoConnection = getHoConnection(dc);
                     if (hoConnection != null) {
+                        log("Handover connection found.");
                         // Single Radio Voice Call Continuity (SRVCC) completed
                         mConnections[i].migrateFrom(hoConnection);
                         // Updating connect time for silent redial cases (ex: Calls are transferred
@@ -908,6 +911,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
                     } else {
                         // find if the MT call is a new ring or unknown connection
+                        log("New connection is not mPendingMO nor a pending handover.");
                         newRinging = checkMtFindNewRinging(dc,i);
                         if (newRinging == null) {
                             unknownConnectionAppeared = true;
