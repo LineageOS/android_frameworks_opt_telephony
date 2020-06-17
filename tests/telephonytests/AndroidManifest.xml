@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <!-- Copyright (C) 2009 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,28 +15,29 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.frameworks.telephonytests">
+     package="com.android.frameworks.telephonytests">
 
     <application android:name="com.android.internal.telephony.TestApplication">
-        <uses-library android:name="android.test.runner" />
+        <uses-library android:name="android.test.runner"/>
         <activity android:label="TelephonyTest"
-                android:name="TelephonyTest">
+             android:name="TelephonyTest"
+             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
     </application>
     <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
-        android:targetPackage="com.android.frameworks.telephonytests"
-        android:label="Frameworks Telephony Tests">
+         android:targetPackage="com.android.frameworks.telephonytests"
+         android:label="Frameworks Telephony Tests">
     </instrumentation>
 
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"/>
     <uses-permission android:name="android.permission.BIND_TELEPHONY_NETWORK_SERVICE"/>
-    <uses-permission android:name="android.permission.BIND_TELEPHONY_DATA_SERVICE" />
+    <uses-permission android:name="android.permission.BIND_TELEPHONY_DATA_SERVICE"/>
 </manifest>
