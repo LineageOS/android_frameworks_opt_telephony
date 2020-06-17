@@ -1386,6 +1386,7 @@ public abstract class Connection {
         StringBuilder str = new StringBuilder(128);
 
         str.append(" callId: " + getTelecomCallId());
+        str.append(" objId: " + System.identityHashCode(this));
         str.append(" isExternal: " + (((mConnectionCapabilities & Capability.IS_EXTERNAL_CONNECTION)
                 == Capability.IS_EXTERNAL_CONNECTION) ? "Y" : "N"));
         if (Rlog.isLoggable(LOG_TAG, Log.DEBUG)) {
