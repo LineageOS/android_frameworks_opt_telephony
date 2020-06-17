@@ -133,7 +133,8 @@ public abstract class CallTracker extends Handler {
             // Individual connections will be removed from the list in handlePollCalls()
             mHandoverConnections.clear();
         }
-        log("notifySrvccState: mHandoverConnections= " + mHandoverConnections.toString());
+        log("notifySrvccState: state=" + state.name() + ", mHandoverConnections= "
+                + mHandoverConnections.toString());
     }
 
     protected void handleRadioAvailable() {
