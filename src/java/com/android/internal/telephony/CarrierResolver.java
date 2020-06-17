@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import static android.provider.Telephony.CarrierId;
+import static android.provider.Telephony.Carriers.CONTENT_URI;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -101,7 +102,7 @@ public class CarrierResolver extends Handler {
     private final ContentObserver mContentObserver = new ContentObserver(this) {
         @Override
         public void onChange(boolean selfChange, Uri uri) {
-            if (CONTENT_URL_PREFER_APN.equals(uri.getLastPathSegment())) {
+            if (Telephony.Carriers.CONTENT_URI.equals(uri)) {
                 logd("onChange URI: " + uri);
                 sendEmptyMessage(PREFER_APN_UPDATE_EVENT);
             } else if (CarrierId.All.CONTENT_URI.equals(uri)) {
