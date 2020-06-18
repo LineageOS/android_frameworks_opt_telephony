@@ -3355,7 +3355,7 @@ public class SubscriptionController extends ISub.Stub {
                     callingPackage, "getSubscriptionsInGroup")
                     || info.canManageSubscription(mContext, callingPackage);
         }).map(subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
-                callingPackage, "getSubscriptionInfoList"))
+                callingPackage, "getSubscriptionsInGroup"))
         .collect(Collectors.toList());
     }
 
@@ -3623,42 +3623,56 @@ public class SubscriptionController extends ISub.Stub {
     // They are doing similar things except operating on different cache.
     private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
             String callingPackage, List<SubscriptionInfo> cacheSubList) {
-        boolean canReadAllPhoneState;
+        boolean canReadPhoneState = false;
+        boolean canReadIdentifiers = false;
         try {
-            canReadAllPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
+            canReadPhoneState = TelephonyPermissions.checkReadPhoneState(mContext,
                     SubscriptionManager.INVALID_SUBSCRIPTION_ID, Binder.getCallingPid(),
                     Binder.getCallingUid(), callingPackage, "getSubscriptionInfoList");
             // If the calling package has the READ_PHONE_STATE permission then check if the caller
-            // also has access to subscriber identifiers to ensure that the ICC ID and any other
-            // unique identifiers are removed if the caller should not have access.
-            if (canReadAllPhoneState) {
-                canReadAllPhoneState = hasSubscriberIdentifierAccess(
+            // also has access to subscriber identifiers to ensure that the ICC
+            // ID and any other unique identifiers are removed if the caller should not have access.
+            if (canReadPhoneState) {
+                canReadIdentifiers = hasSubscriberIdentifierAccess(
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
                         "getSubscriptionInfoList");
             }
         } catch (SecurityException e) {
-            canReadAllPhoneState = false;
+            // If a SecurityException is thrown during the READ_PHONE_STATE check then the only way
+            // to access a subscription is to have carrier privileges for its subId; an app with
+            // carrier privileges for a subscription is also granted access to all identifiers so
+            // the identifier and phone number access checks are not required.
         }
 
         synchronized (mSubInfoListLock) {
             // If the caller can read all phone state, just return the full list.
-            if (canReadAllPhoneState) {
+            if (canReadIdentifiers) {
                 return new ArrayList<>(cacheSubList);
             }
-
             // Filter the list to only include subscriptions which the caller can manage.
-            return cacheSubList.stream()
-                    .filter(subscriptionInfo -> {
-                        try {
-                            return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext,
-                                    subscriptionInfo.getSubscriptionId(), callingPackage,
-                                    "getSubscriptionInfoList");
-                        } catch (SecurityException e) {
-                            return false;
-                        }
-                    }).map(subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
-                            callingPackage, "getSubscriptionInfoList"))
-                    .collect(Collectors.toList());
+            List<SubscriptionInfo> subscriptions = new ArrayList<>(cacheSubList.size());
+            for (SubscriptionInfo subscriptionInfo : cacheSubList) {
+                int subId = subscriptionInfo.getSubscriptionId();
+                boolean hasCarrierPrivileges = TelephonyPermissions.checkCarrierPrivilegeForSubId(
+                        subId);
+                // If the caller does not have the READ_PHONE_STATE permission nor carrier
+                // privileges then they cannot access the current subscription.
+                if (!canReadPhoneState && !hasCarrierPrivileges) {
+                    continue;
+                }
+                // If the caller has carrier privileges then they are granted access to all
+                // identifiers for their subscription.
+                if (hasCarrierPrivileges) {
+                    subscriptions.add(subscriptionInfo);
+                } else {
+                    // The caller does not have carrier privileges for this subId, filter the
+                    // identifiers in the subscription based on the results of the initial
+                    // permission checks.
+                    subscriptions.add(
+                            conditionallyRemoveIdentifiers(subscriptionInfo, canReadIdentifiers));
+                }
+            }
+            return subscriptions;
         }
     }
 
@@ -3674,8 +3688,26 @@ public class SubscriptionController extends ISub.Stub {
     private SubscriptionInfo conditionallyRemoveIdentifiers(SubscriptionInfo subInfo,
             String callingPackage,  String message) {
         SubscriptionInfo result = subInfo;
-        if (!hasSubscriberIdentifierAccess(subInfo.getSubscriptionId(), callingPackage, message)) {
-            result = new SubscriptionInfo(subInfo);
+        int subId = subInfo.getSubscriptionId();
+        boolean hasIdentifierAccess = hasSubscriberIdentifierAccess(subId, callingPackage, message);
+        return conditionallyRemoveIdentifiers(subInfo, hasIdentifierAccess);
+    }
+
+    /**
+     * Conditionally removes identifiers from the provided {@code subInfo} based on if the calling
+     * package {@code hasIdentifierAccess} and returns the potentially modified object.
+     *
+     * <p>If the caller specifies the package does not have identifier access
+     * a clone of the provided SubscriptionInfo is created and modified to avoid altering
+     * SubscriptionInfo objects in a cache.
+     */
+    private SubscriptionInfo conditionallyRemoveIdentifiers(SubscriptionInfo subInfo,
+            boolean hasIdentifierAccess) {
+        if (hasIdentifierAccess) {
+            return subInfo;
+        }
+        SubscriptionInfo result = new SubscriptionInfo(subInfo);
+        if (!hasIdentifierAccess) {
             result.clearIccId();
             result.clearCardString();
         }
