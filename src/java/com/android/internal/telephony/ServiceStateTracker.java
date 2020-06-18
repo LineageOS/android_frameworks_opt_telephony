@@ -2785,6 +2785,13 @@ public class ServiceStateTracker extends Handler {
             } else if (!TextUtils.isEmpty(plmn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)) {
                 // Show PLMN + Wi-Fi Calling if there is no valid SPN in the above case
                 String originalPlmn = plmn.trim();
+
+                PersistableBundle config = getCarrierConfig();
+                if (mIccRecords != null && config.getBoolean(
+                        CarrierConfigManager.KEY_WFC_CARRIER_NAME_OVERRIDE_BY_PNN_BOOL)) {
+                    originalPlmn = mIccRecords.getPnnHomeName();
+                }
+
                 plmn = String.format(wfcVoiceSpnFormat, originalPlmn);
             } else if (mSS.getState() == ServiceState.STATE_POWER_OFF
                     || (showPlmn && TextUtils.equals(spn, plmn))) {
