@@ -501,12 +501,15 @@ public class NetworkTypeController extends StateMachine {
      * This is the initial state.
      */
     private final class LegacyState extends State {
+        private Boolean mIsNrRestricted = false;
+
         @Override
         public void enter() {
             if (DBG) log("Entering LegacyState");
             updateTimers();
             updateOverrideNetworkType();
             if (!mIsPrimaryTimerActive && !mIsSecondaryTimerActive) {
+                mIsNrRestricted = isNrRestricted();
                 mPreviousState = getName();
             }
         }
@@ -525,6 +528,7 @@ public class NetworkTypeController extends StateMachine {
                     } else {
                         updateOverrideNetworkType();
                     }
+                    mIsNrRestricted = isNrRestricted();
                     break;
                 case EVENT_NR_STATE_CHANGED:
                     if (isNrConnected()) {
@@ -534,6 +538,7 @@ public class NetworkTypeController extends StateMachine {
                     } else if (isLte(rat) && isNrRestricted()) {
                         updateOverrideNetworkType();
                     }
+                    mIsNrRestricted = isNrRestricted();
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_DATA_ACTIVITY_CHANGED:
@@ -550,7 +555,7 @@ public class NetworkTypeController extends StateMachine {
 
         @Override
         public String getName() {
-            return isNrRestricted() ? STATE_RESTRICTED : STATE_LEGACY;
+            return mIsNrRestricted  ? STATE_RESTRICTED : STATE_LEGACY;
         }
     }
 
@@ -678,12 +683,15 @@ public class NetworkTypeController extends StateMachine {
      * Device is connected to 5G NR as the secondary cell.
      */
     private final class NrConnectedState extends State {
+        private Boolean mIsNrMmwave = false;
+
         @Override
         public void enter() {
             if (DBG) log("Entering NrConnectedState");
             updateTimers();
             updateOverrideNetworkType();
             if (!mIsPrimaryTimerActive && !mIsSecondaryTimerActive) {
+                mIsNrMmwave = isNrMmwave();
                 mPreviousState = getName();
             }
         }
@@ -722,6 +730,7 @@ public class NetworkTypeController extends StateMachine {
                         // STATE_CONNECTED -> STATE_CONNECTED_MMWAVE
                         transitionTo(mNrConnectedState);
                     }
+                    mIsNrMmwave = isNrMmwave();
                     break;
                 case EVENT_DATA_ACTIVITY_CHANGED:
                     // ignore
@@ -737,7 +746,7 @@ public class NetworkTypeController extends StateMachine {
 
         @Override
         public String getName() {
-            return isNrMmwave() ? STATE_CONNECTED_MMWAVE : STATE_CONNECTED;
+            return mIsNrMmwave ? STATE_CONNECTED_MMWAVE : STATE_CONNECTED;
         }
     }
 
