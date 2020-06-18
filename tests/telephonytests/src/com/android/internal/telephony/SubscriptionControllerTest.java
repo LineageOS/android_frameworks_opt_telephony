@@ -948,8 +948,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         int subId = getFirstSubId();
 
         try {
-            mSubscriptionControllerUT.getActiveSubscriptionInfo(subId, mCallingPackage,
-                    mCallingFeature);
+            mSubscriptionControllerUT.getActiveSubscriptionInfo(subId, mCallingPackage);
             fail("getActiveSubscriptionInfo should fail when invoked with no permissions");
         } catch (SecurityException expected) {
         }
@@ -967,7 +966,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
-                subId, mCallingPackage, mCallingFeature);
+                subId, mCallingPackage);
         assertNotNull(subscriptionInfo);
         assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getIccId());
         assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getCardString());
@@ -981,7 +980,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
-                subId, mCallingPackage, mCallingFeature);
+                subId, mCallingPackage);
         assertNotNull(subscriptionInfo);
         assertTrue(subscriptionInfo.getIccId().length() > 0);
         assertTrue(subscriptionInfo.getCardString().length() > 0);
@@ -996,8 +995,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
 
         try {
-            mSubscriptionControllerUT.getActiveSubscriptionInfoForSimSlotIndex(0, mCallingPackage,
-                    mCallingFeature);
+            mSubscriptionControllerUT.getActiveSubscriptionInfoForSimSlotIndex(0, mCallingPackage);
             fail("getActiveSubscriptionInfoForSimSlotIndex should fail when invoked with no "
                     + "permissions");
         } catch (SecurityException expected) {
@@ -1016,7 +1014,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         SubscriptionInfo subscriptionInfo =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoForSimSlotIndex(0,
-                        mCallingPackage, mCallingFeature);
+                        mCallingPackage);
         assertNotNull(subscriptionInfo);
         assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getIccId());
         assertEquals(UNAVAILABLE_ICCID, subscriptionInfo.getCardString());
@@ -1031,7 +1029,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         SubscriptionInfo subscriptionInfo =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoForSimSlotIndex(0,
-                        mCallingPackage, mCallingFeature);
+                        mCallingPackage);
         assertNotNull(subscriptionInfo);
         assertTrue(subscriptionInfo.getIccId().length() > 0);
         assertTrue(subscriptionInfo.getCardString().length() > 0);
@@ -1045,8 +1043,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
 
         List<SubscriptionInfo> subInfoList =
-                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage,
-                        mCallingFeature);
+                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
         assertNotNull(subInfoList);
         assertTrue(subInfoList.size() == 0);
     }
@@ -1062,13 +1059,29 @@ public class SubscriptionControllerTest extends TelephonyTest {
         setupMocksForTelephonyPermissions();
 
         List<SubscriptionInfo> subInfoList =
-                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage,
-                        mCallingFeature);
+                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertEquals(UNAVAILABLE_ICCID, info.getIccId());
             assertEquals(UNAVAILABLE_ICCID, info.getCardString());
         }
+    }
+
+    @Test
+    public void testGetActiveSubscriptionInfoListWithIdentifierAccessWithoutNumberAccess()
+            throws Exception {
+        // An app with access to device identifiers may not have access to the device phone number
+        // (ie an app that passes the device / profile owner check or an app that has been granted
+        // the device identifiers appop); this test verifies that an app with identifier access
+        // can read the ICC ID but does not receive the phone number.
+        testInsertSim();
+
+        List<SubscriptionInfo> subInfoList =
+                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
+
+        assertEquals(1, subInfoList.size());
+        SubscriptionInfo subInfo = subInfoList.get(0);
+        assertEquals("test", subInfo.getIccId());
     }
 
     @Test
@@ -1078,8 +1091,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         testInsertSim();
 
         List<SubscriptionInfo> subInfoList =
-                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage,
-                        mCallingFeature);
+                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertTrue(info.getIccId().length() > 0);
@@ -1096,8 +1108,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
 
         try {
-            mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid, mCallingPackage,
-                    mCallingFeature);
+            mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid, mCallingPackage);
             fail("getSubscriptionsInGroup should fail when invoked with no permissions");
         } catch (SecurityException expected) {
         }
@@ -1114,7 +1125,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         setupMocksForTelephonyPermissions();
 
         List<SubscriptionInfo> subInfoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
-                groupUuid, mCallingPackage, mCallingFeature);
+                groupUuid, mCallingPackage);
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertEquals(UNAVAILABLE_ICCID, info.getIccId());
@@ -1129,7 +1140,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
 
         List<SubscriptionInfo> subInfoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
-                groupUuid, mCallingPackage, mCallingFeature);
+                groupUuid, mCallingPackage);
         assertTrue(subInfoList.size() > 0);
         for (SubscriptionInfo info : subInfoList) {
             assertTrue(info.getIccId().length() > 0);
@@ -1147,9 +1158,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     private int getFirstSubId() throws Exception {
+        return getSubIdAtIndex(0);
+    }
+
+    private int getSubIdAtIndex(int index) throws Exception {
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
-        assertTrue(subIds != null && subIds.length != 0);
-        return subIds[0];
+        assertTrue(subIds != null && subIds.length > index);
+        return subIds[index];
     }
 
     @Test
