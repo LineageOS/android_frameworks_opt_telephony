@@ -822,4 +822,22 @@ public class SmsController extends ISmsImplBase {
             return 0;
         }
     }
+
+    /**
+     * Reset all cell broadcast ranges. Previously enabled ranges will become invalid after this.
+     *
+     * @param subId Subscription index
+     * @return {@code true} if succeeded, otherwise {@code false}.
+     */
+    @Override
+    public boolean resetAllCellBroadcastRanges(int subId) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.resetAllCellBroadcastRanges();
+            return true;
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return false;
+        }
+    }
 }
