@@ -189,6 +189,13 @@ public abstract class IntRangeManager {
     protected IntRangeManager() {}
 
     /**
+     * Clear all the ranges.
+     */
+    public synchronized void clearRanges() {
+        mRanges.clear();
+    }
+
+    /**
      * Enable a range for the specified client and update ranges
      * if necessary. If {@link #finishUpdate} returns failure,
      * false is returned and the range is not added.
