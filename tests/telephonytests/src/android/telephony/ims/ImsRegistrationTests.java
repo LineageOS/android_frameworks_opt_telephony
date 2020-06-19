@@ -40,6 +40,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.AdditionalMatchers;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
@@ -228,5 +229,36 @@ public class ImsRegistrationTests {
         // Verify that if we have never set the registration state, we do not callback immediately
         // with onUnregistered.
         verify(mCallback2, never()).onDeregistered(any(ImsReasonInfo.class));
+    }
+
+    @SmallTest
+    @Test
+    public void testRegistrationCallbackCalledOnAdd() throws RemoteException {
+        mRegistration.onSubscriberAssociatedUriChanged(new Uri[] { null, null });
+
+        mRegBinder.addRegistrationCallback(mCallback2);
+
+        verify(mCallback2).onSubscriberAssociatedUriChanged(
+                AdditionalMatchers.aryEq(new Uri[] { null, null }));
+    }
+
+    @SmallTest
+    @Test
+    public void testRegistrationCallbackNotCalledOnAddAfterDeregistered() throws RemoteException {
+        ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_LTE_COVERAGE, 0);
+        mRegistration.onSubscriberAssociatedUriChanged(new Uri[] { null, null });
+
+        mRegistration.onDeregistered(info);
+        mRegBinder.addRegistrationCallback(mCallback2);
+
+        verify(mCallback2, never()).onSubscriberAssociatedUriChanged(any());
+    }
+
+    @SmallTest
+    @Test
+    public void testRegistrationCallbackNotCalledOnAddAndNoSubscriberChanged()
+            throws RemoteException {
+        mRegBinder.addRegistrationCallback(mCallback2);
+        verify(mCallback2, never()).onSubscriberAssociatedUriChanged(any());
     }
 }
