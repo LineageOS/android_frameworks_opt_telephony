@@ -28,7 +28,9 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.FeatureConnection;
@@ -59,8 +61,8 @@ public class FeatureConnectionTest extends TelephonyTest {
         public boolean isFeatureRemovedCalled = false;
         public int mNewStatus = ImsFeature.STATE_UNAVAILABLE;
 
-        TestFeatureConnection(Context context, int slotId, int featureType) {
-            super(context, slotId, featureType);
+        TestFeatureConnection(Context context, int slotId) {
+            super(context, slotId);
             if (!ImsManager.isImsSupportedOnDevice(context)) {
                 sImsSupportedOnDevice = false;
             }
@@ -91,6 +93,11 @@ public class FeatureConnectionTest extends TelephonyTest {
             return mFeatureState;
         }
 
+        @Override
+        protected IImsRegistration getRegistrationBinder() {
+            return getTestRegistrationBinder();
+        }
+
         public void setFeatureState(int state) {
             mFeatureState = state;
         }
@@ -99,6 +106,7 @@ public class FeatureConnectionTest extends TelephonyTest {
     private int mPhoneId;
     private TestFeatureConnection mTestFeatureConnection;
     @Mock IBinder mBinder;
+    @Mock IImsRegistration mRegistrationBinder;
 
     @Before
     public void setUp() throws Exception {
@@ -108,8 +116,7 @@ public class FeatureConnectionTest extends TelephonyTest {
         doReturn(null).when(mContext).getMainLooper();
         doReturn(true).when(mPackageManager).hasSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
 
-        mTestFeatureConnection = new TestFeatureConnection(
-                mContext, mPhoneId, ImsFeature.FEATURE_RCS);
+        mTestFeatureConnection = new TestFeatureConnection(mContext, mPhoneId);
         mTestFeatureConnection.mExecutor = mSimpleExecutor;
         mTestFeatureConnection.setBinder(mBinder);
     }
@@ -164,6 +171,20 @@ public class FeatureConnectionTest extends TelephonyTest {
     }
 
     /**
+     * Test registration tech callbacks.
+     */
+    @Test
+    @SmallTest
+    public void testRegistrationTech() throws Exception {
+        when(mRegistrationBinder.getRegistrationTechnology()).thenReturn(
+                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
+
+        assertEquals(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN,
+                mTestFeatureConnection.getRegistrationTech());
+
+    }
+
+    /**
      * Test callback is called when IMS feature created/removed/changed.
      */
     @Test
@@ -191,5 +212,9 @@ public class FeatureConnectionTest extends TelephonyTest {
         } catch (RemoteException e) {
             throw new AssertionFailedError("testListenerCallback(Changed): " + e);
         }
+    }
+
+    private IImsRegistration getTestRegistrationBinder() {
+        return mRegistrationBinder;
     }
 }
