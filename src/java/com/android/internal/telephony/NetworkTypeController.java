@@ -810,19 +810,18 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private void transitionWithSecondaryTimerTo(IState destState) {
-        String destName = destState.getName();
+        String currentName = getCurrentState().getName();
         OverrideTimerRule rule = mOverrideTimerRules.get(mPrimaryTimerState);
-        if (rule != null && rule.getSecondaryTimer(destName) > 0) {
-            String currentName = getCurrentState().getName();
+        if (rule != null && rule.getSecondaryTimer(currentName) > 0) {
             if (DBG) log("Secondary timer started for state: " + currentName);
             mSecondaryTimerState = currentName;
             mPreviousState = currentName;
             mIsSecondaryTimerActive = true;
             sendMessageDelayed(EVENT_SECONDARY_TIMER_EXPIRED, destState,
-                    rule.getSecondaryTimer(destName) * 1000);
+                    rule.getSecondaryTimer(currentName) * 1000);
         }
         mIsPrimaryTimerActive = false;
-        transitionTo(destState);
+        transitionTo(getCurrentState());
     }
 
     private void transitionToCurrentState() {
