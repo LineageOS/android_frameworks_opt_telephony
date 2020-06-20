@@ -36,6 +36,7 @@ import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -99,6 +100,8 @@ public class DcControllerTest extends TelephonyTest {
         LinkProperties lp = new LinkProperties();
         mResult = new UpdateLinkPropertyResult(lp);
         doReturn(mResult).when(mDc).updateLinkProperty(any(DataCallResponse.class));
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .when(mDataServiceManager).getTransportType();
 
         mDcc = DcController.makeDcc(mPhone, mDcTracker, mDataServiceManager,
                 new Handler(Looper.myLooper()), "");
