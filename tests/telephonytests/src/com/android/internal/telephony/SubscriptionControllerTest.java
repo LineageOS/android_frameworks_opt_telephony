@@ -119,6 +119,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         doReturn(1).when(mProxyController).getMaxRafSupported();
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[]{5});
+
+        setupMocksForTelephonyPermissions(Build.VERSION_CODES.R);
     }
 
     @After
@@ -1386,7 +1388,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mSubscriptionControllerUT.setDisplayNumber(DISPLAY_NUMBER, getFirstSubId());
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
-        setupMocksForTelephonyPermissions(mCallingPackage, Build.VERSION_CODES.R);
+        setupMocksForTelephonyPermissions(Build.VERSION_CODES.R);
         doReturn(AppOpsManager.MODE_DEFAULT).when(mAppOpsManager).noteOp(
                 eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), anyString(),
                 nullable(String.class), nullable(String.class));
