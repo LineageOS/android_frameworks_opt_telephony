@@ -2588,7 +2588,7 @@ public class TelephonyMetrics {
             NetworkCapabilities networkCapabilities) {
         final NetworkCapabilitiesInfo caps = new NetworkCapabilitiesInfo();
         caps.isNetworkUnmetered = networkCapabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
 
         TelephonyEvent event = new TelephonyEventBuilder(phoneId)
                 .setNetworkCapabilities(caps).build();
