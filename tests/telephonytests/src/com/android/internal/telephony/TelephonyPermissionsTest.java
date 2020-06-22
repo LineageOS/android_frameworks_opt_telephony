@@ -273,6 +273,41 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
+    public void testCheckReadPhoneNumber_hasReadSmsNoAppop() throws Exception {
+        // If an app has been granted the READ_SMS permission, but the OPSTR_READ_SMS appop has been
+        // revoked then instead of immediately returning false the phone number access check should
+        // check if the caller has the READ_PHONE_NUMBERS permission and appop.
+        setupMocksForDeviceIdentifiersErrorPath();
+        doNothing().when(mMockContext).enforcePermission(
+                android.Manifest.permission.READ_SMS, PID, UID, MSG);
+        doNothing().when(mMockContext).enforcePermission(
+                android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
+        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_READ_PHONE_NUMBERS), eq(UID), eq(PACKAGE),
+                eq(FEATURE), nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
+        assertTrue(TelephonyPermissions.checkReadPhoneNumber(
+                mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
+    }
+
+    @Test
+    public void testCheckReadPhoneNumber_hasReadSmsAndReadPhoneNumbersNoAppops() throws Exception {
+        // If an app has both the READ_SMS and READ_PHONE_NUMBERS permissions granted but does not
+        // have the corresponding appops instead of returning false for not having the appop granted
+        // a SecurityException should be thrown.
+        setupMocksForDeviceIdentifiersErrorPath();
+        doNothing().when(mMockContext).enforcePermission(
+                android.Manifest.permission.READ_SMS, PID, UID, MSG);
+        doNothing().when(mMockContext).enforcePermission(
+                android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
+        try {
+            TelephonyPermissions.checkReadPhoneNumber(
+                    mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG);
+            fail("Should have thrown SecurityException");
+        } catch (SecurityException e) {
+            // expected
+        }
+    }
+
+    @Test
     public void testCheckReadDeviceIdentifiers_noPermissions() throws Exception {
         setupMocksForDeviceIdentifiersErrorPath();
         try {

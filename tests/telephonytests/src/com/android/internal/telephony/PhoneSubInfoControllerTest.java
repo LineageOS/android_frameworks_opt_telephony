@@ -647,14 +647,22 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         assertEquals("+18052345678",
                 mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID));
 
-        /* case 6: only enable READ_SMS */
+        /* case 6: only enable READ_SMS; without the appop should throw SecurityException */
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
                 eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
         mContextFixture.removeCallingOrSelfPermission(READ_PHONE_STATE);
         mContextFixture.addCallingOrSelfPermission(READ_SMS);
-        assertNull(mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
-        assertNull(mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID));
+        try {
+            mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID);
+            Assert.fail("expected SecurityException thrown");
+        } catch (SecurityException expected) {
+        }
+        try {
+            mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID);
+            Assert.fail("expected SecurityException thrown");
+        } catch (SecurityException expected) {
+        }
 
         /* case 7: enable READ_SMS and OP_READ_SMS */
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
