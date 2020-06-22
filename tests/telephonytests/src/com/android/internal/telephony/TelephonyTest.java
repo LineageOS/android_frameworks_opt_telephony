@@ -774,17 +774,23 @@ public abstract class TelephonyTest {
     }
 
     protected void setupMocksForTelephonyPermissions() throws Exception {
-        setupMocksForTelephonyPermissions(TAG, Build.VERSION_CODES.Q);
+        setupMocksForTelephonyPermissions(Build.VERSION_CODES.Q);
     }
 
-    protected void setupMocksForTelephonyPermissions(String packageName, int targetSdkVersion)
+    protected void setupMocksForTelephonyPermissions(int targetSdkVersion)
             throws Exception {
         // If the calling package does not meet the new requirements for device identifier access
         // TelephonyPermissions will query the PackageManager for the ApplicationInfo of the package
         // to determine the target SDK. For apps targeting Q a SecurityException is thrown
         // regardless of if the package satisfies the previous requirements for device ID access.
+
+        // Any tests that query for SubscriptionInfo objects will trigger a phone number access
+        // check that will first query the ApplicationInfo as apps targeting R+ can no longer
+        // access the phone number with the READ_PHONE_STATE permission and instead must meet one of
+        // the other requirements. This ApplicationInfo is generalized to any package name since
+        // some tests will simulate invocation from other packages.
         mApplicationInfo.targetSdkVersion = targetSdkVersion;
-        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(packageName),
+        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(anyString(),
                 anyInt(), any());
 
         // TelephonyPermissions uses a SystemAPI to check if the calling package meets any of the
