@@ -39,8 +39,10 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.provider.Settings;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.SignalThresholdInfo;
 import android.util.LocalLog;
 import android.view.Display;
@@ -83,6 +85,10 @@ public class DeviceStateMonitor extends Handler {
 
     private static final int WIFI_UNAVAILABLE = 0;
     private static final int WIFI_AVAILABLE = 1;
+
+    private static final int NR_NSA_TRACKING_INDICATIONS_OFF = 0;
+    private static final int NR_NSA_TRACKING_INDICATIONS_EXTENDED = 1;
+    private static final int NR_NSA_TRACKING_INDICATIONS_ALWAYS_ON = 2;
 
     private final Phone mPhone;
 
@@ -351,7 +357,7 @@ public class DeviceStateMonitor extends Handler {
      *         android.hardware.radio@1.2::IndicationFilter::FULL_NETWORK_STATE.
      */
     private boolean shouldEnableFullNetworkStateReports() {
-        return shouldEnableHighPowerConsumptionIndications();
+        return shouldEnableNrTrackingIndications();
     }
 
     /**
@@ -359,7 +365,7 @@ public class DeviceStateMonitor extends Handler {
      *         android.hardware.radio@1.2::IndicationFilter::DATA_CALL_DORMANCY_CHANGED.
      */
     private boolean shouldEnableDataCallDormancyChangedReports() {
-        return shouldEnableHighPowerConsumptionIndications();
+        return shouldEnableNrTrackingIndications();
     }
 
     /**
@@ -375,7 +381,7 @@ public class DeviceStateMonitor extends Handler {
      *         android.hardware.radio@1.2::IndicationFilter::PHYSICAL_CHANNEL_CONFIG.
      */
     private boolean shouldEnablePhysicalChannelConfigReports() {
-        return shouldEnableHighPowerConsumptionIndications();
+        return shouldEnableNrTrackingIndications();
     }
 
     /**
@@ -399,6 +405,30 @@ public class DeviceStateMonitor extends Handler {
         // 3. When the tethering is on.
         // 4. When car mode (Android Auto) is on.
         return mIsCharging || mIsScreenOn || mIsTetheringOn || mIsCarModeOn;
+    }
+
+    /**
+     * For 5G NSA devices, a policy to determine if we should enable NR tracking indications.
+     *
+     * @return True if the response update should be enabled.
+     */
+    private boolean shouldEnableNrTrackingIndications() {
+        int trackingMode = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+                Settings.Global.NR_NSA_TRACKING_SCREEN_OFF_MODE, NR_NSA_TRACKING_INDICATIONS_OFF);
+        switch (trackingMode) {
+            case NR_NSA_TRACKING_INDICATIONS_ALWAYS_ON:
+                return true;
+            case NR_NSA_TRACKING_INDICATIONS_EXTENDED:
+                if (mPhone.getServiceState().getNrState()
+                        == NetworkRegistrationInfo.NR_STATE_CONNECTED) {
+                    return true;
+                }
+                // fallthrough
+            case NR_NSA_TRACKING_INDICATIONS_OFF:
+                return shouldEnableHighPowerConsumptionIndications();
+            default:
+                return shouldEnableHighPowerConsumptionIndications();
+        }
     }
 
     /**
