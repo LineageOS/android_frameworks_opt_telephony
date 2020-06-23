@@ -61,8 +61,8 @@ public class DisplayInfoController extends Handler {
                 mPhone.getServiceState().getDataNetworkType(),
                 mNetworkTypeController.getOverrideNetworkType());
         if (!newDisplayInfo.equals(mTelephonyDisplayInfo)) {
-            Rlog.d(TAG, "TelephonyDisplayInfo changed from " + mTelephonyDisplayInfo + " to "
-                    + newDisplayInfo);
+            Rlog.d(TAG, "TelephonyDisplayInfo[" + mPhone.getPhoneId() + "] changed from "
+                    + mTelephonyDisplayInfo + " to " + newDisplayInfo);
             mTelephonyDisplayInfo = newDisplayInfo;
             mTelephonyDisplayInfoChangedRegistrants.notifyRegistrants();
             mPhone.notifyDisplayInfoChanged(mTelephonyDisplayInfo);
