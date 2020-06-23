@@ -16,12 +16,14 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.annotation.IntDef;
 import android.content.Context;
 import android.hardware.radio.V1_4.DataConnActiveStatus;
 import android.net.LinkAddress;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.DataFailCause;
 import android.telephony.PhoneStateListener;
@@ -42,6 +44,8 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +58,24 @@ import java.util.List;
 public class DcController extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
+
+    /** Physical link state unknown */
+    public static final int PHYSICAL_LINK_UNKNOWN = 0;
+
+    /** Physical link state inactive (i.e. RRC idle) */
+    public static final int PHYSICAL_LINK_NOT_ACTIVE = 1;
+
+    /** Physical link state active (i.e. RRC connected) */
+    public static final int PHYSICAL_LINK_ACTIVE = 2;
+
+    /** @hide */
+    @IntDef(prefix = { "PHYSICAL_LINK_" }, value = {
+            PHYSICAL_LINK_UNKNOWN,
+            PHYSICAL_LINK_NOT_ACTIVE,
+            PHYSICAL_LINK_ACTIVE
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface PhysicalLinkState{}
 
     private final Phone mPhone;
     private final DcTracker mDct;
@@ -75,6 +97,16 @@ public class DcController extends StateMachine {
     //mExecutingCarrierChange tracks whether the phone is currently executing
     //carrier network change
     private volatile boolean mExecutingCarrierChange;
+
+    /**
+     * Aggregated physical link state from all data connections. This reflects the device's RRC
+     * connection state.
+     * // TODO: Instead of tracking the RRC state here, we should make PhysicalChannelConfig work in
+     *          S.
+     */
+    private @PhysicalLinkState int mPhysicalLinkState = PHYSICAL_LINK_UNKNOWN;
+
+    private RegistrantList mPhysicalLinkStateChangedRegistrants = new RegistrantList();
 
     /**
      * Constructor.
@@ -394,6 +426,12 @@ public class DcController extends StateMachine {
 
             if (mDataServiceManager.getTransportType()
                     == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                int physicalLinkState = isAnyDataCallActive
+                        ? PHYSICAL_LINK_ACTIVE : PHYSICAL_LINK_NOT_ACTIVE;
+                if (mPhysicalLinkState != physicalLinkState) {
+                    mPhysicalLinkState = physicalLinkState;
+                    mPhysicalLinkStateChangedRegistrants.notifyResult(mPhysicalLinkState);
+                }
                 if (isAnyDataCallDormant && !isAnyDataCallActive) {
                     // There is no way to indicate link activity per APN right now. So
                     // Link Activity will be considered dormant only when all data calls
@@ -434,6 +472,25 @@ public class DcController extends StateMachine {
 
             if (VDBG) log("onDataStateChanged: X");
         }
+    }
+
+    /**
+     * Register for physical link state (i.e. RRC state) changed event.
+     *
+     * @param h The handler
+     * @param what The event
+     */
+    public void registerForPhysicalLinkStateChanged(Handler h, int what) {
+        mPhysicalLinkStateChangedRegistrants.addUnique(h, what, null);
+    }
+
+    /**
+     * Unregister from physical link state (i.e. RRC state) changed event.
+     *
+     * @param h The previously registered handler
+     */
+    public void unregisterForPhysicalLinkStateChanged(Handler h) {
+        mPhysicalLinkStateChangedRegistrants.remove(h);
     }
 
     /**
