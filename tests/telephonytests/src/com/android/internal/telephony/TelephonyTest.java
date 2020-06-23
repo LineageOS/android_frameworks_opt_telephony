@@ -102,6 +102,7 @@ import com.android.server.pm.PackageManagerService;
 import com.android.server.pm.permission.PermissionManagerService;
 
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -837,6 +838,14 @@ public abstract class TelephonyTest {
         doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
                 : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS).when(
                 mTelephonyManager).getCarrierPrivilegeStatus(anyInt());
+    }
+
+    protected void setCarrierPrivilegesForSubId(boolean hasCarrierPrivileges, int subId) {
+        TelephonyManager mockTelephonyManager = Mockito.mock(TelephonyManager.class);
+        doReturn(mockTelephonyManager).when(mTelephonyManager).createForSubscriptionId(subId);
+        doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS).when(
+                mockTelephonyManager).getCarrierPrivilegeStatus(anyInt());
     }
 
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {
