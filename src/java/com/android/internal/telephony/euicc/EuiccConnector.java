@@ -96,7 +96,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
      * true or onServiceDisconnected is called (and no package change has occurred which should
      * force us to reestablish the binding).
      */
-    static final int BIND_TIMEOUT_MILLIS = 30000;
+    private static final int BIND_TIMEOUT_MILLIS = 30000;
 
     /**
      * Maximum amount of idle time to hold the binding while in {@link ConnectedState}. After this,
