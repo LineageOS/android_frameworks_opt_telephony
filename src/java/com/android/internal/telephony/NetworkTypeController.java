@@ -23,7 +23,6 @@ import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
@@ -89,14 +88,14 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_SECONDARY_TIMER_EXPIRED = 9;
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
     private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
-    private static final int EVENT_INIITIALIZE = 12;
+    private static final int EVENT_INITIALIZE = 12;
     // events that don't reset the timer
     private static final int[] ALL_EVENTS = { EVENT_DATA_RAT_CHANGED, EVENT_NR_STATE_CHANGED,
             EVENT_NR_FREQUENCY_CHANGED, EVENT_PHYSICAL_LINK_STATE_CHANGED,
             EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED, EVENT_PRIMARY_TIMER_EXPIRED,
             EVENT_SECONDARY_TIMER_EXPIRED};
 
-    private static final String[] sEvents = new String[EVENT_PREFERRED_NETWORK_MODE_CHANGED + 1];
+    private static final String[] sEvents = new String[EVENT_INITIALIZE + 1];
     static {
         sEvents[EVENT_UPDATE] = "EVENT_UPDATE";
         sEvents[EVENT_QUIT] = "EVENT_QUIT";
@@ -111,11 +110,11 @@ public class NetworkTypeController extends StateMachine {
         sEvents[EVENT_SECONDARY_TIMER_EXPIRED] = "EVENT_SECONDARY_TIMER_EXPIRED";
         sEvents[EVENT_RADIO_OFF_OR_UNAVAILABLE] = "EVENT_RADIO_OFF_OR_UNAVAILABLE";
         sEvents[EVENT_PREFERRED_NETWORK_MODE_CHANGED] = "EVENT_PREFERRED_NETWORK_MODE_CHANGED";
+        sEvents[EVENT_INITIALIZE] = "EVENT_INITIALIZE";
     }
 
     private final Phone mPhone;
     private final DisplayInfoController mDisplayInfoController;
-    private final SettingsObserver mSettingsObserver;
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -150,7 +149,6 @@ public class NetworkTypeController extends StateMachine {
         super(TAG, displayInfoController);
         mPhone = phone;
         mDisplayInfoController = displayInfoController;
-        mSettingsObserver = new SettingsObserver(mPhone.getContext(), getHandler());
         mOverrideNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         mIsPhysicalChannelConfigOn = true;
         addState(mDefaultState);
@@ -160,7 +158,7 @@ public class NetworkTypeController extends StateMachine {
         addState(mNrConnectedState, mDefaultState);
         setInitialState(mDefaultState);
         start();
-        sendMessage(EVENT_INIITIALIZE);
+        sendMessage(EVENT_INITIALIZE);
     }
 
     /**
@@ -174,6 +172,8 @@ public class NetworkTypeController extends StateMachine {
     private void registerForAllEvents() {
         mPhone.registerForRadioOffOrNotAvailable(getHandler(),
                 EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
+        mPhone.registerForPreferredNetworkTypeChanged(getHandler(),
+                EVENT_PREFERRED_NETWORK_MODE_CHANGED, null);
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
                 EVENT_DATA_RAT_CHANGED, null);
@@ -189,19 +189,17 @@ public class NetworkTypeController extends StateMachine {
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
-        mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.PREFERRED_NETWORK_MODE),
-                EVENT_PREFERRED_NETWORK_MODE_CHANGED);
     }
 
     private void unRegisterForAllEvents() {
         mPhone.unregisterForRadioOffOrNotAvailable(getHandler());
+        mPhone.unregisterForPreferredNetworkTypeChanged(getHandler());
         mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler());
         mPhone.getServiceStateTracker().unregisterForNrStateChanged(getHandler());
         mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
         mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
-        mSettingsObserver.unobserve();
     }
 
     private void parseCarrierConfigs() {
@@ -440,7 +438,7 @@ public class NetworkTypeController extends StateMachine {
                     unRegisterForAllEvents();
                     quit();
                     break;
-                case EVENT_INIITIALIZE:
+                case EVENT_INITIALIZE:
                     // The reason that we do it here is because some of the works below requires
                     // other modules (e.g. DcTracker, ServiceStateTracker), which is not created
                     // yet when NetworkTypeController is created.
