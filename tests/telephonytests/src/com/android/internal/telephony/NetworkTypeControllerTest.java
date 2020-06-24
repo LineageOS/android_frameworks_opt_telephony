@@ -57,6 +57,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     private static final int EVENT_SECONDARY_TIMER_EXPIRED = 9;
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
     private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
+    private static final int EVENT_INITIALIZE = 12;
 
     private NetworkTypeController mNetworkTypeController;
     private PersistableBundle mBundle;
