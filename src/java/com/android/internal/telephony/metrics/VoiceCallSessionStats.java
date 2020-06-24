@@ -81,6 +81,18 @@ public class VoiceCallSessionStats {
      */
     private static final int CARRIER_ID_UNKNOWN = 0;
 
+    /** Upper bounds of each call setup duration category in milliseconds. */
+    private static final int CALL_SETUP_DURATION_UNKNOWN = 0;
+    private static final int CALL_SETUP_DURATION_EXTREMELY_FAST = 60;
+    private static final int CALL_SETUP_DURATION_ULTRA_FAST = 100;
+    private static final int CALL_SETUP_DURATION_VERY_FAST = 300;
+    private static final int CALL_SETUP_DURATION_FAST = 600;
+    private static final int CALL_SETUP_DURATION_NORMAL = 1000;
+    private static final int CALL_SETUP_DURATION_SLOW = 3000;
+    private static final int CALL_SETUP_DURATION_VERY_SLOW = 6000;
+    private static final int CALL_SETUP_DURATION_ULTRA_SLOW = 10000;
+    // CALL_SETUP_DURATION_EXTREMELY_SLOW has no upper bound (it includes everything above 10000)
+
     /** Holds the audio codec bitmask value for CS calls. */
     private static final SparseLongArray CS_CODEC_MAP = buildGsmCdmaCodecMap();
 
@@ -509,8 +521,8 @@ public class VoiceCallSessionStats {
         }
         boolean isWifiCall =
                 mPhone.getImsPhone() != null
-                && mPhone.getImsPhone().isWifiCallingEnabled()
-                && state.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN;
+                        && mPhone.getImsPhone().isWifiCallingEnabled()
+                        && state.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN;
         return isWifiCall ? TelephonyManager.NETWORK_TYPE_IWLAN : state.getVoiceNetworkType();
     }
 
@@ -540,6 +552,7 @@ public class VoiceCallSessionStats {
     }
 
     private static int classifySetupDuration(long durationMillis) {
+        // keys in CALL_SETUP_DURATION_MAP are upper bounds in ascending order
         for (int i = 0; i < CALL_SETUP_DURATION_MAP.size(); i++) {
             if (durationMillis < CALL_SETUP_DURATION_MAP.keyAt(i)) {
                 return CALL_SETUP_DURATION_MAP.valueAt(i);
@@ -622,15 +635,33 @@ public class VoiceCallSessionStats {
     private static SparseIntArray buildCallSetupDurationMap() {
         SparseIntArray map = new SparseIntArray();
 
-        map.put(0, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_UNKNOWN);
-        map.put(60, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_FAST);
-        map.put(100, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_FAST);
-        map.put(300, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_FAST);
-        map.put(600, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_FAST);
-        map.put(1000, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_NORMAL);
-        map.put(3000, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_SLOW);
-        map.put(6000, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_SLOW);
-        map.put(10000, VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_SLOW);
+        map.put(
+                CALL_SETUP_DURATION_UNKNOWN,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_UNKNOWN);
+        map.put(
+                CALL_SETUP_DURATION_EXTREMELY_FAST,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_FAST);
+        map.put(
+                CALL_SETUP_DURATION_ULTRA_FAST,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_FAST);
+        map.put(
+                CALL_SETUP_DURATION_VERY_FAST,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_FAST);
+        map.put(
+                CALL_SETUP_DURATION_FAST,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_FAST);
+        map.put(
+                CALL_SETUP_DURATION_NORMAL,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_NORMAL);
+        map.put(
+                CALL_SETUP_DURATION_SLOW,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_SLOW);
+        map.put(
+                CALL_SETUP_DURATION_VERY_SLOW,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_SLOW);
+        map.put(
+                CALL_SETUP_DURATION_ULTRA_SLOW,
+                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_SLOW);
         // anything above would be CALL_SETUP_DURATION_EXTREMELY_SLOW
 
         return map;
