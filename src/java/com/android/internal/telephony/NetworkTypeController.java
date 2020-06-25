@@ -23,12 +23,10 @@ import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.PhoneStateListener;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -36,6 +34,8 @@ import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.dataconnection.DcController;
+import com.android.internal.telephony.dataconnection.DcController.PhysicalLinkState;
 import com.android.internal.util.IState;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.State;
@@ -81,42 +81,40 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_DATA_RAT_CHANGED = 2;
     private static final int EVENT_NR_STATE_CHANGED = 3;
     private static final int EVENT_NR_FREQUENCY_CHANGED = 4;
-    private static final int EVENT_DATA_ACTIVITY_CHANGED = 5;
+    private static final int EVENT_PHYSICAL_LINK_STATE_CHANGED = 5;
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED = 6;
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 7;
     private static final int EVENT_PRIMARY_TIMER_EXPIRED = 8;
     private static final int EVENT_SECONDARY_TIMER_EXPIRED = 9;
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
-    private static final int EVENT_DATA_CONNECTION_STATE_CHANGED = 11;
-    private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 12;
+    private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
+    private static final int EVENT_INITIALIZE = 12;
     // events that don't reset the timer
     private static final int[] ALL_EVENTS = { EVENT_DATA_RAT_CHANGED, EVENT_NR_STATE_CHANGED,
-            EVENT_NR_FREQUENCY_CHANGED, EVENT_DATA_ACTIVITY_CHANGED,
+            EVENT_NR_FREQUENCY_CHANGED, EVENT_PHYSICAL_LINK_STATE_CHANGED,
             EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED, EVENT_PRIMARY_TIMER_EXPIRED,
-            EVENT_SECONDARY_TIMER_EXPIRED, EVENT_DATA_CONNECTION_STATE_CHANGED };
+            EVENT_SECONDARY_TIMER_EXPIRED};
 
-    private static final String[] sEvents = new String[EVENT_PREFERRED_NETWORK_MODE_CHANGED + 1];
+    private static final String[] sEvents = new String[EVENT_INITIALIZE + 1];
     static {
         sEvents[EVENT_UPDATE] = "EVENT_UPDATE";
         sEvents[EVENT_QUIT] = "EVENT_QUIT";
         sEvents[EVENT_DATA_RAT_CHANGED] = "EVENT_DATA_RAT_CHANGED";
         sEvents[EVENT_NR_STATE_CHANGED] = "EVENT_NR_STATE_CHANGED";
         sEvents[EVENT_NR_FREQUENCY_CHANGED] = "EVENT_NR_FREQUENCY_CHANGED";
-        sEvents[EVENT_DATA_ACTIVITY_CHANGED] = "EVENT_DATA_ACTIVITY_CHANGED";
+        sEvents[EVENT_PHYSICAL_LINK_STATE_CHANGED] = "EVENT_PHYSICAL_LINK_STATE_CHANGED";
         sEvents[EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED] =
                 "EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED";
         sEvents[EVENT_CARRIER_CONFIG_CHANGED] = "EVENT_CARRIER_CONFIG_CHANGED";
         sEvents[EVENT_PRIMARY_TIMER_EXPIRED] = "EVENT_PRIMARY_TIMER_EXPIRED";
         sEvents[EVENT_SECONDARY_TIMER_EXPIRED] = "EVENT_SECONDARY_TIMER_EXPIRED";
         sEvents[EVENT_RADIO_OFF_OR_UNAVAILABLE] = "EVENT_RADIO_OFF_OR_UNAVAILABLE";
-        sEvents[EVENT_DATA_CONNECTION_STATE_CHANGED] = "EVENT_DATA_CONNECTION_STATE_CHANGED";
         sEvents[EVENT_PREFERRED_NETWORK_MODE_CHANGED] = "EVENT_PREFERRED_NETWORK_MODE_CHANGED";
+        sEvents[EVENT_INITIALIZE] = "EVENT_INITIALIZE";
     }
 
     private final Phone mPhone;
     private final DisplayInfoController mDisplayInfoController;
-    private final TelephonyManager mTelephonyManager;
-    private final SettingsObserver mSettingsObserver;
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -129,16 +127,6 @@ public class NetworkTypeController extends StateMachine {
             }
         }
     };
-    private final PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
-        @Override
-        public void onDataActivity(int direction) {
-            sendMessage(EVENT_DATA_ACTIVITY_CHANGED);
-        }
-        @Override
-        public void onDataConnectionStateChanged(int state, int networkType) {
-            sendMessage(EVENT_DATA_CONNECTION_STATE_CHANGED);
-        }
-    };
 
     private Map<String, OverrideTimerRule> mOverrideTimerRules = new HashMap<>();
     private String mLteEnhancedPattern = "";
@@ -149,6 +137,7 @@ public class NetworkTypeController extends StateMachine {
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
     private String mPreviousState;
+    private @PhysicalLinkState int mPhysicalLinkState;
 
     /**
      * NetworkTypeController constructor.
@@ -160,9 +149,6 @@ public class NetworkTypeController extends StateMachine {
         super(TAG, displayInfoController);
         mPhone = phone;
         mDisplayInfoController = displayInfoController;
-        mTelephonyManager = TelephonyManager.from(phone.getContext())
-                .createForSubscriptionId(phone.getSubId());
-        mSettingsObserver = new SettingsObserver(mPhone.getContext(), getHandler());
         mOverrideNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         mIsPhysicalChannelConfigOn = true;
         addState(mDefaultState);
@@ -171,9 +157,8 @@ public class NetworkTypeController extends StateMachine {
         addState(mLteConnectedState, mDefaultState);
         addState(mNrConnectedState, mDefaultState);
         setInitialState(mDefaultState);
-        registerForAllEvents();
-        parseCarrierConfigs();
         start();
+        sendMessage(EVENT_INITIALIZE);
     }
 
     /**
@@ -187,9 +172,14 @@ public class NetworkTypeController extends StateMachine {
     private void registerForAllEvents() {
         mPhone.registerForRadioOffOrNotAvailable(getHandler(),
                 EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
+        mPhone.registerForPreferredNetworkTypeChanged(getHandler(),
+                EVENT_PREFERRED_NETWORK_MODE_CHANGED, null);
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
                 EVENT_DATA_RAT_CHANGED, null);
+        mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .registerForPhysicalLinkStateChanged(getHandler(),
+                        EVENT_PHYSICAL_LINK_STATE_CHANGED);
         mPhone.getServiceStateTracker().registerForNrStateChanged(getHandler(),
                 EVENT_NR_STATE_CHANGED, null);
         mPhone.getServiceStateTracker().registerForNrFrequencyChanged(getHandler(),
@@ -199,26 +189,17 @@ public class NetworkTypeController extends StateMachine {
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
-        if (mTelephonyManager != null) {
-            mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_DATA_ACTIVITY
-                    | PhoneStateListener.LISTEN_DATA_CONNECTION_STATE);
-        }
-        mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.PREFERRED_NETWORK_MODE),
-                EVENT_PREFERRED_NETWORK_MODE_CHANGED);
     }
 
     private void unRegisterForAllEvents() {
         mPhone.unregisterForRadioOffOrNotAvailable(getHandler());
+        mPhone.unregisterForPreferredNetworkTypeChanged(getHandler());
         mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler());
         mPhone.getServiceStateTracker().unregisterForNrStateChanged(getHandler());
         mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
         mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
-        if (mTelephonyManager != null) {
-            mTelephonyManager.listen(mPhoneStateListener, 0);
-        }
-        mSettingsObserver.unobserve();
     }
 
     private void parseCarrierConfigs() {
@@ -393,7 +374,7 @@ public class NetworkTypeController extends StateMachine {
                 keys.add(STATE_CONNECTED);
                 break;
             case NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED:
-                keys.add(isDataActive() ? STATE_NOT_RESTRICTED_RRC_CON
+                keys.add(isPhysicalLinkActive() ? STATE_NOT_RESTRICTED_RRC_CON
                         : STATE_NOT_RESTRICTED_RRC_IDLE);
                 break;
             case NetworkRegistrationInfo.NR_STATE_RESTRICTED:
@@ -457,11 +438,21 @@ public class NetworkTypeController extends StateMachine {
                     unRegisterForAllEvents();
                     quit();
                     break;
+                case EVENT_INITIALIZE:
+                    // The reason that we do it here is because some of the works below requires
+                    // other modules (e.g. DcTracker, ServiceStateTracker), which is not created
+                    // yet when NetworkTypeController is created.
+                    registerForAllEvents();
+                    parseCarrierConfigs();
+                    break;
                 case EVENT_DATA_RAT_CHANGED:
                 case EVENT_NR_STATE_CHANGED:
                 case EVENT_NR_FREQUENCY_CHANGED:
-                case EVENT_DATA_ACTIVITY_CHANGED:
                     // ignored
+                    break;
+                case EVENT_PHYSICAL_LINK_STATE_CHANGED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    mPhysicalLinkState = (int) ar.result;
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED:
                     AsyncResult result = (AsyncResult) msg.obj;
@@ -497,13 +488,6 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                     resetAllTimers();
                     transitionTo(mLegacyState);
-                    break;
-                case EVENT_DATA_CONNECTION_STATE_CHANGED:
-                    if (mPhone.getServiceState().getDataNetworkType()
-                            != mDisplayInfoController.getTelephonyDisplayInfo().getNetworkType()) {
-                        resetAllTimers();
-                        transitionToCurrentState();
-                    }
                     break;
                 case EVENT_PREFERRED_NETWORK_MODE_CHANGED:
                     resetAllTimers();
@@ -551,7 +535,8 @@ public class NetworkTypeController extends StateMachine {
                     if (rat == TelephonyManager.NETWORK_TYPE_NR || isLte(rat) && isNrConnected()) {
                         transitionTo(mNrConnectedState);
                     } else if (isLte(rat) && isNrNotRestricted()) {
-                        transitionWithTimerTo(isDataActive() ? mLteConnectedState : mIdleState);
+                        transitionWithTimerTo(isPhysicalLinkActive()
+                                ? mLteConnectedState : mIdleState);
                     } else {
                         updateOverrideNetworkType();
                     }
@@ -561,14 +546,14 @@ public class NetworkTypeController extends StateMachine {
                     if (isNrConnected()) {
                         transitionTo(mNrConnectedState);
                     } else if (isLte(rat) && isNrNotRestricted()) {
-                        transitionWithTimerTo(isDataActive() ? mLteConnectedState : mIdleState);
+                        transitionWithTimerTo(isPhysicalLinkActive()
+                                ? mLteConnectedState : mIdleState);
                     } else if (isLte(rat) && isNrRestricted()) {
                         updateOverrideNetworkType();
                     }
                     mIsNrRestricted = isNrRestricted();
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
-                case EVENT_DATA_ACTIVITY_CHANGED:
                     // ignored
                     break;
                 default:
@@ -625,10 +610,12 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_NR_FREQUENCY_CHANGED:
                     // ignore
                     break;
-                case EVENT_DATA_ACTIVITY_CHANGED:
+                case EVENT_PHYSICAL_LINK_STATE_CHANGED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    mPhysicalLinkState = (int) ar.result;
                     if (isNrNotRestricted()) {
                         // NOT_RESTRICTED_RRC_IDLE -> NOT_RESTRICTED_RRC_CON
-                        if (isDataActive()) {
+                        if (isPhysicalLinkActive()) {
                             transitionWithTimerTo(mLteConnectedState);
                         }
                     } else {
@@ -690,10 +677,12 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_NR_FREQUENCY_CHANGED:
                     // ignore
                     break;
-                case EVENT_DATA_ACTIVITY_CHANGED:
+                case EVENT_PHYSICAL_LINK_STATE_CHANGED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    mPhysicalLinkState = (int) ar.result;
                     if (isNrNotRestricted()) {
                         // NOT_RESTRICTED_RRC_CON -> NOT_RESTRICTED_RRC_IDLE
-                        if (!isDataActive()) {
+                        if (!isPhysicalLinkActive()) {
                             transitionWithTimerTo(mIdleState);
                         }
                     } else {
@@ -745,14 +734,16 @@ public class NetworkTypeController extends StateMachine {
                     if (rat == TelephonyManager.NETWORK_TYPE_NR || isLte(rat) && isNrConnected()) {
                         updateOverrideNetworkType();
                     } else if (isLte(rat) && isNrNotRestricted()) {
-                        transitionWithTimerTo(isDataActive() ? mLteConnectedState : mIdleState);
+                        transitionWithTimerTo(isPhysicalLinkActive()
+                                ? mLteConnectedState : mIdleState);
                     } else {
                         transitionWithTimerTo(mLegacyState);
                     }
                     break;
                 case EVENT_NR_STATE_CHANGED:
                     if (isLte(rat) && isNrNotRestricted()) {
-                        transitionWithTimerTo(isDataActive() ? mLteConnectedState : mIdleState);
+                        transitionWithTimerTo(isPhysicalLinkActive()
+                                ? mLteConnectedState : mIdleState);
                     } else if (rat != TelephonyManager.NETWORK_TYPE_NR && !isNrConnected()) {
                         transitionWithTimerTo(mLegacyState);
                     }
@@ -772,7 +763,9 @@ public class NetworkTypeController extends StateMachine {
                     }
                     mIsNrMmwave = isNrMmwave();
                     break;
-                case EVENT_DATA_ACTIVITY_CHANGED:
+                case EVENT_PHYSICAL_LINK_STATE_CHANGED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    mPhysicalLinkState = (int) ar.result;
                     if (!isNrConnected()) {
                         log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
                         sendMessage(EVENT_NR_STATE_CHANGED);
@@ -831,7 +824,7 @@ public class NetworkTypeController extends StateMachine {
             transitionState = mNrConnectedState;
             mPreviousState = isNrMmwave() ? STATE_CONNECTED_MMWAVE : STATE_CONNECTED;
         } else if (isLte(dataRat) && isNrNotRestricted()) {
-            if (isDataActive()) {
+            if (isPhysicalLinkActive()) {
                 transitionState = mLteConnectedState;
                 mPreviousState = STATE_NOT_RESTRICTED_RRC_CON;
             } else {
@@ -994,10 +987,8 @@ public class NetworkTypeController extends StateMachine {
                 || rat == TelephonyManager.NETWORK_TYPE_LTE_CA;
     }
 
-    private boolean isDataActive() {
-        PhoneInternalInterface.DataActivityState activity = mPhone.getDataActivityState();
-        return activity != PhoneInternalInterface.DataActivityState.DORMANT
-                && activity != PhoneInternalInterface.DataActivityState.NONE;
+    private boolean isPhysicalLinkActive() {
+        return mPhysicalLinkState == DcController.PHYSICAL_LINK_ACTIVE;
     }
 
     private String getEventName(int event) {
