@@ -54,6 +54,9 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 7;
     private static final int EVENT_PRIMARY_TIMER_EXPIRED = 8;
     private static final int EVENT_SECONDARY_TIMER_EXPIRED = 9;
+    private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
+    private static final int EVENT_DATA_CONNECTION_STATE_CHANGED = 11;
+    private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 12;
 
     private NetworkTypeController mNetworkTypeController;
     private PersistableBundle mBundle;
@@ -88,7 +91,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         replaceInstance(Handler.class, "mLooper", mDisplayInfoController, Looper.myLooper());
-        doReturn((int) TelephonyManager.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA).when(mPhone)
+        doReturn(TelephonyManager.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA).when(mPhone)
                 .getCachedPreferredNetworkType();
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
     }
@@ -311,6 +314,58 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED,
                 new AsyncResult(null, false, null));
+        processAllMessages();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testEventRadioOffOrUnavailable() throws Exception {
+        testTransitionToCurrentStateNrConnected();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getDataNetworkType();
+
+        mNetworkTypeController.sendMessage(EVENT_RADIO_OFF_OR_UNAVAILABLE);
+        processAllMessages();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testEventDataConnectionStateChanged() throws Exception {
+        testTransitionToCurrentStateNrConnected();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // TelephonyDisplayInfo can't be mocked since it's final, so create a new one for testing
+        TelephonyDisplayInfo telephonyDisplayInfo = new TelephonyDisplayInfo(
+                TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE);
+
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        doReturn(telephonyDisplayInfo).when(mDisplayInfoController).getTelephonyDisplayInfo();
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPAP).when(mServiceState).getDataNetworkType();
+
+        mNetworkTypeController.sendMessage(EVENT_DATA_CONNECTION_STATE_CHANGED);
+        processAllMessages();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testEventPreferredNetworkModeChanged() throws Exception {
+        testTransitionToCurrentStateNrConnected();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // remove NR from preferred network types
+        doReturn(TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA).when(mPhone)
+                .getCachedPreferredNetworkType();
+
+        mNetworkTypeController.sendMessage(EVENT_PREFERRED_NETWORK_MODE_CHANGED);
         processAllMessages();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
