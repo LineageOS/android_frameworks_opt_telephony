@@ -1820,6 +1820,19 @@ public class DcTracker extends Handler {
         ArrayList<ApnSetting> dunCandidates = new ArrayList<ApnSetting>();
         ArrayList<ApnSetting> retDunSettings = new ArrayList<ApnSetting>();
 
+        if (mPhone.getServiceState().getRoaming()) {
+            CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                    .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            if (configManager != null) {
+                PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
+                if (b != null) {
+                    if (b.getBoolean(CarrierConfigManager.KEY_DISABLE_DUN_APN_WHILE_ROAMING)) {
+                        return new ArrayList<>();
+                    }
+                }
+            }
+        }
+
         // Places to look for tether APN in order: TETHER_DUN_APN setting (to be deprecated soon),
         // APN database
         String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
