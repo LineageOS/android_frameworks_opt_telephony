@@ -1367,6 +1367,26 @@ public class DcTrackerTest extends TelephonyTest {
         assertTrue(dunApnExpected.equals(dunApns.get(0)));
     }
 
+    @Test
+    @SmallTest
+    public void testFetchDunApnWhileRoaming() {
+        doReturn(true).when(mServiceState).getRoaming();
+        mBundle.putBoolean(CarrierConfigManager.KEY_DISABLE_DUN_APN_WHILE_ROAMING, true);
+
+        sendInitializationEvents();
+
+        String dunApnString = "[ApnSettingV3]HOT mobile PC,pc.hotm,,,,,,,,,440,10,,DUN,,,true,"
+                + "0,,,,,,,,";
+
+        Settings.Global.putString(mContext.getContentResolver(),
+                Settings.Global.TETHER_DUN_APN, dunApnString);
+        // Expect empty DUN APN list
+        assertEquals(0, mDct.fetchDunApns().size());
+
+        Settings.Global.putString(mContext.getContentResolver(),
+                Settings.Global.TETHER_DUN_APN, null);
+    }
+
     // Test oos
     @Test
     @SmallTest
