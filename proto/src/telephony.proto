@@ -415,9 +415,7 @@ enum RadioAccessTechnology {
 
   RAT_LTE_CA = 19;
 
-  RAT_NR_NSA = 20;
-
-  RAT_NR_SA = 21;
+  RAT_NR = 20;
 }
 
 // The information about IMS errors
