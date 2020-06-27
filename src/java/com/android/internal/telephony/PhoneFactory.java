@@ -577,20 +577,6 @@ public class PhoneFactory {
         pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        if (sEuiccController != null) {
-            pw.println("EuiccController:");
-            pw.increaseIndent();
-            try {
-                sEuiccController.dump(fd, pw, args);
-                sEuiccCardController.dump(fd, pw, args);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            pw.flush();
-            pw.decreaseIndent();
-            pw.println("++++++++++++++++++++++++++++++++");
-        }
-
         pw.println("SubscriptionController:");
         pw.increaseIndent();
         try {
