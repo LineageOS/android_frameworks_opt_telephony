@@ -4710,7 +4710,8 @@ public class DcTracker extends Handler {
             }
 
             // Skip recovery if it can cause a call to drop
-            if (mInVoiceCall && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
+            if (mPhone.getState() != PhoneConstants.State.IDLE
+                    && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
                 if (VDBG_STALL) log("skip data stall recovery as there is an active call");
                 return false;
             }
