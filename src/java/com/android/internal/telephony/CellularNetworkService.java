@@ -355,14 +355,8 @@ public class CellularNetworkService extends NetworkService {
             List<Integer> availableServices = getAvailableServices(
                     regState, domain, emergencyOnly);
 
-            // In earlier versions of the HAL, LTE_CA was allowed to indicate that the device
-            // is on CA; however, that has been superseded by the PHYSICAL_CHANNEL_CONFIG signal.
-            // Because some vendors provide both NETWORK_TYPE_LTE_CA *and* PHYSICAL_CHANNEL_CONFIG,
-            // this tweak is left for compatibility; however, the network type is no longer allowed
-            // to be used to declare that carrier aggregation is in effect, because the other
-            // signal provides a much richer information set, and we want to mitigate confusion in
-            // how CA information is being provided.
             if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+                isUsingCarrierAggregation = true;
                 networkType = TelephonyManager.NETWORK_TYPE_LTE;
             }
 
@@ -388,9 +382,14 @@ public class CellularNetworkService extends NetworkService {
 
             // Network Type fixup for carrier aggregation
             int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
-            boolean isUsingCarrierAggregation = false;
+            // In earlier versions of the HAL, LTE_CA was allowed to indicate that the device
+            // is on CA; however, that has been superseded by the PHYSICAL_CHANNEL_CONFIG signal.
+            // Because some vendors provide both NETWORK_TYPE_LTE_CA *and* PHYSICAL_CHANNEL_CONFIG,
+            // this tweak is left for compatibility; however, the network type is no longer allowed
+            // to be used to declare that carrier aggregation is in effect, because the other
+            // signal provides a much richer information set, and we want to mitigate confusion in
+            // how CA information is being provided.
             if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
-                isUsingCarrierAggregation = true;
                 networkType = TelephonyManager.NETWORK_TYPE_LTE;
             }
 
@@ -449,7 +448,7 @@ public class CellularNetworkService extends NetworkService {
                     return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
                             reasonForDenial, isEmergencyOnly, availableServices, cellIdentity,
                             rplmn, MAX_DATA_CALLS, isDcNrRestricted, isNrAvailable, isEndcAvailable,
-                            vopsInfo, isUsingCarrierAggregation);
+                            vopsInfo, false /* isUsingCarrierAggregation */);
             }
         }
 
