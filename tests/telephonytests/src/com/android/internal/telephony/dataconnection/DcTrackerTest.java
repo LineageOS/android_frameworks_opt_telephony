@@ -1642,6 +1642,7 @@ public class DcTrackerTest extends TelephonyTest {
                 Settings.Global.MIN_DURATION_BETWEEN_RECOVERY_STEPS_IN_MS, 100);
         Settings.System.putInt(resolver, "radio.data.stall.recovery.action", 2);
         doReturn(new SignalStrength()).when(mPhone).getSignalStrength();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
@@ -1674,6 +1675,7 @@ public class DcTrackerTest extends TelephonyTest {
                 Settings.Global.MIN_DURATION_BETWEEN_RECOVERY_STEPS_IN_MS, 100);
         Settings.System.putInt(resolver, "radio.data.stall.recovery.action", 3);
         doReturn(new SignalStrength()).when(mPhone).getSignalStrength();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[]{PhoneConstants.APN_TYPE_DEFAULT, PhoneConstants.APN_TYPE_MMS});
