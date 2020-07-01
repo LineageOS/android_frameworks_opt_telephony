@@ -53,7 +53,6 @@ import com.android.server.TelephonyRegistry;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -364,7 +363,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
         }
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE);
         for (Map.Entry<Integer, String> entry : READ_PHONE_STATE_EVENTS.entrySet()) {
             assertSecurityExceptionNotThrown(entry.getKey(), entry.getValue());
@@ -374,19 +373,22 @@ public class TelephonyRegistryTest extends TelephonyTest {
     /**
      * Test listen to events that require READ_PRECISE_PHONE_STATE permission.
      */
-    // FIXME(b/159082270) - Simply not granting location permission doesn't fix the test because
-    // Location is soft-denied to apps that aren't in the foreground, and soft-denial currently
-    // short-circuits the test.
-    @Ignore("Skip due to b/159082270")
     @Test
     public void testReadPrecisePhoneStatePermission() {
         // Clear all permission grants for test.
         mContextFixture.addCallingOrSelfPermission("");
+        // Many of the events require LOCATION permission, but without READ_PHONE_STATE, they will
+        // still throw exceptions. Since this test is testing READ_PRECISE_PHONE_STATE, all other
+        // permissions should be granted up-front.
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.READ_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.ACCESS_FINE_LOCATION);
         for (Map.Entry<Integer, String> entry : READ_PRECISE_PHONE_STATE_EVENTS.entrySet()) {
             assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
         }
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.READ_PRECISE_PHONE_STATE);
         for (Map.Entry<Integer, String> entry : READ_PRECISE_PHONE_STATE_EVENTS.entrySet()) {
@@ -405,7 +407,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
         }
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         for (Map.Entry<Integer, String> entry : READ_PREVILIGED_PHONE_STATE_EVENTS.entrySet()) {
@@ -424,7 +426,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             assertSecurityExceptionThrown(entry.getKey(), entry.getValue());
         }
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.READ_ACTIVE_EMERGENCY_SESSION);
         for (Map.Entry<Integer, String> entry : READ_ACTIVE_EMERGENCY_SESSION_EVENTS.entrySet()) {
