@@ -5048,6 +5048,14 @@ public class DcTracker extends Handler {
             }
             mDcc.start();
         } else {
+            if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                boolean connPersistenceOnRestart = mPhone.getContext().getResources()
+                   .getBoolean(com.android
+                       .internal.R.bool.config_wlan_data_service_conn_persistence_on_restart);
+                if (!connPersistenceOnRestart) {
+                    cleanUpAllConnectionsInternal(false, Phone.REASON_IWLAN_DATA_SERVICE_DIED);
+                }
+            }
             mDcc.dispose();
             // dispose sets the associated Handler object (StateMachine#mSmHandler) to null, so mDcc
             // needs to be created again (simply calling start() on it after dispose will not work)
