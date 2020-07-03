@@ -31,7 +31,8 @@ import com.android.internal.telephony.TelephonyComponentFactory;
 
 public class VendorGsmCdmaPhone extends GsmCdmaPhone {
     private static final String LOG_TAG = "VendorGsmCdmaPhone";
-    private static final int PROP_EVENT_START = EVENT_LAST;
+    private static final int PROP_EVENT_START = EVENT_LAST + 100;
+    protected static final int EVENT_SUBINFO_RECORD_ADDED = PROP_EVENT_START + 1;
     private static final int DEFAULT_PHONE_INDEX = 0;
 
     private boolean mIsPhoneReadySent = false;
@@ -51,6 +52,9 @@ public class VendorGsmCdmaPhone extends GsmCdmaPhone {
         super(context, ci, notifier, unitTestMode, phoneId, precisePhoneType,
                 telephonyComponentFactory);
         Rlog.d(LOG_TAG, "Constructor");
+
+        VendorSubscriptionController.getInstance().registerForAddSubscriptionRecord(this,
+                EVENT_SUBINFO_RECORD_ADDED, null);
     }
 
     @Override
@@ -104,6 +108,18 @@ public class VendorGsmCdmaPhone extends GsmCdmaPhone {
             case EVENT_RIL_CONNECTED:
                 mIsPhoneReadySent = false;
                 super.handleMessage(msg);
+                break;
+
+            case EVENT_SUBINFO_RECORD_ADDED:
+                ar = (AsyncResult) msg.obj;
+                if (ar != null && ar.result != null) {
+                    int phoneId = (Integer) ar.result;
+                    if (phoneId == getPhoneId()) {
+                        // When SIM hot-swap performed, this is triggering point to
+                        // initiate SIM ON/OFF request if required.
+                        reapplyUiccAppsEnablementIfNeeded(ENABLE_UICC_APPS_MAX_RETRIES);
+                     }
+                }
                 break;
 
             default: {
