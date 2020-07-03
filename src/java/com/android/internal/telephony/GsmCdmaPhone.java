@@ -4669,7 +4669,7 @@ public class GsmCdmaPhone extends Phone {
         updateUiTtyMode(ttyMode);
     }
 
-    private void reapplyUiccAppsEnablementIfNeeded(int retries) {
+    protected void reapplyUiccAppsEnablementIfNeeded(int retries) {
         UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
 
         // If no card is present or we don't have mUiccApplicationsEnabled yet, do nothing.
