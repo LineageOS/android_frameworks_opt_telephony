@@ -373,6 +373,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerExpire() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -402,6 +403,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerReset() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -436,6 +438,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerExpireMmwave() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -467,6 +470,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerResetMmwave() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -502,6 +506,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerExpire() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -542,6 +547,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerReset() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -587,6 +593,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerExpireMmwave() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -628,6 +635,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerResetMmwave() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -669,6 +677,41 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // timer should not have gone off
         assertEquals("connected_mmwave", getCurrentState().getName());
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testNrTimerResetIn3g() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,30");
+        broadcastCarrierConfigs();
+
+        assertEquals("connected_mmwave", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // should trigger 10 second primary timer
+        doReturn(ServiceState.FREQUENCY_RANGE_LOW).when(mServiceState).getNrFrequencyRange();
+        mNetworkTypeController.sendMessage(EVENT_NR_FREQUENCY_CHANGED);
+        processAllMessages();
+
+        assertEquals("connected", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // rat is UMTS, should stop timer
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_DATA_RAT_CHANGED);
+        processAllMessages();
+
+        assertEquals("legacy", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
     }
 }
