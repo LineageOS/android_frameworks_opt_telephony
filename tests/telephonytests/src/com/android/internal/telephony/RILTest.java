@@ -110,6 +110,7 @@ import android.hardware.radio.V1_0.NvWriteItem;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
+import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_5.IRadio;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
@@ -928,13 +929,13 @@ public class RILTest extends TelephonyTest {
         gsmMsg.pdu = pdu;
 
         ImsSmsMessage firstMsg = new ImsSmsMessage();
-        firstMsg.tech = RILConstants.GSM_PHONE;
+        firstMsg.tech = RadioTechnologyFamily.THREE_GPP;
         firstMsg.retry = false;
         firstMsg.messageRef = 0;
         firstMsg.gsmMessage.add(gsmMsg);
 
         ImsSmsMessage retryMsg = new ImsSmsMessage();
-        retryMsg.tech = RILConstants.GSM_PHONE;
+        retryMsg.tech = RadioTechnologyFamily.THREE_GPP;
         retryMsg.retry = true;
         retryMsg.messageRef = 0;
         retryMsg.gsmMessage.add(gsmMsg);
@@ -963,13 +964,13 @@ public class RILTest extends TelephonyTest {
         CdmaSmsMessage cdmaMsg = new CdmaSmsMessage();
 
         ImsSmsMessage firstMsg = new ImsSmsMessage();
-        firstMsg.tech = RILConstants.CDMA_PHONE;
+        firstMsg.tech = RadioTechnologyFamily.THREE_GPP2;
         firstMsg.retry = false;
         firstMsg.messageRef = 0;
         firstMsg.cdmaMessage.add(cdmaMsg);
 
         ImsSmsMessage retryMsg = new ImsSmsMessage();
-        retryMsg.tech = RILConstants.CDMA_PHONE;
+        retryMsg.tech = RadioTechnologyFamily.THREE_GPP2;
         retryMsg.retry = true;
         retryMsg.messageRef = 0;
         retryMsg.cdmaMessage.add(cdmaMsg);
