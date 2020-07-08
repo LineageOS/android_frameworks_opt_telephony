@@ -1373,7 +1373,7 @@ public class DcTrackerTest extends TelephonyTest {
                 + "0,,,,,,,,,,1";
         // apnSetId=0
         String dunApnString2 = "[ApnSettingV5]HOT mobile PC,pc.coldm,,,,,,,,,440,10,,DUN,,,true,"
-                + "0,,,,,,,,,,0";
+                + "0,,,,,,,,,,2";
 
         ApnSetting dunApnExpected = ApnSetting.fromString(dunApnString1);
 
@@ -1387,8 +1387,21 @@ public class DcTrackerTest extends TelephonyTest {
         cr.update(PREFERAPN_URI, values, null, null);
 
         // return APN from Setting with apnSetId=1
-        ArrayList<ApnSetting> dunApns = mDct.sortApnListByPreferred(mDct.fetchDunApns());
-        assertEquals(2, dunApns.size());
+        ArrayList<ApnSetting> dunApns = mDct.fetchDunApns();
+        assertEquals(1, dunApns.size());
+        assertEquals(1, dunApns.get(0).getApnSetId());
+        assertTrue(dunApnExpected.equals(dunApns.get(0)));
+
+        // set that we prefer apn set 2
+        values = new ContentValues();
+        values.put(Telephony.Carriers.APN_SET_ID, 2);
+        cr.update(PREFERAPN_URI, values, null, null);
+
+        // return APN from Setting with apnSetId=2
+        dunApns = mDct.fetchDunApns();
+        assertEquals(1, dunApns.size());
+        assertEquals(2, dunApns.get(0).getApnSetId());
+        dunApnExpected = ApnSetting.fromString(dunApnString2);
         assertTrue(dunApnExpected.equals(dunApns.get(0)));
     }
 
