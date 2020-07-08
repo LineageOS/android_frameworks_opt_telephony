@@ -2397,7 +2397,9 @@ public class DcTracker extends Handler {
                 log("apnSetting: " + apnSetting);
                 if (dunSettings != null && dunSettings.size() > 0) {
                     for (ApnSetting dunSetting : dunSettings) {
-                        if (dunSetting.equals(apnSetting)) {
+                        //This ignore network type as a check which is ok because that's checked
+                        //when calculating dun candidates.
+                        if (areCompatible(dunSetting, apnSetting)) {
                             if (curDc.isActive()) {
                                 if (DBG) {
                                     log("checkForCompatibleDataConnection:"
@@ -4370,22 +4372,6 @@ public class DcTracker extends Handler {
         }
     }
 
-    private boolean containsAllApns(List<ApnSetting> oldApnList, List<ApnSetting> newApnList) {
-        for (ApnSetting newApnSetting : newApnList) {
-            boolean canHandle = false;
-            for (ApnSetting oldApnSetting : oldApnList) {
-                // Make sure at least one of the APN from old list can cover the new APN
-                if (oldApnSetting.equals(newApnSetting,
-                        mPhone.getServiceState().getDataRoamingFromRegistration())) {
-                    canHandle = true;
-                    break;
-                }
-            }
-            if (!canHandle) return false;
-        }
-        return true;
-    }
-
     private void cleanUpConnectionsOnUpdatedApns(boolean detach, String reason) {
         if (DBG) log("cleanUpConnectionsOnUpdatedApns: detach=" + detach);
         if (mAllApnSettings.isEmpty()) {
@@ -4404,8 +4390,7 @@ public class DcTracker extends Handler {
                             apnContext.getApnType(), getDataRat());
                     apnContext.setWaitingApns(waitingApns);
                     for (ApnSetting apnSetting : waitingApns) {
-                        if (apnSetting.equals(apnContext.getApnSetting(),
-                                mPhone.getServiceState().getDataRoamingFromRegistration())) {
+                        if (areCompatible(apnSetting, apnContext.getApnSetting())) {
                             cleanupRequired = false;
                             break;
                         }
@@ -5167,5 +5152,15 @@ public class DcTracker extends Handler {
      */
     public void unregisterForPhysicalLinkStateChanged(Handler h) {
         mDcc.unregisterForPhysicalLinkStateChanged(h);
+    }
+
+    // We use a specialized equals function in Apn setting when checking if an active
+    // data connection is still legitimate to use against a different apn setting.
+    // This method is extracted to a function to ensure that any future changes to this check will
+    // be applied to both cleanUpConnectionsOnUpdatedApns and checkForCompatibleDataConnection.
+    // Fix for b/158908392.
+    private boolean areCompatible(ApnSetting apnSetting1, ApnSetting apnSetting2) {
+        return apnSetting1.equals(apnSetting2,
+                mPhone.getServiceState().getDataRoamingFromRegistration());
     }
 }
