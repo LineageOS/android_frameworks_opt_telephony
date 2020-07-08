@@ -4307,7 +4307,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @hide
      */
-    private void setGlobalSetting(String name, int value) {
+    protected void setGlobalSetting(String name, int value) {
         Settings.Global.putInt(mContext.getContentResolver(), name, value);
         if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION) {
             invalidateDefaultDataSubIdCaches();

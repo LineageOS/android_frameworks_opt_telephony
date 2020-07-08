@@ -17,10 +17,12 @@
 package com.android.internal.telephony.vendor;
 
 import android.Manifest;
+import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -37,9 +39,10 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.internal.telephony.MultiSimSettingController;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
-import com.android.internal.telephony.Phone;
 
 import java.util.Iterator;
 import java.util.List;
@@ -57,12 +60,14 @@ public class VendorSubscriptionController extends SubscriptionController {
     private static int sNumPhones;
 
     private static final int EVENT_UICC_APPS_ENABLEMENT_DONE = 101;
+    protected static final int EVENT_RADIO_CAPABILITY_AVAILABLE = 102;
 
     private static final int PROVISIONED = 1;
     private static final int NOT_PROVISIONED = 0;
 
     private TelecomManager mTelecomManager;
     private TelephonyManager mTelephonyManager;
+    protected boolean mSetRcPending = false;
 
     private RegistrantList mAddSubscriptionRecordRegistrants = new RegistrantList();
 
@@ -184,6 +189,11 @@ public class VendorSubscriptionController extends SubscriptionController {
                         return;
                     }
                     updateUserPreferences();
+                    break;
+                }
+                case EVENT_RADIO_CAPABILITY_AVAILABLE: {
+                    logd("EVENT_RADIO_CAPABILITY_AVAILABLE");
+                    setRadioCapabilityIfRequired();
                     break;
                 }
             }
@@ -416,6 +426,58 @@ public class VendorSubscriptionController extends SubscriptionController {
     protected int getUserPrefDataSubIdFromDB() {
         return android.provider.Settings.Global.getInt(mContext.getContentResolver(),
                 SETTING_USER_PREF_DATA_SUB, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+    }
+
+    void notifyRadioCapabilityAvailable() {
+        mSubscriptionHandler.obtainMessage(EVENT_RADIO_CAPABILITY_AVAILABLE).sendToTarget();
+    }
+
+    void setRadioCapabilityIfRequired() {
+        if (mSetRcPending && areAllRadioCapabilitiesReceived()) {
+            logi("setRadioCapabilityIfRequired");
+
+            super.setDefaultDataSubId(getDefaultDataSubId());
+            mSetRcPending = false;
+        }
+    }
+
+    private boolean areAllRadioCapabilitiesReceived() {
+        for (int i = 0; i < sNumPhones; i++) {
+            Phone phone = PhoneFactory.getPhone(i);
+            if (phone.getRadioCapability() == null) return false;
+        }
+        return true;
+    }
+
+    @UnsupportedAppUsage
+    @Override
+    public void setDefaultDataSubId(int subId) {
+        enforceModifyPhoneState("setDefaultDataSubId");
+
+        if (areAllRadioCapabilitiesReceived()) {
+            super.setDefaultDataSubId(subId);
+            return;
+        }
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+                throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
+            }
+
+            mSetRcPending = true;
+
+            logi("Radio capabilities not available, dds " + subId);
+            int previousDefaultSub = getDefaultSubId();
+            setGlobalSetting(Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+            MultiSimSettingController.getInstance().notifyDefaultDataSubChanged();
+            broadcastDefaultDataSubIdChanged(subId);
+            if (previousDefaultSub != getDefaultSubId()) {
+                sendDefaultChangedBroadcast(getDefaultSubId());
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     private void logd(String string) {
