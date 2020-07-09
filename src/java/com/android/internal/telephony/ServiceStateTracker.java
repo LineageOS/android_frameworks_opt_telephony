@@ -1079,29 +1079,32 @@ public class ServiceStateTracker extends Handler {
     private boolean mWantContinuousLocationUpdates;
     private boolean mWantSingleLocationUpdate;
 
-    public void enableSingleLocationUpdate() {
+    /**
+     * Request a single update of the device's current registered cell.
+     */
+    public void enableSingleLocationUpdate(WorkSource workSource) {
         if (mWantSingleLocationUpdate || mWantContinuousLocationUpdates) return;
         mWantSingleLocationUpdate = true;
-        mCi.setLocationUpdates(true, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
+        mCi.setLocationUpdates(true, workSource, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
     }
 
     public void enableLocationUpdates() {
         if (mWantSingleLocationUpdate || mWantContinuousLocationUpdates) return;
         mWantContinuousLocationUpdates = true;
-        mCi.setLocationUpdates(true, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
+        mCi.setLocationUpdates(true, null, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
     }
 
     protected void disableSingleLocationUpdate() {
         mWantSingleLocationUpdate = false;
         if (!mWantSingleLocationUpdate && !mWantContinuousLocationUpdates) {
-            mCi.setLocationUpdates(false, null);
+            mCi.setLocationUpdates(false, null, null);
         }
     }
 
     public void disableLocationUpdates() {
         mWantContinuousLocationUpdates = false;
         if (!mWantSingleLocationUpdate && !mWantContinuousLocationUpdates) {
-            mCi.setLocationUpdates(false, null);
+            mCi.setLocationUpdates(false, null, null);
         }
     }
 

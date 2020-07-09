@@ -2402,8 +2402,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void updateServiceLocation() {
-        mSST.enableSingleLocationUpdate();
+    public void updateServiceLocation(WorkSource workSource) {
+        mSST.enableSingleLocationUpdate(workSource);
     }
 
     @Override
