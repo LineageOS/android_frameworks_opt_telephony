@@ -3297,11 +3297,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setLocationUpdates(boolean enable, Message result) {
+    public void setLocationUpdates(boolean enable, WorkSource workSource, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_LOCATION_UPDATES, result,
-                    mRILDefaultWorkSource);
+                    workSource == null ? mRILDefaultWorkSource : workSource);
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> "
