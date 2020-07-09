@@ -1793,22 +1793,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
-    @MediumTest
-    public void testEnableLocationUpdates() throws Exception {
-        sst.enableLocationUpdates();
-        verify(mSimulatedCommandsVerifier, times(1)).setLocationUpdates(eq(true),
-                any(Message.class));
-    }
-
-    @Test
-    @SmallTest
-    public void testDisableLocationUpdates() throws Exception {
-        sst.disableLocationUpdates();
-        verify(mSimulatedCommandsVerifier, times(1)).setLocationUpdates(eq(false),
-                nullable(Message.class));
-    }
-
-    @Test
     @SmallTest
     public void testGetCurrentDataRegState() throws Exception {
         sst.mSS.setDataRegState(ServiceState.STATE_OUT_OF_SERVICE);
