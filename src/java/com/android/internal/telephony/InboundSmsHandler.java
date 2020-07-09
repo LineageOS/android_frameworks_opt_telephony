@@ -1173,7 +1173,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                                     block, remainingFilters);
                     CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
                             mContext, mPhone, pdus, destPort, tracker.getFormat(),
-                            filterCallback, getName(), mLocalLog, tracker.getMessageId());
+                            filterCallback, getName() + "::CarrierServicesSmsFilter",
+                            mCarrierServiceLocalLog, tracker.getMessageId());
                     if (carrierServicesFilter.filter()) {
                         log("SMS is being handled by carrier service", tracker.getMessageId());
                         return true;
