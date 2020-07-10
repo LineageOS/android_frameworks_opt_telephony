@@ -134,6 +134,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPhysicalChannelConfigOn;
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
+    private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
     private String mPreviousState;
@@ -211,6 +212,9 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING);
         mLteEnhancedPattern = CarrierConfigManager.getDefaultConfig().getString(
                 CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
+        mIsTimerResetEnabledForLegacyStateRRCIdle =
+                CarrierConfigManager.getDefaultConfig().getBoolean(
+                        CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
 
         CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                 .getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -236,6 +240,8 @@ public class NetworkTypeController extends StateMachine {
                     mLteEnhancedPattern = b.getString(
                             CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
                 }
+                mIsTimerResetEnabledForLegacyStateRRCIdle = b.getBoolean(
+                        CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
             }
         }
         createTimerRules(nrIconConfiguration, overrideTimerRule, overrideSecondaryTimerRule);
@@ -538,6 +544,10 @@ public class NetworkTypeController extends StateMachine {
                         transitionWithTimerTo(isPhysicalLinkActive()
                                 ? mLteConnectedState : mIdleState);
                     } else {
+                        if (!isLte(rat)) {
+                            // Rat is 3G or 2G, and it doesn't need NR timer.
+                            resetAllTimers();
+                        }
                         updateOverrideNetworkType();
                     }
                     mIsNrRestricted = isNrRestricted();
@@ -555,6 +565,14 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
                     // ignored
+                    break;
+                case EVENT_PHYSICAL_LINK_STATE_CHANGED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    mPhysicalLinkState = (int) ar.result;
+                    if (mIsTimerResetEnabledForLegacyStateRRCIdle && !isPhysicalLinkActive()) {
+                        resetAllTimers();
+                        updateOverrideNetworkType();
+                    }
                     break;
                 default:
                     return NOT_HANDLED;
@@ -870,9 +888,18 @@ public class NetworkTypeController extends StateMachine {
         if (currentState.equals(STATE_CONNECTED_MMWAVE)) {
             resetAllTimers();
         }
+
+        int rat = mPhone.getServiceState().getDataNetworkType();
+        if (!isLte(rat) && rat != TelephonyManager.NETWORK_TYPE_NR) {
+            // Rat is 3G or 2G, and it doesn't need NR timer.
+            resetAllTimers();
+        }
     }
 
     private void resetAllTimers() {
+        if (DBG) {
+            log("Remove all timers");
+        }
         removeMessages(EVENT_PRIMARY_TIMER_EXPIRED);
         removeMessages(EVENT_SECONDARY_TIMER_EXPIRED);
         mIsPrimaryTimerActive = false;
