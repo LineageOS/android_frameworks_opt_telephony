@@ -126,7 +126,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -369,8 +368,6 @@ public class ServiceStateTracker extends Handler {
     private Pattern mOperatorNameStringPattern;
 
     private class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
-        public final AtomicInteger mPreviousSubId =
-                new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
@@ -379,70 +376,83 @@ public class ServiceStateTracker extends Handler {
         @Override
         public void onSubscriptionsChanged() {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
-            // Set the network type, in case the radio does not restore it.
-            int subId = mPhone.getSubId();
-            ServiceStateTracker.this.mPrevSubId = mPreviousSubId.get();
-            if (mPreviousSubId.getAndSet(subId) != subId) {
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                    Context context = mPhone.getContext();
 
-                    mPhone.notifyPhoneStateChanged();
-                    mPhone.notifyCallForwardingIndicator();
-                    if (!SubscriptionManager.isValidSubscriptionId(
-                            ServiceStateTracker.this.mPrevSubId)) {
-                        // just went from invalid to valid subId, so notify with current service
-                        // state in case our service stat was never broadcasted (we don't notify
-                        // service states when the subId is invalid)
-                        mPhone.notifyServiceStateChanged(mSS);
-                    }
+            final int curSubId = mPhone.getSubId();
 
-                    boolean restoreSelection = !context.getResources().getBoolean(
-                            com.android.internal.R.bool.skip_restoring_network_selection);
-                    mPhone.sendSubscriptionSettings(restoreSelection);
+            // If the sub info changed, but the subId is the same, then we're done.
+            if (mSubId == curSubId) return;
 
-                    setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
+            // If not, then the subId has changed, so we need to remember the old subId,
+            // even if the new subId is invalid (likely).
+            mPrevSubId = mSubId;
+            mSubId = curSubId;
 
-                    if (mSpnUpdatePending) {
-                        mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
-                                mCurPlmn, mCurShowSpn, mCurSpn);
-                        mSpnUpdatePending = false;
-                    }
+            // Update voicemail count and notify message waiting changed regardless of
+            // whether the new subId is valid. This is an exception to the general logic
+            // of only updating things if the new subscription is valid. The result is that
+            // VoiceMail counts (and UI indicators) are cleared when the SIM is removed,
+            // which seems desirable.
+            mPhone.updateVoiceMail();
 
-                    // Remove old network selection sharedPreferences since SP key names are now
-                    // changed to include subId. This will be done only once when upgrading from an
-                    // older build that did not include subId in the names.
-                    SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
-                            context);
-                    String oldNetworkSelection = sp.getString(
-                            Phone.NETWORK_SELECTION_KEY, "");
-                    String oldNetworkSelectionName = sp.getString(
-                            Phone.NETWORK_SELECTION_NAME_KEY, "");
-                    String oldNetworkSelectionShort = sp.getString(
-                            Phone.NETWORK_SELECTION_SHORT_KEY, "");
-                    if (!TextUtils.isEmpty(oldNetworkSelection) ||
-                            !TextUtils.isEmpty(oldNetworkSelectionName) ||
-                            !TextUtils.isEmpty(oldNetworkSelectionShort)) {
-                        SharedPreferences.Editor editor = sp.edit();
-                        editor.putString(Phone.NETWORK_SELECTION_KEY + subId,
-                                oldNetworkSelection);
-                        editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + subId,
-                                oldNetworkSelectionName);
-                        editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + subId,
-                                oldNetworkSelectionShort);
-                        editor.remove(Phone.NETWORK_SELECTION_KEY);
-                        editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
-                        editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
-                        editor.commit();
-                    }
+            // If the new subscription ID isn't valid, then we don't need to do all the
+            // UI updating, so we're done.
+            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) return;
 
-                    // Once sub id becomes valid, we need to update the service provider name
-                    // displayed on the UI again. The old SPN update intents sent to
-                    // MobileSignalController earlier were actually ignored due to invalid sub id.
-                    updateSpnDisplay();
-                }
-                // update voicemail count and notify message waiting changed
-                mPhone.updateVoiceMail();
+            Context context = mPhone.getContext();
+
+            mPhone.notifyPhoneStateChanged();
+            mPhone.notifyCallForwardingIndicator();
+
+            if (!SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
+                // just went from invalid to valid subId, so notify with current service
+                // state in case our service state was never broadcasted (we don't notify
+                // service states when the subId is invalid)
+                mPhone.notifyServiceStateChanged(mSS);
             }
+
+            boolean restoreSelection = !context.getResources().getBoolean(
+                    com.android.internal.R.bool.skip_restoring_network_selection);
+            mPhone.sendSubscriptionSettings(restoreSelection);
+
+            setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
+
+            if (mSpnUpdatePending) {
+                mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
+                        mCurPlmn, mCurShowSpn, mCurSpn);
+                mSpnUpdatePending = false;
+            }
+
+            // Remove old network selection sharedPreferences since SP key names are now
+            // changed to include subId. This will be done only once when upgrading from an
+            // older build that did not include subId in the names.
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                    context);
+            String oldNetworkSelection = sp.getString(
+                    Phone.NETWORK_SELECTION_KEY, "");
+            String oldNetworkSelectionName = sp.getString(
+                    Phone.NETWORK_SELECTION_NAME_KEY, "");
+            String oldNetworkSelectionShort = sp.getString(
+                    Phone.NETWORK_SELECTION_SHORT_KEY, "");
+            if (!TextUtils.isEmpty(oldNetworkSelection)
+                    || !TextUtils.isEmpty(oldNetworkSelectionName)
+                    || !TextUtils.isEmpty(oldNetworkSelectionShort)) {
+                SharedPreferences.Editor editor = sp.edit();
+                editor.putString(Phone.NETWORK_SELECTION_KEY + mSubId,
+                        oldNetworkSelection);
+                editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + mSubId,
+                        oldNetworkSelectionName);
+                editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + mSubId,
+                        oldNetworkSelectionShort);
+                editor.remove(Phone.NETWORK_SELECTION_KEY);
+                editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
+                editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
+                editor.commit();
+            }
+
+            // Once sub id becomes valid, we need to update the service provider name
+            // displayed on the UI again. The old SPN update intents sent to
+            // MobileSignalController earlier were actually ignored due to invalid sub id.
+            updateSpnDisplay();
         }
     };
 
@@ -630,8 +640,8 @@ public class ServiceStateTracker extends Handler {
 
         mSubscriptionController = SubscriptionController.getInstance();
         mSubscriptionManager = SubscriptionManager.from(phone.getContext());
-        mSubscriptionManager
-                .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubscriptionManager.addOnSubscriptionsChangedListener(
+                new android.os.HandlerExecutor(this), mOnSubscriptionsChangedListener);
         mRestrictedState = new RestrictedState();
 
         mTransportManager = mPhone.getTransportManager();
@@ -1251,10 +1261,8 @@ public class ServiceStateTracker extends Handler {
 
             // GSM
             case EVENT_SIM_READY:
-                // Reset the mPreviousSubId so we treat a SIM power bounce
+                // Reset the mPrevSubId so we treat a SIM power bounce
                 // as a first boot.  See b/19194287
-                mOnSubscriptionsChangedListener.mPreviousSubId.set(
-                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
                 mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
                 mIsSimReady = true;
                 pollStateInternal(false);
