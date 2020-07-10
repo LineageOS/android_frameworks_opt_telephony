@@ -132,15 +132,15 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     }
 
     /**
-     * Called when a status report is received.  This should correspond to
-     * a previously successful SEND.
+     * Called when a status report is received. This should correspond to a previously successful
+     * SEND.
      *
-     * @param ar AsyncResult passed into the message handler.  ar.result should
-     *           be a String representing the status report PDU, as ASCII hex.
+     * @param ar AsyncResult passed into the message handler. ar.result should be a byte array for
+     *           the status report PDU.
      */
     private void handleStatusReport(AsyncResult ar) {
         byte[] pdu = (byte[]) ar.result;
-        SmsMessage sms = SmsMessage.newFromCDS(pdu);
+        SmsMessage sms = SmsMessage.createFromPdu(pdu);
         boolean handled = false;
 
         if (sms != null) {
