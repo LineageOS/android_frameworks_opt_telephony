@@ -21,7 +21,6 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.provider.Telephony.Sms.Intents;
 import android.telephony.ServiceState;
 import android.util.Pair;
 
@@ -165,7 +164,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                         messageRef, getFormat(), pdu);
             }
         }
-        mCi.acknowledgeLastIncomingGsmSms(true, Intents.RESULT_SMS_HANDLED, null);
+        mCi.acknowledgeLastIncomingGsmSms(true, 0 /* cause */, null);
     }
 
     /** {@inheritDoc} */
