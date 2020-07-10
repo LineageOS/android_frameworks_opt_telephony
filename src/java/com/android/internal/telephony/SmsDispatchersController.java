@@ -828,7 +828,7 @@ public class SmsDispatchersController extends Handler {
     private Pair<Boolean, Boolean> handleGsmStatusReport(SMSDispatcher.SmsTracker tracker,
             String format, byte[] pdu) {
         com.android.internal.telephony.gsm.SmsMessage sms =
-                com.android.internal.telephony.gsm.SmsMessage.newFromCDS(pdu);
+                com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
         boolean complete = false;
         boolean success = false;
         if (sms != null) {

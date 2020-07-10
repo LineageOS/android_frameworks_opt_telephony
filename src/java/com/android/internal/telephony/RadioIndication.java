@@ -166,9 +166,10 @@ public class RadioIndication extends IRadioIndication.Stub {
         byte[] pduArray = RIL.arrayListToPrimitiveArray(pdu);
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
 
-        SmsMessage sms = SmsMessage.newFromCMT(pduArray);
+        SmsMessageBase smsb = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pduArray);
         if (mRil.mGsmSmsRegistrant != null) {
-            mRil.mGsmSmsRegistrant.notifyRegistrant(new AsyncResult(null, sms, null));
+            mRil.mGsmSmsRegistrant.notifyRegistrant(
+                    new AsyncResult(null, smsb == null ? null : new SmsMessage(smsb), null));
         }
     }
 
