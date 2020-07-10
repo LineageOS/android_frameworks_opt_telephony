@@ -43,7 +43,6 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Settings;
-import android.provider.Telephony;
 import android.telephony.SmsManager;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -144,8 +143,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     public void testSmsStatus() {
         mSimulatedCommands.notifySmsStatus(new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF});
         TelephonyTestUtils.waitForMs(50);
-        verify(mSimulatedCommandsVerifier).acknowledgeLastIncomingGsmSms(true,
-                Telephony.Sms.Intents.RESULT_SMS_HANDLED, null);
+        verify(mSimulatedCommandsVerifier).acknowledgeLastIncomingGsmSms(true, 0, null);
     }
 
     @Test @MediumTest
