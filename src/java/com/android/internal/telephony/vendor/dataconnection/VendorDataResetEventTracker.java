@@ -127,9 +127,9 @@ public class VendorDataResetEventTracker {
         mContext.registerReceiver(mSimStateReceiver, new IntentFilter(
                 TelephonyIntents.ACTION_SIM_STATE_CHANGED));
 
-        CellLocation currentCellLocation = mPhone.getCellIdentity().asCellLocation();
+        CellLocation currentCellLocation = mPhone.getCurrentCellIdentity().asCellLocation();
         if (currentCellLocation instanceof GsmCellLocation) {
-            mPreviousLocation = (GsmCellLocation) mPhone.getCellIdentity().asCellLocation();
+            mPreviousLocation = (GsmCellLocation) currentCellLocation;
             if (DBG) log("DataConnection mPreviousLocation : " + mPreviousLocation);
         }
         int ddsSubId = SubscriptionManager.getDefaultDataSubscriptionId();
