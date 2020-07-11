@@ -891,10 +891,10 @@ public class DeviceStateMonitor extends Handler {
          * List of dB thresholds for NGRAN {@link AccessNetworkType} RSRSRP
          */
         public static final int[] NGRAN_RSRSRQ = new int[] {
-            -16, /* SIGNAL_STRENGTH_POOR */
-            -12, /* SIGNAL_STRENGTH_MODERATE */
-            -9, /* SIGNAL_STRENGTH_GOOD */
-            -6  /* SIGNAL_STRENGTH_GREAT */
+            -31, /* SIGNAL_STRENGTH_POOR */
+            -19, /* SIGNAL_STRENGTH_MODERATE */
+            -7, /* SIGNAL_STRENGTH_GOOD */
+            6  /* SIGNAL_STRENGTH_GREAT */
         };
 
         /**
