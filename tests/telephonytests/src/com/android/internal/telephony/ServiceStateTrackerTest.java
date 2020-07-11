@@ -314,10 +314,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 });
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY,
                 new int[] {
-                    -16, /* SIGNAL_STRENGTH_POOR */
-                    -12, /* SIGNAL_STRENGTH_MODERATE */
-                    -9, /* SIGNAL_STRENGTH_GOOD */
-                    -6  /* SIGNAL_STRENGTH_GREAT */
+                    -31, /* SIGNAL_STRENGTH_POOR */
+                    -19, /* SIGNAL_STRENGTH_MODERATE */
+                    -7, /* SIGNAL_STRENGTH_GOOD */
+                    6  /* SIGNAL_STRENGTH_GREAT */
                 });
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSSINR_THRESHOLDS_INT_ARRAY,
                 new int[] {
@@ -790,7 +790,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     -20, /** csiRsrq NONE */
                     -23, /** CsiSinr NONE */
                     -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
-                    -20, /** SsRsrq NONE */
+                    -32, /** SsRsrq NONE */
                     -23) /** SsSinr NONE */
         );
 
