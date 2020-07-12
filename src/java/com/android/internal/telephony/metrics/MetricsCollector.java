@@ -33,6 +33,7 @@ import android.util.StatsEvent;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ConcurrentUtils;
@@ -142,14 +143,11 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             return StatsManager.PULL_SKIP;
         }
 
-        StatsEvent e =
-                StatsEvent.newBuilder()
-                        .setAtomId(SIM_SLOT_STATE)
-                        .writeInt(state.numActiveSlots)
-                        .writeInt(state.numActiveSims)
-                        .writeInt(state.numActiveEsims)
-                        .build();
-        data.add(e);
+        data.add(TelephonyStatsLog.buildStatsEvent(
+                  SIM_SLOT_STATE,
+                  state.numActiveSlots,
+                  state.numActiveSims,
+                  state.numActiveEsims));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -165,12 +163,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             return StatsManager.PULL_SKIP;
         }
 
-        StatsEvent e =
-                StatsEvent.newBuilder()
-                        .setAtomId(SUPPORTED_RADIO_ACCESS_FAMILY)
-                        .writeLong(rafSupported)
-                        .build();
-        data.add(e);
+        data.add(TelephonyStatsLog.buildStatsEvent(
+                  SUPPORTED_RADIO_ACCESS_FAMILY,
+                  rafSupported));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -214,46 +209,43 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     private static StatsEvent buildStatsEvent(RawVoiceCallRatUsage usage) {
-        return StatsEvent.newBuilder()
-                .setAtomId(VOICE_CALL_RAT_USAGE)
-                .writeInt(usage.carrierId)
-                .writeInt(usage.rat)
-                .writeLong(
-                        round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS)
-                .writeLong(usage.callCount)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                VOICE_CALL_RAT_USAGE,
+                usage.carrierId,
+                usage.rat,
+                round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS,
+                usage.callCount);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallSession session) {
-        return StatsEvent.newBuilder()
-                .setAtomId(VOICE_CALL_SESSION)
-                .writeInt(session.bearerAtStart)
-                .writeInt(session.bearerAtEnd)
-                .writeInt(session.direction)
-                .writeInt(session.setupDuration)
-                .writeBoolean(session.setupFailed)
-                .writeInt(session.disconnectReasonCode)
-                .writeInt(session.disconnectExtraCode)
-                .writeString(session.disconnectExtraMessage)
-                .writeInt(session.ratAtStart)
-                .writeInt(session.ratAtEnd)
-                .writeLong(session.ratSwitchCount)
-                .writeLong(session.codecBitmask)
-                .writeInt(session.concurrentCallCountAtStart)
-                .writeInt(session.concurrentCallCountAtEnd)
-                .writeInt(session.simSlotIndex)
-                .writeBoolean(session.isMultiSim)
-                .writeBoolean(session.isEsim)
-                .writeInt(session.carrierId)
-                .writeBoolean(session.srvccCompleted)
-                .writeLong(session.srvccFailureCount)
-                .writeLong(session.srvccCancellationCount)
-                .writeBoolean(session.rttEnabled)
-                .writeBoolean(session.isEmergency)
-                .writeBoolean(session.isRoaming)
+        return TelephonyStatsLog.buildStatsEvent(
+                VOICE_CALL_SESSION,
+                session.bearerAtStart,
+                session.bearerAtEnd,
+                session.direction,
+                session.setupDuration,
+                session.setupFailed,
+                session.disconnectReasonCode,
+                session.disconnectExtraCode,
+                session.disconnectExtraMessage,
+                session.ratAtStart,
+                session.ratAtEnd,
+                session.ratSwitchCount,
+                session.codecBitmask,
+                session.concurrentCallCountAtStart,
+                session.concurrentCallCountAtEnd,
+                session.simSlotIndex,
+                session.isMultiSim,
+                session.isEsim,
+                session.carrierId,
+                session.srvccCompleted,
+                session.srvccFailureCount,
+                session.srvccCancellationCount,
+                session.rttEnabled,
+                session.isEmergency,
+                session.isRoaming,
                 // workaround: dimension required for keeping multiple pulled atoms
-                .writeInt(sRandom.nextInt())
-                .build();
+                sRandom.nextInt());
     }
 
     /** Returns the value rounded to the bucket. */
