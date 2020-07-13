@@ -1127,6 +1127,37 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testClearHoldSwapStateOnSrvcc() throws Exception {
+        // Answer an incoming call
+        testImsMTCall();
+        assertTrue(mCTUT.mRingingCall.isRinging());
+        try {
+            mCTUT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
+            verify(mImsCall, times(1)).accept(eq(ImsCallProfile
+                    .getCallTypeFromVideoState(ImsCallProfile.CALL_TYPE_VOICE)));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("set active, unexpected exception thrown" + ex.getMessage());
+        }
+        assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
+        // Hold the call
+        doNothing().when(mImsCall).hold();
+        try {
+            mCTUT.holdActiveCall();
+            assertTrue(mCTUT.isHoldOrSwapInProgress());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("hold, unexpected exception thrown" + ex.getMessage());
+        }
+
+        // Move the connection to the handover state.
+        mCTUT.notifySrvccState(Call.SrvccState.COMPLETED);
+        // Ensure we are no longer tracking hold.
+        assertFalse(mCTUT.isHoldOrSwapInProgress());
+    }
+
+    @Test
+    @SmallTest
     public void testHangupHandoverCall() throws RemoteException {
         doReturn("1").when(mImsCallSession).getCallId();
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
