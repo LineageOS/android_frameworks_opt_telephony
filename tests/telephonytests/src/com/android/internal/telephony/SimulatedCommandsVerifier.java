@@ -1223,11 +1223,6 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public int getLteOnCdmaMode() {
-        return 0;
-    }
-
-    @Override
     public void requestIccSimAuthentication(int authContext, String data, String aid,
                                             Message response) {
 
