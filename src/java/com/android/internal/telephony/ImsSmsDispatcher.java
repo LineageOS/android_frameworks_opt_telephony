@@ -31,7 +31,6 @@ import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase.SendStatusResult;
-import android.util.Pair;
 
 import com.android.ims.FeatureConnector;
 import com.android.ims.ImsException;
@@ -131,11 +130,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             tracker.mMessageRef = messageRef;
             switch(status) {
                 case ImsSmsImplBase.SEND_STATUS_OK:
-                    if (tracker.mDeliveryIntent == null) {
-                        // Remove the tracker here if a status report is not requested.
-                        mTrackers.remove(token);
+                    if (tracker.mDeliveryIntent != null) {
+                        // Expecting a status report. Put this tracker to the map.
+                        mSmsDispatchersController.putDeliveryPendingTracker(tracker);
                     }
                     tracker.onSent(mContext);
+                    mTrackers.remove(token);
                     mPhone.notifySmsSent(tracker.mDestAddress);
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR:
@@ -148,7 +148,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     break;
                 case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
                     tracker.mRetryCount += 1;
-                    fallbackToPstn(token, tracker);
+                    mTrackers.remove(token);
+                    fallbackToPstn(tracker);
                     break;
                 default:
             }
@@ -165,35 +166,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         "Status report received with a PDU that could not be parsed.");
             }
             int messageRef = message.mWrappedSmsMessage.mMessageRef;
-            SmsTracker tracker = null;
-            int key = 0;
-            for (Map.Entry<Integer, SmsTracker> entry : mTrackers.entrySet()) {
-                if (messageRef == ((SmsTracker) entry.getValue()).mMessageRef) {
-                    tracker = entry.getValue();
-                    key = entry.getKey();
-                    break;
-                }
+            boolean handled = mSmsDispatchersController.handleSmsStatusReport(format, pdu);
+            if (!handled) {
+                loge("Can not handle the status report for messageRef " + messageRef);
             }
-
-            if (tracker == null) {
-                throw new RemoteException("No tracker for messageRef " + messageRef);
-            }
-            Pair<Boolean, Boolean> result = mSmsDispatchersController.handleSmsStatusReport(
-                    tracker, format, pdu);
-            logd("Status report handle result, success: " + result.first
-                    + " complete: " + result.second);
             try {
                 getImsManager().acknowledgeSmsReport(
                         token,
                         messageRef,
-                        result.first ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
+                        handled ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
                                 : ImsSmsImplBase.STATUS_REPORT_STATUS_ERROR);
             } catch (ImsException e) {
-                loge("Failed to acknowledgeSmsReport(). Error: "
-                        + e.getMessage());
-            }
-            if (result.second) {
-                mTrackers.remove(key);
+                loge("Failed to acknowledgeSmsReport(). Error: " + e.getMessage());
             }
         }
 
@@ -408,7 +392,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     ImsSmsImplBase.SEND_STATUS_OK, tracker.mMessageId);
         } catch (ImsException e) {
             loge("sendSms failed. Falling back to PSTN. Error: " + e.getMessage());
-            fallbackToPstn(token, tracker);
+            mTrackers.remove(token);
+            fallbackToPstn(tracker);
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
                     ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK, tracker.mMessageId);
         }
@@ -419,9 +404,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     }
 
     @VisibleForTesting
-    public void fallbackToPstn(int token, SmsTracker tracker) {
+    public void fallbackToPstn(SmsTracker tracker) {
         mSmsDispatchersController.sendRetrySms(tracker);
-        mTrackers.remove(token);
     }
 
     @Override

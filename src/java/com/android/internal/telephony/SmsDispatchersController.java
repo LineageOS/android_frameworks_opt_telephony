@@ -37,7 +37,6 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
-import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
@@ -50,7 +49,6 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map.Entry;
 
 /**
  *
@@ -107,6 +105,26 @@ public class SmsDispatchersController extends Handler {
     /** true if IMS is registered and sms is supported, false otherwise.*/
     private boolean mIms = false;
     private String mImsSmsFormat = SmsConstants.FORMAT_UNKNOWN;
+
+    /** 3GPP format sent messages awaiting a delivery status report. */
+    private HashMap<Integer, SMSDispatcher.SmsTracker> mDeliveryPendingMapFor3GPP = new HashMap<>();
+
+    /** 3GPP2 format sent messages awaiting a delivery status report. */
+    private HashMap<Integer, SMSDispatcher.SmsTracker> mDeliveryPendingMapFor3GPP2 =
+            new HashMap<>();
+
+    /**
+     * Puts a delivery pending tracker to the map based on the format.
+     *
+     * @param tracker the tracker awaiting a delivery status report.
+     */
+    public void putDeliveryPendingTracker(SMSDispatcher.SmsTracker tracker) {
+        if (isCdmaFormat(tracker.mFormat)) {
+            mDeliveryPendingMapFor3GPP2.put(tracker.mMessageRef, tracker);
+        } else {
+            mDeliveryPendingMapFor3GPP.put(tracker.mMessageRef, tracker);
+        }
+    }
 
     public SmsDispatchersController(Phone phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
@@ -761,86 +779,58 @@ public class SmsDispatchersController extends Handler {
     }
 
     /**
-     * Handles the sms status report for the sent sms through ImsSmsDispatcher. Carriers can send
-     * the report over CS even if the previously submitted SMS-SUBMIT was sent over IMS. For this
-     * case, finds a corresponding tracker from the tracker map in ImsSmsDispatcher and handles it.
+     * Handles the sms status report based on the format.
      *
-     * @param messageRef the TP-MR of the previously submitted SMS-SUBMIT in the report.
      * @param format the format.
      * @param pdu the pdu of the report.
+     * @return true if the report is handled successfully, false Otherwise.
      */
-    public void handleSentOverImsStatusReport(int messageRef, String format, byte[] pdu) {
-        for (Entry<Integer, SMSDispatcher.SmsTracker> entry :
-                mImsSmsDispatcher.mTrackers.entrySet()) {
-            int token = entry.getKey();
-            SMSDispatcher.SmsTracker tracker = entry.getValue();
-            if (tracker.mMessageRef == messageRef) {
-                Pair<Boolean, Boolean> result = handleSmsStatusReport(tracker, format, pdu);
-                if (result.second) {
-                    mImsSmsDispatcher.mTrackers.remove(token);
-                }
-                return;
-            }
-        }
-    }
-
-    /**
-     * Triggers the correct method for handling the sms status report based on the format.
-     *
-     * @param tracker the sms tracker.
-     * @param format the format.
-     * @param pdu the pdu of the report.
-     * @return a Pair in which the first boolean is whether the report was handled successfully
-     *          or not and the second boolean is whether processing the sms is complete and the
-     *          tracker no longer need to be kept track of, false if we should expect more callbacks
-     *          and the tracker should be kept.
-     */
-    public Pair<Boolean, Boolean> handleSmsStatusReport(SMSDispatcher.SmsTracker tracker,
-            String format, byte[] pdu) {
+    public boolean handleSmsStatusReport(String format, byte[] pdu) {
+        int messageRef;
+        SMSDispatcher.SmsTracker tracker;
+        boolean handled = false;
         if (isCdmaFormat(format)) {
-            return handleCdmaStatusReport(tracker, format, pdu);
+            com.android.internal.telephony.cdma.SmsMessage sms =
+                    com.android.internal.telephony.cdma.SmsMessage.createFromPdu(pdu);
+            if (sms != null) {
+                messageRef = sms.mMessageRef;
+                tracker = mDeliveryPendingMapFor3GPP2.get(messageRef);
+                if (tracker != null) {
+                    // The status is composed of an error class (bits 25-24) and a status code
+                    // (bits 23-16).
+                    int errorClass = (sms.getStatus() >> 24) & 0x03;
+                    if (errorClass != ERROR_TEMPORARY) {
+                        // Update the message status (COMPLETE or FAILED)
+                        tracker.updateSentMessageStatus(
+                                mContext,
+                                (errorClass == ERROR_NONE)
+                                        ? Sms.STATUS_COMPLETE
+                                        : Sms.STATUS_FAILED);
+                        // No longer need to be kept.
+                        mDeliveryPendingMapFor3GPP2.remove(messageRef);
+                    }
+                    handled = triggerDeliveryIntent(tracker, format, pdu);
+                }
+            }
         } else {
-            return handleGsmStatusReport(tracker, format, pdu);
-        }
-    }
-
-    private Pair<Boolean, Boolean> handleCdmaStatusReport(SMSDispatcher.SmsTracker tracker,
-            String format, byte[] pdu) {
-        com.android.internal.telephony.cdma.SmsMessage sms =
-                com.android.internal.telephony.cdma.SmsMessage.createFromPdu(pdu);
-        boolean complete = false;
-        boolean success = false;
-        if (sms != null) {
-            // The status is composed of an error class (bits 25-24) and a status code (bits 23-16).
-            int errorClass = (sms.getStatus() >> 24) & 0x03;
-            if (errorClass != ERROR_TEMPORARY) {
-                // Update the message status (COMPLETE or FAILED)
-                tracker.updateSentMessageStatus(
-                        mContext,
-                        (errorClass == ERROR_NONE) ? Sms.STATUS_COMPLETE : Sms.STATUS_FAILED);
-                complete = true;
+            com.android.internal.telephony.gsm.SmsMessage sms =
+                    com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
+            if (sms != null) {
+                messageRef = sms.mMessageRef;
+                tracker = mDeliveryPendingMapFor3GPP.get(messageRef);
+                if (tracker != null) {
+                    int tpStatus = sms.getStatus();
+                    if (tpStatus >= Sms.STATUS_FAILED || tpStatus < Sms.STATUS_PENDING) {
+                        // Update the message status (COMPLETE or FAILED)
+                        tracker.updateSentMessageStatus(mContext, tpStatus);
+                        // No longer need to be kept.
+                        mDeliveryPendingMapFor3GPP.remove(messageRef);
+                    }
+                    handled = triggerDeliveryIntent(tracker, format, pdu);
+                }
             }
-            success = triggerDeliveryIntent(tracker, format, pdu);
         }
-        return new Pair(success, complete);
-    }
-
-    private Pair<Boolean, Boolean> handleGsmStatusReport(SMSDispatcher.SmsTracker tracker,
-            String format, byte[] pdu) {
-        com.android.internal.telephony.gsm.SmsMessage sms =
-                com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
-        boolean complete = false;
-        boolean success = false;
-        if (sms != null) {
-            int tpStatus = sms.getStatus();
-            if(tpStatus >= Sms.STATUS_FAILED || tpStatus < Sms.STATUS_PENDING ) {
-                // Update the message status (COMPLETE or FAILED)
-                tracker.updateSentMessageStatus(mContext, tpStatus);
-                complete = true;
-            }
-            success = triggerDeliveryIntent(tracker, format, pdu);
-        }
-        return new Pair(success, complete);
+        return handled;
     }
 
     private boolean triggerDeliveryIntent(SMSDispatcher.SmsTracker tracker, String format,

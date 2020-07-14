@@ -260,15 +260,6 @@ public abstract class SMSDispatcher extends Handler {
         Rlog.d(TAG, "handleStatusReport() called with no subclass.");
     }
 
-    /* TODO: Need to figure out how to keep track of status report routing in a
-     *       persistent manner. If the phone process restarts (reboot or crash),
-     *       we will lose this list and any status reports that come in after
-     *       will be dropped.
-     */
-    /** Sent messages awaiting a delivery status report. */
-    @UnsupportedAppUsage
-    protected final ArrayList<SmsTracker> deliveryPendingList = new ArrayList<SmsTracker>();
-
     /**
      * Handles events coming from the phone stack. Overridden from handler.
      *
@@ -766,8 +757,8 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             if (tracker.mDeliveryIntent != null) {
-                // Expecting a status report.  Add it to the list.
-                deliveryPendingList.add(tracker);
+                // Expecting a status report. Put this tracker to the map.
+                mSmsDispatchersController.putDeliveryPendingTracker(tracker);
             }
             tracker.onSent(mContext);
             mPhone.notifySmsSent(tracker.mDestAddress);
