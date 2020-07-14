@@ -22,7 +22,6 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Message;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.util.Pair;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.GsmCdmaPhone;
@@ -63,8 +62,9 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     @Override
     protected void handleStatusReport(Object o) {
         if (o instanceof SmsMessage) {
-            if (VDBG) Rlog.d(TAG, "calling handleCdmaStatusReport()");
-            handleCdmaStatusReport((SmsMessage) o);
+            if (VDBG) Rlog.d(TAG, "calling handleSmsStatusReport()");
+            byte[] pdu = ((SmsMessage) o).getPdu();
+            mSmsDispatchersController.handleSmsStatusReport(SmsConstants.FORMAT_3GPP2, pdu);
         } else {
             Rlog.e(TAG, "handleStatusReport() called for object type " + o.getClass().getName());
         }
@@ -94,32 +94,6 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     @Override
     protected TextEncodingDetails calculateLength(CharSequence messageBody, boolean use7bitOnly) {
         return SMSDispatcherUtil.calculateLengthCdma(messageBody, use7bitOnly);
-    }
-    /**
-     * Called from parent class to handle status report from {@code CdmaInboundSmsHandler}.
-     * @param sms the CDMA SMS message to process
-     */
-    @UnsupportedAppUsage
-    private void handleCdmaStatusReport(SmsMessage sms) {
-        byte[] pdu = sms.getPdu();
-        int messageRef = sms.mMessageRef;
-        boolean handled = false;
-        for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
-            SmsTracker tracker = deliveryPendingList.get(i);
-            if (tracker.mMessageRef == messageRef) {
-                Pair<Boolean, Boolean> result =
-                        mSmsDispatchersController.handleSmsStatusReport(tracker, getFormat(), pdu);
-                if (result.second) {
-                    deliveryPendingList.remove(i);
-                }
-                handled = true;
-                break; // Only expect to see one tracker matching this message.
-            }
-        }
-        if (!handled) {
-            // Try to find the sent SMS from the map in ImsSmsDispatcher.
-            mSmsDispatchersController.handleSentOverImsStatusReport(messageRef, getFormat(), pdu);
-        }
     }
 
     /** {@inheritDoc} */
