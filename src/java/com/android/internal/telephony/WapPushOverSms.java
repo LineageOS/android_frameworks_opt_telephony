@@ -425,7 +425,6 @@ public class WapPushOverSms implements ServiceConnection {
         intent.putExtra("header", result.header);
         intent.putExtra("data", result.intentData);
         intent.putExtra("contentTypeParameters", result.contentTypeParameters);
-        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, result.phoneId);
         if (!TextUtils.isEmpty(address)) {
             intent.putExtra("address", address);
         }
