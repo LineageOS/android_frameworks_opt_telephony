@@ -1887,16 +1887,6 @@ public interface CommandsInterface {
     void setLogicalToPhysicalSlotMapping(int[] physicalSlots, Message result);
 
     /**
-     * Return if the current radio is LTE on CDMA. This
-     * is a tri-state return value as for a period of time
-     * the mode may be unknown.
-     *
-     * @return {@link PhoneConstants#LTE_ON_CDMA_UNKNOWN}, {@link PhoneConstants#LTE_ON_CDMA_FALSE}
-     * or {@link PhoneConstants#LTE_ON_CDMA_TRUE}
-     */
-    public int getLteOnCdmaMode();
-
-    /**
      * Request the SIM application on the UICC to perform authentication
      * challenge/response algorithm. The data string and challenge response are
      * Base64 encoded Strings.
