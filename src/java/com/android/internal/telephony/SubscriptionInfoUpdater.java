@@ -615,7 +615,7 @@ public class SubscriptionInfoUpdater extends Handler {
             if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
                 logd("Slot of SIM" + (phoneId + 1) + " becomes inactive");
             }
-            cleanSubscriptionInPhone(phoneId);
+            cleanSubscriptionInPhone(phoneId, false);
         }
         if (!TextUtils.isEmpty(iccId)) {
             // If iccId is new, add a subscription record in the db.
@@ -628,19 +628,39 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void cleanSubscriptionInPhone(int phoneId) {
-        sIccId[phoneId] = ICCID_STRING_FOR_NO_SIM;
-        if (sInactiveIccIds[phoneId] != null) {
+    /**
+     * Clean subscription info when sim state becomes ABSENT. There are 2 scenarios for this:
+     * 1. SIM is actually removed
+     * 2. Slot becomes inactive, which results in SIM being treated as ABSENT, but SIM may not
+     * have been removed.
+     * @param phoneId phoneId for which the cleanup needs to be done
+     * @param isSimAbsent boolean to indicate if the SIM is actually ABSENT (case 1 above)
+     */
+    private void cleanSubscriptionInPhone(int phoneId, boolean isSimAbsent) {
+        if (sInactiveIccIds[phoneId] != null || (isSimAbsent && sIccId[phoneId] != null
+                && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM))) {
             // When a SIM is unplugged, mark uicc applications enabled. This is to make sure when
             // user unplugs and re-inserts the SIM card, we re-enable it.
-            logd("cleanSubscriptionInPhone " + phoneId + " inactive iccid "
+            // In certain cases this can happen before sInactiveIccIds is updated, which is why we
+            // check for sIccId as well (in case of isSimAbsent). The scenario is: after SIM
+            // deactivate request is sent to RIL, SIM is removed before SIM state is updated to
+            // NOT_READY. We do not need to check if this exact scenario is hit, because marking
+            // uicc applications enabled when SIM is removed should be okay to do regardless.
+            logd("cleanSubscriptionInPhone: " + phoneId + ", inactive iccid "
                     + sInactiveIccIds[phoneId]);
+            if (sInactiveIccIds[phoneId] == null) {
+                logd("cleanSubscriptionInPhone: " + phoneId + ", isSimAbsent=" + isSimAbsent
+                        + ", iccid=" + sIccId[phoneId]);
+            }
+            String iccId = sInactiveIccIds[phoneId] != null
+                    ? sInactiveIccIds[phoneId] : sIccId[phoneId];
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, true);
             sContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.ICC_ID + "=\'" + sInactiveIccIds[phoneId] + "\'", null);
+                    SubscriptionManager.ICC_ID + "=\'" + iccId + "\'", null);
             sInactiveIccIds[phoneId] = null;
         }
+        sIccId[phoneId] = ICCID_STRING_FOR_NO_SIM;
         updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
     }
 
@@ -652,7 +672,7 @@ public class SubscriptionInfoUpdater extends Handler {
         if (sIccId[phoneId] != null && !sIccId[phoneId].equals(ICCID_STRING_FOR_NO_SIM)) {
             logd("SIM" + (phoneId + 1) + " hot plug out");
         }
-        cleanSubscriptionInPhone(phoneId);
+        cleanSubscriptionInPhone(phoneId, true);
 
         broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_ABSENT, null);
         broadcastSimCardStateChanged(phoneId, TelephonyManager.SIM_STATE_ABSENT);
