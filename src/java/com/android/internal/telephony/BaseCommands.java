@@ -895,14 +895,6 @@ public abstract class BaseCommands implements CommandsInterface {
      * {@inheritDoc}
      */
     @Override
-    public int getLteOnCdmaMode() {
-        return TelephonyManager.getLteOnCdmaModeStatic();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void registerForCellInfoList(Handler h, int what, Object obj) {
         mRilCellInfoListRegistrants.addUnique(h, what, obj);
     }
