@@ -130,13 +130,13 @@ public class DataEnabledSettingsTest extends TelephonyTest {
     public void testSetThermalDataEnabled() throws Exception {
         mDataEnabledSettingsUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_THERMAL,
                 false);
-        assertFalse(mDataEnabledSettingsUT.isDataEnabledWithReason(
+        assertFalse(mDataEnabledSettingsUT.isDataEnabledForReason(
                 TelephonyManager.DATA_ENABLED_REASON_THERMAL));
         assertFalse(mDataEnabledSettingsUT.isDataEnabled());
 
         mDataEnabledSettingsUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_THERMAL,
                 true);
-        assertTrue(mDataEnabledSettingsUT.isDataEnabledWithReason(
+        assertTrue(mDataEnabledSettingsUT.isDataEnabledForReason(
                 TelephonyManager.DATA_ENABLED_REASON_THERMAL));
         assertTrue(mDataEnabledSettingsUT.isDataEnabled());
     }
