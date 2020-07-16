@@ -228,9 +228,6 @@ public class CellularNetworkService extends NetworkService {
                         (android.hardware.radio.V1_0.VoiceRegStateResult) result;
                 int regState = getRegStateFromHalRegState(voiceRegState.regState);
                 int networkType = ServiceState.rilRadioTechnologyToNetworkType(voiceRegState.rat);
-                if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
-                    networkType = TelephonyManager.NETWORK_TYPE_LTE;
-                }
                 int reasonForDenial = voiceRegState.reasonForDenial;
                 boolean emergencyOnly = isEmergencyOnly(voiceRegState.regState);
                 boolean cssSupported = voiceRegState.cssSupported;
@@ -251,9 +248,6 @@ public class CellularNetworkService extends NetworkService {
                         (android.hardware.radio.V1_2.VoiceRegStateResult) result;
                 int regState = getRegStateFromHalRegState(voiceRegState.regState);
                 int networkType = ServiceState.rilRadioTechnologyToNetworkType(voiceRegState.rat);
-                if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
-                    networkType = TelephonyManager.NETWORK_TYPE_LTE;
-                }
                 int reasonForDenial = voiceRegState.reasonForDenial;
                 boolean emergencyOnly = isEmergencyOnly(voiceRegState.regState);
                 boolean cssSupported = voiceRegState.cssSupported;
@@ -281,7 +275,6 @@ public class CellularNetworkService extends NetworkService {
             int regState = NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
             int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
             int reasonForDenial = 0;
-            boolean isUsingCarrierAggregation = false;
             boolean emergencyOnly = false;
             int maxDataCalls = 0;
             CellIdentity cellIdentity;
@@ -355,15 +348,10 @@ public class CellularNetworkService extends NetworkService {
             List<Integer> availableServices = getAvailableServices(
                     regState, domain, emergencyOnly);
 
-            if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
-                isUsingCarrierAggregation = true;
-                networkType = TelephonyManager.NETWORK_TYPE_LTE;
-            }
-
             return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
                     reasonForDenial, emergencyOnly, availableServices, cellIdentity, rplmn,
                     maxDataCalls, isDcNrRestricted, isNrAvailable, isEndcAvailable,
-                    lteVopsSupportInfo, isUsingCarrierAggregation);
+                    lteVopsSupportInfo);
         }
 
         private @NonNull NetworkRegistrationInfo getNetworkRegistrationInfo(
@@ -380,16 +368,10 @@ public class CellularNetworkService extends NetworkService {
             final String rplmn = regResult.registeredPlmn;
             final int reasonForDenial = regResult.reasonForDenial;
 
-            // Network Type fixup for carrier aggregation
             int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
-            // In earlier versions of the HAL, LTE_CA was allowed to indicate that the device
-            // is on CA; however, that has been superseded by the PHYSICAL_CHANNEL_CONFIG signal.
-            // Because some vendors provide both NETWORK_TYPE_LTE_CA *and* PHYSICAL_CHANNEL_CONFIG,
-            // this tweak is left for compatibility; however, the network type is no longer allowed
-            // to be used to declare that carrier aggregation is in effect, because the other
-            // signal provides a much richer information set, and we want to mitigate confusion in
-            // how CA information is being provided.
             if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+                // In Radio HAL v1.5, NETWORK_TYPE_LTE_CA is ignored. Callers should use
+                // PhysicalChannelConfig.
                 networkType = TelephonyManager.NETWORK_TYPE_LTE;
             }
 
@@ -448,7 +430,7 @@ public class CellularNetworkService extends NetworkService {
                     return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
                             reasonForDenial, isEmergencyOnly, availableServices, cellIdentity,
                             rplmn, MAX_DATA_CALLS, isDcNrRestricted, isNrAvailable, isEndcAvailable,
-                            vopsInfo, false /* isUsingCarrierAggregation */);
+                            vopsInfo);
             }
         }
 
