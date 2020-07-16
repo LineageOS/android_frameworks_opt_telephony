@@ -54,8 +54,6 @@ public class RatRatcheter {
     private final SparseArray<SparseIntArray> mRatFamilyMap = new SparseArray<>();
 
     private final Phone mPhone;
-    private boolean mVoiceRatchetEnabled = true;
-    private boolean mDataRatchetEnabled = true;
 
     /**
      * Updates the ServiceState with a new set of cell bandwidths IFF the new bandwidth list has a
@@ -119,55 +117,35 @@ public class RatRatcheter {
         }
     }
 
-    /** Ratchets RATs and cell bandwidths if oldSS and newSS have the same RAT family. */
-    public void ratchet(@NonNull ServiceState oldSS, @NonNull ServiceState newSS,
-                        boolean locationChange) {
-        // temporarily disable rat ratchet on location change.
-        if (locationChange) {
-            mVoiceRatchetEnabled = false;
-            mDataRatchetEnabled = false;
+    /**
+     * Ratchets RATs and cell bandwidths if oldSS and newSS have the same RAT family.
+     *
+     * Ensure that a device on the same cell reports the best-seen capability to the user.
+     */
+    public void ratchet(@NonNull ServiceState oldSS, @NonNull ServiceState newSS) {
+        // Different rat family, don't need rat ratchet and update cell bandwidths.
+        if (!isSameRatFamily(oldSS, newSS)) {
+            Rlog.e(LOG_TAG, "Same cell cannot have different RAT Families. Likely bug.");
             return;
         }
 
-        // Different rat family, don't need rat ratchet and update cell bandwidths.
-        if (!isSameRatFamily(oldSS, newSS)) {
-           return;
+        final int[] domains = {
+                NetworkRegistrationInfo.DOMAIN_CS, NetworkRegistrationInfo.DOMAIN_PS};
+        for (int domain : domains) {
+            NetworkRegistrationInfo oldNri = oldSS.getNetworkRegistrationInfo(
+                    domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            NetworkRegistrationInfo newNri = newSS.getNetworkRegistrationInfo(
+                    domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+            int newNetworkType = ratchetRat(oldNri.getAccessNetworkTechnology(),
+                    newNri.getAccessNetworkTechnology());
+            newNri.setAccessNetworkTechnology(newNetworkType);
+            if (oldNri.isUsingCarrierAggregation()) newNri.setIsUsingCarrierAggregation(true);
+            newSS.addNetworkRegistrationInfo(newNri);
         }
 
+        // Ratchet Cell Bandwidths
         updateBandwidths(oldSS.getCellBandwidths(), newSS);
-
-        boolean newUsingCA = oldSS.isUsingCarrierAggregation()
-                || newSS.isUsingCarrierAggregation()
-                || newSS.getCellBandwidths().length > 1;
-        NetworkRegistrationInfo oldCsNri = oldSS.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        NetworkRegistrationInfo newCsNri = newSS.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        if (mVoiceRatchetEnabled) {
-            int newPsNetworkType = ratchetRat(oldCsNri.getAccessNetworkTechnology(),
-                    newCsNri.getAccessNetworkTechnology());
-            newCsNri.setAccessNetworkTechnology(newPsNetworkType);
-            newSS.addNetworkRegistrationInfo(newCsNri);
-        } else if (oldCsNri.getAccessNetworkTechnology() != oldCsNri.getAccessNetworkTechnology()) {
-            // resume rat ratchet on following rat change within the same location
-            mVoiceRatchetEnabled = true;
-        }
-
-        NetworkRegistrationInfo oldPsNri = oldSS.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        NetworkRegistrationInfo newPsNri = newSS.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        if (mDataRatchetEnabled) {
-            int newPsNetworkType = ratchetRat(oldPsNri.getAccessNetworkTechnology(),
-                    newPsNri.getAccessNetworkTechnology());
-            newPsNri.setAccessNetworkTechnology(newPsNetworkType);
-            newSS.addNetworkRegistrationInfo(newPsNri);
-        } else if (oldPsNri.getAccessNetworkTechnology() != newPsNri.getAccessNetworkTechnology()) {
-            // resume rat ratchet on following rat change within the same location
-            mDataRatchetEnabled = true;
-        }
-
-        newSS.setIsUsingCarrierAggregation(newUsingCA);
     }
 
     private boolean isSameRatFamily(ServiceState ss1, ServiceState ss2) {

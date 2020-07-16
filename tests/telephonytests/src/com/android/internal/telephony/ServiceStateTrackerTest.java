@@ -1911,7 +1911,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 state, dataRat, 0, false, null, cid, getPlmnFromCellIdentity(cid),
-                1, false, false, false, lteVopsSupportInfo, false);
+                1, false, false, false, lteVopsSupportInfo);
         sst.mPollingContext[0] = 2;
         // update data reg state to be in service
         sst.sendMessage(sst.obtainMessage(
@@ -1939,7 +1939,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 state, dataRat, 0, false, null, cid, getPlmnFromCellIdentity(cid),
-                1, false, false, false, lteVopsSupportInfo, false);
+                1, false, false, false, lteVopsSupportInfo);
         sst.sendMessage(sst.obtainMessage(
                 ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataResult, null)));
@@ -1958,7 +1958,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataIwlanResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
                 iwlanState, iwlanDataRat, 0, false,
-                null, null, "", 1, false, false, false, lteVopsSupportInfo, false);
+                null, null, "", 1, false, false, false, lteVopsSupportInfo);
         sst.sendMessage(sst.obtainMessage(
                 ServiceStateTracker.EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, dataIwlanResult, null)));
@@ -2024,30 +2024,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     }
 
-    // TODO(nharold): This actually seems like broken behavior; rather than preserve it, we should
-    // probably remove it.
-    // GSM, Edge, GPRS are grouped under the same family where Edge > GPRS > GSM.
-    // Expect no rat update from E to G immediately following cell id change.
-    // Expect ratratchet (from G to E) for the following rat update within the cell location.
-    @Test
-    public void testRatRatchetWithCellChangeBeforeRatChange() throws Exception {
-        // cell ID update
-        CellIdentityGsm cellIdentity =
-                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
-                        Collections.emptyList());
-        changeRegState(1, cellIdentity, 16, 2);
-        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
-
-        // RAT: EDGE -> GPRS, cell ID unchanged. Expect no rat ratchet following cell Id change.
-        changeRegState(1, cellIdentity, 16, 1);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
-
-        // RAT: GPRS -> EDGE should ratchet.
-        changeRegState(1, cellIdentity, 16, 2);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
-    }
-
     private void sendPhyChanConfigChange(int[] bandwidths) {
         ArrayList<PhysicalChannelConfig> pc = new ArrayList<>();
         int ssType = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
@@ -2073,7 +2049,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
                 0, false, null, cellId, getPlmnFromCellIdentity(cellId), 1, false, false, false,
-                lteVopsSupportInfo, false);
+                lteVopsSupportInfo);
         NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
@@ -2149,7 +2125,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
                 TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, "", 1, false, false,
-                false, lteVopsSupportInfo, false);
+                false, lteVopsSupportInfo);
         NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
@@ -2343,7 +2319,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_LTE,
-                0, false, null, cellId, "00101", 1, false, false, false, lteVopsSupportInfo, false);
+                0, false, null, cellId, "00101", 1, false, false, false, lteVopsSupportInfo);
         sst.mPollingContext[0] = 2;
 
         sst.sendMessage(sst.obtainMessage(
@@ -2373,7 +2349,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
                 TelephonyManager.NETWORK_TYPE_LTE, 0, false, null, cellId, "00101",
-                1, false, false, false, lteVopsSupportInfo, false);
+                1, false, false, false, lteVopsSupportInfo);
         sst.mPollingContext[0] = 1;
         sst.sendMessage(sst.obtainMessage(
                 ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
