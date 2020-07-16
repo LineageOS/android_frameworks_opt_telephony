@@ -3250,10 +3250,8 @@ public class ServiceStateTracker extends Handler {
             int newRAT = newNrs != null ? newNrs.getAccessNetworkTechnology()
                     : TelephonyManager.NETWORK_TYPE_UNKNOWN;
 
-            boolean isOldCA = oldNrs != null ? (oldNrs.getDataSpecificInfo() != null
-                    ? oldNrs.getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
-            boolean isNewCA = newNrs!= null ? (newNrs. getDataSpecificInfo() != null
-                    ? newNrs. getDataSpecificInfo().isUsingCarrierAggregation() : false) : false;
+            boolean isOldCA = oldNrs != null ? oldNrs.isUsingCarrierAggregation() : false;
+            boolean isNewCA = newNrs != null ? newNrs.isUsingCarrierAggregation() : false;
 
             // If the carrier enable KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING and the operator name
             // match this pattern, the data rat display LteAdvanced indicator.

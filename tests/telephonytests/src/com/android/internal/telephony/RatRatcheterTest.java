@@ -104,8 +104,7 @@ public class RatRatcheterTest extends TelephonyTest {
                 false,  // isDcNrRestricted
                 false,  // isNrAvailable
                 false,  // isEndcAvailable
-                lteVopsSupportInfo,  // lteVopsSupportInfo
-                isUsingCarrierAggregation);  // isUsingCarrierAggregation
+                lteVopsSupportInfo);  // lteVopsSupportInfo
     }
 
     private void setNetworkRegistrationInfo(ServiceState ss, int accessNetworkTechnology) {
