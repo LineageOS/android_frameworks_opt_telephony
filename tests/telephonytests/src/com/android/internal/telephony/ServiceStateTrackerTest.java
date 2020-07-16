@@ -2024,30 +2024,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     }
 
-    // TODO(nharold): This actually seems like broken behavior; rather than preserve it, we should
-    // probably remove it.
-    // GSM, Edge, GPRS are grouped under the same family where Edge > GPRS > GSM.
-    // Expect no rat update from E to G immediately following cell id change.
-    // Expect ratratchet (from G to E) for the following rat update within the cell location.
-    @Test
-    public void testRatRatchetWithCellChangeBeforeRatChange() throws Exception {
-        // cell ID update
-        CellIdentityGsm cellIdentity =
-                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
-                        Collections.emptyList());
-        changeRegState(1, cellIdentity, 16, 2);
-        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
-
-        // RAT: EDGE -> GPRS, cell ID unchanged. Expect no rat ratchet following cell Id change.
-        changeRegState(1, cellIdentity, 16, 1);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_GPRS, sst.mSS.getRilDataRadioTechnology());
-
-        // RAT: GPRS -> EDGE should ratchet.
-        changeRegState(1, cellIdentity, 16, 2);
-        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_EDGE, sst.mSS.getRilDataRadioTechnology());
-    }
-
     private void sendPhyChanConfigChange(int[] bandwidths) {
         ArrayList<PhysicalChannelConfig> pc = new ArrayList<>();
         int ssType = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
