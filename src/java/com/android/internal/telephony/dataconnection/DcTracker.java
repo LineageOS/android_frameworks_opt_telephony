@@ -1867,6 +1867,9 @@ public class DcTracker extends Handler {
     }
 
     private int getPreferredApnSetId() {
+        // preferapnset uri returns all APNs for the current carrier which have an apn_set_id
+        // equal to the preferred APN (if no preferred APN, or if the preferred APN has no set id,
+        // the query will return null)
         Cursor c = mPhone.getContext().getContentResolver()
                 .query(Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI,
                     "preferapnset/subId/" + mPhone.getSubId()),
