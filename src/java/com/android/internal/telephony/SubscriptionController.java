@@ -739,10 +739,12 @@ public class SubscriptionController extends ISub.Stub {
      * @hide
      */
     public SubscriptionInfo getSubscriptionInfo(int subId) {
-        // check cache for active subscriptions first, before querying db
-        for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
-            if (subInfo.getSubscriptionId() == subId) {
-                return subInfo;
+        synchronized (mSubInfoListLock) {
+            // check cache for active subscriptions first, before querying db
+            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId) {
+                    return subInfo;
+                }
             }
         }
         // check cache for opportunistic subscriptions too, before querying db
@@ -1530,12 +1532,14 @@ public class SubscriptionController extends ISub.Stub {
         // validate the given info - does it exist in the active subscription list
         int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         int slotIndex = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-        for (SubscriptionInfo info : mCacheActiveSubInfoList) {
-            if ((info.getSubscriptionType() == subscriptionType)
-                    && info.getIccId().equalsIgnoreCase(uniqueId)) {
-                subId = info.getSubscriptionId();
-                slotIndex = info.getSimSlotIndex();
-                break;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo info : mCacheActiveSubInfoList) {
+                if ((info.getSubscriptionType() == subscriptionType)
+                        && info.getIccId().equalsIgnoreCase(uniqueId)) {
+                    subId = info.getSubscriptionId();
+                    slotIndex = info.getSimSlotIndex();
+                    break;
+                }
             }
         }
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
@@ -4116,9 +4120,11 @@ public class SubscriptionController extends ISub.Stub {
     private boolean shouldDisableSubGroup(ParcelUuid groupUuid) {
         if (groupUuid == null) return false;
 
-        for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
-            if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
-                return false;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
+                if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
+                    return false;
+                }
             }
         }
 
