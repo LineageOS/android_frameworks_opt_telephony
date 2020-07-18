@@ -134,7 +134,8 @@ public class UiccProfile extends IccCard {
 
     private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
 
-    private int mCurrentAppType = UiccController.APP_FAM_3GPP; //default to 3gpp?
+    @VisibleForTesting
+    public int mCurrentAppType = UiccController.APP_FAM_3GPP; //default to 3gpp?
     private UiccCardApplication mUiccApplication = null;
     private IccRecords mIccRecords = null;
     private IccCardConstants.State mExternalState = IccCardConstants.State.UNKNOWN;
@@ -352,7 +353,7 @@ public class UiccProfile extends IccCard {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
             } else {
                 UiccCardApplication newApp = getApplication(UiccController.APP_FAM_3GPP2);
-                if(newApp != null) {
+                if (newApp != null || getApplication(UiccController.APP_FAM_3GPP) == null) {
                     mCurrentAppType = UiccController.APP_FAM_3GPP2;
                 } else {
                     mCurrentAppType = UiccController.APP_FAM_3GPP;
