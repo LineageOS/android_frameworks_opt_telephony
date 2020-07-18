@@ -44,6 +44,7 @@ import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
+import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.ResetNvType;
 import android.hardware.radio.V1_0.SelectUiccSub;
 import android.hardware.radio.V1_0.SimApdu;
@@ -4069,7 +4070,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
             ImsSmsMessage msg = new ImsSmsMessage();
-            msg.tech = RILConstants.GSM_PHONE;
+            msg.tech = RadioTechnologyFamily.THREE_GPP;
             msg.retry = (byte) retry >= 1 ? true : false;
             msg.messageRef = messageRef;
 
@@ -4096,7 +4097,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
             ImsSmsMessage msg = new ImsSmsMessage();
-            msg.tech = RILConstants.CDMA_PHONE;
+            msg.tech = RadioTechnologyFamily.THREE_GPP2;
             msg.retry = (byte) retry >= 1 ? true : false;
             msg.messageRef = messageRef;
 
