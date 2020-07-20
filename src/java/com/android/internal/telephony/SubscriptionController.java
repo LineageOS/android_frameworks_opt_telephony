@@ -36,6 +36,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.os.RegistrantList;
@@ -2125,12 +2126,25 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Scrub given IMSI on production builds.
+     */
+    private String scrubImsi(String imsi) {
+        if (Build.IS_ENG) {
+            return imsi;
+        } else if (imsi != null) {
+            return imsi.substring(0, Math.min(6, imsi.length())) + "...";
+        } else {
+            return "null";
+        }
+    }
+
+    /**
      * Set IMSI by subscription ID
      * @param imsi IMSI (International Mobile Subscriber Identity)
      * @return the number of records updated
      */
     public int setImsi(String imsi, int subId) {
-        if (DBG) logd("[setImsi]+ imsi:" + imsi + " subId:" + subId);
+        if (DBG) logd("[setImsi]+ imsi:" + scrubImsi(imsi) + " subId:" + subId);
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.IMSI, imsi);
 
