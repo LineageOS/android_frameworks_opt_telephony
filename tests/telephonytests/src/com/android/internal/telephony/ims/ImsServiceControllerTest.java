@@ -562,6 +562,30 @@ public class ImsServiceControllerTest extends ImsTestBase {
     }
 
     /**
+     * Due to a bug in ServiceConnection, we will sometimes receive a null binding after the binding
+     * dies. Ignore null binding in this case.
+     */
+    @SmallTest
+    @Test
+    public void testAutoBindAfterBinderDiedIgnoreNullBinding() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
+        ServiceConnection conn = bindAndConnectService(testFeatures);
+
+        conn.onBindingDied(null);
+        // null binding should be ignored in this case.
+        conn.onNullBinding(null);
+
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
+        // The service should autobind after rebind event occurs
+        verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
+    }
+
+    /**
      * Ensure that bindService has only been called once before automatic rebind occurs.
      */
     @SmallTest
