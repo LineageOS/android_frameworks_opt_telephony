@@ -20,9 +20,11 @@ import static android.provider.Telephony.Carriers.CONTENT_URI;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
@@ -41,6 +43,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -69,6 +72,10 @@ public class CarrierResolver extends Handler {
 
     private static final Uri CONTENT_URL_PREFER_APN = Uri.withAppendedPath(
             Telephony.Carriers.CONTENT_URI, "preferapn");
+
+    // Test purpose only.
+    private static final String TEST_ACTION = "com.android.internal.telephony"
+            + ".ACTION_TEST_OVERRIDE_CARRIER_ID";
 
     // cached matching rules based mccmnc to speed up resolution
     private List<CarrierMatchingRule> mCarrierMatchingRulesOnMccMnc = new ArrayList<>();
@@ -112,6 +119,45 @@ public class CarrierResolver extends Handler {
         }
     };
 
+    /**
+     * A broadcast receiver used for overriding carrier id for testing. There are five parameters,
+     * only override_carrier_id is required, the others are options.
+     *
+     * To override carrier id by adb command, e.g.:
+     * adb shell am broadcast -a com.android.internal.telephony.ACTION_TEST_OVERRIDE_CARRIER_ID \
+     * --ei override_carrier_id 1
+     * --ei override_specific_carrier_id 1
+     * --ei override_mno_carrier_id 1
+     * --es override_carrier_name test
+     * --es override_specific_carrier_name test
+     *
+     */
+    private final BroadcastReceiver mCarrierIdTestReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int carrierId = intent.getIntExtra("override_carrier_id",
+                    TelephonyManager.UNKNOWN_CARRIER_ID);
+            int specificCarrierId = intent.getIntExtra("override_specific_carrier_id", carrierId);
+            int mnoCarrierId = intent.getIntExtra("override_mno_carrier_id", carrierId);
+            String carrierName = intent.getStringExtra("override_carrier_name");
+            String specificCarrierName = intent.getStringExtra("override_specific_carrier_name");
+
+            if (carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
+                logd("Override carrier id to: " + carrierId);
+                logd("Override specific carrier id to: " + specificCarrierId);
+                logd("Override mno carrier id to: " + mnoCarrierId);
+                logd("Override carrier name to: " + carrierName);
+                logd("Override specific carrier name to: " + specificCarrierName);
+                updateCarrierIdAndName(
+                    carrierId, carrierName != null ? carrierName : "",
+                    specificCarrierId, specificCarrierName != null ? carrierName : "",
+                    mnoCarrierId);
+            } else {
+                logd("Override carrier id can't be -1.");
+            }
+        }
+    };
+
     public CarrierResolver(Phone phone) {
         logd("Creating CarrierResolver[" + phone.getPhoneId() + "]");
         mContext = phone.getContext();
@@ -124,6 +170,12 @@ public class CarrierResolver extends Handler {
         mContext.getContentResolver().registerContentObserver(
                 CarrierId.All.CONTENT_URI, false, mContentObserver);
         UiccController.getInstance().registerForIccChanged(this, ICC_CHANGED_EVENT, null);
+
+        if (TelephonyUtils.IS_DEBUGGABLE) {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(TEST_ACTION);
+            mContext.registerReceiver(mCarrierIdTestReceiver, filter);
+        }
     }
 
     /**
