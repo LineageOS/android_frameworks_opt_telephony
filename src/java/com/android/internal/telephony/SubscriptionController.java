@@ -747,11 +747,12 @@ public class SubscriptionController extends ISub.Stub {
                     return subInfo;
                 }
             }
-        }
-        // check cache for opportunistic subscriptions too, before querying db
-        for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
-            if (subInfo.getSubscriptionId() == subId) {
-                return subInfo;
+
+            // check cache for opportunistic subscriptions too, before querying db
+            for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId) {
+                    return subInfo;
+                }
             }
         }
 
@@ -2770,11 +2771,13 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubscriptionVisible(int subId) {
-        for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
-            if (info.getSubscriptionId() == subId) {
-                // If group UUID is null, it's stand alone opportunistic profile. So it's visible.
-                // otherwise, it's bundled opportunistic profile, and is not visible.
-                return info.getGroupUuid() == null;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
+                if (info.getSubscriptionId() == subId) {
+                    // If group UUID is null, it's stand alone opportunistic profile. So it's
+                    // visible. Otherwise, it's bundled opportunistic profile, and is not visible.
+                    return info.getGroupUuid() == null;
+                }
             }
         }
 
