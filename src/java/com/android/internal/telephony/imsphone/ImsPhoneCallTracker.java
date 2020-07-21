@@ -2775,6 +2775,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     removeConnection(mPendingMO);
                     mPendingMO.finalize();
                     mPendingMO = null;
+                    updatePhoneState();
                     mPhone.initiateSilentRedial();
                     return;
                 } else {
