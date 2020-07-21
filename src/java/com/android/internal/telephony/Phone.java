@@ -2503,9 +2503,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /** Send notification with an updated PreciseDataConnectionState to all data connections */
     public void notifyAllActiveDataConnections() {
-        String types[] = getActiveApnTypes();
-        for (String apnType : types) {
-            mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
+        if (mTransportManager != null) {
+            for (int transportType : mTransportManager.getAvailableTransports()) {
+                DcTracker dct = getDcTracker(transportType);
+                if (dct != null) {
+                    for (String apnType : dct.getConnectedApnTypes()) {
+                        mNotifier.notifyDataConnection(
+                                this, apnType, getPreciseDataConnectionState(apnType));
+                    }
+                }
+            }
         }
     }
 
