@@ -59,7 +59,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -80,7 +79,9 @@ public class EmergencyNumberTracker extends Handler {
     private static final String EMERGENCY_NUMBER_DB_OTA_FILE_NAME = "emergency_number_db";
     private static final String EMERGENCY_NUMBER_DB_OTA_FILE_PATH =
             "misc/emergencynumberdb/" + EMERGENCY_NUMBER_DB_OTA_FILE_NAME;
-    private FileInputStream mEmergencyNumberDbOtaFileInputStream = null;
+
+    /** Used for storing overrided (non-default) OTA database file path */
+    private ParcelFileDescriptor mOverridedOtaDbParcelFileDescriptor = null;
 
     /** @hide */
     public static boolean DBG = false;
@@ -169,13 +170,6 @@ public class EmergencyNumberTracker extends Handler {
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
-
-        try {
-            mEmergencyNumberDbOtaFileInputStream = new FileInputStream(
-                    new File(Environment.getDataDirectory(), EMERGENCY_NUMBER_DB_OTA_FILE_PATH));
-        } catch (FileNotFoundException ex) {
-            loge("Initialize ota emergency database file input failure: " + ex);
-        }
 
         if (mPhone != null) {
             CarrierConfigManager configMgr = (CarrierConfigManager)
@@ -488,6 +482,7 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     private int cacheOtaEmergencyNumberDatabase() {
+        FileInputStream fileInputStream = null;
         BufferedInputStream inputStream = null;
         ProtobufEccData.AllInfo allEccMessages = null;
         int otaDatabaseVersion = INVALID_DATABASE_VERSION;
@@ -496,11 +491,16 @@ public class EmergencyNumberTracker extends Handler {
         List<EmergencyNumber> updatedOtaEmergencyNumberList = new ArrayList<>();
         try {
             // If OTA File partition is not available, try to reload the default one.
-            if (mEmergencyNumberDbOtaFileInputStream == null) {
-                mEmergencyNumberDbOtaFileInputStream = new FileInputStream(
-                      new File(Environment.getDataDirectory(), EMERGENCY_NUMBER_DB_OTA_FILE_PATH));
+            if (mOverridedOtaDbParcelFileDescriptor == null) {
+                fileInputStream = new FileInputStream(
+                        new File(Environment.getDataDirectory(),
+                                EMERGENCY_NUMBER_DB_OTA_FILE_PATH));
+            } else {
+                File file = ParcelFileDescriptor
+                        .getFile(mOverridedOtaDbParcelFileDescriptor.getFileDescriptor());
+                fileInputStream = new FileInputStream(new File(file.getAbsolutePath()));
             }
-            inputStream = new BufferedInputStream(mEmergencyNumberDbOtaFileInputStream);
+            inputStream = new BufferedInputStream(fileInputStream);
             allEccMessages = ProtobufEccData.AllInfo.parseFrom(readInputStreamToByteArray(
                     new GZIPInputStream(inputStream)));
             logd(mCountryIso + " ota emergency database is loaded. Ver: " + otaDatabaseVersion);
@@ -517,10 +517,18 @@ public class EmergencyNumberTracker extends Handler {
         } catch (IOException ex) {
             loge("Cache ota emergency database IOException: " + ex);
         } finally {
-            // close quietly by catching non-runtime exceptions.
+            // Close quietly by catching non-runtime exceptions.
             if (inputStream != null) {
                 try {
                     inputStream.close();
+                } catch (RuntimeException rethrown) {
+                    throw rethrown;
+                } catch (Exception ignored) {
+                }
+            }
+            if (fileInputStream != null) {
+                try {
+                    fileInputStream.close();
                 } catch (RuntimeException rethrown) {
                     throw rethrown;
                 } catch (Exception ignored) {
@@ -606,17 +614,7 @@ public class EmergencyNumberTracker extends Handler {
     private void overrideOtaEmergencyNumberDbFilePath(
             ParcelFileDescriptor otaParcelableFileDescriptor) {
         logd("overrideOtaEmergencyNumberDbFilePath:" + otaParcelableFileDescriptor);
-        try {
-            if (otaParcelableFileDescriptor == null) {
-                mEmergencyNumberDbOtaFileInputStream = new FileInputStream(
-                    new File(Environment.getDataDirectory(), EMERGENCY_NUMBER_DB_OTA_FILE_PATH));
-            } else {
-                mEmergencyNumberDbOtaFileInputStream = new FileInputStream(
-                    otaParcelableFileDescriptor.getFileDescriptor());
-            }
-        } catch (FileNotFoundException ex) {
-            loge("Override ota emergency database failure: " + ex);
-        }
+        mOverridedOtaDbParcelFileDescriptor = otaParcelableFileDescriptor;
     }
 
     private void updateOtaEmergencyNumberListDatabaseAndNotify() {
