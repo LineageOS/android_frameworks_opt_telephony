@@ -1575,7 +1575,7 @@ public class DataConnection extends StateMachine {
                 }
 
                 for (InetAddress gateway : response.getGatewayAddresses()) {
-                    int mtu = gateway instanceof java.net.Inet6Address ? response.getMtuV6() 
+                    int mtu = gateway instanceof java.net.Inet6Address ? response.getMtuV6()
                             : response.getMtuV4();
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
@@ -1877,10 +1877,8 @@ public class DataConnection extends StateMachine {
                             DataConnection.this, mTransportType);
                     NetworkInfo networkInfo = mHandoverSourceNetworkAgent.getNetworkInfo();
                     if (networkInfo != null) {
-                        networkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
-                                "dangling clean up", networkInfo.getExtraInfo());
-                        mHandoverSourceNetworkAgent.sendNetworkInfo(networkInfo,
-                                DataConnection.this);
+                        log("Cleared dangling network agent. " + mHandoverSourceNetworkAgent);
+                        mHandoverSourceNetworkAgent.unregister(DataConnection.this);
                     } else {
                         String str = "Failed to get network info.";
                         loge(str);
