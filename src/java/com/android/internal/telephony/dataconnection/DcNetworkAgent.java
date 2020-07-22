@@ -32,6 +32,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.AnomalyReporter;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
@@ -45,8 +46,8 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -76,10 +77,8 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private NetworkInfo mNetworkInfo;
 
-    // For debugging IMS redundant network agent issue.
-    private static List<DcNetworkAgent> sNetworkAgents = new ArrayList<>();
-
-    private static int sRedundantTimes = 0;
+    // For debugging duplicate interface issue. Remove before R released.
+    private static Set<String> sInterfaceNames = new HashSet<>();
 
     DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
             NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
@@ -94,29 +93,26 @@ public class DcNetworkAgent extends NetworkAgent {
         mDataConnection = dc;
         mNetworkInfo = new NetworkInfo(ni);
         setLegacyExtraInfo(ni.getExtraInfo());
-        // TODO: Remove after b/151487565 is fixed.
-        sNetworkAgents.add(this);
-        checkRedundantIms();
+        // TODO: Remove before R is released.
+        if (dc.getLinkProperties() != null
+                && !TextUtils.isEmpty(dc.getLinkProperties().getInterfaceName())) {
+            checkDuplicateInterface(dc.getLinkProperties().getInterfaceName());
+        }
         logd(mTag + " created for data connection " + dc.getName());
     }
 
-    // This is a temp code to catch the multiple IMS network agents issue.
-    // TODO: Remove after b/151487565 is fixed.
-    private void checkRedundantIms() {
-        if (sNetworkAgents.stream()
-                .filter(n -> n.mNetworkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_IMS))
-                .count() > 1) {
-            sRedundantTimes++;
-            if (sRedundantTimes == 5) { // When it occurs 5 times.
-                String message = "Multiple IMS network agents detected.";
-                log(message);
-                // Using fixed UUID to avoid duplicate bugreport notification
-                AnomalyReporter.reportAnomaly(
-                        UUID.fromString("a5cf4881-75ae-4129-a25d-71bc4293f493"),
-                        message);
-            }
+    // This is a temp code to catch the duplicate network interface issue.
+    // TODO: Remove before R is released.
+    private void checkDuplicateInterface(String interfaceName) {
+        if (sInterfaceNames.contains(interfaceName)) {
+            String message = "Duplicate interface " + interfaceName + " is detected.";
+            log(message);
+            // Using fixed UUID to avoid duplicate bugreport notification
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("02f3d3f6-4613-4415-b6cb-8d92c8a938a6"),
+                    message);
         }
+        sInterfaceNames.add(interfaceName);
     }
 
     /**
@@ -292,8 +288,11 @@ public class DcNetworkAgent extends NetworkAgent {
         }
         if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
                 && state == NetworkInfo.State.DISCONNECTED) {
+            if (dc.getLinkProperties() != null
+                    && !TextUtils.isEmpty(dc.getLinkProperties().getInterfaceName())) {
+                sInterfaceNames.remove(dc.getLinkProperties().getInterfaceName());
+            }
             logd("Unregister from connectivity service");
-            sNetworkAgents.remove(this);
             unregister();
         }
         mNetworkInfo = new NetworkInfo(networkInfo);
