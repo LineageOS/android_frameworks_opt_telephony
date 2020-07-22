@@ -405,6 +405,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private final RegistrantList mOtaspRegistrants = new RegistrantList();
 
+    private final RegistrantList mPreferredNetworkTypeRegistrants = new RegistrantList();
+
     protected Registrant mPostDialHandler;
 
     protected final LocalLog mLocalLog;
@@ -2249,6 +2251,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 + " filteredType = " + filteredType);
 
         mCi.setPreferredNetworkType(filteredType, response);
+        mPreferredNetworkTypeRegistrants.notifyRegistrants();
     }
 
     /**
@@ -2258,6 +2261,27 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void getPreferredNetworkType(Message response) {
         mCi.getPreferredNetworkType(response);
+    }
+
+    /**
+     * Register for preferred network type changes
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForPreferredNetworkTypeChanged(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        mPreferredNetworkTypeRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregister for preferred network type changes.
+     *
+     * @param h Handler that should be unregistered.
+     */
+    public void unregisterForPreferredNetworkTypeChanged(Handler h) {
+        mPreferredNetworkTypeRegistrants.remove(h);
     }
 
     /**
