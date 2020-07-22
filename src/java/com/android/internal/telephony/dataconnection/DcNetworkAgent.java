@@ -93,6 +93,7 @@ public class DcNetworkAgent extends NetworkAgent {
         mTransportType = transportType;
         mDataConnection = dc;
         mNetworkInfo = new NetworkInfo(ni);
+        setLegacySubtype(ni.getSubtype(), ni.getSubtypeName());
         setLegacyExtraInfo(ni.getExtraInfo());
         // TODO: Remove after b/151487565 is fixed.
         sNetworkAgents.add(this);
