@@ -577,16 +577,18 @@ public class SubscriptionController extends ISub.Stub {
      * @hide
      */
     public SubscriptionInfo getSubscriptionInfo(int subId) {
-        // check cache for active subscriptions first, before querying db
-        for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
-            if (subInfo.getSubscriptionId() == subId) {
-                return subInfo;
+        synchronized (mSubInfoListLock) {
+            // check cache for active subscriptions first, before querying db
+            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId) {
+                    return subInfo;
+                }
             }
-        }
-        // check cache for opportunistic subscriptions too, before querying db
-        for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
-            if (subInfo.getSubscriptionId() == subId) {
-                return subInfo;
+            // check cache for opportunistic subscriptions too, before querying db
+            for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId) {
+                    return subInfo;
+                }
             }
         }
 
@@ -1364,12 +1366,14 @@ public class SubscriptionController extends ISub.Stub {
         // validate the given info - does it exist in the active subscription list
         int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         int slotIndex = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-        for (SubscriptionInfo info : mCacheActiveSubInfoList) {
-            if ((info.getSubscriptionType() == subscriptionType)
-                    && info.getIccId().equalsIgnoreCase(uniqueId)) {
-                subId = info.getSubscriptionId();
-                slotIndex = info.getSimSlotIndex();
-                break;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo info : mCacheActiveSubInfoList) {
+                if ((info.getSubscriptionType() == subscriptionType)
+                        && info.getIccId().equalsIgnoreCase(uniqueId)) {
+                    subId = info.getSubscriptionId();
+                    slotIndex = info.getSimSlotIndex();
+                    break;
+                }
             }
         }
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
@@ -2608,11 +2612,13 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubscriptionVisible(int subId) {
-        for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
-            if (info.getSubscriptionId() == subId) {
-                // If group UUID is null, it's stand alone opportunistic profile. So it's visible.
-                // otherwise, it's bundled opportunistic profile, and is not visible.
-                return info.getGroupUuid() == null;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
+                if (info.getSubscriptionId() == subId) {
+                    // If group UUID is null, it's stand alone opportunistic profile. So it's
+                    // visible. Otherwise, it's bundled opportunistic profile, and is not visible.
+                    return info.getGroupUuid() == null;
+                }
             }
         }
 
@@ -3898,9 +3904,11 @@ public class SubscriptionController extends ISub.Stub {
     private boolean shouldDisableSubGroup(ParcelUuid groupUuid) {
         if (groupUuid == null) return false;
 
-        for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
-            if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
-                return false;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
+                if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
+                    return false;
+                }
             }
         }
 
