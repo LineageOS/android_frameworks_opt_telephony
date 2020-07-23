@@ -2816,6 +2816,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
                 mMetrics.writeOnImsCallStartFailed(mPhone.getPhoneId(), imsCall.getCallSession(),
                         reasonInfo);
+            } else if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
+                    && mForegroundCall.getState() == ImsPhoneCall.State.ALERTING) {
+                if (DBG) log("onCallStartFailed: Initiated call by silent redial"
+                        + " under ALERTING state.");
+                ImsPhoneConnection conn = findConnection(imsCall);
+                if (conn != null) {
+                    mForegroundCall.detach(conn);
+                    removeConnection(conn);
+                }
+                updatePhoneState();
+                mPhone.initiateSilentRedial();
             }
         }
 
