@@ -4045,14 +4045,7 @@ public class DcTracker extends Handler {
     private void reevaluateUnmeteredConnections() {
         log("reevaluateUnmeteredConnections");
         int rat = mPhone.getDisplayInfoController().getTelephonyDisplayInfo().getNetworkType();
-        int override = mPhone.getDisplayInfoController().getTelephonyDisplayInfo()
-                .getOverrideNetworkType();
-        boolean nrPlanUnmetered = isNetworkTypeUnmetered(NETWORK_TYPE_NR) && (rat == NETWORK_TYPE_NR
-                || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
-                || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE);
-        if ((nrPlanUnmetered || isNrNsaFrequencyRangeUnmetered() || isNrSaFrequencyRangeUnmetered())
-                && !mPhone.getServiceState().getRoaming() || mRoamingUnmetered) {
-            if (DBG) log("NR is unmetered");
+        if (isNrUnmetered() && !mPhone.getServiceState().getRoaming() || mRoamingUnmetered) {
             setDataConnectionUnmetered(true);
             if (!mWatchdog) {
                 startWatchdogAlarm();
@@ -4106,34 +4099,67 @@ public class DcTracker extends Handler {
                 || plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED);
     }
 
-    private boolean isNrNsaFrequencyRangeUnmetered() {
+    private boolean isNrUnmetered() {
+        int rat = mPhone.getDisplayInfoController().getTelephonyDisplayInfo().getNetworkType();
         int override = mPhone.getDisplayInfoController().getTelephonyDisplayInfo()
                 .getOverrideNetworkType();
-        if (mNrNsaMmwaveUnmetered || mNrNsaSub6Unmetered) {
-            return (mNrNsaMmwaveUnmetered
-                    && override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE)
-                    || (mNrNsaSub6Unmetered
-                    && override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA);
-        } else {
-            return mNrNsaAllUnmetered
-                    && (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
-                    || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA);
-        }
-    }
 
-    private boolean isNrSaFrequencyRangeUnmetered() {
-        if (ServiceState.rilRadioTechnologyToNetworkType(getDataRat()) != NETWORK_TYPE_NR) {
+        if (isNetworkTypeUnmetered(NETWORK_TYPE_NR)) {
+            if (mNrNsaMmwaveUnmetered) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
+                    if (DBG) log("NR unmetered for mmwave only via SubscriptionPlans");
+                    return true;
+                }
+                return false;
+            } else if (mNrNsaSub6Unmetered) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA) {
+                    if (DBG) log("NR unmetered for sub6 only via SubscriptionPlans");
+                    return true;
+                }
+                return false;
+            }
+            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
+                    || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
+                    || rat == NETWORK_TYPE_NR) {
+                if (DBG) log("NR unmetered for all frequencies via SubscriptionPlans");
+                return true;
+            }
             return false;
         }
-        if (mNrSaMmwaveUnmetered || mNrSaSub6Unmetered) {
-            int frequencyRange = mPhone.getServiceState().getNrFrequencyRange();
-            boolean mmwave = frequencyRange == ServiceState.FREQUENCY_RANGE_MMWAVE;
-            // frequency range LOW, MID, or HIGH
-            boolean sub6 = frequencyRange != ServiceState.FREQUENCY_RANGE_UNKNOWN && !mmwave;
-            return mNrSaMmwaveUnmetered && mmwave || mNrSaSub6Unmetered && sub6;
-        } else {
-            return mNrSaAllUnmetered;
+
+        if (mNrNsaAllUnmetered) {
+            if (mNrNsaMmwaveUnmetered) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
+                    if (DBG) log("NR NSA unmetered for mmwave only via carrier configs");
+                    return true;
+                }
+                return false;
+            } else if (mNrNsaSub6Unmetered) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA) {
+                    if (DBG) log("NR NSA unmetered for sub6 only via carrier configs");
+                    return true;
+                }
+                return false;
+            }
+            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
+                    || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA) {
+                if (DBG) log("NR NSA unmetered for all frequencies via carrier configs");
+                return true;
+            }
+            return false;
         }
+
+        if (mNrSaAllUnmetered) {
+            // TODO: add logic for mNrSaMmwaveUnmetered and mNrSaSub6Unmetered once it's defined
+            // in TelephonyDisplayInfo
+            if (rat == NETWORK_TYPE_NR) {
+                if (DBG) log("NR SA unmetered for all frequencies via carrier configs");
+                return true;
+            }
+            return false;
+        }
+
+        return false;
     }
 
     protected void log(String s) {
