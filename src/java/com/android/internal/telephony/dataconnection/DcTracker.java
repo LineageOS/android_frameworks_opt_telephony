@@ -1366,7 +1366,16 @@ public class DcTracker extends Handler {
 
         // Step 3. Build disallowed reasons.
         if (apnContext != null && !apnContext.isConnectable()) {
-            reasons.add(DataDisallowedReasonType.APN_NOT_CONNECTABLE);
+            DctConstants.State state = apnContext.getState();
+            if (state == DctConstants.State.CONNECTED) {
+                reasons.add(DataDisallowedReasonType.DATA_ALREADY_CONNECTED);
+            } else if (state == DctConstants.State.DISCONNECTING) {
+                reasons.add(DataDisallowedReasonType.DATA_IS_DISCONNECTING);
+            } else if (state == DctConstants.State.CONNECTING) {
+                reasons.add(DataDisallowedReasonType.DATA_IS_CONNECTING);
+            } else {
+                reasons.add(DataDisallowedReasonType.APN_NOT_CONNECTABLE);
+            }
         }
 
         // In legacy mode, if RAT is IWLAN then don't allow default/IA PDP at all.
