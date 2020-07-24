@@ -68,6 +68,7 @@ public final class NetworkScanRequestTracker {
     private static final int CMD_INTERRUPT_NETWORK_SCAN = 6;
     private static final int EVENT_INTERRUPT_NETWORK_SCAN_DONE = 7;
     private static final int EVENT_MODEM_RESET = 8;
+    private static final int EVENT_RADIO_UNAVAILABLE = 9;
 
     private final Handler mHandler = new Handler() {
         @Override
@@ -102,6 +103,8 @@ public final class NetworkScanRequestTracker {
                     mScheduler.interruptScanDone((AsyncResult) msg.obj);
                     break;
 
+                case EVENT_RADIO_UNAVAILABLE:
+                    // Fallthrough
                 case EVENT_MODEM_RESET:
                     AsyncResult ar = (AsyncResult) msg.obj;
                     mScheduler.deleteScanAndMayNotify(
@@ -570,6 +573,7 @@ public final class NetworkScanRequestTracker {
                 nsri.mPhone.startNetworkScan(nsri.getRequest(),
                         mHandler.obtainMessage(EVENT_START_NETWORK_SCAN_DONE, nsri));
                 nsri.mPhone.mCi.registerForModemReset(mHandler, EVENT_MODEM_RESET, nsri);
+                nsri.mPhone.mCi.registerForNotAvailable(mHandler, EVENT_RADIO_UNAVAILABLE, nsri);
                 return true;
             }
             return false;
@@ -590,6 +594,7 @@ public final class NetworkScanRequestTracker {
                     }
                 }
                 mLiveRequestInfo.mPhone.mCi.unregisterForModemReset(mHandler);
+                mLiveRequestInfo.mPhone.mCi.unregisterForNotAvailable(mHandler);
                 mLiveRequestInfo = null;
                 if (mPendingRequestInfo != null) {
                     startNewScan(mPendingRequestInfo);
