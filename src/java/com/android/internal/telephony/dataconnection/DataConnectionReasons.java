@@ -113,7 +113,12 @@ public class DataConnectionReasons {
         UNDESIRED_POWER_STATE(true),
         INTERNAL_DATA_DISABLED(true),
         RADIO_DISABLED_BY_CARRIER(true),
-        APN_NOT_CONNECTABLE(true),
+        APN_NOT_CONNECTABLE(true),  // Not in the right state for data call setup.
+        DATA_IS_CONNECTING(true),   // Data is in connecting state. No need to send another setup
+                                    // request.
+        DATA_IS_DISCONNECTING(true),    // Data is being disconnected. Telephony will retry after
+                                        // disconnected.
+        DATA_ALREADY_CONNECTED(true),   // Data is already connected. No need to setup data again.
         ON_IWLAN(true),
         IN_ECBM(true),
         ON_OTHER_TRANSPORT(true);   // When data retry occurs, the given APN type's preferred
