@@ -18,6 +18,7 @@ package com.android.internal.telephony.metrics;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 
+import static com.android.internal.telephony.InboundSmsHandler.SOURCE_NOT_INJECTED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
@@ -72,6 +73,7 @@ import android.util.SparseArray;
 import com.android.internal.telephony.CarrierResolver;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.GsmCdmaConnection;
+import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
@@ -2407,18 +2409,18 @@ public class TelephonyMetrics {
      *
      * @param phoneId Phone id
      * @param type Type of the SMS.
-     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param smsSource the source of the SMS message
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
      * @param messageId Unique id for this message.
      */
-    private void writeIncomingSmsSessionWithType(int phoneId, int type, boolean smsOverIms,
-            String format, long[] timestamps, boolean blocked, boolean success,
-            long messageId) {
+    private void writeIncomingSmsSessionWithType(int phoneId, int type,
+            @InboundSmsHandler.SmsSource int smsSource, String format, long[] timestamps,
+            boolean blocked, boolean success, long messageId) {
         logv("Logged SMS session consisting of " + timestamps.length
-                + " parts, over IMS = " + smsOverIms
+                + " parts, source = " + smsSource
                 + " blocked = " + blocked
                 + " type = " + type
                 + " messageId = " + messageId);
@@ -2428,8 +2430,9 @@ public class TelephonyMetrics {
             SmsSessionEventBuilder eventBuilder =
                     new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
                         .setFormat(convertSmsFormat(format))
-                        .setTech(smsOverIms ? SmsSession.Event.Tech.SMS_IMS :
-                            SmsSession.Event.Tech.SMS_GSM)
+                        .setTech(smsSource != SOURCE_NOT_INJECTED
+                            ? SmsSession.Event.Tech.SMS_IMS
+                            : SmsSession.Event.Tech.SMS_GSM)
                         .setErrorCode(success ? SmsManager.RESULT_ERROR_NONE :
                             SmsManager.RESULT_ERROR_GENERIC_FAILURE)
                         .setSmsType(type)
@@ -2444,42 +2447,43 @@ public class TelephonyMetrics {
      * Write an incoming WAP-PUSH message.
      *
      * @param phoneId Phone id
-     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param smsSource the source of the SMS message
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
      * @param messageId Unique id for this message.
      */
-    public void writeIncomingWapPush(int phoneId, boolean smsOverIms, String format,
-            long[] timestamps, boolean success, long messageId) {
+    public void writeIncomingWapPush(int phoneId, @InboundSmsHandler.SmsSource int smsSource,
+            String format, long[] timestamps, boolean success, long messageId) {
         writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_WAP_PUSH,
-                smsOverIms, format, timestamps, false, success, messageId);
+                smsSource, format, timestamps, false, success, messageId);
     }
 
     /**
      * Write a successful incoming SMS session
      *
      * @param phoneId Phone id
-     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param smsSource the source of the SMS message
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
      * @param messageId Unique id for this message.
      */
-    public void writeIncomingSmsSession(int phoneId, boolean smsOverIms, String format,
-            long[] timestamps, boolean blocked, long messageId) {
+    public void writeIncomingSmsSession(int phoneId, @InboundSmsHandler.SmsSource int smsSource,
+            String format, long[] timestamps, boolean blocked, long messageId) {
         writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_NORMAL,
-                smsOverIms, format, timestamps, blocked, true, messageId);
+                smsSource, format, timestamps, blocked, true, messageId);
     }
 
     /**
      * Write an error incoming SMS
      *
      * @param phoneId Phone id
-     * @param smsOverIms true if the SMS was received over SMS, false otherwise
+     * @param smsSource the source of the SMS message
      * @param result Indicates the reason of the failure.
      */
-    public void writeIncomingSmsError(int phoneId, boolean smsOverIms, int result) {
+    public void writeIncomingSmsError(int phoneId, @InboundSmsHandler.SmsSource int smsSource,
+            int result) {
         logv("Incoming SMS error = " + result);
 
         int smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
@@ -2504,8 +2508,9 @@ public class TelephonyMetrics {
         SmsSessionEventBuilder eventBuilder =
                 new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
                     .setErrorCode(smsError)
-                    .setTech(smsOverIms ? SmsSession.Event.Tech.SMS_IMS :
-                        SmsSession.Event.Tech.SMS_GSM);
+                    .setTech(smsSource != SOURCE_NOT_INJECTED
+                        ? SmsSession.Event.Tech.SMS_IMS
+                        : SmsSession.Event.Tech.SMS_GSM);
         smsSession.addEvent(eventBuilder);
         finishSmsSession(smsSession);
     }

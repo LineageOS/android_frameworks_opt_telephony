@@ -188,10 +188,11 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * Process Cell Broadcast, Voicemail Notification, and other 3GPP/3GPP2-specific messages.
      *
      * @param smsb the SmsMessageBase object from the RIL
+     * @param smsSource the source of the SMS message
      * @return true if the message was handled here; false to continue processing
      */
     @Override
-    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb) {
+    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource) {
         SmsMessage sms = (SmsMessage) smsb;
         boolean isBroadcastType = (SmsEnvelope.MESSAGE_TYPE_BROADCAST == sms.getMessageType());
 
@@ -217,7 +218,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             case SmsEnvelope.TELESERVICE_VMN:
             case SmsEnvelope.TELESERVICE_MWI:
                 // handle voicemail indication
-                handleVoicemailTeleservice(sms);
+                handleVoicemailTeleservice(sms, smsSource);
                 return Intents.RESULT_SMS_HANDLED;
 
             case SmsEnvelope.TELESERVICE_WMT:
@@ -258,10 +259,10 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         if (SmsEnvelope.TELESERVICE_WAP == teleService) {
             return processCdmaWapPdu(sms.getUserData(), sms.mMessageRef,
                     sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
-                    sms.getTimestampMillis());
+                    sms.getTimestampMillis(), smsSource);
         }
 
-        return dispatchNormalMessage(smsb);
+        return dispatchNormalMessage(smsb, smsSource);
     }
 
     /**
@@ -309,7 +310,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      *
      * @param sms the message to process
      */
-    private void handleVoicemailTeleservice(SmsMessage sms) {
+    private void handleVoicemailTeleservice(SmsMessage sms, @SmsSource int smsSource) {
         int voicemailCount = sms.getNumOfVoicemails();
         if (DBG) log("Voicemail count=" + voicemailCount);
 
@@ -324,7 +325,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         // update voice mail count in phone
         mPhone.setVoiceMessageCount(voicemailCount);
         // update metrics
-        addVoicemailSmsToMetrics();
+        addVoicemailSmsToMetrics(smsSource);
     }
 
     /**
@@ -338,7 +339,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * to applications
      */
     private int processCdmaWapPdu(byte[] pdu, int referenceNumber, String address, String dispAddr,
-            long timestamp) {
+            long timestamp, @SmsSource int smsSource) {
         int index = 0;
 
         int msgType = (0xFF & pdu[index++]);
@@ -386,7 +387,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
                         referenceNumber,
                         segment, totalSegments, true, HexDump.toHexString(userData),
                         false /* isClass0 */,
-                        mPhone.getSubId());
+                        mPhone.getSubId(),
+                        smsSource);
 
         // de-duping is done only for text messages
         return addTrackerToRawTableAndSendMessage(tracker, false /* don't de-dup */);
@@ -431,9 +433,10 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     /**
      * Add voicemail indication SMS 0 to metrics.
      */
-    private void addVoicemailSmsToMetrics() {
+    private void addVoicemailSmsToMetrics(@SmsSource int smsSource) {
         mMetrics.writeIncomingVoiceMailSms(mPhone.getPhoneId(),
                 android.telephony.SmsMessage.FORMAT_3GPP2);
+        mPhone.getSmsStats().onIncomingSmsVoicemail(true /* is3gpp2 */, smsSource);
     }
 
     /**
