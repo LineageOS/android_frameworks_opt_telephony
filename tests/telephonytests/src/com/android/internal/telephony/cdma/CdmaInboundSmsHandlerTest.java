@@ -130,18 +130,20 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
                 "1234567890", /* displayAddress */
                 "This is the message body of a single-part message" /* messageBody */,
                 false, /* isClass0 */
-                mSubId0);
+                mSubId0,
+                InboundSmsHandler.SOURCE_NOT_INJECTED);
 
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(Context.class), nullable(byte[].class), anyLong(),
                 anyInt(), anyBoolean(),
                 anyBoolean(), nullable(String.class), nullable(String.class),
-                nullable(String.class), anyBoolean(), anyInt());
+                nullable(String.class), anyBoolean(), anyInt(), anyInt());
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(Context.class), nullable(byte[].class), anyLong(),
                 anyInt(), anyBoolean(),
                 nullable(String.class), nullable(String.class), anyInt(), anyInt(),
-                anyInt(), anyBoolean(), nullable(String.class), anyBoolean(), anyInt());
+                anyInt(), anyBoolean(), nullable(String.class), anyBoolean(), anyInt(),
+                anyInt());
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(Context.class), nullable(Cursor.class), anyBoolean());
 
@@ -234,12 +236,13 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
                 blockedNumber, /* displayAddress */
                 "This is the message body of a single-part message" /* messageBody */,
                 false, /* isClass0 */
-                mSubId0);
+                mSubId0,
+                InboundSmsHandler.SOURCE_NOT_INJECTED);
         doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
                 .makeInboundSmsTracker(any(Context.class), nullable(byte[].class), anyLong(),
                 anyInt(), anyBoolean(),
                 anyBoolean(), nullable(String.class), nullable(String.class),
-                nullable(String.class), anyBoolean(), anyInt());
+                nullable(String.class), anyBoolean(), anyInt(), anyInt());
         mFakeBlockedNumberContentProvider.mBlockedNumbers.add(blockedNumber);
 
         transitionFromStartupToIdle();

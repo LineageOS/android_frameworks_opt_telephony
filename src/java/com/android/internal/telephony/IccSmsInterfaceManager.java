@@ -627,7 +627,7 @@ public class IccSmsInterfaceManager {
                 "\n format=" + format +
                 "\n receivedIntent=" + receivedIntent);
         }
-        mDispatchersController.injectSmsPdu(pdu, format,
+        mDispatchersController.injectSmsPdu(pdu, format, false /* isOverIms */,
                 result -> {
                     if (receivedIntent != null) {
                         try {

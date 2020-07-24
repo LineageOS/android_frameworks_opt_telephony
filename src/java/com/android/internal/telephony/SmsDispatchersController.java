@@ -385,12 +385,13 @@ public class SmsDispatchersController extends Handler {
      *                 the same time an SMS received from radio is responded back.
      */
     @VisibleForTesting
-    public void injectSmsPdu(byte[] pdu, String format, SmsInjectionCallback callback) {
+    public void injectSmsPdu(byte[] pdu, String format, boolean isOverIms,
+            SmsInjectionCallback callback) {
         // TODO We need to decide whether we should allow injecting GSM(3gpp)
         // SMS pdus when the phone is camping on CDMA(3gpp2) network and vice versa.
         android.telephony.SmsMessage msg =
                 android.telephony.SmsMessage.createFromPdu(pdu, format);
-        injectSmsPdu(msg, format, callback, false /* ignoreClass */);
+        injectSmsPdu(msg, format, callback, false /* ignoreClass */, isOverIms);
     }
 
     /**
@@ -405,7 +406,7 @@ public class SmsDispatchersController extends Handler {
      */
     @VisibleForTesting
     public void injectSmsPdu(SmsMessage msg, String format, SmsInjectionCallback callback,
-            boolean ignoreClass) {
+            boolean ignoreClass, boolean isOverIms) {
         Rlog.d(TAG, "SmsDispatchersController:injectSmsPdu");
         try {
             if (msg == null) {
@@ -426,11 +427,13 @@ public class SmsDispatchersController extends Handler {
             if (format.equals(SmsConstants.FORMAT_3GPP)) {
                 Rlog.i(TAG, "SmsDispatchersController:injectSmsText Sending msg=" + msg
                         + ", format=" + format + "to mGsmInboundSmsHandler");
-                mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, ar);
+                mGsmInboundSmsHandler.sendMessage(
+                        InboundSmsHandler.EVENT_INJECT_SMS, isOverIms ? 1 : 0, 0, ar);
             } else if (format.equals(SmsConstants.FORMAT_3GPP2)) {
                 Rlog.i(TAG, "SmsDispatchersController:injectSmsText Sending msg=" + msg
                         + ", format=" + format + "to mCdmaInboundSmsHandler");
-                mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, ar);
+                mCdmaInboundSmsHandler.sendMessage(
+                        InboundSmsHandler.EVENT_INJECT_SMS, isOverIms ? 1 : 0, 0, ar);
             } else {
                 // Invalid pdu format.
                 Rlog.e(TAG, "Invalid pdu format: " + format);
