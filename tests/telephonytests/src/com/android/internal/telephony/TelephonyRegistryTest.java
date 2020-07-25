@@ -311,8 +311,14 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // Initialize the PSL with a PreciseDataConnection
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, ApnSetting.TYPE_DEFAULT,
-                new PreciseDataConnectionState(
-                    0, 0, 0, "default", new LinkProperties(), 0, null));
+                new PreciseDataConnectionState.Builder()
+                        .setState(0)
+                        .setNetworkType(0)
+                        .setApnTypes(0)
+                        .setApn("default")
+                        .setLinkProperties(new LinkProperties())
+                        .setFailCause(0)
+                        .build());
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
@@ -323,8 +329,14 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // Add IMS APN and verify that the listener is invoked for the IMS APN
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
-                new PreciseDataConnectionState(
-                    0, 0, 0, "ims", new LinkProperties(), 0, null));
+                new PreciseDataConnectionState.Builder()
+                        .setState(0)
+                        .setNetworkType(0)
+                        .setApnTypes(0)
+                        .setApn("ims")
+                        .setLinkProperties(new LinkProperties())
+                        .setFailCause(0)
+                        .build());
         processAllMessages();
 
         assertEquals(mPhoneStateListener.invocationCount.get(), 2);
@@ -346,8 +358,14 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // invoked.
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
-                new PreciseDataConnectionState(
-                    0, 0, 0, "ims", new LinkProperties(), 0, null));
+                new PreciseDataConnectionState.Builder()
+                        .setState(0)
+                        .setNetworkType(0)
+                        .setApnTypes(0)
+                        .setApn("ims")
+                        .setLinkProperties(new LinkProperties())
+                        .setFailCause(0)
+                        .build());
         processAllMessages();
         assertEquals(mPhoneStateListener.invocationCount.get(), 4);
     }

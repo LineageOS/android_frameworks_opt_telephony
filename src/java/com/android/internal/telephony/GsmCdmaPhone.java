@@ -65,7 +65,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
-import android.telephony.DataFailCause;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
@@ -85,7 +84,6 @@ import android.util.Pair;
 
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -644,10 +642,11 @@ public class GsmCdmaPhone extends Phone {
         if (mSST == null
                 || ((mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE)
                         && !isEmergencyData)) {
-            return new PreciseDataConnectionState(TelephonyManager.DATA_DISCONNECTED,
-                    TelephonyManager.NETWORK_TYPE_UNKNOWN,
-                    ApnSetting.getApnTypesBitmaskFromString(apnType),
-                    apnType, null, DataFailCause.NONE, null);
+            return new PreciseDataConnectionState.Builder()
+                    .setState(TelephonyManager.DATA_DISCONNECTED)
+                    .setApnTypes(ApnSetting.getApnTypesBitmaskFromString(apnType))
+                    .setApn(apnType)
+                    .build();
         }
 
         // must never be null

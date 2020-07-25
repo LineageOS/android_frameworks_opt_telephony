@@ -1178,10 +1178,14 @@ public class DcTracker extends Handler {
         int apnTypesBitmask = ApnSetting.getApnTypesBitmaskFromString(apnType);
 
         // TODO: should the data fail cause be populated?
-        return new PreciseDataConnectionState(
-                telState, networkType, apnTypesBitmask, apnType,
-                getLinkProperties(apnType),
-                DataFailCause.NONE, apnSetting);
+        return new PreciseDataConnectionState.Builder()
+                .setState(telState)
+                .setNetworkType(networkType)
+                .setApnTypes(apnTypesBitmask)
+                .setApn(apnType)
+                .setLinkProperties(getLinkProperties(apnType))
+                .setApnSetting(apnSetting)
+                .build();
     }
 
     /**
