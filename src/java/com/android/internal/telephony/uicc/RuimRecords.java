@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources;
@@ -27,6 +28,7 @@ import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.MccTable;
@@ -47,6 +49,7 @@ import java.util.Locale;
  */
 public class RuimRecords extends IccRecords {
     static final String LOG_TAG = "RuimRecords";
+    private final static int IMSI_MIN_LENGTH = 10;
 
     private boolean  mOtaCommited=false;
 
@@ -87,7 +90,6 @@ public class RuimRecords extends IccRecords {
     }
 
     // ***** Event Constants
-    private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_DONE = 10;
@@ -196,16 +198,6 @@ public class RuimRecords extends IccRecords {
             // just re-fetch all RUIM records that we cache.
             fetchRuimRecords();
         }
-    }
-
-    @UnsupportedAppUsage
-    private int adjstMinDigits (int digits) {
-        // Per C.S0005 section 2.3.1.
-        digits += 111;
-        digits = (digits % 10 == 0)?(digits - 10):digits;
-        digits = ((digits / 10) % 10 == 0)?(digits - 100):digits;
-        digits = ((digits / 100) % 10 == 0)?(digits - 1000):digits;
-        return digits;
     }
 
     /**
@@ -382,7 +374,11 @@ public class RuimRecords extends IccRecords {
         }
     }
 
-    private class EfCsimImsimLoaded implements IccRecordLoaded {
+    /**
+     * Parses IMSI based on C.S0065 section 5.2.2 and C.S0005 section 2.3.1
+     */
+    @VisibleForTesting
+    public class EfCsimImsimLoaded implements IccRecordLoaded {
         @Override
         public String getEfName() {
             return "EF_CSIM_IMSIM";
@@ -391,31 +387,74 @@ public class RuimRecords extends IccRecords {
         @Override
         public void onRecordLoaded(AsyncResult ar) {
             byte[] data = (byte[]) ar.result;
-            if (VDBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
+            if (data == null || data.length < IMSI_MIN_LENGTH) {
+                loge("Invalid IMSI from EF_CSIM_IMSIM");
+                return;
+            }
+            if (DBG) log("data=" + Rlog.pii(LOG_TAG, IccUtils.bytesToHexString(data)));
             // C.S0065 section 5.2.2 for IMSI_M encoding
             // C.S0005 section 2.3.1 for MIN encoding in IMSI_M.
             boolean provisioned = ((data[7] & 0x80) == 0x80);
 
             if (provisioned) {
-                int first3digits = ((0x03 & data[2]) << 8) + (0xFF & data[1]);
-                int second3digits = (((0xFF & data[5]) << 8) | (0xFF & data[4])) >> 6;
-                int digit7 = 0x0F & (data[4] >> 2);
-                if (digit7 > 0x09) digit7 = 0;
-                int last3digits = ((0x03 & data[4]) << 8) | (0xFF & data[3]);
-                first3digits = adjstMinDigits(first3digits);
-                second3digits = adjstMinDigits(second3digits);
-                last3digits = adjstMinDigits(last3digits);
-
-                StringBuilder builder = new StringBuilder();
-                builder.append(String.format(Locale.US, "%03d", first3digits));
-                builder.append(String.format(Locale.US, "%03d", second3digits));
-                builder.append(String.format(Locale.US, "%d", digit7));
-                builder.append(String.format(Locale.US, "%03d", last3digits));
-                mMin = builder.toString();
+                final String imsi = decodeImsi(data);
+                if (TextUtils.isEmpty(mImsi)) {
+                    mImsi = imsi;
+                    if (DBG) log("IMSI=" + Rlog.pii(LOG_TAG, mImsi));
+                }
+                mMin = imsi.substring(5, 15);
                 if (DBG) log("min present=" + Rlog.pii(LOG_TAG, mMin));
             } else {
                 if (DBG) log("min not present");
             }
+        }
+
+        private int decodeImsiDigits(int digits, int length) {
+            // Per C.S0005 section 2.3.1.
+            for (int i = 0, denominator = 1; i < length; i++) {
+                digits += denominator;
+                if ((digits / denominator) % 10 == 0) {
+                    digits = digits - (10 * denominator);
+                }
+                denominator *= 10;
+            }
+            return digits;
+        }
+
+        /**
+         * Decode utility to decode IMSI from data read from EF_IMSIM
+         * Please refer to
+         * C.S0065 section 5.2.2 for IMSI_M encoding
+         * C.S0005 section 2.3.1 for MIN encoding in IMSI_M.
+         */
+        @VisibleForTesting
+        @NonNull
+        public String decodeImsi(byte[] data) {
+            // Retrieve the MCC and digits 11 and 12
+            int mcc_data = ((0x03 & data[9]) << 8) | (0xFF & data[8]);
+            int mcc = decodeImsiDigits(mcc_data, 3);
+            int digits_11_12_data = data[6] & 0x7f;
+            int digits_11_12 = decodeImsiDigits(digits_11_12_data, 2);
+
+            // Retrieve 10 MIN digits
+            int first3digits = ((0x03 & data[2]) << 8) + (0xFF & data[1]);
+            int second3digits = (((0xFF & data[5]) << 8) | (0xFF & data[4])) >> 6;
+            int digit7 = 0x0F & (data[4] >> 2);
+            if (digit7 > 0x09) digit7 = 0;
+            int last3digits = ((0x03 & data[4]) << 8) | (0xFF & data[3]);
+
+            first3digits = decodeImsiDigits(first3digits, 3);
+            second3digits = decodeImsiDigits(second3digits, 3);
+            last3digits = decodeImsiDigits(last3digits, 3);
+
+            StringBuilder builder = new StringBuilder();
+            builder.append(String.format(Locale.US, "%03d", mcc));
+            builder.append(String.format(Locale.US, "%02d", digits_11_12));
+            builder.append(String.format(Locale.US, "%03d", first3digits));
+            builder.append(String.format(Locale.US, "%03d", second3digits));
+            builder.append(String.format(Locale.US, "%d", digit7));
+            builder.append(String.format(Locale.US, "%03d", last3digits));
+            return  builder.toString();
         }
     }
 
@@ -623,43 +662,6 @@ public class RuimRecords extends IccRecords {
                 log("Event EVENT_GET_DEVICE_IDENTITY_DONE Received");
             break;
 
-            /* IO events */
-            case EVENT_GET_IMSI_DONE:
-                isRecordLoadResponse = true;
-
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception != null) {
-                    loge("Exception querying IMSI, Exception:" + ar.exception);
-                    break;
-                }
-
-                mImsi = (String) ar.result;
-
-                // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
-                // than 15 (and usually 15).
-                if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
-                    loge("invalid IMSI " + mImsi);
-                    mImsi = null;
-                }
-
-                // FIXME: CSIM IMSI may not contain the MNC.
-                if (false) {
-                    log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
-
-                    String operatorNumeric = getRUIMOperatorNumeric();
-                    if (operatorNumeric != null) {
-                        if (operatorNumeric.length() <= 6) {
-                            log("update mccmnc=" + operatorNumeric);
-                            MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
-                        }
-                    }
-                } else {
-                    String operatorNumeric = getRUIMOperatorNumeric();
-                    log("NO update mccmnc=" + operatorNumeric);
-                }
-
-            break;
-
             case EVENT_GET_CDMA_SUBSCRIPTION_DONE:
                 ar = (AsyncResult)msg.obj;
                 String localTemp[] = (String[])ar.result;
@@ -848,9 +850,6 @@ public class RuimRecords extends IccRecords {
         mRecordsRequested = true;
 
         if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
-
-        mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
-        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_ICCID,
                 obtainMessage(EVENT_GET_ICCID_DONE));
