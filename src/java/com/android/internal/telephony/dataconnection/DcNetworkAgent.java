@@ -96,6 +96,7 @@ public class DcNetworkAgent extends NetworkAgent {
         mTransportType = transportType;
         mDataConnection = dc;
         mNetworkInfo = new NetworkInfo(ni);
+        setLegacySubtype(ni.getSubtype(), ni.getSubtypeName());
         setLegacyExtraInfo(ni.getExtraInfo());
         if (dc.getLinkProperties() != null) {
             checkDuplicateInterface(mId, dc.getLinkProperties().getInterfaceName());
