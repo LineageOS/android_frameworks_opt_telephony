@@ -644,8 +644,9 @@ public class GsmCdmaPhone extends Phone {
                         && !isEmergencyData)) {
             return new PreciseDataConnectionState.Builder()
                     .setState(TelephonyManager.DATA_DISCONNECTED)
-                    .setApnTypes(ApnSetting.getApnTypesBitmaskFromString(apnType))
-                    .setApn(apnType)
+                    .setApnSetting(new ApnSetting.Builder()
+                            .setApnTypeBitmask(ApnSetting.getApnTypesBitmaskFromString(apnType))
+                            .build())
                     .build();
         }
 
