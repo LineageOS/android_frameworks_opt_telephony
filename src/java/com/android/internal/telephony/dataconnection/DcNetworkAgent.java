@@ -92,6 +92,7 @@ public class DcNetworkAgent extends NetworkAgent {
         mTransportType = transportType;
         mDataConnection = dc;
         mNetworkInfo = new NetworkInfo(ni);
+        setLegacySubtype(ni.getSubtype(), ni.getSubtypeName());
         setLegacyExtraInfo(ni.getExtraInfo());
         // TODO: Remove before R is released.
         if (dc.getLinkProperties() != null
