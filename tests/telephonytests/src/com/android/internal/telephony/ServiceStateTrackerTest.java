@@ -229,7 +229,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
 
-        doReturn(true).when(mDcTracker).isDisconnected();
+        doReturn(true).when(mDcTracker).areAllDataDisconnected();
 
         doReturn(new ServiceState()).when(mPhone).getServiceState();
 
