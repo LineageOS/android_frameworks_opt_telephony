@@ -285,7 +285,7 @@ public class CarrierSignalAgent extends Handler {
 
     /**
      * Broadcast the intents explicitly.
-     * Some sanity check will be applied before broadcasting.
+     * Some correctness checks will be applied before broadcasting.
      * - for non-wakeup(runtime) receivers, make sure the intent is not declared in their manifests
      * and apply FLAG_EXCLUDE_STOPPED_PACKAGES to avoid wake-up
      * - for wakeup(manifest) receivers, make sure there are matched receivers with registered
