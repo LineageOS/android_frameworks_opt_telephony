@@ -2834,7 +2834,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         } else {
             // OEM Hook service is disabled for P and later devices.
-            // Deprecated OEM Hook APIs will perform dummy before being removed.
+            // Deprecated OEM Hook APIs will perform no-op before being removed.
             if (RILJ_LOGD) riljLog("Radio Oem Hook Service is disabled for P and later devices. ");
         }
     }
@@ -2863,7 +2863,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         } else {
             // OEM Hook service is disabled for P and later devices.
-            // Deprecated OEM Hook APIs will perform dummy before being removed.
+            // Deprecated OEM Hook APIs will perform no-op before being removed.
             if (RILJ_LOGD) riljLog("Radio Oem Hook Service is disabled for P and later devices. ");
         }
     }

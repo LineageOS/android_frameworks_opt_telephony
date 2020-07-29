@@ -49,12 +49,12 @@ public class BarringInfoTest {
             BarringInfo.BARRING_SERVICE_TYPE_SMS,
     };
 
-    /** Return a dummy set of barring info */
+    /** Return a placeholder set of barring info */
     private static SparseArray<BarringServiceInfo> getBarringServiceInfos() {
         return getBarringServiceInfos(false);
     }
 
-    /** Return a dummy set of barring info
+    /** Return a placeholder set of barring info
      *
      * @param isConditionallyBarred set the flag for whether the conditionally barred service has
      *        been evaluated and is actually barred based on the conditional barring parameters.
