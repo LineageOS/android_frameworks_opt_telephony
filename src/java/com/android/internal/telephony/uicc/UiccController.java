@@ -939,7 +939,7 @@ public class UiccController extends Handler {
             if (isActive) {
                 numActiveSlots++;
 
-                // sanity check: logicalSlotIndex should be valid for an active slot
+                // Correctness check: logicalSlotIndex should be valid for an active slot
                 if (!isValidPhoneIndex(iss.logicalSlotIndex)) {
                     Rlog.e(LOG_TAG, "Skipping slot " + i + " as phone " + iss.logicalSlotIndex
                                + " is not available to communicate with this slot");
@@ -1048,13 +1048,13 @@ public class UiccController extends Handler {
 
         if (VDBG) logPhoneIdToSlotIdMapping();
 
-        // sanity check: number of active slots should be valid
+        // Correctness check: number of active slots should be valid
         if (numActiveSlots != mPhoneIdToSlotId.length) {
             Rlog.e(LOG_TAG, "Number of active slots " + numActiveSlots
                        + " does not match the number of Phones" + mPhoneIdToSlotId.length);
         }
 
-        // sanity check: slotIds should be unique in mPhoneIdToSlotId
+        // Correctness check: slotIds should be unique in mPhoneIdToSlotId
         Set<Integer> slotIds = new HashSet<>();
         for (int slotId : mPhoneIdToSlotId) {
             if (slotIds.contains(slotId)) {

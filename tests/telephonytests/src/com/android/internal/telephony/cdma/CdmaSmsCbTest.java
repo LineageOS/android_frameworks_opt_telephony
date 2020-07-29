@@ -65,7 +65,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
         msg.isServicePresent = true;
         msg.serviceCategory = serviceCategory;
 
-        // dummy address (RIL may generate a different dummy address for broadcasts)
+        // placeholder address (RIL may generate a different placeholder address for broadcasts)
         msg.address.digitMode = CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF;
         msg.address.numberMode = CdmaSmsAddress.NUMBER_MODE_NOT_DATA_NETWORK;
         msg.address.numberType = CdmaSmsAddress.TON_UNKNOWN;
@@ -601,7 +601,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
         msg.isServicePresent = false;
         msg.serviceCategory = 0;
 
-        // dummy address (RIL may generate a different dummy address for broadcasts)
+        // placeholder address (RIL may generate a different placeholder address for broadcasts)
         msg.address.digitMode = CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF;
         msg.address.numberMode = CdmaSmsAddress.NUMBER_MODE_NOT_DATA_NETWORK;
         msg.address.numberType = CdmaSmsAddress.TON_UNKNOWN;
