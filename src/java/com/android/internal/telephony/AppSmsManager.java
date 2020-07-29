@@ -144,7 +144,7 @@ public class AppSmsManager {
      * Handle an incoming SMS_DELIVER_ACTION intent if it is an app-only SMS.
      */
     public boolean handleSmsReceivedIntent(Intent intent) {
-        // Sanity check the action.
+        // Correctness check the action.
         if (intent.getAction() != Intents.SMS_DELIVER_ACTION) {
             Log.wtf(LOG_TAG, "Got intent with incorrect action: " + intent.getAction());
             return false;

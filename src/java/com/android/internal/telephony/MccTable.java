@@ -62,7 +62,7 @@ public final class MccTable {
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
                 publicAlternatives = "There is no alternative for {@code MccTable.MccEntry.mIso}, "
                         + "but it was included in hidden APIs due to a static analysis false "
-                        + "positive and has been made greylist-max-q. Please file a bug if you "
+                        + "positive and has been made max Q. Please file a bug if you "
                         + "still require this API.")
         public final String mIso;
         final int mSmallestDigitsMnc;
@@ -253,7 +253,7 @@ public final class MccTable {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.Q,
             publicAlternatives = "There is no alternative for {@code MccTable"
                     + ".smallestDigitsMccForMnc}, but it was included in hidden APIs due to a "
-                    + "static analysis false positive and has been made greylist-max-q. Please "
+                    + "static analysis false positive and has been made max Q. Please "
                     + "file a bug if you still require this API.")
     public static int smallestDigitsMccForMnc(int mcc) {
         MccEntry entry = entryForMcc(mcc);

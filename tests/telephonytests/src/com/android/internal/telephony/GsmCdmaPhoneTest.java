@@ -1107,7 +1107,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testGetIccCardUnknownAndAbsent() {
-        // If UiccSlot.isStateUnknown is true, we should return a dummy IccCard with the state
+        // If UiccSlot.isStateUnknown is true, we should return a placeholder IccCard with the state
         // set to UNKNOWN
         doReturn(null).when(mUiccController).getUiccProfileForPhone(anyInt());
         UiccSlot mockSlot = mock(UiccSlot.class);
@@ -1117,7 +1117,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         IccCard iccCard = mPhoneUT.getIccCard();
         assertEquals(IccCardConstants.State.UNKNOWN, iccCard.getState());
 
-        // if isStateUnknown is false, we should return a dummy IccCard with the state set to
+        // if isStateUnknown is false, we should return a placeholder IccCard with the state set to
         // ABSENT
         doReturn(false).when(mockSlot).isStateUnknown();
         iccCard = mPhoneUT.getIccCard();
@@ -1131,7 +1131,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         IccCard iccCard = mPhoneUT.getIccCard();
 
-        // The iccCard should be a dummy object, not null.
+        // The iccCard should be a placeholder object, not null.
         assertTrue(!(iccCard instanceof UiccProfile));
 
         assertTrue(iccCard != null);
