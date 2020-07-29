@@ -790,7 +790,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         if (ar.exception == null) {
             polledCalls = (List)ar.result;
         } else if (isCommandExceptionRadioNotAvailable(ar.exception)) {
-            // just a dummy empty ArrayList to cause the loop
+            // just a placeholder empty ArrayList to cause the loop
             // to hang up all the calls
             polledCalls = new ArrayList();
         } else {
