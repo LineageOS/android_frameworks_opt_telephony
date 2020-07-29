@@ -2542,9 +2542,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /** Send notification with an updated PreciseDataConnectionState to all data connections */
     public void notifyAllActiveDataConnections() {
-        String types[] = getActiveApnTypes();
-        for (String apnType : types) {
-            mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
+        if (mTransportManager != null) {
+            for (int transportType : mTransportManager.getAvailableTransports()) {
+                DcTracker dct = getDcTracker(transportType);
+                if (dct != null) {
+                    for (String apnType : dct.getConnectedApnTypes()) {
+                        mNotifier.notifyDataConnection(
+                                this, apnType, getPreciseDataConnectionState(apnType));
+                    }
+                }
+            }
         }
     }
 
@@ -4184,7 +4191,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public boolean areAllDataDisconnected() {
         if (mTransportManager != null) {
             for (int transport : mTransportManager.getAvailableTransports()) {
-                if (getDcTracker(transport) != null && !getDcTracker(transport).isDisconnected()) {
+                if (getDcTracker(transport) != null
+                        && !getDcTracker(transport).areAllDataDisconnected()) {
                     return false;
                 }
             }
@@ -4196,7 +4204,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mAllDataDisconnectedRegistrants.addUnique(h, what, null);
         if (mTransportManager != null) {
             for (int transport : mTransportManager.getAvailableTransports()) {
-                if (getDcTracker(transport) != null && !getDcTracker(transport).isDisconnected()) {
+                if (getDcTracker(transport) != null
+                        && !getDcTracker(transport).areAllDataDisconnected()) {
                     getDcTracker(transport).registerForAllDataDisconnected(
                             this, EVENT_ALL_DATA_DISCONNECTED);
                 }
