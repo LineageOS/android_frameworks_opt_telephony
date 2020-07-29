@@ -643,6 +643,8 @@ public class GsmCdmaPhone extends Phone {
                 || ((mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE)
                         && !isEmergencyData)) {
             return new PreciseDataConnectionState.Builder()
+                    .setTransportType(mTransportManager.getCurrentTransport(
+                            ApnSetting.getApnTypesBitmaskFromString(apnType)))
                     .setState(TelephonyManager.DATA_DISCONNECTED)
                     .setApnSetting(new ApnSetting.Builder()
                             .setApnTypeBitmask(ApnSetting.getApnTypesBitmaskFromString(apnType))
