@@ -675,7 +675,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
     /**
      * Returns the root path of the EF file.
-     * i.e returns MasterFile + DFfile as a string.
+     * i.e returns MainFile + DFfile as a string.
      * Ex: For EF_ADN on a SIM, it will return "3F007F10"
      * This function handles only EFids that are common to
      * RUIM, SIM, USIM and other types of Icc cards.

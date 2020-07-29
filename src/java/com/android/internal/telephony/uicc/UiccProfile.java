@@ -1339,13 +1339,13 @@ public class UiccProfile extends IccCard {
     }
 
     private Set<String> getUninstalledCarrierPackages() {
-        String whitelistSetting = Settings.Global.getString(
+        String allowListSetting = Settings.Global.getString(
                 mContext.getContentResolver(),
                 Settings.Global.CARRIER_APP_WHITELIST);
-        if (TextUtils.isEmpty(whitelistSetting)) {
+        if (TextUtils.isEmpty(allowListSetting)) {
             return Collections.emptySet();
         }
-        Map<String, String> certPackageMap = parseToCertificateToPackageMap(whitelistSetting);
+        Map<String, String> certPackageMap = parseToCertificateToPackageMap(allowListSetting);
         if (certPackageMap.isEmpty()) {
             return Collections.emptySet();
         }
@@ -1371,11 +1371,11 @@ public class UiccProfile extends IccCard {
      * @hide
      */
     @VisibleForTesting
-    public static Map<String, String> parseToCertificateToPackageMap(String whitelistSetting) {
+    public static Map<String, String> parseToCertificateToPackageMap(String allowListSetting) {
         final String pairDelim = "\\s*;\\s*";
         final String keyValueDelim = "\\s*:\\s*";
 
-        List<String> keyValuePairList = Arrays.asList(whitelistSetting.split(pairDelim));
+        List<String> keyValuePairList = Arrays.asList(allowListSetting.split(pairDelim));
 
         if (keyValuePairList.isEmpty()) {
             return Collections.emptyMap();
@@ -1388,7 +1388,7 @@ public class UiccProfile extends IccCard {
             if (keyValue.length == 2) {
                 map.put(keyValue[0].toUpperCase(), keyValue[1]);
             } else {
-                loge("Incorrect length of key-value pair in carrier app whitelist map.  "
+                loge("Incorrect length of key-value pair in carrier app allow list map.  "
                         + "Length should be exactly 2");
             }
         }

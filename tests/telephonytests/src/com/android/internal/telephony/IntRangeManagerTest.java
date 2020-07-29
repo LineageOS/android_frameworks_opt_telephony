@@ -40,7 +40,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
     private static final int ALL_FLAGS_SET = FLAG_START_UPDATE_CALLED | FLAG_ADD_RANGE_CALLED |
             FLAG_FINISH_UPDATE_CALLED;
 
-    /** Dummy IntRangeManager for testing. */
+    /** IntRangeManager for testing. */
     class TestIntRangeManager extends IntRangeManager {
         ArrayList<SmsBroadcastConfigInfo> mConfigList =
                 new ArrayList<SmsBroadcastConfigInfo>();
