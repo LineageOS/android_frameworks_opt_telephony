@@ -311,7 +311,7 @@ public class UiccCardApplication {
 
                 mIccLockEnabled = (ints[0] != 0);
 
-                // Sanity check: we expect mPin1State to match mIccLockEnabled.
+                // Correctness check: we expect mPin1State to match mIccLockEnabled.
                 // When mPin1State is DISABLED mIccLockEanbled should be false.
                 // When mPin1State is ENABLED mIccLockEnabled should be true.
                 //
@@ -522,7 +522,7 @@ public class UiccCardApplication {
                     mPin1State == PinState.PINSTATE_ENABLED_BLOCKED ||
                     mPin1State == PinState.PINSTATE_ENABLED_PERM_BLOCKED) {
                 loge("Sanity check failed! APPSTATE is ready while PIN1 is not verified!!!");
-                // Don't notify if application is in insane state
+                // Don't notify if application is in an invalid state
                 return;
             }
             if (r == null) {
@@ -570,7 +570,7 @@ public class UiccCardApplication {
             if (mPin1State == PinState.PINSTATE_ENABLED_VERIFIED ||
                     mPin1State == PinState.PINSTATE_DISABLED) {
                 loge("Sanity check failed! APPSTATE is locked while PIN1 is not!!!");
-                //Don't notify if application is in insane state
+                //Don't notify if application is in an invalid state
                 return;
             }
             if (r == null) {
