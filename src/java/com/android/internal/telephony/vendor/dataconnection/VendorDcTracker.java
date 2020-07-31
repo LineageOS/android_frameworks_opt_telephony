@@ -17,32 +17,17 @@
 package com.android.internal.telephony.vendor.dataconnection;
 
 import android.app.AlertDialog;
-import android.view.WindowManager;
-
 import android.telephony.AccessNetworkConstants;
-import android.telephony.Annotation.DataFailureCause;
-import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
-import android.telephony.data.ApnSetting;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
+import android.view.WindowManager;
 
+import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.dataconnection.ApnContext;
 import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.DctConstants;
-import com.android.internal.telephony.GsmCdmaPhone;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.uicc.IccRecords;
-import com.android.internal.util.ArrayUtils;
-import com.android.internal.util.AsyncChannel;
-
-import android.database.Cursor;
-import android.content.Context;
-import android.os.PersistableBundle;
-import android.provider.Telephony;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -115,7 +100,7 @@ public class VendorDcTracker extends DcTracker {
     protected void onVoiceCallEnded() {
         if (DBG) log("onVoiceCallEnded");
         mInVoiceCall = false;
-        if (isConnected()) {
+        if (isAnyDataConnected()) {
             if (!mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                 startNetStatPoll();
                 startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
