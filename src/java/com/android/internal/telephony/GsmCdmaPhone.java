@@ -68,7 +68,6 @@ import android.telephony.CellIdentity;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SignalThresholdInfo;
@@ -631,41 +630,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public PreciseDataConnectionState getPreciseDataConnectionState(String apnType) {
-        // If we are OOS, then all data connections are null.
-        // FIXME: we need to figure out how to report the EIMS PDN connectivity here, which
-        // should imply emergency attach - today emergency attach is unknown at the AP,
-        // so, we take a guess.
-        boolean isEmergencyData = isPhoneTypeGsm()
-                && apnType.equals(PhoneConstants.APN_TYPE_EMERGENCY);
-
-        if (mSST == null
-                || ((mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE)
-                        && !isEmergencyData)) {
-            return new PreciseDataConnectionState.Builder()
-                    .setTransportType(mTransportManager.getCurrentTransport(
-                            ApnSetting.getApnTypesBitmaskFromString(apnType)))
-                    .setState(TelephonyManager.DATA_DISCONNECTED)
-                    .setApnSetting(new ApnSetting.Builder()
-                            .setApnTypeBitmask(ApnSetting.getApnTypesBitmaskFromString(apnType))
-                            .build())
-                    .build();
-        }
-
-        // must never be null
-        final DcTracker dctForApn = getActiveDcTrackerForApn(apnType);
-
-        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        // Always non-null
-        ServiceState ss = getServiceState();
-        if (ss != null) {
-            networkType = ss.getDataNetworkType();
-        }
-
-        return dctForApn.getPreciseDataConnectionState(apnType, isDataSuspended(), networkType);
-    }
-
-    boolean isDataSuspended() {
+    public boolean isDataSuspended() {
         return mCT.mState != PhoneConstants.State.IDLE && !mSST.isConcurrentVoiceAndDataAllowed();
     }
 
