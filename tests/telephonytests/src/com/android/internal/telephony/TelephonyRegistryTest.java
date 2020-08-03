@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import android.content.Intent;
 import android.net.LinkProperties;
 import android.os.ServiceManager;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
@@ -312,6 +313,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, ApnSetting.TYPE_DEFAULT,
                 new PreciseDataConnectionState.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .setId(1)
                         .setState(0)
                         .setNetworkType(0)
                         .setApnSetting(new ApnSetting.Builder()
@@ -331,6 +334,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
                 new PreciseDataConnectionState.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .setId(1)
                         .setState(0)
                         .setNetworkType(0)
                         .setApnSetting(new ApnSetting.Builder()
@@ -361,6 +366,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
                 /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
                 new PreciseDataConnectionState.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .setId(1)
                         .setState(0)
                         .setNetworkType(0)
                         .setApnSetting(new ApnSetting.Builder()
