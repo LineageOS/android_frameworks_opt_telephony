@@ -30,7 +30,6 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -602,9 +601,6 @@ public class DcTrackerTest extends TelephonyTest {
     }
 
     private void verifyDataConnected(final String apnSetting) {
-        verify(mPhone, atLeastOnce()).notifyDataConnection(
-                eq(PhoneConstants.APN_TYPE_DEFAULT));
-
         verify(mAlarmManager, times(1)).set(eq(AlarmManager.ELAPSED_REALTIME), anyLong(),
                 any(PendingIntent.class));
 
