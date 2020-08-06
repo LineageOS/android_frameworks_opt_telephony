@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verify;
 
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -61,7 +62,8 @@ public class PhoneStateListenerTest extends TelephonyTest {
                 mUserMobileDataState = true;
             }
 
-            public void onOutgoingEmergencyCall(EmergencyNumber emergencyNumber) {
+            public void onOutgoingEmergencyCall(EmergencyNumber emergencyNumber,
+                    int subscriptionId) {
                 logd("OutgoingCallEmergencyNumber Changed");
                 mCalledEmergencyNumber = emergencyNumber;
             }
@@ -125,7 +127,7 @@ public class PhoneStateListenerTest extends TelephonyTest {
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
         ((IPhoneStateListener) field.get(mPhoneStateListenerUT)).onOutgoingEmergencyCall(
-                emergencyNumber);
+                emergencyNumber, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         processAllMessages();
 
         assertTrue(mCalledEmergencyNumber.equals(emergencyNumber));
