@@ -3910,8 +3910,14 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    // Helper function of getOpportunisticSubscriptions and getActiveSubscriptionInfoList.
-    // They are doing similar things except operating on different cache.
+    /**
+     * Helper function of getOpportunisticSubscriptions and getActiveSubscriptionInfoList.
+     * They are doing similar things except operating on different cache.
+     *
+     * NOTE: the cacheSubList passed in is a *copy* of mCacheActiveSubInfoList or
+     * mCacheOpportunisticSubInfoList, so mSubInfoListLock is not required to access it. Also, this
+     * method may modify cacheSubList depending on the permissions the caller has.
+     */
     private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
             String callingPackage, String callingFeatureId, List<SubscriptionInfo> cacheSubList) {
         boolean canReadPhoneState = false;
@@ -3944,30 +3950,26 @@ public class SubscriptionController extends ISub.Stub {
             return cacheSubList;
         }
         // Filter the list to only include subscriptions which the caller can manage.
-        List<SubscriptionInfo> subscriptions = new ArrayList<>(cacheSubList.size());
-        for (SubscriptionInfo subscriptionInfo : cacheSubList) {
+        for (int subIndex = cacheSubList.size() - 1; subIndex >= 0; subIndex--) {
+            SubscriptionInfo subscriptionInfo = cacheSubList.get(subIndex);
+
             int subId = subscriptionInfo.getSubscriptionId();
             boolean hasCarrierPrivileges = TelephonyPermissions.checkCarrierPrivilegeForSubId(
                     mContext, subId);
-            // If the caller does not have the READ_PHONE_STATE permission nor carrier
-            // privileges then they cannot access the current subscription.
-            if (!canReadPhoneState && !hasCarrierPrivileges) {
-                continue;
-            }
             // If the caller has carrier privileges then they are granted access to all
             // identifiers for their subscription.
-            if (hasCarrierPrivileges) {
-                subscriptions.add(subscriptionInfo);
-            } else {
+            if (hasCarrierPrivileges) continue;
+
+            cacheSubList.remove(subIndex);
+            if (canReadPhoneState) {
                 // The caller does not have carrier privileges for this subId, filter the
                 // identifiers in the subscription based on the results of the initial
                 // permission checks.
-                subscriptions.add(
-                        conditionallyRemoveIdentifiers(subscriptionInfo, canReadIdentifiers,
-                                canReadPhoneNumber));
+                cacheSubList.add(subIndex, conditionallyRemoveIdentifiers(
+                        subscriptionInfo, canReadIdentifiers, canReadPhoneNumber));
             }
         }
-        return subscriptions;
+        return cacheSubList;
     }
 
     /**
