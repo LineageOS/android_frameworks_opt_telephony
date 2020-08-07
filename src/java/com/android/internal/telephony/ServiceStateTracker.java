@@ -539,6 +539,8 @@ public class ServiceStateTracker extends Handler {
     /** To identify whether EVENT_SIM_READY is received or not */
     private boolean mIsSimReady = false;
 
+    private String mLastKnownNetworkCountry = "";
+
     @UnsupportedAppUsage
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -564,6 +566,12 @@ public class ServiceStateTracker extends Handler {
             } else if (intent.getAction().equals(ACTION_RADIO_OFF)) {
                 mAlarmSwitch = false;
                 powerOffRadioSafely();
+            } else if (intent.getAction().equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
+                String lastKnownNetworkCountry = intent.getStringExtra(
+                        TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY);
+                if (!mLastKnownNetworkCountry.equals(lastKnownNetworkCountry)) {
+                    updateSpnDisplay();
+                }
             }
         }
     };
@@ -684,6 +692,9 @@ public class ServiceStateTracker extends Handler {
         context.registerReceiver(mIntentReceiver, filter);
         filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        context.registerReceiver(mIntentReceiver, filter);
+        filter = new IntentFilter();
+        filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
         context.registerReceiver(mIntentReceiver, filter);
 
         mPhone.notifyOtaspChanged(TelephonyManager.OTASP_UNINITIALIZED);
@@ -1173,8 +1184,8 @@ public class ServiceStateTracker extends Handler {
                     mCdnr.updateEfFromUsim(null /* Usim */);
                 }
                 onUpdateIccAvailability();
-                if (mUiccApplcation != null
-                        && mUiccApplcation.getState() != AppState.APPSTATE_READY) {
+                if (mUiccApplcation == null
+                        || mUiccApplcation.getState() != AppState.APPSTATE_READY) {
                     mIsSimReady = false;
                     updateSpnDisplay();
                 }
@@ -2865,9 +2876,9 @@ public class ServiceStateTracker extends Handler {
         if (ArrayUtils.isEmpty(countriesWithNoService)) {
             return false;
         }
-        String currentCountry = mLocaleTracker.getCurrentCountry();
+        mLastKnownNetworkCountry = mLocaleTracker.getLastKnownCountryIso();
         for (String country : countriesWithNoService) {
-            if (country.equalsIgnoreCase(currentCountry)) {
+            if (country.equalsIgnoreCase(mLastKnownNetworkCountry)) {
                 return true;
             }
         }
