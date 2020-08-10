@@ -156,6 +156,11 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.EpsQos;
+import android.telephony.data.NrQos;
+import android.telephony.data.Qos;
+import android.telephony.data.QosFilter;
+import android.telephony.data.QosSession;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -2175,6 +2180,7 @@ public class RILTest extends TelephonyTest {
                 .setMtu(1500)
                 .setMtuV4(1500)
                 .setMtuV6(1500)
+                .setQosSessions(new ArrayList<>())
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result10));
@@ -2248,9 +2254,115 @@ public class RILTest extends TelephonyTest {
                 .setMtu(3000)
                 .setMtuV4(1500)
                 .setMtuV6(3000)
+                .setQosSessions(new ArrayList<>())
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result15));
+
+        // Test V1.6 SetupDataCallResult
+        android.hardware.radio.V1_6.SetupDataCallResult result16 =
+                new android.hardware.radio.V1_6.SetupDataCallResult();
+        result16.cause = android.hardware.radio.V1_4.DataCallFailCause.NONE;
+        result16.suggestedRetryTime = -1;
+        result16.cid = 0;
+        result16.active = android.hardware.radio.V1_4.DataConnActiveStatus.ACTIVE;
+        result16.type = android.hardware.radio.V1_4.PdpProtocolType.IPV4V6;
+        result16.ifname = "ifname";
+
+        result16.addresses = new ArrayList<>(Arrays.asList(la1, la2));
+        result16.dnses = new ArrayList<>(Arrays.asList("10.0.2.3", "fd00:976a::9"));
+        result16.gateways = new ArrayList<>(Arrays.asList("10.0.2.15", "fe80::2"));
+        result16.pcscf = new ArrayList<>(Arrays.asList(
+                "fd00:976a:c206:20::6", "fd00:976a:c206:20::9", "fd00:976a:c202:1d::9"));
+        result16.mtuV4 = 1500;
+        result16.mtuV6 = 3000;
+        result16.handoverFailureMode = android.hardware.radio.V1_6.HandoverFailureMode.LEGACY;
+
+        // Build android.hardware.radio.V1_6.EpsQos
+        android.hardware.radio.V1_6.EpsQos halEpsQos = new android.hardware.radio.V1_6.EpsQos();
+        halEpsQos.qci = 4;
+        halEpsQos.downlink.maxBitrateKbps = 4;
+        halEpsQos.downlink.guaranteedBitrateKbps = 7;
+        halEpsQos.uplink.maxBitrateKbps = 5;
+        halEpsQos.uplink.guaranteedBitrateKbps = 8;
+
+        result16.defaultQos.eps(halEpsQos);
+
+        // android.hardware.radio.V1_6.PortRange
+        android.hardware.radio.V1_6.PortRange localPort =
+                new android.hardware.radio.V1_6.PortRange();
+        android.hardware.radio.V1_6.PortRange remotePort =
+                new android.hardware.radio.V1_6.PortRange();
+        localPort.start = 123;
+        localPort.end = 123;
+        remotePort.start = 223;
+        remotePort.end = 223;
+
+        // android.hardware.radio.V1_6.QosFilter
+        android.hardware.radio.V1_6.QosFilter halQosFilter =
+                new android.hardware.radio.V1_6.QosFilter();
+        halQosFilter.localAddresses = new ArrayList<>(Arrays.asList("122.22.22.22"));
+        halQosFilter.remoteAddresses = new ArrayList<>(Arrays.asList("144.44.44.44"));
+        halQosFilter.localPort.range(localPort);
+        halQosFilter.remotePort.range(remotePort);
+        halQosFilter.protocol = android.hardware.radio.V1_6.QosProtocol.UDP;
+        halQosFilter.tos.value((byte)7);
+        halQosFilter.flowLabel.value(987);
+        halQosFilter.spi.value(678);
+        halQosFilter.direction = android.hardware.radio.V1_6.QosFilterDirection.BIDIRECTIONAL;
+        halQosFilter.precedence = 45;
+
+        // android.hardware.radio.V1_6.QosSession
+        android.hardware.radio.V1_6.QosSession halQosSession =
+                new android.hardware.radio.V1_6.QosSession();
+        halQosSession.qosSessionId = 1234;
+        halQosSession.qos.eps(halEpsQos);
+        halQosSession.qosFilters = new ArrayList<>(Arrays.asList(halQosFilter));
+
+        result16.qosSessions = new ArrayList<>(Arrays.asList(halQosSession));
+
+        EpsQos epsQos = new EpsQos(halEpsQos);
+        QosFilter qosFilter = new QosFilter(
+                Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress("122.22.22.22"), 32)),
+                Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress("144.44.44.44"), 32)),
+                new QosFilter.PortRange(123, 123), new QosFilter.PortRange(223, 223),
+                QosFilter.QOS_PROTOCOL_UDP, 7, 987, 678,
+                QosFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, 45);
+        ArrayList<QosFilter> qosFilters = new ArrayList<>();
+        ArrayList<QosSession> qosSessions = new ArrayList<>();
+        qosFilters.add(qosFilter);
+        QosSession qosSession = new QosSession(1234, epsQos, qosFilters);
+        qosSessions.add(qosSession);
+
+        response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(0)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress("10.0.2.15"), 32),
+                        new LinkAddress("2607:fb90:a620:651d:eabe:f8da:c107:44be/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c206:20::6"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c206:20::9"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::9")))
+                .setMtu(3000)
+                .setMtuV4(1500)
+                .setMtuV6(3000)
+                .setHandoverFailureMode(DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY)
+                .setDefaultQos(epsQos)
+                .setQosSessions(qosSessions)
+                .build();
+
+        assertEquals(response, RIL.convertDataCallResult(result16));
     }
 
     @Test

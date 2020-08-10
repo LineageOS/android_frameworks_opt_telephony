@@ -27,9 +27,11 @@ import android.net.LinkAddress;
 import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.EpsQos;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class DataCallResponseTest extends AndroidTestCase {
@@ -51,6 +53,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                         Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
                 .setMtuV4(1440)
                 .setMtuV6(1440)
+                .setDefaultQos(new EpsQos())
+                .setQosSessions(new ArrayList<>())
                 .build();
 
         Parcel p = Parcel.obtain();
