@@ -2207,6 +2207,30 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Is E-UTRA-NR Dual Connectivity enabled
+     */
+    public void isNrDualConnectivityEnabled(Message message, WorkSource workSource) {
+        mCi.isNrDualConnectivityEnabled(message, workSource);
+    }
+
+    /**
+     * Enable/Disable E-UTRA-NR Dual Connectivity
+     * @param nrDualConnectivityState expected NR dual connectivity state
+     * This can be passed following states
+     * <ol>
+     * <li>Enable NR dual connectivity {@link TelephonyManager#NR_DUAL_CONNECTIVITY_ENABLE}
+     * <li>Disable NR dual connectivity {@link TelephonyManager#NR_DUAL_CONNECTIVITY_DISABLE}
+     * <li>Disable NR dual connectivity and force secondary cell to be released
+     * {@link TelephonyManager#NR_DUAL_CONNECTIVITY_DISABLE_IMMEDIATE}
+     * </ol>
+     */
+    public void setNrDualConnectivityState(
+            @TelephonyManager.NrDualConnectivityState int nrDualConnectivityState,
+            Message message, WorkSource workSource) {
+        mCi.setNrDualConnectivityState(nrDualConnectivityState, message, workSource);
+    }
+
+    /**
      * Get the allowed network types for a certain reason.
      * @param reason reason to configure allowed network types
      * @return the allowed network types.

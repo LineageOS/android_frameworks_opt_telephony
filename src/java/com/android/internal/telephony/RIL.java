@@ -3365,6 +3365,83 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Is E-UTRA-NR Dual Connectivity enabled
+     */
+    @Override
+    public void isNrDualConnectivityEnabled(Message result, WorkSource workSource) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED, result,
+                    workSource == null ? mRILDefaultWorkSource : workSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> "
+                        + requestToString(rr.mRequest));
+            }
+
+            if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+
+            android.hardware.radio.V1_6.IRadio radioProxy16 =
+                    (android.hardware.radio.V1_6.IRadio) radioProxy;
+            try {
+                radioProxy16.isNrDualConnectivityEnabled(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "isNRDualConnectivityEnabled", e);
+            }
+        }
+    }
+
+    /**
+     * Enable/Disable E-UTRA-NR Dual Connectivity
+     * @param nrDualConnectivityState expected NR dual connectivity state
+     * This can be passed following states
+     * <ol>
+     * <li>Enable NR dual connectivity {@link TelephonyManager#NR_DUAL_CONNECTIVITY_ENABLE}
+     * <li>Disable NR dual connectivity {@link TelephonyManager#NR_DUAL_CONNECTIVITY_DISABLE}
+     * <li>Disable NR dual connectivity and force secondary cell to be released
+     * {@link TelephonyManager#NR_DUAL_CONNECTIVITY_DISABLE_IMMEDIATE}
+     * </ol>
+     */
+    @Override
+    public void setNrDualConnectivityState(int nrDualConnectivityState,
+            Message result, WorkSource workSource) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+
+            android.hardware.radio.V1_6.IRadio radioProxy16 =
+                    (android.hardware.radio.V1_6.IRadio) radioProxy;
+            RILRequest rr = obtainRequest(RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY, result,
+                    workSource == null ? mRILDefaultWorkSource : workSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> "
+                        + requestToString(rr.mRequest) + " enable = " + nrDualConnectivityState);
+            }
+
+            try {
+                radioProxy16.enableNrDualConnectivity(rr.mSerial, nrDualConnectivityState);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "enableNRDualConnectivity", e);
+            }
+        }
+    }
+
     @Override
     public void setCdmaSubscriptionSource(int cdmaSubscription , Message result) {
         IRadio radioProxy = getRadioProxy(result);
@@ -6375,7 +6452,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_GET_BARRING_INFO";
             case RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION:
                 return "RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION";
-
+            case RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY:
+                return "RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY";
+            case RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED:
+                return "RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED";
             default: return "<unknown request>";
         }
     }

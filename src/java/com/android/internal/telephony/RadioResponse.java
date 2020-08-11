@@ -1502,6 +1502,32 @@ public class RadioResponse extends IRadioResponse.Stub {
     /**
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param isEnabled Indicates whether NR dual connectivity is enabled or not, True if enabled
+     *               else false.
+     */
+    public void isNrDualConnectivityEnabledResponse(RadioResponseInfo responseInfo,
+            boolean isEnabled) {
+        RILRequest rr = mRil.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, isEnabled);
+            }
+            mRil.processResponseDone(rr, responseInfo, isEnabled);
+        }
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void enableNrDualConnectivityResponse(RadioResponseInfo responseInfo) {
+        responseVoid(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param numAllowed number of allowed carriers which have been set correctly.
      *        On success, it must match the length of list Carriers->allowedCarriers.
      *        if Length of allowed carriers list is 0, numAllowed = 0.
