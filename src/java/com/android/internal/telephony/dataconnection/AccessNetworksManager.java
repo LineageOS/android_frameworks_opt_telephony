@@ -68,7 +68,8 @@ public class AccessNetworksManager extends Handler {
             ApnSetting.TYPE_IMS,
             ApnSetting.TYPE_CBS,
             ApnSetting.TYPE_SUPL,
-            ApnSetting.TYPE_EMERGENCY
+            ApnSetting.TYPE_EMERGENCY,
+            ApnSetting.TYPE_XCAP
     };
 
     private static final int EVENT_BIND_QUALIFIED_NETWORKS_SERVICE = 1;
