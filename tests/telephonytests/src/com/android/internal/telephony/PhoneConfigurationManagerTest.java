@@ -21,12 +21,14 @@ import static android.telephony.TelephonyManager.EXTRA_ACTIVE_SIM_SUPPORTED_COUN
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
@@ -51,7 +53,11 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Mock
     Handler mHandler;
     @Mock
-    CommandsInterface mMockCi;
+    CommandsInterface mMockCi0;
+    @Mock
+    CommandsInterface mMockCi1;
+    @Mock
+    private Phone mPhone1; // mPhone as phone 0 is already defined in TelephonyTest.
     @Mock
     PhoneConfigurationManager.MockableInterface mMi;
 
@@ -61,8 +67,9 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mPhone.mCi = mMockCi;
-        mCT.mCi = mMockCi;
+        mPhone.mCi = mMockCi0;
+        mCT.mCi = mMockCi0;
+        mPhone1.mCi = mMockCi1;
     }
 
     @After
@@ -105,7 +112,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
         Message message = new Message();
         mPcm.enablePhone(mPhone, false, message);
-        verify(mMockCi).enableModem(eq(false), eq(message));
+        verify(mMockCi0).enableModem(eq(false), eq(message));
     }
 
     @Test
@@ -140,6 +147,8 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
     @SmallTest
     public void testSwitchMultiSimConfig_dsdsCapable_noRebootRequired() throws Exception {
         init(1);
+        verify(mMockCi0, times(1)).registerForAvailable(any(), anyInt(), any());
+
         // Register for multi SIM config change.
         mPcm.registerForMultiSimConfigChange(mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
         verify(mHandler, never()).sendMessageAtTime(any(), anyLong());
@@ -151,9 +160,13 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         // Send static capability back to indicate DSDS is supported.
         clearInvocations(mMockRadioConfig);
         testGetDsdsCapability();
+        // testGetDsdsCapability leads to another call to registerForAvailable()
+        verify(mMockCi0, times(2)).registerForAvailable(any(), anyInt(), any());
 
         // Try to switch to DSDS.
         setRebootRequiredForConfigSwitch(false);
+        mPhones = new Phone[]{mPhone, mPhone1};
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         mPcm.switchMultiSimConfig(2);
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
         verify(mMockRadioConfig).setModemsConfig(eq(2), captor.capture());
@@ -182,7 +195,12 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         assertEquals(2, intent.getIntExtra(
                 EXTRA_ACTIVE_SIM_SUPPORTED_COUNT, 0));
 
-        // Verify RIL notification.
-        verify(mMockCi).onSlotActiveStatusChange(true);
+        // Verify registerForAvailable() and onSlotActiveStatusChange() are called for the second
+        // phone, and not for the first phone (registerForAvailable() was already called twice
+        // earlier so verify that the count is still at 2)
+        verify(mMockCi0, times(2)).registerForAvailable(any(), anyInt(), any());
+        verify(mMockCi0, never()).onSlotActiveStatusChange(anyBoolean());
+        verify(mMockCi1, times(1)).registerForAvailable(any(), anyInt(), any());
+        verify(mMockCi1, times(1)).onSlotActiveStatusChange(anyBoolean());
     }
 }
