@@ -1542,7 +1542,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         for (ResolveInfo entry : packageManager.queryIntentServicesAsUser(
                 serviceIntent,
                 PackageManager.GET_META_DATA,
-                UserHandle.getUserHandleForUid(UserHandle.myUserId()))) {
+                UserHandle.of(UserHandle.myUserId()))) {
             ServiceInfo serviceInfo = entry.serviceInfo;
 
             if (serviceInfo != null) {

@@ -1467,7 +1467,7 @@ public abstract class SMSDispatcher extends Handler {
         PackageManager pm = mContext.getPackageManager();
         try {
             ApplicationInfo appInfo = pm.getApplicationInfoAsUser(appPackage, 0,
-                UserHandle.getUserHandleForUid(userId));
+                    UserHandle.of(userId));
             return appInfo.loadSafeLabel(pm);
         } catch (PackageManager.NameNotFoundException e) {
             Rlog.e(TAG, "PackageManager Name Not Found for package " + appPackage);
