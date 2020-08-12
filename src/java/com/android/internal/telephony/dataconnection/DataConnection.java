@@ -493,6 +493,11 @@ public class DataConnection extends StateMachine {
         // Data can only be (temporarily) suspended while data is in active state
         if (getCurrentState() != mActiveState) return false;
 
+        // never set suspend for emergency apn
+        if (mApnSetting != null && mApnSetting.isEmergencyApn()) {
+            return false;
+        }
+
         // if we are not in-service change to SUSPENDED
         final ServiceStateTracker sst = mPhone.getServiceStateTracker();
         if (sst.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
