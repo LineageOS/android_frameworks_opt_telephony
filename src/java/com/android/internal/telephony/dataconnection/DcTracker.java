@@ -1925,7 +1925,7 @@ public class DcTracker extends Handler {
         // this type.
         if (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DUN)
                 || ServiceState.isGsm(getDataRat())) {
-            dataConnection = checkForCompatibleDataConnection(apnContext);
+            dataConnection = checkForCompatibleDataConnection(apnContext, apnSetting);
             if (dataConnection != null) {
                 // Get the apn setting used by the data connection
                 ApnSetting dataConnectionApnSetting = dataConnection.getApnSetting();
@@ -2318,7 +2318,8 @@ public class DcTracker extends Handler {
         }
     }
 
-    private DataConnection checkForCompatibleDataConnection(ApnContext apnContext) {
+    private DataConnection checkForCompatibleDataConnection(ApnContext apnContext,
+            ApnSetting nextApn) {
         int apnType = apnContext.getApnTypeBitmask();
         ArrayList<ApnSetting> dunSettings = null;
 
@@ -2357,7 +2358,7 @@ public class DcTracker extends Handler {
                                     + " found canHandle conn=" + curDc);
                         }
                         return curDc;
-                    } else if (curDc.isActivating()) {
+                    } else if (curDc.isActivating() || apnSetting.equals(nextApn)) {
                         potentialDc = curDc;
                     }
                 }
