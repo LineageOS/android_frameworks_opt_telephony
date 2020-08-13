@@ -2436,6 +2436,34 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testUpdateSpnDisplay_flightModeNoWifiCalling_showSpnAndPlmn() {
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // Flight mode and connected to WiFI
+        doReturn(ServiceState.STATE_POWER_OFF).when(mServiceState).getVoiceRegState();
+        doReturn(ServiceState.STATE_POWER_OFF).when(mServiceState).getDataRegState();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mServiceState).getDataNetworkType();
+        doReturn(mServiceState).when(mSST).getServiceState();
+
+        // wifi-calling is disable
+        doReturn(false).when(mPhone).isWifiCallingEnabled();
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Show both spn & plmn
+        String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        String plmn = mBundle.getStringArray(CarrierConfigManager.KEY_PNN_OVERRIDE_STRING_ARRAY)[0];
+        plmn = plmn.split("\\s*,\\s*")[0];
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getString(TelephonyManager.EXTRA_SPN)).isEqualTo(spn);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN)).isTrue();
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN)).isEqualTo(plmn);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
+    }
+
+    @Test
     public void testUpdateSpnDisplay_spnNotEmptyAndWifiCallingEnabled_showSpnOnly() {
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
