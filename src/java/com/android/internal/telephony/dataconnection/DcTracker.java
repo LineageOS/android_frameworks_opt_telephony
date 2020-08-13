@@ -4250,8 +4250,6 @@ public class DcTracker extends Handler {
                 .setEntryName("Emergency")
                 .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
                 .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
-                .setNetworkTypeBitmask((int)(TelephonyManager.NETWORK_TYPE_BITMASK_LTE
-                | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN))
                 .setApnName("sos")
                 .setApnTypeBitmask(ApnSetting.TYPE_EMERGENCY)
                 .setCarrierEnabled(true)
