@@ -362,22 +362,35 @@ public class PhoneConfigurationManager {
             log("onMultiSimConfigChanged: Rebooting is not required.");
             mMi.notifyPhoneFactoryOnMultiSimConfigChanged(mContext, numOfActiveModems);
             broadcastMultiSimConfigChange(numOfActiveModems);
-
+            boolean subInfoCleared = false;
             // if numOfActiveModems is decreasing, deregister old RILs
             // eg if we are going from 2 phones to 1 phone, we need to deregister RIL for the
             // second phone. This loop does nothing if numOfActiveModems is increasing.
-            for (int i = numOfActiveModems; i < oldNumOfActiveModems; i++) {
-                mPhones[i].mCi.onSlotActiveStatusChange(SubscriptionManager.isValidPhoneId(i));
+            for (int phoneId = numOfActiveModems; phoneId < oldNumOfActiveModems; phoneId++) {
+                SubscriptionController.getInstance().clearSubInfoRecord(phoneId);
+                subInfoCleared = true;
+                mPhones[phoneId].mCi.onSlotActiveStatusChange(
+                        SubscriptionManager.isValidPhoneId(phoneId));
+            }
+            if (subInfoCleared) {
+                // This triggers update of default subs. This should be done asap after
+                // setMultiSimProperties() to avoid (minimize) duration for which default sub can be
+                // invalid and can map to a non-existent phone.
+                // If forexample someone calls a TelephonyManager API on default sub after
+                // setMultiSimProperties() and before onSubscriptionsChanged() below -- they can be
+                // using an invalid sub, which can map to a non-existent phone and can cause an
+                // exception (see b/163582235).
+                MultiSimSettingController.getInstance().onPhoneRemoved();
             }
             // old phone objects are not needed now; mPhones can be updated
             mPhones = PhoneFactory.getPhones();
             // if numOfActiveModems is increasing, register new RILs
             // eg if we are going from 1 phone to 2 phones, we need to register RIL for the second
             // phone. This loop does nothing if numOfActiveModems is decreasing.
-            for (int i = oldNumOfActiveModems; i < numOfActiveModems; i++) {
-                Phone phone = mPhones[i];
+            for (int phoneId = oldNumOfActiveModems; phoneId < numOfActiveModems; phoneId++) {
+                Phone phone = mPhones[phoneId];
                 registerForRadioState(phone);
-                phone.mCi.onSlotActiveStatusChange(SubscriptionManager.isValidPhoneId(i));
+                phone.mCi.onSlotActiveStatusChange(SubscriptionManager.isValidPhoneId(phoneId));
             }
         }
     }
