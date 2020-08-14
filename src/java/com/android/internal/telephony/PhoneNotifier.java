@@ -27,6 +27,7 @@ import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseDataConnectionState;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
@@ -40,7 +41,18 @@ public interface PhoneNotifier {
 
     void notifyPhoneState(Phone sender);
 
+    /**
+     * Notify registrants of the given phone's current ServiceState.
+     */
     void notifyServiceState(Phone sender);
+
+    /**
+     * Notify registrants with a given ServiceState. Passing in the subId allows us to
+     * send a final ServiceState update when the subId for the sender phone becomes invalid
+     * @param sender
+     * @param subId
+     */
+    void notifyServiceStateForSubId(Phone sender, ServiceState ss, int subId);
 
     /**
      * Notify registrants of the current CellLocation.

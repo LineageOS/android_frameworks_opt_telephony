@@ -72,11 +72,14 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyServiceState(Phone sender) {
-        ServiceState ss = sender.getServiceState();
-        int phoneId = sender.getPhoneId();
-        int subId = sender.getSubId();
+        notifyServiceStateForSubId(sender, sender.getServiceState(), sender.getSubId());
+    }
 
-        Rlog.d(LOG_TAG, "notifyServiceState: mRegistryMgr=" + mTelephonyRegistryMgr + " ss="
+    @Override
+    public void notifyServiceStateForSubId(Phone sender, ServiceState ss, int subId) {
+        int phoneId = sender.getPhoneId();
+
+        Rlog.d(LOG_TAG, "notifyServiceStateForSubId: mRegistryMgr=" + mTelephonyRegistryMgr + " ss="
                 + ss + " sender=" + sender + " phondId=" + phoneId + " subId=" + subId);
         if (ss == null) {
             ss = new ServiceState();
