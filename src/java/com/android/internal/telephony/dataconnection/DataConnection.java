@@ -31,7 +31,6 @@ import android.net.LinkProperties;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
-import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.ProxyInfo;
@@ -279,7 +278,6 @@ public class DataConnection extends StateMachine {
     private int mRilRat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
     private int mDataRegState = Integer.MAX_VALUE;
     private boolean mIsSuspended;
-    private NetworkInfo mNetworkInfo;
     private int mDownlinkBandwidth = 14;
     private int mUplinkBandwidth = 14;
 
@@ -660,9 +658,6 @@ public class DataConnection extends StateMachine {
         mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
         updateLinkBandwidthsFromCarrierConfig(mRilRat);
 
-        mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
-                networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
-
         addState(mDefaultState);
             addState(mInactiveState, mDefaultState);
             addState(mActivatingState, mDefaultState);
@@ -864,8 +859,6 @@ public class DataConnection extends StateMachine {
     }
 
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
-        mNetworkInfo.setDetailedState(mNetworkInfo.getDetailedState(), reason,
-                mNetworkInfo.getExtraInfo());
         for (ConnectionParams cp : mApnContexts.values()) {
             ApnContext apnContext = cp.mApnContext;
             if (apnContext == alreadySent) continue;
@@ -1369,9 +1362,6 @@ public class DataConnection extends StateMachine {
     /**
      * Get the network capabilities for this data connection.
      *
-     * Note that this method reads fields from mNetworkInfo, so its output is only as fresh
-     * as mNetworkInfo. Call updateNetworkInfoSuspendState before calling this.
-     *
      * @return the {@link NetworkCapabilities} of this data connection.
      */
     public NetworkCapabilities getNetworkCapabilities() {
@@ -1489,7 +1479,7 @@ public class DataConnection extends StateMachine {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         }
 
-        updateNetworkInfoSuspendState();
+        updateSuspendState();
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
 
         result.setAdministratorUids(mAdministratorUids);
@@ -1795,10 +1785,6 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    if (mNetworkAgent != null) {
-                        updateNetworkInfo();
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
-                    }
                     break;
                 default:
                     if (DBG) {
@@ -1811,34 +1797,18 @@ public class DataConnection extends StateMachine {
         }
     }
 
-    private void updateNetworkInfo() {
-        final ServiceState state = mPhone.getServiceState();
-
-        NetworkRegistrationInfo nri = state.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
-        int subtype = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        if (nri != null) {
-            subtype = nri.getAccessNetworkTechnology();
-        }
-
-        mNetworkInfo.setSubtype(subtype, TelephonyManager.getNetworkTypeName(subtype));
-    }
-
-    private void updateNetworkInfoSuspendState() {
+    private void updateSuspendState() {
         if (mNetworkAgent == null) {
-            Rlog.e(getName(), "Setting suspend state without a NetworkAgent");
+            Rlog.d(getName(), "Setting suspend state without a NetworkAgent");
         }
 
         boolean suspended = isSuspended();
         if (mIsSuspended != suspended) {
             mIsSuspended = suspended;
 
-            // If data connection is active, we need to update the suspended state.
+            // If data connection is active, we need to notify the new data connection state
+            // changed event.
             if (isActive()) {
-                mNetworkInfo.setDetailedState(mIsSuspended
-                                ? NetworkInfo.DetailedState.SUSPENDED
-                                : NetworkInfo.DetailedState.CONNECTED, null,
-                        mNetworkInfo.getExtraInfo());
                 notifyDataConnectionState();
             }
         }
@@ -1912,15 +1882,8 @@ public class DataConnection extends StateMachine {
                             "Handover failed and dangling agent found.");
                     mHandoverSourceNetworkAgent.acquireOwnership(
                             DataConnection.this, mTransportType);
-                    NetworkInfo networkInfo = mHandoverSourceNetworkAgent.getNetworkInfo();
-                    if (networkInfo != null) {
-                        log("Cleared dangling network agent. " + mHandoverSourceNetworkAgent);
-                        mHandoverSourceNetworkAgent.unregister(DataConnection.this);
-                    } else {
-                        String str = "Failed to get network info.";
-                        loge(str);
-                        mHandoverLocalLog.log(str);
-                    }
+                    log("Cleared dangling network agent. " + mHandoverSourceNetworkAgent);
+                    mHandoverSourceNetworkAgent.unregister(DataConnection.this);
                     mHandoverSourceNetworkAgent.releaseOwnership(DataConnection.this);
                 }
                 mHandoverSourceNetworkAgent = null;
@@ -2168,9 +2131,6 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
-
-            updateNetworkInfo();
-
             // If we were retrying there maybe more than one, otherwise they'll only be one.
             notifyAllWithEvent(null, DctConstants.EVENT_DATA_SETUP_COMPLETE,
                     Phone.REASON_CONNECTED);
@@ -2184,9 +2144,6 @@ public class DataConnection extends StateMachine {
             // if it didn't then this is effectively a NOP.
             mDcController.addActiveDcByCid(DataConnection.this);
 
-            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED,
-                    mNetworkInfo.getReason(), null);
-            mNetworkInfo.setExtraInfo(mApnSetting.getApnName());
             updateTcpBufferSizes(mRilRat);
             updateLinkBandwidthsFromCarrierConfig(mRilRat);
 
@@ -2246,6 +2203,7 @@ public class DataConnection extends StateMachine {
                     // do it now because connectivity service does not support dynamically removing
                     // immutable capabilities.
 
+                    mNetworkAgent.updateLegacySubtype(DataConnection.this);
                     // Update the capability after handover
                     mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                             DataConnection.this);
@@ -2265,9 +2223,8 @@ public class DataConnection extends StateMachine {
 
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
                 updateLinkPropertiesHttpProxy();
-                mNetworkAgent = new DcNetworkAgent(DataConnection.this,
-                        mPhone, mNetworkInfo, mScore, configBuilder.build(), provider,
-                        mTransportType);
+                mNetworkAgent = new DcNetworkAgent(DataConnection.this, mPhone, mScore,
+                        configBuilder.build(), provider, mTransportType);
                 // All network agents start out in CONNECTING mode, but DcNetworkAgents are
                 // created when the network is already connected. Hence, send the connected
                 // notification immediately.
@@ -2288,23 +2245,8 @@ public class DataConnection extends StateMachine {
         @Override
         public void exit() {
             if (DBG) log("DcActiveState: exit dc=" + this);
-            String reason = mNetworkInfo.getReason();
-            if(mDcController.isExecutingCarrierChange()) {
-                reason = Phone.REASON_CARRIER_CHANGE;
-            } else if (mDisconnectParams != null && mDisconnectParams.mReason != null) {
-                reason = mDisconnectParams.mReason;
-            } else {
-                reason = DataFailCause.toString(mDcFailCause);
-            }
             mPhone.getCallTracker().unregisterForVoiceCallStarted(getHandler());
             mPhone.getCallTracker().unregisterForVoiceCallEnded(getHandler());
-
-            // If the data connection is being handover to other transport, we should not notify
-            // disconnected to connectivity service.
-            if (mHandoverState != HANDOVER_STATE_BEING_TRANSFERRED) {
-                mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
-                        reason, mNetworkInfo.getExtraInfo());
-            }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.unregisterForNattKeepaliveStatus(getHandler());
@@ -2312,10 +2254,13 @@ public class DataConnection extends StateMachine {
             }
 
             // If we are still owning this agent, then we should inform connectivity service the
-            // data connection is disconnected. If we don't own this agent at this point, that means
-            // it has been transferred to the new data connection for IWLAN data handover case.
+            // data connection is disconnected. There is one exception that we shouldn't unregister,
+            // which is when IWLAN handover is ongoing. Instead of unregistering, the agent will
+            // be transferred to the new data connection on the other transport.
             if (mNetworkAgent != null) {
-                mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
+                if (mHandoverState != HANDOVER_STATE_BEING_TRANSFERRED) {
+                    mNetworkAgent.unregister(DataConnection.this);
+                }
                 mNetworkAgent.releaseOwnership(DataConnection.this);
             }
             mNetworkAgent = null;
@@ -2423,10 +2368,11 @@ public class DataConnection extends StateMachine {
                                 + " mRilRat=" + mRilRat);
                     }
                     if (mNetworkAgent != null) {
-                        updateNetworkInfoSuspendState();
+                        mNetworkAgent.updateLegacySubtype(DataConnection.this);
+                        // The new suspended state will be passed through connectivity service
+                        // through NET_CAPABILITY_NOT_SUSPENDED.
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
                         mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
                     }
                     retVal = HANDLED;
@@ -2454,12 +2400,13 @@ public class DataConnection extends StateMachine {
                     // fallthrough
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
+                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED:
+                case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
+                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
                     if (mNetworkAgent != null) {
-                        updateNetworkInfo();
+                        mNetworkAgent.updateLegacySubtype(DataConnection.this);
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
                     }
                     retVal = HANDLED;
                     break;
@@ -2472,18 +2419,6 @@ public class DataConnection extends StateMachine {
                         if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_MODEM_KEY)) {
                             updateLinkBandwidthsFromModem((LinkCapacityEstimate) ar.result);
                         }
-                    }
-                    retVal = HANDLED;
-                    break;
-                }
-                case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
-                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
-                    if (mNetworkAgent != null) {
-                        updateNetworkInfoSuspendState();
-                        updateNetworkInfo();
-                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
-                                DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
                     }
                     retVal = HANDLED;
                     break;
