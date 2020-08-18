@@ -159,6 +159,10 @@ public class ServiceStateTracker extends Handler {
     public ServiceState mSS;
     @UnsupportedAppUsage
     private ServiceState mNewSS;
+    // A placeholder service state which will always be out of service. This is broadcast to
+    // listeners when the subscription ID for a phone becomes invalid so that they get a final
+    // state update.
+    private final ServiceState mOutOfServiceSS;
 
     // This is the minimum interval at which CellInfo requests will be serviced by the modem.
     // Any requests that arrive within MinInterval of the previous reuqest will simply receive the
@@ -394,9 +398,17 @@ public class ServiceStateTracker extends Handler {
             // which seems desirable.
             mPhone.updateVoiceMail();
 
-            // If the new subscription ID isn't valid, then we don't need to do all the
-            // UI updating, so we're done.
-            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) return;
+            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) {
+                if (SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
+                    // just went from valid to invalid subId, so notify phone state listeners
+                    // with final broadcast
+                    mPhone.notifyServiceStateChangedForSubId(mOutOfServiceSS,
+                            ServiceStateTracker.this.mPrevSubId);
+                }
+                // If the new subscription ID isn't valid, then we don't need to do all the
+                // UI updating, so we're done.
+                return;
+            }
 
             Context context = mPhone.getContext();
 
@@ -640,6 +652,9 @@ public class ServiceStateTracker extends Handler {
                 .getSystemService(Context.TELEPHONY_SERVICE))
                 .isVoiceCapable();
         mUiccController = UiccController.getInstance();
+
+        mOutOfServiceSS = new ServiceState();
+        mOutOfServiceSS.setStateOutOfService();
 
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);

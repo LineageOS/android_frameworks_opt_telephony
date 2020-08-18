@@ -1699,6 +1699,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Version of notifyServiceStateChangedP which allows us to specify the subId. This is used when
+     * we send out a final ServiceState update when a phone's subId becomes invalid.
+     */
+    protected void notifyServiceStateChangedPForSubId(ServiceState ss, int subId) {
+        AsyncResult ar = new AsyncResult(null, ss, null);
+        mServiceStateRegistrants.notifyRegistrants(ar);
+
+        mNotifier.notifyServiceStateForSubId(this, ss, subId);
+    }
+
+    /**
      * If this is a simulated phone interface, returns a SimulatedRadioControl.
      * @return SimulatedRadioControl if this is a simulated interface;
      * otherwise, null.
