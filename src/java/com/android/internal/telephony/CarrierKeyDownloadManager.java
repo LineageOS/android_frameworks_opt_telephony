@@ -60,6 +60,7 @@ import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.Random;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipException;
 
 /**
  * This class contains logic to get Certificates and keep them current.
@@ -403,11 +404,15 @@ public class CarrierKeyDownloadManager extends Handler {
 
     private static String convertToString(InputStream is) {
         try {
-            // The current implementation at certain Carriers has the data gzipped, which requires
-            // us to unzip the contents. Longer term, we want to add a flag in carrier config which
-            // determines if the data needs to be zipped or not.
-            GZIPInputStream gunzip = new GZIPInputStream(is);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(gunzip, UTF_8));
+            // If the carrier does not have the data gzipped, fallback to assuming it is not zipped.
+            // parseJsonAndPersistKey may still fail if the data is malformed, so we won't be
+            // persisting random bogus strings thinking it's the cert
+            try {
+                is = new GZIPInputStream(is);
+            } catch (ZipException e) {
+                Log.d(LOG_TAG, "fallback to no gzip");
+            }
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, UTF_8));
             StringBuilder sb = new StringBuilder();
 
             String line;
