@@ -2638,11 +2638,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyEmergencyNumberList(this);
     }
 
-    /** Notify the outgoing call {@link EmergencyNumber} changes. */
-    public void notifyOutgoingEmergencyCall(EmergencyNumber emergencyNumber) {
-        mNotifier.notifyOutgoingEmergencyCall(this, emergencyNumber);
-    }
-
     /** Notify the outgoing Sms {@link EmergencyNumber} changes. */
     public void notifyOutgoingEmergencySms(EmergencyNumber emergencyNumber) {
         mNotifier.notifyOutgoingEmergencySms(this, emergencyNumber);
