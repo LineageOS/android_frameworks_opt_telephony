@@ -129,9 +129,11 @@ public class EmergencyNumberTracker extends Handler {
     /** Event indicating the update for the emergency number prefix from carrier config. */
     private static final int EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX = 4;
     /** Event indicating the update for the OTA emergency number database. */
-    private static final int EVENT_UPDATE_OTA_EMERGENCY_NUMBER_DB = 5;
+    @VisibleForTesting
+    public static final int EVENT_UPDATE_OTA_EMERGENCY_NUMBER_DB = 5;
     /** Event indicating the override for the test OTA emergency number database. */
-    private static final int EVENT_OVERRIDE_OTA_EMERGENCY_NUMBER_DB_FILE_PATH = 6;
+    @VisibleForTesting
+    public static final int EVENT_OVERRIDE_OTA_EMERGENCY_NUMBER_DB_FILE_PATH = 6;
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -819,6 +821,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private synchronized void updateEmergencyCountryIso(String countryIso) {
         mCountryIso = countryIso;
+        mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
     }
 
     /**

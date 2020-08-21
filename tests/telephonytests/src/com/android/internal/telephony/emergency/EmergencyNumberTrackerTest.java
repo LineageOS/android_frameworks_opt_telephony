@@ -22,6 +22,8 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 import android.os.AsyncResult;
+import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -39,6 +41,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +59,13 @@ import java.util.List;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class EmergencyNumberTrackerTest extends TelephonyTest {
+
+    private static final String LOCAL_DOWNLOAD_DIRECTORY = "Download/Emergency_number_db_unit_test";
+    private static final String EMERGENCY_NUMBER_DB_OTA_FILE = "eccdata_ota";
+    private static final int CONFIG_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION = 99999;
+    private static final String CONFIG_EMERGENCY_NUMBER_ADDRESS = "54321";
+    private static final int OTA_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION = 999999;
+    private static final String OTA_EMERGENCY_NUMBER_ADDRESS = "98765";
 
     @Mock
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
@@ -61,6 +78,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private List<EmergencyNumber> mEmergencyNumberListTestSample = new ArrayList<>();
     private EmergencyNumber mUsEmergencyNumber;
     private String[] mEmergencyNumberPrefixTestSample = {"123", "456"};
+
+    private File mLocalDownloadDirectory;
 
     @Before
     public void setUp() throws Exception {
@@ -79,6 +98,10 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         mEmergencyNumberTrackerMock2 = new EmergencyNumberTracker(mPhone2, mSimulatedCommands);
         doReturn(mEmergencyNumberTrackerMock2).when(mPhone2).getEmergencyNumberTracker();
         mEmergencyNumberTrackerMock.DBG = true;
+
+        // Copy an OTA file to the test directory to similate the OTA mechanism
+        simulateOtaEmergencyNumberDb(mPhone);
+
         processAllMessages();
         logd("EmergencyNumberTrackerTest -Setup!");
     }
@@ -87,6 +110,9 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         // Set back to single sim mode
         setSinglePhone();
+        Path target = Paths.get(mLocalDownloadDirectory.getPath(), EMERGENCY_NUMBER_DB_OTA_FILE);
+        Files.deleteIfExists(target);
+        mLocalDownloadDirectory.delete();
         super.tearDown();
     }
 
@@ -123,6 +149,71 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         	4 /* EVENT_UPDATE_EMERGENCY_NUMBER_PREFIX */,
                 mEmergencyNumberPrefixTestSample).sendToTarget();
         processAllMessages();
+    }
+
+    private void setOtaEmergencyNumberDbFileFolderForTesting(
+            EmergencyNumberTracker emergencyNumberTrackerMock, Phone phone) {
+        // Override the OTA emergency number database file path for testing
+        File file = new File(Environment.getExternalStorageDirectory(), LOCAL_DOWNLOAD_DIRECTORY
+                + "/" + EMERGENCY_NUMBER_DB_OTA_FILE);
+        try {
+            final ParcelFileDescriptor otaParcelFileDescriptor = ParcelFileDescriptor.open(
+                    file, ParcelFileDescriptor.MODE_READ_ONLY);
+            emergencyNumberTrackerMock.obtainMessage(
+                EmergencyNumberTracker.EVENT_OVERRIDE_OTA_EMERGENCY_NUMBER_DB_FILE_PATH,
+                otaParcelFileDescriptor).sendToTarget();
+            logd("Changed emergency number db file folder for testing ");
+        } catch (FileNotFoundException e) {
+            logd("Failed to open emergency number db file folder for testing " + e.toString());
+        }
+        processAllMessages();
+    }
+
+    private void resetOtaEmergencyNumberDbFileFolderForTesting(
+            EmergencyNumberTracker emergencyNumberTrackerMock) {
+        emergencyNumberTrackerMock.obtainMessage(
+                EmergencyNumberTracker.EVENT_OVERRIDE_OTA_EMERGENCY_NUMBER_DB_FILE_PATH, null)
+                        .sendToTarget();
+        processAllMessages();
+    }
+
+    private void sendOtaEmergencyNumberDb(EmergencyNumberTracker emergencyNumberTrackerMock) {
+        emergencyNumberTrackerMock.obtainMessage(
+                EmergencyNumberTracker.EVENT_UPDATE_OTA_EMERGENCY_NUMBER_DB).sendToTarget();
+        processAllMessages();
+    }
+
+    /**
+     * Copy an OTA file to the test directory to similate the OTA mechanism.
+     *
+     * Version: 999999
+     * Number: US, 98765, POLICE | AMBULANCE | FIRE
+     */
+    private void simulateOtaEmergencyNumberDb(Phone phone) {
+        try {
+            mLocalDownloadDirectory = new File(
+                    Environment.getExternalStorageDirectory(), LOCAL_DOWNLOAD_DIRECTORY);
+            mLocalDownloadDirectory.mkdir();
+            final Path target = Paths.get(
+                    mLocalDownloadDirectory.getPath(), EMERGENCY_NUMBER_DB_OTA_FILE);
+            Files.deleteIfExists(target);
+            final InputStream source = new BufferedInputStream(
+                    phone.getContext().getAssets().open(EMERGENCY_NUMBER_DB_OTA_FILE));
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+            logd("Copied test OTA database file to " + target);
+        } catch (Exception e) {
+            logd("Unable to copy downloaded file " + e);
+        }
+    }
+
+    private boolean hasDbEmergencyNumber(String number, List<EmergencyNumber> list) {
+        boolean foundDbNumber = false;
+        for (EmergencyNumber num : list) {
+            if (num.getNumber().equals(number)) {
+                foundDbNumber = true;
+            }
+        }
+        return foundDbNumber;
     }
 
     private void setDsdsPhones() throws Exception {
@@ -235,6 +326,51 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
             }
         }
         assertTrue(hasDatabaseNumber);
+    }
+
+    /**
+     * Test OTA Emergency Number Database Update Status.
+     */
+    @Test
+    public void testOtaEmergencyNumberDatabase() {
+        // Set up the Hal version as 1.4 to apply emergency number database
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+
+        sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
+        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("");
+        processAllMessages();
+
+        // Emergency Number Db is cached per country, given the country is empty at this time,
+        // we should not expect any db number there.
+        assertFalse(hasDbEmergencyNumber(CONFIG_EMERGENCY_NUMBER_ADDRESS,
+                mEmergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // Set up the OTA database file folder as sdcard for testing purposes
+        setOtaEmergencyNumberDbFileFolderForTesting(mEmergencyNumberTrackerMock, mPhone);
+        // Notify EmergerncyNumberTracker OTA database is installed.
+        sendOtaEmergencyNumberDb(mEmergencyNumberTrackerMock);
+        processAllMessages();
+
+        assertEquals(OTA_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION,
+                mEmergencyNumberTrackerMock.getEmergencyNumberDbVersion());
+
+        // Emergency Number Db is cached per country, given the country is empty at this time,
+        // we should not expect any db number there.
+        assertFalse(hasDbEmergencyNumber(OTA_EMERGENCY_NUMBER_ADDRESS,
+                mEmergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        processAllMessages();
+        assertEquals(OTA_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION,
+                mEmergencyNumberTrackerMock.getEmergencyNumberDbVersion());
+
+        // Emergency Number Db is cached per country, given the country is 'us' at this time,
+        // we should expect the 'us' db number there.
+        assertTrue(hasDbEmergencyNumber(OTA_EMERGENCY_NUMBER_ADDRESS,
+                mEmergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // Reset the OTA database file to default after testing completion
+        resetOtaEmergencyNumberDbFileFolderForTesting(mEmergencyNumberTrackerMock);
     }
 
     @Test
