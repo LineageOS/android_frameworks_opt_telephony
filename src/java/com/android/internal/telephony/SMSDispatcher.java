@@ -60,6 +60,7 @@ import android.provider.Telephony.Sms;
 import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.CarrierMessagingServiceWrapper;
 import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallbackWrapper;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -90,6 +91,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -143,7 +145,6 @@ public abstract class SMSDispatcher extends Handler {
     protected static final int EVENT_NEW_ICC_SMS = 14;
     protected static final int EVENT_ICC_CHANGED = 15;
     protected static final int EVENT_GET_IMS_SERVICE = 16;
-
 
     @UnsupportedAppUsage
     protected Phone mPhone;
@@ -1637,6 +1638,9 @@ public abstract class SMSDispatcher extends Handler {
 
         public final long mMessageId;
 
+        // SMS anomaly uuid
+        private final UUID mAnomalyUUID = UUID.fromString("43043600-ea7a-44d2-9ae6-a58567ac7886");
+
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
                 AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
@@ -1838,6 +1842,32 @@ public abstract class SMSDispatcher extends Handler {
                             + " id: " + mMessageId);
                 }
             }
+            reportAnomaly(error, errorCode);
+        }
+
+        private void reportAnomaly(int error, int errorCode) {
+            switch (error) {
+                // Exclude known failed reason
+                case RESULT_ERROR_NO_SERVICE:
+                case RESULT_ERROR_RADIO_OFF:
+                case RESULT_ERROR_LIMIT_EXCEEDED:
+                case RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED:
+                case RESULT_ERROR_SHORT_CODE_NOT_ALLOWED:
+                case SmsManager.RESULT_SMS_BLOCKED_DURING_EMERGENCY:
+                    break;
+                // Dump bugreport for analysis
+                default:
+                    String message = "SMS failed";
+                    Rlog.d(TAG, message + " with error " + error + ", errorCode " + errorCode);
+                    AnomalyReporter.reportAnomaly(generateUUID(error, errorCode), message);
+            }
+        }
+
+        private UUID generateUUID(int error, int errorCode) {
+            long lerror = error;
+            long lerrorCode = errorCode;
+            return new UUID(mAnomalyUUID.getMostSignificantBits(),
+                    mAnomalyUUID.getLeastSignificantBits() + ((lerrorCode << 32) + lerror));
         }
 
         /**
