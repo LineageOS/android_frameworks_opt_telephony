@@ -37,6 +37,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
+import android.os.HandlerThread;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.provider.Settings;
@@ -51,6 +52,7 @@ import android.testing.TestableLooper;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,6 +62,9 @@ import org.mockito.Mock;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -652,5 +657,42 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         processAllMessages();
         // This time user data should be disabled on phone1.
         verify(mDataEnabledSettingsMock2).setUserDataEnabled(false);
+    }
+
+    @Test
+    @SmallTest
+    public void testOnPhoneRemoved() {
+        try {
+            mMultiSimSettingControllerUT.onPhoneRemoved();
+        } catch (RuntimeException re) {
+            Assert.fail("Exception not expected when calling from the same thread");
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testOnPhoneRemoved_DifferentThread() {
+        AtomicBoolean result = new AtomicBoolean(false);
+        CountDownLatch latch = new CountDownLatch(1);
+        HandlerThread handlerThread = new HandlerThread("MultiSimSettingControllerTest") {
+            public void onLooperPrepared() {
+                try {
+                    mMultiSimSettingControllerUT.onPhoneRemoved();
+                } catch (RuntimeException re) {
+                    result.set(true); // true to indicate that the test passed
+                }
+                latch.countDown();
+            }
+        };
+        handlerThread.start();
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                Assert.fail("CountDownLatch did not reach 0");
+            } else if (!result.get()) {
+                Assert.fail("Exception expected when not calling from the same thread");
+            }
+        } catch (InterruptedException ie) {
+            Assert.fail("InterruptedException during latch.await");
+        }
     }
 }

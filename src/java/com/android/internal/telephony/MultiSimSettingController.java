@@ -37,6 +37,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelUuid;
 import android.provider.Settings;
@@ -226,6 +227,7 @@ public class MultiSimSettingController extends Handler {
      * Notify subscription info change.
      */
     public void notifySubscriptionInfoChanged() {
+        log("notifySubscriptionInfoChanged");
         obtainMessage(EVENT_SUBSCRIPTION_INFO_CHANGED).sendToTarget();
     }
 
@@ -328,6 +330,22 @@ public class MultiSimSettingController extends Handler {
      */
     private void onSubscriptionsChanged() {
         if (DBG) log("onSubscriptionsChanged");
+        reEvaluateAll();
+    }
+
+    /**
+     * This method is called when a phone object is removed (for example when going from multi-sim
+     * to single-sim).
+     * NOTE: This method does not post a message to self, instead it calls reEvaluateAll() directly.
+     * so it should only be called from the main thread. The reason is to update defaults asap
+     * after multi_sim_config property has been updated (see b/163582235).
+     */
+    public void onPhoneRemoved() {
+        if (DBG) log("onPhoneRemoved");
+        if (Looper.myLooper() != this.getLooper()) {
+            throw new RuntimeException("This method must be called from the same looper as "
+                    + "MultiSimSettingController.");
+        }
         reEvaluateAll();
     }
 
