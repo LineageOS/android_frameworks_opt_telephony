@@ -203,4 +203,58 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         verify(mMockCi1, times(1)).registerForAvailable(any(), anyInt(), any());
         verify(mMockCi1, times(1)).onSlotActiveStatusChange(anyBoolean());
     }
+
+    @Test
+    @SmallTest
+    public void testSwitchMultiSimConfig_multiSimToSingleSim() throws Exception {
+        mPhones = new Phone[]{mPhone, mPhone1};
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        init(2);
+        verify(mMockCi0, times(1)).registerForAvailable(any(), anyInt(), any());
+        verify(mMockCi1, times(1)).registerForAvailable(any(), anyInt(), any());
+
+        // Register for multi SIM config change.
+        mPcm.registerForMultiSimConfigChange(mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
+        verify(mHandler, never()).sendMessageAtTime(any(), anyLong());
+
+        // Switch to single sim.
+        setRebootRequiredForConfigSwitch(false);
+        mPcm.switchMultiSimConfig(1);
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockRadioConfig).setModemsConfig(eq(1), captor.capture());
+
+        // Send message back to indicate switch success.
+        Message message = captor.getValue();
+        AsyncResult.forMessage(message, null, null);
+        message.sendToTarget();
+        processAllMessages();
+
+        // Verify set system property being called.
+        verify(mMi).setMultiSimProperties(1);
+        verify(mMi).notifyPhoneFactoryOnMultiSimConfigChanged(any(), eq(1));
+
+        // Capture and verify registration notification.
+        verify(mHandler).sendMessageAtTime(captor.capture(), anyLong());
+        message = captor.getValue();
+        assertEquals(EVENT_MULTI_SIM_CONFIG_CHANGED, message.what);
+        assertEquals(1, ((AsyncResult) message.obj).result);
+
+        // Capture and verify broadcast.
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).sendBroadcast(intentCaptor.capture());
+        Intent intent = intentCaptor.getValue();
+        assertEquals(ACTION_MULTI_SIM_CONFIG_CHANGED, intent.getAction());
+        assertEquals(1, intent.getIntExtra(
+                EXTRA_ACTIVE_SIM_SUPPORTED_COUNT, 0));
+
+        // Verify clearSubInfoRecord() and onSlotActiveStatusChange() are called for second phone,
+        // and not for the first one
+        verify(mSubscriptionController).clearSubInfoRecord(1);
+        verify(mMockCi1).onSlotActiveStatusChange(anyBoolean());
+        verify(mSubscriptionController, never()).clearSubInfoRecord(0);
+        verify(mMockCi0, never()).onSlotActiveStatusChange(anyBoolean());
+
+        // Verify onPhoneRemoved() gets called on MultiSimSettingController phone
+        verify(mMultiSimSettingController).onPhoneRemoved();
+    }
 }
