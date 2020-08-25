@@ -298,7 +298,7 @@ public class DataConnection extends StateMachine {
     public int mCid;
 
     @HandoverState
-    private int mHandoverState;
+    private int mHandoverState = HANDOVER_STATE_IDLE;
     private final Map<ApnContext, ConnectionParams> mApnContexts = new ConcurrentHashMap<>();
     PendingIntent mReconnectIntent = null;
 
@@ -1003,6 +1003,7 @@ public class DataConnection extends StateMachine {
         mDownlinkBandwidth = 14;
         mUplinkBandwidth = 14;
         mIsSuspended = false;
+        mHandoverState = HANDOVER_STATE_IDLE;
     }
 
     /**
@@ -2258,7 +2259,7 @@ public class DataConnection extends StateMachine {
             // which is when IWLAN handover is ongoing. Instead of unregistering, the agent will
             // be transferred to the new data connection on the other transport.
             if (mNetworkAgent != null) {
-                if (mHandoverState != HANDOVER_STATE_BEING_TRANSFERRED) {
+                if (mHandoverState == HANDOVER_STATE_IDLE) {
                     mNetworkAgent.unregister(DataConnection.this);
                 }
                 mNetworkAgent.releaseOwnership(DataConnection.this);
