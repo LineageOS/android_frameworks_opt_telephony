@@ -1050,15 +1050,16 @@ public class SubscriptionInfoUpdater extends Handler {
         // this current package is not a CarrierServicePackage
         String[] certs = config.getStringArray(
             CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
+        UiccAccessRule[] carrierConfigAccessRules = null;
         if (certs != null) {
-            UiccAccessRule[] carrierConfigAccessRules = new UiccAccessRule[certs.length];
+            carrierConfigAccessRules = new UiccAccessRule[certs.length];
             for (int i = 0; i < certs.length; i++) {
                 carrierConfigAccessRules[i] = new UiccAccessRule(IccUtils.hexStringToBytes(
                     certs[i]), null, 0);
             }
-            cv.put(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS,
-                    UiccAccessRule.encodeRules(carrierConfigAccessRules));
         }
+        cv.put(SubscriptionManager.ACCESS_RULES_FROM_CARRIER_CONFIGS,
+                UiccAccessRule.encodeRules(carrierConfigAccessRules));
 
         if (!isCarrierServicePackage(phoneId, configPackageName)) {
             loge("Cannot manage subId=" + currentSubId + ", carrierPackage=" + configPackageName);
