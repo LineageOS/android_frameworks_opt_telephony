@@ -1021,8 +1021,30 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             mImsManager.close();
         }
+        hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
         // For compatibility with apps that still use deprecated intent
         sendImsServiceStateIntent(ImsManager.ACTION_IMS_SERVICE_DOWN);
+    }
+
+    /**
+     * Hang up all ongoing connections in the case that the ImsService has been disconnected and the
+     * existing calls have been orphaned. This method assumes that there is no connection to the
+     * ImsService and DOES NOT try to terminate the connections on the service side before
+     * disconnecting here, as it assumes they have already been disconnected when we lost the
+     * connection to the ImsService.
+     */
+    @VisibleForTesting
+    public void hangupAllOrphanedConnections(int disconnectCause) {
+        Log.w(LOG_TAG, "hangupAllOngoingConnections called for cause " + disconnectCause);
+
+        // Move connections to disconnected and notify the reason why.
+        for (ImsPhoneConnection connection : mConnections) {
+            connection.update(connection.getImsCall(), ImsPhoneCall.State.DISCONNECTED);
+            connection.onDisconnect(disconnectCause);
+            connection.getCall().detach(connection);
+        }
+        mConnections.clear();
+        updatePhoneState();
     }
 
     private void sendImsServiceStateIntent(String intentAction) {
