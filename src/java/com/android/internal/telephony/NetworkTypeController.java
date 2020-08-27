@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
  * The NetworkTypeController evaluates the override network type of {@link TelephonyDisplayInfo}
@@ -135,6 +136,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
     private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
+    private int mLtePlusThresholdBandwidth;
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
     private String mPreviousState;
@@ -215,6 +217,8 @@ public class NetworkTypeController extends StateMachine {
         mIsTimerResetEnabledForLegacyStateRRCIdle =
                 CarrierConfigManager.getDefaultConfig().getBoolean(
                         CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
+        mLtePlusThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
+                CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
 
         CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                 .getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -242,6 +246,9 @@ public class NetworkTypeController extends StateMachine {
                 }
                 mIsTimerResetEnabledForLegacyStateRRCIdle = b.getBoolean(
                         CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
+                mLtePlusThresholdBandwidth = b.getInt(
+                        CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT,
+                        mLtePlusThresholdBandwidth);
             }
         }
         createTimerRules(nrIconConfiguration, overrideTimerRule, overrideSecondaryTimerRule);
@@ -400,8 +407,10 @@ public class NetworkTypeController extends StateMachine {
 
     private @Annotation.OverrideNetworkType int getLteDisplayType() {
         int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-        if (mPhone.getServiceState().getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
-                || mPhone.getServiceState().isUsingCarrierAggregation()) {
+        if ((mPhone.getServiceState().getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
+                || mPhone.getServiceState().isUsingCarrierAggregation())
+                && (IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
+                        > mLtePlusThresholdBandwidth)) {
             value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA;
         }
         if (isLteEnhancedAvailable()) {
@@ -1059,9 +1068,13 @@ public class NetworkTypeController extends StateMachine {
         pw.println("mIsPhysicalChannelConfigOn=" + mIsPhysicalChannelConfigOn);
         pw.println("mIsPrimaryTimerActive=" + mIsPrimaryTimerActive);
         pw.println("mIsSecondaryTimerActive=" + mIsSecondaryTimerActive);
+        pw.println("mIsTimerRestEnabledForLegacyStateRRCIdle="
+                + mIsTimerResetEnabledForLegacyStateRRCIdle);
+        pw.println("mLtePlusThresholdBandwidth=" + mLtePlusThresholdBandwidth);
         pw.println("mPrimaryTimerState=" + mPrimaryTimerState);
         pw.println("mSecondaryTimerState=" + mSecondaryTimerState);
         pw.println("mPreviousState=" + mPreviousState);
+        pw.println("mPhysicalLinkState=" + mPhysicalLinkState);
         pw.decreaseIndent();
         pw.flush();
     }
