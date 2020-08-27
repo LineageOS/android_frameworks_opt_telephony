@@ -508,6 +508,48 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
     }
 
+    @Test
+    @SmallTest
+    public void testImsMTActiveHoldServiceDisconnect() {
+        testImsMTCallAccept();
+
+        assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
+        // mock a new MT
+        try {
+            doReturn(mSecondImsCall).when(mImsManager).takeCall(any(IImsCallSession.class),
+                    any(ImsCall.Listener.class));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+
+        verify(mImsPhone, times(2)).notifyNewRingingConnection((Connection) any());
+        verify(mImsPhone, times(2)).notifyIncomingRing();
+        assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
+        assertEquals(ImsPhoneCall.State.WAITING, mCTUT.mRingingCall.getState());
+        assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
+
+        //hold the foreground active call, accept the new ringing call
+        try {
+            mCTUT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
+            verify(mImsCall, times(1)).hold();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+
+        processAllMessages();
+        assertEquals(Call.State.ACTIVE, mCTUT.mForegroundCall.getState());
+        assertFalse(mCTUT.mRingingCall.isRinging());
+        assertEquals(Call.State.HOLDING, mCTUT.mBackgroundCall.getState());
+
+        // Now fake the ImsService crashing
+        mCTUT.hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+    }
+
     /**
      * Ensures that the dial method will perform a shared preferences lookup using the correct
      * shared preference key to determine the CLIR mode.
