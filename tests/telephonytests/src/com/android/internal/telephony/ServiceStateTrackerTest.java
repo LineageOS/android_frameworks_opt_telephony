@@ -65,6 +65,9 @@ import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
+import android.telephony.CellIdentityTdscdma;
+import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellSignalStrength;
@@ -107,6 +110,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2679,5 +2683,27 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(cids.size(), 2);
         assertEquals(cids.get(0), cellIdentityLte);
         assertEquals(cids.get(1), cellIdentityGsm);
+    }
+
+    @Test
+    public void testGetCidFromCellIdentity() throws Exception {
+        CellIdentity gsmCi = new CellIdentityGsm(
+                0, 1, 0, 0, "", "", "", "", Collections.emptyList());
+        CellIdentity wcdmaCi = new CellIdentityWcdma(
+                0, 2, 0, 0, "", "", "", "", Collections.emptyList(), null);
+        CellIdentity tdscdmaCi = new CellIdentityTdscdma(
+                "", "", 0, 3, 0, 0, "", "", Collections.emptyList(), null);
+        CellIdentity lteCi = new CellIdentityLte(0, 0, 4, 0, 0);
+        CellIdentity nrCi = new CellIdentityNr(
+                0, 0, 0, new int[] {}, "", "", 5, "", "", Collections.emptyList());
+
+        Method method = ServiceStateTracker.class.getDeclaredMethod(
+                "getCidFromCellIdentity", CellIdentity.class);
+        method.setAccessible(true);
+        assertEquals(1, (long) method.invoke(mSST, gsmCi));
+        assertEquals(2, (long) method.invoke(mSST, wcdmaCi));
+        assertEquals(3, (long) method.invoke(mSST, tdscdmaCi));
+        assertEquals(4, (long) method.invoke(mSST, lteCi));
+        assertEquals(5, (long) method.invoke(mSST, nrCi));
     }
 }
