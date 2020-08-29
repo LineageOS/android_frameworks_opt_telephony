@@ -64,6 +64,7 @@ import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
@@ -2388,14 +2389,15 @@ public class ServiceStateTracker extends Handler {
      *
      * @returns the cell ID (unique within a PLMN for a given tech) or -1 if invalid
      */
-    private static int getCidFromCellIdentity(CellIdentity id) {
+    private static long getCidFromCellIdentity(CellIdentity id) {
         if (id == null) return -1;
-        int cid = -1;
+        long cid = -1;
         switch(id.getType()) {
             case CellInfo.TYPE_GSM: cid = ((CellIdentityGsm) id).getCid(); break;
             case CellInfo.TYPE_WCDMA: cid = ((CellIdentityWcdma) id).getCid(); break;
             case CellInfo.TYPE_TDSCDMA: cid = ((CellIdentityTdscdma) id).getCid(); break;
             case CellInfo.TYPE_LTE: cid = ((CellIdentityLte) id).getCi(); break;
+            case CellInfo.TYPE_NR: cid = ((CellIdentityNr) id).getNci(); break;
             default: break;
         }
         // If the CID is unreported
@@ -2742,10 +2744,6 @@ public class ServiceStateTracker extends Handler {
             //    EXTRA_SHOW_PLMN = true
             //    EXTRA_PLMN = null
 
-            // 5) Airplane mode but connected to WiFi with WFC disabled
-            //    EXTRA_SHOW_PLMN = true
-            //    EXTRA_PLMN = plmn
-
             IccRecords iccRecords = mIccRecords;
             int rule = getCarrierNameDisplayBitmask(mSS);
             boolean noService = false;
@@ -2777,17 +2775,9 @@ public class ServiceStateTracker extends Handler {
                                 == CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
                 if (DBG) log("updateSpnDisplay: rawPlmn = " + plmn);
             } else {
-                // Power off state, such as airplane mode, show plmn as "No service"
-                // unless connected to WiFi with WFC disabled, then show plmn
+                // Power off state, such as airplane mode, show plmn as null
                 showPlmn = true;
-                if (mPhone.getImsPhone() != null && !mPhone.getImsPhone().isWifiCallingEnabled()
-                        && mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
-                    plmn = mSS.getOperatorAlpha();
-                } else {
-                    plmn = Resources.getSystem()
-                            .getText(com.android.internal.R.string.lockscreen_carrier_default)
-                            .toString();
-                }
+                plmn = null;
                 if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
                         + showPlmn + " plmn=" + plmn);
             }
@@ -3403,7 +3393,7 @@ public class ServiceStateTracker extends Handler {
             // TODO: we may add filtering to reduce the event logged,
             // i.e. check preferred network setting, only switch to 2G, etc
             if (hasRilVoiceRadioTechnologyChanged) {
-                int cid = getCidFromCellIdentity(primaryCellIdentity);
+                long cid = getCidFromCellIdentity(primaryCellIdentity);
                 // NOTE: this code was previously located after mSS and mNewSS are swapped, so
                 // existing logs were incorrectly using the new state for "network_from"
                 // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
