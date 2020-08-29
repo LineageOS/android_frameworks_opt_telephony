@@ -2755,10 +2755,6 @@ public class ServiceStateTracker extends Handler {
             //    EXTRA_SHOW_PLMN = true
             //    EXTRA_PLMN = null
 
-            // 5) Airplane mode but connected to WiFi with WFC disabled
-            //    EXTRA_SHOW_PLMN = true
-            //    EXTRA_PLMN = plmn
-
             IccRecords iccRecords = mIccRecords;
             int rule = getCarrierNameDisplayBitmask(mSS);
             boolean noService = false;
@@ -2790,17 +2786,9 @@ public class ServiceStateTracker extends Handler {
                                 == CARRIER_NAME_DISPLAY_BITMASK_SHOW_PLMN);
                 if (DBG) log("updateSpnDisplay: rawPlmn = " + plmn);
             } else {
-                // Power off state, such as airplane mode, show plmn as "No service"
-                // unless connected to WiFi with WFC disabled, then show plmn
+                // Power off state, such as airplane mode, show plmn as null
                 showPlmn = true;
-                if (mPhone.getImsPhone() != null && !mPhone.getImsPhone().isWifiCallingEnabled()
-                        && mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
-                    plmn = mSS.getOperatorAlpha();
-                } else {
-                    plmn = Resources.getSystem()
-                            .getText(com.android.internal.R.string.lockscreen_carrier_default)
-                            .toString();
-                }
+                plmn = null;
                 if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
                         + showPlmn + " plmn=" + plmn);
             }

@@ -2419,7 +2419,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testUpdateSpnDisplay_flightMode_displayOOS() {
+    public void testUpdateSpnDisplay_flightMode_displayNull() {
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2432,10 +2432,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // update the spn
         sst.updateSpnDisplay();
 
-        // Plmn should be shown, and the string is "No service"
+        // Plmn should be shown, and the string is null
         Bundle b = getExtrasFromLastSpnUpdateIntent();
-        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
-                .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN)).isEqualTo(null);
         assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
