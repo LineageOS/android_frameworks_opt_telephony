@@ -37,23 +37,15 @@ public abstract class Call {
     /* Enums */
     @UnsupportedAppUsage(implicitMember = "values()[Lcom/android/internal/telephony/Call$State;")
     public enum State {
-        @UnsupportedAppUsage
-        IDLE,
+        @UnsupportedAppUsage IDLE,
         ACTIVE,
-        @UnsupportedAppUsage
-        HOLDING,
-        @UnsupportedAppUsage
-        DIALING,
-        @UnsupportedAppUsage
-        ALERTING,
-        @UnsupportedAppUsage
-        INCOMING,
-        @UnsupportedAppUsage
-        WAITING,
-        @UnsupportedAppUsage
-        DISCONNECTED,
-        @UnsupportedAppUsage
-        DISCONNECTING;
+        @UnsupportedAppUsage HOLDING,
+        @UnsupportedAppUsage DIALING,
+        @UnsupportedAppUsage ALERTING,
+        @UnsupportedAppUsage INCOMING,
+        @UnsupportedAppUsage WAITING,
+        @UnsupportedAppUsage DISCONNECTED,
+        @UnsupportedAppUsage DISCONNECTING;
 
         @UnsupportedAppUsage
         public boolean isAlive() {

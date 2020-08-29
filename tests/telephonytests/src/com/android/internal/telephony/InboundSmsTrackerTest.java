@@ -23,6 +23,8 @@ import static org.junit.Assert.assertTrue;
 import android.database.MatrixCursor;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import androidx.test.InstrumentationRegistry;
+
 import com.android.internal.util.HexDump;
 
 import org.junit.Before;
@@ -46,7 +48,8 @@ public class InboundSmsTrackerTest {
 
     @Before
     public void setUp() throws Exception {
-        mInboundSmsTracker = new InboundSmsTracker(FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
+        mInboundSmsTracker = new InboundSmsTracker(InstrumentationRegistry.getContext(),
+                FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
                 FAKE_ADDRESS, FAKE_DISPLAY_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER,
                 FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */, FAKE_SUBID);
     }
@@ -84,6 +87,7 @@ public class InboundSmsTrackerTest {
         assertEquals(FAKE_DISPLAY_ADDRESS, mInboundSmsTracker.getDisplayAddress());
         assertEquals(false, mInboundSmsTracker.isClass0());
         assertEquals(FAKE_SUBID, mInboundSmsTracker.getSubId());
+//        assertNotEquals(0L, mInboundSmsTracker.getMessageId());
 
         String[] args = new String[]{"123"};
         mInboundSmsTracker.setDeleteWhere(InboundSmsHandler.SELECT_BY_ID, args);
@@ -94,7 +98,8 @@ public class InboundSmsTrackerTest {
     @Test
     @SmallTest
     public void testInitializationFromDb() {
-        mInboundSmsTracker = new InboundSmsTracker(createFakeCursor(), false);
+        mInboundSmsTracker = new InboundSmsTracker(InstrumentationRegistry.getContext(),
+                createFakeCursor(), false);
         testInitialization();
     }
 }

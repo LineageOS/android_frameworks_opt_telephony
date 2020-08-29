@@ -32,7 +32,6 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOI
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.app.ActivityManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -189,6 +188,9 @@ public class GsmCdmaPhone extends Phone {
      * IsimUiccRecords
      */
     private SIMRecords mSimRecords;
+
+    // For non-persisted manual network selection
+    private String mManualNetworkSelectionPlmn = "";
 
     //Common
     // Instance Variables
@@ -802,7 +804,7 @@ public class GsmCdmaPhone extends Phone {
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
+        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         logi("sendEmergencyCallbackModeChange");
     }
 
@@ -817,7 +819,7 @@ public class GsmCdmaPhone extends Phone {
             Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
             intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, callActive);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-            ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
+            mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
             if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange: callActive " + callActive);
         }
     }
@@ -854,13 +856,11 @@ public class GsmCdmaPhone extends Phone {
     public void registerForSuppServiceNotification(
             Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
-        if (mSsnRegistrants.size() == 1) mCi.setSuppServiceNotifications(true, null);
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         mSsnRegistrants.remove(h);
-        if (mSsnRegistrants.size() == 0) mCi.setSuppServiceNotifications(false, null);
     }
 
     @Override
@@ -1955,6 +1955,29 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
+    /**
+     * Update non-persisited manual network selection.
+     *
+     * @param nsm contains Plmn info
+     */
+    @Override
+    protected void updateManualNetworkSelection(NetworkSelectMessage nsm) {
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            mManualNetworkSelectionPlmn = nsm.operatorNumeric;
+        } else {
+        //on Phone0 in emergency mode (no SIM), or in some races then clear the cache
+            mManualNetworkSelectionPlmn = "";
+            Rlog.e(LOG_TAG, "Cannot update network selection due to invalid subId "
+                    + subId);
+        }
+    }
+
+    @Override
+    public String getManualNetworkSelectionPlmn() {
+        return (mManualNetworkSelectionPlmn == null) ? "" : mManualNetworkSelectionPlmn;
+    }
+
     @Override
     public String getCdmaPrlVersion() {
         return mSST.getPrlVersion();
@@ -2764,8 +2787,9 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_CARRIER_CONFIG_CHANGED:
                 // Only check for the voice radio tech if it not going to be updated by the voice
                 // registration changes.
-                if (!mContext.getResources().getBoolean(com.android.internal.R.bool.
-                        config_switch_phone_on_voice_reg_state_change)) {
+                if (!mContext.getResources().getBoolean(
+                        com.android.internal.R.bool
+                                .config_switch_phone_on_voice_reg_state_change)) {
                     mCi.getVoiceRadioTechnology(obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
                 }
                 // Force update IMS service if it is available, if it isn't the config will be
@@ -3413,8 +3437,8 @@ public class GsmCdmaPhone extends Phone {
     @UnsupportedAppUsage
     private boolean isManualSelProhibitedInGlobalMode() {
         boolean isProhibited = false;
-        final String configString = getContext().getResources().getString(com.android.internal.
-                R.string.prohibit_manual_network_selection_in_gobal_mode);
+        final String configString = getContext().getResources().getString(com.android.internal
+                .R.string.prohibit_manual_network_selection_in_gobal_mode);
 
         if (!TextUtils.isEmpty(configString)) {
             String[] configArray = configString.split(";");
@@ -3920,7 +3944,7 @@ public class GsmCdmaPhone extends Phone {
         Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
-        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
+        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
     private void switchVoiceRadioTech(int newVoiceRadioTech) {
@@ -4031,6 +4055,7 @@ public class GsmCdmaPhone extends Phone {
             pw.println(" isMinInfoReady()=" + isMinInfoReady());
         }
         pw.println(" isCspPlmnEnabled()=" + isCspPlmnEnabled());
+        pw.println(" mManualNetworkSelectionPlmn=" + mManualNetworkSelectionPlmn);
         pw.flush();
     }
 

@@ -221,6 +221,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
                 conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
                 conn.setAllowHoldingVideoCall(mAllowHoldingVideoCall);
+
+                if ((c != null) && (c.getCallProfile() != null)
+                        && (c.getCallProfile().getCallExtras() != null)
+                        && (c.getCallProfile().getCallExtras()
+                          .containsKey(ImsCallProfile.EXTRA_CALL_DISCONNECT_CAUSE))) {
+                    String error = c.getCallProfile()
+                            .getCallExtra(ImsCallProfile.EXTRA_CALL_DISCONNECT_CAUSE, null);
+                    if (error != null) {
+                        try {
+                            int cause = getDisconnectCauseFromReasonInfo(
+                                        new ImsReasonInfo(Integer.parseInt(error), 0, null),
+                                    conn.getState());
+                            if (cause == DisconnectCause.INCOMING_AUTO_REJECTED) {
+                                conn.setDisconnectCause(cause);
+                                if (DBG) log("onIncomingCall : incoming call auto rejected");
+                            }
+                        } catch (NumberFormatException e) {
+                            Rlog.e(LOG_TAG, "Exception in parsing Integer Data: " + e);
+                        }
+                    }
+                }
+
                 addConnection(conn);
 
                 setVideoCallProvider(conn, imsCall);
@@ -446,6 +468,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
     @UnsupportedAppUsage
     private Object mSyncHold = new Object();
+
     @UnsupportedAppUsage
     private ImsCall mUssdSession = null;
     @UnsupportedAppUsage
@@ -2542,7 +2565,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.SERVER_ERROR;
 
             case ImsReasonInfo.CODE_SIP_REDIRECTED:
-            case ImsReasonInfo.CODE_SIP_BAD_REQUEST:
             case ImsReasonInfo.CODE_SIP_NOT_ACCEPTABLE:
             case ImsReasonInfo.CODE_SIP_GLOBAL_ERROR:
                 return DisconnectCause.SERVER_ERROR;
@@ -2666,6 +2688,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     return DisconnectCause.CS_RESTRICTED_NORMAL;
                 }
                 break;
+
+            case ImsReasonInfo.CODE_SIP_BAD_REQUEST:
+            case ImsReasonInfo.CODE_REJECT_CALL_ON_OTHER_SUB:
+            case ImsReasonInfo.CODE_REJECT_ONGOING_E911_CALL:
+            case ImsReasonInfo.CODE_REJECT_ONGOING_CALL_SETUP:
+            case ImsReasonInfo.CODE_REJECT_MAX_CALL_LIMIT_REACHED:
+            case ImsReasonInfo.CODE_REJECT_ONGOING_CALL_TRANSFER:
+            case ImsReasonInfo.CODE_REJECT_ONGOING_CONFERENCE_CALL:
+            case ImsReasonInfo.CODE_REJECT_ONGOING_HANDOVER:
+            case ImsReasonInfo.CODE_REJECT_ONGOING_CALL_UPGRADE:
+                return DisconnectCause.INCOMING_AUTO_REJECTED;
 
             default:
         }
@@ -2873,7 +2906,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 } else if (conn.isIncoming() && conn.getConnectTime() == 0
                         && cause != DisconnectCause.ANSWERED_ELSEWHERE) {
                     // Missed
-                    if (cause == DisconnectCause.NORMAL) {
+                    if (cause == DisconnectCause.NORMAL
+                            || cause == DisconnectCause.INCOMING_AUTO_REJECTED) {
                         cause = DisconnectCause.INCOMING_MISSED;
                     } else {
                         cause = DisconnectCause.INCOMING_REJECTED;
@@ -4208,8 +4242,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     protected void handlePollCalls(AsyncResult ar) {
     }
 
-    /* package */
     @UnsupportedAppUsage
+    /* package */
     ImsEcbm getEcbmInterface() throws ImsException {
         if (mImsManager == null) {
             throw getImsManagerIsNullException();

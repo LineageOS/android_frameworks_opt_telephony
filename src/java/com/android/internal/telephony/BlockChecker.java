@@ -76,7 +76,6 @@ public class BlockChecker {
         } catch (Exception e) {
             Rlog.e(TAG, "Exception checking for blocked number: " + e);
         }
-
         int durationMillis = (int) ((System.nanoTime() - startTimeNano) / 1000000);
         if (durationMillis > 500 || VDBG) {
             Rlog.d(TAG, "Blocked number lookup took: " + durationMillis + " ms.");

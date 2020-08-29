@@ -123,8 +123,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         + " status=" + status + " reason=" + reason + " networkReasonCode="
                         + networkReasonCode);
                 // TODO integrate networkReasonCode into IMS SMS metrics.
-                mMetrics.writeOnImsServiceSmsSolicitedResponse(mPhone.getPhoneId(), status, reason);
                 SmsTracker tracker = mTrackers.get(token);
+                mMetrics.writeOnImsServiceSmsSolicitedResponse(mPhone.getPhoneId(), status, reason,
+                        (tracker != null ? tracker.mMessageId : 0L));
                 if (tracker == null) {
                     throw new IllegalArgumentException("Invalid token.");
                 }

@@ -934,8 +934,8 @@ public class ServiceStateTracker extends Handler {
 
     @UnsupportedAppUsage
     protected void updatePhoneObject() {
-        if (mPhone.getContext().getResources().
-                getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
+        if (mPhone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
             // If the phone is not registered on a network, no need to update.
             boolean isRegistered = mSS.getState() == ServiceState.STATE_IN_SERVICE
                     || mSS.getState() == ServiceState.STATE_EMERGENCY_ONLY;
@@ -1764,9 +1764,9 @@ public class ServiceStateTracker extends Handler {
      */
     public String getImsi() {
         // TODO: When RUIM is enabled, IMSI will come from RUIM not build-time props.
-        String operatorNumeric = ((TelephonyManager) mPhone.getContext().
-                getSystemService(Context.TELEPHONY_SERVICE)).
-                getSimOperatorNumericForPhone(mPhone.getPhoneId());
+        String operatorNumeric = ((TelephonyManager) mPhone.getContext()
+                .getSystemService(Context.TELEPHONY_SERVICE))
+                .getSimOperatorNumericForPhone(mPhone.getPhoneId());
 
         if (!TextUtils.isEmpty(operatorNumeric) && getCdmaMin() != null) {
             return (operatorNumeric + getCdmaMin());
@@ -2598,7 +2598,7 @@ public class ServiceStateTracker extends Handler {
 
     private void notifySpnDisplayUpdate(CarrierDisplayNameData data) {
         int subId = mPhone.getSubId();
-        // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
+        // Update ACTION_SERVICE_PROVIDERS_UPDATED IFF any value changes
         if (mSubId != subId
                 || data.shouldShowPlmn() != mCurShowPlmn
                 || data.shouldShowSpn() != mCurShowSpn
@@ -2619,12 +2619,12 @@ public class ServiceStateTracker extends Handler {
             mCdnrLogs.log(log);
             if (DBG) log("updateSpnDisplay: " + log);
 
-            Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, data.shouldShowSpn());
-            intent.putExtra(TelephonyIntents.EXTRA_SPN, data.getSpn());
-            intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, data.getDataSpn());
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, data.shouldShowPlmn());
-            intent.putExtra(TelephonyIntents.EXTRA_PLMN, data.getPlmn());
+            Intent intent = new Intent(TelephonyManager.ACTION_SERVICE_PROVIDERS_UPDATED);
+            intent.putExtra(TelephonyManager.EXTRA_SHOW_SPN, data.shouldShowSpn());
+            intent.putExtra(TelephonyManager.EXTRA_SPN, data.getSpn());
+            intent.putExtra(TelephonyManager.EXTRA_DATA_SPN, data.getDataSpn());
+            intent.putExtra(TelephonyManager.EXTRA_SHOW_PLMN, data.shouldShowPlmn());
+            intent.putExtra(TelephonyManager.EXTRA_PLMN, data.getPlmn());
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
@@ -2751,12 +2751,14 @@ public class ServiceStateTracker extends Handler {
                 final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
                 if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
                     // No service but emergency call allowed
-                    plmn = Resources.getSystem().
-                            getText(com.android.internal.R.string.emergency_calls_only).toString();
+                    plmn = Resources.getSystem()
+                            .getText(com.android.internal.R.string.emergency_calls_only).toString();
                 } else {
                     // No service at all
-                    plmn = Resources.getSystem().
-                            getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
+                    plmn = Resources.getSystem()
+                            .getText(
+                                com.android.internal.R.string.lockscreen_carrier_default)
+                            .toString();
                     noService = true;
                 }
                 if (DBG) log("updateSpnDisplay: radio is on but out " +
@@ -2771,8 +2773,9 @@ public class ServiceStateTracker extends Handler {
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
                 showPlmn = true;
-                plmn = Resources.getSystem().
-                        getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
+                plmn = Resources.getSystem()
+                        .getText(com.android.internal.R.string.lockscreen_carrier_default)
+                        .toString();
                 if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
                         + showPlmn + " plmn=" + plmn);
             }
@@ -2867,11 +2870,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Checks whether force to display "no service" to the user based on the current country.
-     *
-     * This method should only be used when SIM is unready.
-     *
-     * @return {@code True} if "no service" should be displayed.
+     * Returns whether out-of-service will be displayed as "no service" to the user.
      */
     public boolean shouldForceDisplayNoService() {
         String[] countriesWithNoService = mPhone.getContext().getResources().getStringArray(
@@ -2927,7 +2926,8 @@ public class ServiceStateTracker extends Handler {
                     AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
                     Intent intent = new Intent(ACTION_RADIO_OFF);
-                    mRadioOffIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+                    mRadioOffIntent = PendingIntent.getBroadcast(
+                            context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
                     mAlarmSwitch = true;
                     if (DBG) log("Alarm setting");
@@ -3210,8 +3210,7 @@ public class ServiceStateTracker extends Handler {
                     + " oldMaxDataCalls=" + mMaxDataCalls
                     + " mNewMaxDataCalls=" + mNewMaxDataCalls
                     + " oldReasonDataDenied=" + mReasonDataDenied
-                    + " mNewReasonDataDeni"
-                    + "ed=" + mNewReasonDataDenied);
+                    + " mNewReasonDataDenied=" + mNewReasonDataDenied);
         }
 
         boolean hasRegistered =
@@ -4232,7 +4231,7 @@ public class ServiceStateTracker extends Handler {
 
         SubscriptionInfo info = mSubscriptionController
                 .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName(),
-                        null);
+                        context.getAttributionTag());
 
         //if subscription is part of a group and non-primary, suppress all notifications
         if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
@@ -5080,7 +5079,8 @@ public class ServiceStateTracker extends Handler {
 
         List<SubscriptionInfo> subInfoList = SubscriptionController.getInstance()
                 .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName(),
-                        null);
+                        mPhone.getContext().getAttributionTag());
+
         if (!ArrayUtils.isEmpty(subInfoList)) {
             for (SubscriptionInfo info : subInfoList) {
                 // If we have an active opportunistic subscription whose data is IN_SERVICE,
@@ -5377,7 +5377,8 @@ public class ServiceStateTracker extends Handler {
                 } else {
                     // some carrier defines international roaming by indicator
                     int[] intRoamingIndicators = mPhone.getContext().getResources().getIntArray(
-                            com.android.internal.R.array.config_cdma_international_roaming_indicators);
+                            com.android.internal.R.array
+                                    .config_cdma_international_roaming_indicators);
                     if ((intRoamingIndicators != null) && (intRoamingIndicators.length > 0)) {
                         // It's domestic roaming at least now
                         currentServiceState.setVoiceRoamingType(ServiceState.ROAMING_TYPE_DOMESTIC);
@@ -5602,7 +5603,8 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed
+     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed.
+     * If dataRegState is in service on IWLAN, also check for wifi calling enabled.
      * @param ss service state.
      */
     protected int getCombinedRegState(ServiceState ss) {
@@ -5611,8 +5613,16 @@ public class ServiceStateTracker extends Handler {
         if ((regState == ServiceState.STATE_OUT_OF_SERVICE
                 || regState == ServiceState.STATE_POWER_OFF)
                 && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
-            log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
-            regState = dataRegState;
+            if (ss.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()) {
+                    log("getCombinedRegState: return STATE_IN_SERVICE for IWLAN as "
+                            + "Data is in service and WFC is enabled");
+                    regState = dataRegState;
+                }
+            } else {
+                log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
+                regState = dataRegState;
+            }
         }
         return regState;
     }

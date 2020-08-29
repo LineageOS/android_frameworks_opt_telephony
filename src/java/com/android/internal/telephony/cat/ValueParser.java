@@ -17,8 +17,6 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
-import android.content.res.Resources;
-import android.content.res.Resources.NotFoundException;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.cat.Duration.TimeUnit;
@@ -278,7 +276,8 @@ abstract class ValueParser {
      * @throws ResultException
      */
     @UnsupportedAppUsage
-    static String retrieveAlphaId(ComprehensionTlv ctlv) throws ResultException {
+    static String retrieveAlphaId(ComprehensionTlv ctlv, boolean noAlphaUsrCnf)
+            throws ResultException {
 
         if (ctlv != null) {
             byte[] rawValue = ctlv.getRawValue();
@@ -301,14 +300,6 @@ abstract class ValueParser {
              * the terminal MAY give information to the user
              * noAlphaUsrCnf defines if you need to show user confirmation or not
              */
-            boolean noAlphaUsrCnf = false;
-            Resources resource = Resources.getSystem();
-            try {
-                noAlphaUsrCnf = resource.getBoolean(
-                        com.android.internal.R.bool.config_stkNoAlphaUsrCnf);
-            } catch (NotFoundException e) {
-                noAlphaUsrCnf = false;
-            }
             return (noAlphaUsrCnf ? null : CatService.STK_DEFAULT);
         }
     }

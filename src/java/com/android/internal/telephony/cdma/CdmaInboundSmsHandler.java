@@ -20,6 +20,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.os.Message;
 import android.os.RemoteCallback;
 import android.os.SystemProperties;
@@ -62,7 +63,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     // Callback used to process the result of an SCP message
     private RemoteCallback mScpCallback;
 
-    private boolean mCheckForDuplicatePortsInOmadmWapPush = false;
+    private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
+            com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
     // When TEST_MODE is on we allow the test intent to trigger an SMS CB alert
     private static final boolean TEST_MODE = SystemProperties.getInt("ro.debuggable", 0) == 1;
@@ -78,10 +80,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             Phone phone, CdmaSMSDispatcher smsDispatcher) {
         super("CdmaInboundSmsHandler", context, storageMonitor, phone);
         mSmsDispatcher = smsDispatcher;
-        mCheckForDuplicatePortsInOmadmWapPush = context.getResources().getBoolean(
-                com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
-
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+
         mCellBroadcastServiceManager.enable();
         mScpCallback = new RemoteCallback(result -> {
             if (result == null) {
@@ -381,7 +381,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         byte[] userData = new byte[pdu.length - index];
         System.arraycopy(pdu, index, userData, 0, pdu.length - index);
         InboundSmsTracker tracker = TelephonyComponentFactory.getInstance()
-                .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(
+                .inject(InboundSmsTracker.class.getName()).makeInboundSmsTracker(mContext,
                         userData, timestamp, destinationPort, true, address, dispAddr,
                         referenceNumber,
                         segment, totalSegments, true, HexDump.toHexString(userData),

@@ -44,6 +44,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -79,9 +80,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR,
             "PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR",
             PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST,
-            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST",
-            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
-            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE");
+            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST");
 
     // All events contribute to TelephonyRegistry.PRECISE_PHONE_STATE_PERMISSION_MASK
     private static final Map<Integer, String> READ_PRECISE_PHONE_STATE_EVENTS = Map.of(
@@ -94,7 +93,11 @@ public class TelephonyRegistryTest extends TelephonyTest {
             PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED,
             "PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED",
             PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES,
-            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES");
+            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES",
+            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
+            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE",
+            PhoneStateListener.LISTEN_BARRING_INFO,
+            "PhoneStateListener.LISTEN_BARRING_INFO");
 
     // All events contribute to TelephonyRegistry.PREVILEGED_PHONE_STATE_PERMISSION_MASK
     // TODO: b/148021947 will create the permission group with PREVILIGED_STATE_PERMISSION_MASK
@@ -185,8 +188,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
         PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
-        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), null,
-                mPhoneStateListener.callback,
+        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_PHONE_CAPABILITY_CHANGE, true);
         processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);
@@ -206,8 +209,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         when(mSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(activeSubs);
         int activeSubId = 0;
         mTelephonyRegistry.notifyActiveDataSubIdChanged(activeSubId);
-        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), null,
-                mPhoneStateListener.callback,
+        mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE, true);
         processAllMessages();
         assertEquals(activeSubId, mActiveSubId);
@@ -234,7 +237,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySrvccStateChanged(1 /*subId*/, srvccState);
         // Should receive callback when listen is called that contains the latest notify result.
         mTelephonyRegistry.listenForSubscriber(1 /*subId*/, mContext.getOpPackageName(),
-                null, mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_SRVCC_STATE_CHANGED, true);
         processAllMessages();
         assertEquals(srvccState, mSrvccState);
@@ -259,7 +262,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifySrvccStateChanged(0 /*subId*/, srvccState);
         try {
             mTelephonyRegistry.listenForSubscriber(0 /*subId*/, mContext.getOpPackageName(),
-                    null, mPhoneStateListener.callback,
+                    mContext.getAttributionTag(), mPhoneStateListener.callback,
                     LISTEN_SRVCC_STATE_CHANGED, true);
             fail();
         } catch (SecurityException e) {
@@ -273,7 +276,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Test
     public void testMultiSimConfigChange() {
         mTelephonyRegistry.listenForSubscriber(1, mContext.getOpPackageName(),
-                null, mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 LISTEN_RADIO_POWER_STATE_CHANGED, true);
         processAllMessages();
         assertEquals(RADIO_POWER_UNAVAILABLE, mRadioPowerState);
@@ -308,11 +311,11 @@ public class TelephonyRegistryTest extends TelephonyTest {
         doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         // Initialize the PSL with a PreciseDataConnection
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
-                /*phoneId*/ 0, subId, "default",
+                /*phoneId*/ 0, subId, ApnSetting.TYPE_DEFAULT,
                 new PreciseDataConnectionState(
                     0, 0, 0, "default", new LinkProperties(), 0, null));
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
-                null, mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
         processAllMessages();
         // Verify that the PDCS is reported for the only APN
@@ -320,7 +323,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         // Add IMS APN and verify that the listener is invoked for the IMS APN
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
-                /*phoneId*/ 0, subId, "ims",
+                /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
                 new PreciseDataConnectionState(
                     0, 0, 0, "ims", new LinkProperties(), 0, null));
         processAllMessages();
@@ -329,13 +332,13 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         // Unregister the listener
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
-                null, mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_NONE, true);
         processAllMessages();
 
         // Re-register the listener and ensure that both APN types are reported
         mTelephonyRegistry.listenForSubscriber(subId, mContext.getOpPackageName(),
-                null, mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_PRECISE_DATA_CONNECTION_STATE, true);
         processAllMessages();
         assertEquals(mPhoneStateListener.invocationCount.get(), 4);
@@ -343,7 +346,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // Send a duplicate event to the TelephonyRegistry and verify that the listener isn't
         // invoked.
         mTelephonyRegistry.notifyDataConnectionForSubscriber(
-                /*phoneId*/ 0, subId, "ims",
+                /*phoneId*/ 0, subId, ApnSetting.TYPE_IMS,
                 new PreciseDataConnectionState(
                     0, 0, 0, "ims", new LinkProperties(), 0, null));
         processAllMessages();
@@ -436,7 +439,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 .putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, 0));
         processAllMessages();
         mTelephonyRegistry.listenForSubscriber(2, mContext.getOpPackageName(),
-                null, mPhoneStateListener.callback,
+                mContext.getAttributionTag(), mPhoneStateListener.callback,
                 PhoneStateListener.LISTEN_DISPLAY_INFO_CHANGED, false);
 
         // Notify with invalid subId on default phone. Should NOT trigger callback.

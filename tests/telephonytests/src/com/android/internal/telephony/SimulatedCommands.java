@@ -194,9 +194,10 @@ public class SimulatedCommands extends BaseCommands
         mAuthenticationMode = ICC_AUTHENTICATION_MODE_DEFAULT;
     }
 
-    public void dispose() {
+    public void dispose() throws Exception {
         if (mHandlerThread != null) {
             mHandlerThread.quit();
+            mHandlerThread.join();
         }
     }
 

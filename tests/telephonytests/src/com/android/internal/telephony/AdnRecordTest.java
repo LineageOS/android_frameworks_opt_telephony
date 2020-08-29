@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.os.Parcel;
+import java.util.Arrays;
 import junit.framework.TestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -173,6 +175,19 @@ public class AdnRecordTest extends TestCase {
         assertEquals("Adgjm", adn.getAlphaTag());
         assertEquals("+18885551212,12345678", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
+
+    @SmallTest
+    public void testParcelUnParcel() throws Exception {
+        AdnRecord adn = new AdnRecord(0,0,"Voice Mail",
+                "+18056377243", new String[]{"adc@email.com"});
+        Parcel p = Parcel.obtain();
+        adn.writeToParcel(p, 0);
+        p.setDataPosition(0);
+        AdnRecord copy = AdnRecord.CREATOR.createFromParcel(p);
+        assertEquals(adn.getAlphaTag(), copy.getAlphaTag());
+        assertEquals(adn.getNumber(), copy.getNumber());
+        assertTrue(Arrays.equals(adn.getEmails(), copy.getEmails()));
     }
 }
 

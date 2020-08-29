@@ -426,7 +426,7 @@ public class MultiSimSettingController extends Handler {
         if (DBG) log("onSubscriptionGroupChanged");
 
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
-                groupUuid, mContext.getOpPackageName(), null);
+                groupUuid, mContext.getOpPackageName(), mContext.getAttributionTag());
         if (infoList == null || infoList.isEmpty()) return;
 
         // Get a reference subscription to copy settings from.
@@ -490,7 +490,7 @@ public class MultiSimSettingController extends Handler {
 
         List<SubscriptionInfo> activeSubInfos = mSubController
                 .getActiveSubscriptionInfoList(mContext.getOpPackageName(),
-                        null);
+                        mContext.getAttributionTag());
 
         if (ArrayUtils.isEmpty(activeSubInfos)) {
             mPrimarySubList.clear();
@@ -664,7 +664,7 @@ public class MultiSimSettingController extends Handler {
             if (phone != null && phone.isCdmaSubscriptionAppPresent()) {
                 cdmaPhoneCount++;
                 String simName = mSubController.getActiveSubscriptionInfo(
-                        subId, mContext.getOpPackageName(), null)
+                        subId, mContext.getOpPackageName(), mContext.getAttributionTag())
                         .getDisplayName().toString();
                 if (TextUtils.isEmpty(simName)) {
                     // Fall back to carrier name.
@@ -722,7 +722,7 @@ public class MultiSimSettingController extends Handler {
         log("setUserDataEnabledForGroup subId " + subId + " enable " + enable);
         List<SubscriptionInfo> infoList = mSubController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
-                null);
+                mContext.getAttributionTag());
 
         if (infoList == null) return;
 
@@ -753,7 +753,7 @@ public class MultiSimSettingController extends Handler {
         SubscriptionController subController = SubscriptionController.getInstance();
         List<SubscriptionInfo> infoList = subController.getSubscriptionsInGroup(
                 mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
-                null);
+                mContext.getAttributionTag());
 
         if (infoList == null) return;
 
@@ -801,7 +801,7 @@ public class MultiSimSettingController extends Handler {
         if (!SubscriptionInfoUpdater.isSubInfoInitialized()) return;
 
         List<SubscriptionInfo> opptSubList = mSubController.getOpportunisticSubscriptions(
-                mContext.getOpPackageName(), null);
+                mContext.getOpPackageName(), mContext.getAttributionTag());
 
         if (ArrayUtils.isEmpty(opptSubList)) return;
 
@@ -822,7 +822,8 @@ public class MultiSimSettingController extends Handler {
             EuiccManager euiccManager = (EuiccManager)
                     mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
-                    PendingIntent.getService(mContext, 0, new Intent(), 0));
+                    PendingIntent.getService(
+                            mContext, 0, new Intent(), PendingIntent.FLAG_IMMUTABLE));
         }
     }
 

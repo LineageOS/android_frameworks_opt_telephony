@@ -6295,10 +6295,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_ENABLE_UICC_APPLICATIONS";
             case RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT:
                 return "RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT";
-            case RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE:
-                return "RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE";
             case RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS:
                 return "RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS";
+            case RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE:
+                return "RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE";
             case RIL_REQUEST_GET_BARRING_INFO:
                 return "RIL_REQUEST_GET_BARRING_INFO";
             case RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION:

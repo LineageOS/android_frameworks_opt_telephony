@@ -274,8 +274,8 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
             if (sub != mPhoneSubscriptions[i]) {
                 sb.append(" phone[").append(i).append("] ").append(mPhoneSubscriptions[i]);
                 sb.append("->").append(sub);
-                if (SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId)
-                        && mPhoneSubscriptions[i] == mPreferredDataSubId) {
+                if (SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId.get())
+                        && mPhoneSubscriptions[i] == mPreferredDataSubId.get()) {
                     sb.append("sub refreshed");
                     hasSubRefreshedOnThePreferredPhone = true;
                 }
@@ -290,7 +290,7 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
             if (VDBG) log("Found an active subscription");
         }
         final boolean isOldPeferredDataSubValid =
-                SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId);
+                SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId.get());
         // Check if phoneId for preferred data is changed.
         int oldPreferredDataPhoneId = mPreferredDataPhoneId;
 
@@ -302,7 +302,7 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
         if (hasAnyActiveSubscription) updatePreferredDataPhoneId();
 
         final boolean isPeferredDataSubValid =
-                SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId);
+                SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId.get());
 
         if(!isOldPeferredDataSubValid && isPeferredDataSubValid) {
             // To avoid race condition, I'd like to send a msg in OnEvalute
@@ -347,7 +347,7 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
 
                 if (VDBG) {
                     log("default subId = " + mPrimaryDataSubId);
-                    log("preferred subId = " + mPreferredDataSubId);
+                    log("preferred subId = " + mPreferredDataSubId.get());
                     for (int i = 0; i < mActiveModemCount; i++) {
                         log(" phone[" + i + "] using sub[" + mPhoneSubscriptions[i] + "]");
                     }
@@ -608,20 +608,20 @@ public class VendorPhoneSwitcher extends PhoneSwitcher {
     }
 
     private void notifyDdsSwitchDone() {
-        log("notifyDdsSwitchDone on the preferred data SUB = " + mPreferredDataSubId
+        log("notifyDdsSwitchDone on the preferred data SUB = " + mPreferredDataSubId.get()
                 + " and the preferred phone ID = " + mPreferredDataPhoneId);
         // Notify all registrants.
         mActivePhoneRegistrants.notifyRegistrants();
         notifyPreferredDataSubIdChanged();
 
         if (mDdsSwitchState == DdsSwitchState.DONE
-                && SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId)) {
+                && SubscriptionManager.isValidSubscriptionId(mPreferredDataSubId.get())) {
             mDdsSwitchState = mDdsSwitchState.NONE;
             Intent intent = new Intent(
                     "org.codeaurora.intent.action.ACTION_DDS_SWITCH_DONE");
-            intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPreferredDataSubId);
+            intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, mPreferredDataSubId.get());
             intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
-            log("Broadcast dds switch done intent on " + mPreferredDataSubId);
+            log("Broadcast dds switch done intent on " + mPreferredDataSubId.get());
             mContext.sendBroadcast(intent);
         }
     }

@@ -17,13 +17,15 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
-import android.content.Intent;
 import android.hardware.radio.V1_0.RadioError;
 import android.provider.Settings;
+import android.telephony.AnomalyReporter;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.telephony.Rlog;
 
 import java.util.HashMap;
+import java.util.UUID;
 
 /**
  * This class aims to detect radio bug based on wakelock timeout and system error.
@@ -31,6 +33,8 @@ import java.util.HashMap;
  * {@hide}
  */
 public class RadioBugDetector {
+    private static final String TAG = "RadioBugDetector";
+
     /** Radio error constants */
     private static final int RADIO_BUG_NONE = 0x00;
     private static final int RADIO_BUG_REPETITIVE_WAKELOCK_TIMEOUT_ERROR = 0x01;
@@ -126,11 +130,12 @@ public class RadioBugDetector {
         if (mRadioBugStatus == RADIO_BUG_NONE) {
             mRadioBugStatus = isSystemError ? RADIO_BUG_REPETITIVE_SYSTEM_ERROR :
                     RADIO_BUG_REPETITIVE_WAKELOCK_TIMEOUT_ERROR;
-            Intent intent = new Intent(TelephonyIntents.ACTION_REPORT_RADIO_BUG);
-            intent.addFlags(Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND);
-            intent.putExtra(TelephonyIntents.EXTRA_SLOT_ID, mSlotId);
-            intent.putExtra(TelephonyIntents.EXTRA_RADIO_BUG_TYPE, mRadioBugStatus);
-            mContext.sendBroadcast(intent, android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+            String message = "Repeated radio error " + mRadioBugStatus + " on slot " + mSlotId;
+            Rlog.d(TAG, message);
+            // Using fixed UUID to avoid duplicate bugreport notification
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("d264ead0-3f05-11ea-b77f-2e728ce88125"),
+                    message);
         }
     }
 

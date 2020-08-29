@@ -233,16 +233,12 @@ public class UiccController extends Handler {
         for (int i = 0; i < mCis.length; i++) {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
 
-            // TODO remove this once modem correctly notifies the unsols
-            // If the device is unencrypted or has been decrypted or FBE is supported,
-            // i.e. not in CryptKeeper bounce, read SIM when radio state is available.
-            // Else wait for radio to be on. This is needed for the scenario when SIM is locked --
-            // to avoid overlap of CryptKeeper and SIM unlock screen.
             if (!StorageManager.inCryptKeeperBounce()) {
                 mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
             } else {
                 mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
             }
+
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, i);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, i);
         }

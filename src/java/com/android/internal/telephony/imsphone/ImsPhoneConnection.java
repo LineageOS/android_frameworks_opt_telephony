@@ -376,7 +376,18 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     public void setDisconnectCause(int cause) {
+        Rlog.d(LOG_TAG, "setDisconnectCause: cause=" + cause);
         mCause = cause;
+    }
+
+    /** Get the disconnect cause for connection*/
+    public int getDisconnectCause() {
+        Rlog.d(LOG_TAG, "getDisconnectCause: cause=" + mCause);
+        return mCause;
+    }
+
+    public boolean isIncomingCallAutoRejected() {
+        return mCause == DisconnectCause.INCOMING_AUTO_REJECTED ? true : false;
     }
 
     @Override

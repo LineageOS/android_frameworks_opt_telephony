@@ -20,14 +20,13 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.IPackageManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.permission.PermissionManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
@@ -43,12 +42,14 @@ import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
+import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
 /**
@@ -209,9 +210,10 @@ public class ImsServiceController {
     private static final String LOG_TAG = "ImsServiceController";
     private static final int REBIND_START_DELAY_MS = 2 * 1000; // 2 seconds
     private static final int REBIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
+    private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * 1000; // 15 seconds
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
-    private final IPackageManager mPackageManager;
+    private final PermissionManager mPermissionManager;
     private ImsServiceControllerCallbacks mCallbacks;
     private ExponentialBackoff mBackoff;
 
@@ -346,7 +348,8 @@ public class ImsServiceController {
                 2, /* multiplier */
                 mHandlerThread.getLooper(),
                 mRestartImsServiceRunnable);
-        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+        mPermissionManager =
+                (PermissionManager) mContext.getSystemService(Context.PERMISSION_SERVICE);
     }
 
     @VisibleForTesting
@@ -363,7 +366,7 @@ public class ImsServiceController {
                 2, /* multiplier */
                 handler,
                 mRestartImsServiceRunnable);
-        mPackageManager = null;
+        mPermissionManager = null;
     }
 
     /**
@@ -663,18 +666,27 @@ public class ImsServiceController {
         }
     }
 
-    // Grant runtime permissions to ImsService. PackageManager ensures that the ImsService is
+    // Grant runtime permissions to ImsService. PermissionManager ensures that the ImsService is
     // system/signed before granting permissions.
     private void grantPermissionsToService() {
         mLocalLog.log("grant permissions to " + getComponentName());
         Log.i(LOG_TAG, "Granting Runtime permissions to:" + getComponentName());
         String[] pkgToGrant = {mComponentName.getPackageName()};
         try {
-            if (mPackageManager != null) {
-                mPackageManager.grantDefaultPermissionsToEnabledImsServices(pkgToGrant,
-                        UserHandle.myUserId());
+            if (mPermissionManager != null) {
+                CountDownLatch latch = new CountDownLatch(1);
+                mPermissionManager.grantDefaultPermissionsToEnabledImsServices(
+                        pkgToGrant, UserHandle.of(UserHandle.myUserId()), Runnable::run,
+                        isSuccess -> {
+                            if (isSuccess) {
+                                latch.countDown();
+                            } else {
+                                Log.e(LOG_TAG, "Failed to grant permissions to service.");
+                            }
+                        });
+                TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             }
-        } catch (RemoteException e) {
+        } catch (RuntimeException e) {
             Log.w(LOG_TAG, "Unable to grant permissions, binder died.");
         }
     }
