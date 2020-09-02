@@ -46,7 +46,6 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
-import android.os.Binder;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
@@ -62,7 +61,6 @@ import android.service.carrier.CarrierMessagingService;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
 
@@ -1855,63 +1853,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     @Override
     protected void loge(String s, Throwable e) {
         Rlog.e(getName(), s, e);
-    }
-
-    /**
-     * Store a received SMS into Telephony provider
-     *
-     * @param intent The intent containing the received SMS
-     * @return The URI of written message
-     */
-    @UnsupportedAppUsage
-    private Uri writeInboxMessage(Intent intent) {
-        final SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
-        if (messages == null || messages.length < 1) {
-            loge("Failed to parse SMS pdu");
-            return null;
-        }
-        // Sometimes, SmsMessage is null if it can’t be parsed correctly.
-        for (final SmsMessage sms : messages) {
-            if (sms == null) {
-                loge("Can’t write null SmsMessage");
-                return null;
-            }
-        }
-        final ContentValues values = parseSmsMessage(messages);
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            return mContext.getContentResolver().insert(Telephony.Sms.Inbox.CONTENT_URI, values);
-        } catch (Exception e) {
-            loge("Failed to persist inbox message", e);
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-        return null;
-    }
-
-    /**
-     * Convert SmsMessage[] into SMS database schema columns
-     *
-     * @param msgs The SmsMessage array of the received SMS
-     * @return ContentValues representing the columns of parsed SMS
-     */
-    private static ContentValues parseSmsMessage(SmsMessage[] msgs) {
-        final SmsMessage sms = msgs[0];
-        final ContentValues values = new ContentValues();
-        values.put(Telephony.Sms.Inbox.ADDRESS, sms.getDisplayOriginatingAddress());
-        values.put(Telephony.Sms.Inbox.BODY, buildMessageBodyFromPdus(msgs));
-        values.put(Telephony.Sms.Inbox.DATE_SENT, sms.getTimestampMillis());
-        values.put(Telephony.Sms.Inbox.DATE, System.currentTimeMillis());
-        values.put(Telephony.Sms.Inbox.PROTOCOL, sms.getProtocolIdentifier());
-        values.put(Telephony.Sms.Inbox.SEEN, 0);
-        values.put(Telephony.Sms.Inbox.READ, 0);
-        final String subject = sms.getPseudoSubject();
-        if (!TextUtils.isEmpty(subject)) {
-            values.put(Telephony.Sms.Inbox.SUBJECT, subject);
-        }
-        values.put(Telephony.Sms.Inbox.REPLY_PATH_PRESENT, sms.isReplyPathPresent() ? 1 : 0);
-        values.put(Telephony.Sms.Inbox.SERVICE_CENTER, sms.getServiceCenterAddress());
-        return values;
     }
 
     /**
