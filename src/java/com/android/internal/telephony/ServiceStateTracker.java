@@ -4217,6 +4217,12 @@ public class ServiceStateTracker extends Handler {
             notificationManager.cancel(Integer.toString(mPrevSubId), PS_NOTIFICATION);
             notificationManager.cancel(Integer.toString(mPrevSubId), CS_NOTIFICATION);
             notificationManager.cancel(Integer.toString(mPrevSubId), CS_REJECT_CAUSE_NOTIFICATION);
+
+            // Cancel Emergency call warning and network preference notifications
+            notificationManager.cancel(
+                    CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, mPrevSubId);
+            notificationManager.cancel(
+                    CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG, mPrevSubId);
         }
     }
 
