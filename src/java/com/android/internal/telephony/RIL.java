@@ -817,14 +817,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
             RILRequest rr = obtainRequest(RIL_REQUEST_ENTER_SIM_PUK, result,
                     mRILDefaultWorkSource);
 
+            String pukStr = convertNullToEmptyString(puk);
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " isPukEmpty = " + pukStr.isEmpty()
                         + " aid = " + aid);
             }
 
             try {
                 radioProxy.supplyIccPukForApp(rr.mSerial,
-                        convertNullToEmptyString(puk),
+                        pukStr,
                         convertNullToEmptyString(newPin),
                         convertNullToEmptyString(aid));
             } catch (RemoteException | RuntimeException e) {
