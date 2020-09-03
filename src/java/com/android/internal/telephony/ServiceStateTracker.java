@@ -2104,7 +2104,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     private boolean isNrPhysicalChannelConfig(PhysicalChannelConfig config) {
-        return config.getRat() == TelephonyManager.NETWORK_TYPE_NR;
+        return config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR;
     }
 
     /**
