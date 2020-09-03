@@ -38,11 +38,14 @@ import static org.mockito.Mockito.times;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.telephony.DisconnectCause;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
+import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
@@ -96,6 +99,19 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private VoiceCallSession[] mVoiceCallSessions;
     private RawVoiceCallRatUsage[] mVoiceCallRatUsages;
+
+    // data service state switch for slot 0 and 1
+    private CellularDataServiceSwitch mServiceSwitch1Proto;
+    private CellularDataServiceSwitch mServiceSwitch2Proto;
+
+    // service states for slot 0 and 1
+    private CellularServiceState mServiceState1Proto;
+    private CellularServiceState mServiceState2Proto;
+    private CellularServiceState mServiceState3Proto;
+    private CellularServiceState mServiceState4Proto;
+
+    private CellularDataServiceSwitch[] mServiceSwitches;
+    private CellularServiceState[] mServiceStates;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -253,6 +269,83 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 };
         mVoiceCallSessions =
                 new VoiceCallSession[] {mCall1Proto, mCall2Proto, mCall3Proto, mCall4Proto};
+
+        // OOS to LTE on slot 0
+        mServiceSwitch1Proto = new CellularDataServiceSwitch();
+        mServiceSwitch1Proto.ratFrom = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        mServiceSwitch1Proto.ratTo = TelephonyManager.NETWORK_TYPE_LTE;
+        mServiceSwitch1Proto.simSlotIndex = 0;
+        mServiceSwitch1Proto.isMultiSim = true;
+        mServiceSwitch1Proto.carrierId = CARRIER1_ID;
+        mServiceSwitch1Proto.switchCount = 1;
+
+        // LTE to UMTS on slot 1
+        mServiceSwitch2Proto = new CellularDataServiceSwitch();
+        mServiceSwitch2Proto.ratFrom = TelephonyManager.NETWORK_TYPE_LTE;
+        mServiceSwitch2Proto.ratTo = TelephonyManager.NETWORK_TYPE_UMTS;
+        mServiceSwitch2Proto.simSlotIndex = 0;
+        mServiceSwitch2Proto.isMultiSim = true;
+        mServiceSwitch2Proto.carrierId = CARRIER2_ID;
+        mServiceSwitch2Proto.switchCount = 2;
+
+        // OOS on slot 0
+        mServiceState1Proto = new CellularServiceState();
+        mServiceState1Proto.voiceRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        mServiceState1Proto.dataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        mServiceState1Proto.voiceRoamingType = ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        mServiceState1Proto.dataRoamingType = ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        mServiceState1Proto.isEndc = false;
+        mServiceState1Proto.simSlotIndex = 0;
+        mServiceState1Proto.isMultiSim = true;
+        mServiceState1Proto.carrierId = CARRIER1_ID;
+        mServiceState1Proto.totalTimeMillis = 5000L;
+
+        // LTE with ENDC on slot 0
+        mServiceState2Proto = new CellularServiceState();
+        mServiceState2Proto.voiceRat = TelephonyManager.NETWORK_TYPE_LTE;
+        mServiceState2Proto.dataRat = TelephonyManager.NETWORK_TYPE_LTE;
+        mServiceState2Proto.voiceRoamingType = ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        mServiceState2Proto.dataRoamingType = ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        mServiceState2Proto.isEndc = true;
+        mServiceState2Proto.simSlotIndex = 0;
+        mServiceState2Proto.isMultiSim = true;
+        mServiceState2Proto.carrierId = CARRIER1_ID;
+        mServiceState2Proto.totalTimeMillis = 15000L;
+
+        // LTE with WFC and roaming on slot 1
+        mServiceState3Proto = new CellularServiceState();
+        mServiceState3Proto.voiceRat = TelephonyManager.NETWORK_TYPE_IWLAN;
+        mServiceState3Proto.dataRat = TelephonyManager.NETWORK_TYPE_LTE;
+        mServiceState3Proto.voiceRoamingType = ServiceState.ROAMING_TYPE_INTERNATIONAL;
+        mServiceState3Proto.dataRoamingType = ServiceState.ROAMING_TYPE_INTERNATIONAL;
+        mServiceState3Proto.isEndc = false;
+        mServiceState3Proto.simSlotIndex = 1;
+        mServiceState3Proto.isMultiSim = true;
+        mServiceState3Proto.carrierId = CARRIER2_ID;
+        mServiceState3Proto.totalTimeMillis = 10000L;
+
+        // UMTS with roaming on slot 1
+        mServiceState4Proto = new CellularServiceState();
+        mServiceState4Proto.voiceRat = TelephonyManager.NETWORK_TYPE_UMTS;
+        mServiceState4Proto.dataRat = TelephonyManager.NETWORK_TYPE_UMTS;
+        mServiceState4Proto.voiceRoamingType = ServiceState.ROAMING_TYPE_INTERNATIONAL;
+        mServiceState4Proto.dataRoamingType = ServiceState.ROAMING_TYPE_INTERNATIONAL;
+        mServiceState4Proto.isEndc = false;
+        mServiceState4Proto.simSlotIndex = 1;
+        mServiceState4Proto.isMultiSim = true;
+        mServiceState4Proto.carrierId = CARRIER2_ID;
+        mServiceState4Proto.totalTimeMillis = 10000L;
+
+        // NOTE: service states and switches will always be reordered by HashMap
+        mServiceSwitches =
+                new CellularDataServiceSwitch[] {mServiceSwitch1Proto, mServiceSwitch2Proto};
+        mServiceStates =
+                new CellularServiceState[] {
+                    mServiceState1Proto,
+                    mServiceState2Proto,
+                    mServiceState3Proto,
+                    mServiceState4Proto
+                };
     }
 
     private static class TestablePersistAtomsStorage extends PersistAtomsStorage {
@@ -278,7 +371,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         }
 
         private PersistAtoms getAtomsProto() {
-            // NOTE: not guarded by mLock as usual, should be fine since the test is single-threaded
+            // NOTE: unlike other methods in PersistAtomsStorage, this is not synchronized, but
+            // should be fine since the test is single-threaded
             return mAtoms;
         }
     }
@@ -329,18 +423,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // no exception should be thrown, storage should be empty, pull time should be start time
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(0, voiceCallRatUsage.length);
-        assertNotNull(voiceCallSession);
-        assertEquals(0, voiceCallSession.length);
+        assertAllPullTimestampEquals(START_TIME_MILLIS);
+        assertStorageIsEmptyForAllAtoms();
     }
 
     @Test
@@ -353,18 +437,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // no exception should be thrown, storage should be empty, pull time should be start time
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(0, voiceCallRatUsage.length);
-        assertNotNull(voiceCallSession);
-        assertEquals(0, voiceCallSession.length);
+        assertAllPullTimestampEquals(START_TIME_MILLIS);
+        assertStorageIsEmptyForAllAtoms();
     }
 
     @Test
@@ -376,18 +450,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // no exception should be thrown, storage should be empty, pull time should be start time
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(0, voiceCallRatUsage.length);
-        assertNotNull(voiceCallSession);
-        assertEquals(0, voiceCallSession.length);
+        assertAllPullTimestampEquals(START_TIME_MILLIS);
+        assertStorageIsEmptyForAllAtoms();
     }
 
     @Test
@@ -401,57 +465,44 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // no exception should be thrown, storage should be empty, pull time should be start time
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(0, voiceCallRatUsage.length);
-        assertNotNull(voiceCallSession);
-        assertEquals(0, voiceCallSession.length);
+        assertAllPullTimestampEquals(START_TIME_MILLIS);
+        assertStorageIsEmptyForAllAtoms();
     }
 
     @Test
     @SmallTest
     public void loadAtoms_pullTimeMissing() throws Exception {
+        // create test file with lastPullTimeMillis = 0L, i.e. default/unknown
         createTestFile(0L);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // no exception should be thrown, storage should be match, pull time should be start time
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
-        assertEquals(
-                START_TIME_MILLIS,
-                mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertProtoArrayEquals(mVoiceCallRatUsages, voiceCallRatUsage);
-        assertProtoArrayEquals(mVoiceCallSessions, voiceCallSession);
+        assertAllPullTimestampEquals(START_TIME_MILLIS);
+        assertProtoArrayEquals(mVoiceCallRatUsages, mPersistAtomsStorage.getVoiceCallRatUsages(0L));
+        assertProtoArrayEquals(mVoiceCallSessions, mPersistAtomsStorage.getVoiceCallSessions(0L));
+        assertProtoArrayEqualsIgnoringOrder(
+                mServiceStates, mPersistAtomsStorage.getCellularServiceStates(0L));
+        assertProtoArrayEqualsIgnoringOrder(
+                mServiceSwitches, mPersistAtomsStorage.getCellularDataServiceSwitches(0L));
     }
 
     @Test
     @SmallTest
     public void loadAtoms_validContents() throws Exception {
-        createTestFile(100L);
+        createTestFile(/* lastPullTimeMillis= */ 100L);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
         // no exception should be thrown, storage and pull time should match
-        assertEquals(
-                100L, mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
-        assertEquals(
-                100L, mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertProtoArrayEquals(mVoiceCallRatUsages, voiceCallRatUsage);
-        assertProtoArrayEquals(mVoiceCallSessions, voiceCallSession);
+        assertAllPullTimestampEquals(100L);
+        assertProtoArrayEquals(mVoiceCallRatUsages, mPersistAtomsStorage.getVoiceCallRatUsages(0L));
+        assertProtoArrayEquals(mVoiceCallSessions, mPersistAtomsStorage.getVoiceCallSessions(0L));
+        assertProtoArrayEqualsIgnoringOrder(
+                mServiceStates, mPersistAtomsStorage.getCellularServiceStates(0L));
+        assertProtoArrayEqualsIgnoringOrder(
+                mServiceSwitches, mPersistAtomsStorage.getCellularDataServiceSwitches(0L));
     }
 
     @Test
@@ -464,46 +515,31 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // call should be added successfully, there should be no RAT usage, changes should be saved
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
+        verifyCurrentStateSavedToFileOnce();
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getVoiceCallRatUsages(0L));
         VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(0, voiceCallRatUsage.length);
         assertProtoArrayEquals(new VoiceCallSession[] {mCall1Proto}, voiceCallSession);
-        InOrder inOrder = inOrder(mTestFileOutputStream);
-        inOrder.verify(mTestFileOutputStream, times(1))
-                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
-        inOrder.verify(mTestFileOutputStream, times(1)).close();
-        inOrder.verifyNoMoreInteractions();
     }
 
     @Test
     @SmallTest
     public void addVoiceCallSession_withExistingCalls() throws Exception {
-        createTestFile(100L);
+        createTestFile(START_TIME_MILLIS);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
         mPersistAtomsStorage.addVoiceCallSession(mCall1Proto);
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // call should be added successfully, RAT usages should not change, changes should be saved
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(mVoiceCallRatUsages.length, voiceCallRatUsage.length);
-        assertNotNull(voiceCallSession);
-        // call lists are randomized, but sorted version should be identical
+        assertProtoArrayEquals(mVoiceCallRatUsages, mPersistAtomsStorage.getVoiceCallRatUsages(0L));
         VoiceCallSession[] expectedVoiceCallSessions =
                 new VoiceCallSession[] {
                     mCall1Proto, mCall1Proto, mCall2Proto, mCall3Proto, mCall4Proto
                 };
-        Arrays.sort(expectedVoiceCallSessions, sProtoComparator);
-        Arrays.sort(voiceCallSession, sProtoComparator);
-        assertProtoArrayEquals(expectedVoiceCallSessions, voiceCallSession);
-        InOrder inOrder = inOrder(mTestFileOutputStream);
-        inOrder.verify(mTestFileOutputStream, times(1))
-                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
-        inOrder.verify(mTestFileOutputStream, times(1)).close();
-        inOrder.verifyNoMoreInteractions();
+        // call list is randomized at this point
+        verifyCurrentStateSavedToFileOnce();
+        assertProtoArrayEqualsIgnoringOrder(
+                expectedVoiceCallSessions, mPersistAtomsStorage.getVoiceCallSessions(0L));
     }
 
     @Test
@@ -517,9 +553,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // one previous call should be evicted, the new call should be added
+        verifyCurrentStateSavedToFileOnce();
         VoiceCallSession[] calls = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertHasCall(calls, mCall1Proto, 49);
-        assertHasCall(calls, mCall2Proto, 1);
+        assertHasCall(calls, mCall1Proto, /* expectedCount= */ 49);
+        assertHasCall(calls, mCall2Proto, /* expectedCount= */ 1);
     }
 
     @Test
@@ -533,25 +570,16 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // RAT should be added successfully, calls should not change, changes should be saved
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        RawVoiceCallRatUsage[] expectedVoiceCallRatUsage = mVoiceCallRatUsages.clone();
-        Arrays.sort(expectedVoiceCallRatUsage, sProtoComparator);
-        Arrays.sort(voiceCallRatUsage, sProtoComparator);
-        assertProtoArrayEquals(expectedVoiceCallRatUsage, voiceCallRatUsage);
-        assertNotNull(voiceCallSession);
-        assertEquals(0, voiceCallSession.length);
-        InOrder inOrder = inOrder(mTestFileOutputStream);
-        inOrder.verify(mTestFileOutputStream, times(1))
-                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
-        inOrder.verify(mTestFileOutputStream, times(1)).close();
-        inOrder.verifyNoMoreInteractions();
+        verifyCurrentStateSavedToFileOnce();
+        assertProtoArrayEqualsIgnoringOrder(
+                mVoiceCallRatUsages, mPersistAtomsStorage.getVoiceCallRatUsages(0L));
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getVoiceCallSessions(0L));
     }
 
     @Test
     @SmallTest
     public void addVoiceCallRatUsage_withExistingUsages() throws Exception {
-        createTestFile(100L);
+        createTestFile(START_TIME_MILLIS);
         VoiceCallRatTracker ratTracker = VoiceCallRatTracker.fromProto(mVoiceCallRatUsages);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
@@ -559,22 +587,14 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // RAT should be added successfully, calls should not change, changes should be saved
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
         // call count and duration should become doubled since mVoiceCallRatUsages applied through
         // both file and addVoiceCallRatUsage()
+        verifyCurrentStateSavedToFileOnce();
         RawVoiceCallRatUsage[] expectedVoiceCallRatUsage =
                 multiplyVoiceCallRatUsage(mVoiceCallRatUsages, 2);
-        Arrays.sort(expectedVoiceCallRatUsage, sProtoComparator);
-        Arrays.sort(voiceCallRatUsage, sProtoComparator);
-        assertProtoArrayEquals(expectedVoiceCallRatUsage, voiceCallRatUsage);
-        assertNotNull(voiceCallSession);
-        assertEquals(mVoiceCallSessions.length, voiceCallSession.length);
-        InOrder inOrder = inOrder(mTestFileOutputStream);
-        inOrder.verify(mTestFileOutputStream, times(1))
-                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
-        inOrder.verify(mTestFileOutputStream, times(1)).close();
-        inOrder.verifyNoMoreInteractions();
+        assertProtoArrayEqualsIgnoringOrder(
+                expectedVoiceCallRatUsage, mPersistAtomsStorage.getVoiceCallRatUsages(0L));
+        assertProtoArrayEquals(mVoiceCallSessions, mPersistAtomsStorage.getVoiceCallSessions(0L));
     }
 
     @Test
@@ -588,13 +608,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
 
         // RAT should be added successfully, calls should not change
-        // in this case it does not necessarily need to save
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(0L);
-        VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(0L);
-        assertNotNull(voiceCallRatUsage);
-        assertEquals(0, voiceCallRatUsage.length);
-        assertNotNull(voiceCallSession);
-        assertEquals(0, voiceCallSession.length);
+        // in this case saving is unnecessarily
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getVoiceCallRatUsages(0L));
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getVoiceCallSessions(0L));
     }
 
     @Test
@@ -627,7 +643,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         // first set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved, other fields should be unaffected
         assertProtoArrayEquals(mVoiceCallRatUsages, voiceCallRatUsage1);
-        assertProtoArrayEquals(new RawVoiceCallRatUsage[0], voiceCallRatUsage2);
+        assertProtoArrayIsEmpty(voiceCallRatUsage2);
         assertEquals(
                 START_TIME_MILLIS + 200L,
                 mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
@@ -676,7 +692,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         // first set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved, other fields should be unaffected
         assertProtoArrayEquals(mVoiceCallSessions, voiceCallSession1);
-        assertProtoArrayEquals(new VoiceCallSession[0], voiceCallSession2);
+        assertProtoArrayIsEmpty(voiceCallSession2);
         assertEquals(
                 START_TIME_MILLIS + 200L,
                 mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
@@ -695,6 +711,216 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         inOrder.verifyNoMoreInteractions();
     }
 
+    @Test
+    @SmallTest
+    public void addCellularServiceStateAndCellularDataServiceSwitch_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCellularServiceStateAndCellularDataServiceSwitch(
+                mServiceState1Proto, mServiceSwitch1Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
+        CellularDataServiceSwitch[] serviceSwitches =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(0L);
+        assertProtoArrayEquals(new CellularServiceState[] {mServiceState1Proto}, serviceStates);
+        assertProtoArrayEquals(
+                new CellularDataServiceSwitch[] {mServiceSwitch1Proto}, serviceSwitches);
+    }
+
+    @Test
+    @SmallTest
+    public void addCellularServiceStateAndCellularDataServiceSwitch_withExistingEntries()
+            throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCellularServiceStateAndCellularDataServiceSwitch(
+                mServiceState1Proto, mServiceSwitch1Proto);
+
+        mPersistAtomsStorage.addCellularServiceStateAndCellularDataServiceSwitch(
+                mServiceState2Proto, mServiceSwitch2Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
+        CellularDataServiceSwitch[] serviceSwitches =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new CellularServiceState[] {mServiceState1Proto, mServiceState2Proto},
+                serviceStates);
+        assertProtoArrayEqualsIgnoringOrder(
+                new CellularDataServiceSwitch[] {mServiceSwitch1Proto, mServiceSwitch2Proto},
+                serviceSwitches);
+    }
+
+    @Test
+    @SmallTest
+    public void addCellularServiceStateAndCellularDataServiceSwitch_updateExistingEntries()
+            throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        CellularServiceState newServiceState1Proto = copyOf(mServiceState1Proto);
+        CellularDataServiceSwitch newServiceSwitch1Proto = copyOf(mServiceSwitch1Proto);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addCellularServiceStateAndCellularDataServiceSwitch(
+                copyOf(mServiceState1Proto), copyOf(mServiceSwitch1Proto));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mServiceState1Proto's duration and mServiceSwitch1Proto's switch should be doubled
+        verifyCurrentStateSavedToFileOnce();
+        CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
+        newServiceState1Proto.totalTimeMillis *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new CellularServiceState[] {
+                    newServiceState1Proto,
+                    mServiceState2Proto,
+                    mServiceState3Proto,
+                    mServiceState4Proto
+                },
+                serviceStates);
+        CellularDataServiceSwitch[] serviceSwitches =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(0L);
+        newServiceSwitch1Proto.switchCount *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new CellularDataServiceSwitch[] {newServiceSwitch1Proto, mServiceSwitch2Proto},
+                serviceSwitches);
+    }
+
+    @Test
+    @SmallTest
+    public void addCellularServiceStateAndCellularDataServiceSwitch_tooManyServiceStates()
+            throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        CellularServiceState[] expectedServiceStates = new CellularServiceState[51];
+        CellularDataServiceSwitch[] expectedServiceSwitches = new CellularDataServiceSwitch[51];
+
+        // Add 51 service states, with the first being least recent
+        for (int i = 0; i < 51; i++) {
+            CellularServiceState state = new CellularServiceState();
+            state.voiceRat = i / 10;
+            state.dataRat = i % 10;
+            expectedServiceStates[i] = state;
+            CellularDataServiceSwitch serviceSwitch = new CellularDataServiceSwitch();
+            serviceSwitch.ratFrom = i / 10;
+            serviceSwitch.ratTo = i % 10;
+            expectedServiceSwitches[i] = serviceSwitch;
+            mPersistAtomsStorage.addCellularServiceStateAndCellularDataServiceSwitch(
+                    copyOf(state), copyOf(serviceSwitch));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // The least recent (the first) service state should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
+        expectedServiceStates = Arrays.copyOfRange(expectedServiceStates, 1, 51);
+        assertProtoArrayEqualsIgnoringOrder(expectedServiceStates, serviceStates);
+        CellularDataServiceSwitch[] serviceSwitches =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(0L);
+        expectedServiceSwitches = Arrays.copyOfRange(expectedServiceSwitches, 1, 51);
+        assertProtoArrayEqualsIgnoringOrder(expectedServiceSwitches, serviceSwitches);
+    }
+
+    @Test
+    @SmallTest
+    public void getCellularDataServiceSwitches_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        CellularDataServiceSwitch[] serviceSwitches =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(100L);
+
+        // should be denied
+        assertNull(serviceSwitches);
+    }
+
+    @Test
+    @SmallTest
+    public void getCellularDataServiceSwitches_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        CellularDataServiceSwitch[] serviceSwitches1 =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        CellularDataServiceSwitch[] serviceSwitches2 =
+                mPersistAtomsStorage.getCellularDataServiceSwitches(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new CellularDataServiceSwitch[] {mServiceSwitch1Proto, mServiceSwitch2Proto},
+                serviceSwitches1);
+        assertProtoArrayEquals(new CellularDataServiceSwitch[0], serviceSwitches2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto().cellularDataServiceSwitchPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).cellularDataServiceSwitchPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).cellularDataServiceSwitchPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void getCellularServiceStates_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(100L);
+
+        // should be denied
+        assertNull(serviceStates);
+    }
+
+    @Test
+    @SmallTest
+    public void getCellularServiceStates_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        CellularServiceState[] serviceStates1 = mPersistAtomsStorage.getCellularServiceStates(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        CellularServiceState[] serviceStates2 = mPersistAtomsStorage.getCellularServiceStates(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new CellularServiceState[] {
+                    mServiceState1Proto,
+                    mServiceState2Proto,
+                    mServiceState3Proto,
+                    mServiceState4Proto
+                },
+                serviceStates1);
+        assertProtoArrayEquals(new CellularServiceState[0], serviceStates2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto().cellularServiceStatePullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).cellularServiceStatePullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).cellularServiceStatePullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    /* Utilities */
+
     private void createEmptyTestFile() throws Exception {
         PersistAtoms atoms = new PersistAtoms();
         FileOutputStream stream = new FileOutputStream(mTestFile);
@@ -705,9 +931,13 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private void createTestFile(long lastPullTimeMillis) throws Exception {
         PersistAtoms atoms = new PersistAtoms();
         atoms.rawVoiceCallRatUsagePullTimestampMillis = lastPullTimeMillis;
-        atoms.voiceCallSessionPullTimestampMillis = lastPullTimeMillis;
         atoms.rawVoiceCallRatUsage = mVoiceCallRatUsages;
+        atoms.voiceCallSessionPullTimestampMillis = lastPullTimeMillis;
         atoms.voiceCallSession = mVoiceCallSessions;
+        atoms.cellularServiceStatePullTimestampMillis = lastPullTimeMillis;
+        atoms.cellularServiceState = mServiceStates;
+        atoms.cellularDataServiceSwitchPullTimestampMillis = lastPullTimeMillis;
+        atoms.cellularDataServiceSwitch = mServiceSwitches;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -744,17 +974,62 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         return multipliedUsages;
     }
 
+    private static CellularServiceState copyOf(CellularServiceState source) throws Exception {
+        return CellularServiceState.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static CellularDataServiceSwitch copyOf(CellularDataServiceSwitch source)
+            throws Exception {
+        return CellularDataServiceSwitch.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private void assertAllPullTimestampEquals(long timestamp) {
+        assertEquals(
+                timestamp,
+                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
+        assertEquals(
+                timestamp,
+                mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);
+        assertEquals(
+                timestamp,
+                mPersistAtomsStorage.getAtomsProto().cellularServiceStatePullTimestampMillis);
+        assertEquals(
+                timestamp,
+                mPersistAtomsStorage.getAtomsProto().cellularDataServiceSwitchPullTimestampMillis);
+    }
+
+    private void assertStorageIsEmptyForAllAtoms() {
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getVoiceCallRatUsages(0L));
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getVoiceCallSessions(0L));
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getCellularServiceStates(0L));
+        assertProtoArrayIsEmpty(mPersistAtomsStorage.getCellularDataServiceSwitches(0L));
+    }
+
+    private static <T extends MessageNano> void assertProtoArrayIsEmpty(T[] array) {
+        assertNotNull(array);
+        assertEquals(0, array.length);
+    }
+
     private static void assertProtoArrayEquals(MessageNano[] expected, MessageNano[] actual) {
         assertNotNull(expected);
         assertNotNull(actual);
-        assertEquals(expected.length, actual.length);
+        String message =
+                "Expected:\n" + Arrays.toString(expected) + "\nGot:\n" + Arrays.toString(actual);
+        assertEquals(message, expected.length, actual.length);
         for (int i = 0; i < expected.length; i++) {
-            assertTrue(
-                    String.format(
-                            "Message %d of %d differs:\n=== expected ===\n%s=== got ===\n%s",
-                            i + 1, expected.length, expected[i].toString(), actual[i].toString()),
-                    MessageNano.messageNanoEquals(expected[i], actual[i]));
+            assertTrue(message, MessageNano.messageNanoEquals(expected[i], actual[i]));
         }
+    }
+
+    private static void assertProtoArrayEqualsIgnoringOrder(
+            MessageNano[] expected, MessageNano[] actual) {
+        assertNotNull(expected);
+        assertNotNull(actual);
+        expected = expected.clone();
+        actual = actual.clone();
+        Arrays.sort(expected, sProtoComparator);
+        Arrays.sort(actual, sProtoComparator);
+        assertProtoArrayEquals(expected, actual);
     }
 
     private static void assertHasCall(
@@ -769,5 +1044,13 @@ public class PersistAtomsStorageTest extends TelephonyTest {
             }
         }
         assertEquals(expectedCount, actualCount);
+    }
+
+    private void verifyCurrentStateSavedToFileOnce() throws Exception {
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
     }
 }
