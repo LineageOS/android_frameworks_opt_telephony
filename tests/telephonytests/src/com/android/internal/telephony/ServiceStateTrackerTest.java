@@ -98,6 +98,7 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -135,6 +136,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Mock
     private SubscriptionInfo mSubInfo;
+
+    @Mock
+    private ServiceStateStats mServiceStateStats;
 
     private ServiceStateTracker sst;
     private ServiceStateTrackerTestHandler mSSTTestHandler;
@@ -185,6 +189,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         @Override
         public void onLooperPrepared() {
             sst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            sst.setServiceStateStats(mServiceStateStats);
             setReady(true);
         }
     }

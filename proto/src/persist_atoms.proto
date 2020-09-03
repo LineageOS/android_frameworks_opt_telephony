@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 13
+// Next id: 17
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated RawVoiceCallRatUsage raw_voice_call_rat_usage = 1;
@@ -60,6 +60,18 @@ message PersistAtoms {
 
     /* Timestamp of last data_call_session pull. */
     optional int64 data_call_session_pull_timestamp_millis = 12;
+
+    /* Duration spent in each possible service state. */
+    repeated CellularServiceState cellular_service_state = 13;
+
+    /* Timestamp of last cellular_service_state pull. */
+    optional int64 cellular_service_state_pull_timestamp_millis = 14;
+
+    /* Switch count between data RATs. */
+    repeated CellularDataServiceSwitch cellular_data_service_switch = 15;
+
+    /* Timestamp of last cellular_data_service_switch pull. */
+    optional int64 cellular_data_service_switch_pull_timestamp_millis = 16;
 }
 
 // The canonical versions of the following enums live in:
@@ -99,11 +111,10 @@ message VoiceCallSession {
     optional int64 setup_begin_millis = 10001;
 }
 
-// Internal use only
 message RawVoiceCallRatUsage {
     optional int32 carrier_id = 1;
     optional int32 rat = 2;
-    optional int64 total_duration_millis = 3;
+    optional int64 total_duration_millis = 3; // Duration needs to be rounded when pulled
     optional int64 call_count = 4;
 }
 
@@ -165,4 +176,31 @@ message DataCallSession {
     optional int32 deactivate_reason = 16;
     optional int64 duration_minutes = 17;
     optional bool ongoing = 18;
+}
+
+message CellularServiceState {
+    optional int32 voice_rat = 1;
+    optional int32 data_rat = 2;
+    optional int32 voice_roaming_type = 3;
+    optional int32 data_roaming_type = 4;
+    optional bool is_endc = 5;
+    optional int32 sim_slot_index = 6;
+    optional bool is_multi_sim = 7;
+    optional int32 carrier_id = 8;
+    optional int64 total_time_millis = 9; // Duration needs to be rounded when pulled
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
+}
+
+message CellularDataServiceSwitch {
+    optional int32 rat_from = 1;
+    optional int32 rat_to = 2;
+    optional int32 sim_slot_index = 3;
+    optional bool is_multi_sim = 4;
+    optional int32 carrier_id = 5;
+    optional int32 switch_count = 6;
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
 }

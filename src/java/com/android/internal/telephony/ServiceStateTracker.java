@@ -98,6 +98,7 @@ import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
 import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
+import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -478,6 +479,8 @@ public class ServiceStateTracker extends Handler {
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
     private final NitzStateMachine mNitzState;
 
+    private ServiceStateStats mServiceStateStats;
+
     /**
      * Holds the last NITZ signal received. Used only for trying to determine an MCC from a CDMA
      * SID.
@@ -643,6 +646,8 @@ public class ServiceStateTracker extends Handler {
                 .makeNitzStateMachine(phone);
         mPhone = phone;
         mCi = ci;
+
+        mServiceStateStats = new ServiceStateStats(mPhone);
 
         mCdnr = new CarrierDisplayNameResolver(mPhone);
 
@@ -1675,6 +1680,7 @@ public class ServiceStateTracker extends Handler {
                         TelephonyMetrics.getInstance().writeServiceStateChanged(
                                 mPhone.getPhoneId(), mSS);
                         mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
+                        mServiceStateStats.onServiceStateChanged(mSS);
                     }
                 }
                 break;
@@ -2259,6 +2265,7 @@ public class ServiceStateTracker extends Handler {
                     TelephonyMetrics.getInstance().writeServiceStateChanged(
                             mPhone.getPhoneId(), mSS);
                     mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
+                    mServiceStateStats.onServiceStateChanged(mSS);
                 }
 
                 if (mPhone.isPhoneTypeGsm()) {
@@ -3547,6 +3554,7 @@ public class ServiceStateTracker extends Handler {
         if (hasChanged || hasNrStateChanged) {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
             mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
+            mServiceStateStats.onServiceStateChanged(mSS);
         }
 
         boolean shouldLogAttachedChange = false;
@@ -5855,6 +5863,17 @@ public class ServiceStateTracker extends Handler {
         TelephonyManager tm = (TelephonyManager) mPhone.getContext().getSystemService(
                 Context.TELEPHONY_SERVICE);
         tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), type);
+    }
+
+    /** Returns the {@link ServiceStateStats} for the phone tracked. */
+    public ServiceStateStats getServiceStateStats() {
+        return mServiceStateStats;
+    }
+
+    /** Replaces the {@link ServiceStateStats} for testing purposes. */
+    @VisibleForTesting
+    public void setServiceStateStats(ServiceStateStats serviceStateStats) {
+        mServiceStateStats = serviceStateStats;
     }
 
     /**
