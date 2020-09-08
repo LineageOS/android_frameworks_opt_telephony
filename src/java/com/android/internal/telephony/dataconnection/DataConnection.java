@@ -2101,9 +2101,7 @@ public class DataConnection extends StateMachine {
                             // failure cause and determine if we need to retry this APN later
                             // or not.
                             mInactiveState.setEnterNotificationParams(cp, result.mFailCause,
-                                    // TODO: The actual failure mode should come from the underlying
-                                    //  data service
-                                    DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY);
+                                    dataCallResponse.getHandoverFailureMode());
                             transitionTo(mInactiveState);
                             break;
                         case ERROR_STALE:
