@@ -2934,10 +2934,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             }
 
-            if (conn != null) {
-                conn.onRemoteDisconnect(reasonInfo.getExtraMessage());
-            }
-
             if (mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD) {
                 if (DBG) {
                     log("onCallTerminated: Call terminated in the midst of Switching " +
@@ -3735,9 +3731,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             callState = Call.State.DIALING;
         }
         int cause = getDisconnectCauseFromReasonInfo(reasonInfo, callState);
-        if (conn != null) {
-            conn.onRemoteDisconnect(reasonInfo.getExtraMessage());
-        }
 
         processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
