@@ -24,6 +24,7 @@ import static com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryRe
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -37,8 +38,10 @@ import com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TimeZoneLookupHelperTest {
@@ -445,6 +448,18 @@ public class TimeZoneLookupHelperTest {
         assertFalse(mTimeZoneLookupHelper.countryUsesUtc("us", NH_WINTER_TIME_MILLIS));
         assertFalse(mTimeZoneLookupHelper.countryUsesUtc("gb", NH_SUMMER_TIME_MILLIS));
         assertTrue(mTimeZoneLookupHelper.countryUsesUtc("gb", NH_WINTER_TIME_MILLIS));
+    }
+
+    @Test
+    public void regressionTest_Bug167653885() {
+        // This NITZ caused an error in Android R because lookupByNitz was returning a time zone
+        // known to android.icu.util.TimeZone but not java.util.TimeZone.
+        NitzData nitzData = NitzData.parse("20/05/08,04:15:48+08,00");
+        OffsetResult offsetResult = mTimeZoneLookupHelper.lookupByNitz(nitzData);
+        assertNotNull(offsetResult);
+
+        List<String> knownIds = Arrays.asList(java.util.TimeZone.getAvailableIDs());
+        assertTrue(knownIds.contains(offsetResult.getTimeZone().getID()));
     }
 
     /**
