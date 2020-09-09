@@ -712,7 +712,8 @@ public class DcTracker extends Handler {
         mHandlerThread = new HandlerThread("DcHandlerThread");
         mHandlerThread.start();
         Handler dcHandler = new Handler(mHandlerThread.getLooper());
-        mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler, mLogTagSuffix);
+        mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler.getLooper(),
+                mLogTagSuffix);
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
         mDataConnectionTracker = this;
@@ -4953,9 +4954,8 @@ public class DcTracker extends Handler {
         if (bound) {
             if (mDcc == null) {
                 mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager,
-                        new Handler(mHandlerThread.getLooper()), mLogTagSuffix);
+                        mHandlerThread.getLooper(), mLogTagSuffix);
             }
-            mDcc.start();
         } else {
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 boolean connPersistenceOnRestart = mPhone.getContext().getResources()

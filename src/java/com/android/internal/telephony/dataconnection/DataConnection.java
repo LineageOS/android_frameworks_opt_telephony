@@ -637,7 +637,7 @@ public class DataConnection extends StateMachine {
     private DataConnection(Phone phone, String tagSuffix, int id,
                            DcTracker dct, DataServiceManager dataServiceManager,
                            DcTesterFailBringUpAll failBringUpAll, DcController dcc) {
-        super("DC-" + tagSuffix, dcc.getHandler());
+        super("DC-" + tagSuffix, dcc);
         mTagSuffix = tagSuffix;
         setLogRecSize(300);
         setLogOnlyTransitions(true);
