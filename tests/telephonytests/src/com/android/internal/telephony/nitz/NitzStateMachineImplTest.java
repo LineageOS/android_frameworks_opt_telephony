@@ -621,7 +621,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
         void commitLatest() {
             if (hasBeenSet()) {
-                mInitialValue = mValues.getLast();
+                mInitialValue = mValues.getFirst();
                 mValues.clear();
             }
         }
