@@ -2829,7 +2829,8 @@ public class ServiceStateTracker extends Handler {
                     AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
                     Intent intent = new Intent(ACTION_RADIO_OFF);
-                    mRadioOffIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+                    mRadioOffIntent = PendingIntent.getBroadcast(
+                            context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
                     mAlarmSwitch = true;
                     if (DBG) log("Alarm setting");

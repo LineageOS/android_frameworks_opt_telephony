@@ -1041,7 +1041,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             mContext,
             0,
             new Intent(ACTION_OPEN_SMS_APP),
-            PendingIntent.FLAG_ONE_SHOT);
+                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder mBuilder = new Notification.Builder(mContext)
                 .setSmallIcon(com.android.internal.R.drawable.sym_action_chat)
                 .setAutoCancel(true)
