@@ -380,7 +380,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         WorkSource workSource = new WorkSource(Process.myUid(),
             mContext.getPackageName());
         doReturn(cellLocation).when(mSST).getCellIdentity();
-        assertEquals(cellLocation, mPhoneUT.getCellIdentity());
+        assertEquals(cellLocation, mPhoneUT.getCurrentCellIdentity());
 
         // Switch to CDMA
         switchToCdma();
@@ -389,7 +389,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(cdmaCellLocation).when(mSST).getCellIdentity();
 
         CellIdentityCdma actualCellLocation =
-                (CellIdentityCdma) mPhoneUT.getCellIdentity();
+                (CellIdentityCdma) mPhoneUT.getCurrentCellIdentity();
 
         assertEquals(actualCellLocation, cdmaCellLocation);
     }
