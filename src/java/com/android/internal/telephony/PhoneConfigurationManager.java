@@ -100,6 +100,7 @@ public class PhoneConfigurationManager {
         notifyCapabilityChanged();
 
         mPhones = PhoneFactory.getPhones();
+
         if (!StorageManager.inCryptKeeperBounce()) {
             for (Phone phone : mPhones) {
                 phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);

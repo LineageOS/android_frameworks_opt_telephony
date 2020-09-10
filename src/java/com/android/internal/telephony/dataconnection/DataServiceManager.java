@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
+import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
 import android.annotation.NonNull;
 import android.app.AppOpsManager;
@@ -26,7 +27,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.LinkProperties;
@@ -37,8 +37,8 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.permission.PermissionManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.AnomalyReporter;
@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Data service manager manages handling data requests and responses on data services (e.g.
@@ -79,13 +80,15 @@ public class DataServiceManager extends Handler {
 
     private static final long REQUEST_UNRESPONDED_TIMEOUT = 10 * MINUTE_IN_MILLIS; // 10 mins
 
+    private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * SECOND_IN_MILLIS; // 15 secs
+
     private final Phone mPhone;
 
     private final String mTag;
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final AppOpsManager mAppOps;
-    private final IPackageManager mPackageManager;
+    private final PermissionManager mPermissionManager;
 
     private final int mTransportType;
 
@@ -132,14 +135,23 @@ public class DataServiceManager extends Handler {
 
     private void grantPermissionsToService(String packageName) {
         final String[] pkgToGrant = {packageName};
+        CountDownLatch latch = new CountDownLatch(1);
         try {
-            mPackageManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
-                    pkgToGrant, UserHandle.myUserId());
+            mPermissionManager.grantDefaultPermissionsToEnabledTelephonyDataServices(
+                    pkgToGrant, UserHandle.of(UserHandle.myUserId()), Runnable::run,
+                    isSuccess -> {
+                        if (isSuccess) {
+                            latch.countDown();
+                        } else {
+                            loge("Failed to grant permissions to service.");
+                        }
+                    });
+            TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
                 UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
-        } catch (RemoteException e) {
+        } catch (RuntimeException e) {
             loge("Binder to package manager died, permission grant for DataService failed.");
-            throw TelephonyUtils.rethrowAsRuntimeException(e);
+            throw e;
         }
     }
 
@@ -154,18 +166,27 @@ public class DataServiceManager extends Handler {
             dataServices.remove(getDataServicePackageName(transportType));
         }
 
+        CountDownLatch latch = new CountDownLatch(1);
         try {
             String[] dataServicesArray = new String[dataServices.size()];
             dataServices.toArray(dataServicesArray);
-            mPackageManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
-                    dataServicesArray, UserHandle.myUserId());
+            mPermissionManager.revokeDefaultPermissionsFromDisabledTelephonyDataServices(
+                    dataServicesArray, UserHandle.of(UserHandle.myUserId()), Runnable::run,
+                    isSuccess -> {
+                        if (isSuccess) {
+                            latch.countDown();
+                        } else {
+                            loge("Failed to revoke permissions from data services.");
+                        }
+                    });
+            TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             for (String pkg : dataServices) {
                 mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS, UserHandle.myUserId(),
                         pkg, AppOpsManager.MODE_ERRORED);
             }
-        } catch (RemoteException e) {
+        } catch (RuntimeException e) {
             loge("Binder to package manager died; failed to revoke DataService permissions.");
-            throw TelephonyUtils.rethrowAsRuntimeException(e);
+            throw e;
         }
     }
 
@@ -281,16 +302,20 @@ public class DataServiceManager extends Handler {
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
-        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+        // NOTE: Do NOT use AppGlobals to retrieve the permission manager; AppGlobals
+        // caches the service instance, but we need to explicitly request a new service
+        // so it can be mocked out for tests
+        mPermissionManager =
+                (PermissionManager) phone.getContext().getSystemService(Context.PERMISSION_SERVICE);
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         try {
             Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                    phone.getContext().getPackageName(), 0, UserHandle.ALL);
+                phone.getContext().getPackageName(), 0, UserHandle.ALL);
             contextAsUser.registerReceiver(mBroadcastReceiver, intentFilter,
-                    null /* broadcastPermission */, null);
+                null /* broadcastPermission */, null);
         } catch (PackageManager.NameNotFoundException e) {
             loge("Package name not found: " + e.getMessage());
         }
@@ -767,5 +792,4 @@ public class DataServiceManager extends Handler {
     private void loge(String s) {
         Rlog.e(mTag, s);
     }
-
 }

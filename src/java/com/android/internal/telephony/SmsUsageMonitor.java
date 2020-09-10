@@ -83,16 +83,20 @@ public class SmsUsageMonitor {
     }
 
     /** Premium SMS permission for a new package (ask user when first premium SMS sent). */
-    public static final int PREMIUM_SMS_PERMISSION_UNKNOWN = 0;
+    public static final int PREMIUM_SMS_PERMISSION_UNKNOWN =
+            SmsManager.PREMIUM_SMS_CONSENT_UNKNOWN;
 
     /** Default premium SMS permission (ask user for each premium SMS sent). */
-    public static final int PREMIUM_SMS_PERMISSION_ASK_USER = 1;
+    public static final int PREMIUM_SMS_PERMISSION_ASK_USER =
+            SmsManager.PREMIUM_SMS_CONSENT_ASK_USER;
 
     /** Premium SMS permission when the owner has denied the app from sending premium SMS. */
-    public static final int PREMIUM_SMS_PERMISSION_NEVER_ALLOW = 2;
+    public static final int PREMIUM_SMS_PERMISSION_NEVER_ALLOW =
+            SmsManager.PREMIUM_SMS_CONSENT_NEVER_ALLOW;
 
     /** Premium SMS permission when the owner has allowed the app to send premium SMS. */
-    public static final int PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW = 3;
+    public static final int PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW =
+            SmsManager.PREMIUM_SMS_CONSENT_ALWAYS_ALLOW;
 
     private final int mCheckPeriod;
     private final int mMaxAllowed;
@@ -522,7 +526,7 @@ public class SmsUsageMonitor {
 
     /**
      * Returns the premium SMS permission for the specified package. If the package has never
-     * been seen before, the default {@link #PREMIUM_SMS_PERMISSION_ASK_USER}
+     * been seen before, the default {@link #PREMIUM_SMS_PERMISSION_UNKNOWN}
      * will be returned.
      * @param packageName the name of the package to query permission
      * @return one of {@link #PREMIUM_SMS_PERMISSION_UNKNOWN},

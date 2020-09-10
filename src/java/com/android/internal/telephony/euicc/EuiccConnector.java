@@ -402,11 +402,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         mSelectedComponent = findBestComponent();
         setInitialState(mSelectedComponent != null ? mAvailableState : mUnavailableState);
 
+        start();
+
         mPackageMonitor.register(mContext, null /* thread */, null /* user */);
         mContext.registerReceiver(
                 mUserUnlockedReceiver, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
-
-        start();
     }
 
     @Override

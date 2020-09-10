@@ -24,12 +24,12 @@ import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 
 import android.app.ActivityManager;
+import android.app.AppOpsManager;
 import android.app.IActivityManager;
 import android.app.usage.NetworkStatsManager;
 import android.content.ContentResolver;
@@ -45,13 +45,13 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.IDeviceIdleController;
 import android.os.Looper;
 import android.os.Message;
 import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.UserManager;
+import android.permission.PermissionManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -98,8 +98,11 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
+import com.android.server.pm.PackageManagerService;
+import com.android.server.pm.permission.PermissionManagerService;
 
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -189,6 +192,10 @@ public abstract class TelephonyTest {
     protected SubscriptionController mSubscriptionController;
     @Mock
     protected ServiceState mServiceState;
+    @Mock
+    protected PackageManagerService mMockPackageManager;
+    @Mock
+    protected PermissionManagerService mMockPermissionManager;
 
     protected NetworkRegistrationInfo mNetworkRegistrationInfo =
             new NetworkRegistrationInfo.Builder()
@@ -197,8 +204,6 @@ public abstract class TelephonyTest {
             .build();
     @Mock
     protected SimulatedCommandsVerifier mSimulatedCommandsVerifier;
-    @Mock
-    protected IDeviceIdleController mIDeviceIdleController;
     @Mock
     protected InboundSmsHandler mInboundSmsHandler;
     @Mock
@@ -298,6 +303,7 @@ public abstract class TelephonyTest {
     protected EuiccManager mEuiccManager;
     protected PackageManager mPackageManager;
     protected ConnectivityManager mConnectivityManager;
+    protected AppOpsManager mAppOpsManager;
     protected CarrierConfigManager mCarrierConfigManager;
     protected UserManager mUserManager;
     protected SimulatedCommands mSimulatedCommands;
@@ -408,6 +414,8 @@ public abstract class TelephonyTest {
     protected void setUp(String tag) throws Exception {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
+        TelephonyManager.disableServiceHandleCaching();
+        SubscriptionController.disableCaching();
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
@@ -434,6 +442,7 @@ public abstract class TelephonyTest {
         mConnectivityManager = (ConnectivityManager)
                 mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         mPackageManager = mContext.getPackageManager();
+        mAppOpsManager = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
         mCarrierConfigManager =
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
@@ -468,8 +477,6 @@ public abstract class TelephonyTest {
                 .getCdmaSubscriptionSourceManagerInstance(nullable(Context.class),
                         nullable(CommandsInterface.class), nullable(Handler.class),
                         anyInt(), nullable(Object.class));
-        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
-                .getIDeviceIdleController();
         doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
                 .makeImsExternalCallTracker(nullable(ImsPhone.class));
         doReturn(mAppSmsManager).when(mTelephonyComponentFactory)
@@ -580,10 +587,10 @@ public abstract class TelephonyTest {
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
         doReturn(mIBinder).when(mIIntentSender).asBinder();
-        doReturn(mIIntentSender).when(mIActivityManager).getIntentSender(anyInt(),
-                nullable(String.class), nullable(IBinder.class), nullable(String.class), anyInt(),
-                nullable(Intent[].class), nullable(String[].class), anyInt(),
-                nullable(Bundle.class), anyInt());
+        doReturn(mIIntentSender).when(mIActivityManager).getIntentSenderWithFeature(anyInt(),
+                nullable(String.class), nullable(String.class), nullable(IBinder.class),
+                nullable(String.class), anyInt(), nullable(Intent[].class),
+                nullable(String[].class), anyInt(), nullable(Bundle.class), anyInt());
         doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
         doReturn(true).when(mTelephonyManager).isDataCapable();
 
@@ -592,6 +599,9 @@ public abstract class TelephonyTest {
         mSST.mSS = mServiceState;
         mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
+        mServiceManagerMockedServices.put("package", mMockPackageManager);
+        mServiceManagerMockedServices.put("permissionmgr", mMockPermissionManager);
+        logd("mMockPermissionManager replaced");
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
                 .when(mTransportManager).getAvailableTransports();
@@ -652,6 +662,7 @@ public abstract class TelephonyTest {
         replaceInstance(IntentBroadcaster.class, "sIntentBroadcaster", null, mIntentBroadcaster);
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
+        replaceInstance(TelephonyManager.class, "sServiceHandleCacheEnabled", null, false);
         replaceInstance(PhoneFactory.class, "sMadeDefaults", null, true);
         replaceInstance(PhoneFactory.class, "sPhone", null, mPhone);
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
@@ -696,6 +707,8 @@ public abstract class TelephonyTest {
         sharedPreferences.edit().clear().commit();
 
         restoreInstances();
+        TelephonyManager.enableServiceHandleCaching();
+        SubscriptionController.enableCaching();
     }
 
     protected static void logd(String s) {
@@ -762,13 +775,33 @@ public abstract class TelephonyTest {
     }
 
     protected void setupMocksForTelephonyPermissions() throws Exception {
+        setupMocksForTelephonyPermissions(Build.VERSION_CODES.Q);
+    }
+
+    protected void setupMocksForTelephonyPermissions(int targetSdkVersion)
+            throws Exception {
         // If the calling package does not meet the new requirements for device identifier access
         // TelephonyPermissions will query the PackageManager for the ApplicationInfo of the package
         // to determine the target SDK. For apps targeting Q a SecurityException is thrown
         // regardless of if the package satisfies the previous requirements for device ID access.
-        mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
-        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(eq(TAG), anyInt(),
-                any());
+
+        // Any tests that query for SubscriptionInfo objects will trigger a phone number access
+        // check that will first query the ApplicationInfo as apps targeting R+ can no longer
+        // access the phone number with the READ_PHONE_STATE permission and instead must meet one of
+        // the other requirements. This ApplicationInfo is generalized to any package name since
+        // some tests will simulate invocation from other packages.
+        mApplicationInfo.targetSdkVersion = targetSdkVersion;
+        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfoAsUser(anyString(),
+                anyInt(), any());
+
+        // TelephonyPermissions uses a SystemAPI to check if the calling package meets any of the
+        // generic requirements for device identifier access (currently READ_PRIVILEGED_PHONE_STATE,
+        // appop, and device / profile owner checks. This sets up the PermissionManager to return
+        // that access requirements are met.
+        setIdentifierAccess(true);
+        PermissionManager permissionManager = new PermissionManager(mContext, null,
+                mMockPermissionManager);
+        doReturn(permissionManager).when(mContext).getSystemService(eq(Context.PERMISSION_SERVICE));
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access
         // restrictions should be enabled; this results in a NPE when DeviceConfig uses
@@ -791,6 +824,28 @@ public abstract class TelephonyTest {
 
         replaceInstance(Class.forName("android.provider.Settings$ContentProviderHolder"),
                 "mContentProvider", providerHolder, iContentProvider);
+    }
+
+    protected void setIdentifierAccess(boolean hasAccess) {
+        doReturn(hasAccess ? PackageManager.PERMISSION_GRANTED
+                : PackageManager.PERMISSION_DENIED).when(
+                mMockPermissionManager).checkDeviceIdentifierAccess(any(), any(), any(), anyInt(),
+                anyInt());
+    }
+
+    protected void setCarrierPrivileges(boolean hasCarrierPrivileges) {
+        doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
+        doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS).when(
+                mTelephonyManager).getCarrierPrivilegeStatus(anyInt());
+    }
+
+    protected void setCarrierPrivilegesForSubId(boolean hasCarrierPrivileges, int subId) {
+        TelephonyManager mockTelephonyManager = Mockito.mock(TelephonyManager.class);
+        doReturn(mockTelephonyManager).when(mTelephonyManager).createForSubscriptionId(subId);
+        doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS).when(
+                mockTelephonyManager).getCarrierPrivilegeStatus(anyInt());
     }
 
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {

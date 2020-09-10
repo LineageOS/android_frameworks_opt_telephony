@@ -27,11 +27,6 @@ import com.android.telephony.Rlog;
  * {@hide}
  */
 public class IccCardApplicationStatus {
-
-    @UnsupportedAppUsage
-    public IccCardApplicationStatus() {
-    }
-
     // TODO: Replace with constants from PhoneConstants.APPTYPE_xxx
     @UnsupportedAppUsage(implicitMember =
             "values()[Lcom/android/internal/telephony/uicc/IccCardApplicationStatus$AppType;")
@@ -162,6 +157,10 @@ public class IccCardApplicationStatus {
     public int            pin1_replaced;
     public PinState       pin1;
     public PinState       pin2;
+
+    @UnsupportedAppUsage
+    public IccCardApplicationStatus() {
+    }
 
     @UnsupportedAppUsage
     public AppType AppTypeFromRILInt(int type) {

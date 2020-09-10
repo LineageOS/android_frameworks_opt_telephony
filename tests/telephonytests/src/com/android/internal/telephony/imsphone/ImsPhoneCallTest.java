@@ -30,6 +30,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
 
+import com.android.ims.ImsCall;
+import com.android.ims.ImsException;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.TelephonyTest;
 
@@ -182,5 +184,29 @@ public class ImsPhoneCallTest extends TelephonyTest {
         mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
         mImsCallUT.isMultiparty();
         verify(mImsCall, times(1)).isMultiparty();
+    }
+
+    @Test
+    @SmallTest
+    public void testGetImsCall() {
+        doReturn(mImsCall).when(mConnection1).getImsCall();
+        mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
+
+        ImsCall imsCall = mImsCallUT.getImsCall();
+        assertEquals(mImsCall, imsCall);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetMute() {
+        doReturn(mImsCall).when(mConnection1).getImsCall();
+        mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
+
+        mImsCallUT.setMute(true);
+        try {
+            verify(mImsCall).setMute(eq(true));
+        } catch (ImsException e) {
+            fail("Exception unexpected");
+        }
     }
 }

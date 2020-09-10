@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Context;
@@ -97,12 +98,15 @@ public class MissedIncomingCallSmsFilter {
         }
 
         if (mCarrierConfig != null) {
-            SmsMessage message = SmsMessage.createFromPdu(pdus[0], format);
             String[] originators = mCarrierConfig.getStringArray(CarrierConfigManager
                     .KEY_MISSED_INCOMING_CALL_SMS_ORIGINATOR_STRING_ARRAY);
-            if (originators != null
-                    && Arrays.asList(originators).contains(message.getOriginatingAddress())) {
-                return processSms(message);
+            if (originators != null) {
+                SmsMessage message = SmsMessage.createFromPdu(pdus[0], format);
+                if (message != null
+                        && !TextUtils.isEmpty(message.getOriginatingAddress())
+                        && Arrays.asList(originators).contains(message.getOriginatingAddress())) {
+                    return processSms(message);
+                }
             }
         }
         return false;
@@ -147,7 +151,7 @@ public class MissedIncomingCallSmsFilter {
      *
      * @return {@code true} if the SMS message has been processed as a missed incoming call SMS.
      */
-    private boolean processSms(SmsMessage message) {
+    private boolean processSms(@NonNull SmsMessage message) {
         long missedCallTime = 0;
         String callerId = null;
 

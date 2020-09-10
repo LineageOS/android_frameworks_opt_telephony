@@ -37,7 +37,9 @@ import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYP
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_UNSTRUCTURED;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_UNKNOWN;
 
+import android.content.Context;
 import android.net.NetworkCapabilities;
+import android.os.BatteryStatsManager;
 import android.os.Build;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -232,6 +234,8 @@ public class TelephonyMetrics {
     /** Indicating if some of the telephony events are dropped in this log */
     private boolean mTelephonyEventsDropped = false;
 
+    private Context mContext;
+
     public TelephonyMetrics() {
         mStartSystemTimeMs = System.currentTimeMillis();
         mStartElapsedTimeMs = SystemClock.elapsedRealtime();
@@ -248,6 +252,16 @@ public class TelephonyMetrics {
         }
 
         return sInstance;
+    }
+
+    /**
+     * Set the context for telephony metrics.
+     *
+     * @param context Context
+     * @hide
+     */
+    public void setContext(Context context) {
+        mContext = context;
     }
 
     /**
@@ -571,7 +585,11 @@ public class TelephonyMetrics {
         pw.decreaseIndent();
         pw.println("Modem power stats:");
         pw.increaseIndent();
-        ModemPowerStats s = new ModemPowerMetrics().buildProto();
+
+        BatteryStatsManager batteryStatsManager = mContext == null ? null :
+                (BatteryStatsManager) mContext.getSystemService(Context.BATTERY_STATS_SERVICE);
+        ModemPowerStats s = new ModemPowerMetrics(batteryStatsManager).buildProto();
+
         pw.println("Power log duration (battery time) (ms): " + s.loggingDurationMs);
         pw.println("Energy consumed by modem (mAh): " + s.energyConsumedMah);
         pw.println("Number of packets sent (tx): " + s.numPacketsTx);
@@ -730,7 +748,9 @@ public class TelephonyMetrics {
         }
 
         // Build modem power metrics
-        log.modemPowerStats = new ModemPowerMetrics().buildProto();
+        BatteryStatsManager batteryStatsManager = mContext == null ? null :
+                (BatteryStatsManager) mContext.getSystemService(Context.BATTERY_STATS_SERVICE);
+        log.modemPowerStats = new ModemPowerMetrics(batteryStatsManager).buildProto();
 
         // Log the hardware revision
         log.hardwareRevision = SystemProperties.get("ro.boot.revision", "");
@@ -1821,9 +1841,11 @@ public class TelephonyMetrics {
      *
      * @param phoneId Phone id
      * @param errorReason Defined in {@link SmsManager} RESULT_XXX.
+     * @param messageId Unique id for this message.
      */
     public synchronized void writeOnImsServiceSmsSolicitedResponse(int phoneId,
-            @ImsSmsImplBase.SendStatusResult int resultCode, int errorReason) {
+            @ImsSmsImplBase.SendStatusResult int resultCode, int errorReason,
+            long messageId) {
 
         InProgressSmsSession smsSession = mInProgressSmsSessions.get(phoneId);
         if (smsSession == null) {
@@ -1834,6 +1856,7 @@ public class TelephonyMetrics {
                     SmsSession.Event.Type.SMS_SEND_RESULT)
                     .setImsServiceErrno(resultCode)
                     .setErrorCode(errorReason)
+                    .setMessageId((messageId))
             );
 
             smsSession.decreaseExpectedResponse();
@@ -2110,8 +2133,8 @@ public class TelephonyMetrics {
             cq.maxRelativeJitterMillis = callQuality.getMaxRelativeJitter();
             cq.codecType = convertImsCodec(callQuality.getCodecType());
             cq.rtpInactivityDetected = callQuality.isRtpInactivityDetected();
-            cq.rxSilenceDetected = callQuality.isIncomingSilenceDetected();
-            cq.txSilenceDetected = callQuality.isOutgoingSilenceDetected();
+            cq.rxSilenceDetected = callQuality.isIncomingSilenceDetectedAtCallSetup();
+            cq.txSilenceDetected = callQuality.isOutgoingSilenceDetectedAtCallSetup();
         }
         return cq;
     }
@@ -2381,13 +2404,16 @@ public class TelephonyMetrics {
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     * @param messageId Unique id for this message.
      */
     private void writeIncomingSmsSessionWithType(int phoneId, int type, boolean smsOverIms,
-            String format, long[] timestamps, boolean blocked, boolean success) {
+            String format, long[] timestamps, boolean blocked, boolean success,
+            long messageId) {
         logv("Logged SMS session consisting of " + timestamps.length
                 + " parts, over IMS = " + smsOverIms
                 + " blocked = " + blocked
-                + " type = " + type);
+                + " type = " + type
+                + " messageId = " + messageId);
 
         InProgressSmsSession smsSession = startNewSmsSession(phoneId);
         for (long time : timestamps) {
@@ -2399,7 +2425,8 @@ public class TelephonyMetrics {
                         .setErrorCode(success ? SmsManager.RESULT_ERROR_NONE :
                             SmsManager.RESULT_ERROR_GENERIC_FAILURE)
                         .setSmsType(type)
-                        .setBlocked(blocked);
+                        .setBlocked(blocked)
+                        .setMessageId(messageId);
             smsSession.addEvent(time, eventBuilder);
         }
         finishSmsSession(smsSession);
@@ -2413,11 +2440,12 @@ public class TelephonyMetrics {
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
+     * @param messageId Unique id for this message.
      */
     public void writeIncomingWapPush(int phoneId, boolean smsOverIms, String format,
-            long[] timestamps, boolean success) {
+            long[] timestamps, boolean success, long messageId) {
         writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_WAP_PUSH,
-                smsOverIms, format, timestamps, false, success);
+                smsOverIms, format, timestamps, false, success, messageId);
     }
 
     /**
@@ -2428,11 +2456,12 @@ public class TelephonyMetrics {
      * @param format SMS format. Either 3GPP or 3GPP2.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
+     * @param messageId Unique id for this message.
      */
     public void writeIncomingSmsSession(int phoneId, boolean smsOverIms, String format,
-            long[] timestamps, boolean blocked) {
+            long[] timestamps, boolean blocked, long messageId) {
         writeIncomingSmsSessionWithType(phoneId, SmsSession.Event.SmsType.SMS_TYPE_NORMAL,
-                smsOverIms, format, timestamps, blocked, true);
+                smsOverIms, format, timestamps, blocked, true, messageId);
     }
 
     /**

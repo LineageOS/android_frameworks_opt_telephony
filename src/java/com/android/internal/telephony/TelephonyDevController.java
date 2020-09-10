@@ -53,6 +53,7 @@ public class TelephonyDevController extends Handler {
         Rlog.e(LOG_TAG, s);
     }
 
+    /** Create TelephonyDevController and set as singleton instance. */
     public static TelephonyDevController create() {
         synchronized (mLock) {
             if (sTelephonyDevController != null) {
@@ -63,6 +64,7 @@ public class TelephonyDevController extends Handler {
         }
     }
 
+    /** Get TelephonyDevController singleton. */
     public static TelephonyDevController getInstance() {
         synchronized (mLock) {
             if (sTelephonyDevController == null) {

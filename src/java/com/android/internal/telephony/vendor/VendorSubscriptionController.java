@@ -16,17 +16,15 @@
 
 package com.android.internal.telephony.vendor;
 
+import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.Manifest;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -39,9 +37,9 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneFactory;
 
 import java.util.Iterator;
 import java.util.List;
@@ -301,7 +299,7 @@ public class VendorSubscriptionController extends SubscriptionController {
             logi("set default phoneaccount to  " + subId);
             mTelecomManager.setUserSelectedOutgoingPhoneAccount(phoneAccountHandle);
         }
-        if (!isSubProvisioned(mDefaultFallbackSubId)) {
+        if (!isSubProvisioned(sDefaultFallbackSubId.get())) {
             setDefaultFallbackSubId(mNextActivatedSub.getSubscriptionId(),
                 SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
         }

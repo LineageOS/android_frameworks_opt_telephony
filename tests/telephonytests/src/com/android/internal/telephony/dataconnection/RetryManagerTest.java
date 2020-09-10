@@ -1026,4 +1026,31 @@ public class RetryManagerTest extends TelephonyTest {
         delay = rm.getDelayForNextApn(false);
         assertEquals(4000, delay);
     }
+
+    /**
+     * Test the scenario where reset happens before modem suggests retry.
+     */
+    @Test
+    @SmallTest
+    public void testRetryManagerResetBeforeModemSuggestedRetry() throws Exception {
+
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
+                new String[]{"others:1000,4000,7000,9000"});
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
+        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "mms");
+        rm.setWaitingApns(waitingApns);
+
+        rm.setModemSuggestedDelay(10);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+    }
 }

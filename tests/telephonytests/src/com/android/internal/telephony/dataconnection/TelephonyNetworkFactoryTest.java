@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.NetworkCapabilities;
@@ -56,6 +57,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -69,6 +71,9 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     PhoneSwitcher mPhoneSwitcher;
     @Mock
     private RadioConfig mMockRadioConfig;
+
+    @Mock
+    private DataConnection mDataConnection;
 
     private String mTestName = "";
 
@@ -346,4 +351,41 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         h.sendMessage(h.obtainMessage(5, ar));
         processAllMessages();
     }
+
+    /**
+     * Test handover when the data connection is being connected.
+     */
+    @Test
+    @SmallTest
+    public void testHandoverActivatingData() throws Exception {
+        createMockedTelephonyComponents();
+        doReturn(0).when(mSubscriptionController).getSubIdUsingPhoneId(0);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
+
+        activatePhoneInPhoneSwitcher(0, true);
+        makeDefaultInternetRequest();
+
+        makeSubSpecificMmsRequest(0);
+        processAllMessages();
+
+        Field f = TelephonyNetworkFactory.class.getDeclaredField("mInternalHandler");
+        f.setAccessible(true);
+        Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
+
+        HandoverCallback handoverCallback = mock(HandoverCallback.class);
+        Mockito.reset(mDcTracker);
+        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByApnType(anyString());
+        doReturn(false).when(mDataConnection).isActive();
+
+        HandoverParams hp = new HandoverParams(ApnSetting.TYPE_MMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, handoverCallback);
+        AsyncResult ar = new AsyncResult(null, hp, null);
+        h.sendMessage(h.obtainMessage(5, ar));
+        processAllMessages();
+
+        verify(mDcTracker, times(1)).releaseNetwork(any(), eq(1));
+        verify(mDcTracker, times(1)).requestNetwork(any(), eq(1), any());
+    }
+
 }

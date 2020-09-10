@@ -41,9 +41,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
-import android.app.IApplicationThread;
 import android.content.BroadcastReceiver;
-import android.content.IIntentReceiver;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.AsyncResult;
@@ -611,19 +609,8 @@ public class ImsPhoneTest extends TelephonyTest {
     private void verifyEcbmIntentWasSent(int times, boolean isInEcm) throws Exception {
         // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mIActivityManager, atLeast(times)).broadcastIntent(eq((IApplicationThread) null),
-                intentArgumentCaptor.capture(),
-                eq((String) null),
-                eq((IIntentReceiver) null),
-                eq(Activity.RESULT_OK),
-                eq((String) null),
-                eq((Bundle) null),
-                eq((String[]) null),
-                anyInt(),
-                eq((Bundle) null),
-                eq(false),
-                eq(true),
-                anyInt());
+        verify(mContext, atLeast(times)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                any());
 
         Intent intent = intentArgumentCaptor.getValue();
         assertNotNull(intent);

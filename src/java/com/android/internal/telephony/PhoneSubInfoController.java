@@ -29,10 +29,11 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyFrameworkInitializer;
 
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -49,8 +50,11 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private final AppOpsManager mAppOps;
 
     public PhoneSubInfoController(Context context) {
-        if (ServiceManager.getService("iphonesubinfo") == null) {
-            ServiceManager.addService("iphonesubinfo", this);
+        ServiceRegisterer phoneSubServiceRegisterer = TelephonyFrameworkInitializer
+                .getTelephonyServiceManager()
+                .getPhoneSubServiceRegisterer();
+        if (phoneSubServiceRegisterer.get() == null) {
+            phoneSubServiceRegisterer.register(this);
         }
         mContext = context;
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);

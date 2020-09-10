@@ -107,7 +107,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 + " mImsRetry=" + tracker.mImsRetry
                 + " mMessageRef=" + tracker.mMessageRef
                 + " mUsesImsServiceForIms=" + tracker.mUsesImsServiceForIms
-                + " SS=" + ss);
+                + " SS=" + ss
+                + " id=" + tracker.mMessageId);
 
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {

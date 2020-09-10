@@ -27,10 +27,10 @@ import android.content.pm.ComponentInfo;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.service.euicc.EuiccProfileInfo;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
@@ -108,7 +108,10 @@ public class EuiccCardController extends IEuiccCardController.Stub {
 
     private EuiccCardController(Context context) {
         this(context, new Handler(), EuiccController.get(), UiccController.getInstance());
-        ServiceManager.addService("euicc_card_controller", this);
+        TelephonyFrameworkInitializer
+                .getTelephonyServiceManager()
+                .getEuiccCardControllerServiceRegisterer()
+                .register(this);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)

@@ -103,9 +103,9 @@ public class NetworkRegistrationManager extends Handler {
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         try {
             Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                    phone.getContext().getPackageName(), 0, UserHandle.ALL);
+                phone.getContext().getPackageName(), 0, UserHandle.ALL);
             contextAsUser.registerReceiver(mBroadcastReceiver, intentFilter,
-                    null /* broadcastPermission */, null);
+                null /* broadcastPermission */, null);
         } catch (PackageManager.NameNotFoundException e) {
             loge("Package name not found: " + e.getMessage());
         }
