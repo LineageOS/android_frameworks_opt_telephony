@@ -229,7 +229,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         // mock gsm cell location
         CellIdentityGsm mGsmCellLocation = new CellIdentityGsm(
                 2, 3, 0, 0, null, null, null, null, Collections.emptyList());
-        doReturn(mGsmCellLocation).when(mPhone).getCellIdentity();
+        doReturn(mGsmCellLocation).when(mPhone).getCurrentCellIdentity();
         ArgumentCaptor<CellIdentityGsm> cellLocationCapture =
                 ArgumentCaptor.forClass(CellIdentityGsm.class);
 
