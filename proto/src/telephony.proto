@@ -2611,6 +2611,9 @@ message SmsSession {
 
     // Indicates if the incoming SMS was blocked
     optional bool blocked = 17;
+
+    // Optional xMS message unique id
+    optional int64 message_id = 18;
   }
 
   // Time when session has started, in minutes since epoch,

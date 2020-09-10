@@ -149,7 +149,7 @@ public class VoiceCallSessionStats {
     public synchronized void onRilCallListChanged(List<GsmCdmaConnection> connections) {
         for (Connection conn : connections) {
             int id = getConnectionId(conn);
-            if (mCallProtos.get(id) == null) {
+            if (!mCallProtos.contains(id)) {
                 // handle new connections
                 if (conn.getDisconnectCause() == DisconnectCause.NOT_DISCONNECTED) {
                     addCall(conn);
@@ -213,7 +213,7 @@ public class VoiceCallSessionStats {
             }
         } else {
             int id = getConnectionId(conn);
-            if (mCallProtos.get(id) != null) {
+            if (mCallProtos.contains(id)) {
                 finishImsCall(id, reasonInfo);
             } else {
                 loge("onImsCallTerminated: untracked connection");
@@ -328,7 +328,7 @@ public class VoiceCallSessionStats {
      */
     private void addCall(Connection conn) {
         int id = getConnectionId(conn);
-        if (mCallProtos.get(id) != null) {
+        if (mCallProtos.contains(id)) {
             // mostly handles ringing MT call getting accepted (MT call setup begins)
             logd("addCall: resetting setup info");
             VoiceCallSession proto = mCallProtos.get(id);

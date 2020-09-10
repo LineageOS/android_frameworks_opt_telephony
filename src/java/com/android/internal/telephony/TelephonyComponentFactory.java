@@ -22,9 +22,7 @@ import android.content.Context;
 import android.content.res.XmlResourceParser;
 import android.database.Cursor;
 import android.os.Handler;
-import android.os.IDeviceIdleController;
 import android.os.Looper;
-import android.os.ServiceManager;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
@@ -349,30 +347,31 @@ public class TelephonyComponentFactory {
     /**
      * Create a tracker for a single-part SMS.
      */
-    public InboundSmsTracker makeInboundSmsTracker(byte[] pdu, long timestamp, int destPort,
-            boolean is3gpp2, boolean is3gpp2WapPdu, String address, String displayAddr,
-            String messageBody, boolean isClass0, int subId) {
-        return new InboundSmsTracker(pdu, timestamp, destPort, is3gpp2, is3gpp2WapPdu, address,
-                displayAddr, messageBody, isClass0, subId);
+    public InboundSmsTracker makeInboundSmsTracker(Context context, byte[] pdu, long timestamp,
+            int destPort, boolean is3gpp2, boolean is3gpp2WapPdu, String address,
+            String displayAddr, String messageBody, boolean isClass0, int subId) {
+        return new InboundSmsTracker(context, pdu, timestamp, destPort, is3gpp2, is3gpp2WapPdu,
+                address, displayAddr, messageBody, isClass0, subId);
     }
 
     /**
      * Create a tracker for a multi-part SMS.
      */
-    public InboundSmsTracker makeInboundSmsTracker(byte[] pdu, long timestamp, int destPort,
-            boolean is3gpp2, String address, String displayAddr, int referenceNumber,
+    public InboundSmsTracker makeInboundSmsTracker(Context context, byte[] pdu, long timestamp,
+            int destPort, boolean is3gpp2, String address, String displayAddr, int referenceNumber,
             int sequenceNumber, int messageCount, boolean is3gpp2WapPdu, String messageBody,
             boolean isClass0, int subId) {
-        return new InboundSmsTracker(pdu, timestamp, destPort, is3gpp2, address, displayAddr,
-                referenceNumber, sequenceNumber, messageCount, is3gpp2WapPdu, messageBody,
-                isClass0, subId);
+        return new InboundSmsTracker(context, pdu, timestamp, destPort, is3gpp2, address,
+                displayAddr, referenceNumber, sequenceNumber, messageCount, is3gpp2WapPdu,
+                messageBody, isClass0, subId);
     }
 
     /**
      * Create a tracker from a row of raw table
      */
-    public InboundSmsTracker makeInboundSmsTracker(Cursor cursor, boolean isCurrentFormat3gpp2) {
-        return new InboundSmsTracker(cursor, isCurrentFormat3gpp2);
+    public InboundSmsTracker makeInboundSmsTracker(Context context, Cursor cursor,
+            boolean isCurrentFormat3gpp2) {
+        return new InboundSmsTracker(context, cursor, isCurrentFormat3gpp2);
     }
 
     public ImsPhoneCallTracker makeImsPhoneCallTracker(ImsPhone imsPhone) {
@@ -403,11 +402,6 @@ public class TelephonyComponentFactory {
     getCdmaSubscriptionSourceManagerInstance(Context context, CommandsInterface ci, Handler h,
                                              int what, Object obj) {
         return CdmaSubscriptionSourceManager.getInstance(context, ci, h, what, obj);
-    }
-
-    public IDeviceIdleController getIDeviceIdleController() {
-        return IDeviceIdleController.Stub.asInterface(
-                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
     }
 
     public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,

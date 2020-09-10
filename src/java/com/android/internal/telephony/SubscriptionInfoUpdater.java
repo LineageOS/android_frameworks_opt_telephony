@@ -19,23 +19,21 @@ package com.android.internal.telephony;
 import android.Manifest;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
-import android.app.UserSwitchObserver;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.IPackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.IRemoteCallback;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
-import android.os.RemoteException;
-import android.os.ServiceManager;
+import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.Global;
@@ -115,8 +113,6 @@ public class SubscriptionInfoUpdater extends Handler {
     private static boolean sIsSubInfoInitialized = false;
     private SubscriptionManager mSubscriptionManager = null;
     private EuiccManager mEuiccManager;
-    @UnsupportedAppUsage
-    private IPackageManager mPackageManager;
     private Handler mBackgroundHandler;
 
     // The current foreground user ID.
@@ -139,21 +135,14 @@ public class SubscriptionInfoUpdater extends Handler {
 
     // TODO: The SubscriptionController instance should be passed in here from PhoneFactory
     // rather than invoking the static getter all over the place.
-    public SubscriptionInfoUpdater(
-            Looper looper, Context context, CommandsInterface[] ci) {
-        this(looper, context, ci, IPackageManager.Stub.asInterface(
-                ServiceManager.getService("package")));
-    }
-
     @VisibleForTesting public SubscriptionInfoUpdater(Looper looper, Context context,
-            CommandsInterface[] ci, IPackageManager packageMgr) {
+            CommandsInterface[] ci) {
         logd("Constructor invoked");
         mBackgroundHandler = new Handler(looper);
 
         sContext = context;
         mSubscriptionManager = SubscriptionManager.from(sContext);
         mEuiccManager = (EuiccManager) sContext.getSystemService(Context.EUICC_SERVICE);
-        mPackageManager = packageMgr;
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(sContext);
         initializeCarrierApps();
@@ -168,33 +157,23 @@ public class SubscriptionInfoUpdater extends Handler {
         // -Whenever new carrier privilege rules might change (new SIM is loaded)
         // -Whenever we switch to a new user
         mCurrentlyActiveUserId = 0;
-        try {
-            ActivityManager.getService().registerUserSwitchObserver(new UserSwitchObserver() {
-                @Override
-                public void onUserSwitching(int newUserId, IRemoteCallback reply)
-                        throws RemoteException {
-                    mCurrentlyActiveUserId = newUserId;
+        sContext.registerReceiverForAllUsers(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                // Remove this line after testing
+                if (Intent.ACTION_USER_FOREGROUND.equals(intent.getAction())) {
+                    UserHandle userHandle = intent.getParcelableExtra(Intent.EXTRA_USER);
+                    // If couldn't get current user ID, guess it's 0.
+                    mCurrentlyActiveUserId = userHandle != null ? userHandle.getIdentifier() : 0;
                     CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
-                            mPackageManager, TelephonyManager.getDefault(),
-                            mCurrentlyActiveUserId, sContext);
-
-                    if (reply != null) {
-                        try {
-                            reply.sendResult(null);
-                        } catch (RemoteException e) {
-                        }
-                    }
+                            TelephonyManager.getDefault(), mCurrentlyActiveUserId, sContext);
                 }
-            }, LOG_TAG);
-            ActivityManager am = (ActivityManager) sContext.getSystemService(
-                Context.ACTIVITY_SERVICE);
-            mCurrentlyActiveUserId = am.getCurrentUser();
-        } catch (RemoteException e) {
-            logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
-        }
+            }
+        }, new IntentFilter(Intent.ACTION_USER_FOREGROUND), null, null);
+        ActivityManager am = (ActivityManager) sContext.getSystemService(Context.ACTIVITY_SERVICE);
+        mCurrentlyActiveUserId = am.getCurrentUser();
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(),
-                mCurrentlyActiveUserId, sContext);
+                TelephonyManager.getDefault(), mCurrentlyActiveUserId, sContext);
     }
 
     /**
@@ -599,8 +578,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
         // Update set of enabled carrier apps now that the privilege rules may have changed.
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(sContext.getOpPackageName(),
-                mPackageManager, TelephonyManager.getDefault(),
-                mCurrentlyActiveUserId, sContext);
+                TelephonyManager.getDefault(), mCurrentlyActiveUserId, sContext);
 
         /**
          * The sim loading sequence will be
@@ -1185,7 +1163,7 @@ public class SubscriptionInfoUpdater extends Handler {
         SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
         logd("Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason " + reason +
                 " for phone: " + phoneId);
-        IntentBroadcaster.getInstance().broadcastStickyIntent(i, phoneId);
+        IntentBroadcaster.getInstance().broadcastStickyIntent(sContext, i, phoneId);
     }
 
     protected void broadcastSimCardStateChanged(int phoneId, int state) {

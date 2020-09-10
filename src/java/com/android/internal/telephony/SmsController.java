@@ -30,12 +30,13 @@ import android.net.Uri;
 import android.os.BaseBundle;
 import android.os.Binder;
 import android.os.Bundle;
-import android.os.ServiceManager;
+import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.util.IndentingPrintWriter;
@@ -56,8 +57,11 @@ public class SmsController extends ISmsImplBase {
 
     protected SmsController(Context context) {
         mContext = context;
-        if (ServiceManager.getService("isms") == null) {
-            ServiceManager.addService("isms", this);
+        ServiceRegisterer smsServiceRegisterer = TelephonyFrameworkInitializer
+                .getTelephonyServiceManager()
+                .getSmsServiceRegisterer();
+        if (smsServiceRegisterer.get() == null) {
+            smsServiceRegisterer.register(this);
         }
     }
 
@@ -180,7 +184,7 @@ public class SmsController extends ISmsImplBase {
     public void sendTextForSubscriber(int subId, String callingPackage,
             String callingAttributionTag, String destAddr, String scAddr, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
@@ -189,7 +193,6 @@ public class SmsController extends ISmsImplBase {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
             return;
         }
-
         long token = Binder.clearCallingIdentity();
         SubscriptionInfo info;
         try {
@@ -201,7 +204,7 @@ public class SmsController extends ISmsImplBase {
             sendBluetoothText(info, destAddr, text, sentIntent, deliveryIntent);
         } else {
             sendIccText(subId, callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
-                    persistMessageForNonDefaultSmsApp);
+                    persistMessageForNonDefaultSmsApp, messageId);
         }
     }
 
@@ -218,14 +221,16 @@ public class SmsController extends ISmsImplBase {
 
     private void sendIccText(int subId, String callingPackage, String destAddr,
             String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId) {
+        Rlog.d(LOG_TAG, "sendTextForSubscriber iccSmsIntMgr"
+                + " Subscription: " + subId + " id: " + messageId);
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
-                    deliveryIntent, persistMessageForNonDefaultSmsApp);
+                    deliveryIntent, persistMessageForNonDefaultSmsApp, messageId);
         } else {
             Rlog.e(LOG_TAG, "sendTextForSubscriber iccSmsIntMgr is null for"
-                    + " Subscription: " + subId);
+                    + " Subscription: " + subId + " id: " + messageId);
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
@@ -269,7 +274,7 @@ public class SmsController extends ISmsImplBase {
     public void sendMultipartTextForSubscriber(int subId, String callingPackage,
             String callingAttributionTag, String destAddr, String scAddr, List<String> parts,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents,
-            boolean persistMessageForNonDefaultSmsApp) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId) {
         // This is different from the checking of other method. It prefers the package name
         // returned by getCallPackage() for backward-compatibility.
         if (getCallingPackage() != null) {
@@ -278,10 +283,11 @@ public class SmsController extends ISmsImplBase {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendMultipartText(callingPackage, callingAttributionTag, destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, persistMessageForNonDefaultSmsApp);
+                    parts, sentIntents, deliveryIntents, persistMessageForNonDefaultSmsApp,
+                    messageId);
         } else {
             Rlog.e(LOG_TAG, "sendMultipartTextForSubscriber iccSmsIntMgr is null for"
-                    + " Subscription: " + subId);
+                    + " Subscription: " + subId + " id: " + messageId);
             sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
@@ -298,7 +304,7 @@ public class SmsController extends ISmsImplBase {
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, callingAttributionTag,
                     destAddr, scAddr, parts, sentIntents, deliveryIntents, persistMessage, priority,
-                    expectMore, validityPeriod);
+                    expectMore, validityPeriod, 0L /* messageId */);
         } else {
             Rlog.e(LOG_TAG, "sendMultipartTextWithOptions iccSmsIntMgr is null for"
                     + " Subscription: " + subId);
@@ -814,6 +820,24 @@ public class SmsController extends ISmsImplBase {
         } else {
             Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
             return 0;
+        }
+    }
+
+    /**
+     * Reset all cell broadcast ranges. Previously enabled ranges will become invalid after this.
+     *
+     * @param subId Subscription index
+     * @return {@code true} if succeeded, otherwise {@code false}.
+     */
+    @Override
+    public boolean resetAllCellBroadcastRanges(int subId) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.resetAllCellBroadcastRanges();
+            return true;
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return false;
         }
     }
 }

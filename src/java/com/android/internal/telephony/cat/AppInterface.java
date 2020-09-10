@@ -75,7 +75,7 @@ public interface AppInterface {
      */
     @UnsupportedAppUsage(implicitMember =
             "values()[Lcom/android/internal/telephony/cat/AppInterface$CommandType;")
-    enum CommandType {
+    public static enum CommandType {
         @UnsupportedAppUsage
         DISPLAY_TEXT(0x21),
         @UnsupportedAppUsage

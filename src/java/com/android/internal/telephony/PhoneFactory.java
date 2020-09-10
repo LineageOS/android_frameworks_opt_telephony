@@ -45,6 +45,7 @@ import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.metrics.MetricsCollector;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
@@ -115,6 +116,9 @@ public class PhoneFactory {
                 sContext = context;
                 // create the telephony device controller.
                 TelephonyDevController.create();
+
+                TelephonyMetrics metrics = TelephonyMetrics.getInstance();
+                metrics.setContext(context);
 
                 int retryCount = 0;
                 for(;;) {

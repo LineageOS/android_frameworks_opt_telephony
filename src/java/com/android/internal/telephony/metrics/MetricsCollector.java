@@ -20,22 +20,36 @@ import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
+import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
+import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
+
+import android.annotation.Nullable;
 import android.app.StatsManager;
 import android.content.Context;
+import android.util.StatsEvent;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
+import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
+import com.android.internal.util.ConcurrentUtils;
 import com.android.telephony.Rlog;
 
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Random;
 
 /**
  * Implements statsd pullers for Telephony.
  *
- * <p>This class is currently a stub. When statsd pulled atom support is merged, this class will
- * register pullers to statsd, which will be called once a day to obtain telephony statistics that
- * cannot be sent to statsd in real time.
+ * <p>This class registers pullers to statsd, which will be called once a day to obtain telephony
+ * statistics that cannot be sent to statsd in real time.
  */
-public class MetricsCollector {
+public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private static final String TAG = MetricsCollector.class.getSimpleName();
 
     /** Disables various restrictions to ease debugging during development. */
@@ -61,6 +75,11 @@ public class MetricsCollector {
     private static final long DURATION_BUCKET_MILLIS =
             DBG ? 2L * SECOND_IN_MILLIS : 5L * MINUTE_IN_MILLIS;
 
+    private static final StatsManager.PullAtomMetadata POLICY_PULL_DAILY =
+            new StatsManager.PullAtomMetadata.Builder()
+                    .setCoolDownMillis(MIN_COOLDOWN_MILLIS)
+                    .build();
+
     private PersistAtomsStorage mStorage;
     private final StatsManager mStatsManager;
     private static final Random sRandom = new Random();
@@ -69,15 +88,11 @@ public class MetricsCollector {
         mStorage = new PersistAtomsStorage(context);
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
-            // TODO: registration/puller needs to be added and the following code needs to be
-            // enabled once dependencies are available.
-            /*
             registerAtom(SIM_SLOT_STATE, null);
             registerAtom(SUPPORTED_RADIO_ACCESS_FAMILY, null);
             registerAtom(VOICE_CALL_RAT_USAGE, POLICY_PULL_DAILY);
             registerAtom(VOICE_CALL_SESSION, POLICY_PULL_DAILY);
             Rlog.d(TAG, "registered");
-            */
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
         }
@@ -89,9 +104,156 @@ public class MetricsCollector {
         mStorage = storage;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@link StatsManager#PULL_SUCCESS} with list of atoms (potentially empty) if pull
+     *     succeeded, {@link StatsManager#PULL_SKIP} if pull was too frequent or atom ID is
+     *     unexpected.
+     */
+    @Override
+    public int onPullAtom(int atomTag, List<StatsEvent> data) {
+        switch (atomTag) {
+            case SIM_SLOT_STATE:
+                return pullSimSlotState(data);
+            case SUPPORTED_RADIO_ACCESS_FAMILY:
+                return pullSupportedRadioAccessFamily(data);
+            case VOICE_CALL_RAT_USAGE:
+                return pullVoiceCallRatUsages(data);
+            case VOICE_CALL_SESSION:
+                return pullVoiceCallSessions(data);
+            default:
+                Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
+                return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Returns the {@link PersistAtomsStorage} backing the puller. */
     public PersistAtomsStorage getAtomsStorage() {
         return mStorage;
+    }
+
+    private static int pullSimSlotState(List<StatsEvent> data) {
+        SimSlotState state;
+        try {
+            state = SimSlotState.getCurrentState();
+        } catch (RuntimeException e) {
+            // UiccController has not been made yet
+            return StatsManager.PULL_SKIP;
+        }
+
+        StatsEvent e =
+                StatsEvent.newBuilder()
+                        .setAtomId(SIM_SLOT_STATE)
+                        .writeInt(state.numActiveSlots)
+                        .writeInt(state.numActiveSims)
+                        .writeInt(state.numActiveEsims)
+                        .build();
+        data.add(e);
+        return StatsManager.PULL_SUCCESS;
+    }
+
+    private static int pullSupportedRadioAccessFamily(List<StatsEvent> data) {
+        long rafSupported = 0L;
+        try {
+            // The bitmask is defined in android.telephony.TelephonyManager.NetworkTypeBitMask
+            for (Phone phone : PhoneFactory.getPhones()) {
+                rafSupported |= phone.getRadioAccessFamily();
+            }
+        } catch (IllegalStateException e) {
+            // Phones have not been made yet
+            return StatsManager.PULL_SKIP;
+        }
+
+        StatsEvent e =
+                StatsEvent.newBuilder()
+                        .setAtomId(SUPPORTED_RADIO_ACCESS_FAMILY)
+                        .writeLong(rafSupported)
+                        .build();
+        data.add(e);
+        return StatsManager.PULL_SUCCESS;
+    }
+
+    private int pullVoiceCallRatUsages(List<StatsEvent> data) {
+        RawVoiceCallRatUsage[] usages = mStorage.getVoiceCallRatUsages(MIN_COOLDOWN_MILLIS);
+        if (usages != null) {
+            // sort by carrier/RAT and remove buckets with insufficient number of calls
+            Arrays.stream(usages)
+                    .sorted(
+                            Comparator.comparingLong(
+                                    usage -> ((long) usage.carrierId << 32) | usage.rat))
+                    .filter(usage -> usage.callCount >= MIN_CALLS_PER_BUCKET)
+                    .forEach(usage -> data.add(buildStatsEvent(usage)));
+            Rlog.d(
+                    TAG,
+                    String.format(
+                            "%d out of %d VOICE_CALL_RAT_USAGE pulled",
+                            data.size(), usages.length));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "VOICE_CALL_RAT_USAGE pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullVoiceCallSessions(List<StatsEvent> data) {
+        VoiceCallSession[] calls = mStorage.getVoiceCallSessions(MIN_COOLDOWN_MILLIS);
+        if (calls != null) {
+            // call session list is already shuffled when calls inserted
+            Arrays.stream(calls).forEach(call -> data.add(buildStatsEvent(call)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "VOICE_CALL_SESSION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */
+    private void registerAtom(int atomId, @Nullable StatsManager.PullAtomMetadata policy) {
+        mStatsManager.setPullAtomCallback(atomId, policy, ConcurrentUtils.DIRECT_EXECUTOR, this);
+    }
+
+    private static StatsEvent buildStatsEvent(RawVoiceCallRatUsage usage) {
+        return StatsEvent.newBuilder()
+                .setAtomId(VOICE_CALL_RAT_USAGE)
+                .writeInt(usage.carrierId)
+                .writeInt(usage.rat)
+                .writeLong(
+                        round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS)
+                .writeLong(usage.callCount)
+                .build();
+    }
+
+    private static StatsEvent buildStatsEvent(VoiceCallSession session) {
+        return StatsEvent.newBuilder()
+                .setAtomId(VOICE_CALL_SESSION)
+                .writeInt(session.bearerAtStart)
+                .writeInt(session.bearerAtEnd)
+                .writeInt(session.direction)
+                .writeInt(session.setupDuration)
+                .writeBoolean(session.setupFailed)
+                .writeInt(session.disconnectReasonCode)
+                .writeInt(session.disconnectExtraCode)
+                .writeString(session.disconnectExtraMessage)
+                .writeInt(session.ratAtStart)
+                .writeInt(session.ratAtEnd)
+                .writeLong(session.ratSwitchCount)
+                .writeLong(session.codecBitmask)
+                .writeInt(session.concurrentCallCountAtStart)
+                .writeInt(session.concurrentCallCountAtEnd)
+                .writeInt(session.simSlotIndex)
+                .writeBoolean(session.isMultiSim)
+                .writeBoolean(session.isEsim)
+                .writeInt(session.carrierId)
+                .writeBoolean(session.srvccCompleted)
+                .writeLong(session.srvccFailureCount)
+                .writeLong(session.srvccCancellationCount)
+                .writeBoolean(session.rttEnabled)
+                .writeBoolean(session.isEmergency)
+                .writeBoolean(session.isRoaming)
+                // workaround: dimension required for keeping multiple pulled atoms
+                .writeInt(sRandom.nextInt())
+                .build();
     }
 
     /** Returns the value rounded to the bucket. */

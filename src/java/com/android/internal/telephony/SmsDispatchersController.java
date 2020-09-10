@@ -661,20 +661,22 @@ public class SmsDispatchersController extends Handler {
      */
     public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg, boolean persistMessage,
-            int priority, boolean expectMore, int validityPeriod, boolean isForVvm) {
+            int priority, boolean expectMore, int validityPeriod, boolean isForVvm,
+            long messageId) {
         if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
             mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                     messageUri, callingPkg, persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED, isForVvm);
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED, isForVvm,
+                    messageId);
         } else {
             if (isCdmaMo()) {
                 mCdmaDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                         messageUri, callingPkg, persistMessage, priority, expectMore,
-                        validityPeriod, isForVvm);
+                        validityPeriod, isForVvm, messageId);
             } else {
                 mGsmDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                         messageUri, callingPkg, persistMessage, priority, expectMore,
-                        validityPeriod, isForVvm);
+                        validityPeriod, isForVvm, messageId);
             }
         }
     }
@@ -723,33 +725,37 @@ public class SmsDispatchersController extends Handler {
      *  Validity Period(Minimum) -> 5 mins
      *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
      *  Any Other values included Negative considered as Invalid Validity Period of the message.
-
+     * @param messageId An id that uniquely identifies the message requested to be sent.
+     *                 Used for logging and diagnostics purposes. The id may be 0.
+     *
      */
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
-            boolean persistMessage, int priority, boolean expectMore, int validityPeriod) {
+            boolean persistMessage, int priority, boolean expectMore, int validityPeriod,
+            long messageId) {
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
                     deliveryIntents, messageUri, callingPkg, persistMessage,
                     SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
-                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED);
+                    false /*expectMore*/, SMS_MESSAGE_PERIOD_NOT_SPECIFIED,
+                    messageId);
         } else {
             if (isCdmaMo()) {
                 mCdmaDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
                         deliveryIntents, messageUri, callingPkg, persistMessage, priority,
-                        expectMore, validityPeriod);
+                        expectMore, validityPeriod, messageId);
             } else {
                 mGsmDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
                         deliveryIntents, messageUri, callingPkg, persistMessage, priority,
-                        expectMore, validityPeriod);
+                        expectMore, validityPeriod, messageId);
             }
         }
     }
 
     /**
      * Returns the premium SMS permission for the specified package. If the package has never
-     * been seen before, the default {@link SmsUsageMonitor#PREMIUM_SMS_PERMISSION_ASK_USER}
+     * been seen before, the default {@link SmsUsageMonitor#PREMIUM_SMS_PERMISSION_UNKNOWN}
      * will be returned.
      * @param packageName the name of the package to query permission
      * @return one of {@link SmsUsageMonitor#PREMIUM_SMS_PERMISSION_UNKNOWN},

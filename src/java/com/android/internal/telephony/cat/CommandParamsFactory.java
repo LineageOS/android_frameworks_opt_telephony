@@ -23,6 +23,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.Context;
+import android.content.res.Resources.NotFoundException;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Message;
@@ -49,6 +51,7 @@ class CommandParamsFactory extends Handler {
     private boolean mloadIcon = false;
     private String mSavedLanguage;
     private String mRequestedLanguage;
+    private boolean mNoAlphaUsrCnf = false;
 
     // constants
     static final int MSG_ID_LOAD_ICON_DONE = 1;
@@ -83,19 +86,25 @@ class CommandParamsFactory extends Handler {
     private static final int MAX_UCS2_CHARS = 118;
 
     static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller,
-            IccFileHandler fh) {
+            IccFileHandler fh, Context context) {
         if (sInstance != null) {
             return sInstance;
         }
         if (fh != null) {
-            return new CommandParamsFactory(caller, fh);
+            return new CommandParamsFactory(caller, fh, context);
         }
         return null;
     }
 
-    private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh) {
+    private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh, Context context) {
         mCaller = caller;
         mIconLoader = IconLoader.getInstance(this, fh);
+        try {
+            mNoAlphaUsrCnf = context.getResources().getBoolean(
+                    com.android.internal.R.bool.config_stkNoAlphaUsrCnf);
+        } catch (NotFoundException e) {
+            mNoAlphaUsrCnf = false;
+        }
     }
 
     private CommandDetails processCommandDetails(List<ComprehensionTlv> ctlvs) {
@@ -159,62 +168,62 @@ class CommandParamsFactory extends Handler {
 
         try {
             switch (cmdType) {
-            case SET_UP_MENU:
-                cmdPending = processSelectItem(cmdDet, ctlvs);
-                break;
-            case SELECT_ITEM:
-                cmdPending = processSelectItem(cmdDet, ctlvs);
-                break;
-            case DISPLAY_TEXT:
-                cmdPending = processDisplayText(cmdDet, ctlvs);
-                break;
-             case SET_UP_IDLE_MODE_TEXT:
-                 cmdPending = processSetUpIdleModeText(cmdDet, ctlvs);
-                 break;
-             case GET_INKEY:
-                cmdPending = processGetInkey(cmdDet, ctlvs);
-                break;
-             case GET_INPUT:
-                 cmdPending = processGetInput(cmdDet, ctlvs);
-                 break;
-             case SEND_DTMF:
-             case SEND_SMS:
-             case REFRESH:
-             case RUN_AT:
-             case SEND_SS:
-             case SEND_USSD:
-                 cmdPending = processEventNotify(cmdDet, ctlvs);
-                 break;
-             case GET_CHANNEL_STATUS:
-             case SET_UP_CALL:
-                 cmdPending = processSetupCall(cmdDet, ctlvs);
-                 break;
-             case LAUNCH_BROWSER:
-                 cmdPending = processLaunchBrowser(cmdDet, ctlvs);
-                 break;
-             case PLAY_TONE:
-                cmdPending = processPlayTone(cmdDet, ctlvs);
-                break;
-             case SET_UP_EVENT_LIST:
-                 cmdPending = processSetUpEventList(cmdDet, ctlvs);
-                 break;
-             case PROVIDE_LOCAL_INFORMATION:
-                cmdPending = processProvideLocalInfo(cmdDet, ctlvs);
-                break;
-             case LANGUAGE_NOTIFICATION:
-                 cmdPending = processLanguageNotification(cmdDet, ctlvs);
-                 break;
-             case OPEN_CHANNEL:
-             case CLOSE_CHANNEL:
-             case RECEIVE_DATA:
-             case SEND_DATA:
-                 cmdPending = processBIPClient(cmdDet, ctlvs);
-                 break;
-            default:
-                // unsupported proactive commands
-                mCmdParams = new CommandParams(cmdDet);
-                sendCmdParams(ResultCode.BEYOND_TERMINAL_CAPABILITY);
-                return;
+                case SET_UP_MENU:
+                    cmdPending = processSelectItem(cmdDet, ctlvs);
+                    break;
+                case SELECT_ITEM:
+                    cmdPending = processSelectItem(cmdDet, ctlvs);
+                    break;
+                case DISPLAY_TEXT:
+                    cmdPending = processDisplayText(cmdDet, ctlvs);
+                    break;
+                case SET_UP_IDLE_MODE_TEXT:
+                    cmdPending = processSetUpIdleModeText(cmdDet, ctlvs);
+                    break;
+                case GET_INKEY:
+                    cmdPending = processGetInkey(cmdDet, ctlvs);
+                    break;
+                case GET_INPUT:
+                    cmdPending = processGetInput(cmdDet, ctlvs);
+                    break;
+                case SEND_DTMF:
+                case SEND_SMS:
+                case REFRESH:
+                case RUN_AT:
+                case SEND_SS:
+                case SEND_USSD:
+                    cmdPending = processEventNotify(cmdDet, ctlvs);
+                    break;
+                case GET_CHANNEL_STATUS:
+                case SET_UP_CALL:
+                    cmdPending = processSetupCall(cmdDet, ctlvs);
+                    break;
+                case LAUNCH_BROWSER:
+                    cmdPending = processLaunchBrowser(cmdDet, ctlvs);
+                    break;
+                case PLAY_TONE:
+                    cmdPending = processPlayTone(cmdDet, ctlvs);
+                    break;
+                case SET_UP_EVENT_LIST:
+                    cmdPending = processSetUpEventList(cmdDet, ctlvs);
+                    break;
+                case PROVIDE_LOCAL_INFORMATION:
+                    cmdPending = processProvideLocalInfo(cmdDet, ctlvs);
+                    break;
+                case LANGUAGE_NOTIFICATION:
+                    cmdPending = processLanguageNotification(cmdDet, ctlvs);
+                    break;
+                case OPEN_CHANNEL:
+                case CLOSE_CHANNEL:
+                case RECEIVE_DATA:
+                case SEND_DATA:
+                    cmdPending = processBIPClient(cmdDet, ctlvs);
+                    break;
+                default:
+                    // unsupported proactive commands
+                    mCmdParams = new CommandParams(cmdDet);
+                    sendCmdParams(ResultCode.BEYOND_TERMINAL_CAPABILITY);
+                    return;
             }
         } catch (ResultException e) {
             CatLog.d(this, "make: caught ResultException e=" + e);
@@ -230,11 +239,11 @@ class CommandParamsFactory extends Handler {
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
-        case MSG_ID_LOAD_ICON_DONE:
-            if (mIconLoader != null) {
-                sendCmdParams(setIcons(msg.obj));
-            }
-            break;
+            case MSG_ID_LOAD_ICON_DONE:
+                if (mIconLoader != null) {
+                    sendCmdParams(setIcons(msg.obj));
+                }
+                break;
         }
     }
 
@@ -247,28 +256,28 @@ class CommandParamsFactory extends Handler {
             mCmdParams.mLoadIconFailed = true;
             mloadIcon = false;
             /** In case of icon load fail consider the
-            ** received proactive command as valid (sending RESULT OK) as
-            ** The result code, 'PRFRMD_ICON_NOT_DISPLAYED' will be added in the
-            ** terminal response by CatService/StkAppService if needed based on
-            ** the value of mLoadIconFailed.
-            */
+             ** received proactive command as valid (sending RESULT OK) as
+             ** The result code, 'PRFRMD_ICON_NOT_DISPLAYED' will be added in the
+             ** terminal response by CatService/StkAppService if needed based on
+             ** the value of mLoadIconFailed.
+             */
             return ResultCode.OK;
         }
         switch(mIconLoadState) {
-        case LOAD_SINGLE_ICON:
-            mCmdParams.setIcon((Bitmap) data);
-            break;
-        case LOAD_MULTI_ICONS:
-            icons = (Bitmap[]) data;
-            // set each item icon.
-            for (Bitmap icon : icons) {
-                mCmdParams.setIcon(icon);
-                if (icon == null && mloadIcon) {
-                    CatLog.d(this, "Optional Icon data is NULL while loading multi icons");
-                    mCmdParams.mLoadIconFailed = true;
+            case LOAD_SINGLE_ICON:
+                mCmdParams.setIcon((Bitmap) data);
+                break;
+            case LOAD_MULTI_ICONS:
+                icons = (Bitmap[]) data;
+                // set each item icon.
+                for (Bitmap icon : icons) {
+                    mCmdParams.setIcon(icon);
+                    if (icon == null && mloadIcon) {
+                        CatLog.d(this, "Optional Icon data is NULL while loading multi icons");
+                        mCmdParams.mLoadIconFailed = true;
+                    }
                 }
-            }
-            break;
+                break;
         }
         return ResultCode.OK;
     }
@@ -555,11 +564,11 @@ class CommandParamsFactory extends Handler {
         // be encoded. Limit depends on DCS in Command Qualifier.
         if (input.ucs2 && input.maxLen > MAX_UCS2_CHARS) {
             CatLog.d(this, "UCS2: received maxLen = " + input.maxLen +
-                  ", truncating to " + MAX_UCS2_CHARS);
+                    ", truncating to " + MAX_UCS2_CHARS);
             input.maxLen = MAX_UCS2_CHARS;
         } else if (!input.packed && input.maxLen > MAX_GSM7_DEFAULT_CHARS) {
             CatLog.d(this, "GSM 7Bit Default: received maxLen = " + input.maxLen +
-                  ", truncating to " + MAX_GSM7_DEFAULT_CHARS);
+                    ", truncating to " + MAX_GSM7_DEFAULT_CHARS);
             input.maxLen = MAX_GSM7_DEFAULT_CHARS;
         }
 
@@ -601,7 +610,7 @@ class CommandParamsFactory extends Handler {
         ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
                 ctlvs);
         if (ctlv != null) {
-            menu.title = ValueParser.retrieveAlphaId(ctlv);
+            menu.title = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
         } else if (cmdType == AppInterface.CommandType.SET_UP_MENU) {
             // According to spec ETSI TS 102 223 section 6.10.3, the
             // Alpha ID is mandatory (and also part of minimum set of
@@ -661,26 +670,26 @@ class CommandParamsFactory extends Handler {
 
         // Load icons data if needed.
         switch(mIconLoadState) {
-        case LOAD_NO_ICON:
-            return false;
-        case LOAD_SINGLE_ICON:
-            mloadIcon = true;
-            mIconLoader.loadIcon(titleIconId.recordNumber, this
-                    .obtainMessage(MSG_ID_LOAD_ICON_DONE));
-            break;
-        case LOAD_MULTI_ICONS:
-            int[] recordNumbers = itemsIconId.recordNumbers;
-            if (titleIconId != null) {
-                // Create a new array for all the icons (title and items).
-                recordNumbers = new int[itemsIconId.recordNumbers.length + 1];
-                recordNumbers[0] = titleIconId.recordNumber;
-                System.arraycopy(itemsIconId.recordNumbers, 0, recordNumbers,
-                        1, itemsIconId.recordNumbers.length);
-            }
-            mloadIcon = true;
-            mIconLoader.loadIcons(recordNumbers, this
-                    .obtainMessage(MSG_ID_LOAD_ICON_DONE));
-            break;
+            case LOAD_NO_ICON:
+                return false;
+            case LOAD_SINGLE_ICON:
+                mloadIcon = true;
+                mIconLoader.loadIcon(titleIconId.recordNumber, this
+                        .obtainMessage(MSG_ID_LOAD_ICON_DONE));
+                break;
+            case LOAD_MULTI_ICONS:
+                int[] recordNumbers = itemsIconId.recordNumbers;
+                if (titleIconId != null) {
+                    // Create a new array for all the icons (title and items).
+                    recordNumbers = new int[itemsIconId.recordNumbers.length + 1];
+                    recordNumbers[0] = titleIconId.recordNumber;
+                    System.arraycopy(itemsIconId.recordNumbers, 0, recordNumbers,
+                            1, itemsIconId.recordNumbers.length);
+                }
+                mloadIcon = true;
+                mIconLoader.loadIcons(recordNumbers, this
+                        .obtainMessage(MSG_ID_LOAD_ICON_DONE));
+                break;
         }
         return true;
     }
@@ -704,7 +713,7 @@ class CommandParamsFactory extends Handler {
 
         ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID,
                 ctlvs);
-        textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+        textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {
@@ -813,7 +822,7 @@ class CommandParamsFactory extends Handler {
 
         // parse alpha identifier.
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
-        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
+        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
 
         // parse icon identifier
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
@@ -825,16 +834,16 @@ class CommandParamsFactory extends Handler {
         // parse command qualifier value.
         LaunchBrowserMode mode;
         switch (cmdDet.commandQualifier) {
-        case 0x00:
-        default:
-            mode = LaunchBrowserMode.LAUNCH_IF_NOT_ALREADY_LAUNCHED;
-            break;
-        case 0x02:
-            mode = LaunchBrowserMode.USE_EXISTING_BROWSER;
-            break;
-        case 0x03:
-            mode = LaunchBrowserMode.LAUNCH_NEW_BROWSER;
-            break;
+            case 0x00:
+            default:
+                mode = LaunchBrowserMode.LAUNCH_IF_NOT_ALREADY_LAUNCHED;
+                break;
+            case 0x02:
+                mode = LaunchBrowserMode.USE_EXISTING_BROWSER;
+                break;
+            case 0x03:
+                mode = LaunchBrowserMode.LAUNCH_NEW_BROWSER;
+                break;
         }
 
         mCmdParams = new LaunchBrowserParams(cmdDet, confirmMsg, url, mode);
@@ -848,7 +857,7 @@ class CommandParamsFactory extends Handler {
         return false;
     }
 
-     /**
+    /**
      * Processes PLAY_TONE proactive command from the SIM card.
      *
      * @param cmdDet Command Details container object.
@@ -886,7 +895,7 @@ class CommandParamsFactory extends Handler {
         // parse alpha identifier
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
         if (ctlv != null) {
-            textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
             // Assign the tone message text to empty string, if alpha identifier
             // data is null. If no alpha identifier tlv is present, then tone
             // message text will be null.
@@ -943,7 +952,7 @@ class CommandParamsFactory extends Handler {
 
         // get confirmation message string.
         ctlv = searchForNextTag(ComprehensionTlvTag.ALPHA_ID, iter);
-        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv);
+        confirmMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
         if (ctlv != null) {
@@ -954,7 +963,7 @@ class CommandParamsFactory extends Handler {
         // get call set up message string.
         ctlv = searchForNextTag(ComprehensionTlvTag.ALPHA_ID, iter);
         if (ctlv != null) {
-            callMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            callMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
         }
 
         ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
@@ -1062,9 +1071,9 @@ class CommandParamsFactory extends Handler {
     }
 
     private boolean processBIPClient(CommandDetails cmdDet,
-                                     List<ComprehensionTlv> ctlvs) throws ResultException {
+            List<ComprehensionTlv> ctlvs) throws ResultException {
         AppInterface.CommandType commandType =
-                                    AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
+                AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
         if (commandType != null) {
             CatLog.d(this, "process "+ commandType.name());
         }
@@ -1077,7 +1086,7 @@ class CommandParamsFactory extends Handler {
         // parse alpha identifier
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
         if (ctlv != null) {
-            textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            textMsg.text = ValueParser.retrieveAlphaId(ctlv, mNoAlphaUsrCnf);
             CatLog.d(this, "alpha TLV text=" + textMsg.text);
             has_alpha_id = true;
         }

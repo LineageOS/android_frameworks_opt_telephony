@@ -21,15 +21,12 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
 import android.app.ActivityManager;
-import android.app.ActivityManagerNative;
-import android.app.IActivityManager;
 import android.app.backup.BackupManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.res.Configuration;
 import android.content.res.Resources.NotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -156,7 +153,7 @@ public class CatService extends Handler implements AppInterface {
         mSlotId = slotId;
 
         // Get the RilMessagesDecoder for decoding the messages.
-        mMsgDecoder = RilMessageDecoder.getInstance(this, fh, slotId);
+        mMsgDecoder = RilMessageDecoder.getInstance(this, fh, context, slotId);
         if (null == mMsgDecoder) {
             CatLog.d(this, "Null RilMessageDecoder instance");
             return;
@@ -1174,8 +1171,6 @@ public class CatService extends Handler implements AppInterface {
     }
 
     private void changeLanguage(String language) throws RemoteException {
-        IActivityManager am = ActivityManagerNative.getDefault();
-        Configuration config = am.getConfiguration();
         // get locale list, combined with language locale and default locale list.
         LocaleList defaultLocaleList = LocaleList.getDefault();
         Locale[] locales = new Locale[defaultLocaleList.size() + 1];
@@ -1184,7 +1179,6 @@ public class CatService extends Handler implements AppInterface {
             locales[i+1] = defaultLocaleList.get(i);
         }
         mContext.getSystemService(ActivityManager.class).setDeviceLocales(new LocaleList(locales));
-        am.updatePersistentConfiguration(config);
         BackupManager.dataChanged("com.android.providers.settings");
     }
 }

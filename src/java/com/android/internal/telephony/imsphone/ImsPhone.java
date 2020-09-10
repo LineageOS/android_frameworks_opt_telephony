@@ -42,7 +42,6 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NON
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -265,18 +264,6 @@ public class ImsPhone extends ImsPhoneBase {
 
     protected void setCurrentSubscriberUris(Uri[] currentSubscriberUris) {
         this.mCurrentSubscriberUris = currentSubscriberUris;
-    }
-
-    @UnsupportedAppUsage
-    @Override
-    public void notifyCallForwardingIndicator() {
-        super.notifyCallForwardingIndicator();
-    }
-
-    @UnsupportedAppUsage
-    @Override
-    public void notifyPreciseCallStateChanged() {
-        super.notifyPreciseCallStateChanged();
     }
 
     @Override
@@ -1916,7 +1903,7 @@ public class ImsPhone extends ImsPhoneBase {
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, isInEcm());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
-        ActivityManager.broadcastStickyIntent(intent, UserHandle.USER_ALL);
+        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         if (DBG) logd("sendEmergencyCallbackModeChange: isInEcm=" + isInEcm());
     }
 
@@ -2102,6 +2089,9 @@ public class ImsPhone extends ImsPhoneBase {
                         intent.getCharSequenceExtra(EXTRA_KEY_NOTIFICATION_MESSAGE);
 
                 Intent resultIntent = new Intent(Intent.ACTION_MAIN);
+                // Note: If the classname below is ever removed, the call to
+                // PendingIntent.getActivity should also specify FLAG_IMMUTABLE to ensure the
+                // pending intent cannot be tampered with.
                 resultIntent.setClassName("com.android.settings",
                         "com.android.settings.Settings$WifiCallingSettingsActivity");
                 resultIntent.putExtra(EXTRA_KEY_ALERT_SHOW, true);
@@ -2112,6 +2102,8 @@ public class ImsPhone extends ImsPhoneBase {
                                 mContext,
                                 0,
                                 resultIntent,
+                                // Note: Since resultIntent above specifies an explicit class name
+                                // we do not need to specify PendingIntent.FLAG_IMMUTABLE here.
                                 PendingIntent.FLAG_UPDATE_CURRENT
                         );
 
