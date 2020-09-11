@@ -1968,7 +1968,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Returns the current CellIdentify if known
+     * Returns the current CellIdentity if known
      */
     public CellIdentity getCurrentCellIdentity() {
         return getServiceStateTracker().getCellIdentity();
