@@ -150,7 +150,7 @@ public class PhoneStateListenerTest extends TelephonyTest {
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
         ((IPhoneStateListener) field.get(mPhoneStateListenerUT)).onOutgoingEmergencySms(
-                emergencyNumber);
+                emergencyNumber, SubscriptionManager.DEFAULT_SUBSCRIPTION_ID);
         processAllMessages();
 
         assertTrue(mTextedEmergencyNumber.equals(emergencyNumber));
