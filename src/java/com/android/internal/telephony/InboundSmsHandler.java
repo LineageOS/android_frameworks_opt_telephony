@@ -1447,7 +1447,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 if (cursor.getInt(
                         PDU_DELETED_FLAG_PROJECTION_INDEX_MAPPING.get(DELETED_FLAG_COLUMN)) == 1) {
                     logWithLocalLog("checkAndHandleDuplicate: Discarding duplicate "
-                            + "message/segment: " + tracker, tracker.getMessageId());
+                            + "message/segment: " + tracker);
                     logDupPduMismatch(cursor, tracker);
                     return true;   // reject message
                 } else {
@@ -1459,7 +1459,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                         deleteFromRawTable(exactMatchQuery.first, exactMatchQuery.second,
                                 DELETE_PERMANENTLY);
                         logWithLocalLog("checkAndHandleDuplicate: Replacing duplicate message: "
-                                + tracker, tracker.getMessageId());
+                                + tracker);
                         logDupPduMismatch(cursor, tracker);
                     }
                 }
