@@ -84,6 +84,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.SimState;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.data.ApnSetting;
+import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
@@ -483,7 +485,8 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void onDataReconnect(ApnContext apnContextforRetry, int subId) {
+    private void onDataReconnect(ApnContext apnContextforRetry, int subId,
+            @RequestNetworkType int requestType) {
         int phoneSubId = mPhone.getSubId();
         String apnType = apnContextforRetry.getApnType();
         String reason =  apnContextforRetry.getReason();
@@ -2202,16 +2205,17 @@ public class DcTracker extends Handler {
         return retry;
     }
 
-    protected void startReconnect(long delay, ApnContext apnContext) {
+    protected void startReconnect(long delay, ApnContext apnContext,
+            @RequestNetworkType int requestType) {
         Message msg = obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
-                       mPhone.getSubId(), mTransportType, apnContext);
+                       mPhone.getSubId(), requestType, apnContext);
         cancelReconnect(apnContext);
         sendMessageDelayed(msg, delay);
 
         if (DBG) {
             log("startReconnect: delay=" + delay + " apn="
                     + apnContext + "reason: " + apnContext.getReason()
-                    + " subId: " + mPhone.getSubId());
+                    + " subId=" + mPhone.getSubId() + " request type=" + requestType);
         }
     }
 
@@ -2385,6 +2389,7 @@ public class DcTracker extends Handler {
     private void sendRequestNetworkCompleteMsg(Message message, boolean success,
                                                @TransportType int transport,
                                                @RequestNetworkType int requestType,
+                                               @HandoverFailureMode int handoverFailureMode,
                                                @DataFailureCause int cause) {
         if (message == null) return;
 
@@ -2392,11 +2397,11 @@ public class DcTracker extends Handler {
         b.putBoolean(DATA_COMPLETE_MSG_EXTRA_SUCCESS, success);
         b.putInt(DATA_COMPLETE_MSG_EXTRA_REQUEST_TYPE, requestType);
         b.putInt(DATA_COMPLETE_MSG_EXTRA_TRANSPORT_TYPE, transport);
-        // TODO: For now this is the only fail cause that we know modem keeps data connection on
-        // original transport. Might add more complicated logic or mapping in the future.
         b.putBoolean(DATA_COMPLETE_MSG_EXTRA_HANDOVER_FAILURE_FALLBACK,
-                (requestType == REQUEST_TYPE_HANDOVER
-                        && cause == DataFailCause.HANDOFF_PREFERENCE_CHANGED));
+                (handoverFailureMode == DataCallResponse.HANDOVER_FAILURE_MODE_DO_FALLBACK
+                        || (handoverFailureMode
+                        == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY
+                        && cause == DataFailCause.HANDOFF_PREFERENCE_CHANGED)));
         message.sendToTarget();
     }
 
@@ -2412,7 +2417,7 @@ public class DcTracker extends Handler {
         if (apnContext == null) {
             loge("onEnableApn(" + apnType + "): NO ApnContext");
             sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType, requestType,
-                    DataFailCause.NONE);
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, DataFailCause.NONE);
             return;
         }
 
@@ -2428,7 +2433,7 @@ public class DcTracker extends Handler {
             if (DBG) log(str);
             apnContext.requestLog(str);
             sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType, requestType,
-                    DataFailCause.NONE);
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, DataFailCause.NONE);
             return;
         }
 
@@ -2444,13 +2449,15 @@ public class DcTracker extends Handler {
                     if (DBG) log("onEnableApn: 'CONNECTED' so return");
                     // Don't add to local log since this is so common
                     sendRequestNetworkCompleteMsg(onCompleteMsg, true, mTransportType,
-                            requestType, DataFailCause.NONE);
+                            requestType, DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN,
+                            DataFailCause.NONE);
                     return;
                 case DISCONNECTING:
                     if (DBG) log("onEnableApn: 'DISCONNECTING' so return");
                     apnContext.requestLog("onEnableApn state=DISCONNECTING, so return");
                     sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType,
-                            requestType, DataFailCause.NONE);
+                            requestType, DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN,
+                            DataFailCause.NONE);
                     return;
                 case IDLE:
                     // fall through: this is unexpected but if it happens cleanup and try setup
@@ -2479,7 +2486,8 @@ public class DcTracker extends Handler {
                 addRequestNetworkCompleteMsg(onCompleteMsg, apnType);
             } else {
                 sendRequestNetworkCompleteMsg(onCompleteMsg, false, mTransportType,
-                        requestType, DataFailCause.NONE);
+                        requestType, DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN,
+                        DataFailCause.NONE);
             }
         } else {
             log("onEnableApn: config not ready yet.");
@@ -2750,12 +2758,13 @@ public class DcTracker extends Handler {
      * there is an error this method will call {@link #onDataSetupCompleteError}.
      */
     protected void onDataSetupComplete(ApnContext apnContext, boolean success, int cause,
-                                     @RequestNetworkType int requestType) {
+            @RequestNetworkType int requestType, @HandoverFailureMode int handoverFailureMode) {
         int apnType = ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType());
         List<Message> messageList = mRequestNetworkCompletionMsgs.get(apnType);
         if (messageList != null) {
             for (Message msg : messageList) {
-                sendRequestNetworkCompleteMsg(msg, success, mTransportType, requestType, cause);
+                sendRequestNetworkCompleteMsg(msg, success, mTransportType, requestType,
+                        handoverFailureMode, cause);
             }
             messageList.clear();
         }
@@ -2913,7 +2922,7 @@ public class DcTracker extends Handler {
      * Error has occurred during the SETUP {aka bringUP} request and the DCT
      * should either try the next waiting APN or start over from the
      * beginning if the list is empty. Between each SETUP request there will
-     * be a delay defined by {@link #getApnDelay()}.
+     * be a delay defined by {@link ApnContext#getDelayForNextApn(boolean)}.
      */
     protected void onDataSetupCompleteError(ApnContext apnContext,
                                           @RequestNetworkType int requestType) {
@@ -2927,7 +2936,7 @@ public class DcTracker extends Handler {
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
 
-            startReconnect(delay, apnContext);
+            startReconnect(delay, apnContext, requestType);
         } else {
             // If we are not going to retry any APN, set this APN context to failed state.
             // This would be the final state of a data connection.
@@ -3007,7 +3016,7 @@ public class DcTracker extends Handler {
             if (delay > 0) {
                 // Data connection is in IDLE state, so when we reconnect later, we'll rebuild
                 // the waiting APN list, which will also reset/reconfigure the retry manager.
-                startReconnect(delay, apnContext);
+                startReconnect(delay, apnContext, REQUEST_TYPE_NORMAL);
             }
         } else {
             boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
@@ -3424,6 +3433,7 @@ public class DcTracker extends Handler {
         ApnContext apnContext;
         int generation;
         int requestType;
+        int handoverFailureMode;
         switch (msg.what) {
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
                 onDataConnectionDetached();
@@ -3572,7 +3582,8 @@ public class DcTracker extends Handler {
                 pair = (Pair<ApnContext, Integer>) ar.userObj;
                 apnContext = pair.first;
                 generation = pair.second;
-                requestType = msg.arg2;
+                requestType = msg.arg1;
+                handoverFailureMode = msg.arg2;
                 if (apnContext.getConnectionGeneration() == generation) {
                     boolean success = true;
                     int cause = DataFailCause.UNKNOWN;
@@ -3580,7 +3591,8 @@ public class DcTracker extends Handler {
                         success = false;
                         cause = (int) ar.result;
                     }
-                    onDataSetupComplete(apnContext, success, cause, requestType);
+                    onDataSetupComplete(apnContext, success, cause, requestType,
+                            handoverFailureMode);
                 } else {
                     loge("EVENT_DATA_SETUP_COMPLETE: Dropped the event because generation "
                             + "did not match.");
@@ -3592,9 +3604,9 @@ public class DcTracker extends Handler {
                 pair = (Pair<ApnContext, Integer>) ar.userObj;
                 apnContext = pair.first;
                 generation = pair.second;
-                requestType = msg.arg2;
+                handoverFailureMode = msg.arg2;
                 if (apnContext.getConnectionGeneration() == generation) {
-                    onDataSetupCompleteError(apnContext, requestType);
+                    onDataSetupCompleteError(apnContext, handoverFailureMode);
                 } else {
                     loge("EVENT_DATA_SETUP_COMPLETE_ERROR: Dropped the event because generation "
                             + "did not match.");
@@ -3743,8 +3755,11 @@ public class DcTracker extends Handler {
                 break;
             }
             case DctConstants.EVENT_DATA_RECONNECT:
-                if (DBG) log("EVENT_DATA_RECONNECT: subId=" + msg.arg1);
-                onDataReconnect((ApnContext) msg.obj, msg.arg1);
+                if (DBG) {
+                    log("EVENT_DATA_RECONNECT: subId=" + msg.arg1 + ", type="
+                            + requestTypeToString(msg.arg2));
+                }
+                onDataReconnect((ApnContext) msg.obj, msg.arg1, msg.arg2);
                 break;
             case DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED:
                 onDataServiceBindingChanged((Boolean) ((AsyncResult) msg.obj).result);
