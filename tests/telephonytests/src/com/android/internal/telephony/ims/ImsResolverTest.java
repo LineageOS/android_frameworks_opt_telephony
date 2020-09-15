@@ -58,6 +58,7 @@ import android.testing.TestableLooper;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 
+import com.android.ims.ImsFeatureBinderRepository;
 import com.android.internal.telephony.PhoneConfigurationManager;
 
 import org.junit.After;
@@ -110,6 +111,8 @@ public class ImsResolverTest extends ImsTestBase {
     ImsResolver.ImsDynamicQueryManagerFactory mMockQueryManagerFactory;
     @Mock
     ImsServiceFeatureQueryManager mMockQueryManager;
+    @Mock
+    ImsFeatureBinderRepository mMockRepo;
     private ImsResolver mTestImsResolver;
     private BroadcastReceiver mTestPackageBroadcastReceiver;
     private BroadcastReceiver mTestCarrierConfigReceiver;
@@ -829,15 +832,6 @@ public class ImsResolverTest extends ImsTestBase {
         mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_MMTEL, deviceController);
         // The carrier override contains this feature
         mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_RCS, carrierController);
-        // Get the IImsServiceControllers for each feature on each slot and verify they are correct.
-        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                1 /*Slot id*/, ImsFeature.FEATURE_MMTEL, null));
-        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                1 /*Slot id*/, ImsFeature.FEATURE_RCS, null));
-        assertEquals(deviceController, mTestImsResolver.getImsServiceControllerAndListen(
-                0 /*Slot id*/, ImsFeature.FEATURE_MMTEL, null));
-        assertEquals(carrierController, mTestImsResolver.getImsServiceControllerAndListen(
-                0 /*Slot id*/, ImsFeature.FEATURE_RCS, null));
     }
 
     /**
@@ -1662,7 +1656,7 @@ public class ImsResolverTest extends ImsTestBase {
         }
 
         mTestImsResolver = new ImsResolver(mMockContext, deviceMmTelPkgName, deviceRcsPkgName,
-                numSlots);
+                numSlots, mMockRepo);
         try {
             mLooper = new TestableLooper(mTestImsResolver.getHandler().getLooper());
         } catch (Exception e) {
@@ -1711,7 +1705,8 @@ public class ImsResolverTest extends ImsTestBase {
 
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
-                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks,
+                            ImsFeatureBinderRepository r) {
                         when(controller.getComponentName()).thenReturn(componentName);
                         return controller;
                     }
@@ -1797,7 +1792,8 @@ public class ImsResolverTest extends ImsTestBase {
 
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
-                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks,
+                            ImsFeatureBinderRepository r) {
                         return controllerMap.get(componentName.getPackageName());
                     }
                 });
@@ -1814,7 +1810,8 @@ public class ImsResolverTest extends ImsTestBase {
 
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
-                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks,
+                            ImsFeatureBinderRepository r) {
                         if (TEST_DEVICE_DEFAULT_NAME.getPackageName().equals(
                                 componentName.getPackageName())) {
                             when(deviceController.getComponentName()).thenReturn(componentName);
@@ -1840,7 +1837,8 @@ public class ImsResolverTest extends ImsTestBase {
 
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
-                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks,
+                            ImsFeatureBinderRepository r) {
                         if (TEST_DEVICE_DEFAULT_NAME.getPackageName().equals(
                                 componentName.getPackageName())) {
                             when(deviceController.getComponentName()).thenReturn(componentName);
@@ -1871,7 +1869,8 @@ public class ImsResolverTest extends ImsTestBase {
 
                     @Override
                     public ImsServiceController create(Context context, ComponentName componentName,
-                            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                            ImsServiceController.ImsServiceControllerCallbacks callbacks,
+                            ImsFeatureBinderRepository r) {
                         if (TEST_DEVICE_DEFAULT_NAME.getPackageName().equals(
                                 componentName.getPackageName())) {
                             when(deviceController1.getComponentName()).thenReturn(componentName);
