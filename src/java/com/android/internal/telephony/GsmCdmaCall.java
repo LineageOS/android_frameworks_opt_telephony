@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 
+import com.android.internal.annotations.VisibleForTesting;
+
 /**
  * {@hide}
  */
@@ -146,7 +148,11 @@ public class GsmCdmaCall extends Call {
      * Note that at this point, the hangup request has been dispatched to the radio
      * but no response has yet been received so update() has not yet been called
      */
-    void onHangupLocal() {
+    @VisibleForTesting
+    public void onHangupLocal() {
+        if (!mState.isAlive()) {
+            return;
+        }
         for (Connection conn : getConnections()) {
             ((GsmCdmaConnection) conn).onHangupLocal();
         }
