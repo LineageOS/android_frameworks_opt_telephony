@@ -489,9 +489,6 @@ public class SubscriptionController extends ISub.Stub {
             notifyOpportunisticSubscriptionInfoChanged();
         }
         metrics.updateActiveSubscriptionInfoList(subInfos);
-        for (Phone phone : PhoneFactory.getPhones()) {
-            phone.getVoiceCallSessionStats().onActiveSubscriptionInfoChanged(subInfos);
-        }
     }
 
     /**
