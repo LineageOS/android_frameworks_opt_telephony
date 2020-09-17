@@ -56,6 +56,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
     private static final String TAG = "ImsSmsDispatcher";
 
+    public interface FeatureConnectorFactory {
+        FeatureConnector<ImsManager> create(Context context, int phoneId,
+                FeatureConnector.Listener<ImsManager> listener, String logPrefix);
+    }
+
     @VisibleForTesting
     public Map<Integer, SmsTracker> mTrackers = new ConcurrentHashMap<>();
     @VisibleForTesting
@@ -67,6 +72,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private final FeatureConnector<ImsManager> mImsManagerConnector;
     /** Telephony metrics instance for logging metrics event */
     private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
+    private ImsManager mImsManager;
+    private FeatureConnectorFactory mConnectorFactory;
 
     /**
      * Listen to the IMS service state change
@@ -234,10 +241,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         }
     };
 
-    public ImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController) {
+    public ImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController,
+            FeatureConnectorFactory factory) {
         super(phone, smsDispatchersController);
+        mConnectorFactory = factory;
 
-        mImsManagerConnector = new FeatureConnector<>(mContext, mPhone.getPhoneId(),
+        mImsManagerConnector = mConnectorFactory.create(mContext, mPhone.getPhoneId(),
                 new FeatureConnector.Listener<ImsManager>() {
                     @Override
                     public ImsManager getFeatureManager() {
@@ -248,6 +257,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     public void connectionReady(ImsManager manager) throws ImsException {
                         logd("ImsManager: connection ready.");
                         synchronized (mLock) {
+                            mImsManager = manager;
                             setListeners();
                             mIsImsServiceUp = true;
                         }
@@ -257,6 +267,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     public void connectionUnavailable() {
                         logd("ImsManager: connection unavailable.");
                         synchronized (mLock) {
+                            mImsManager = null;
                             mIsImsServiceUp = false;
                         }
                     }
@@ -331,6 +342,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
     @Override
     protected String getFormat() {
+        // This is called in the constructor before ImsSmsDispatcher has a chance to initialize
+        // mLock. ImsManager will not be up anyway at this point, so report UNKNOWN.
+        if (mLock == null) return SmsConstants.FORMAT_UNKNOWN;
         try {
             return getImsManager().getSmsFormat();
         } catch (ImsException e) {
@@ -415,8 +429,14 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         }
     }
 
-    private ImsManager getImsManager() {
-        return ImsManager.getInstance(mContext, mPhone.getPhoneId());
+    private ImsManager getImsManager() throws ImsException {
+        synchronized (mLock) {
+            if (mImsManager == null) {
+                throw new ImsException("ImsManager not up",
+                        ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN);
+            }
+            return mImsManager;
+        }
     }
 
     @VisibleForTesting
