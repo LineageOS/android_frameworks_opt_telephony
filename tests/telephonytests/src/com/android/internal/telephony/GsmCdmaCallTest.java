@@ -121,6 +121,8 @@ public class GsmCdmaCallTest extends TelephonyTest {
         doReturn(Call.State.DISCONNECTED).when(mConnection2).getState();
         mCallUnderTest.connectionDisconnected(null);
         assertEquals(Call.State.DISCONNECTED, mCallUnderTest.getState());
+        mCallUnderTest.onHangupLocal();
+        assertEquals(Call.State.DISCONNECTED, mCallUnderTest.getState());
     }
 
 }
