@@ -163,8 +163,12 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         bindAndConnectService(testFeatures);
 
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
-        verify(mMockServiceControllerBinder).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockServiceControllerBinder).createRcsFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
@@ -188,7 +192,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         bindAndConnectService(testFeatures);
 
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0),
@@ -217,7 +223,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         bindAndConnectService(testFeatures);
 
         // Verify no MMTEL or EMERGENCY_MMTEL features are created
-        verify(mMockServiceControllerBinder, never()).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder, never()).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder, never()).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL), eq(mTestImsServiceController));
         verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_0),
@@ -227,7 +235,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL));
         // verify RCS feature is created
-        verify(mMockServiceControllerBinder).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createRcsFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
@@ -337,8 +347,12 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         verify(mMockContext).unbindService(eq(conn));
         verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).removeFeatureStatusCallback(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS));
+        verify(mMockServiceControllerBinder).removeFeatureStatusCallback(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_RCS), any());
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
@@ -402,7 +416,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
                 ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
@@ -414,7 +430,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithAddition);
 
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_1);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
@@ -431,7 +449,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
                 ImsFeature.FEATURE_RCS));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createRcsFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS));
@@ -443,7 +463,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithAddition);
 
-        verify(mMockServiceControllerBinder, never()).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockServiceControllerBinder, never()).createMmTelFeature(SLOT_1);
+        verify(mMockServiceControllerBinder, never()).addFeatureStatusCallback(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_1),
                 eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
@@ -462,7 +484,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
                 ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
@@ -470,8 +494,14 @@ public class ImsServiceControllerTest extends ImsTestBase {
         // Call change with the same features and make sure it is disregarded
         mTestImsServiceController.changeImsServiceFeatures(testFeatures);
 
-        verify(mMockServiceControllerBinder, times(1)).createMmTelFeature(eq(SLOT_0), any());
-        verify(mMockServiceControllerBinder, never()).removeImsFeature(anyInt(), anyInt(), any());
+        verify(mMockServiceControllerBinder, times(1)).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder, times(1)).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockServiceControllerBinder, never()).removeImsFeature(anyInt(), anyInt());
+
+
+        verify(mMockServiceControllerBinder, never()).removeFeatureStatusCallback(anyInt(),
+                anyInt(), any());
         verify(mMockCallbacks, times(1)).imsServiceFeatureCreated(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL), eq(mTestImsServiceController));
         verify(mMockCallbacks, never()).imsServiceFeatureRemoved(anyInt(), anyInt(), any());
@@ -492,11 +522,15 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
                 ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_1);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
@@ -509,6 +543,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithSubtraction);
 
         verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).removeFeatureStatusCallback(eq(SLOT_1),
                 eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
@@ -527,11 +563,15 @@ public class ImsServiceControllerTest extends ImsTestBase {
         testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_1,
                 ImsFeature.FEATURE_MMTEL));
         bindAndConnectService(testFeatures);
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
-        verify(mMockServiceControllerBinder).createMmTelFeature(eq(SLOT_1), any());
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_1);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureCreated(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL));
@@ -540,11 +580,15 @@ public class ImsServiceControllerTest extends ImsTestBase {
         mTestImsServiceController.changeImsServiceFeatures(new HashSet<>());
 
         verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).removeFeatureStatusCallback(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockProxyCallbacks).imsFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL));
         verify(mMockServiceControllerBinder).removeImsFeature(eq(SLOT_1),
+                eq(ImsFeature.FEATURE_MMTEL));
+        verify(mMockServiceControllerBinder).removeFeatureStatusCallback(eq(SLOT_1),
                 eq(ImsFeature.FEATURE_MMTEL), any());
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_1), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
@@ -571,7 +615,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         mTestImsServiceController.changeImsServiceFeatures(testFeaturesWithAddition);
 
-        verify(mMockServiceControllerBinder, never()).createRcsFeature(eq(SLOT_0), any());
+        verify(mMockServiceControllerBinder, never()).createRcsFeature(eq(SLOT_0));
+        verify(mMockServiceControllerBinder, never()).removeFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), any());
         verify(mMockCallbacks, never()).imsServiceFeatureCreated(eq(SLOT_0),
                 eq(ImsFeature.FEATURE_RCS), eq(mTestImsServiceController));
         verify(mMockProxyCallbacks, never()).imsFeatureCreated(eq(SLOT_0),
