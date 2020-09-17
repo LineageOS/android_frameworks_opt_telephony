@@ -744,12 +744,9 @@ public class ImsServiceController {
             return;
         }
         if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
-            ImsFeatureStatusCallback c = new ImsFeatureStatusCallback(featurePair.slotId,
-                    featurePair.featureType);
-            mFeatureStatusCallbacks.add(c);
-            IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType,
-                    c.getCallback());
+            IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType);
             addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f);
+            addImsFeatureStatusCallback(featurePair.slotId, featurePair.featureType);
         } else {
             // Don't update ImsService for emergency MMTEL feature.
             Log.i(LOG_TAG, "supports emergency calling on slot " + featurePair.slotId);
@@ -770,17 +767,10 @@ public class ImsServiceController {
         // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
         mCallbacks.imsServiceFeatureRemoved(featurePair.slotId, featurePair.featureType, this);
         if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
-            ImsFeatureStatusCallback callbackToRemove = mFeatureStatusCallbacks.stream().filter(c ->
-                    c.mSlotId == featurePair.slotId && c.mFeatureType == featurePair.featureType)
-                    .findFirst().orElse(null);
-            // Remove status callbacks from list.
-            if (callbackToRemove != null) {
-                mFeatureStatusCallbacks.remove(callbackToRemove);
-            }
+            removeImsFeatureStatusCallback(featurePair.slotId, featurePair.featureType);
             removeImsFeatureBinder(featurePair.slotId, featurePair.featureType);
             try {
-                removeImsFeature(featurePair.slotId, featurePair.featureType,
-                        (callbackToRemove != null ? callbackToRemove.getCallback() : null));
+                removeImsFeature(featurePair.slotId, featurePair.featureType);
             } catch (RemoteException e) {
                 // The connection to this ImsService doesn't exist. This may happen if the service
                 // has died and we are removing features.
@@ -801,24 +791,59 @@ public class ImsServiceController {
 
     // This method should only be called when already synchronized on mLock.
     // overridden by compat layer to create features
-    protected IInterface createImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
+    protected IInterface createImsFeature(int slotId, int featureType)
             throws RemoteException {
         switch (featureType) {
             case ImsFeature.FEATURE_MMTEL: {
-                return mIImsServiceController.createMmTelFeature(slotId, c);
+                return mIImsServiceController.createMmTelFeature(slotId);
             }
             case ImsFeature.FEATURE_RCS: {
-                return mIImsServiceController.createRcsFeature(slotId, c);
+                return mIImsServiceController.createRcsFeature(slotId);
             }
             default:
                 return null;
         }
     }
 
+    // This method should only be called when already synchronized on mLock.
+    private void addImsFeatureStatusCallback(int slotId, int featureType) throws RemoteException {
+        ImsFeatureStatusCallback c = new ImsFeatureStatusCallback(slotId, featureType);
+        mFeatureStatusCallbacks.add(c);
+        registerImsFeatureStatusCallback(slotId, featureType, c.getCallback());
+    }
+
+    // This method should only be called when already synchronized on mLock.
+    private void removeImsFeatureStatusCallback(int slotId, int featureType) {
+        ImsFeatureStatusCallback callbackToRemove = mFeatureStatusCallbacks.stream().filter(c ->
+                c.mSlotId == slotId && c.mFeatureType == featureType).findFirst().orElse(null);
+        // Remove status callbacks from list.
+        if (callbackToRemove != null) {
+            mFeatureStatusCallbacks.remove(callbackToRemove);
+            unregisterImsFeatureStatusCallback(slotId, featureType, callbackToRemove.getCallback());
+        }
+    }
+
+    // overridden by compat layer to register feature status callbacks
+    protected void registerImsFeatureStatusCallback(int slotId, int featureType,
+            IImsFeatureStatusCallback c) throws RemoteException {
+        mIImsServiceController.addFeatureStatusCallback(slotId, featureType, c);
+    }
+
+    // overridden by compat layer to deregister feature status callbacks
+    protected void unregisterImsFeatureStatusCallback(int slotId, int featureType,
+            IImsFeatureStatusCallback c) {
+        try {
+            mIImsServiceController.removeFeatureStatusCallback(slotId, featureType, c);
+        } catch (RemoteException e) {
+            mLocalLog.log("unregisterImsFeatureStatusCallback - couldn't remove " + c);
+        }
+    }
+
+
     // overridden by compat layer to remove features
-    protected void removeImsFeature(int slotId, int featureType, IImsFeatureStatusCallback c)
+    protected void removeImsFeature(int slotId, int featureType)
             throws RemoteException {
-        mIImsServiceController.removeImsFeature(slotId, featureType, c);
+        mIImsServiceController.removeImsFeature(slotId, featureType);
     }
 
     // This method should only be called when synchronized on mLock
