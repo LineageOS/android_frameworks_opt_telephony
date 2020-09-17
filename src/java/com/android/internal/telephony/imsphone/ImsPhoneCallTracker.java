@@ -2882,9 +2882,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
 
             String callId = imsCall.getSession().getCallId();
-            EmergencyNumberTracker emergencyNumberTracker = conn.getEmergencyNumberTracker();
+            EmergencyNumberTracker emergencyNumberTracker = null;
+            EmergencyNumber num = null;
+
+            if (conn != null) {
+                emergencyNumberTracker = conn.getEmergencyNumberTracker();
+                num = conn.getEmergencyNumberInfo();
+            }
+
             mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
-                    reasonInfo, mCallQualityMetrics.get(callId), conn.getEmergencyNumberInfo(),
+                    reasonInfo, mCallQualityMetrics.get(callId), num,
                     getNetworkCountryIso(), emergencyNumberTracker != null
                     ? emergencyNumberTracker.getEmergencyNumberDbVersion()
                     : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
