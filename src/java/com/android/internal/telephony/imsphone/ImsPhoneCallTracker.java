@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
+import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
+
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
@@ -831,6 +834,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
 
     /**
+      * Carrier configuration option which specifies how the carrier handles USSD request.
+      * See {@link CarrierConfigManager#KEY_CARRIER_USSD_METHOD_INT} for more information.
+      */
+    private int mUssdMethod = USSD_OVER_CS_PREFERRED;
+
+    /**
      * TODO: Remove this code; it is a workaround.
      * When {@code true}, forces {@link ImsManager#updateImsServiceConfig} to
      * be called when an ongoing video call is disconnected.  In some cases, where video pause is
@@ -1418,6 +1427,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 CarrierConfigManager.KEY_AUTO_RETRY_FAILED_WIFI_EMERGENCY_CALL);
         mSupportCepOnPeer = carrierConfig.getBoolean(
                 CarrierConfigManager.KEY_SUPPORT_IMS_CONFERENCE_EVENT_PACKAGE_ON_PEER_BOOL);
+
+        if (mPhone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_allow_ussd_over_ims)) {
+            mUssdMethod = carrierConfig.getInt(CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT);
+        }
 
         String[] mappings = carrierConfig
                 .getStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY);
@@ -3631,7 +3645,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (mUssdSession != null) {
                 if (DBG) log("mUssdSession is not null");
                 // To initiate sending Ussd under circuit-switched call
-                if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED) {
+                if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
+                        && mUssdMethod != USSD_OVER_IMS_ONLY) {
                     mUssdSession = null;
                     mPhone.getPendingMmiCodes().clear();
                     mPhone.initiateSilentRedial();
