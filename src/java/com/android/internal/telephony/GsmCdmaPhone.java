@@ -2785,7 +2785,7 @@ public class GsmCdmaPhone extends Phone {
                 // updated when ImsPhoneCallTracker opens a connection.
                 ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
                 if (imsManager.isServiceAvailable()) {
-                    imsManager.updateImsServiceConfig(true);
+                    imsManager.updateImsServiceConfig();
                 } else {
                     logd("ImsManager is not available to update CarrierConfig.");
                 }
