@@ -35,6 +35,7 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -472,6 +473,16 @@ public class DcTrackerTest extends TelephonyTest {
         public int update(Uri url, ContentValues values, String where, String[] whereArgs) {
             mPreferredApnSet = values.getAsInteger(Telephony.Carriers.APN_SET_ID);
             return 1;
+        }
+
+        @Override
+        public int delete(Uri uri, String selection, String[] selectionArgs) {
+            return 0;
+        }
+
+        @Override
+        public Uri insert(Uri uri, ContentValues values) {
+            return null;
         }
     }
 
@@ -1409,7 +1420,8 @@ public class DcTrackerTest extends TelephonyTest {
     @SmallTest
     public void testFetchDunApnWhileRoaming() {
         doReturn(true).when(mServiceState).getRoaming();
-        mBundle.putBoolean(CarrierConfigManager.KEY_DISABLE_DUN_APN_WHILE_ROAMING, true);
+        mBundle.putBoolean(CarrierConfigManager
+                .KEY_DISABLE_DUN_APN_WHILE_ROAMING_WITH_PRESET_APN_BOOL, true);
 
         sendInitializationEvents();
 
@@ -1418,8 +1430,15 @@ public class DcTrackerTest extends TelephonyTest {
 
         Settings.Global.putString(mContext.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN, dunApnString);
+
+        DcTracker spyDct = spy(mDct);
+        doReturn(true).when(spyDct).isPreferredApnUserEdited();
+        // Expect non-empty DUN APN list
+        assertEquals(1, spyDct.fetchDunApns().size());
+
+        doReturn(false).when(spyDct).isPreferredApnUserEdited();
         // Expect empty DUN APN list
-        assertEquals(0, mDct.fetchDunApns().size());
+        assertEquals(0, spyDct.fetchDunApns().size());
 
         Settings.Global.putString(mContext.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN, null);
