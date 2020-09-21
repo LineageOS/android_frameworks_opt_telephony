@@ -258,7 +258,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private Phone getPhone(int subId) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-            phoneId = 0;
+            return null;
         }
         return PhoneFactory.getPhone(phoneId);
     }
