@@ -2847,8 +2847,11 @@ public class GsmCdmaPhone extends Phone {
                 }
 
                 if (DBG) logd("Baseband version: " + ar.result);
+                String version = (String)ar.result;
+                int length = version.length();
                 TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
-                        (String)ar.result);
+                        length <= SystemProperties.PROP_VALUE_MAX/2 ? version
+                            : version.substring(length - SystemProperties.PROP_VALUE_MAX/2, length));
             break;
 
             case EVENT_GET_IMEI_DONE:
