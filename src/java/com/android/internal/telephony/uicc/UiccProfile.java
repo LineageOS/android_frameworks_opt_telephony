@@ -1597,13 +1597,7 @@ public class UiccProfile extends IccCard {
      * Returns number of applications on this card
      */
     public int getNumApplications() {
-        int count = 0;
-        for (UiccCardApplication a : mUiccApplications) {
-            if (a != null) {
-                count++;
-            }
-        }
-        return count;
+        return mLastReportedNumOfUiccApplications;
     }
 
     /**
