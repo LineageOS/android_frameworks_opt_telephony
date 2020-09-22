@@ -41,7 +41,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import android.telephony.DisconnectCause;
 import android.telephony.PreciseDisconnectCause;
 import android.telephony.ServiceState;
-import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
@@ -102,10 +101,6 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @Mock private ImsPhoneCall mImsCall0;
     @Mock private ImsPhoneCall mImsCall1;
 
-    @Mock private SubscriptionInfo mSubInfo0;
-    @Mock private SubscriptionInfo mSubInfo1;
-    private List<SubscriptionInfo> mSubInfos;
-
     private static class TestableVoiceCallSessionStats extends VoiceCallSessionStats {
         private long mTimeMillis = 0L;
 
@@ -135,7 +130,9 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
 
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mSecondPhone});
+        doReturn(CARRIER_ID_SLOT_0).when(mPhone).getCarrierId();
         // mPhone's mSST/mServiceState has been set up by TelephonyTest
+        doReturn(CARRIER_ID_SLOT_1).when(mSecondPhone).getCarrierId();
         doReturn(mSecondServiceStateTracker).when(mSecondPhone).getServiceStateTracker();
         doReturn(mSecondServiceState).when(mSecondServiceStateTracker).getServiceState();
 
@@ -176,17 +173,9 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mGsmConnection1).getPhoneType();
         doReturn(false).when(mGsmConnection1).isEmergencyCall();
 
-        mSubInfos = List.of(mSubInfo0, mSubInfo1);
-        doReturn(0).when(mSubInfo0).getSimSlotIndex();
-        doReturn(CARRIER_ID_SLOT_0).when(mSubInfo0).getCarrierId();
-        doReturn(1).when(mSubInfo1).getSimSlotIndex();
-        doReturn(CARRIER_ID_SLOT_1).when(mSubInfo1).getCarrierId();
-
         mVoiceCallSessionStats0 = new TestableVoiceCallSessionStats(0, mPhone);
-        mVoiceCallSessionStats0.onActiveSubscriptionInfoChanged(mSubInfos);
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats1 = new TestableVoiceCallSessionStats(1, mSecondPhone);
-        mVoiceCallSessionStats1.onActiveSubscriptionInfoChanged(mSubInfos);
         mVoiceCallSessionStats1.onServiceStateChanged(mSecondServiceState);
     }
 
