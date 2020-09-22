@@ -57,7 +57,10 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        connection = null;
+        if (connection != null) {
+            connection.dispose();
+            connection = null;
+        }
         super.tearDown();
     }
 
