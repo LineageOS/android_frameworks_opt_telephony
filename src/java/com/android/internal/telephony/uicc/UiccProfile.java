@@ -1490,20 +1490,32 @@ public class UiccProfile extends IccCard {
     }
 
     /**
-     * Resets the application with the input AID. Returns true if any changes were made.
+     * Resets the application with the input AID.
      *
      * A null aid implies a card level reset - all applications must be reset.
      *
      * @param aid aid of the application which should be reset; null imples all applications
      * @param reset true if reset is required. false for initialization.
-     * @return boolean indicating if there was any change made as part of the reset
+     * @return boolean indicating if there was any change made as part of the reset which
+     * requires carrier config to be reset too (for e.g. if only ISIM app is refreshed carrier
+     * config should not be reset)
      */
+    @VisibleForTesting
     public boolean resetAppWithAid(String aid, boolean reset) {
         synchronized (mLock) {
             boolean changed = false;
+            boolean isIsimRefresh = false;
             for (int i = 0; i < mUiccApplications.length; i++) {
                 if (mUiccApplications[i] != null
                         && (TextUtils.isEmpty(aid) || aid.equals(mUiccApplications[i].getAid()))) {
+                    // Resetting only ISIM does not need to be treated as a change from caller
+                    // perspective, as it does not affect SIM state now or even later when ISIM
+                    // is re-loaded, hence return false.
+                    if (!TextUtils.isEmpty(aid)
+                            && mUiccApplications[i].getType() == AppType.APPTYPE_ISIM) {
+                        isIsimRefresh = true;
+                    }
+
                     // Delete removed applications
                     mUiccApplications[i].dispose();
                     mUiccApplications[i] = null;
@@ -1524,7 +1536,7 @@ public class UiccProfile extends IccCard {
                     changed = true;
                 }
             }
-            return changed;
+            return changed && !isIsimRefresh;
         }
     }
 
