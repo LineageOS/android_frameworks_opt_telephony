@@ -303,7 +303,7 @@ public class DcNetworkAgent extends NetworkAgent {
         if (!isOwned(dc, "sendNetworkInfo")) return;
         final NetworkInfo.State oldState = mNetworkInfo.getState();
         final NetworkInfo.State state = networkInfo.getState();
-        if (mNetworkInfo.getExtraInfo() != networkInfo.getExtraInfo()) {
+        if (!mNetworkInfo.getExtraInfo().equals(networkInfo.getExtraInfo())) {
             setLegacyExtraInfo(networkInfo.getExtraInfo());
         }
         int subType = networkInfo.getSubtype();

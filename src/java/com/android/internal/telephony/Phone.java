@@ -41,7 +41,6 @@ import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.ApnType;
-import android.telephony.Annotation.DataFailureCause;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellIdentity;
@@ -2540,23 +2539,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /** Send notification with an updated PreciseDataConnectionState to a single data connection */
-    public void notifyDataConnection(String apnType) {
-        mNotifier.notifyDataConnection(this, apnType, getPreciseDataConnectionState(apnType));
-    }
-
-    /** Send notification with an updated PreciseDataConnectionState to all data connections */
-    public void notifyAllActiveDataConnections() {
-        if (mTransportManager != null) {
-            for (int transportType : mTransportManager.getAvailableTransports()) {
-                DcTracker dct = getDcTracker(transportType);
-                if (dct != null) {
-                    for (String apnType : dct.getConnectedApnTypes()) {
-                        mNotifier.notifyDataConnection(
-                                this, apnType, getPreciseDataConnectionState(apnType));
-                    }
-                }
-            }
-        }
+    public void notifyDataConnection(PreciseDataConnectionState state) {
+        mNotifier.notifyDataConnection(this, state);
     }
 
     @UnsupportedAppUsage
@@ -2906,6 +2890,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public String getCdmaPrlVersion(){
         return null;
+    }
+
+    /**
+     * @return {@code true} if data is suspended.
+     */
+    public boolean isDataSuspended() {
+        return false;
     }
 
     /**
@@ -3568,12 +3559,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     public void notifyCallForwardingIndicator() {
-    }
-
-    /** Send a notification that a particular data connection has failed with specified cause. */
-    public void notifyDataConnectionFailed(
-            String apnType, String apn, @DataFailureCause int failCause) {
-        mNotifier.notifyDataConnectionFailed(this, apnType, apn, failCause);
     }
 
     /**
