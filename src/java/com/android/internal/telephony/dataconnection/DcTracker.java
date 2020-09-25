@@ -328,7 +328,7 @@ public class DcTracker extends Handler {
     private boolean mNrSaSub6Unmetered = false;
     private boolean mRoamingUnmetered = false;
 
-    /* List of SubscriptionPlans, updated on SubscriptionManager.setSubscriptionPlans */
+    /* List of SubscriptionPlans, updated when initialized and when plans are changed. */
     private List<SubscriptionPlan> mSubscriptionPlans = null;
 
     @SimState
@@ -423,6 +423,7 @@ public class DcTracker extends Handler {
             if (mPhone == null || mPhone.getSubId() != subId) return;
 
             mSubscriptionPlans = plans == null ? null : Arrays.asList(plans);
+            if (DBG) log("SubscriptionPlans changed: " + mSubscriptionPlans);
             reevaluateUnmeteredConnections();
         }
     };
@@ -2339,6 +2340,13 @@ public class DcTracker extends Handler {
         setDefaultPreferredApnIfNeeded();
         read5GConfiguration();
         registerSettingsObserver();
+        SubscriptionPlan[] plans = mNetworkPolicyManager.getSubscriptionPlans(
+                mPhone.getSubId(), mPhone.getContext().getOpPackageName());
+        if (plans != null) {
+            mSubscriptionPlans = Arrays.asList(plans);
+            if (DBG) log("SubscriptionPlans initialized: " + mSubscriptionPlans);
+            reevaluateUnmeteredConnections();
+        }
         mConfigReady = true;
     }
 
