@@ -365,6 +365,10 @@ public class DataEnabledOverride {
         return mRules.contains(OVERRIDE_RULE_ALLOW_DATA_DURING_VOICE_CALL);
     }
 
+    public boolean isMmsAlwaysAllowed() {
+        return mRules.contains(OVERRIDE_RULE_ALWAYS_ALLOW_MMS);
+    }
+
     private boolean canSatisfyAnyRule(@ApnType int apnType,
                                       @Condition int providedConditions) {
         for (OverrideRule rule : mRules) {
