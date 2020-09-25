@@ -48,9 +48,12 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
+import android.telephony.Annotation.DataState;
+import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -65,7 +68,6 @@ import android.util.Pair;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.LinkCapacityEstimate;
@@ -276,6 +278,7 @@ public class DataConnection extends StateMachine {
     private boolean mUnmeteredOverride;
     private int mRilRat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
     private int mDataRegState = Integer.MAX_VALUE;
+    private boolean mIsSuspended;
     private NetworkInfo mNetworkInfo;
     private int mDownlinkBandwidth = 14;
     private int mUplinkBandwidth = 14;
@@ -430,8 +433,27 @@ public class DataConnection extends StateMachine {
         return getCurrentState() == mInactiveState;
     }
 
+    boolean isSuspended() {
+        // Data can only be (temporarily) suspended while data is in active state
+        if (getCurrentState() != mActiveState) return false;
+
+        // if we are not in-service change to SUSPENDED
+        final ServiceStateTracker sst = mPhone.getServiceStateTracker();
+        if (sst.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
+            return true;
+        }
+
+        // check for voice call and concurrency issues
+        if (!sst.isConcurrentVoiceAndDataAllowed()) {
+            return mPhone.getCallTracker().getState() != PhoneConstants.State.IDLE;
+        }
+
+        return false;
+    }
+
     boolean isDisconnecting() {
-        return getCurrentState() == mDisconnectingState;
+        return getCurrentState() == mDisconnectingState
+                || getCurrentState() == mDisconnectingErrorCreatingConnection;
     }
 
     @VisibleForTesting
@@ -626,17 +648,12 @@ public class DataConnection extends StateMachine {
         mDcController = dcc;
         mId = id;
         mCid = -1;
-        ServiceState ss = mPhone.getServiceState();
         mDataRegState = mPhone.getServiceState().getDataRegistrationState();
-        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        mIsSuspended = false;
 
-        NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
-        if (nri != null) {
-            networkType = nri.getAccessNetworkTechnology();
-            mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
-            updateLinkBandwidthsFromCarrierConfig(mRilRat);
-        }
+        int networkType = getNetworkType();
+        mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
+        updateLinkBandwidthsFromCarrierConfig(mRilRat);
 
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
                 networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
@@ -648,6 +665,19 @@ public class DataConnection extends StateMachine {
             addState(mDisconnectingState, mDefaultState);
             addState(mDisconnectingErrorCreatingConnection, mDefaultState);
         setInitialState(mInactiveState);
+    }
+
+    private @NetworkType int getNetworkType() {
+        ServiceState ss = mPhone.getServiceState();
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+
+        NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        if (nri != null) {
+            networkType = nri.getAccessNetworkTechnology();
+        }
+
+        return networkType;
     }
 
     /**
@@ -974,6 +1004,7 @@ public class DataConnection extends StateMachine {
         mUnmeteredOverride = false;
         mDownlinkBandwidth = 14;
         mUplinkBandwidth = 14;
+        mIsSuspended = false;
     }
 
     /**
@@ -1453,9 +1484,8 @@ public class DataConnection extends StateMachine {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         }
 
-        final boolean suspended =
-                mNetworkInfo.getDetailedState() == NetworkInfo.DetailedState.SUSPENDED;
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !suspended);
+        updateNetworkInfoSuspendState();
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
 
         result.setAdministratorUids(mAdministratorUids);
 
@@ -1760,7 +1790,10 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    updateNetworkInfo();
+                    if (mNetworkAgent != null) {
+                        updateNetworkInfo();
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
+                    }
                     break;
                 default:
                     if (DBG) {
@@ -1787,29 +1820,27 @@ public class DataConnection extends StateMachine {
     }
 
     private void updateNetworkInfoSuspendState() {
-        // this is only called when we are either connected or suspended.  Decide which.
         if (mNetworkAgent == null) {
             Rlog.e(getName(), "Setting suspend state without a NetworkAgent");
         }
 
-        // if we are not in-service change to SUSPENDED
-        final ServiceStateTracker sst = mPhone.getServiceStateTracker();
-        if (sst.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
-            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null,
-                    mNetworkInfo.getExtraInfo());
-        } else {
-            // check for voice call and concurrency issues
-            if (sst.isConcurrentVoiceAndDataAllowed() == false) {
-                final CallTracker ct = mPhone.getCallTracker();
-                if (ct.getState() != PhoneConstants.State.IDLE) {
-                    mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null,
-                            mNetworkInfo.getExtraInfo());
-                    return;
-                }
+        boolean suspended = isSuspended();
+        if (mIsSuspended != suspended) {
+            mIsSuspended = suspended;
+
+            // If data connection is active, we need to update the suspended state.
+            if (isActive()) {
+                mNetworkInfo.setDetailedState(mIsSuspended
+                                ? NetworkInfo.DetailedState.SUSPENDED
+                                : NetworkInfo.DetailedState.CONNECTED, null,
+                        mNetworkInfo.getExtraInfo());
+                notifyDataConnectionState();
             }
-            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null,
-                    mNetworkInfo.getExtraInfo());
         }
+    }
+
+    private void notifyDataConnectionState() {
+        mPhone.notifyDataConnection(getPreciseDataConnectionState());
     }
 
     private DcDefaultState mDefaultState = new DcDefaultState();
@@ -1917,6 +1948,13 @@ public class DataConnection extends StateMachine {
             // Remove ourselves from cid mapping, before clearSettings
             mDcController.removeActiveDcByCid(DataConnection.this);
 
+            // For the first time entering here (idle state before setup), do not notify
+            // disconnected state. Only notify data connection disconnected for data that is
+            // actually moving from disconnecting to disconnected, or setup failed. In both cases,
+            // APN setting will not be null.
+            if (mApnSetting != null) {
+                notifyDataConnectionState();
+            }
             clearSettings();
         }
 
@@ -2003,6 +2041,7 @@ public class DataConnection extends StateMachine {
             mPhone.getCarrierPrivilegesTracker()
                     .registerCarrierPrivilegesListener(
                             getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
+            notifyDataConnectionState();
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2236,6 +2275,7 @@ public class DataConnection extends StateMachine {
                 mPhone.mCi.registerForLceInfo(
                         getHandler(), DataConnection.EVENT_LINK_CAPACITY_CHANGED, null);
             }
+            notifyDataConnectionState();
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.CONNECTED);
         }
@@ -2377,8 +2417,8 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    updateNetworkInfoSuspendState();
                     if (mNetworkAgent != null) {
+                        updateNetworkInfoSuspendState();
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
@@ -2410,10 +2450,11 @@ public class DataConnection extends StateMachine {
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
                 case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
-                    updateNetworkInfo();
                     if (mNetworkAgent != null) {
+                        updateNetworkInfo();
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
                     }
                     retVal = HANDLED;
                     break;
@@ -2432,9 +2473,9 @@ public class DataConnection extends StateMachine {
                 }
                 case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
                 case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
-                    updateNetworkInfo();
-                    updateNetworkInfoSuspendState();
                     if (mNetworkAgent != null) {
+                        updateNetworkInfoSuspendState();
+                        updateNetworkInfo();
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
@@ -2638,6 +2679,7 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
+            notifyDataConnectionState();
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2697,6 +2739,7 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
+            notifyDataConnectionState();
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -3125,6 +3168,41 @@ public class DataConnection extends StateMachine {
             case HANDOVER_STATE_COMPLETED: return "COMPLETED";
             default: return "UNKNOWN";
         }
+    }
+
+    private @DataState int getState() {
+        if (isInactive()) {
+            return TelephonyManager.DATA_DISCONNECTED;
+        } else if (isActivating()) {
+            return TelephonyManager.DATA_CONNECTING;
+        } else if (isActive()) {
+            // The data connection can only be suspended when it's in active state.
+            if (isSuspended()) {
+                return TelephonyManager.DATA_SUSPENDED;
+            }
+            return TelephonyManager.DATA_CONNECTED;
+        } else if (isDisconnecting()) {
+            return TelephonyManager.DATA_DISCONNECTING;
+        }
+
+        return TelephonyManager.DATA_UNKNOWN;
+    }
+
+    /**
+     * Get precise data connection state
+     *
+     * @return The {@link PreciseDataConnectionState}
+     */
+    public PreciseDataConnectionState getPreciseDataConnectionState() {
+        return new PreciseDataConnectionState.Builder()
+                .setTransportType(mTransportType)
+                .setId(mCid)
+                .setState(getState())
+                .setApnSetting(mApnSetting)
+                .setLinkProperties(mLinkProperties)
+                .setNetworkType(getNetworkType())
+                .setFailCause(mDcFailCause)
+                .build();
     }
 
     /**

@@ -393,12 +393,6 @@ public class DcController extends StateMachine {
                                                     + " newLp=" + result.newLp);
                                         }
                                         apnsToCleanup.addAll(apnContexts);
-                                    } else {
-                                        if (DBG) log("onDataStateChanged: simple change");
-
-                                        for (ApnContext apnContext : apnContexts) {
-                                            mPhone.notifyDataConnection(apnContext.getApnType());
-                                        }
                                     }
                                 } else {
                                     if (DBG) {
