@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.content.Context;
-import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.BarringInfo;
@@ -32,7 +31,6 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
-import android.telephony.data.ApnSetting;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -124,15 +122,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDataConnection(
-            Phone sender, String apnType, PreciseDataConnectionState preciseState) {
-
-        int subId = sender.getSubId();
-        int phoneId = sender.getPhoneId();
-        int apnTypeBitmask = ApnSetting.getApnTypesBitmaskFromString(apnType);
-
-        mTelephonyRegistryMgr.notifyDataConnectionForSubscriber(
-                phoneId, subId, apnTypeBitmask, preciseState);
+    public void notifyDataConnection(Phone sender, PreciseDataConnectionState preciseState) {
+        mTelephonyRegistryMgr.notifyDataConnectionForSubscriber(sender.getPhoneId(),
+                sender.getSubId(), preciseState);
     }
 
     @Override
@@ -167,15 +159,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     @Override
     public void notifyImsDisconnectCause(@NonNull Phone sender, ImsReasonInfo imsReasonInfo) {
         mTelephonyRegistryMgr.notifyImsDisconnectCause(sender.getSubId(), imsReasonInfo);
-    }
-
-    @Override
-    /** Notify the TelephonyRegistry that a data connection has failed with a specified cause */
-    public void notifyDataConnectionFailed(Phone sender, String apnType,
-        String apn, @DataFailureCause int failCause) {
-        mTelephonyRegistryMgr.notifyPreciseDataConnectionFailed(
-                sender.getSubId(), sender.getPhoneId(),
-                ApnSetting.getApnTypesBitmaskFromString(apnType), apn, failCause);
     }
 
     @Override
