@@ -24,14 +24,16 @@ import android.net.NattKeepalivePacketData;
 import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
 import android.net.Uri;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.NetworkType;
 import android.telephony.AnomalyReporter;
+import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.ArrayMap;
 import android.util.LocalLog;
@@ -78,13 +80,11 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private final LocalLog mNetCapsLocalLog = new LocalLog(50);
 
-    private NetworkInfo mNetworkInfo;
-
     // For interface duplicate detection. Key is the net id, value is the interface name in string.
     private static Map<Integer, String> sInterfaceNames = new ArrayMap<>();
 
-    DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
-            NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
+    DcNetworkAgent(DataConnection dc, Phone phone, int score, NetworkAgentConfig config,
+            NetworkProvider networkProvider, int transportType) {
         super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
                 networkProvider);
@@ -95,9 +95,9 @@ public class DcNetworkAgent extends NetworkAgent {
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
         mDataConnection = dc;
-        mNetworkInfo = new NetworkInfo(ni);
-        setLegacySubtype(ni.getSubtype(), ni.getSubtypeName());
-        setLegacyExtraInfo(ni.getExtraInfo());
+        int networkType = getNetworkType();
+        setLegacySubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
+        setLegacyExtraInfo(dc.getApnSetting().getApnName());
         if (dc.getLinkProperties() != null) {
             checkDuplicateInterface(mId, dc.getLinkProperties().getInterfaceName());
             logd("created for data connection " + dc.getName() + ", "
@@ -105,6 +105,19 @@ public class DcNetworkAgent extends NetworkAgent {
         } else {
             loge("The connection does not have a valid link properties.");
         }
+    }
+
+    private @NetworkType int getNetworkType() {
+        ServiceState ss = mPhone.getServiceState();
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+
+        NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransportType);
+        if (nri != null) {
+            networkType = nri.getAccessNetworkTechnology();
+        }
+
+        return networkType;
     }
 
     private void checkDuplicateInterface(int netId, @Nullable String interfaceName) {
@@ -223,6 +236,18 @@ public class DcNetworkAgent extends NetworkAgent {
     }
 
     /**
+     * Update the legacy sub type (i.e. data network type).
+     *
+     * @param dc The data connection that invokes this method.
+     */
+    public synchronized void updateLegacySubtype(DataConnection dc) {
+        if (!isOwned(dc, "updateLegacySubtype")) return;
+
+        int networkType = getNetworkType();
+        setLegacySubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
+    }
+
+    /**
      * Set the network capabilities.
      *
      * @param networkCapabilities The network capabilities.
@@ -291,39 +316,6 @@ public class DcNetworkAgent extends NetworkAgent {
         logd("Unregister from connectivity service. " + sInterfaceNames.get(mId) + " removed.");
         sInterfaceNames.remove(mId);
         super.unregister();
-    }
-
-    /**
-     * Set the network info.
-     *
-     * @param networkInfo The network info.
-     * @param dc The data connection that invokes this method.
-     */
-    public synchronized void sendNetworkInfo(NetworkInfo networkInfo, DataConnection dc) {
-        if (!isOwned(dc, "sendNetworkInfo")) return;
-        final NetworkInfo.State oldState = mNetworkInfo.getState();
-        final NetworkInfo.State state = networkInfo.getState();
-        if (!mNetworkInfo.getExtraInfo().equals(networkInfo.getExtraInfo())) {
-            setLegacyExtraInfo(networkInfo.getExtraInfo());
-        }
-        int subType = networkInfo.getSubtype();
-        if (mNetworkInfo.getSubtype() != subType) {
-            setLegacySubtype(subType, TelephonyManager.getNetworkTypeName(subType));
-        }
-        if ((oldState == NetworkInfo.State.SUSPENDED || oldState == NetworkInfo.State.CONNECTED)
-                && state == NetworkInfo.State.DISCONNECTED) {
-            unregister(dc);
-        }
-        mNetworkInfo = new NetworkInfo(networkInfo);
-    }
-
-    /**
-     * Get the latest sent network info.
-     *
-     * @return network info
-     */
-    public synchronized NetworkInfo getNetworkInfo() {
-        return mNetworkInfo;
     }
 
     @Override
