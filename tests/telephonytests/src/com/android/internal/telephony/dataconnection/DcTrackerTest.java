@@ -771,8 +771,7 @@ public class DcTrackerTest extends TelephonyTest {
         //Send event for reconnecting data
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
-                        mPhone.getPhoneId(), AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                        mApnContext));
+                        mPhone.getPhoneId(), DcTracker.REQUEST_TYPE_NORMAL, mApnContext));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         // Data connection is running on a different thread. Have to wait.
@@ -1330,8 +1329,7 @@ public class DcTrackerTest extends TelephonyTest {
         //Send event for reconnecting data
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
-                        mPhone.getPhoneId(), AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                        mApnContext));
+                        mPhone.getPhoneId(), DcTracker.RELEASE_TYPE_NORMAL, mApnContext));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         // Data connection is running on a different thread. Have to wait.
