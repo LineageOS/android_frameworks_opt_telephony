@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
-import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.BarringInfo;
@@ -58,8 +57,7 @@ public interface PhoneNotifier {
     void notifyCallForwardingChanged(Phone sender);
 
     /** Send a notification that the Data Connection for a particular apnType has changed */
-    void notifyDataConnection(
-            Phone sender, String apnType, PreciseDataConnectionState preciseState);
+    void notifyDataConnection(Phone sender, PreciseDataConnectionState preciseState);
 
     void notifyDataActivity(Phone sender);
 
@@ -70,10 +68,6 @@ public interface PhoneNotifier {
     void notifyDisconnectCause(Phone sender, int cause, int preciseCause);
 
     void notifyImsDisconnectCause(Phone sender, ImsReasonInfo imsReasonInfo);
-
-    /** Send a notification that a particular data connection has failed with specified cause. */
-    void notifyDataConnectionFailed(Phone sender, String apnType, String apn,
-                                                  @DataFailureCause int failCause);
 
     /** Send a notification that the SRVCC state has changed.*/
     void notifySrvccStateChanged(Phone sender, @SrvccState int state);

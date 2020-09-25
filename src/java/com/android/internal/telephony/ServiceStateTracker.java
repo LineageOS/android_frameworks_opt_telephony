@@ -3410,10 +3410,6 @@ public class ServiceStateTracker extends Handler {
                 }
             }
 
-            if (hasCssIndicatorChanged) {
-                mPhone.notifyAllActiveDataConnections();
-            }
-
             mReasonDataDenied = mNewReasonDataDenied;
             mMaxDataCalls = mNewMaxDataCalls;
             mRejectCode = mNewRejectCode;
@@ -3561,7 +3557,6 @@ public class ServiceStateTracker extends Handler {
                     || hasDataTransportPreferenceChanged) {
                 setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
                 notifyDataRegStateRilRadioTechnologyChanged(transport);
-                mPhone.notifyAllActiveDataConnections();
             }
 
             if (hasDataAttached.get(transport)) {
