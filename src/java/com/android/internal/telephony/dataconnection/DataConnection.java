@@ -58,6 +58,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
@@ -262,6 +263,9 @@ public class DataConnection extends StateMachine {
     private DisconnectParams mDisconnectParams;
     @DataFailureCause
     private int mDcFailCause;
+
+    @HandoverFailureMode
+    private int mHandoverFailureMode;
 
     private Phone mPhone;
     private DataServiceManager mDataServiceManager;
@@ -859,7 +863,8 @@ public class DataConnection extends StateMachine {
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
             Pair<ApnContext, Integer> pair = new Pair<>(apnContext, cp.mConnectionGeneration);
-            Message msg = mDct.obtainMessage(event, mCid, cp.mRequestType, pair);
+            Message msg = mDct.obtainMessage(event, cp.mRequestType,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, pair);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
@@ -870,10 +875,11 @@ public class DataConnection extends StateMachine {
      *
      * @param cp is the ConnectionParams
      * @param cause and if no error the cause is DataFailCause.NONE
+     * @param handoverFailureMode The action on handover failure
      * @param sendAll is true if all contexts are to be notified
      */
     private void notifyConnectCompleted(ConnectionParams cp, @DataFailureCause int cause,
-                                        boolean sendAll) {
+            @HandoverFailureMode int handoverFailureMode, boolean sendAll) {
         ApnContext alreadySent = null;
 
         if (cp != null && cp.mOnCompletedMsg != null) {
@@ -883,8 +889,8 @@ public class DataConnection extends StateMachine {
             alreadySent = cp.mApnContext;
 
             long timeStamp = System.currentTimeMillis();
-            connectionCompletedMsg.arg1 = mCid;
-            connectionCompletedMsg.arg2 = cp.mRequestType;
+            connectionCompletedMsg.arg1 = cp.mRequestType;
+            connectionCompletedMsg.arg2 = handoverFailureMode;
 
             if (cause == DataFailCause.NONE) {
                 mCreateTime = timeStamp;
@@ -999,6 +1005,7 @@ public class DataConnection extends StateMachine {
         mUplinkBandwidth = 14;
         mIsSuspended = false;
         mHandoverState = HANDOVER_STATE_IDLE;
+        mHandoverFailureMode = DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN;
     }
 
     /**
@@ -1743,7 +1750,8 @@ public class DataConnection extends StateMachine {
                 case EVENT_CONNECT:
                     if (DBG) log("DcDefaultState: msg.what=EVENT_CONNECT, fail not expected");
                     ConnectionParams cp = (ConnectionParams) msg.obj;
-                    notifyConnectCompleted(cp, DataFailCause.UNKNOWN, false);
+                    notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                            DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
                     break;
 
                 case EVENT_DISCONNECT:
@@ -1821,12 +1829,13 @@ public class DataConnection extends StateMachine {
      */
     private class DcInactiveState extends State {
         // Inform all contexts we've failed connecting
-        public void setEnterNotificationParams(ConnectionParams cp,
-                                               @DataFailureCause int cause) {
+        public void setEnterNotificationParams(ConnectionParams cp, @DataFailureCause int cause,
+                @HandoverFailureMode int handoverFailureMode) {
             if (VDBG) log("DcInactiveState: setEnterNotificationParams cp,cause");
             mConnectionParams = cp;
             mDisconnectParams = null;
             mDcFailCause = cause;
+            mHandoverFailureMode = handoverFailureMode;
         }
 
         // Inform all contexts we've failed disconnected
@@ -1855,6 +1864,7 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
             if (mHandoverState == HANDOVER_STATE_BEING_TRANSFERRED) {
+                // This is from source data connection to set itself's state
                 setHandoverState(HANDOVER_STATE_COMPLETED);
             }
 
@@ -1890,7 +1900,7 @@ public class DataConnection extends StateMachine {
                     log("DcInactiveState: enter notifyConnectCompleted +ALL failCause="
                             + mDcFailCause);
                 }
-                notifyConnectCompleted(mConnectionParams, mDcFailCause, true);
+                notifyConnectCompleted(mConnectionParams, mDcFailCause, mHandoverFailureMode, true);
             }
             if (mDisconnectParams != null) {
                 if (DBG) {
@@ -1943,7 +1953,7 @@ public class DataConnection extends StateMachine {
                     if (!initConnection(cp)) {
                         log("DcInactiveState: msg.what=EVENT_CONNECT initConnection failed");
                         notifyConnectCompleted(cp, DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER,
-                                false);
+                                DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
                         transitionTo(mInactiveState);
                         return HANDLED;
                     }
@@ -1951,7 +1961,8 @@ public class DataConnection extends StateMachine {
                     int cause = connect(cp);
                     if (cause != DataFailCause.NONE) {
                         log("DcInactiveState: msg.what=EVENT_CONNECT connect failed");
-                        notifyConnectCompleted(cp, cause, false);
+                        notifyConnectCompleted(cp, cause,
+                                DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
                         transitionTo(mInactiveState);
                         return HANDLED;
                     }
@@ -2051,7 +2062,8 @@ public class DataConnection extends StateMachine {
                             // Vendor ril rejected the command and didn't connect.
                             // Transition to inactive but send notifications after
                             // we've entered the mInactive state.
-                            mInactiveState.setEnterNotificationParams(cp, result.mFailCause);
+                            mInactiveState.setEnterNotificationParams(cp, result.mFailCause,
+                                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
                             transitionTo(mInactiveState);
                             break;
                         case ERROR_INVALID_ARG:
@@ -2083,7 +2095,10 @@ public class DataConnection extends StateMachine {
                             // Save the cause. DcTracker.onDataSetupComplete will check this
                             // failure cause and determine if we need to retry this APN later
                             // or not.
-                            mInactiveState.setEnterNotificationParams(cp, result.mFailCause);
+                            mInactiveState.setEnterNotificationParams(cp, result.mFailCause,
+                                    // TODO: The actual failure mode should come from the underlying
+                                    //  data service
+                                    DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY);
                             transitionTo(mInactiveState);
                             break;
                         case ERROR_STALE:
@@ -2285,7 +2300,8 @@ public class DataConnection extends StateMachine {
                     if (DBG) {
                         log("DcActiveState: EVENT_CONNECT cp=" + cp + " dc=" + DataConnection.this);
                     }
-                    notifyConnectCompleted(cp, DataFailCause.NONE, false);
+                    notifyConnectCompleted(cp, DataFailCause.NONE,
+                            DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
                     retVal = HANDLED;
                     break;
                 }
@@ -2693,7 +2709,8 @@ public class DataConnection extends StateMachine {
                         // Transition to inactive but send notifications after
                         // we've entered the mInactive state.
                         mInactiveState.setEnterNotificationParams(cp,
-                                DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER);
+                                DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER,
+                                DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
                         transitionTo(mInactiveState);
                     } else {
                         if (DBG) {
