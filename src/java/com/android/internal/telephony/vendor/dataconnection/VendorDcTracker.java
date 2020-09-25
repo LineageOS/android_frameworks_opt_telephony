@@ -22,6 +22,7 @@ import android.telephony.DataFailCause;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.view.WindowManager;
 
 import com.android.internal.telephony.DctConstants;
@@ -131,7 +132,7 @@ public class VendorDcTracker extends DcTracker {
 
     @Override
     protected void onDataSetupComplete(ApnContext apnContext, boolean success, int cause,
-            @RequestNetworkType int requestType) {
+            @RequestNetworkType int requestType, @HandoverFailureMode int handoverFailureMode) {
         boolean isPdpRejectConfigEnabled = mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_pdp_reject_enable_retry);
         if (success) {
@@ -142,7 +143,7 @@ public class VendorDcTracker extends DcTracker {
             mPdpRejectCauseCode = cause;
         }
 
-        super.onDataSetupComplete(apnContext, success, cause, requestType);
+        super.onDataSetupComplete(apnContext, success, cause, requestType, handoverFailureMode);
     }
 
     @Override
@@ -187,7 +188,7 @@ public class VendorDcTracker extends DcTracker {
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
 
-            startReconnect(delay, apnContext);
+            startReconnect(delay, apnContext, requestType);
         } else {
             // If we are not going to retry any APN, set this APN context to failed state.
             // This would be the final state of a data connection.
