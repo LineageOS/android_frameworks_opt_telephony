@@ -2412,7 +2412,10 @@ public class ServiceStateTracker extends Handler {
             default: break;
         }
         // If the CID is unreported
-        if (cid == Integer.MAX_VALUE) cid = -1;
+        if (cid == (id.getType() == CellInfo.TYPE_NR
+                ? CellInfo.UNAVAILABLE_LONG : CellInfo.UNAVAILABLE)) {
+            cid = -1;
+        }
 
         return cid;
     }
