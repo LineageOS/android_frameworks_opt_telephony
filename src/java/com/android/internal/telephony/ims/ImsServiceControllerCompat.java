@@ -25,6 +25,7 @@ import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsMmTelFeature;
 import android.telephony.ims.aidl.IImsRcsFeature;
 import android.telephony.ims.aidl.IImsRegistration;
+import android.telephony.ims.aidl.ISipTransport;
 import android.telephony.ims.compat.ImsService;
 import android.telephony.ims.compat.feature.ImsFeature;
 import android.telephony.ims.compat.feature.MMTelFeature;
@@ -126,6 +127,21 @@ public class ImsServiceControllerCompat extends ImsServiceController {
             return null;
         }
         return adapter.getIImsConfig();
+    }
+
+    /**
+     * Return the SIP transport interface, which is not supported on the compat version of
+     * ImsService, so return null.
+     */
+    @Override
+    public ISipTransport getSipTransport(int slotId) {
+        return null;
+    }
+
+    @Override
+    protected long getStaticServiceCapabilities() {
+        // Older implementations do not support optional static capabilities
+        return 0L;
     }
 
     @Override
