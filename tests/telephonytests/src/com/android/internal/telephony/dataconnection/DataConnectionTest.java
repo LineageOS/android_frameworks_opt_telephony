@@ -253,8 +253,7 @@ public class DataConnectionTest extends TelephonyTest {
 
             DataServiceManager manager = new DataServiceManager(mPhone,
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN, "");
-            mDcc = DcController.makeDcc(mPhone, mDcTracker, manager, h, "");
-            mDcc.start();
+            mDcc = DcController.makeDcc(mPhone, mDcTracker, manager, h.getLooper(), "");
             mDc = DataConnection.makeDataConnection(mPhone, 0, mDcTracker, manager,
                     mDcTesterFailBringUpAll, mDcc);
         }
