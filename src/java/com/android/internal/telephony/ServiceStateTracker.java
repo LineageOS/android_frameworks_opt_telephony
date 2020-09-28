@@ -228,6 +228,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mImsCapabilityChangedRegistrants = new RegistrantList();
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
+    private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -3463,6 +3464,10 @@ public class ServiceStateTracker extends Handler {
             mNetworkDetachedRegistrants.notifyRegistrants();
         }
 
+        if (hasCssIndicatorChanged) {
+            mCssIndicatorChangedRegistrants.notifyRegistrants();
+        }
+
         if (hasRejectCauseChanged) {
             setNotification(CS_REJECT_CAUSE_ENABLED);
         }
@@ -5800,6 +5805,25 @@ public class ServiceStateTracker extends Handler {
      */
     public void unregisterForNrFrequencyChanged(Handler h) {
         mNrFrequencyChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for CSS indicator changed.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForCssIndicatorChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCssIndicatorChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for CSS indicator changed.
+     * @param h handler to notify
+     */
+    public void unregisterForCssIndicatorChanged(Handler h) {
+        mCssIndicatorChangedRegistrants.remove(h);
     }
 
     /**

@@ -341,7 +341,8 @@ public class DataConnection extends StateMachine {
     static final int EVENT_NR_FREQUENCY_CHANGED = BASE + 29;
     static final int EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED = BASE + 30;
     static final int EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED = BASE + 31;
-    private static final int CMD_TO_STRING_COUNT = EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED - BASE + 1;
+    static final int EVENT_CSS_INDICATOR_CHANGED = BASE + 32;
+    private static final int CMD_TO_STRING_COUNT = EVENT_CSS_INDICATOR_CHANGED - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -385,6 +386,7 @@ public class DataConnection extends StateMachine {
                 "EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED";
         sCmdToString[EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED - BASE] =
                 "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
+        sCmdToString[EVENT_CSS_INDICATOR_CHANGED - BASE] = "EVENT_CSS_INDICATOR_CHANGED";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1489,7 +1491,6 @@ public class DataConnection extends StateMachine {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         }
 
-        updateSuspendState();
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
 
         result.setAdministratorUids(mAdministratorUids);
@@ -1726,6 +1727,8 @@ public class DataConnection extends StateMachine {
                     DataConnection.EVENT_NR_STATE_CHANGED, null);
             mPhone.getServiceStateTracker().registerForNrFrequencyChanged(getHandler(),
                     DataConnection.EVENT_NR_FREQUENCY_CHANGED, null);
+            mPhone.getServiceStateTracker().registerForCssIndicatorChanged(getHandler(),
+                    DataConnection.EVENT_CSS_INDICATOR_CHANGED, null);
 
             // Add ourselves to the list of data connections
             mDcController.addDc(DataConnection.this);
@@ -1742,6 +1745,7 @@ public class DataConnection extends StateMachine {
             mPhone.getServiceStateTracker().unregisterForDataRoamingOff(getHandler());
             mPhone.getServiceStateTracker().unregisterForNrStateChanged(getHandler());
             mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
+            mPhone.getServiceStateTracker().unregisterForCssIndicatorChanged(getHandler());
 
             // Remove ourselves from the DC lists
             mDcController.removeDc(DataConnection.this);
@@ -2406,6 +2410,7 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
+                    updateSuspendState();
                     if (mNetworkAgent != null) {
                         mNetworkAgent.updateLegacySubtype(DataConnection.this);
                         // The new suspended state will be passed through connectivity service
@@ -2441,7 +2446,9 @@ public class DataConnection extends StateMachine {
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
                 case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED:
                 case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
-                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
+                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED:
+                case EVENT_CSS_INDICATOR_CHANGED: {
+                    updateSuspendState();
                     if (mNetworkAgent != null) {
                         mNetworkAgent.updateLegacySubtype(DataConnection.this);
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
