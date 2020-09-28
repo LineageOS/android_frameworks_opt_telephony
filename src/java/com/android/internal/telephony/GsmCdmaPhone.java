@@ -2851,8 +2851,21 @@ public class GsmCdmaPhone extends Phone {
                 }
 
                 if (DBG) logd("Baseband version: " + ar.result);
-                TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
-                        (String)ar.result);
+                /* Android property value is limited to 91 characters, but low layer
+                 could pass a larger version string. To avoid runtime exception,
+                 truncate the string baseband version string to 45 characters at most
+                 for this per sub property. Since the latter part of the version string
+                 is meaningful, truncated the version string from the beginning and
+                 keep the end of the version.
+                */
+                String version = (String)ar.result;
+                if (version != null) {
+                    int length = version.length();
+                    final int MAX_VERSION_LEN = SystemProperties.PROP_VALUE_MAX/2;
+                    TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
+                            length <= MAX_VERSION_LEN ? version
+                                : version.substring(length - MAX_VERSION_LEN, length));
+                }
             break;
 
             case EVENT_GET_IMEI_DONE:
