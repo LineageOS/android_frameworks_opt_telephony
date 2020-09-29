@@ -320,7 +320,6 @@ public abstract class TelephonyTest {
     protected List<TestableLooper> mTestableLoopers = new ArrayList<>();
     protected TestableLooper mTestableLooper;
 
-    protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
     private HashMap<InstanceKey, Object> mOldInstances = new HashMap<InstanceKey, Object>();
 
     private LinkedList<InstanceKey> mInstanceKeys = new LinkedList<InstanceKey>();
@@ -419,6 +418,7 @@ public abstract class TelephonyTest {
         MockitoAnnotations.initMocks(this);
         TelephonyManager.disableServiceHandleCaching();
         SubscriptionController.disableCaching();
+
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
@@ -586,7 +586,6 @@ public abstract class TelephonyTest {
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
                 getRilDataRadioTechnology();
         doReturn(mPhone).when(mCT).getPhone();
-        mImsManagerInstances.put(mPhone.getPhoneId(), mImsManager);
         doReturn(mImsEcbm).when(mImsManager).getEcbmInterface();
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
@@ -651,7 +650,6 @@ public abstract class TelephonyTest {
                 mTelephonyComponentFactory);
         replaceInstance(UiccController.class, "mInstance", null, mUiccController);
         replaceInstance(CdmaSubscriptionSourceManager.class, "sInstance", null, mCdmaSSM);
-        replaceInstance(ImsManager.class, "sImsManagerInstances", null, mImsManagerInstances);
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
         replaceInstance(ActivityManager.class, "IActivityManagerSingleton", null,

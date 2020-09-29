@@ -161,6 +161,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final boolean FORCE_VERBOSE_STATE_LOGGING = false; /* stopship if true */
     private static final boolean VERBOSE_STATE_LOGGING = FORCE_VERBOSE_STATE_LOGGING ||
             Rlog.isLoggable(VERBOSE_STATE_TAG, Log.VERBOSE);
+    private static final int CONNECTOR_RETRY_DELAY_MS = 5000; // 5 seconds.
 
     private MmTelFeature.MmTelCapabilities mMmTelCapabilities =
             new MmTelFeature.MmTelCapabilities();
@@ -865,6 +866,26 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return PhoneNumberUtils.isEmergencyNumber(string);
     };
 
+    private Runnable mConnectorRunnable = new Runnable() {
+        @Override
+        public void run() {
+            mImsManagerConnector.connect();
+        }
+    };
+
+    /**
+     * Allows the FeatureConnector used to be swapped for easier testing.
+     */
+    @VisibleForTesting
+    public interface ConnectorFactory {
+        /**
+         * Create a FeatureConnector for this class to use to connect to an ImsManager.
+         */
+        FeatureConnector<ImsManager> create(Context context, int phoneId,
+                String logPrefix, FeatureConnector.Listener<ImsManager> listener,
+                Executor executor);
+    }
+    private final ConnectorFactory mConnectorFactory;
     private final FeatureConnector<ImsManager> mImsManagerConnector;
 
     // Used exclusively for IMS Registration related events for logging.
@@ -876,13 +897,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
 
     //***** Constructors
-    public ImsPhoneCallTracker(ImsPhone phone) {
-        this(phone, phone.getContext().getMainExecutor());
+    public ImsPhoneCallTracker(ImsPhone phone, ConnectorFactory factory) {
+        this(phone, factory, phone.getContext().getMainExecutor());
     }
 
     @VisibleForTesting
-    public ImsPhoneCallTracker(ImsPhone phone, Executor executor) {
+    public ImsPhoneCallTracker(ImsPhone phone, ConnectorFactory factory, Executor executor) {
         this.mPhone = phone;
+        mConnectorFactory = factory;
 
         mMetrics = TelephonyMetrics.getInstance();
 
@@ -908,27 +930,24 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         Context.NETWORK_STATS_SERVICE);
         statsManager.registerNetworkStatsProvider(LOG_TAG, mVtDataUsageProvider);
 
-        // Allow the executor to be specified for testing.
-        mImsManagerConnector = new FeatureConnector<>(
-                phone.getContext(), phone.getPhoneId(),
-                new FeatureConnector.Listener<ImsManager>() {
-                    @Override
-                    public ImsManager getFeatureManager() {
-                        return ImsManager.getInstance(phone.getContext(), phone.getPhoneId());
-                    }
-
-                    @Override
+        mImsManagerConnector = mConnectorFactory.create(mPhone.getContext(), mPhone.getPhoneId(),
+                LOG_TAG, new FeatureConnector.Listener<ImsManager>() {
                     public void connectionReady(ImsManager manager) throws ImsException {
                         mImsManager = manager;
                         startListeningForCalls();
                     }
 
                     @Override
-                    public void connectionUnavailable() {
+                    public void connectionUnavailable(int reason) {
+                        logi("connectionUnavailable: " + reason);
+                        if (reason == FeatureConnector.UNAVAILABLE_REASON_SERVER_UNAVAILABLE) {
+                            postDelayed(mConnectorRunnable, CONNECTOR_RETRY_DELAY_MS);
+                        }
                         stopListeningForCalls();
                     }
-                }, executor, "ImsPhoneCallTracker");
-        mImsManagerConnector.connect();
+                }, executor);
+        // It can take some time for ITelephony to get published, so defer connecting.
+        post(mConnectorRunnable);
     }
 
     /**
@@ -950,14 +969,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhoneNumberUtilsProxy = phoneNumberUtilsProxy;
     }
 
-    /**
-     * Test-only method used to set the ImsService retry timeout.
-     */
-    @VisibleForTesting
-    public void setRetryTimeout(FeatureConnector.RetryTimeout retryTimeout) {
-        mImsManagerConnector.mRetryTimeout = retryTimeout;
-    }
-
     private int getPackageUid(Context context, String pkg) {
         if (pkg == null) {
             return NetworkStats.UID_ALL;
@@ -974,7 +985,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return uid;
     }
 
-    private void startListeningForCalls() throws ImsException {
+    @VisibleForTesting
+    public void startListeningForCalls() throws ImsException {
         log("startListeningForCalls");
         mOperationLocalLog.log("startListeningForCalls - Connecting to ImsService");
         mImsManager.open(mMmTelFeatureListener);
@@ -1573,7 +1585,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mOperationLocalLog.log("dialInternal exception: " + e);
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
-            retryGetImsService();
         } catch (RemoteException e) {
         }
     }
@@ -2145,7 +2156,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mImsManager.setTtyMode(ttyMode);
         } catch (ImsException e) {
             loge("setTtyMode : " + e);
-            retryGetImsService();
         }
     }
 
@@ -2164,7 +2174,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         } catch (ImsException e) {
             loge("setUITTYMode : " + e);
             mPhone.sendErrorResponse(onComplete, e);
-            retryGetImsService();
         }
     }
 
@@ -2352,7 +2361,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         } catch (ImsException e) {
             loge("sendUSSD : " + e);
             mPhone.sendErrorResponse(response, e);
-            retryGetImsService();
         }
     }
 
@@ -4336,15 +4344,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         } else {
             callback.accept(ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
         }
-    }
-
-    private void retryGetImsService() {
-        // The binder connection is already up. Do not try to get it again.
-        if (mImsManager.isServiceAvailable()) {
-            return;
-        }
-
-        mImsManagerConnector.connect();
     }
 
     @UnsupportedAppUsage
