@@ -69,6 +69,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
 import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
+import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
@@ -94,6 +95,8 @@ public class DataConnectionTest extends TelephonyTest {
     ApnContext mApnContext;
     @Mock
     DcFailBringUp mDcFailBringUp;
+    @Mock
+    DataCallSessionStats mDataCallSessionStats;
 
     private DataConnection mDc;
     private DataConnectionTestHandler mDataConnectionTestHandler;
@@ -312,6 +315,8 @@ public class DataConnectionTest extends TelephonyTest {
         mDataConnectionTestHandler.start();
 
         waitForMs(200);
+        mDc.setDataCallSessionStats(mDataCallSessionStats);
+
         logd("-Setup!");
     }
 
