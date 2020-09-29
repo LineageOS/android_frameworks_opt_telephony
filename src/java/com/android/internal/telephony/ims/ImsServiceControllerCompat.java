@@ -31,6 +31,7 @@ import android.telephony.ims.compat.feature.MMTelFeature;
 import android.util.Log;
 import android.util.SparseArray;
 
+import com.android.ims.ImsFeatureBinderRepository;
 import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsServiceController;
@@ -56,8 +57,9 @@ public class ImsServiceControllerCompat extends ImsServiceController {
             new SparseArray<>();
 
     public ImsServiceControllerCompat(Context context, ComponentName componentName,
-            ImsServiceController.ImsServiceControllerCallbacks callbacks) {
-        super(context, componentName, callbacks);
+            ImsServiceController.ImsServiceControllerCallbacks callbacks,
+            ImsFeatureBinderRepository repo) {
+        super(context, componentName, callbacks, repo);
     }
 
     @Override
