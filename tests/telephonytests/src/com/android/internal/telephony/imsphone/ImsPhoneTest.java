@@ -16,6 +16,11 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.CarrierConfigManager.USSD_OVER_CS_ONLY;
+import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
+import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
+import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_PREFERRED;
+
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 
@@ -70,12 +75,12 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.imsphone.ImsPhone.SS;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.imsphone.ImsPhone.SS;
 
 import org.junit.After;
 import org.junit.Before;
@@ -847,6 +852,8 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testSendUssdAllowUssdOverImsInOutOfService() throws Exception {
         Resources resources = mContext.getResources();
 
+        mBundle.putInt(CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT,
+                        USSD_OVER_CS_PREFERRED);
         doReturn(true).when(resources).getBoolean(
                 com.android.internal.R.bool.config_allow_ussd_over_ims);
         doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST.mSS).getState();
@@ -861,6 +868,8 @@ public class ImsPhoneTest extends TelephonyTest {
         String errorCode = "";
         Resources resources = mContext.getResources();
 
+        mBundle.putInt(CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT,
+                        USSD_OVER_CS_PREFERRED);
         doReturn(true).when(resources).getBoolean(
                 com.android.internal.R.bool.config_allow_ussd_over_ims);
         doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getState();
@@ -888,6 +897,56 @@ public class ImsPhoneTest extends TelephonyTest {
             errorCode = e.getMessage();
         }
         assertEquals(Phone.CS_FALLBACK, errorCode);
+    }
+
+    @Test
+    @SmallTest
+    public void testSendUssdAllowUssdOverImswithIMSPreferred() throws Exception {
+        Resources resources = mContext.getResources();
+
+        mBundle.putInt(CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT,
+                        USSD_OVER_IMS_PREFERRED);
+        doReturn(true).when(resources).getBoolean(
+                com.android.internal.R.bool.config_allow_ussd_over_ims);
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getState();
+
+        mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
+        verify(mImsCT).sendUSSD(eq("*135#"), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testSendUssdAllowUssdOverImswithCSOnly() throws Exception {
+        String errorCode = "";
+        Resources resources = mContext.getResources();
+
+        mBundle.putInt(CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT,
+                        USSD_OVER_CS_ONLY);
+        doReturn(true).when(resources).getBoolean(
+                com.android.internal.R.bool.config_allow_ussd_over_ims);
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getState();
+
+        try {
+            mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
+        } catch (CallStateException e) {
+            errorCode = e.getMessage();
+        }
+        assertEquals(Phone.CS_FALLBACK, errorCode);
+    }
+
+    @Test
+    @SmallTest
+    public void testSendUssdAllowUssdOverImswithIMSOnly() throws Exception {
+        Resources resources = mContext.getResources();
+
+        mBundle.putInt(CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT,
+                        USSD_OVER_IMS_ONLY);
+        doReturn(true).when(resources).getBoolean(
+                com.android.internal.R.bool.config_allow_ussd_over_ims);
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST.mSS).getState();
+
+        mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
+        verify(mImsCT).sendUSSD(eq("*135#"), any());
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {

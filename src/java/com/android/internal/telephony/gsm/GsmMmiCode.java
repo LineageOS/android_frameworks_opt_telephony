@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.gsm;
 
+import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
+
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_ASYNC;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_DATA_SYNC;
@@ -1116,7 +1118,18 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Ivalid register/action=" + mAction);
                 }
             } else if (mPoundString != null) {
-                sendUssd(mPoundString);
+                if (mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.config_allow_ussd_over_ims)) {
+                    int ussd_method = getIntCarrierConfig(
+                                    CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT);
+                    if (ussd_method != USSD_OVER_IMS_ONLY) {
+                        sendUssd(mPoundString);
+                    } else {
+                        throw new RuntimeException("The USSD request is not allowed over CS");
+                    }
+                } else {
+                    sendUssd(mPoundString);
+                }
             } else {
                 Rlog.d(LOG_TAG, "processCode: Invalid or Unsupported MMI Code");
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
@@ -1746,6 +1759,28 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             }
         }
         return sb;
+    }
+
+    /**
+     * Get the int config from carrier config manager.
+     *
+     * @param key config key defined in CarrierConfigManager
+     * @return integer value of corresponding key.
+     */
+    private int getIntCarrierConfig(String key) {
+        CarrierConfigManager ConfigManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = null;
+        if (ConfigManager != null) {
+            // If an invalid subId is used, this bundle will contain default values.
+            b = ConfigManager.getConfigForSubId(mPhone.getSubId());
+        }
+        if (b != null) {
+            return b.getInt(key);
+        } else {
+            // Return static default defined in CarrierConfigManager.
+            return CarrierConfigManager.getDefaultConfig().getInt(key);
+        }
     }
 
     public ResultReceiver getUssdCallbackReceiver() {
