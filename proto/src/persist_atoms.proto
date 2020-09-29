@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 11
+// Next id: 13
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated RawVoiceCallRatUsage raw_voice_call_rat_usage = 1;
@@ -54,6 +54,12 @@ message PersistAtoms {
 
     /* Last version of carrier ID table sent. */
     optional int32 carrier_id_table_version = 10;
+
+    /* Data Call session statistics and information. */
+    repeated DataCallSession data_call_session = 11;
+
+    /* Timestamp of last data_call_session pull. */
+    optional int64 data_call_session_pull_timestamp_millis = 12;
 }
 
 // The canonical versions of the following enums live in:
@@ -138,4 +144,25 @@ message CarrierIdMismatch {
     optional string mcc_mnc = 1;
     optional string gid1 = 2;
     optional string spn = 3;
+}
+
+message DataCallSession {
+    optional int32 dimension = 1;
+    optional bool is_multi_sim = 2;
+    optional bool is_esim = 3;
+    optional int32 profile = 4;
+    optional int32 apn_type_bitmask = 5;
+    optional int32 carrier_id = 6;
+    optional bool is_roaming = 7;
+    optional int32 rat_at_end = 8;
+    optional bool oos_at_end = 9;
+    optional int64 rat_switch_count = 10;
+    optional bool is_opportunistic = 11;
+    optional int32 ip_type = 12;
+    optional bool setup_failed = 13;
+    optional int32 failure_cause = 14;
+    optional int32 suggested_retry_millis = 15;
+    optional int32 deactivate_reason = 16;
+    optional int64 duration_minutes = 17;
+    optional bool ongoing = 18;
 }

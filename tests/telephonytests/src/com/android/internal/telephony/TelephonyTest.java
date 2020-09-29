@@ -99,6 +99,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
+import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.server.pm.PackageManagerService;
 import com.android.server.pm.permission.PermissionManagerService;
 
@@ -553,6 +554,7 @@ public abstract class TelephonyTest {
                 }
             }
         }).when(mUiccController).getIccRecords(anyInt(), anyInt());
+        doReturn(new UiccSlot[] {}).when(mUiccController).getUiccSlots();
 
         //UiccCardApplication
         doReturn(mSimRecords).when(mUiccCardApplication3gpp).getIccRecords();
