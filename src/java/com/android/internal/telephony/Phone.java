@@ -77,6 +77,7 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
+import com.android.internal.telephony.metrics.SmsStats;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -430,6 +431,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private final CarrierPrivilegesTracker mCarrierPrivilegesTracker;
 
     protected VoiceCallSessionStats mVoiceCallSessionStats;
+    protected SmsStats mSmsStats;
 
     public IccRecords getIccRecords() {
         return mIccRecords.get();
@@ -570,6 +572,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         mCallRingDelay = TelephonyProperties.call_ring_delay().orElse(3000);
         Rlog.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
+
+        // Initialize SMS stats
+        mSmsStats = new SmsStats(this);
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
@@ -4388,6 +4393,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @VisibleForTesting
     public void setVoiceCallSessionStats(VoiceCallSessionStats voiceCallSessionStats) {
         mVoiceCallSessionStats = voiceCallSessionStats;
+    }
+
+    /** Returns the {@link SmsStats} for this phone ID. */
+    public SmsStats getSmsStats() {
+        return mSmsStats;
+    }
+
+    /** Sets the {@link SmsStats} mock for this phone ID during unit testing. */
+    @VisibleForTesting
+    public void setSmsStats(SmsStats smsStats) {
+        mSmsStats = smsStats;
     }
 
     /** @hide */

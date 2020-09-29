@@ -25,6 +25,8 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.InboundSmsHandler;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccIoResult;
@@ -73,9 +75,11 @@ public class UsimDataDownloadHandler extends Handler {
      *
      * @param ust the UsimServiceTable, to check if data download is enabled
      * @param smsMessage the SMS message to process
+     * @param smsSource the source of the SMS message
      * @return {@code Activity.RESULT_OK} on success; {@code RESULT_SMS_GENERIC_ERROR} on failure
      */
-    int handleUsimDataDownload(UsimServiceTable ust, SmsMessage smsMessage) {
+    int handleUsimDataDownload(UsimServiceTable ust, SmsMessage smsMessage,
+            @InboundSmsHandler.SmsSource int smsSource) {
         // If we receive an SMS-PP message before the UsimServiceTable has been loaded,
         // assume that the data download service is not present. This is very unlikely to
         // happen because the IMS connection will not be established until after the ISIM
@@ -83,7 +87,7 @@ public class UsimDataDownloadHandler extends Handler {
         if (ust != null && ust.isAvailable(
                 UsimServiceTable.UsimService.DATA_DL_VIA_SMS_PP)) {
             Rlog.d(TAG, "Received SMS-PP data download, sending to UICC.");
-            return startDataDownload(smsMessage);
+            return startDataDownload(smsMessage, smsSource);
         } else {
             Rlog.d(TAG, "DATA_DL_VIA_SMS_PP service not available, storing message to UICC.");
             String smsc = IccUtils.bytesToHexString(
@@ -92,7 +96,7 @@ public class UsimDataDownloadHandler extends Handler {
             mCi.writeSmsToSim(SmsManager.STATUS_ON_ICC_UNREAD, smsc,
                     IccUtils.bytesToHexString(smsMessage.getPdu()),
                     obtainMessage(EVENT_WRITE_SMS_COMPLETE));
-            addUsimDataDownloadToMetrics(false);
+            addUsimDataDownloadToMetrics(false, smsSource);
             return Activity.RESULT_OK;  // acknowledge after response from write to USIM
         }
 
@@ -103,10 +107,13 @@ public class UsimDataDownloadHandler extends Handler {
      * thread than this Handler is running on.
      *
      * @param smsMessage the message to process
+     * @param smsSource the source of the SMS message
      * @return {@code Activity.RESULT_OK} on success; {@code RESULT_SMS_GENERIC_ERROR} on failure
      */
-    public int startDataDownload(SmsMessage smsMessage) {
-        if (sendMessage(obtainMessage(EVENT_START_DATA_DOWNLOAD, smsMessage))) {
+    public int startDataDownload(SmsMessage smsMessage,
+            @InboundSmsHandler.SmsSource int smsSource) {
+        if (sendMessage(obtainMessage(EVENT_START_DATA_DOWNLOAD,
+                smsSource, 0 /* unused */, smsMessage))) {
             return Activity.RESULT_OK;  // we will send SMS ACK/ERROR based on UICC response
         } else {
             Rlog.e(TAG, "startDataDownload failed to send message to start data download.");
@@ -114,7 +121,8 @@ public class UsimDataDownloadHandler extends Handler {
         }
     }
 
-    private void handleDataDownload(SmsMessage smsMessage) {
+    private void handleDataDownload(SmsMessage smsMessage,
+            @InboundSmsHandler.SmsSource int smsSource) {
         int dcs = smsMessage.getDataCodingScheme();
         int pid = smsMessage.getProtocolIdentifier();
         byte[] pdu = smsMessage.getPdu();           // includes SC address
@@ -166,7 +174,7 @@ public class UsimDataDownloadHandler extends Handler {
         if (index != envelope.length) {
             Rlog.e(TAG, "startDataDownload() calculated incorrect envelope length, aborting.");
             acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR);
-            addUsimDataDownloadToMetrics(false);
+            addUsimDataDownloadToMetrics(false, smsSource);
             return;
         }
 
@@ -174,7 +182,7 @@ public class UsimDataDownloadHandler extends Handler {
         mCi.sendEnvelopeWithStatus(encodedEnvelope, obtainMessage(
                 EVENT_SEND_ENVELOPE_RESPONSE, new int[]{ dcs, pid }));
 
-        addUsimDataDownloadToMetrics(true);
+        addUsimDataDownloadToMetrics(true, smsSource);
     }
 
     /**
@@ -284,9 +292,11 @@ public class UsimDataDownloadHandler extends Handler {
      * to the USIM. The metrics does not cover the case where the SMS-PP might be rejected
      * by the USIM itself.
      */
-    private void addUsimDataDownloadToMetrics(boolean result) {
+    private void addUsimDataDownloadToMetrics(boolean result,
+            @InboundSmsHandler.SmsSource int smsSource) {
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();
         metrics.writeIncomingSMSPP(mPhoneId, android.telephony.SmsMessage.FORMAT_3GPP, result);
+        PhoneFactory.getPhone(mPhoneId).getSmsStats().onIncomingSmsPP(smsSource, result);
     }
 
     /**
@@ -300,7 +310,7 @@ public class UsimDataDownloadHandler extends Handler {
 
         switch (msg.what) {
             case EVENT_START_DATA_DOWNLOAD:
-                handleDataDownload((SmsMessage) msg.obj);
+                handleDataDownload((SmsMessage) msg.obj, msg.arg1 /* smsSource */);
                 break;
 
             case EVENT_SEND_ENVELOPE_RESPONSE:

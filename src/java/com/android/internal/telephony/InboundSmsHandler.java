@@ -24,6 +24,7 @@ import static android.provider.Telephony.Sms.Intents.RESULT_SMS_NULL_PDU;
 import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE;
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
+import android.annotation.IntDef;
 import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.AppOpsManager;
@@ -79,6 +80,8 @@ import com.android.telephony.Rlog;
 import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -184,6 +187,24 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
 
+    /** Received SMS was not injected. */
+    public static final int SOURCE_NOT_INJECTED = 0;
+
+    /** Received SMS was received over IMS and injected. */
+    public static final int SOURCE_INJECTED_FROM_IMS = 1;
+
+    /** Received SMS was injected from source different than IMS. */
+    public static final int SOURCE_INJECTED_FROM_UNKNOWN = 2;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"SOURCE_"},
+            value = {
+                SOURCE_NOT_INJECTED,
+                SOURCE_INJECTED_FROM_IMS,
+                SOURCE_INJECTED_FROM_UNKNOWN
+    })
+    public @interface SmsSource {}
+
     // The notitfication tag used when showing a notification. The combination of notification tag
     // and notification id should be unique within the phone app.
     @VisibleForTesting
@@ -257,10 +278,6 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     /** Timeout for releasing wakelock */
     private int mWakeLockTimeout;
-
-    /** Indicates if last SMS was injected. This is used to recognize SMS received over IMS from
-        others in order to update metrics. */
-    private boolean mLastSmsWasInjected = false;
 
     private List<SmsFilter> mSmsFilters;
 
@@ -519,7 +536,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 case EVENT_INJECT_SMS:
                     // handle new injected SMS
-                    handleInjectSms((AsyncResult) msg.obj);
+                    handleInjectSms((AsyncResult) msg.obj, msg.arg1 == 1 /* isOverIms */);
                     sendMessage(EVENT_RETURN_TO_IDLE);
                     return HANDLED;
 
@@ -644,8 +661,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         int result;
         try {
             SmsMessage sms = (SmsMessage) ar.result;
-            mLastSmsWasInjected = false;
-            result = dispatchMessage(sms.mWrappedSmsMessage);
+            result = dispatchMessage(sms.mWrappedSmsMessage, SOURCE_NOT_INJECTED);
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
             result = RESULT_SMS_DISPATCH_FAILURE;
@@ -664,7 +680,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param ar is the AsyncResult that has the SMS PDU to be injected.
      */
     @UnsupportedAppUsage
-    private void handleInjectSms(AsyncResult ar) {
+    private void handleInjectSms(AsyncResult ar, boolean isOverIms) {
         int result;
         SmsDispatchersController.SmsInjectionCallback callback = null;
         try {
@@ -674,8 +690,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 loge("Null injected sms");
                 result = RESULT_SMS_NULL_PDU;
             } else {
-                mLastSmsWasInjected = true;
-                result = dispatchMessage(sms.mWrappedSmsMessage);
+                @SmsSource int smsSource =
+                        isOverIms ? SOURCE_INJECTED_FROM_IMS : SOURCE_INJECTED_FROM_UNKNOWN;
+                result = dispatchMessage(sms.mWrappedSmsMessage, smsSource);
             }
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
@@ -692,10 +709,11 @@ public abstract class InboundSmsHandler extends StateMachine {
      * 3GPP2-specific message types.
      *
      * @param smsb the SmsMessageBase object from the RIL
+     * @param smsSource the source of the SMS message
      * @return a result code from {@link android.provider.Telephony.Sms.Intents},
      *  or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
-    private int dispatchMessage(SmsMessageBase smsb) {
+    private int dispatchMessage(SmsMessageBase smsb, @SmsSource int smsSource) {
         // If sms is null, there was a parsing error.
         if (smsb == null) {
             loge("dispatchSmsMessage: message is null");
@@ -722,12 +740,13 @@ public abstract class InboundSmsHandler extends StateMachine {
             return Intents.RESULT_SMS_RECEIVED_WHILE_ENCRYPTED;
         }
 
-        int result = dispatchMessageRadioSpecific(smsb);
+        int result = dispatchMessageRadioSpecific(smsb, smsSource);
 
         // In case of error, add to metrics. This is not required in case of success, as the
         // data will be tracked when the message is processed (processMessagePart).
-        if (result != Intents.RESULT_SMS_HANDLED) {
-            mMetrics.writeIncomingSmsError(mPhone.getPhoneId(), mLastSmsWasInjected, result);
+        if (result != Intents.RESULT_SMS_HANDLED && result != Activity.RESULT_OK) {
+            mMetrics.writeIncomingSmsError(mPhone.getPhoneId(), smsSource, result);
+            mPhone.getSmsStats().onIncomingSmsError(is3gpp2(), smsSource, result);
         }
         return result;
     }
@@ -738,10 +757,12 @@ public abstract class InboundSmsHandler extends StateMachine {
      * {@link #dispatchNormalMessage} from this class.
      *
      * @param smsb the SmsMessageBase object from the RIL
+     * @param smsSource the source of the SMS message
      * @return a result code from {@link android.provider.Telephony.Sms.Intents},
      *  or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
-    protected abstract int dispatchMessageRadioSpecific(SmsMessageBase smsb);
+    protected abstract int dispatchMessageRadioSpecific(SmsMessageBase smsb,
+            @SmsSource int smsSource);
 
     /**
      * Send an acknowledge message to the SMSC.
@@ -785,10 +806,11 @@ public abstract class InboundSmsHandler extends StateMachine {
      * {@link #EVENT_BROADCAST_SMS}. Returns {@link Intents#RESULT_SMS_HANDLED} or an error value.
      *
      * @param sms the message to dispatch
+     * @param smsSource the source of the SMS message
      * @return {@link Intents#RESULT_SMS_HANDLED} if the message was accepted, or an error status
      */
     @UnsupportedAppUsage
-    protected int dispatchNormalMessage(SmsMessageBase sms) {
+    protected int dispatchNormalMessage(SmsMessageBase sms, @SmsSource int smsSource) {
         SmsHeader smsHeader = sms.getUserDataHeader();
         InboundSmsTracker tracker;
 
@@ -803,10 +825,10 @@ public abstract class InboundSmsHandler extends StateMachine {
             tracker = TelephonyComponentFactory.getInstance()
                     .inject(InboundSmsTracker.class.getName())
                     .makeInboundSmsTracker(mContext, sms.getPdu(),
-                    sms.getTimestampMillis(), destPort, is3gpp2(), false,
-                    sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
-                    sms.getMessageBody(), sms.getMessageClass() == MessageClass.CLASS_0,
-                            mPhone.getSubId());
+                            sms.getTimestampMillis(), destPort, is3gpp2(), false,
+                            sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
+                            sms.getMessageBody(), sms.getMessageClass() == MessageClass.CLASS_0,
+                            mPhone.getSubId(), smsSource);
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
@@ -815,10 +837,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             tracker = TelephonyComponentFactory.getInstance()
                     .inject(InboundSmsTracker.class.getName())
                     .makeInboundSmsTracker(mContext, sms.getPdu(),
-                    sms.getTimestampMillis(), destPort, is3gpp2(), sms.getOriginatingAddress(),
-                    sms.getDisplayOriginatingAddress(), concatRef.refNumber, concatRef.seqNumber,
-                    concatRef.msgCount, false, sms.getMessageBody(),
-                    sms.getMessageClass() == MessageClass.CLASS_0, mPhone.getSubId());
+                            sms.getTimestampMillis(), destPort, is3gpp2(),
+                            sms.getOriginatingAddress(), sms.getDisplayOriginatingAddress(),
+                            concatRef.refNumber, concatRef.seqNumber, concatRef.msgCount, false,
+                            sms.getMessageBody(), sms.getMessageClass() == MessageClass.CLASS_0,
+                            mPhone.getSubId(), smsSource);
         }
 
         if (VDBG) log("created tracker: " + tracker);
@@ -978,14 +1001,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         final boolean isWapPush = (destPort == SmsHeader.PORT_WAP_PUSH);
-
-        // At this point, all parts of the SMS are received. Update metrics for incoming SMS.
-        // WAP-PUSH messages are handled below to also keep track of the result of the processing.
         String format = tracker.getFormat();
-        if (!isWapPush) {
-            mMetrics.writeIncomingSmsSession(mPhone.getPhoneId(), mLastSmsWasInjected,
-                    format, timestamps, block, tracker.getMessageId());
-        }
 
         // Do not process null pdu(s). Check for that and return false in that case.
         List<byte[]> pduList = Arrays.asList(pdus);
@@ -993,6 +1009,8 @@ public abstract class InboundSmsHandler extends StateMachine {
             String errorMsg = "processMessagePart: returning false due to "
                     + (pduList.size() == 0 ? "pduList.size() == 0" : "pduList.contains(null)");
             logeWithLocalLog(errorMsg, tracker.getMessageId());
+            mPhone.getSmsStats().onIncomingSmsError(
+                    is3gpp2(), tracker.getSource(), RESULT_SMS_NULL_PDU);
             return false;
         }
 
@@ -1007,9 +1025,11 @@ public abstract class InboundSmsHandler extends StateMachine {
                     } else {
                         loge("processMessagePart: SmsMessage.createFromPdu returned null",
                                 tracker.getMessageId());
-                        mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
+                        mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), tracker.getSource(),
                                 SmsConstants.FORMAT_3GPP, timestamps, false,
                                 tracker.getMessageId());
+                        mPhone.getSmsStats().onIncomingSmsWapPush(tracker.getSource(),
+                                messageCount, RESULT_SMS_NULL_MESSAGE, tracker.getMessageId());
                         return false;
                     }
                 }
@@ -1039,13 +1059,12 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
             // Add result of WAP-PUSH into metrics. RESULT_SMS_HANDLED indicates that the WAP-PUSH
             // needs to be ignored, so treating it as a success case.
-            if (result == Activity.RESULT_OK || result == Intents.RESULT_SMS_HANDLED) {
-                mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
-                        format, timestamps, true, tracker.getMessageId());
-            } else {
-                mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), mLastSmsWasInjected,
-                        format, timestamps, false, tracker.getMessageId());
-            }
+            boolean wapPushResult =
+                    result == Activity.RESULT_OK || result == Intents.RESULT_SMS_HANDLED;
+            mMetrics.writeIncomingWapPush(mPhone.getPhoneId(), tracker.getSource(),
+                    format, timestamps, wapPushResult, tracker.getMessageId());
+            mPhone.getSmsStats().onIncomingSmsWapPush(tracker.getSource(), messageCount,
+                    result, tracker.getMessageId());
             // result is Activity.RESULT_OK if an ordered broadcast was sent
             if (result == Activity.RESULT_OK) {
                 return true;
@@ -1057,6 +1076,15 @@ public abstract class InboundSmsHandler extends StateMachine {
                 return false;
             }
         }
+
+        // All parts of SMS are received. Update metrics for incoming SMS.
+        // The metrics are generated before SMS filters are invoked.
+        // For messages composed by multiple parts, the metrics are generated considering the
+        // characteristics of the last one.
+        mMetrics.writeIncomingSmsSession(mPhone.getPhoneId(), tracker.getSource(),
+                format, timestamps, block, tracker.getMessageId());
+        mPhone.getSmsStats().onIncomingSmsSuccess(is3gpp2(), tracker.getSource(),
+                messageCount, block, tracker.getMessageId());
 
         // Always invoke SMS filters, even if the number ends up being blocked, to prevent
         // surprising bugs due to blocking numbers that happen to be used for visual voicemail SMS
