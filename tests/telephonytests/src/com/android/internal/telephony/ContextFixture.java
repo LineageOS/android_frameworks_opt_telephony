@@ -536,6 +536,11 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void enforceCallingPermission(String permission, String message) {
+            enforceCallingOrSelfPermission(permission, message);
+        }
+
+        @Override
         public int checkCallingOrSelfPermission(String permission) {
             if (mPermissionTable.contains(permission)
                     || mPermissionTable.contains(PERMISSION_ENABLE_ALL)) {
