@@ -79,11 +79,9 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.ims.FeatureConnector;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsException;
-import com.android.ims.ImsManager;
 import com.android.ims.internal.IImsCallSession;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -109,7 +107,6 @@ import org.mockito.stubbing.Answer;
 public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker mCTUT;
     private MmTelFeature.Listener mMmTelListener;
-    private FeatureConnector.Listener<ImsManager> mConnectorListener;
     private ImsMmTelManager.CapabilityCallback mCapabilityCallback;
     private ImsCall.Listener mImsCallListener;
     private ImsCall mImsCall;
@@ -128,10 +125,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneConnection mImsPhoneConnection;
     @Mock
     private INetworkStatsProviderCallback mVtDataUsageProviderCb;
-    @Mock
-    private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
-    @Mock
-    private FeatureConnector<ImsManager> mMockConnector;
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -189,6 +182,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
         mImsCallProfile.mCallExtras = mBundle;
+        mImsManagerInstances.put(mImsPhone.getPhoneId(), mImsManager);
         mImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mSecondImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mImsPhoneConnectionListener = mock(ImsPhoneConnection.Listener.class);
@@ -203,6 +197,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             mMmTelListener = (MmTelFeature.Listener) invocation.getArguments()[0];
             return null;
         }).when(mImsManager).open(any(MmTelFeature.Listener.class));
+
 
         doAnswer(new Answer<ImsCall>() {
             @Override
@@ -233,13 +228,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         doReturn(mImsConfig).when(mImsManager).getConfigInterface();
 
-        doAnswer((Answer<FeatureConnector<ImsManager>>) invocation -> {
-            mConnectorListener =
-                    (FeatureConnector.Listener<ImsManager>) invocation.getArguments()[3];
-            return mMockConnector;
-        }).when(mConnectorFactory).create(any(), anyInt(), anyString(), any(), any());
+        doNothing().when(mImsManager).addNotifyStatusChangedCallbackIfAvailable(any());
 
-        mCTUT = new ImsPhoneCallTracker(mImsPhone, mConnectorFactory, Runnable::run);
+        mCTUT = new ImsPhoneCallTracker(mImsPhone, Runnable::run);
         mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
         mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
                 ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
@@ -265,9 +256,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         logd("ImsPhoneCallTracker initiated");
         processAllMessages();
-
-        verify(mMockConnector).connect();
-        mConnectorListener.connectionReady(mImsManager);
     }
 
     @After
@@ -744,6 +732,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     public void testDialImsServiceUnavailable() throws ImsException {
         doThrow(new ImsException("Test Exception", ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN)).when(
                 mImsManager).createCallProfile(anyInt(), anyInt());
+        mCTUT.setRetryTimeout(() -> 0);
         assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
 
@@ -754,9 +743,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
 
         processAllMessages();
-
-        // Simulate ImsManager getting reconnected.
-        mConnectorListener.connectionReady(mImsManager);
         verify(mImsManager, never()).makeCall(nullable(ImsCallProfile.class),
                 eq(new String[]{"+17005554141"}), nullable(ImsCall.Listener.class));
         // Make sure that open is called in ImsPhoneCallTracker when it was first connected and
@@ -773,6 +759,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doThrow(new ImsException("Test Exception", ImsReasonInfo.CODE_LOCAL_IMS_SERVICE_DOWN)).when(
                 mImsManager).setUiTTYMode(nullable(Context.class), anyInt(),
                 nullable(Message.class));
+        // Remove retry timeout delay
+        mCTUT.setRetryTimeout(() -> 0); //ms
 
         mCTUT.setUiTTYMode(0, new Message());
 

@@ -30,7 +30,6 @@ import android.system.StructStatVfs;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.text.TextUtils;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -377,7 +376,7 @@ public class TelephonyComponentFactory {
     }
 
     public ImsPhoneCallTracker makeImsPhoneCallTracker(ImsPhone imsPhone) {
-        return new ImsPhoneCallTracker(imsPhone, ImsManager::getConnector);
+        return new ImsPhoneCallTracker(imsPhone);
     }
 
     public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {

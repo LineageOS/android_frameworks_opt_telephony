@@ -29,7 +29,6 @@ import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -41,6 +40,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
+import android.telephony.ims.aidl.IImsMmTelFeature;
+import android.telephony.ims.aidl.IImsRcsFeature;
 import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
@@ -51,9 +52,6 @@ import android.util.LocalLog;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.android.ims.FeatureConnector;
-import com.android.ims.ImsFeatureBinderRepository;
-import com.android.ims.ImsFeatureContainer;
 import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.os.SomeArgs;
@@ -85,7 +83,7 @@ import java.util.stream.Collectors;
  * 2. Device overlay default value (including no SIM case).
  *
  * ImsManager can then retrieve the binding to the correct ImsService using
- * {@link #listenForFeature} on a per-slot and per feature basis.
+ * {@link #getImsServiceControllerAndListen} on a per-slot and per feature basis.
  */
 
 public class ImsResolver implements ImsServiceController.ImsServiceControllerCallbacks {
@@ -344,8 +342,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
          * @return the ImsServiceController created using the context and componentName supplied.
          */
         ImsServiceController create(Context context, ComponentName componentName,
-                ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                ImsFeatureBinderRepository repo);
+                ImsServiceController.ImsServiceControllerCallbacks callbacks);
     }
 
     private ImsServiceControllerFactory mImsServiceControllerFactory =
@@ -358,9 +355,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
         @Override
         public ImsServiceController create(Context context, ComponentName componentName,
-                ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                ImsFeatureBinderRepository repo) {
-            return new ImsServiceController(context, componentName, callbacks, repo);
+                ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+            return new ImsServiceController(context, componentName, callbacks);
         }
     };
 
@@ -382,9 +378,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
                 @Override
                 public ImsServiceController create(Context context, ComponentName componentName,
-                        ImsServiceController.ImsServiceControllerCallbacks callbacks,
-                        ImsFeatureBinderRepository repo) {
-                    return new ImsServiceControllerCompat(context, componentName, callbacks, repo);
+                        ImsServiceController.ImsServiceControllerCallbacks callbacks) {
+                    return new ImsServiceControllerCompat(context, componentName, callbacks);
                 }
             };
 
@@ -398,7 +393,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // registered through, so we must retain the Context as long as we need the receiver to be
     // active.
     private final Context mReceiverContext;
-    private final ImsFeatureBinderRepository mRepo;
     // Locks mBoundImsServicesByFeature only. Be careful to avoid deadlocks from
     // ImsServiceController callbacks.
     private final Object mBoundServicesLock = new Object();
@@ -483,8 +477,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return true;
     });
 
-    private HandlerExecutor mRunnableExecutor = new HandlerExecutor(mHandler);
-
     // Results from dynamic queries to ImsService regarding the features they support.
     private ImsServiceFeatureQueryManager.Listener mDynamicQueryListener =
             new ImsServiceFeatureQueryManager.Listener() {
@@ -528,12 +520,11 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     private ImsServiceFeatureQueryManager mFeatureQueryManager;
 
     public ImsResolver(Context context, String defaultMmTelPackageName,
-            String defaultRcsPackageName, int numSlots, ImsFeatureBinderRepository repo) {
+            String defaultRcsPackageName, int numSlots) {
         Log.i(TAG, "device MMTEL package: " + defaultMmTelPackageName + ", device RCS package:"
                 + defaultRcsPackageName);
         mContext = context;
         mNumSlots = numSlots;
-        mRepo = repo;
         mReceiverContext = context.createContextAsUser(UserHandle.ALL, 0 /*flags*/);
 
         mCarrierServices = new SparseArray<>(mNumSlots);
@@ -680,19 +671,75 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     /**
+     * Returns the {@link IImsMmTelFeature} that corresponds to the given slot Id or {@link null} if
+     * the service is not available. If an IImsMMTelFeature is available, the
+     * {@link IImsServiceFeatureCallback} callback is registered as a listener for feature updates.
+     * @param slotId The SIM slot that we are requesting the {@link IImsMmTelFeature} for.
+     * @param callback Listener that will send updates to ImsManager when there are updates to
+     * the feature.
+     * @return {@link IImsMmTelFeature} interface or {@link null} if it is unavailable.
+     */
+    public IImsMmTelFeature getMmTelFeatureAndListen(int slotId,
+            IImsServiceFeatureCallback callback) {
+        ImsServiceController controller = getImsServiceControllerAndListen(slotId,
+                ImsFeature.FEATURE_MMTEL, callback);
+        return (controller != null) ? controller.getMmTelFeature(slotId) : null;
+    }
+
+    /**
+     * Returns the {@link IImsRcsFeature} that corresponds to the given slot Id for emergency
+     * calling or {@link null} if the service is not available. If an IImsMMTelFeature is
+     * available, the {@link IImsServiceFeatureCallback} callback is registered as a listener for
+     * feature updates.
+     * @param slotId The SIM slot that we are requesting the {@link IImsRcsFeature} for.
+     * @param callback listener that will send updates to ImsManager when there are updates to
+     * the feature.
+     * @return {@link IImsRcsFeature} interface or {@link null} if it is unavailable.
+     */
+    public IImsRcsFeature getRcsFeatureAndListen(int slotId, IImsServiceFeatureCallback callback) {
+        ImsServiceController controller = getImsServiceControllerAndListen(slotId,
+                ImsFeature.FEATURE_RCS, callback);
+        return (controller != null) ? controller.getRcsFeature(slotId) : null;
+    }
+
+    /**
      * Returns the ImsRegistration structure associated with the slotId and feature specified.
      */
-    public @Nullable IImsRegistration getImsRegistration(int slotId, int feature) {
-        ImsFeatureContainer fc = mRepo.getIfExists(slotId, feature).orElse(null);
-        return  (fc != null) ? fc.imsRegistration : null;
+    public @Nullable IImsRegistration getImsRegistration(int slotId, int feature)
+            throws RemoteException {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
+        if (controller != null) {
+            return controller.getRegistration(slotId);
+        }
+        return null;
     }
 
     /**
      * Returns the ImsConfig structure associated with the slotId and feature specified.
      */
-    public @Nullable IImsConfig getImsConfig(int slotId, int feature) {
-        ImsFeatureContainer fc = mRepo.getIfExists(slotId, feature).orElse(null);
-        return  (fc != null) ? fc.imsConfig : null;
+    public @Nullable IImsConfig getImsConfig(int slotId, int feature)
+            throws RemoteException {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
+        if (controller != null) {
+            return controller.getConfig(slotId);
+        }
+        return null;
+    }
+
+    @VisibleForTesting
+    public ImsServiceController getImsServiceController(int slotId, int feature) {
+        if (slotId < 0 || slotId >= mNumSlots) {
+            return null;
+        }
+        ImsServiceController controller;
+        synchronized (mBoundServicesLock) {
+            SparseArray<ImsServiceController> services = mBoundImsServicesByFeature.get(slotId);
+            if (services == null) {
+                return null;
+            }
+            controller = services.get(feature);
+        }
+        return controller;
     }
 
     private  SparseArray<ImsServiceController> getImsServiceControllers(int slotId) {
@@ -708,36 +755,32 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
     }
 
-    /**
-     * Register a new listener for the feature type and slot specified. ImsServiceController will
-     * update the connections as they become available.
-     */
-    public void listenForFeature(int slotId, int feature, IImsServiceFeatureCallback callback) {
-        mRepo.registerForConnectionUpdates(slotId, feature, callback, mRunnableExecutor);
-    }
+    @VisibleForTesting
+    public ImsServiceController getImsServiceControllerAndListen(int slotId, int feature,
+            IImsServiceFeatureCallback callback) {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
 
-    /**
-     * Do not set up a persistent callback, but rather call back once depending on if the feature
-     * requested exists.
-     */
-    public void callBackIfExists(int slotId, int feature, IImsServiceFeatureCallback callback) {
-        ImsFeatureContainer c = mRepo.getIfExists(slotId, feature).orElse(null);
-        try {
-            if (c != null) {
-                callback.imsFeatureCreated(c);
-            } else {
-                callback.imsFeatureRemoved(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
-            }
-        } catch (RemoteException ignore) { } //remote is dead.
+        if (controller != null) {
+            controller.addImsServiceFeatureCallback(callback);
+            return controller;
+        }
+        return null;
     }
 
     /**
      * Unregister a previously registered IImsServiceFeatureCallback through
-     * {@link #listenForFeature(int, int, IImsServiceFeatureCallback)}.
+     * {@link #getImsServiceControllerAndListen(int, int, IImsServiceFeatureCallback)} .
+     * @param slotId The slot id associated with the ImsFeature.
+     * @param feature The {@link ImsFeature.FeatureType}
      * @param callback The callback to be unregistered.
      */
-    public void unregisterImsFeatureCallback(IImsServiceFeatureCallback callback) {
-        mRepo.unregisterForConnectionUpdates(callback);
+    public void unregisterImsFeatureCallback(int slotId, int feature,
+            IImsServiceFeatureCallback callback) {
+        ImsServiceController controller = getImsServiceController(slotId, feature);
+
+        if (controller != null) {
+            controller.removeImsServiceFeatureCallback(callback);
+        }
     }
 
     // Used for testing only.
@@ -1014,7 +1057,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     Log.w(TAG, "bindImsService: error=" + e.getMessage());
                 }
             } else {
-                controller = info.controllerFactory.create(mContext, info.name, this, mRepo);
+                controller = info.controllerFactory.create(mContext, info.name, this);
                 Log.i(TAG, "Binding ImsService: " + controller.getComponentName()
                         + " with features: " + features);
                 controller.bind(features);
@@ -1081,7 +1124,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      * {@link ImsServiceController.ImsServiceControllerCallbacks#imsServiceFeatureCreated}, which
      * removes the ImsServiceController from the mBoundImsServicesByFeature structure.
      */
-    @Override
     public void imsServiceFeatureCreated(int slotId, int feature, ImsServiceController controller) {
         putImsController(slotId, feature, controller);
     }
@@ -1091,7 +1133,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      * {@link ImsServiceController.ImsServiceControllerCallbacks#imsServiceFeatureRemoved}, which
      * removes the ImsServiceController from the mBoundImsServicesByFeature structure.
      */
-    @Override
     public void imsServiceFeatureRemoved(int slotId, int feature, ImsServiceController controller) {
         removeImsController(slotId, feature);
     }
@@ -1590,6 +1631,22 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
         pw.decreaseIndent();
         pw.decreaseIndent();
+        pw.println("Bound Features:");
+        pw.increaseIndent();
+        for (int i = 0; i < mNumSlots; i++) {
+            for (int j = 0; j < MmTelFeature.FEATURE_MAX; j++) {
+                pw.print("slot=");
+                pw.print(i);
+                pw.print(", feature=");
+                pw.print(ImsFeature.FEATURE_LOG_MAP.getOrDefault(j, "?"));
+                pw.println(": ");
+                pw.increaseIndent();
+                ImsServiceController c = getImsServiceController(i, j);
+                pw.println(c == null ? "none" : c);
+                pw.decreaseIndent();
+            }
+        }
+        pw.decreaseIndent();
         pw.println("Cached ImsServices:");
         pw.increaseIndent();
         for (ImsServiceInfo i : mInstalledServicesCache.values()) {
@@ -1604,10 +1661,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             c.dump(pw);
             pw.decreaseIndent();
         }
-        pw.decreaseIndent();
-        pw.println("Connection Repository Log:");
-        pw.increaseIndent();
-        mRepo.dump(pw);
         pw.decreaseIndent();
         pw.println("Event Log:");
         pw.increaseIndent();

@@ -147,17 +147,6 @@ public class ImsPhone extends ImsPhoneBase {
     // Default Emergency Callback Mode exit timer
     private static final long DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
-    /**
-     * Used to create ImsManager instances, which may be injected during testing.
-     */
-    @VisibleForTesting
-    public interface ImsManagerFactory {
-        /**
-         * Create a new instance of ImsManager for the specified phoneId.
-         */
-        ImsManager create(Context context, int phoneId);
-    }
-
     public static class ImsDialArgs extends DialArgs {
         public static class Builder extends DialArgs.Builder<ImsDialArgs.Builder> {
             private android.telecom.Connection.RttTextStream mRttTextStream;
@@ -238,8 +227,6 @@ public class ImsPhone extends ImsPhoneBase {
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
     @UnsupportedAppUsage
     private ServiceState mSS = new ServiceState();
-
-    private final ImsManagerFactory mImsManagerFactory;
 
     // To redial silently through GSM or CDMA when dialing through IMS fails
     private String mLastDialString;
@@ -397,16 +384,15 @@ public class ImsPhone extends ImsPhoneBase {
 
     // Constructors
     public ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone) {
-        this(context, notifier, defaultPhone, ImsManager::getInstance, false);
+        this(context, notifier, defaultPhone, false);
     }
 
     @VisibleForTesting
     public ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone,
-            ImsManagerFactory imsManagerFactory, boolean unitTestMode) {
+                    boolean unitTestMode) {
         super("ImsPhone", context, notifier, unitTestMode);
 
         mDefaultPhone = defaultPhone;
-        mImsManagerFactory = imsManagerFactory;
         // The ImsExternalCallTracker needs to be defined before the ImsPhoneCallTracker, as the
         // ImsPhoneCallTracker uses a thread to spool up the ImsManager.  Part of this involves
         // setting the multiendpoint listener on the external call tracker.  So we need to ensure
@@ -2150,7 +2136,7 @@ public class ImsPhone extends ImsPhoneBase {
         if (imsReasonInfo.mCode == imsReasonInfo.CODE_REGISTRATION_ERROR
                 && imsReasonInfo.mExtraMessage != null) {
             // Suppress WFC Registration notifications if WFC is not enabled by the user.
-            if (mImsManagerFactory.create(mContext, mPhoneId).isWfcEnabledByUser()) {
+            if (ImsManager.getInstance(mContext, mPhoneId).isWfcEnabledByUser()) {
                 processWfcDisconnectForNotification(imsReasonInfo);
             }
         }
@@ -2314,7 +2300,7 @@ public class ImsPhone extends ImsPhoneBase {
             // when receives ACTION_CARRIER_CONFIG_CHANGED broadcast.
             if (configManager != null && CarrierConfigManager.isConfigForIdentifiedCarrier(
                     configManager.getConfigForSubId(getSubId()))) {
-                ImsManager imsManager = mImsManagerFactory.create(mContext, mPhoneId);
+                ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
                 imsManager.setWfcMode(imsManager.getWfcMode(newRoamingState), newRoamingState);
             }
         } else {
