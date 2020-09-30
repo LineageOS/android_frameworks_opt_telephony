@@ -3414,13 +3414,13 @@ public class ServiceStateTracker extends Handler {
                 }
             }
 
-            if (hasCssIndicatorChanged) {
-                mPhone.notifyAllActiveDataConnections();
-            }
-
             mReasonDataDenied = mNewReasonDataDenied;
             mMaxDataCalls = mNewMaxDataCalls;
             mRejectCode = mNewRejectCode;
+        }
+
+        if (hasCssIndicatorChanged) {
+            mPhone.notifyAllActiveDataConnections();
         }
 
         ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
