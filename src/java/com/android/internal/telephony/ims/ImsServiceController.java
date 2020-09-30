@@ -628,8 +628,7 @@ public class ImsServiceController {
         }
         if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
             IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType);
-            addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f.asBinder(),
-                    capabilities);
+            addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f, capabilities);
             addImsFeatureStatusCallback(featurePair.slotId, featurePair.featureType);
         } else {
             // Don't update ImsService for emergency MMTEL feature.
@@ -722,10 +721,17 @@ public class ImsServiceController {
         mIImsServiceController.removeImsFeature(slotId, featureType);
     }
 
-    private void addImsFeatureBinder(int slotId, int featureType, IBinder b, long capabilities)
+    private void addImsFeatureBinder(int slotId, int featureType, IInterface b, long capabilities)
             throws RemoteException {
-        ImsFeatureContainer fc =
-                (b == null) ? null : createFeatureContainer(slotId, b, capabilities);
+        if (b == null) {
+
+            Log.w(LOG_TAG, "addImsFeatureBinder: null IInterface reported for "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType));
+            mLocalLog.log("addImsFeatureBinder: null IInterface reported for "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType));
+            return;
+        }
+        ImsFeatureContainer fc = createFeatureContainer(slotId, b.asBinder(), capabilities);
         mRepo.addConnection(slotId, featureType, fc);
     }
 

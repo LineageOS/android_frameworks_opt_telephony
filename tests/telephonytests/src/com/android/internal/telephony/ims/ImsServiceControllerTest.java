@@ -475,6 +475,26 @@ public class ImsServiceControllerTest extends ImsTestBase {
     }
 
     /**
+     * Ensures that ImsServiceController handles a null ImsFeature instance properly.
+     */
+    @SmallTest
+    @Test
+    public void testBindServiceAndImsFeatureReturnedNull() throws RemoteException {
+        when(mMockServiceControllerBinder.createRcsFeature(anyInt()))
+                .thenReturn(null);
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
+
+        bindAndConnectService(testFeatures);
+
+        verify(mMockServiceControllerBinder).createRcsFeature(SLOT_0);
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
+                eq(mTestImsServiceController));
+        validateRcsFeatureContainerDoesntExist(SLOT_0);
+    }
+
+    /**
      * Ensures ImsService and ImsResolver are notified when a feature is added.
      */
     @SmallTest
