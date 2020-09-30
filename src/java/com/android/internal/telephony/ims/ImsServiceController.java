@@ -29,6 +29,8 @@ import android.os.UserHandle;
 import android.permission.PermissionManager;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
+import android.telephony.ims.aidl.IImsMmTelFeature;
+import android.telephony.ims.aidl.IImsRcsFeature;
 import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.aidl.IImsServiceController;
 import android.telephony.ims.feature.ImsFeature;
@@ -36,16 +38,17 @@ import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.util.LocalLog;
 import android.util.Log;
 
-import com.android.ims.ImsFeatureBinderRepository;
-import com.android.ims.ImsFeatureContainer;
 import com.android.ims.internal.IImsFeatureStatusCallback;
+import com.android.ims.internal.IImsServiceFeatureCallback;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
@@ -84,8 +87,7 @@ public class ImsServiceController {
                     notifyImsServiceReady();
                     // create all associated features in the ImsService
                     for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
-                        long caps = calculateCapabiltiesForSlot(mImsFeatures, i.slotId);
-                        addImsServiceFeature(i, caps);
+                        addImsServiceFeature(i);
                     }
                 } catch (RemoteException e) {
                     mIsBound = false;
@@ -212,7 +214,6 @@ public class ImsServiceController {
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
     private final PermissionManager mPermissionManager;
-    private ImsFeatureBinderRepository mRepo;
     private ImsServiceControllerCallbacks mCallbacks;
     private ExponentialBackoff mBackoff;
 
@@ -220,8 +221,11 @@ public class ImsServiceController {
     private boolean mIsBinding = false;
     // Set of a pair of slotId->feature
     private Set<ImsFeatureConfiguration.FeatureSlotPair> mImsFeatures;
+    // Binder interfaces to the features set in mImsFeatures;
+    private HashSet<ImsFeatureContainer> mImsFeatureBinders = new HashSet<>();
     private IImsServiceController mIImsServiceController;
     private ImsServiceConnection mImsServiceConnection;
+    private Set<IImsServiceFeatureCallback> mImsStatusCallbacks = ConcurrentHashMap.newKeySet();
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
     private final LocalLog mLocalLog = new LocalLog(10);
@@ -240,6 +244,43 @@ public class ImsServiceController {
         }
     };
 
+    private class ImsFeatureContainer {
+        public int slotId;
+        public int featureType;
+        private IInterface mBinder;
+
+        ImsFeatureContainer(int slotId, int featureType, IInterface binder) {
+            this.slotId = slotId;
+            this.featureType = featureType;
+            this.mBinder = binder;
+        }
+
+        // Casts the IInterface into the binder class we are looking for.
+        public <T extends IInterface> T resolve(Class<T> className) {
+            return className.cast(mBinder);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            ImsFeatureContainer that = (ImsFeatureContainer) o;
+
+            if (slotId != that.slotId) return false;
+            if (featureType != that.featureType) return false;
+            return mBinder != null ? mBinder.equals(that.mBinder) : that.mBinder == null;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = slotId;
+            result = 31 * result + featureType;
+            result = 31 * result + (mBinder != null ? mBinder.hashCode() : 0);
+            return result;
+        }
+    }
+
     /**
      * Container class for the IImsFeatureStatusCallback callback implementation. This class is
      * never used directly, but we need to keep track of the IImsFeatureStatusCallback
@@ -256,7 +297,7 @@ public class ImsServiceController {
                 Log.i(LOG_TAG, "notifyImsFeatureStatus: slot=" + mSlotId + ", feature="
                         + ImsFeature.FEATURE_LOG_MAP.get(mFeatureType) + ", status="
                         + ImsFeature.STATE_LOG_MAP.get(featureStatus));
-                mRepo.notifyFeatureStateChanged(mSlotId, mFeatureType, featureStatus);
+                sendImsFeatureStatusChanged(mSlotId, mFeatureType, featureStatus);
             }
         };
 
@@ -296,7 +337,7 @@ public class ImsServiceController {
     };
 
     public ImsServiceController(Context context, ComponentName componentName,
-            ImsServiceControllerCallbacks callbacks, ImsFeatureBinderRepository repo) {
+            ImsServiceControllerCallbacks callbacks) {
         mContext = context;
         mComponentName = componentName;
         mCallbacks = callbacks;
@@ -309,15 +350,13 @@ public class ImsServiceController {
                 mRestartImsServiceRunnable);
         mPermissionManager =
                 (PermissionManager) mContext.getSystemService(Context.PERMISSION_SERVICE);
-        mRepo = repo;
     }
 
     @VisibleForTesting
     // Creating a new HandlerThread and background handler for each test causes a segfault, so for
     // testing, use a handler supplied by the testing system.
     public ImsServiceController(Context context, ComponentName componentName,
-            ImsServiceControllerCallbacks callbacks, Handler handler, RebindRetry rebindRetry,
-            ImsFeatureBinderRepository repo) {
+            ImsServiceControllerCallbacks callbacks, Handler handler, RebindRetry rebindRetry) {
         mContext = context;
         mComponentName = componentName;
         mCallbacks = callbacks;
@@ -328,7 +367,6 @@ public class ImsServiceController {
                 handler,
                 mRestartImsServiceRunnable);
         mPermissionManager = null;
-        mRepo = repo;
     }
 
     /**
@@ -403,6 +441,7 @@ public class ImsServiceController {
             mBackoff.stop();
             // Clean up all features
             changeImsServiceFeatures(new HashSet<>());
+            removeImsServiceFeatureCallbacks();
             mIsBound = false;
             mIsBinding = false;
             setServiceController(null);
@@ -435,8 +474,7 @@ public class ImsServiceController {
                         new HashSet<>(mImsFeatures);
                 newFeatures.removeAll(oldImsFeatures);
                 for (ImsFeatureConfiguration.FeatureSlotPair i : newFeatures) {
-                    long caps = calculateCapabiltiesForSlot(newFeatures, i.slotId);
-                    addImsServiceFeature(i, caps);
+                    addImsServiceFeature(i);
                 }
                 // remove old features
                 HashSet<ImsFeatureConfiguration.FeatureSlotPair> oldFeatures =
@@ -445,12 +483,6 @@ public class ImsServiceController {
                 for (ImsFeatureConfiguration.FeatureSlotPair i : oldFeatures) {
                     removeImsServiceFeature(i);
                 }
-                // ensure the capabilities have been updated for unchanged features.
-                HashSet<ImsFeatureConfiguration.FeatureSlotPair> unchangedFeatures =
-                        new HashSet<>(mImsFeatures);
-                unchangedFeatures.removeAll(oldFeatures);
-                unchangedFeatures.removeAll(newFeatures);
-                updateCapsForUnchangedFeatures(unchangedFeatures);
             }
         }
     }
@@ -474,6 +506,35 @@ public class ImsServiceController {
         return mComponentName;
     }
 
+    /**
+     * Add a callback to ImsManager that signals a new feature that the ImsServiceProxy can handle.
+     */
+    public void addImsServiceFeatureCallback(IImsServiceFeatureCallback callback) {
+        mImsStatusCallbacks.add(callback);
+        Set<ImsFeatureConfiguration.FeatureSlotPair> features;
+        synchronized (mLock) {
+            if (mImsFeatures == null || mImsFeatures.isEmpty()) {
+                return;
+            }
+            features = new HashSet<>(mImsFeatures);
+        }
+        // notify the new status callback of the features that are available.
+        try {
+            for (ImsFeatureConfiguration.FeatureSlotPair i : features) {
+                callback.imsFeatureCreated(i.slotId, i.featureType);
+            }
+        } catch (RemoteException e) {
+            Log.w(LOG_TAG, "addImsServiceFeatureCallback: exception notifying callback");
+        }
+    }
+
+    /**
+     * Removes a previously registered callback if it was associated with this feature.
+     */
+    public void removeImsServiceFeatureCallback(IImsServiceFeatureCallback callback) {
+        mImsStatusCallbacks.remove(callback);
+    }
+
     public void enableIms(int slotId) {
         try {
             synchronized (mLock) {
@@ -495,6 +556,35 @@ public class ImsServiceController {
             }
         } catch (RemoteException e) {
             Log.w(LOG_TAG, "Couldn't disable IMS: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Return the {@Link MMTelFeature} binder on the slot associated with the slotId.
+     * Used for normal calling.
+     */
+    public IImsMmTelFeature getMmTelFeature(int slotId) {
+        synchronized (mLock) {
+            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.FEATURE_MMTEL);
+            if (f == null) {
+                Log.w(LOG_TAG, "Requested null MMTelFeature on slot " + slotId);
+                return null;
+            }
+            return f.resolve(IImsMmTelFeature.class);
+        }
+    }
+
+    /**
+     * Return the {@Link RcsFeature} binder on the slot associated with the slotId.
+     */
+    public IImsRcsFeature getRcsFeature(int slotId) {
+        synchronized (mLock) {
+            ImsFeatureContainer f = getImsFeatureContainer(slotId, ImsFeature.FEATURE_RCS);
+            if (f == null) {
+                Log.w(LOG_TAG, "Requested null RcsFeature on slot " + slotId);
+                return null;
+            }
+            return f.resolve(IImsRcsFeature.class);
         }
     }
 
@@ -550,6 +640,11 @@ public class ImsServiceController {
         return mIImsServiceController != null;
     }
 
+    @VisibleForTesting
+    public void removeImsServiceFeatureCallbacks() {
+            mImsStatusCallbacks.clear();
+    }
+
     // Only add a new rebind if there are no pending rebinds waiting.
     private void startDelayedRebindToService() {
         mBackoff.start();
@@ -568,28 +663,6 @@ public class ImsServiceController {
                 mLocalLog.log("Note: unbindService called with no ServiceConnection on "
                         + mComponentName);
             }
-        }
-    }
-
-    private long calculateCapabiltiesForSlot(
-            Set<ImsFeatureConfiguration.FeatureSlotPair> features, int slotId) {
-        // We only consider MMTEL_EMERGENCY as a capability here, so set the capability if the
-        // ImsService has declared it.
-        long caps = 0;
-        for (ImsFeatureConfiguration.FeatureSlotPair p : features) {
-            if (p.featureType == ImsFeature.FEATURE_EMERGENCY_MMTEL && p.slotId == slotId) {
-                caps |= ImsService.CAPABILITY_EMERGENCY_OVER_MMTEL;
-            }
-        }
-        return caps;
-    }
-
-    // This method should only be called when synchronized on mLock
-    private void updateCapsForUnchangedFeatures(
-            Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
-        for (ImsFeatureConfiguration.FeatureSlotPair p : features) {
-            long caps = calculateCapabiltiesForSlot(features, p.slotId);
-            mRepo.notifyFeatureCapabilitiesChanged(p.slotId, p.featureType, caps);
         }
     }
 
@@ -618,9 +691,53 @@ public class ImsServiceController {
         }
     }
 
+    private void sendImsFeatureCreatedCallback(int slot, int feature) {
+        for (Iterator<IImsServiceFeatureCallback> i = mImsStatusCallbacks.iterator();
+                i.hasNext(); ) {
+            IImsServiceFeatureCallback callbacks = i.next();
+            try {
+                callbacks.imsFeatureCreated(slot, feature);
+            } catch (RemoteException e) {
+                // binder died, remove callback.
+                Log.w(LOG_TAG, "sendImsFeatureCreatedCallback: Binder died, removing "
+                        + "callback. Exception:" + e.getMessage());
+                i.remove();
+            }
+        }
+    }
+
+    private void sendImsFeatureRemovedCallback(int slot, int feature) {
+        for (Iterator<IImsServiceFeatureCallback> i = mImsStatusCallbacks.iterator();
+                i.hasNext(); ) {
+            IImsServiceFeatureCallback callbacks = i.next();
+            try {
+                callbacks.imsFeatureRemoved(slot, feature);
+            } catch (RemoteException e) {
+                // binder died, remove callback.
+                Log.w(LOG_TAG, "sendImsFeatureRemovedCallback: Binder died, removing "
+                        + "callback. Exception:" + e.getMessage());
+                i.remove();
+            }
+        }
+    }
+
+    private void sendImsFeatureStatusChanged(int slot, int feature, int status) {
+        for (Iterator<IImsServiceFeatureCallback> i = mImsStatusCallbacks.iterator();
+                i.hasNext(); ) {
+            IImsServiceFeatureCallback callbacks = i.next();
+            try {
+                callbacks.imsStatusChanged(slot, feature, status);
+            } catch (RemoteException e) {
+                // binder died, remove callback.
+                Log.w(LOG_TAG, "sendImsFeatureStatusChanged: Binder died, removing "
+                        + "callback. Exception:" + e.getMessage());
+                i.remove();
+            }
+        }
+    }
+
     // This method should only be called when synchronized on mLock
-    private void addImsServiceFeature(ImsFeatureConfiguration.FeatureSlotPair featurePair,
-            long capabilities)
+    private void addImsServiceFeature(ImsFeatureConfiguration.FeatureSlotPair featurePair)
             throws RemoteException {
         if (!isServiceControllerAvailable() || mCallbacks == null) {
             Log.w(LOG_TAG, "addImsServiceFeature called with null values.");
@@ -628,8 +745,7 @@ public class ImsServiceController {
         }
         if (featurePair.featureType != ImsFeature.FEATURE_EMERGENCY_MMTEL) {
             IInterface f = createImsFeature(featurePair.slotId, featurePair.featureType);
-            addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f.asBinder(),
-                    capabilities);
+            addImsFeatureBinder(featurePair.slotId, featurePair.featureType, f);
             addImsFeatureStatusCallback(featurePair.slotId, featurePair.featureType);
         } else {
             // Don't update ImsService for emergency MMTEL feature.
@@ -637,6 +753,9 @@ public class ImsServiceController {
         }
         // Signal ImsResolver to change supported ImsFeatures for this ImsServiceController
         mCallbacks.imsServiceFeatureCreated(featurePair.slotId, featurePair.featureType, this);
+        // Send callback to ImsServiceProxy to change supported ImsFeatures including emergency
+        // MMTEL state.
+        sendImsFeatureCreatedCallback(featurePair.slotId, featurePair.featureType);
     }
 
     // This method should only be called when synchronized on mLock
@@ -663,6 +782,11 @@ public class ImsServiceController {
             // Don't update ImsService for emergency MMTEL feature.
             Log.i(LOG_TAG, "doesn't support emergency calling on slot " + featurePair.slotId);
         }
+        // Send callback to FeatureConnection to change supported ImsFeatures
+        // Ensure that FeatureConnection callback occurs after ImsResolver callback. If an
+        // ImsManager requests the ImsService while it is being removed in ImsResolver, this
+        // callback will clean it up after.
+        sendImsFeatureRemovedCallback(featurePair.slotId, featurePair.featureType);
     }
 
     // This method should only be called when already synchronized on mLock.
@@ -722,31 +846,25 @@ public class ImsServiceController {
         mIImsServiceController.removeImsFeature(slotId, featureType);
     }
 
-    private void addImsFeatureBinder(int slotId, int featureType, IBinder b, long capabilities)
-            throws RemoteException {
-        ImsFeatureContainer fc =
-                (b == null) ? null : createFeatureContainer(slotId, b, capabilities);
-        mRepo.addConnection(slotId, featureType, fc);
+    // This method should only be called when synchronized on mLock
+    private void addImsFeatureBinder(int slotId, int featureType, IInterface b) {
+        mImsFeatureBinders.add(new ImsFeatureContainer(slotId, featureType, b));
     }
 
+    // This method should only be called when synchronized on mLock
     private void removeImsFeatureBinder(int slotId, int featureType) {
-        mRepo.removeConnection(slotId, featureType);
+        ImsFeatureContainer container = mImsFeatureBinders.stream()
+                .filter(f-> (f.slotId == slotId && f.featureType == featureType))
+                .findFirst().orElse(null);
+        if (container != null) {
+            mImsFeatureBinders.remove(container);
+        }
     }
 
-    private ImsFeatureContainer createFeatureContainer(int slotId, IBinder b, long capabilities)
-            throws RemoteException {
-        IImsConfig config = getConfig(slotId);
-        IImsRegistration reg = getRegistration(slotId);
-        // When either is null, this is an unexpected condition. Do not report the ImsService as
-        // being available.
-        if (config == null || reg == null) {
-            Log.w(LOG_TAG, "createFeatureContainer: invalid state. Reporting as not "
-                    + "available. componentName= " + getComponentName());
-            mLocalLog.log("createFeatureContainer: invalid state. Reporting as not "
-                    + "available.");
-            return null;
-        }
-        return new ImsFeatureContainer(b, config, reg, capabilities);
+    private ImsFeatureContainer getImsFeatureContainer(int slotId, int featureType) {
+        return mImsFeatureBinders.stream()
+                .filter(f-> (f.slotId == slotId && f.featureType == featureType))
+                .findFirst().orElse(null);
     }
 
     private void cleanupAllFeatures() {
@@ -755,6 +873,9 @@ public class ImsServiceController {
             for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
                 removeImsServiceFeature(i);
             }
+            // remove all MmTelFeatureConnection callbacks, since we have already sent removed
+            // callback.
+            removeImsServiceFeatureCallbacks();
         }
     }
 
