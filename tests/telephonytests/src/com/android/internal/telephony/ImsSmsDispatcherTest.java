@@ -29,11 +29,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
+import android.os.Looper;
 import android.telephony.SmsMessage;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.testing.AndroidTestingRunner;
-import android.testing.TestableLooper;
 
 import com.android.ims.FeatureConnector;
 import com.android.ims.ImsManager;
@@ -42,15 +41,12 @@ import com.android.internal.util.HexDump;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.stubbing.Answer;
 
 import java.util.HashMap;
 
-@RunWith(AndroidTestingRunner.class)
-@TestableLooper.RunWithLooper
 public class ImsSmsDispatcherTest extends TelephonyTest {
     @Mock private SmsDispatchersController mSmsDispatchersController;
     @Mock private SMSDispatcher.SmsTracker mSmsTracker;
@@ -63,27 +59,23 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        if (Looper.myLooper() == null) {
+            Looper.prepare();
+        }
 
         doAnswer((Answer<FeatureConnector<ImsManager>>) invocation -> {
             mImsManagerListener =
-                    (FeatureConnector.Listener<ImsManager>) invocation.getArguments()[3];
+                    (FeatureConnector.Listener<ImsManager>) invocation.getArguments()[2];
             return mMockConnector;
-        }).when(mConnectorFactory).create(any(), anyInt(), anyString(), any(), any());
+        }).when(mConnectorFactory).create(any(), anyInt(), any(), anyString());
         mImsSmsDispatcher = new ImsSmsDispatcher(mPhone, mSmsDispatchersController,
                 mConnectorFactory);
-        processAllMessages();
         // set the ImsManager instance
         verify(mMockConnector).connect();
         mImsManagerListener.connectionReady(mImsManager);
         when(mSmsDispatchersController.isIms()).thenReturn(true);
         mTrackerData = new HashMap<>(1);
         when(mSmsTracker.getData()).thenReturn(mTrackerData);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        mImsSmsDispatcher = null;
-        super.tearDown();
     }
 
     /**
@@ -214,5 +206,11 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         mImsSmsDispatcher.getSmsListener().onSendSmsResult(token, 0,
                 ImsSmsImplBase.SEND_STATUS_ERROR, 0, 41);
         verify(mSmsTracker).onFailed(any(Context.class), anyInt(), eq(41));
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mImsSmsDispatcher = null;
+        super.tearDown();
     }
 }
