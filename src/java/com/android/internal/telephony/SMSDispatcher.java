@@ -744,9 +744,10 @@ public abstract class SMSDispatcher extends Handler {
     protected void handleSendComplete(AsyncResult ar) {
         SmsTracker tracker = (SmsTracker) ar.userObj;
         PendingIntent sentIntent = tracker.mSentIntent;
+        SmsResponse smsResponse = (SmsResponse) ar.result;
 
-        if (ar.result != null) {
-            tracker.mMessageRef = ((SmsResponse)ar.result).mMessageRef;
+        if (smsResponse != null) {
+            tracker.mMessageRef = smsResponse.mMessageRef;
         } else {
             Rlog.d(TAG, "SmsResponse was null");
         }
@@ -763,15 +764,22 @@ public abstract class SMSDispatcher extends Handler {
             }
             tracker.onSent(mContext);
             mPhone.notifySmsSent(tracker.mDestAddress);
+
+            mPhone.getSmsStats().onOutgoingSms(
+                    tracker.mImsRetry > 0 /* isOverIms */,
+                    SmsConstants.FORMAT_3GPP2.equals(getFormat()),
+                    false /* fallbackToCs */,
+                    SmsManager.RESULT_ERROR_NONE,
+                    tracker.mMessageId,
+                    tracker.isFromDefaultSmsApplication(mContext));
         } else {
             if (DBG) {
-                Rlog.d(TAG, "SMS send failed"
-                        + " id: " + tracker.mMessageId);
+                Rlog.d(TAG, "SMS send failed id: " + tracker.mMessageId);
             }
 
             int ss = mPhone.getServiceState().getState();
 
-            if ( tracker.mImsRetry > 0 && ss != ServiceState.STATE_IN_SERVICE) {
+            if (tracker.mImsRetry > 0 && ss != ServiceState.STATE_IN_SERVICE) {
                 // This is retry after failure over IMS but voice is not available.
                 // Set retry to max allowed, so no retry is sent and
                 //   cause RESULT_ERROR_GENERIC_FAILURE to be returned to app.
@@ -789,6 +797,13 @@ public abstract class SMSDispatcher extends Handler {
             // if sms over IMS is not supported on data and voice is not available...
             if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
                 tracker.onFailed(mContext, getNotInServiceError(ss), NO_ERROR_CODE);
+                mPhone.getSmsStats().onOutgoingSms(
+                        tracker.mImsRetry > 0 /* isOverIms */,
+                        SmsConstants.FORMAT_3GPP2.equals(getFormat()),
+                        false /* fallbackToCs */,
+                        getNotInServiceError(ss),
+                        tracker.mMessageId,
+                        tracker.isFromDefaultSmsApplication(mContext));
             } else if ((((CommandException)(ar.exception)).getCommandError()
                     == CommandException.Error.SMS_FAIL_RETRY) &&
                    tracker.mRetryCount < MAX_SEND_RETRIES) {
@@ -801,20 +816,35 @@ public abstract class SMSDispatcher extends Handler {
                 //       message, depending on the failure).  Also, in some
                 //       implementations this retry is handled by the baseband.
                 tracker.mRetryCount++;
+                int errorCode = (smsResponse != null) ? smsResponse.mErrorCode : NO_ERROR_CODE;
                 Message retryMsg = obtainMessage(EVENT_SEND_RETRY, tracker);
                 sendMessageDelayed(retryMsg, SEND_RETRY_DELAY);
+                mPhone.getSmsStats().onOutgoingSms(
+                        tracker.mImsRetry > 0 /* isOverIms */,
+                        SmsConstants.FORMAT_3GPP2.equals(getFormat()),
+                        false /* fallbackToCs */,
+                        SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY,
+                        errorCode,
+                        tracker.mMessageId,
+                        tracker.isFromDefaultSmsApplication(mContext));
             } else {
-                int errorCode = NO_ERROR_CODE;
-                if (ar.result != null) {
-                    errorCode = ((SmsResponse)ar.result).mErrorCode;
-                }
+                int errorCode = (smsResponse != null) ? smsResponse.mErrorCode : NO_ERROR_CODE;
                 int error = rilErrorToSmsManagerResult(((CommandException) (ar.exception))
                         .getCommandError());
                 tracker.onFailed(mContext, error, errorCode);
+                mPhone.getSmsStats().onOutgoingSms(
+                        tracker.mImsRetry > 0 /* isOverIms */,
+                        SmsConstants.FORMAT_3GPP2.equals(getFormat()),
+                        false /* fallbackToCs */,
+                        error,
+                        errorCode,
+                        tracker.mMessageId,
+                        tracker.isFromDefaultSmsApplication(mContext));
             }
         }
     }
 
+    @SmsManager.Result
     private static int rilErrorToSmsManagerResult(CommandException.Error rilError) {
         switch (rilError) {
             case RADIO_NOT_AVAILABLE:
@@ -868,6 +898,7 @@ public abstract class SMSDispatcher extends Handler {
      * @param ss service state
      * @return The result error based on input service state for not in service error
      */
+    @SmsManager.Result
     protected static int getNotInServiceError(int ss) {
         if (ss == ServiceState.STATE_POWER_OFF) {
             return RESULT_ERROR_RADIO_OFF;
@@ -1281,7 +1312,7 @@ public abstract class SMSDispatcher extends Handler {
      */
     @VisibleForTesting
     public void sendRawPdu(SmsTracker[] trackers) {
-        int error = RESULT_ERROR_NONE;
+        @SmsManager.Result int error = RESULT_ERROR_NONE;
         PackageInfo appInfo = null;
         if (mSmsSendDisabled) {
             Rlog.e(TAG, "Device does not support sending sms.");
@@ -1597,9 +1628,21 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    private void handleSmsTrackersFailure(SmsTracker[] trackers, int error, int errorCode) {
+    private void handleSmsTrackersFailure(SmsTracker[] trackers, @SmsManager.Result int error,
+            int errorCode) {
         for (SmsTracker tracker : trackers) {
             tracker.onFailed(mContext, error, errorCode);
+        }
+        if (trackers.length > 0) {
+            // This error occurs before the SMS is sent. Make an assumption if it would have
+            // been sent over IMS or not.
+            mPhone.getSmsStats().onOutgoingSms(
+                    isIms(),
+                    SmsConstants.FORMAT_3GPP2.equals(getFormat()),
+                    false /* fallbackToCs */,
+                    error,
+                    trackers[0].mMessageId,
+                    trackers[0].isFromDefaultSmsApplication(mContext));
         }
     }
 
@@ -1665,6 +1708,8 @@ public abstract class SMSDispatcher extends Handler {
 
         public final long mMessageId;
 
+        private Boolean mIsFromDefaultSmsApplication;
+
         // SMS anomaly uuid
         private final UUID mAnomalyUUID = UUID.fromString("43043600-ea7a-44d2-9ae6-a58567ac7886");
 
@@ -1710,6 +1755,16 @@ public abstract class SMSDispatcher extends Handler {
          */
         public String getAppPackageName() {
             return mAppInfo != null ? mAppInfo.packageName : null;
+        }
+
+        /** Return if the SMS was originated from the default SMS application. */
+        public boolean isFromDefaultSmsApplication(Context context) {
+            if (mIsFromDefaultSmsApplication == null) {
+                // Perform a lazy initialization, due to the cost of the operation.
+                mIsFromDefaultSmsApplication =
+                        SmsApplication.isDefaultSmsApplication(context, getAppPackageName());
+            }
+            return mIsFromDefaultSmsApplication;
         }
 
         /**
@@ -1762,8 +1817,7 @@ public abstract class SMSDispatcher extends Handler {
          * @return The telephony provider URI if stored
          */
         private Uri persistSentMessageIfRequired(Context context, int messageType, int errorCode) {
-            if (!mIsText || !mPersistMessage ||
-                    !SmsApplication.shouldWriteMessageForPackage(mAppInfo.packageName, context)) {
+            if (!mIsText || !mPersistMessage || isFromDefaultSmsApplication(context)) {
                 return null;
             }
             Rlog.d(TAG, "Persist SMS into "

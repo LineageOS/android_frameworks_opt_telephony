@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 5
+// Next id: 9
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated RawVoiceCallRatUsage raw_voice_call_rat_usage = 1;
@@ -42,6 +42,12 @@ message PersistAtoms {
 
     /* Timestamp of last incoming_sms pull. */
     optional int64 incoming_sms_pull_timestamp_millis = 6;
+
+    /* Outgoing SMS statistics and information. */
+    repeated OutgoingSms outgoing_sms = 7;
+
+    /* Timestamp of last incoming_sms pull. */
+    optional int64 outgoing_sms_pull_timestamp_millis = 8;
 }
 
 // The canonical versions of the following enums live in:
@@ -104,4 +110,20 @@ message IncomingSms {
     optional bool is_esim = 12;
     optional int32 carrier_id = 13;
     optional int64 message_id = 14;
+}
+
+message OutgoingSms {
+    optional int32 sms_format = 1;
+    optional int32 sms_tech = 2;
+    optional int32 rat = 3;
+    optional int32 send_result = 4;
+    optional int32 error_code = 5;
+    optional bool is_roaming = 6;
+    optional bool is_from_default_app = 7;
+    optional int32 sim_slot_index = 8;
+    optional bool is_multi_sim = 9;
+    optional bool is_esim = 10;
+    optional int32 carrier_id = 11;
+    optional int64 message_id = 12;
+    optional int32 retry_id = 13;
 }
