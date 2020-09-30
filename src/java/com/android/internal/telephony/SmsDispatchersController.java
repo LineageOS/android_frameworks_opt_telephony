@@ -38,7 +38,7 @@ import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 
-import com.android.ims.ImsManager;
+import com.android.ims.FeatureConnector;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
@@ -138,7 +138,7 @@ public class SmsDispatchersController extends Handler {
 
         // Create dispatchers, inbound SMS handlers and
         // broadcast undelivered messages in raw table.
-        mImsSmsDispatcher = new ImsSmsDispatcher(phone, this, ImsManager::getConnector);
+        mImsSmsDispatcher = new ImsSmsDispatcher(phone, this, FeatureConnector::new);
         mCdmaDispatcher = new CdmaSMSDispatcher(phone, this);
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone);
