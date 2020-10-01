@@ -342,7 +342,8 @@ public class DataConnection extends StateMachine {
     static final int EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED = BASE + 30;
     static final int EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED = BASE + 31;
     static final int EVENT_CSS_INDICATOR_CHANGED = BASE + 32;
-    private static final int CMD_TO_STRING_COUNT = EVENT_CSS_INDICATOR_CHANGED - BASE + 1;
+    static final int EVENT_UPDATE_SUSPENDED_STATE = BASE + 33;
+    private static final int CMD_TO_STRING_COUNT = EVENT_UPDATE_SUSPENDED_STATE - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -387,6 +388,7 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED - BASE] =
                 "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
         sCmdToString[EVENT_CSS_INDICATOR_CHANGED - BASE] = "EVENT_CSS_INDICATOR_CHANGED";
+        sCmdToString[EVENT_UPDATE_SUSPENDED_STATE - BASE] = "EVENT_UPDATE_SUSPENDED_STATE";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -2271,6 +2273,13 @@ public class DataConnection extends StateMachine {
                 // created when the network is already connected. Hence, send the connected
                 // notification immediately.
                 mNetworkAgent.markConnected();
+
+                // The network agent is always created with NOT_SUSPENDED capability, but the
+                // network might be already out of service (or voice call is ongoing) just right
+                // before data connection is created. Connectivity service would not allow a network
+                // created with suspended state, so we create a non-suspended network first, and
+                // then immediately evaluate the suspended state.
+                sendMessage(obtainMessage(EVENT_UPDATE_SUSPENDED_STATE));
             }
 
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
@@ -2444,13 +2453,21 @@ public class DataConnection extends StateMachine {
                     // fallthrough
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED:
-                case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
-                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED:
-                case EVENT_CSS_INDICATOR_CHANGED: {
-                    updateSuspendState();
+                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
                     if (mNetworkAgent != null) {
                         mNetworkAgent.updateLegacySubtype(DataConnection.this);
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
+                                DataConnection.this);
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
+                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED:
+                case EVENT_CSS_INDICATOR_CHANGED:
+                case EVENT_UPDATE_SUSPENDED_STATE: {
+                    updateSuspendState();
+                    if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
                                 DataConnection.this);
                     }
