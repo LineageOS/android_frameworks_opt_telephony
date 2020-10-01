@@ -51,7 +51,6 @@ import android.util.LocalLog;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.android.ims.FeatureConnector;
 import com.android.ims.ImsFeatureBinderRepository;
 import com.android.ims.ImsFeatureContainer;
 import com.android.ims.internal.IImsServiceFeatureCallback;
@@ -714,21 +713,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      */
     public void listenForFeature(int slotId, int feature, IImsServiceFeatureCallback callback) {
         mRepo.registerForConnectionUpdates(slotId, feature, callback, mRunnableExecutor);
-    }
-
-    /**
-     * Do not set up a persistent callback, but rather call back once depending on if the feature
-     * requested exists.
-     */
-    public void callBackIfExists(int slotId, int feature, IImsServiceFeatureCallback callback) {
-        ImsFeatureContainer c = mRepo.getIfExists(slotId, feature).orElse(null);
-        try {
-            if (c != null) {
-                callback.imsFeatureCreated(c);
-            } else {
-                callback.imsFeatureRemoved(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
-            }
-        } catch (RemoteException ignore) { } //remote is dead.
     }
 
     /**

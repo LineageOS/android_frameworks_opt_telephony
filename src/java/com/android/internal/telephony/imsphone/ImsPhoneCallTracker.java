@@ -990,8 +990,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         log("startListeningForCalls");
         mOperationLocalLog.log("startListeningForCalls - Connecting to ImsService");
         mImsManager.open(mMmTelFeatureListener);
-        mImsManager.addRegistrationCallback(mPhone.getImsMmTelRegistrationCallback());
-        mImsManager.addCapabilitiesCallback(mImsCapabilityCallback);
+        mImsManager.addRegistrationCallback(mPhone.getImsMmTelRegistrationCallback(), this::post);
+        mImsManager.addCapabilitiesCallback(mImsCapabilityCallback, this::post);
 
         mImsManager.setConfigListener(mImsConfigListener);
 
