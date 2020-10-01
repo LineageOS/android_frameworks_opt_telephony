@@ -115,6 +115,7 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -4476,5 +4477,18 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean canDisablePhysicalSubscription() {
         return mCi.canToggleUiccApplicationsEnablement();
+    }
+
+    @Override
+    public @NonNull List<String> getEquivalentHomePlmns() {
+        if (isPhoneTypeGsm()) {
+            IccRecords r = mIccRecords.get();
+            if (r != null) {
+                return Arrays.asList(r.getEhplmns());
+            }
+        } else if (isPhoneTypeCdma()) {
+            loge("EHPLMN is not available in CDMA");
+        }
+        return Collections.emptyList();
     }
 }

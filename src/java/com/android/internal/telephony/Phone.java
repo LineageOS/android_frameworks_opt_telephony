@@ -95,6 +95,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -4413,6 +4414,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public boolean useSsOverIms(Message onComplete) {
         return false;
+    }
+
+    /**
+     * Returns a list of the equivalent home PLMNs (EF_EHPLMN) from the USIM app.
+     *
+     * @return A list of equivalent home PLMNs. Returns an empty list if EF_EHPLMN is empty or
+     * does not exist on the SIM card.
+     */
+    public @NonNull List<String> getEquivalentHomePlmns() {
+        return Collections.emptyList();
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
