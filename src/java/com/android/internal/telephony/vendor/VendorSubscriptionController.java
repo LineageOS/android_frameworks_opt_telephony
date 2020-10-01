@@ -154,24 +154,32 @@ public class VendorSubscriptionController extends SubscriptionController {
     public int setUiccApplicationsEnabled(boolean enabled, int subId) {
         if (DBG) logd("[setUiccApplicationsEnabled]+ enabled:" + enabled + " subId:" + subId);
 
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
+        enforceModifyPhoneState("setUiccApplicationsEnabled");
 
-        int result = mContext.getContentResolver().update(
-                SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+        long identity = Binder.clearCallingIdentity();
+        try {
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
 
-        // Refresh the Cache of Active Subscription Info List
-        refreshCachedActiveSubscriptionInfoList();
+            int result = mContext.getContentResolver().update(
+                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
 
-        notifySubscriptionInfoChanged();
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
 
-        if (isActiveSubId(subId)) {
-            Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
-            phone.enableUiccApplications(enabled, Message.obtain(
-                    mSubscriptionHandler, EVENT_UICC_APPS_ENABLEMENT_DONE, enabled));
+            notifyUiccAppsEnableChanged();
+            notifySubscriptionInfoChanged();
+
+            if (isActiveSubId(subId)) {
+                Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+                phone.enableUiccApplications(enabled, Message.obtain(
+                        mSubscriptionHandler, EVENT_UICC_APPS_ENABLEMENT_DONE, enabled));
+            }
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-
-        return result;
     }
 
     /*
