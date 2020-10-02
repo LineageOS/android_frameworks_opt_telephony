@@ -32,6 +32,7 @@ import android.app.AlarmManager;
 import android.app.AppOpsManager;
 import android.app.DownloadManager;
 import android.app.NotificationManager;
+import android.app.UiModeManager;
 import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -295,10 +296,12 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.ACTIVITY_SERVICE;
             } else if (serviceClass == LocationManager.class) {
                 return Context.LOCATION_SERVICE;
-            } else if (serviceClass == CarrierConfigManager.class){
+            } else if (serviceClass == CarrierConfigManager.class) {
                 return Context.CARRIER_CONFIG_SERVICE;
             } else if (serviceClass == TelephonyManager.class) {
                 return Context.TELEPHONY_SERVICE;
+            } else if (serviceClass == UiModeManager.class) {
+                return Context.UI_MODE_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
