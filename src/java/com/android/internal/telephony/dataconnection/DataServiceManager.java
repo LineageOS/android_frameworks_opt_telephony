@@ -148,7 +148,9 @@ public class DataServiceManager extends Handler {
                     });
             TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS,
-                UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
+                    UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
+            mAppOps.setMode(AppOpsManager.OPSTR_FINE_LOCATION,
+                    UserHandle.myUserId(), pkgToGrant[0], AppOpsManager.MODE_ALLOWED);
         } catch (RuntimeException e) {
             loge("Binder to package manager died, permission grant for DataService failed.");
             throw e;
@@ -182,6 +184,8 @@ public class DataServiceManager extends Handler {
             TelephonyUtils.waitUntilReady(latch, CHANGE_PERMISSION_TIMEOUT_MS);
             for (String pkg : dataServices) {
                 mAppOps.setMode(AppOpsManager.OPSTR_MANAGE_IPSEC_TUNNELS, UserHandle.myUserId(),
+                        pkg, AppOpsManager.MODE_ERRORED);
+                mAppOps.setMode(AppOpsManager.OPSTR_FINE_LOCATION, UserHandle.myUserId(),
                         pkg, AppOpsManager.MODE_ERRORED);
             }
         } catch (RuntimeException e) {
