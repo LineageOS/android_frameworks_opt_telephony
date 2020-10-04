@@ -20,7 +20,6 @@ import android.annotation.UnsupportedAppUsage;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
-import android.os.HandlerThread;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -249,7 +248,6 @@ public class IccPhoneBookInterfaceManager {
         checkThread();
         Request updateRequest = new Request();
         synchronized (updateRequest) {
-            checkThread();
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
