@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cddb3c7a_ea06c2fb",
+        "filename": "src/java/com/android/internal/telephony/IccPhoneBookInterfaceManager.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2020-10-04T06:34:39Z",
+      "side": 1,
+      "message": "Was comparing some code with CAF, and it appears this line should not be here.\n\nhttps://source.codeaurora.org/quic/la/platform/frameworks/opt/telephony/tree/src/java/com/android/internal/telephony/IccPhoneBookInterfaceManager.java?h\u003dLA.UM.8.6.c26-01100-89xx.0#n248",
+      "revId": "40172abf89d7a45403f6b0c5ed1caa04bf032aac",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
