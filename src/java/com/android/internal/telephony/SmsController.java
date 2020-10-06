@@ -816,7 +816,7 @@ public class SmsController extends ISmsImplBase {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
 
         if (iccSmsIntMgr != null ) {
-            return iccSmsIntMgr.getSmsCapacityOnIcc();
+            return iccSmsIntMgr.getSmsCapacityOnIcc(getCallingPackage(), null);
         } else {
             Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
             return 0;
