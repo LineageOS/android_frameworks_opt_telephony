@@ -22,11 +22,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.os.Bundle;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallSession;
+import android.telephony.ims.ImsStreamMediaProfile;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.ims.ImsCall;
@@ -35,6 +40,7 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class ImsCallTest extends TelephonyTest {
 
@@ -51,6 +57,36 @@ public class ImsCallTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         super.tearDown();
+    }
+
+    @Test
+    @SmallTest
+    public void testCallSessionProgressingAppliedMediaCaps() throws Exception {
+        ImsCallSession mockSession = mock(ImsCallSession.class);
+        ImsCall testImsCall = new ImsCall(mContext, mTestCallProfile);
+        ImsCallProfile profile = new ImsCallProfile();
+        when(mockSession.getCallProfile()).thenReturn(profile);
+        testImsCall.attachSession(mockSession);
+
+        ArgumentCaptor<ImsCallSession.Listener> listenerCaptor =
+                ArgumentCaptor.forClass(ImsCallSession.Listener.class);
+        verify(mockSession).setListener(listenerCaptor.capture());
+        ImsCallSession.Listener listener = listenerCaptor.getValue();
+        assertNotNull(listener);
+
+        // Set new profile with direction of none
+        ImsStreamMediaProfile newProfile = new ImsStreamMediaProfile(
+                ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB,
+                ImsStreamMediaProfile.DIRECTION_INACTIVE,
+                ImsStreamMediaProfile.VIDEO_QUALITY_NONE,
+                ImsStreamMediaProfile.DIRECTION_INACTIVE,
+                ImsStreamMediaProfile.RTT_MODE_DISABLED);
+        listener.callSessionProgressing(mockSession, newProfile);
+
+        ImsStreamMediaProfile testProfile = testImsCall.getCallProfile().getMediaProfile();
+        assertNotNull(testProfile);
+        // Assert that the new direction was applied to the profile
+        assertEquals(ImsStreamMediaProfile.DIRECTION_INACTIVE, testProfile.getAudioDirection());
     }
 
     @Test
