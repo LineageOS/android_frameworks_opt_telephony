@@ -229,7 +229,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             mCapabilityCallback = (ImsMmTelManager.CapabilityCallback) invocation.getArguments()[0];
             return mCapabilityCallback;
 
-        }).when(mImsManager).addCapabilitiesCallback(any(ImsMmTelManager.CapabilityCallback.class));
+        }).when(mImsManager).addCapabilitiesCallback(
+                any(ImsMmTelManager.CapabilityCallback.class), any());
 
         doReturn(mImsConfig).when(mImsManager).getConfigInterface();
 
