@@ -339,7 +339,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     log("onReceive : Updating mAllowEmergencyVideoCalls = " +
                             mAllowEmergencyVideoCalls);
                 }
-            } else if (TelecomManager.ACTION_CHANGE_DEFAULT_DIALER.equals(intent.getAction())) {
+            } else if (TelecomManager.ACTION_DEFAULT_DIALER_CHANGED.equals(intent.getAction())) {
                 mDefaultDialerUid.set(getPackageUid(context, intent.getStringExtra(
                         TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME)));
             }
@@ -910,7 +910,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         IntentFilter intentfilter = new IntentFilter();
         intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intentfilter.addAction(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER);
+        intentfilter.addAction(TelecomManager.ACTION_DEFAULT_DIALER_CHANGED);
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
         cacheCarrierConfiguration(mPhone.getSubId());
 
