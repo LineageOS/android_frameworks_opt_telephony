@@ -2466,6 +2466,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             //detach the disconnected connections
             conn.getCall().detach(conn);
             removeConnection(conn);
+
+            // remove conference participants from the cached list when call is disconnected
+            List<ConferenceParticipant> cpList = imsCall.getConferenceParticipants();
+            if (cpList != null) {
+                for (ConferenceParticipant cp : cpList) {
+                    String number = ConferenceParticipant.getParticipantAddress(cp.getHandle(),
+                            getCountryIso()).getSchemeSpecificPart();
+                    if (!TextUtils.isEmpty(number)) {
+                        String formattedNumber = getFormattedPhoneNumber(number);
+                        mPhoneNumAndConnTime.remove(formattedNumber);
+                    }
+                }
+            }
         }
 
         if (changed) {
