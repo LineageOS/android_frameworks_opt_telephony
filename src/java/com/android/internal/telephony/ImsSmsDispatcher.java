@@ -292,8 +292,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     }
 
     private void setListeners() throws ImsException {
-        getImsManager().addRegistrationCallback(mRegistrationCallback);
-        getImsManager().addCapabilitiesCallback(mCapabilityCallback);
+        getImsManager().addRegistrationCallback(mRegistrationCallback, this::post);
+        getImsManager().addCapabilitiesCallback(mCapabilityCallback, this::post);
         getImsManager().setSmsListener(getSmsListener());
         getImsManager().onSmsReady();
     }
