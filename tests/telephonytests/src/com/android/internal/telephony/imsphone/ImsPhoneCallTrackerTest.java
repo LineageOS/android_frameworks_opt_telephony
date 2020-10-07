@@ -183,6 +183,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         imsCall.attachSession(mImsCallSession);
         doReturn("1").when(mImsCallSession).getCallId();
+        doReturn(mImsCallProfile).when(mImsCallSession).getCallProfile();
     }
 
     @Before
