@@ -813,9 +813,6 @@ public class CallManager {
             }
         }
 
-        // FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
-        //mIsEccDialing = PhoneNumberUtils.isEmergencyNumber(dialString);
-
         result = phone.dial(dialString, new PhoneInternalInterface.DialArgs.Builder<>()
                 .setVideoState(videoState).build());
 
@@ -2076,8 +2073,6 @@ public class CallManager {
                 case EVENT_DISCONNECT:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_DISCONNECT)");
                     mDisconnectRegistrants.notifyRegistrants((AsyncResult) msg.obj);
-                    // FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
-                    //mIsEccDialing = false;
                     break;
                 case EVENT_PRECISE_CALL_STATE_CHANGED:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_PRECISE_CALL_STATE_CHANGED)");
