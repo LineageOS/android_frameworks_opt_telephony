@@ -24,6 +24,7 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.SmsManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.aidl.IImsSmsListener;
@@ -140,7 +141,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     private final IImsSmsListener mImsSmsListener = new IImsSmsListener.Stub() {
         @Override
         public void onSendSmsResult(int token, int messageRef, @SendStatusResult int status,
-                int reason, int networkReasonCode) {
+                @SmsManager.Result int reason, int networkReasonCode) {
             final long identity = Binder.clearCallingIdentity();
             try {
                 logd("onSendSmsResult token=" + token + " messageRef=" + messageRef
@@ -179,6 +180,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         break;
                     default:
                 }
+                mPhone.getSmsStats().onOutgoingSms(
+                        true /* isOverIms */,
+                        SmsConstants.FORMAT_3GPP2.equals(getFormat()),
+                        status == ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK,
+                        reason,
+                        tracker.mMessageId,
+                        tracker.isFromDefaultSmsApplication(mContext));
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }
@@ -442,6 +450,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             fallbackToPstn(tracker);
             mMetrics.writeImsServiceSendSms(mPhone.getPhoneId(), format,
                     ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK, tracker.mMessageId);
+            mPhone.getSmsStats().onOutgoingSms(
+                    true /* isOverIms */,
+                    SmsConstants.FORMAT_3GPP2.equals(format),
+                    true /* fallbackToCs */,
+                    SmsManager.RESULT_SYSTEM_ERROR,
+                    tracker.mMessageId,
+                    tracker.isFromDefaultSmsApplication(mContext));
         }
     }
 
