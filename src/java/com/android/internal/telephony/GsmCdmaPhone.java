@@ -4483,7 +4483,7 @@ public class GsmCdmaPhone extends Phone {
     public @NonNull List<String> getEquivalentHomePlmns() {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
-            if (r != null) {
+            if (r != null && r.getEhplmns() != null) {
                 return Arrays.asList(r.getEhplmns());
             }
         } else if (isPhoneTypeCdma()) {
