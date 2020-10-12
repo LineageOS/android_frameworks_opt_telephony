@@ -87,6 +87,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private PersistAtomsStorage mStorage;
     private final StatsManager mStatsManager;
+    private final AirplaneModeStats mAirplaneModeStats;
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
@@ -103,6 +104,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
         }
+
+        mAirplaneModeStats = new AirplaneModeStats(context);
     }
 
     /** Replaces the {@link PersistAtomsStorage} backing the puller. Used during unit tests. */

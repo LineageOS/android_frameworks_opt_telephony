@@ -114,6 +114,7 @@ import com.android.internal.telephony.cat.ComprehensionTlvTag;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.metrics.ModemRestartStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
@@ -5986,6 +5987,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     void writeMetricsModemRestartEvent(String reason) {
         mMetrics.writeModemRestartEvent(mPhoneId, reason);
+        // Write metrics to statsd. Generate metric only when modem reset is detected by the
+        // first instance of RIL to avoid duplicated events.
+        if (mPhoneId == 0) {
+            ModemRestartStats.onModemRestart(reason);
+        }
     }
 
     /**
