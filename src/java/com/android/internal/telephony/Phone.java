@@ -3873,7 +3873,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (imsPhone != null) {
             isAvailable = imsPhone.isImsCapabilityAvailable(capability, regTech);
         }
-        Rlog.d(LOG_TAG, "isImsRegistered =" + isAvailable);
+        Rlog.d(LOG_TAG, "isImsCapabilityAvailable, capability=" + capability + ", regTech="
+                + regTech + ", isAvailable=" + isAvailable);
         return isAvailable;
     }
 
@@ -3887,7 +3888,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (imsPhone != null) {
             isVolteEnabled = imsPhone.isVolteEnabled();
         }
-        Rlog.d(LOG_TAG, "isImsRegistered =" + isVolteEnabled);
+        Rlog.d(LOG_TAG, "isVolteEnabled=" + isVolteEnabled);
         return isVolteEnabled;
     }
 
