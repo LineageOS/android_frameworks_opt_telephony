@@ -29,8 +29,8 @@ import android.os.Handler;
 import android.os.Process;
 import android.os.UserHandle;
 import android.provider.Settings;
-import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
+import android.telephony.TelephonyManager;
 import android.util.AtomicFile;
 import android.util.Xml;
 
@@ -396,8 +396,9 @@ public class SmsUsageMonitor {
      */
     public int checkDestination(String destAddress, String countryIso) {
         synchronized (mSettingsObserverHandler) {
+            TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
             // always allow emergency numbers
-            if (PhoneNumberUtils.isEmergencyNumber(destAddress, countryIso)) {
+            if (tm.isEmergencyNumber(destAddress)) {
                 if (DBG) Rlog.d(TAG, "isEmergencyNumber");
                 return SmsManager.SMS_CATEGORY_NOT_SHORT_CODE;
             }

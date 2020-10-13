@@ -297,6 +297,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.LOCATION_SERVICE;
             } else if (serviceClass == CarrierConfigManager.class){
                 return Context.CARRIER_CONFIG_SERVICE;
+            } else if (serviceClass == TelephonyManager.class) {
+                return Context.TELEPHONY_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
