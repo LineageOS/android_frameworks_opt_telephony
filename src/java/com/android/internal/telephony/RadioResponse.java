@@ -2820,16 +2820,16 @@ public class RadioResponse extends IRadioResponse.Stub {
             if (responseInfo.error == RadioError.NONE) {
                 final int sleepModeTimeMs = activityInfo.sleepModeTimeMs;
                 final int idleModeTimeMs = activityInfo.idleModeTimeMs;
-                int [] txModeTimeMs = new int[ModemActivityInfo.TX_POWER_LEVELS];
-                for (int i = 0; i < ModemActivityInfo.TX_POWER_LEVELS; i++) {
+                int [] txModeTimeMs = new int[ModemActivityInfo.getNumTxPowerLevels()];
+                for (int i = 0; i < ModemActivityInfo.getNumTxPowerLevels(); i++) {
                     txModeTimeMs[i] = activityInfo.txmModetimeMs[i];
                 }
                 final int rxModeTimeMs = activityInfo.rxModeTimeMs;
                 ret = new ModemActivityInfo(SystemClock.elapsedRealtime(), sleepModeTimeMs,
                         idleModeTimeMs, txModeTimeMs, rxModeTimeMs);
             } else {
-                ret = new ModemActivityInfo(0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS],
-                        0);
+                ret = new ModemActivityInfo(0, 0, 0,
+                        new int[ModemActivityInfo.getNumTxPowerLevels()], 0);
                 responseInfo.error = RadioError.NONE;
             }
             sendMessageResponse(rr.mResult, ret);

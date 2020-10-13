@@ -71,7 +71,7 @@ public class ModemPowerMetrics {
             m.rxTimeMs = stats.getRxTimeMillis();
 
             List<Long> txTimeMillis = new ArrayList<>();
-            for (int i = 0; i < ModemActivityInfo.TX_POWER_LEVELS; i++) {
+            for (int i = 0; i < ModemActivityInfo.getNumTxPowerLevels(); i++) {
                 long t = stats.getTxTimeMillis(i);
                 if (t >= 0) {
                     txTimeMillis.add(t);
