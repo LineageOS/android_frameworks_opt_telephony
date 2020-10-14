@@ -148,7 +148,7 @@ public class VendorDcTracker extends DcTracker {
 
     @Override
     protected void onDataSetupCompleteError(ApnContext apnContext,
-            @RequestNetworkType int requestType) {
+            @RequestNetworkType int requestType, boolean fallback) {
         long delay = apnContext.getDelayForNextApn(mFailFast);
         if (mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_pdp_reject_enable_retry)) {
