@@ -146,10 +146,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         SharedPreferences getDefaultSharedPreferences(Context context);
     }
 
-    public interface PhoneNumberUtilsProxy {
-        boolean isEmergencyNumber(String number);
-    }
-
     private static final boolean DBG = true;
 
     // When true, dumps the state of ImsPhoneCallTracker after changes to foreground and background
@@ -849,14 +845,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return PreferenceManager.getDefaultSharedPreferences(context);
     };
 
-    /**
-     * Default implementation for determining if a number is an emergency number.  Uses the real
-     * PhoneNumberUtils.
-     */
-    private PhoneNumberUtilsProxy mPhoneNumberUtilsProxy = (String string) -> {
-        return PhoneNumberUtils.isEmergencyNumber(string);
-    };
-
     private Runnable mConnectorRunnable = new Runnable() {
         @Override
         public void run() {
@@ -949,15 +937,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void setSharedPreferenceProxy(SharedPreferenceProxy sharedPreferenceProxy) {
         mSharedPreferenceProxy = sharedPreferenceProxy;
-    }
-
-    /**
-     * Test-only method used to mock out access to the phone number utils class.
-     * @param phoneNumberUtilsProxy
-     */
-    @VisibleForTesting
-    public void setPhoneNumberUtilsProxy(PhoneNumberUtilsProxy phoneNumberUtilsProxy) {
-        mPhoneNumberUtilsProxy = phoneNumberUtilsProxy;
     }
 
     private int getPackageUid(Context context, String pkg) {
@@ -1234,7 +1213,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public synchronized Connection dial(String dialString, ImsPhone.ImsDialArgs dialArgs)
             throws CallStateException {
         boolean isPhoneInEcmMode = isPhoneInEcbMode();
-        boolean isEmergencyNumber = mPhoneNumberUtilsProxy.isEmergencyNumber(dialString);
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        boolean isEmergencyNumber = tm.isEmergencyNumber(dialString);
 
         if (!shouldNumberBePlacedOnIms(isEmergencyNumber, dialString)) {
             Rlog.i(LOG_TAG, "dial: shouldNumberBePlacedOnIms = false");
@@ -1498,7 +1479,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         // Always unmute when initiating a new call
         setMute(false);
-        boolean isEmergencyCall = mPhoneNumberUtilsProxy.isEmergencyNumber(conn.getAddress());
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        boolean isEmergencyCall = tm.isEmergencyNumber(conn.getAddress());
         int serviceType = isEmergencyCall
                 ? ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
         int callType = ImsCallProfile.getCallTypeFromVideoState(videoState);
