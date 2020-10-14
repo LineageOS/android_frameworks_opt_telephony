@@ -1561,7 +1561,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                             TelephonyManager.getDefault().getNetworkType());
                 }
 
-                if (isEmcRetryCause(causeCode)) {
+                if (isEmcRetryCause(causeCode) && mPhone.useImsForEmergency()) {
                     String dialString = "";
                     for(Connection conn : mForegroundCall.mConnections) {
                         GsmCdmaConnection gsmCdmaConnection = (GsmCdmaConnection)conn;
