@@ -596,25 +596,25 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testEmergencyDialSuppressClir() {
+        String dialString = "+17005554141";
         mCTUT.setSharedPreferenceProxy((Context context) -> {
             return mSharedPreferences;
         });
-        // Mock implementation of phone number utils treats everything as an emergency.
-        mCTUT.setPhoneNumberUtilsProxy((String string) -> {
-            return true;
-        });
+
+        doReturn(true).when(mTelephonyManager).isEmergencyNumber(dialString);
+
         // Set preference to hide caller ID.
         ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
         doReturn(CommandsInterface.CLIR_INVOCATION).when(mSharedPreferences).getInt(
                 stringCaptor.capture(), anyInt());
 
         try {
-            mCTUT.dial("+17005554141", VideoProfile.STATE_AUDIO_ONLY, null);
+            mCTUT.dial(dialString, VideoProfile.STATE_AUDIO_ONLY, null);
 
             ArgumentCaptor<ImsCallProfile> profileCaptor = ArgumentCaptor.forClass(
                     ImsCallProfile.class);
             verify(mImsManager, times(1)).makeCall(eq(mImsCallProfile),
-                    eq(new String[]{"+17005554141"}), any());
+                    eq(new String[]{dialString}), any());
 
             // Because this is an emergency call, we expect caller id to be visible now.
             assertEquals(mImsCallProfile.getCallExtraInt(ImsCallProfile.EXTRA_OIR),
