@@ -346,7 +346,8 @@ public class SmsStats {
         }
         // TODO(b/168837897): Returns the RAT at the time the SMS was received..
         ServiceState serviceState = getServiceState();
-        return serviceState != null ? serviceState.getVoiceNetworkType() : null;
+        return serviceState != null
+                ? serviceState.getVoiceNetworkType() : TelephonyManager.NETWORK_TYPE_UNKNOWN;
     }
 
     private boolean getIsRoaming() {
