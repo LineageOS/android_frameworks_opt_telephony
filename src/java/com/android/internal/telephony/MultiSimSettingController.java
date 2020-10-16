@@ -139,6 +139,10 @@ public class MultiSimSettingController extends Handler {
     // mCarrierConfigLoadedSubIds[0] = INVALID_SUBSCRIPTION_ID.
     private int[] mCarrierConfigLoadedSubIds;
 
+    // It indicates whether "Ask every time" option for default SMS subscription is supported by the
+    // device.
+    private final boolean mIsAskEverytimeSupportedForSms;
+
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -193,6 +197,8 @@ public class MultiSimSettingController extends Handler {
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
 
+        mIsAskEverytimeSupportedForSms = mContext.getResources()
+                .getBoolean(com.android.internal.R.bool.config_sms_ask_every_time_support);
         context.registerReceiver(mIntentReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
     }
@@ -557,7 +563,8 @@ public class MultiSimSettingController extends Handler {
         if (DBG) log("[updateDefaultValues] Update default sms subscription");
         boolean smsSelected = updateDefaultValue(mPrimarySubList,
                 mSubController.getDefaultSmsSubId(),
-                (newValue -> mSubController.setDefaultSmsSubId(newValue)));
+                (newValue -> mSubController.setDefaultSmsSubId(newValue)),
+                mIsAskEverytimeSupportedForSms);
 
         sendSubChangeNotificationIfNeeded(change, dataSelected, voiceSelected, smsSelected);
     }
@@ -791,14 +798,23 @@ public class MultiSimSettingController extends Handler {
     // Returns whether the new default value is valid.
     private boolean updateDefaultValue(List<Integer> primarySubList, int oldValue,
             UpdateDefaultAction action) {
+        return updateDefaultValue(primarySubList, oldValue, action, true);
+    }
+
+    private boolean updateDefaultValue(List<Integer> primarySubList, int oldValue,
+            UpdateDefaultAction action, boolean allowInvalidSubId) {
         int newValue = INVALID_SUBSCRIPTION_ID;
 
         if (primarySubList.size() > 0) {
             for (int subId : primarySubList) {
                 if (DBG) log("[updateDefaultValue] Record.id: " + subId);
-                // If the old subId is still active, or there's another active primary subscription
-                // that is in the same group, that should become the new default subscription.
-                if (areSubscriptionsInSameGroup(subId, oldValue)) {
+                // 1) If the old subId is still active, or there's another active primary
+                // subscription that is in the same group, that should become the new default
+                // subscription.
+                // 2) If the old subId is INVALID_SUBSCRIPTION_ID and allowInvalidSubId is false,
+                // first active subscription is used for new default always.
+                if (areSubscriptionsInSameGroup(subId, oldValue)
+                        || (!allowInvalidSubId && oldValue == INVALID_SUBSCRIPTION_ID)) {
                     newValue = subId;
                     log("[updateDefaultValue] updates to subId=" + newValue);
                     break;
