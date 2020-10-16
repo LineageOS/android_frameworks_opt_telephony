@@ -16,10 +16,12 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
 import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_VERSION;
 import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
@@ -100,6 +102,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(VOICE_CALL_SESSION, POLICY_PULL_DAILY);
             registerAtom(INCOMING_SMS, POLICY_PULL_DAILY);
             registerAtom(OUTGOING_SMS, POLICY_PULL_DAILY);
+            registerAtom(CARRIER_ID_TABLE_VERSION, null);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -136,6 +139,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullIncomingSms(data);
             case OUTGOING_SMS:
                 return pullOutgoingSms(data);
+            case CARRIER_ID_TABLE_VERSION:
+                return pullCarrierIdTableVersion(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -180,6 +185,27 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                   SUPPORTED_RADIO_ACCESS_FAMILY,
                   rafSupported));
         return StatsManager.PULL_SUCCESS;
+    }
+
+    private static int pullCarrierIdTableVersion(List<StatsEvent> data) {
+        int version = UNKNOWN_CARRIER_ID_LIST_VERSION;
+        // All phones should have the same version of the carrier ID table, so only query
+        // the first one.
+        try {
+            Phone phone = PhoneFactory.getPhone(0);
+            if (phone != null) {
+                version = phone.getCarrierIdListVersion();
+            }
+        } catch (IllegalStateException e) {
+            // Nothing to do
+        }
+
+        if (version == UNKNOWN_CARRIER_ID_LIST_VERSION) {
+            return StatsManager.PULL_SKIP;
+        } else {
+            data.add(TelephonyStatsLog.buildStatsEvent(CARRIER_ID_TABLE_VERSION, version));
+            return StatsManager.PULL_SUCCESS;
+        }
     }
 
     private int pullVoiceCallRatUsages(List<StatsEvent> data) {
