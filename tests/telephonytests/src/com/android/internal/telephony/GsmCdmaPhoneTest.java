@@ -1375,4 +1375,15 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
     }
+
+    @Test
+    public void testEventCarrierConfigChanged() {
+        mPhoneUT.mCi = mMockCi;
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi).getRadioCapability(captor.capture());
+        assertEquals(captor.getValue().what, Phone.EVENT_GET_RADIO_CAPABILITY);
+    }
 }
