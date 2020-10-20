@@ -27,6 +27,7 @@ import android.os.IInterface;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.permission.PermissionManager;
+import android.telephony.AnomalyReporter;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsRegistration;
@@ -48,6 +49,7 @@ import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
@@ -66,7 +68,7 @@ import java.util.stream.Collectors;
  * called for each feature that is created/removed.
  */
 public class ImsServiceController {
-
+    private final UUID mAnomalyUUID = UUID.fromString("e93b05e4-6d0a-4755-a6da-a2d2dbfb10d6");
     class ImsServiceConnection implements ServiceConnection {
         // Track the status of whether or not the Service has died in case we need to permanently
         // unbind (see onNullBinding below).
@@ -116,6 +118,9 @@ public class ImsServiceController {
             mLocalLog.log("onServiceDisconnected");
             Log.w(LOG_TAG, "ImsService(" + name + "): onServiceDisconnected. Waiting...");
             // Service disconnected, but we are still technically bound. Waiting for reconnect.
+
+            String message = "IMS Service Crashed";
+            AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
         }
 
         @Override
