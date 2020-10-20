@@ -1163,27 +1163,6 @@ public class DcTracker extends Handler {
         return state;
     }
 
-    /** Convert the internal DctConstants enum state to the TelephonyManager DATA_*  state.
-     * @param state the DctConstants.State
-     * @return a corresponding TelephonyManager.DataState
-     */
-    @TelephonyManager.DataState
-    public static int convertDctStateToTelephonyDataState(DctConstants.State state) {
-        switch(state) {
-            case CONNECTING: // fall through
-            case RETRYING:
-                return TelephonyManager.DATA_CONNECTING;
-            case CONNECTED:
-                return TelephonyManager.DATA_CONNECTED;
-            case DISCONNECTING:
-                return TelephonyManager.DATA_DISCONNECTING;
-            case IDLE: // fall through
-            case FAILED: // fall through
-            default:
-                return TelephonyManager.DATA_DISCONNECTED;
-        }
-    }
-
     /**
      * Return a better connection state between {@code stateA} and {@code stateB}. Check
      * {@link #DATA_CONNECTION_STATE_PRIORITIES} for the details.
