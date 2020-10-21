@@ -923,8 +923,10 @@ public class CarrierResolver extends Handler {
 
         // Generate statsd metrics only when MCC/MNC is unknown or there is no match for GID1.
         if (unknownMccmncToLog != null || unknownGid1ToLog != null) {
+            // Pass the PNN value to metrics only if the SPN is empty
+            String pnn = TextUtils.isEmpty(subscriptionRule.spn) ? subscriptionRule.plmn : "";
             CarrierIdMatchStats.onCarrierIdMismatch(
-                    mCarrierId, unknownMccmncToLog, unknownGid1ToLog, subscriptionRule.spn);
+                    mCarrierId, unknownMccmncToLog, unknownGid1ToLog, subscriptionRule.spn, pnn);
         }
     }
 

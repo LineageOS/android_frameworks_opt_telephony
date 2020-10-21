@@ -155,6 +155,7 @@ message CarrierIdMismatch {
     optional string mcc_mnc = 1;
     optional string gid1 = 2;
     optional string spn = 3;
+    optional string pnn = 4;
 }
 
 message DataCallSession {
