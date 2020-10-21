@@ -31,6 +31,7 @@ import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
 import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.aidl.IImsServiceController;
+import android.telephony.ims.aidl.ISipTransport;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.util.LocalLog;
@@ -45,6 +46,7 @@ import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
@@ -82,9 +84,11 @@ public class ImsServiceController {
                             + service);
                     setServiceController(service);
                     notifyImsServiceReady();
+                    retrieveStaticImsServiceCapabilities();
                     // create all associated features in the ImsService
                     for (ImsFeatureConfiguration.FeatureSlotPair i : mImsFeatures) {
-                        long caps = calculateCapabiltiesForSlot(mImsFeatures, i.slotId);
+                        long caps = modifyCapabiltiesForSlot(mImsFeatures, i.slotId,
+                                mServiceCapabilities);
                         addImsServiceFeature(i, caps);
                     }
                 } catch (RemoteException e) {
@@ -221,6 +225,8 @@ public class ImsServiceController {
     // Set of a pair of slotId->feature
     private Set<ImsFeatureConfiguration.FeatureSlotPair> mImsFeatures;
     private IImsServiceController mIImsServiceController;
+    // The Capabilities bitmask of the connected ImsService (see ImsService#ImsServiceCapability).
+    private long mServiceCapabilities;
     private ImsServiceConnection mImsServiceConnection;
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
@@ -435,7 +441,8 @@ public class ImsServiceController {
                         new HashSet<>(mImsFeatures);
                 newFeatures.removeAll(oldImsFeatures);
                 for (ImsFeatureConfiguration.FeatureSlotPair i : newFeatures) {
-                    long caps = calculateCapabiltiesForSlot(newFeatures, i.slotId);
+                    long caps = modifyCapabiltiesForSlot(newFeatures, i.slotId,
+                            mServiceCapabilities);
                     addImsServiceFeature(i, caps);
                 }
                 // remove old features
@@ -450,7 +457,11 @@ public class ImsServiceController {
                         new HashSet<>(mImsFeatures);
                 unchangedFeatures.removeAll(oldFeatures);
                 unchangedFeatures.removeAll(newFeatures);
-                updateCapsForUnchangedFeatures(unchangedFeatures);
+                for (ImsFeatureConfiguration.FeatureSlotPair p : unchangedFeatures) {
+                    long caps = modifyCapabiltiesForSlot(unchangedFeatures, p.slotId,
+                            mServiceCapabilities);
+                    mRepo.notifyFeatureCapabilitiesChanged(p.slotId, p.featureType, caps);
+                }
             }
         }
     }
@@ -518,6 +529,23 @@ public class ImsServiceController {
     }
 
     /**
+     * @return the ISipTransport instance associated with the requested slot ID.
+     */
+    public ISipTransport getSipTransport(int slotId) throws RemoteException {
+        synchronized (mLock) {
+            return isServiceControllerAvailable()
+                    ? mIImsServiceController.getSipTransport(slotId) : null;
+        }
+    }
+
+    protected long getStaticServiceCapabilities() throws RemoteException {
+        synchronized (mLock) {
+            return isServiceControllerAvailable()
+                    ? mIImsServiceController.getImsServiceCapabilities() : 0L;
+        }
+    }
+
+    /**
      * notify the ImsService that the ImsService is ready for feature creation.
      */
     protected void notifyImsServiceReady() throws RemoteException {
@@ -527,6 +555,17 @@ public class ImsServiceController {
                 mIImsServiceController.setListener(mFeatureChangedListener);
                 mIImsServiceController.notifyImsServiceReadyForFeatureCreation();
             }
+        }
+    }
+
+    private void retrieveStaticImsServiceCapabilities() throws RemoteException {
+        long caps = getStaticServiceCapabilities();
+        Log.i(LOG_TAG, "retrieveStaticImsServiceCapabilities: "
+                + ImsService.getCapabilitiesString(caps));
+        mLocalLog.log("retrieveStaticImsServiceCapabilities: "
+                + ImsService.getCapabilitiesString(caps));
+        synchronized (mLock) {
+            mServiceCapabilities = caps;
         }
     }
 
@@ -571,26 +610,30 @@ public class ImsServiceController {
         }
     }
 
-    private long calculateCapabiltiesForSlot(
-            Set<ImsFeatureConfiguration.FeatureSlotPair> features, int slotId) {
-        // We only consider MMTEL_EMERGENCY as a capability here, so set the capability if the
-        // ImsService has declared it.
-        long caps = 0;
-        for (ImsFeatureConfiguration.FeatureSlotPair p : features) {
-            if (p.featureType == ImsFeature.FEATURE_EMERGENCY_MMTEL && p.slotId == slotId) {
-                caps |= ImsService.CAPABILITY_EMERGENCY_OVER_MMTEL;
-            }
+    /**
+     * Modify the capabilities returned by the ImsService based on the state of this controller:
+     * - CAPABILITY_EMERGENCY_OVER_MMTEL should only be set if features contains
+     * FEATURE_EMERGENCY_MMTEL (This is not set by the ImsService itself).
+     * - CAPABILITY_SIP_DELEGATE_CREATION should only be set in the case that this ImsService is
+     * handling both MMTEL and RCS features for this slot.
+     */
+    private long modifyCapabiltiesForSlot(
+            Set<ImsFeatureConfiguration.FeatureSlotPair> features, int slotId, long serviceCaps) {
+        long caps = serviceCaps;
+        List<Integer> featureTypes = getFeaturesForSlot(slotId, features);
+        if (featureTypes.contains(ImsFeature.FEATURE_EMERGENCY_MMTEL)) {
+            // We only consider MMTEL_EMERGENCY as a capability here, so set the capability if
+            // the ImsService has declared it.
+            caps |= ImsService.CAPABILITY_EMERGENCY_OVER_MMTEL;
+        }
+
+        if (!featureTypes.contains(ImsFeature.FEATURE_MMTEL)
+                || !featureTypes.contains(ImsFeature.FEATURE_RCS)) {
+            // Only allow SipDelegate creation if this ImsService is providing both MMTEL and RCS
+            // features.
+            caps &= ~(ImsService.CAPABILITY_SIP_DELEGATE_CREATION);
         }
         return caps;
-    }
-
-    // This method should only be called when synchronized on mLock
-    private void updateCapsForUnchangedFeatures(
-            Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
-        for (ImsFeatureConfiguration.FeatureSlotPair p : features) {
-            long caps = calculateCapabiltiesForSlot(features, p.slotId);
-            mRepo.notifyFeatureCapabilitiesChanged(p.slotId, p.featureType, caps);
-        }
     }
 
     // Grant runtime permissions to ImsService. PermissionManager ensures that the ImsService is
@@ -752,7 +795,15 @@ public class ImsServiceController {
                     + "available.");
             return null;
         }
-        return new ImsFeatureContainer(b, config, reg, capabilities);
+        // SipTransport AIDL may be null for older devices, this is expected.
+        ISipTransport transport = getSipTransport(slotId);
+        return new ImsFeatureContainer(b, config, reg, transport, capabilities);
+    }
+
+    private List<Integer> getFeaturesForSlot(int slotId,
+            Set<ImsFeatureConfiguration.FeatureSlotPair> features) {
+        return features.stream().filter(f -> f.slotId == slotId).map(f -> f.featureType)
+                .collect(Collectors.toList());
     }
 
     private void cleanupAllFeatures() {

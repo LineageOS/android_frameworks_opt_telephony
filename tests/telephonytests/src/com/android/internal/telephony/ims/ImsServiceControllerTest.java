@@ -229,6 +229,60 @@ public class ImsServiceControllerTest extends ImsTestBase {
     }
 
     /**
+     * Tests ImsServiceController keeps SIP delegate creation flags if MMTEL and RCS are supported.
+     */
+    @SmallTest
+    @Test
+    public void testBindServiceSipDelegateCapability() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_RCS));
+        when(mMockServiceControllerBinder.getImsServiceCapabilities()).thenReturn(
+                ImsService.CAPABILITY_SIP_DELEGATE_CREATION);
+
+        bindAndConnectService(testFeatures);
+
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockServiceControllerBinder).createRcsFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_RCS), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
+                eq(mTestImsServiceController));
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
+                eq(mTestImsServiceController));
+        validateFeatureContainerExistsWithSipDelegate(ImsFeature.FEATURE_MMTEL, SLOT_0);
+        validateFeatureContainerExistsWithSipDelegate(ImsFeature.FEATURE_RCS, SLOT_0);
+    }
+
+    /**
+     * Tests ImsServiceController loses SIP delegate creation flag if MMTEL and RCS are not both
+     * supported.
+     */
+    @SmallTest
+    @Test
+    public void testBindServiceSipDelegateCapabilityLost() throws RemoteException {
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
+        testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
+                ImsFeature.FEATURE_MMTEL));
+        when(mMockServiceControllerBinder.getImsServiceCapabilities()).thenReturn(
+                ImsService.CAPABILITY_SIP_DELEGATE_CREATION);
+
+        bindAndConnectService(testFeatures);
+
+        verify(mMockServiceControllerBinder).createMmTelFeature(SLOT_0);
+        verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
+                eq(ImsFeature.FEATURE_MMTEL), any());
+        verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
+                eq(mTestImsServiceController));
+        // verify CAPABILITY_SIP_DELEGATE_CREATION is not set because MMTEL and RCS are not set.
+        validateMmTelFeatureContainerExists(SLOT_0);
+    }
+
+    /**
      * Tests Emergency MMTEL ImsServiceController callbacks are properly called when an ImsService
      * is bound and connected.
      */
@@ -888,6 +942,13 @@ public class ImsServiceControllerTest extends ImsTestBase {
         assertEquals("ImsServiceController did not report MmTelFeature to service repo correctly",
                 mMockMmTelBinder, fc.imsFeature);
         assertTrue((ImsService.CAPABILITY_EMERGENCY_OVER_MMTEL | fc.getCapabilities()) > 0);
+    }
+
+    private void validateFeatureContainerExistsWithSipDelegate(int featureType, int slotId) {
+        ImsFeatureContainer fc =
+                mRepo.getIfExists(slotId, featureType).orElse(null);
+        assertNotNull("FeatureContainer should not be null", fc);
+        assertTrue((ImsService.CAPABILITY_SIP_DELEGATE_CREATION | fc.getCapabilities()) > 0);
     }
 
     private void validateMmTelFeatureExistsInCallback(int slotId, long expectedCaps) {
