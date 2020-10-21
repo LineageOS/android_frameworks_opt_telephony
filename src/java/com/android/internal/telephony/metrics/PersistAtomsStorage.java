@@ -466,7 +466,8 @@ public class PersistAtomsStorage {
         for (CarrierIdMismatch mismatch : mAtoms.carrierIdMismatch) {
             if (mismatch.mccMnc.equals(key.mccMnc)
                     && mismatch.gid1.equals(key.gid1)
-                    && mismatch.spn.equals(key.spn)) {
+                    && mismatch.spn.equals(key.spn)
+                    && mismatch.pnn.equals(key.pnn)) {
                 return mismatch;
             }
         }
