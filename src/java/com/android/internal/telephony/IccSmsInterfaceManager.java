@@ -32,6 +32,7 @@ import android.database.sqlite.SQLiteException;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -69,7 +70,7 @@ public class IccSmsInterfaceManager {
     static final String LOG_TAG = "IccSmsInterfaceManager";
     static final boolean DBG = true;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CellBroadcastRangeManager mCellBroadcastRangeManager =
             new CellBroadcastRangeManager();
     private CdmaBroadcastRangeManager mCdmaBroadcastRangeManager =
@@ -86,11 +87,11 @@ public class IccSmsInterfaceManager {
     public static final int SMS_MESSAGE_PRIORITY_NOT_SPECIFIED = -1;
     public static final int SMS_MESSAGE_PERIOD_NOT_SPECIFIED = -1;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected Phone mPhone;
     @UnsupportedAppUsage
     final protected Context mContext;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     final protected AppOpsManager mAppOps;
     @VisibleForTesting
     public SmsDispatchersController mDispatchersController;
@@ -103,7 +104,7 @@ public class IccSmsInterfaceManager {
         Object mResult = null;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -214,7 +215,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void enforceReceiveAndSend(String message) {
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.RECEIVE_SMS, message);
@@ -242,7 +243,7 @@ public class IccSmsInterfaceManager {
      *
      */
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean
     updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu) {
         if (DBG) log("updateMessageOnIccEf: index=" + index +
@@ -299,7 +300,7 @@ public class IccSmsInterfaceManager {
      * @param smsc the SMSC for this message. Null means use default.
      * @return true for success. Otherwise false.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc) {
         //NOTE smsc not used in RUIM
         if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
@@ -334,7 +335,7 @@ public class IccSmsInterfaceManager {
      * @return list of SmsRawData of all sms on Icc
      */
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage) {
         if (DBG) log("getAllMessagesFromEF");
 
@@ -385,7 +386,7 @@ public class IccSmsInterfaceManager {
      * PendingIntent)} instead.
      */
     @Deprecated
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         sendData(callingPackage, null, destAddr, scAddr, destPort, data,
@@ -615,7 +616,7 @@ public class IccSmsInterfaceManager {
      *  android application framework. This intent is broadcasted at
      *  the same time an SMS received from radio is acknowledged back.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -788,13 +789,13 @@ public class IccSmsInterfaceManager {
 
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getPremiumSmsPermission(String packageName) {
         return mDispatchersController.getPremiumSmsPermission(packageName);
     }
 
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void setPremiumSmsPermission(String packageName, int permission) {
         mDispatchersController.setPremiumSmsPermission(packageName, permission);
     }
@@ -927,7 +928,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     synchronized public boolean enableGsmBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(android.Manifest.permission.RECEIVE_EMERGENCY_BROADCAST,
@@ -957,7 +958,7 @@ public class IccSmsInterfaceManager {
         return true;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     synchronized public boolean disableGsmBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(android.Manifest.permission.RECEIVE_EMERGENCY_BROADCAST,
@@ -987,7 +988,7 @@ public class IccSmsInterfaceManager {
         return true;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     synchronized public boolean enableCdmaBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(android.Manifest.permission.RECEIVE_EMERGENCY_BROADCAST,
@@ -1016,7 +1017,7 @@ public class IccSmsInterfaceManager {
         return true;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     synchronized public boolean disableCdmaBroadcastRange(int startMessageId, int endMessageId) {
 
         mContext.enforceCallingPermission(android.Manifest.permission.RECEIVE_EMERGENCY_BROADCAST,
@@ -1136,7 +1137,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean setCellBroadcastConfig(SmsBroadcastConfigInfo[] configs) {
         if (DBG) {
             log("Calling setGsmBroadcastConfig with " + configs.length + " configurations");
@@ -1172,7 +1173,7 @@ public class IccSmsInterfaceManager {
         return (boolean) setRequest.mResult;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs) {
         if (DBG) {
             log("Calling setCdmaBroadcastConfig with " + configs.length + " configurations");
@@ -1223,12 +1224,12 @@ public class IccSmsInterfaceManager {
         Rlog.e(LOG_TAG, msg, e);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean isImsSmsSupported() {
         return mDispatchersController.isIms();
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public String getImsSmsFormat() {
         return mDispatchersController.getImsSmsFormat();
     }
@@ -1238,7 +1239,7 @@ public class IccSmsInterfaceManager {
      * PendingIntent)} instead
      */
     @Deprecated
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void sendStoredText(String callingPkg, Uri messageUri, String scAddress,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         sendStoredText(callingPkg, null, messageUri, scAddress, sentIntent, deliveryIntent);
@@ -1282,7 +1283,7 @@ public class IccSmsInterfaceManager {
      * instead
      */
     @Deprecated
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void sendStoredMultipartText(String callingPkg, Uri messageUri, String scAddress,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
         sendStoredMultipartText(callingPkg, null, messageUri, scAddress, sentIntents,
@@ -1476,7 +1477,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String filterDestAddress(String destAddr) {
         String result = SmsNumberUtils.filterDestAddr(mContext, mPhone.getSubId(), destAddr);
         return result != null ? result : destAddr;

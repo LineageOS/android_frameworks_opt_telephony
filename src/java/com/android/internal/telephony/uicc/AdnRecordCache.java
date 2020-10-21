@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.util.SparseArray;
@@ -33,9 +34,9 @@ import java.util.Iterator;
 public class AdnRecordCache extends Handler implements IccConstants {
     //***** Instance Variables
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private IccFileHandler mFh;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private UsimPhoneBookManager mUsimPhoneBookManager;
 
     // Indexed by EF ID
@@ -43,12 +44,12 @@ public class AdnRecordCache extends Handler implements IccConstants {
         = new SparseArray<ArrayList<AdnRecord>>();
 
     // People waiting for ADN-like files to be loaded
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     SparseArray<ArrayList<Message>> mAdnLikeWaiters
         = new SparseArray<ArrayList<Message>>();
 
     // People waiting for adn record to be updated
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     SparseArray<Message> mUserWriteResponse = new SparseArray<Message>();
 
     //***** Event Constants
@@ -70,7 +71,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
     /**
      * Called from SIMRecords.onRadioNotAvailable and SIMRecords.handleSimRefresh.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void reset() {
         mAdnLikeFiles.clear();
         mUsimPhoneBookManager.reset();
@@ -102,7 +103,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
      * @return List of AdnRecords for efid if we've already loaded them this
      * radio session, or null if we haven't
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public ArrayList<AdnRecord>
     getRecordsIfLoaded(int efid) {
         return mAdnLikeFiles.get(efid);
@@ -114,7 +115,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
      *
      * See 3GPP TS 51.011 for this mapping
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int extensionEfForEf(int efid) {
         switch (efid) {
             case EF_MBDN: return EF_EXT6;
@@ -127,7 +128,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void sendErrorResponse(Message response, String errString) {
         if (response != null) {
             Exception e = new RuntimeException(errString);
@@ -146,7 +147,7 @@ public class AdnRecordCache extends Handler implements IccConstants {
      * @param response message to be posted when done
      *        response.exception hold the exception in error
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void updateAdnByIndex(int efid, AdnRecord adn, int recordIndex, String pin2,
             Message response) {
 

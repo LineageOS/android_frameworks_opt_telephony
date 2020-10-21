@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -183,7 +184,7 @@ public interface PhoneInternalInterface {
     static final int BM_US_2500M    = RILConstants.BAND_MODE_USA_2500M;
     static final int BM_NUM_BAND_MODES = 19; //Total number of band modes
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
 
     // Used for CDMA roaming mode

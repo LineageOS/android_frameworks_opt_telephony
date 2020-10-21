@@ -17,6 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import com.android.telephony.Rlog;
 
@@ -58,7 +59,7 @@ public class ComprehensionTlv {
         mRawValue = data;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getTag() {
         return mTag;
     }
@@ -67,17 +68,17 @@ public class ComprehensionTlv {
         return mCr;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getLength() {
         return mLength;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getValueIndex() {
         return mValueIndex;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public byte[] getRawValue() {
         return mRawValue;
     }

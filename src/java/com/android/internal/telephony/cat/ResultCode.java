@@ -17,6 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 
 /**
@@ -197,7 +198,7 @@ public enum ResultCode {
      * Retrieves the actual result code that this object represents.
      * @return Actual result code
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int value() {
         return mCode;
     }

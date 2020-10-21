@@ -17,6 +17,7 @@
 package com.android.internal.telephony.imsphone;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.telephony.ims.ImsExternalCallState;
 
 import com.android.internal.telephony.Call;
@@ -31,7 +32,7 @@ public class ImsExternalCall extends Call {
 
     private Phone mPhone;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public ImsExternalCall(Phone phone, ImsExternalConnection connection) {
         mPhone = phone;
         addConnection(connection);

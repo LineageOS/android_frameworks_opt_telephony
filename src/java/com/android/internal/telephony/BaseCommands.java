@@ -20,6 +20,7 @@ package com.android.internal.telephony;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -156,7 +157,7 @@ public abstract class BaseCommands implements CommandsInterface {
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
     // vendor ril so it starts up in the correct mode.
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int mPreferredNetworkType;
     // CDMA subscription received from PhoneFactory
     protected int mCdmaSubscription;
