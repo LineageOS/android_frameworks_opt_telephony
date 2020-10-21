@@ -150,4 +150,23 @@ public class ImsServiceTest {
 
         assertEquals(config, result);
     }
+
+    /**
+     * Tests that ImsService capability sanitization works correctly.
+     */
+    @Test
+    @SmallTest
+    public void testCapsSanitized() throws RemoteException {
+        long validCaps =
+                ImsService.CAPABILITY_SIP_DELEGATE_CREATION;
+        // emergency over MMTEL should not be set here, but rather internally in Telephony.
+        long invalidCaps = 0xDEADBEEF00000000L | ImsService.CAPABILITY_EMERGENCY_OVER_MMTEL;
+        invalidCaps |= validCaps;
+
+        mTestImsService.testCaps = validCaps;
+        assertEquals(validCaps, mTestImsServiceBinder.getImsServiceCapabilities());
+        mTestImsService.testCaps = invalidCaps;
+        // The extra bits should have been removed, leaving only the valid remaining
+        assertEquals(validCaps, mTestImsServiceBinder.getImsServiceCapabilities());
+    }
 }
