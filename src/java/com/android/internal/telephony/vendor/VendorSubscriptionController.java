@@ -243,13 +243,6 @@ public class VendorSubscriptionController extends SubscriptionController {
             return;
         }
 
-        // Do not fallback to next available sub if AOSP feature
-        // "User choice of selecting data/sms fallback preference" enabled.
-        if (SystemProperties.getBoolean("persist.vendor.radio.aosp_usr_pref_sel", false)) {
-            logi("updateUserPreferences: AOSP user preference option enabled ");
-            return;
-        }
-
         final int defaultVoiceSubId = getDefaultVoiceSubId();
         final int defaultDataSubId = getDefaultDataSubId();
         final int defaultSmsSubId = getDefaultSmsSubId();
