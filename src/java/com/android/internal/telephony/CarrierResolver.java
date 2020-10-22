@@ -120,7 +120,7 @@ public class CarrierResolver extends Handler {
     };
 
     /**
-     * A broadcast receiver used for overriding carrier id for testing. There are five parameters,
+     * A broadcast receiver used for overriding carrier id for testing. There are six parameters,
      * only override_carrier_id is required, the others are options.
      *
      * To override carrier id by adb command, e.g.:
@@ -130,30 +130,38 @@ public class CarrierResolver extends Handler {
      * --ei override_mno_carrier_id 1
      * --es override_carrier_name test
      * --es override_specific_carrier_name test
-     *
+     * --ei sub_id 1
      */
     private final BroadcastReceiver mCarrierIdTestReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            int phoneId = mPhone.getPhoneId();
             int carrierId = intent.getIntExtra("override_carrier_id",
                     TelephonyManager.UNKNOWN_CARRIER_ID);
             int specificCarrierId = intent.getIntExtra("override_specific_carrier_id", carrierId);
             int mnoCarrierId = intent.getIntExtra("override_mno_carrier_id", carrierId);
             String carrierName = intent.getStringExtra("override_carrier_name");
             String specificCarrierName = intent.getStringExtra("override_specific_carrier_name");
+            int subId = intent.getIntExtra("sub_id",
+                    SubscriptionManager.getDefaultSubscriptionId());
 
-            if (carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
-                logd("Override carrier id to: " + carrierId);
-                logd("Override specific carrier id to: " + specificCarrierId);
-                logd("Override mno carrier id to: " + mnoCarrierId);
-                logd("Override carrier name to: " + carrierName);
-                logd("Override specific carrier name to: " + specificCarrierName);
+            if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+                logd("Override carrier id can't be -1.", phoneId);
+                return;
+            } else if (subId != mPhone.getSubId()) {
+                logd("Override carrier id failed. The sub id doesn't same as phone's sub id.",
+                        phoneId);
+                return;
+            } else {
+                logd("Override carrier id to: " + carrierId, phoneId);
+                logd("Override specific carrier id to: " + specificCarrierId, phoneId);
+                logd("Override mno carrier id to: " + mnoCarrierId, phoneId);
+                logd("Override carrier name to: " + carrierName, phoneId);
+                logd("Override specific carrier name to: " + specificCarrierName, phoneId);
                 updateCarrierIdAndName(
                     carrierId, carrierName != null ? carrierName : "",
                     specificCarrierId, specificCarrierName != null ? carrierName : "",
                     mnoCarrierId);
-            } else {
-                logd("Override carrier id can't be -1.");
             }
         }
     };
@@ -1120,6 +1128,11 @@ public class CarrierResolver extends Handler {
     private static void loge(String str) {
         Rlog.e(LOG_TAG, str);
     }
+
+    private static void logd(String str, int phoneId) {
+        Rlog.d(LOG_TAG + "[" + phoneId + "]", str);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
         ipw.println("mCarrierResolverLocalLogs:");
