@@ -210,12 +210,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyOutgoingEmergencyCall(Phone sender, EmergencyNumber emergencyNumber) {
-        mTelephonyRegistryMgr.notifyOutgoingEmergencyCall(
-                sender.getPhoneId(), sender.getSubId(), emergencyNumber);
-    }
-
-    @Override
     public void notifyOutgoingEmergencySms(Phone sender, EmergencyNumber emergencyNumber) {
         mTelephonyRegistryMgr.notifyOutgoingEmergencySms(
                 sender.getPhoneId(), sender.getSubId(), emergencyNumber);

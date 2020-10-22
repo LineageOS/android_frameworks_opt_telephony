@@ -104,9 +104,6 @@ public interface PhoneNotifier {
     /** Notify of change to EmergencyNumberList. */
     void notifyEmergencyNumberList(Phone sender);
 
-    /** Notify of a change for Outgoing Emergency Call. */
-    void notifyOutgoingEmergencyCall(Phone sender, EmergencyNumber emergencyNumber);
-
     /** Notify of a change for Outgoing Emergency Sms. */
     void notifyOutgoingEmergencySms(Phone sender, EmergencyNumber emergencyNumber);
 
