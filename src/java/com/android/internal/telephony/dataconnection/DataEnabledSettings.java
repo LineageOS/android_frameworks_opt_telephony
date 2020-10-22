@@ -300,6 +300,10 @@ public class DataEnabledSettings {
         return mDataEnabledOverride.isDataAllowedInVoiceCall();
     }
 
+    public synchronized boolean isMmsAlwaysAllowed() {
+        return mDataEnabledOverride.isMmsAlwaysAllowed();
+    }
+
     public synchronized void setPolicyDataEnabled(boolean enabled) {
         if (mPolicyDataEnabled != enabled) {
             localLog("PolicyDataEnabled", enabled);
