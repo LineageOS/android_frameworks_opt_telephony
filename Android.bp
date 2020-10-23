@@ -75,6 +75,7 @@ java_library {
         "android.hardware.radio-V1.3-java",
         "android.hardware.radio-V1.4-java",
         "android.hardware.radio-V1.5-java",
+        "android.hardware.radio-V1.6-java",
         "voip-common",
         "ims-common",
         "unsupportedappusage",
