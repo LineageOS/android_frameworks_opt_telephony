@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
-import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_MISMATCH_EVENT;
-import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_UPDATE;
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_MISMATCH_REPORTED;
+import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_UPDATED;
 
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyStatsLog;
@@ -45,7 +45,7 @@ public class CarrierIdMatchStats {
         boolean isAdded = storage.addCarrierIdMismatch(carrierIdMismatch);
         if (isAdded) {
             Rlog.d(TAG, "New carrier ID mismatch event: " + carrierIdMismatch.toString());
-            TelephonyStatsLog.write(CARRIER_ID_MISMATCH_EVENT, cid, mccMnc, gid1, spn, pnn);
+            TelephonyStatsLog.write(CARRIER_ID_MISMATCH_REPORTED, cid, mccMnc, gid1, spn, pnn);
         }
     }
 
@@ -55,7 +55,7 @@ public class CarrierIdMatchStats {
 
         if (storage.setCarrierIdTableVersion(carrierIdTableVersion)) {
             Rlog.d(TAG, "New carrier ID table version: " + carrierIdTableVersion);
-            TelephonyStatsLog.write(CARRIER_ID_TABLE_UPDATE, carrierIdTableVersion);
+            TelephonyStatsLog.write(CARRIER_ID_TABLE_UPDATED, carrierIdTableVersion);
         }
     }
 
