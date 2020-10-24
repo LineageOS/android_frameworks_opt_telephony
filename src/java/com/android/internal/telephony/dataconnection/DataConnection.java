@@ -725,7 +725,7 @@ public class DataConnection extends StateMachine {
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
             DataCallResponse response = new DataCallResponse.Builder()
                     .setCause(mDcTesterFailBringUpAll.getDcFailBringUp().mFailCause)
-                    .setSuggestedRetryTime(
+                    .setRetryIntervalMillis(
                             mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime)
                     .setMtuV4(PhoneConstants.UNSET_MTU)
                     .setMtuV6(PhoneConstants.UNSET_MTU)
@@ -2127,7 +2127,14 @@ public class DataConnection extends StateMachine {
                             // NO_SUGGESTED_RETRY_DELAY here.
 
                             long delay = getSuggestedRetryDelay(dataCallResponse);
-                            cp.mApnContext.setModemSuggestedDelay(delay);
+                            long retryTime = RetryManager.NO_SUGGESTED_RETRY_DELAY;
+                            if (delay == RetryManager.NO_RETRY) {
+                                retryTime = RetryManager.NO_RETRY;
+                            } else if (delay >= 0) {
+                                retryTime = SystemClock.elapsedRealtime() + delay;
+                            }
+                            mDct.getDataThrottler().setRetryTime(mApnSetting.getApnTypeBitmask(),
+                                    retryTime);
 
                             String str = "DcActivatingState: ERROR_DATA_SERVICE_SPECIFIC_ERROR "
                                     + " delay=" + delay
@@ -2923,30 +2930,34 @@ public class DataConnection extends StateMachine {
      * Using the result of the SETUP_DATA_CALL determine the retry delay.
      *
      * @param response The response from setup data call
-     * @return NO_SUGGESTED_RETRY_DELAY if no retry is needed otherwise the delay to the
-     *         next SETUP_DATA_CALL
+     * @return {@link RetryManager#NO_SUGGESTED_RETRY_DELAY} if not suggested.
+     * {@link RetryManager#NO_RETRY} if retry should not happen. Otherwise the delay in milliseconds
+     * to the next SETUP_DATA_CALL.
      */
     private long getSuggestedRetryDelay(DataCallResponse response) {
         /** According to ril.h
          * The value < 0 means no value is suggested
          * The value 0 means retry should be done ASAP.
-         * The value of Integer.MAX_VALUE(0x7fffffff) means no retry.
+         * The value of Long.MAX_VALUE(0x7fffffffffffffff) means no retry.
          */
 
+        long suggestedRetryTime = response.getRetryIntervalMillis();
+
         // The value < 0 means no value is suggested
-        if (response.getSuggestedRetryTime() < 0) {
+        if (suggestedRetryTime < 0) {
             if (DBG) log("No suggested retry delay.");
             return RetryManager.NO_SUGGESTED_RETRY_DELAY;
-        }
-        // The value of Integer.MAX_VALUE(0x7fffffff) means no retry.
-        else if (response.getSuggestedRetryTime() == Integer.MAX_VALUE) {
-            if (DBG) log("Modem suggested not retrying.");
+        } else if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)
+                && suggestedRetryTime == Long.MAX_VALUE) {
+            if (DBG) log("Network suggested not retrying.");
+            return RetryManager.NO_RETRY;
+        } else if (mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_6)
+                && suggestedRetryTime == Integer.MAX_VALUE) {
+            if (DBG) log("Network suggested not retrying.");
             return RetryManager.NO_RETRY;
         }
 
-        // We need to cast it to long because the value returned from RIL is a 32-bit integer,
-        // but the time values used in AlarmManager are all 64-bit long.
-        return (long) response.getSuggestedRetryTime();
+        return suggestedRetryTime;
     }
 
     public List<ApnContext> getApnContexts() {

@@ -117,7 +117,7 @@ public class DcControllerTest extends TelephonyTest {
         ArrayList<DataCallResponse> l = new ArrayList<>();
         DataCallResponse dcResponse = new DataCallResponse.Builder()
                 .setCause(0)
-                .setSuggestedRetryTime(-1)
+                .setRetryIntervalMillis(-1)
                 .setId(1)
                 .setLinkStatus(DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT)
                 .setProtocolType(ApnSetting.PROTOCOL_IP)

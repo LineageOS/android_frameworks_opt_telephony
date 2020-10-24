@@ -108,6 +108,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataAllowedReasonType;
@@ -665,6 +666,8 @@ public class DcTracker extends Handler {
 
     private DataStallRecoveryHandler mDsRecoveryHandler;
     private HandlerThread mHandlerThread;
+
+    private final DataThrottler mDataThrottler = new DataThrottler();
 
     /**
      * Request network completion message map. Key is the APN type, value is the list of completion
@@ -3037,7 +3040,7 @@ public class DcTracker extends Handler {
         long delay = apnContext.getDelayForNextApn(mFailFast);
 
         // Check if we need to retry or not.
-        if (delay >= 0 && !fallback) {
+        if (delay >= 0 && delay != RetryManager.NO_RETRY && !fallback) {
             if (DBG) {
                 log("onDataSetupCompleteError: APN type=" + apnContext.getApnType()
                         + ". Request type=" + requestTypeToString(requestType) + ", Retry in "
@@ -5234,5 +5237,12 @@ public class DcTracker extends Handler {
      */
     public @NonNull DataServiceManager getDataServiceManager() {
         return mDataServiceManager;
+    }
+
+    /**
+     * @return The data throttler
+     */
+    public @NonNull DataThrottler getDataThrottler() {
+        return mDataThrottler;
     }
 }

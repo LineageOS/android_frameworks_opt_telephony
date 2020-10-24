@@ -6933,7 +6933,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public static DataCallResponse convertDataCallResult(Object dcResult) {
         if (dcResult == null) return null;
 
-        int cause, suggestedRetryTime, cid, active, mtu, mtuV4, mtuV6;
+        int cause, cid, active, mtu, mtuV4, mtuV6;
+        long suggestedRetryTime;
         String ifname;
         int protocolType;
         String[] addresses = null;
@@ -7014,22 +7015,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
         } else if (dcResult instanceof android.hardware.radio.V1_6.SetupDataCallResult) {
             final android.hardware.radio.V1_6.SetupDataCallResult result =
                     (android.hardware.radio.V1_6.SetupDataCallResult) dcResult;
-            cause = result.base.cause;
-            suggestedRetryTime = result.base.suggestedRetryTime;
-            cid = result.base.cid;
-            active = result.base.active;
-            protocolType = result.base.type;
-            ifname = result.base.ifname;
-            laList = result.base.addresses.stream().map(la -> createLinkAddressFromString(
+            cause = result.cause;
+            suggestedRetryTime = result.suggestedRetryTime;
+            cid = result.cid;
+            active = result.active;
+            protocolType = result.type;
+            ifname = result.ifname;
+            laList = result.addresses.stream().map(la -> createLinkAddressFromString(
                     la.address, la.properties, la.deprecationTime, la.expirationTime))
                     .collect(Collectors.toList());
 
-            dnses = result.base.dnses.stream().toArray(String[]::new);
-            gateways = result.base.gateways.stream().toArray(String[]::new);
-            pcscfs = result.base.pcscf.stream().toArray(String[]::new);
-            mtu = Math.max(result.base.mtuV4, result.base.mtuV6);
-            mtuV4 = result.base.mtuV4;
-            mtuV6 = result.base.mtuV6;
+            dnses = result.dnses.stream().toArray(String[]::new);
+            gateways = result.gateways.stream().toArray(String[]::new);
+            pcscfs = result.pcscf.stream().toArray(String[]::new);
+            mtu = Math.max(result.mtuV4, result.mtuV6);
+            mtuV4 = result.mtuV4;
+            mtuV6 = result.mtuV6;
             handoverFailureMode = result.handoverFailureMode;
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
@@ -7083,7 +7084,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         return new DataCallResponse.Builder()
                 .setCause(cause)
-                .setSuggestedRetryTime(suggestedRetryTime)
+                .setRetryIntervalMillis(suggestedRetryTime)
                 .setId(cid)
                 .setLinkStatus(active)
                 .setProtocolType(protocolType)
