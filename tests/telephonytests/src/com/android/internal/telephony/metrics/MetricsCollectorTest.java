@@ -42,7 +42,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
-import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
+import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -224,7 +224,7 @@ public class MetricsCollectorTest extends TelephonyTest {
     @Test
     @SmallTest
     public void onPullAtom_voiceCallRatUsage_empty() throws Exception {
-        doReturn(new RawVoiceCallRatUsage[0])
+        doReturn(new VoiceCallRatUsage[0])
                 .when(mPersistAtomsStorage)
                 .getVoiceCallRatUsages(anyLong());
         List<StatsEvent> actualAtoms = new ArrayList<>();
@@ -252,11 +252,11 @@ public class MetricsCollectorTest extends TelephonyTest {
     @Test
     @SmallTest
     public void onPullAtom_voiceCallRatUsage_bucketWithTooFewCalls() throws Exception {
-        RawVoiceCallRatUsage usage1 = new RawVoiceCallRatUsage();
+        VoiceCallRatUsage usage1 = new VoiceCallRatUsage();
         usage1.callCount = MIN_CALLS_PER_BUCKET;
-        RawVoiceCallRatUsage usage2 = new RawVoiceCallRatUsage();
+        VoiceCallRatUsage usage2 = new VoiceCallRatUsage();
         usage2.callCount = MIN_CALLS_PER_BUCKET - 1L;
-        doReturn(new RawVoiceCallRatUsage[] {usage1, usage1, usage1, usage2})
+        doReturn(new VoiceCallRatUsage[] {usage1, usage1, usage1, usage2})
                 .when(mPersistAtomsStorage)
                 .getVoiceCallRatUsages(anyLong());
         List<StatsEvent> actualAtoms = new ArrayList<>();
