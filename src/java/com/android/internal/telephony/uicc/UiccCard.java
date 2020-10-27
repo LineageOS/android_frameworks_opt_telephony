@@ -22,6 +22,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.TelephonyManager;
@@ -50,9 +51,9 @@ public class UiccCard {
 
     // The lock object is created by UiccSlot that owns this UiccCard - this is to share the lock
     // between UiccSlot, UiccCard, EuiccCard, and UiccProfile for now.
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final Object mLock;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CardState mCardState;
     private String mIccid;
     protected String mCardId;
@@ -61,7 +62,7 @@ public class UiccCard {
     private Context mContext;
     @UnsupportedAppUsage
     private CommandsInterface mCi;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final int mPhoneId;
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
@@ -155,7 +156,7 @@ public class UiccCard {
     /**
      * @deprecated Please use {@link UiccProfile#isApplicationOnIcc(AppType)} instead.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Deprecated
     public boolean isApplicationOnIcc(IccCardApplicationStatus.AppType type) {
         synchronized (mLock) {
@@ -226,7 +227,7 @@ public class UiccCard {
      *
      * @deprecated Please use {@link UiccProfile#getApplicationByType(int)} instead.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Deprecated
     public UiccCardApplication getApplicationByType(int type) {
         synchronized (mLock) {
@@ -453,7 +454,7 @@ public class UiccCard {
      * @deprecated Please use
      * {@link UiccProfile#getCarrierPackageNamesForIntent(PackageManager, Intent)} instead.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Deprecated
     public List<String> getCarrierPackageNamesForIntent(
             PackageManager packageManager, Intent intent) {
@@ -479,7 +480,7 @@ public class UiccCard {
     /**
      * @deprecated Please use {@link UiccProfile#getOperatorBrandOverride()} instead.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Deprecated
     public String getOperatorBrandOverride() {
         if (mUiccProfile != null) {
@@ -489,7 +490,7 @@ public class UiccCard {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public String getIccId() {
         if (mIccid != null) {
             return mIccid;
@@ -514,12 +515,12 @@ public class UiccCard {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
     }

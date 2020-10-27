@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
@@ -230,7 +231,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * @param result result code indicating any error
      * @param response callback message sent when operation completes.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     protected void acknowledgeLastIncomingSms(boolean success, int result, Message response) {
         mPhone.mCi.acknowledgeLastIncomingGsmSms(success, resultToCause(result), response);

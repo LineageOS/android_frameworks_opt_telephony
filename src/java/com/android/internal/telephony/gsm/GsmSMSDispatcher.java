@@ -20,6 +20,7 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Message;
 import android.telephony.ServiceState;
 
@@ -47,7 +48,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     private AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private AtomicReference<UiccCardApplication> mUiccApplication =
             new AtomicReference<UiccCardApplication>();
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
 
     /** Status report received */
@@ -70,7 +71,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         mUiccController.unregisterForIccChanged(this);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     protected String getFormat() {
         return SmsConstants.FORMAT_3GPP;

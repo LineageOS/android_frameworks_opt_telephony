@@ -26,6 +26,7 @@ import android.content.ServiceConnection;
 import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -61,7 +62,7 @@ public class CarrierServiceBindHelper {
      */
     private static final int UNBIND_DELAY_MILLIS = 30 * 1000; // 30 seconds
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Context mContext;
     @VisibleForTesting
     public SparseArray<AppBinding> mBindings = new SparseArray();
@@ -94,7 +95,7 @@ public class CarrierServiceBindHelper {
     @VisibleForTesting
     public static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 2;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @VisibleForTesting
     public Handler mHandler = new Handler() {
         @Override

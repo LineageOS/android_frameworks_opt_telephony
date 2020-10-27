@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import com.android.internal.annotations.VisibleForTesting;
 
@@ -78,7 +79,7 @@ public class GsmCdmaCall extends Call {
         mState = stateFromDCState (dc.state);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void attachFake(Connection conn, State state) {
         addConnection(conn);
 

@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
@@ -150,9 +151,9 @@ public interface CommandsInterface {
     void unregisterForRadioStateChanged(Handler h);
 
     void registerForVoiceRadioTechChanged(Handler h, int what, Object obj);
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     void unregisterForVoiceRadioTechChanged(Handler h);
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     void registerForImsNetworkStateChanged(Handler h, int what, Object obj);
     void unregisterForImsNetworkStateChanged(Handler h);
 
@@ -671,9 +672,9 @@ public interface CommandsInterface {
       * @param what User-defined message code.
       * @param obj User object.
       */
-     @UnsupportedAppUsage
+     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
      void registerForRilConnected(Handler h, int what, Object obj);
-     @UnsupportedAppUsage
+     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
      void unregisterForRilConnected(Handler h);
 
     /**
@@ -1114,7 +1115,7 @@ public interface CommandsInterface {
      * Please note that registration state 4 ("unknown") is treated
      * as "out of service" above
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     void getVoiceRegistrationState (Message response);
 
     /**
@@ -1324,7 +1325,7 @@ public interface CommandsInterface {
      * response.obj will be an AsyncResult
      * response.obj.userObj will be a IccIoResult on success
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     void iccIOForApp (int command, int fileid, String path, int p1, int p2, int p3,
             String data, String pin2, String aid, Message response);
 
@@ -1919,7 +1920,7 @@ public interface CommandsInterface {
      *            102.221 8.1 and 101.220 4
      * @param response a callback message with the String response in the obj field
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void requestIccSimAuthentication(int authContext, String data, String aid, Message response);
 
     /**
@@ -1963,7 +1964,7 @@ public interface CommandsInterface {
     /**
      * Fires when RIL_UNSOL_CELL_INFO_LIST is received from the RIL.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     void registerForCellInfoList(Handler h, int what, Object obj);
     void unregisterForCellInfoList(Handler h);
 
@@ -2150,7 +2151,7 @@ public interface CommandsInterface {
      *          Callback message contains the information of SUCCESS/FAILURE.
      */
     // FIXME We may need to pass AID and slotid also
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void setDataAllowed(boolean allowed, Message result);
 
     /**
@@ -2158,7 +2159,7 @@ public interface CommandsInterface {
      *
      * @param result Callback message contains the information of SUCCESS/FAILURE
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void requestShutdown(Message result);
 
     /**
