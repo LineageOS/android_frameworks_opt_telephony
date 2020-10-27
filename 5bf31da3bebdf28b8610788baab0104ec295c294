@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c66fcd6c_6bbe4d15",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2020-10-27T23:40:08Z",
+      "side": 1,
+      "message": "Does this mean it\u0027s not possible to pick directly from there due to some update from merge commits?",
+      "revId": "5bf31da3bebdf28b8610788baab0104ec295c294",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
