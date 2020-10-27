@@ -126,6 +126,11 @@ public class CommandException extends RuntimeException {
         OEM_ERROR_24,
         OEM_ERROR_25,
         REQUEST_CANCELLED,
+        SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED,
+        ACCESS_BARRED,
+        BLOCKED_DUE_TO_CALL,
+        RF_HARDWARE_ISSUE,
+        NO_RF_CALIBRATION_INFO,
     }
 
     @UnsupportedAppUsage
@@ -326,6 +331,16 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.OEM_ERROR_25);
             case RILConstants.REQUEST_CANCELLED:
                 return new CommandException(Error.REQUEST_CANCELLED);
+            case RILConstants.SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED:
+                return new CommandException(Error.SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED);
+            case RILConstants.ACCESS_BARRED:
+                return new CommandException(Error.ACCESS_BARRED);
+            case RILConstants.BLOCKED_DUE_TO_CALL:
+                return new CommandException(Error.BLOCKED_DUE_TO_CALL);
+            case RILConstants.RF_HARDWARE_ISSUE:
+                return new CommandException(Error.RF_HARDWARE_ISSUE);
+            case RILConstants.NO_RF_CALIBRATION_INFO:
+                return new CommandException(Error.NO_RF_CALIBRATION_INFO);
 
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
