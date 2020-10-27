@@ -31,6 +31,7 @@ import android.hardware.radio.V1_0.LceStatusInfo;
 import android.hardware.radio.V1_0.NeighboringCell;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
+import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
@@ -1290,7 +1291,12 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getImsRegistrationStateResponse(RadioResponseInfo responseInfo,
                                                 boolean isRegistered, int ratFamily) {
-        responseInts(responseInfo, isRegistered ? 1 : 0, ratFamily);
+        responseInts(
+                responseInfo,
+                isRegistered ? 1 : 0,
+                ratFamily == RadioTechnologyFamily.THREE_GPP
+                        ? PhoneConstants.PHONE_TYPE_GSM
+                        : PhoneConstants.PHONE_TYPE_CDMA);
     }
 
     /**
