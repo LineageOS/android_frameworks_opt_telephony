@@ -70,7 +70,7 @@ public class ServiceStateStats {
             newState.dataRoamingType = serviceState.getDataRoamingType();
             newState.isEndc = isEndc(serviceState);
             newState.simSlotIndex = mPhone.getPhoneId();
-            newState.isMultiSim = (SimSlotState.getCurrentState().numActiveSims > 1);
+            newState.isMultiSim = SimSlotState.isMultiSim();
             newState.carrierId = mPhone.getCarrierId();
 
             TimestampedServiceState prevState =

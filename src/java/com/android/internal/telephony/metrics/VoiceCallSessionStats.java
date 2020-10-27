@@ -57,7 +57,6 @@ import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.AudioCodec;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -332,9 +331,9 @@ public class VoiceCallSessionStats {
             proto.ratAtEnd = rat;
             proto.ratSwitchCount = 0L;
             proto.codecBitmask = 0L;
-            proto.simSlotIndex = getSimSlotId();
-            proto.isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
-            proto.isEsim = isEsim();
+            proto.simSlotIndex = mPhoneId;
+            proto.isMultiSim = SimSlotState.isMultiSim();
+            proto.isEsim = SimSlotState.isEsim(mPhoneId);
             proto.carrierId = mPhone.getCarrierId();
             proto.srvccCompleted = false;
             proto.srvccFailureCount = 0L;
@@ -450,23 +449,6 @@ public class VoiceCallSessionStats {
         proto.disconnectExtraCode = reasonInfo.mExtraCode;
         proto.disconnectExtraMessage = reasonInfo.mExtraMessage;
         finishCall(id);
-    }
-
-    private boolean isEsim() {
-        int slotId = getSimSlotId();
-        UiccSlot slot = mUiccController.getUiccSlot(slotId);
-        if (slot != null) {
-            return slot.isEuicc();
-        } else {
-            // should not happen, but assume we are not using eSIM
-            loge("isEsim: slot %d is null", slotId);
-            return false;
-        }
-    }
-
-    private int getSimSlotId() {
-        // NOTE: UiccController's mapping hasn't be initialized when Phone was created
-        return mUiccController.getSlotIdFromPhoneId(mPhoneId);
     }
 
     private @Nullable ServiceState getServiceState() {

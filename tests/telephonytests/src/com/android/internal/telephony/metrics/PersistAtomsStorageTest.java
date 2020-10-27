@@ -47,7 +47,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
-import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
+import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.AudioCodec;
 import com.android.internal.telephony.protobuf.nano.MessageNano;
@@ -91,14 +91,14 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     // failed call
     private VoiceCallSession mCall4Proto;
 
-    private RawVoiceCallRatUsage mCarrier1LteUsageProto;
-    private RawVoiceCallRatUsage mCarrier1UmtsUsageProto;
-    private RawVoiceCallRatUsage mCarrier2LteUsageProto;
-    private RawVoiceCallRatUsage mCarrier3LteUsageProto;
-    private RawVoiceCallRatUsage mCarrier3GsmUsageProto;
+    private VoiceCallRatUsage mCarrier1LteUsageProto;
+    private VoiceCallRatUsage mCarrier1UmtsUsageProto;
+    private VoiceCallRatUsage mCarrier2LteUsageProto;
+    private VoiceCallRatUsage mCarrier3LteUsageProto;
+    private VoiceCallRatUsage mCarrier3GsmUsageProto;
 
     private VoiceCallSession[] mVoiceCallSessions;
-    private RawVoiceCallRatUsage[] mVoiceCallRatUsages;
+    private VoiceCallRatUsage[] mVoiceCallRatUsages;
 
     // data service state switch for slot 0 and 1
     private CellularDataServiceSwitch mServiceSwitch1Proto;
@@ -229,38 +229,38 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mCall4Proto.isEmergency = false;
         mCall4Proto.isRoaming = true;
 
-        mCarrier1LteUsageProto = new RawVoiceCallRatUsage();
+        mCarrier1LteUsageProto = new VoiceCallRatUsage();
         mCarrier1LteUsageProto.carrierId = CARRIER1_ID;
         mCarrier1LteUsageProto.rat = TelephonyManager.NETWORK_TYPE_LTE;
         mCarrier1LteUsageProto.callCount = 1L;
         mCarrier1LteUsageProto.totalDurationMillis = 8000L;
 
-        mCarrier1UmtsUsageProto = new RawVoiceCallRatUsage();
+        mCarrier1UmtsUsageProto = new VoiceCallRatUsage();
         mCarrier1UmtsUsageProto.carrierId = CARRIER1_ID;
         mCarrier1UmtsUsageProto.rat = TelephonyManager.NETWORK_TYPE_UMTS;
         mCarrier1UmtsUsageProto.callCount = 1L;
         mCarrier1UmtsUsageProto.totalDurationMillis = 6000L;
 
-        mCarrier2LteUsageProto = new RawVoiceCallRatUsage();
+        mCarrier2LteUsageProto = new VoiceCallRatUsage();
         mCarrier2LteUsageProto.carrierId = CARRIER2_ID;
         mCarrier2LteUsageProto.rat = TelephonyManager.NETWORK_TYPE_LTE;
         mCarrier2LteUsageProto.callCount = 2L;
         mCarrier2LteUsageProto.totalDurationMillis = 20000L;
 
-        mCarrier3LteUsageProto = new RawVoiceCallRatUsage();
+        mCarrier3LteUsageProto = new VoiceCallRatUsage();
         mCarrier3LteUsageProto.carrierId = CARRIER3_ID;
         mCarrier3LteUsageProto.rat = TelephonyManager.NETWORK_TYPE_LTE;
         mCarrier3LteUsageProto.callCount = 1L;
         mCarrier3LteUsageProto.totalDurationMillis = 1000L;
 
-        mCarrier3GsmUsageProto = new RawVoiceCallRatUsage();
+        mCarrier3GsmUsageProto = new VoiceCallRatUsage();
         mCarrier3GsmUsageProto.carrierId = CARRIER3_ID;
         mCarrier3GsmUsageProto.rat = TelephonyManager.NETWORK_TYPE_GSM;
         mCarrier3GsmUsageProto.callCount = 1L;
         mCarrier3GsmUsageProto.totalDurationMillis = 100000L;
 
         mVoiceCallRatUsages =
-                new RawVoiceCallRatUsage[] {
+                new VoiceCallRatUsage[] {
                     mCarrier1UmtsUsageProto,
                     mCarrier1LteUsageProto,
                     mCarrier2LteUsageProto,
@@ -592,7 +592,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         // call count and duration should become doubled since mVoiceCallRatUsages applied through
         // both file and addVoiceCallRatUsage()
         verifyCurrentStateSavedToFileOnce();
-        RawVoiceCallRatUsage[] expectedVoiceCallRatUsage =
+        VoiceCallRatUsage[] expectedVoiceCallRatUsage =
                 multiplyVoiceCallRatUsage(mVoiceCallRatUsages, 2);
         assertProtoArrayEqualsIgnoringOrder(
                 expectedVoiceCallRatUsage, mPersistAtomsStorage.getVoiceCallRatUsages(0L));
@@ -603,7 +603,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     @SmallTest
     public void addVoiceCallRatUsage_empty() throws Exception {
         createEmptyTestFile();
-        VoiceCallRatTracker ratTracker = VoiceCallRatTracker.fromProto(new RawVoiceCallRatUsage[0]);
+        VoiceCallRatTracker ratTracker = VoiceCallRatTracker.fromProto(new VoiceCallRatUsage[0]);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
         mPersistAtomsStorage.addVoiceCallRatUsage(ratTracker);
@@ -622,7 +622,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(100L);
+        VoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(100L);
 
         // should be denied
         assertNull(voiceCallRatUsage);
@@ -635,9 +635,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
         mPersistAtomsStorage.incTimeMillis(100L);
-        RawVoiceCallRatUsage[] voiceCallRatUsage1 = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
+        VoiceCallRatUsage[] voiceCallRatUsage1 = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
         mPersistAtomsStorage.incTimeMillis(100L);
-        RawVoiceCallRatUsage[] voiceCallRatUsage2 = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
+        VoiceCallRatUsage[] voiceCallRatUsage2 = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
         long voiceCallSessionPullTimestampMillis =
                 mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis;
         VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(50L);
@@ -648,16 +648,16 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         assertProtoArrayIsEmpty(voiceCallRatUsage2);
         assertEquals(
                 START_TIME_MILLIS + 200L,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
+                mPersistAtomsStorage.getAtomsProto().voiceCallRatUsagePullTimestampMillis);
         assertProtoArrayEquals(mVoiceCallSessions, voiceCallSession);
         assertEquals(START_TIME_MILLIS, voiceCallSessionPullTimestampMillis);
         InOrder inOrder = inOrder(mTestFileOutputStream);
         assertEquals(
                 START_TIME_MILLIS + 100L,
-                getAtomsWritten(inOrder).rawVoiceCallRatUsagePullTimestampMillis);
+                getAtomsWritten(inOrder).voiceCallRatUsagePullTimestampMillis);
         assertEquals(
                 START_TIME_MILLIS + 200L,
-                getAtomsWritten(inOrder).rawVoiceCallRatUsagePullTimestampMillis);
+                getAtomsWritten(inOrder).voiceCallRatUsagePullTimestampMillis);
         assertEquals(
                 START_TIME_MILLIS + 200L,
                 getAtomsWritten(inOrder).voiceCallSessionPullTimestampMillis);
@@ -688,8 +688,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
         VoiceCallSession[] voiceCallSession2 = mPersistAtomsStorage.getVoiceCallSessions(50L);
         long voiceCallRatUsagePullTimestampMillis =
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis;
-        RawVoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
+                mPersistAtomsStorage.getAtomsProto().voiceCallRatUsagePullTimestampMillis;
+        VoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
 
         // first set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved, other fields should be unaffected
@@ -709,7 +709,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 getAtomsWritten(inOrder).voiceCallSessionPullTimestampMillis);
         assertEquals(
                 START_TIME_MILLIS + 200L,
-                getAtomsWritten(inOrder).rawVoiceCallRatUsagePullTimestampMillis);
+                getAtomsWritten(inOrder).voiceCallRatUsagePullTimestampMillis);
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -932,8 +932,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private void createTestFile(long lastPullTimeMillis) throws Exception {
         PersistAtoms atoms = new PersistAtoms();
-        atoms.rawVoiceCallRatUsagePullTimestampMillis = lastPullTimeMillis;
-        atoms.rawVoiceCallRatUsage = mVoiceCallRatUsages;
+        atoms.voiceCallRatUsagePullTimestampMillis = lastPullTimeMillis;
+        atoms.voiceCallRatUsage = mVoiceCallRatUsages;
         atoms.voiceCallSessionPullTimestampMillis = lastPullTimeMillis;
         atoms.voiceCallSession = mVoiceCallSessions;
         atoms.cellularServiceStatePullTimestampMillis = lastPullTimeMillis;
@@ -963,11 +963,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         }
     }
 
-    private static RawVoiceCallRatUsage[] multiplyVoiceCallRatUsage(
-            RawVoiceCallRatUsage[] usages, int times) {
-        RawVoiceCallRatUsage[] multipliedUsages = new RawVoiceCallRatUsage[usages.length];
+    private static VoiceCallRatUsage[] multiplyVoiceCallRatUsage(
+            VoiceCallRatUsage[] usages, int times) {
+        VoiceCallRatUsage[] multipliedUsages = new VoiceCallRatUsage[usages.length];
         for (int i = 0; i < usages.length; i++) {
-            multipliedUsages[i] = new RawVoiceCallRatUsage();
+            multipliedUsages[i] = new VoiceCallRatUsage();
             multipliedUsages[i].carrierId = usages[i].carrierId;
             multipliedUsages[i].rat = usages[i].rat;
             multipliedUsages[i].callCount = usages[i].callCount * 2;
@@ -988,7 +988,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private void assertAllPullTimestampEquals(long timestamp) {
         assertEquals(
                 timestamp,
-                mPersistAtomsStorage.getAtomsProto().rawVoiceCallRatUsagePullTimestampMillis);
+                mPersistAtomsStorage.getAtomsProto().voiceCallRatUsagePullTimestampMillis);
         assertEquals(
                 timestamp,
                 mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis);

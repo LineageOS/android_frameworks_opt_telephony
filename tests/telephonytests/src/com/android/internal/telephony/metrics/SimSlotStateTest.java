@@ -17,6 +17,8 @@
 package com.android.internal.telephony.metrics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 
@@ -73,10 +75,12 @@ public class SimSlotStateTest extends TelephonyTest {
         doReturn(new UiccSlot[] {}).when(mUiccController).getUiccSlots();
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(0, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -85,10 +89,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(null);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(0, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -97,10 +103,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mInactiveSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(0, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -109,10 +117,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mEmptySlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -122,10 +132,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mPhysicalSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -135,10 +147,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mPhysicalSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -148,11 +162,13 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mPhysicalSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         // the metrics should not count restricted cards since they cannot be used
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -162,10 +178,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -175,10 +193,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -188,10 +208,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupSingleSim(mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -200,10 +222,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mEmptySlot, mInactiveSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -212,10 +236,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mPhysicalSlot, mInactiveSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -225,10 +251,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mInactiveSlot, mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -238,10 +266,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mInactiveSlot, mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(1, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -251,10 +281,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mEmptySlot, mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(2, state.numActiveSlots);
         assertEquals(0, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -264,10 +296,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mPhysicalSlot, mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(2, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -277,10 +311,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mEmptySlot, mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(2, state.numActiveSlots);
         assertEquals(1, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertFalse(isMultiSim);
     }
 
     @Test
@@ -290,10 +326,12 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mPhysicalSlot, mEsimSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(2, state.numActiveSlots);
         assertEquals(2, state.numActiveSims);
         assertEquals(1, state.numActiveEsims);
+        assertTrue(isMultiSim);
     }
 
     @Test
@@ -302,10 +340,45 @@ public class SimSlotStateTest extends TelephonyTest {
         setupDualSim(mPhysicalSlot, mPhysicalSlot);
 
         SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
 
         assertEquals(2, state.numActiveSlots);
         assertEquals(2, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
+        assertTrue(isMultiSim);
+    }
+
+    @Test
+    @SmallTest
+    public void isEsim_singlePhysicalSim() {
+        doReturn(mPhysicalSlot).when(mUiccController).getUiccSlotForPhone(eq(0));
+
+        boolean isEsim = SimSlotState.isEsim(0);
+
+        assertFalse(isEsim);
+    }
+
+    @Test
+    @SmallTest
+    public void isEsim_singleEsim() {
+        doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(0));
+
+        boolean isEsim = SimSlotState.isEsim(0);
+
+        assertTrue(isEsim);
+    }
+
+    @Test
+    @SmallTest
+    public void isEsim_dualSim() {
+        doReturn(mPhysicalSlot).when(mUiccController).getUiccSlotForPhone(eq(0));
+        doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
+
+        boolean isEsim0 = SimSlotState.isEsim(0);
+        boolean isEsim1 = SimSlotState.isEsim(1);
+
+        assertFalse(isEsim0);
+        assertTrue(isEsim1);
     }
 
     private void setupSingleSim(UiccSlot slot0) {
