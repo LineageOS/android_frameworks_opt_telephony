@@ -30,13 +30,14 @@ import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalThresholdInfo;
+import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
 import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
-import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
+import com.android.internal.telephony.uicc.IccCardStatus;
 
 import java.util.List;
 
@@ -1552,6 +1553,25 @@ public interface CommandsInterface {
      */
     @UnsupportedAppUsage
     void getPreferredNetworkType(Message response);
+
+    /**
+     * Enable/Disable E-UTRA-NR Dual Connectivity
+     * @param nrDualConnectivityState expected NR dual connectivity state
+     * This can be passed following states
+     * <ol>
+     * <li>Enable NR dual connectivity {@link TelephonyManager#NR_DUAL_CONNECTIVITY_ENABLE}
+     * <li>Disable NR dual connectivity {@link TelephonyManager#NR_DUAL_CONNECTIVITY_DISABLE}
+     * <li>Disable NR dual connectivity and force secondary cell to be released
+     * {@link TelephonyManager#NR_DUAL_CONNECTIVITY_DISABLE_IMMEDIATE}
+     * </ol>
+     */
+    default void setNrDualConnectivityState(int nrDualConnectivityState,
+            Message message, WorkSource workSource) {}
+
+    /**
+     * Is E-UTRA-NR Dual Connectivity enabled
+     */
+    default void isNrDualConnectivityEnabled(Message message, WorkSource workSource) {}
 
     /**
      * Request to enable/disable network state change notifications when
