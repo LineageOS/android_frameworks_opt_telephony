@@ -18,6 +18,8 @@ package com.android.internal.telephony.metrics;
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -51,6 +53,9 @@ public class PersistAtomsStorage {
     /** Name of the file where cached statistics are saved to. */
     private static final String FILENAME = "persist_atoms.pb";
 
+    /** Delay to store atoms to persistent storage to bundle multiple operations together. */
+    private static final int SAVE_TO_FILE_DELAY_MILLIS = 30000;
+
     /** Maximum number of call sessions to store between pulls. */
     private static final int MAX_NUM_CALL_SESSIONS = 50;
 
@@ -81,13 +86,30 @@ public class PersistAtomsStorage {
     /** Aggregates RAT duration and call count. */
     private final VoiceCallRatTracker mVoiceCallRatTracker;
 
+    /** Delay before data is stored persistenly to storage. */
+    @VisibleForTesting protected int mSaveDelay;
+
     private final Context mContext;
+    private final Handler mHandler;
+    private final HandlerThread mHandlerThread;
     private static final SecureRandom sRandom = new SecureRandom();
+
+    private Runnable mSaveRunnable = new Runnable() {
+        @Override
+        public void run() {
+            saveAtomsToFileNow();
+        }
+    };
 
     public PersistAtomsStorage(Context context) {
         mContext = context;
         mAtoms = loadAtomsFromFile();
         mVoiceCallRatTracker = VoiceCallRatTracker.fromProto(mAtoms.rawVoiceCallRatUsage);
+
+        mHandlerThread = new HandlerThread("PersistAtomsThread");
+        mHandlerThread.start();
+        mHandler = new Handler(mHandlerThread.getLooper());
+        mSaveDelay = SAVE_TO_FILE_DELAY_MILLIS;
     }
 
     /** Adds a call to the storage. */
@@ -412,8 +434,25 @@ public class PersistAtomsStorage {
         }
     }
 
-    /** Saves a copy of {@link PersistAtoms} to a file in private storage. */
+    /**
+     * Posts message to save a copy of {@link PersistAtoms} to a file after a delay.
+     *
+     * The delay is introduced to avoid too frequent operations to disk, that would have negative
+     * impact on the power consumption.
+     */
     private void saveAtomsToFile() {
+        if (mSaveDelay > 0) {
+            mHandler.removeCallbacks(mSaveRunnable);
+            if (mHandler.postDelayed(mSaveRunnable, mSaveDelay)) {
+                return;
+            }
+        }
+        // In case of error posting the event or if delay is 0, save immediately
+        saveAtomsToFileNow();
+    }
+
+    /** Saves a copy of {@link PersistAtoms} to a file in private storage. */
+    private synchronized void saveAtomsToFileNow() {
         try (FileOutputStream stream = mContext.openFileOutput(FILENAME, Context.MODE_PRIVATE)) {
             stream.write(PersistAtoms.toByteArray(mAtoms));
         } catch (IOException e) {
