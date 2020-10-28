@@ -2144,12 +2144,21 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     *  Query the CDMA roaming preference setting
+     * Query the CDMA roaming preference setting.
      *
-     * @param response is callback message to report one of  CDMA_RM_*
+     * @param response is callback message to report one of TelephonyManager#CDMA_ROAMING_MODE_*
      */
     public void queryCdmaRoamingPreference(Message response) {
         mCi.queryCdmaRoamingPreference(response);
+    }
+
+    /**
+     * Get the CDMA subscription mode setting.
+     *
+     * @param response is callback message to report one of TelephonyManager#CDMA_SUBSCRIPTION_*
+     */
+    public void queryCdmaSubscriptionMode(Message response) {
+        mCi.getCdmaSubscriptionSource(response);
     }
 
     /**
@@ -2181,8 +2190,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     *  Requests to set the CDMA roaming preference
-     * @param cdmaRoamingType one of  CDMA_RM_*
+     * Requests to set the CDMA roaming preference
+     * @param cdmaRoamingType one of TelephonyManager#CDMA_ROAMING_MODE_*
      * @param response is callback message
      */
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
@@ -2190,11 +2199,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     *  Requests to set the CDMA subscription mode
-     * @param cdmaSubscriptionType one of  CDMA_SUBSCRIPTION_*
+     * Requests to set the CDMA subscription mode
+     * @param cdmaSubscriptionType one of TelephonyManager#CDMA_SUBSCRIPTION_*
      * @param response is callback message
      */
-    public void setCdmaSubscription(int cdmaSubscriptionType, Message response) {
+    public void setCdmaSubscriptionMode(int cdmaSubscriptionType, Message response) {
         mCi.setCdmaSubscriptionSource(cdmaSubscriptionType, response);
     }
 
