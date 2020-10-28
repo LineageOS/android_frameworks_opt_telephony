@@ -4452,6 +4452,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return Collections.emptyList();
     }
 
+    /**
+     *
+     * @return
+     */
+    public @NonNull List<String> getDataServicePackages() {
+        return Collections.emptyList();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);

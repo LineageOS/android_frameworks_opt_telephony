@@ -454,7 +454,7 @@ public class DataServiceManager extends Handler {
      *
      * @return package name of the data service package for the the current transportType.
      */
-    private String getDataServicePackageName() {
+    public String getDataServicePackageName() {
         return getDataServicePackageName(mTransportType);
     }
 

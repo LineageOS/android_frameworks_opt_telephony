@@ -4517,4 +4517,25 @@ public class GsmCdmaPhone extends Phone {
         }
         return Collections.emptyList();
     }
+
+    /**
+     * @return Currently bound data service package names.
+     */
+    public @NonNull List<String> getDataServicePackages() {
+        List<String> packages = new ArrayList<>();
+        int[] transports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
+
+        for (int transport : transports) {
+            DcTracker dct = getDcTracker(transport);
+            if (dct != null) {
+                String pkg = dct.getDataServiceManager().getDataServicePackageName();
+                if (!TextUtils.isEmpty(pkg)) {
+                    packages.add(pkg);
+                }
+            }
+        }
+
+        return packages;
+    }
 }

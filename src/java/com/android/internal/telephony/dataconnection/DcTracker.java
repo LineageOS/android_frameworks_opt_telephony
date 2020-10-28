@@ -5228,4 +5228,11 @@ public class DcTracker extends Handler {
         // Return static default defined in CarrierConfigManager.
         return CarrierConfigManager.getDefaultConfig();
     }
+
+    /**
+     * @return The data service manager.
+     */
+    public @NonNull DataServiceManager getDataServiceManager() {
+        return mDataServiceManager;
+    }
 }
