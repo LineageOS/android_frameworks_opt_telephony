@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -73,7 +74,7 @@ import java.util.List;
  */
 public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static final int SUPPORTED_MODEM_COUNT = TelephonyManager.getDefault()
             .getSupportedModemCount();
 
@@ -102,9 +103,9 @@ public class SubscriptionInfoUpdater extends Handler {
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_SUBID = "curr_subid";
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static Context sContext = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
 
     protected static String[] sIccId = new String[SUPPORTED_MODEM_COUNT];
     private static String[] sInactiveIccIds = new String[SUPPORTED_MODEM_COUNT];
@@ -116,7 +117,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private Handler mBackgroundHandler;
 
     // The current foreground user ID.
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
 
@@ -216,7 +217,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected boolean isAllIccIdQueryDone() {
         for (int i = 0; i < TelephonyManager.getDefault().getActiveModemCount(); i++) {
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
@@ -1144,7 +1145,7 @@ public class SubscriptionInfoUpdater extends Handler {
         return newSim;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void broadcastSimStateChanged(int phoneId, String state, String reason) {
         // Note: This intent is way deprecated and is only being kept around because there's no
         // graceful way to deprecate a sticky broadcast that has a lot of listeners.
@@ -1242,7 +1243,7 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static void logd(String message) {
         Rlog.d(LOG_TAG, message);
     }

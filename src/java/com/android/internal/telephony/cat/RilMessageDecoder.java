@@ -18,6 +18,7 @@ package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.SubscriptionManager;
@@ -39,13 +40,13 @@ class RilMessageDecoder extends StateMachine {
     private static final int CMD_PARAMS_READY = 2;
 
     // members
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CommandParamsFactory mCmdParamsFactory = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private RilMessage mCurrentRilMessage = null;
     private Handler mCaller = null;
     private static int mSimCount = 0;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static RilMessageDecoder[] mInstance = null;
 
     // States
@@ -60,7 +61,7 @@ class RilMessageDecoder extends StateMachine {
      * @param fh
      * @return RilMesssageDecoder
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static synchronized RilMessageDecoder getInstance(Handler caller, IccFileHandler fh,
             Context context, int slotId) {
         if (null == mInstance) {
@@ -89,7 +90,7 @@ class RilMessageDecoder extends StateMachine {
      *
      * @param rilMsg
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void sendStartDecodingMessageParams(RilMessage rilMsg) {
         Message msg = obtainMessage(CMD_START);
         msg.obj = rilMsg;
@@ -109,7 +110,7 @@ class RilMessageDecoder extends StateMachine {
         sendMessage(msg);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void sendCmdForExecution(RilMessage rilMsg) {
         Message msg = mCaller.obtainMessage(CatService.MSG_ID_RIL_MSG_DECODED,
                 new RilMessage(rilMsg));

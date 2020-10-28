@@ -26,6 +26,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources.NotFoundException;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
@@ -43,7 +44,7 @@ import java.util.Locale;
  */
 class CommandParamsFactory extends Handler {
     private static CommandParamsFactory sInstance = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private IconLoader mIconLoader;
     private CommandParams mCmdParams = null;
     private int mIconLoadState = LOAD_NO_ICON;
@@ -295,7 +296,7 @@ class CommandParamsFactory extends Handler {
      * @return A ComprehensionTlv object that has the tag value of {@code tag}.
      *         If no object is found with the tag, null is returned.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ComprehensionTlv searchForTag(ComprehensionTlvTag tag,
             List<ComprehensionTlv> ctlvs) {
         Iterator<ComprehensionTlv> iter = ctlvs.iterator();
@@ -314,7 +315,7 @@ class CommandParamsFactory extends Handler {
      * @return A ComprehensionTlv object that has the tag value of {@code tag}.
      *         If no object is found with the tag, null is returned.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ComprehensionTlv searchForNextTag(ComprehensionTlvTag tag,
             Iterator<ComprehensionTlv> iter) {
         int tagValue = tag.value();
@@ -1109,7 +1110,7 @@ class CommandParamsFactory extends Handler {
         return false;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void dispose() {
         mIconLoader.dispose();
         mIconLoader = null;

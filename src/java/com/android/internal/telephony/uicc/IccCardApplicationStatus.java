@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.telephony.Rlog;
@@ -144,7 +145,7 @@ public class IccCardApplicationStatus {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public AppType        app_type;
     public AppState       app_state;
     // applicable only if app_state == RIL_APPSTATE_SUBSCRIPTION_PERSO
@@ -158,11 +159,11 @@ public class IccCardApplicationStatus {
     public PinState       pin1;
     public PinState       pin2;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public IccCardApplicationStatus() {
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public AppType AppTypeFromRILInt(int type) {
         AppType newType;
         /* RIL_AppType ril.h */

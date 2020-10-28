@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 /**
  * Object returned by the RIL upon successful completion of sendSMS.
@@ -27,16 +28,16 @@ public class SmsResponse {
     public static final int NO_ERROR_CODE = -1;
 
     /** Message reference of the just-sent SMS. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     int mMessageRef;
     /** ackPdu for the just-sent SMS. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     String mAckPdu;
     /**
      * errorCode: See 3GPP 27.005, 3.2.5 for GSM/UMTS,
      * 3GPP2 N.S0005 (IS-41C) Table 171 for CDMA, -1 if unknown or not applicable.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int mErrorCode;
 
     public long mMessageId;

@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.telephony.DisconnectCause;
@@ -179,23 +180,23 @@ public abstract class Connection {
     private String mTelecomCallId;
 
     //Caller Name Display
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected String mCnapName;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected String mAddress;     // MAY BE NULL!!!
     // The VERSTAT number verification status; defaults to not verified.
     protected @android.telecom.Connection.VerificationStatus int mNumberVerificationStatus =
             android.telecom.Connection.VERIFICATION_STATUS_NOT_VERIFIED;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected String mDialString;          // outgoing calls only
     protected String[] mParticipantsToDial;// outgoing calls only
     protected boolean mIsAdhocConference;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected boolean mIsIncoming;
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
@@ -209,7 +210,7 @@ public abstract class Connection {
      * calculating deltas.
      */
     protected long mConnectTimeReal;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected long mDuration;
     protected long mHoldingStartTime;  // The time when the Connection last transitioned
                             // into HOLDING
@@ -285,7 +286,7 @@ public abstract class Connection {
      */
     private int mPulledDialogId;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected Connection(int phoneType) {
         mPhoneType = phoneType;
     }
@@ -430,7 +431,7 @@ public abstract class Connection {
      * The time when this Connection makes a transition into ENDED or FAIL.
      * Returns 0 before then.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public abstract long getDisconnectTime();
 
     /**
@@ -439,7 +440,7 @@ public abstract class Connection {
      * If the call is still connected, then returns the elapsed
      * time since connect.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public long getDurationMillis() {
         if (mConnectTimeReal == 0) {
             return 0;
@@ -472,7 +473,7 @@ public abstract class Connection {
      * {@link android.telephony.DisconnectCause}. If the call is not yet
      * disconnected, NOT_DISCONNECTED is returned.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getDisconnectCause() {
         return mCause;
     }
@@ -632,7 +633,7 @@ public abstract class Connection {
      * @return true if the connection isn't disconnected
      * (could be active, holding, ringing, dialing, etc)
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean
     isAlive() {
         return getState().isAlive();
@@ -682,7 +683,7 @@ public abstract class Connection {
     /**
      * Hangup individual Connection
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public abstract void hangup() throws CallStateException;
 
     /**
@@ -989,7 +990,7 @@ public abstract class Connection {
      *
      * @return The video state.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void setVideoState(int videoState) {
         mVideoState = videoState;
         for (Listener l : mListeners) {

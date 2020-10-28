@@ -42,6 +42,7 @@ import android.hardware.radio.V1_0.CellInfoType;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.BaseBundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Parcel;
@@ -146,20 +147,20 @@ public class ServiceStateTracker extends Handler {
     private static final long SIGNAL_STRENGTH_REFRESH_THRESHOLD_IN_MS =
             TimeUnit.SECONDS.toMillis(10);
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CommandsInterface mCi;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private UiccController mUiccController = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private UiccCardApplication mUiccApplcation = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private IccRecords mIccRecords = null;
 
     private boolean mVoiceCapable;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public ServiceState mSS;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ServiceState mNewSS;
     // A placeholder service state which will always be out of service. This is broadcast to
     // listeners when the subscription ID for a phone becomes invalid so that they get a final
@@ -330,33 +331,33 @@ public class ServiceStateTracker extends Handler {
     private PendingIntent mRadioOffIntent = null;
     private static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     private boolean mPowerOffDelayNeed = true;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mDeviceShuttingDown = false;
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mSpnUpdatePending = false;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mCurSpn = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mCurDataSpn = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mCurPlmn = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mCurShowPlmn = false;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mCurShowSpn = false;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @VisibleForTesting
     public int mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private int mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private boolean mImsRegistered = false;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private SubscriptionManager mSubscriptionManager;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private SubscriptionController mSubscriptionController;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final SstSubscriptionsChangedListener mOnSubscriptionsChangedListener =
         new SstSubscriptionsChangedListener();
 
@@ -472,7 +473,7 @@ public class ServiceStateTracker extends Handler {
     };
 
     //Common
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final GsmCdmaPhone mPhone;
 
     private CellIdentity mCellIdentity;
@@ -489,19 +490,19 @@ public class ServiceStateTracker extends Handler {
     private NitzData mLastNitzData;
 
     private final EriManager mEriManager;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final ContentResolver mCr;
 
     //GSM
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mPreferredNetworkType;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mMaxDataCalls = 1;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mNewMaxDataCalls = 1;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mReasonDataDenied = -1;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mNewReasonDataDenied = -1;
 
     /**
@@ -524,13 +525,13 @@ public class ServiceStateTracker extends Handler {
     /**
      * Mark when service state is in emergency call only mode
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mEmergencyOnly = false;
     /** Started the recheck process after finding gprs should registered but not. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mStartedGprsRegCheck;
     /** Already sent the event-log for no gprs register. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mReportedGprsNoReg;
 
     private CarrierServiceStateTracker mCSST;
@@ -558,7 +559,7 @@ public class ServiceStateTracker extends Handler {
 
     private String mLastKnownNetworkCountry = "";
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -599,10 +600,10 @@ public class ServiceStateTracker extends Handler {
     public static final String UNACTIVATED_MIN_VALUE = "1111110111";
     // Current Otasp value
     private int mCurrentOtaspMode = TelephonyManager.OTASP_UNINITIALIZED;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mRoamingIndicator;
     private boolean mIsInPrl;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mDefaultRoamingIndicator;
     /**
      * Initially assume no data connection.
@@ -617,7 +618,7 @@ public class ServiceStateTracker extends Handler {
     private boolean mIsMinInfoReady = false;
     private boolean mIsEriTextLoaded = false;
     private String mEriText;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mIsSubscriptionFromRuim = false;
     private CdmaSubscriptionSourceManager mCdmaSSM;
     public static final String INVALID_MCC = "000";
@@ -861,7 +862,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean getDesiredPowerState() {
         return mDesiredPowerState;
     }
@@ -872,7 +873,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     private SignalStrength mLastSignalStrength = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected boolean notifySignalStrength() {
         boolean notified = false;
         if (!mSignalStrength.equals(mLastSignalStrength)) {
@@ -941,7 +942,7 @@ public class ServiceStateTracker extends Handler {
      * Some operators have been known to report registration failure
      * data only devices, to fix that use DataRegState.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void useDataRegStateForDataOnlyDevices() {
         if (mVoiceCapable == false) {
             if (DBG) {
@@ -953,7 +954,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void updatePhoneObject() {
         if (mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
@@ -1062,7 +1063,7 @@ public class ServiceStateTracker extends Handler {
      * an AsyncResult, and onComplete.obj.exception will be non-null
      * on failure.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void reRegisterNetwork(Message onComplete) {
         mCi.getPreferredNetworkType(
                 obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
@@ -1869,7 +1870,7 @@ public class ServiceStateTracker extends Handler {
         if (DBG) log("CDMA_SUBSCRIPTION: NID=" + nidStr);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void updateOtaspState() {
         int otaspMode = getOtasp();
         int oldOtaspMode = mCurrentOtaspMode;
@@ -2522,7 +2523,7 @@ public class ServiceStateTracker extends Handler {
      * Query the carrier configuration to determine if there any network overrides
      * for roaming or not roaming for the current service state.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void updateRoamingState() {
         PersistableBundle bundle = getCarrierConfig();
 
@@ -2675,7 +2676,7 @@ public class ServiceStateTracker extends Handler {
         log("updateSpnDisplayCdnr-");
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @VisibleForTesting
     public void updateSpnDisplay() {
         PersistableBundle config = getCarrierConfig();
@@ -3029,12 +3030,12 @@ public class ServiceStateTracker extends Handler {
         mRatLog.log(mSS.toString());
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final void log(String s) {
         Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + s);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final void loge(String s) {
         Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + s);
     }
@@ -3043,7 +3044,7 @@ public class ServiceStateTracker extends Handler {
      * @return The current GPRS state. IN_SERVICE is the same as "attached"
      * and OUT_OF_SERVICE is the same as detached.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getCurrentDataConnectionState() {
         return mSS.getDataRegistrationState();
     }
@@ -3052,7 +3053,7 @@ public class ServiceStateTracker extends Handler {
      * @return true if phone is camping on a technology (eg UMTS)
      * that could support voice and data simultaneously.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean isConcurrentVoiceAndDataAllowed() {
         if (mSS.getCssIndicator() == 1) {
             // Checking the Concurrent Service Supported flag first for all phone types.
@@ -3115,7 +3116,7 @@ public class ServiceStateTracker extends Handler {
      * and start over again if the radio notifies us that some
      * event has changed
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void pollState() {
         sendEmptyMessage(EVENT_POLL_STATE_REQUEST);
     }
@@ -3824,7 +3825,7 @@ public class ServiceStateTracker extends Handler {
      *
      * @return true if provided sid/nid pair belongs to operator's home network.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean isInHomeSidNid(int sid, int nid) {
         // if SID/NID is not available, assume this is home network.
         if (isSidsAllZeros()) return true;
@@ -3847,7 +3848,7 @@ public class ServiceStateTracker extends Handler {
         return false;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void setOperatorIdd(String operatorNumeric) {
         if (mPhone.getUnitTestMode()) {
             return;
@@ -3865,13 +3866,13 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean isInvalidOperatorNumeric(String operatorNumeric) {
         return operatorNumeric == null || operatorNumeric.length() < 5 ||
                 operatorNumeric.startsWith(INVALID_MCC);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String fixUnknownMcc(String operatorNumeric, int sid) {
         if (sid <= 0) {
             // no cdma information is available, do nothing
@@ -3904,7 +3905,7 @@ public class ServiceStateTracker extends Handler {
      * @param voiceRegState i.e. CREG in GSM
      * @return false if device only register to voice but not gprs
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean isGprsConsistent(int dataRegState, int voiceRegState) {
         return !((voiceRegState == ServiceState.STATE_IN_SERVICE) &&
                 (dataRegState != ServiceState.STATE_IN_SERVICE));
@@ -5019,7 +5020,7 @@ public class ServiceStateTracker extends Handler {
         return iccCardExist;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public String getSystemProperty(String property, String defValue) {
         return TelephonyManager.getTelephonyProperty(mPhone.getPhoneId(), property, defValue);
     }
@@ -5325,7 +5326,7 @@ public class ServiceStateTracker extends Handler {
         ipw.flush();
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean isImsRegistered() {
         return mImsRegistered;
     }
@@ -5389,7 +5390,7 @@ public class ServiceStateTracker extends Handler {
      * Set both voice and data roaming type,
      * judging from the ISO country of SIM VS network.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void setRoamingType(ServiceState currentServiceState) {
         final boolean isVoiceInService =
                 (currentServiceState.getState() == ServiceState.STATE_IN_SERVICE);
@@ -5481,7 +5482,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void setSignalStrengthDefaultValues() {
         mSignalStrength = new SignalStrength();
         mSignalStrengthUpdatedTime = System.currentTimeMillis();
@@ -5497,7 +5498,7 @@ public class ServiceStateTracker extends Handler {
         return numeric;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int getPhoneId() {
         return mPhone.getPhoneId();
     }

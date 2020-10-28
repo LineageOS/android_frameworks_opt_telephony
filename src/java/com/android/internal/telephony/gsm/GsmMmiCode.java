@@ -33,6 +33,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -140,25 +141,25 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** Instance Variables
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     GsmCdmaPhone mPhone;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     Context mContext;
     UiccCardApplication mUiccApplication;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     IccRecords mIccRecords;
 
     String mAction;              // One of ACTION_*
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     String mSc;                  // Service Code
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     String mSia;                 // Service Info a
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     String mSib;                 // Service Info b
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     String mSic;                 // Service Info c
     String mPoundString;         // Entire MMI string up to and including #
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public String mDialingNumber;
     String mPwd;                 // For password registration
 
@@ -223,7 +224,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      *
      * Please see flow chart in TS 22.030 6.5.3.2
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static GsmMmiCode newFromDialString(String dialString, GsmCdmaPhone phone,
             UiccCardApplication app) {
         return newFromDialString(dialString, phone, app, null);
@@ -619,7 +620,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** Constructor
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public GsmMmiCode(GsmCdmaPhone phone, UiccCardApplication app) {
         // The telephony unit-test cases may create GsmMmiCode's
         // in secondary threads

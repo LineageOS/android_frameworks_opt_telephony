@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 
@@ -58,7 +59,7 @@ public class IccCard {
     /**
      * @return combined Card and current App state
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public State getState() {
         return mIccCardState;
     }
@@ -133,7 +134,7 @@ public class IccCard {
     /**
      * Supply Network depersonalization code to the RIL
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void supplyNetworkDepersonalization(String pin, Message onComplete) {
         sendMessageWithCardAbsentException(onComplete);
     }

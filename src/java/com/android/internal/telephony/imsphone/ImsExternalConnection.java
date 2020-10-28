@@ -19,6 +19,7 @@ package com.android.internal.telephony.imsphone;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.telecom.PhoneAccount;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ims.ImsExternalCallState;
@@ -201,7 +202,7 @@ public class ImsExternalConnection extends Connection {
     /**
      * Sets this external call as active.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void setActive() {
         if (mCall == null) {
             return;
@@ -282,7 +283,7 @@ public class ImsExternalConnection extends Connection {
     /**
      * Rebuilds the connection capabilities.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void rebuildCapabilities() {
         int capabilities = Capability.IS_EXTERNAL_CONNECTION;
         if (mIsPullable) {
