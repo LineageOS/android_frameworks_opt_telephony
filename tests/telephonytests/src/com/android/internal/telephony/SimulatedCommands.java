@@ -1177,10 +1177,10 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              Message result) {
+                              int pduSessionId, Message result) {
 
         SimulatedCommandsVerifier.getInstance().setupDataCall(accessNetworkType, dataProfile,
-                isRoaming, allowRoaming, reason, linkProperties, result);
+                isRoaming, allowRoaming, reason, linkProperties, pduSessionId, result);
 
         if (mSetupDataCallResult == null) {
             try {

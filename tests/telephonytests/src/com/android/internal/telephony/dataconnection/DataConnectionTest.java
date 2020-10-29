@@ -385,7 +385,8 @@ public class DataConnectionTest extends TelephonyTest {
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(AccessNetworkType.UTRAN), dpCaptor.capture(), eq(false),
-                eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(), any(Message.class));
+                eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                anyInt(), any(Message.class));
 
         assertEquals("spmode.ne.jp", dpCaptor.getValue().getApn());
 
