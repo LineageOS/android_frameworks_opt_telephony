@@ -353,6 +353,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         TestablePersistAtomsStorage(Context context) {
             super(context);
+            // Remove delay for saving to persistent storage during tests.
+            mSaveDelay = 0;
         }
 
         @Override
