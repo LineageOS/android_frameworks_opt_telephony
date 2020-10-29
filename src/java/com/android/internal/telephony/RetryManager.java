@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
+import android.os.Build;
 import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
@@ -137,14 +138,14 @@ public class RetryManager {
     /**
      * The delay (in milliseconds) between APN trying within the same round
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private long mInterApnDelay;
 
     /**
      * The delay (in milliseconds) between APN trying within the same round when we are in
      * fail fast mode
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private long mFailFastInterApnDelay;
 
     /**
@@ -181,7 +182,7 @@ public class RetryManager {
      */
     private ArrayList<RetryRec> mRetryArray = new ArrayList<RetryRec>();
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Phone mPhone;
 
     /**
@@ -224,7 +225,7 @@ public class RetryManager {
     /**
      * Apn context type. Could be "default, "mms", "supl", etc...
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mApnType;
 
     /**
@@ -691,7 +692,7 @@ public class RetryManager {
                 + " mConfig={" + mConfig + "}";
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String s) {
         Rlog.d(LOG_TAG, "[" + mApnType + "] " + s);
     }

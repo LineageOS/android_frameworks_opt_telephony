@@ -17,6 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.os.SystemProperties;
 import android.text.TextUtils;
 
@@ -31,7 +32,7 @@ import java.util.TimeZone;
 
 abstract class ResponseData {
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     ResponseData() {
     }
 
@@ -39,7 +40,7 @@ abstract class ResponseData {
      * Format the data appropriate for TERMINAL RESPONSE and write it into
      * the ByteArrayOutputStream object.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public abstract void format(ByteArrayOutputStream buf);
 
     public static void writeLength(ByteArrayOutputStream buf, int length) {

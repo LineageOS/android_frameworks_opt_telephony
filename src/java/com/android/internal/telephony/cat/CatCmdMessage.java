@@ -17,6 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -27,17 +28,17 @@ import android.os.Parcelable;
  */
 public class CatCmdMessage implements Parcelable {
     // members
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     CommandDetails mCmdDet;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private TextMessage mTextMsg;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Menu mMenu;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Input mInput;
     private BrowserSettings mBrowserSettings = null;
     private ToneSettings mToneSettings = null;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CallSettings mCallSettings = null;
     private SetupEventListSettings mSetupEventListSettings = null;
     private boolean mLoadIconFailed = false;
@@ -54,9 +55,9 @@ public class CatCmdMessage implements Parcelable {
      * Container for Call Setup command settings.
      */
     public class CallSettings {
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public TextMessage confirmMsg;
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public TextMessage callMsg;
     }
 
@@ -215,7 +216,7 @@ public class CatCmdMessage implements Parcelable {
     }
 
     /* external API to be used by application */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public AppInterface.CommandType getCmdType() {
         return AppInterface.CommandType.fromInt(mCmdDet.typeOfCommand);
     }
@@ -228,7 +229,7 @@ public class CatCmdMessage implements Parcelable {
         return mInput;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public TextMessage geTextMessage() {
         return mTextMsg;
     }
@@ -241,7 +242,7 @@ public class CatCmdMessage implements Parcelable {
         return mToneSettings;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public CallSettings getCallSettings() {
         return mCallSettings;
     }

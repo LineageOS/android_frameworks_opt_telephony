@@ -24,6 +24,7 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.database.MergeCursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.RemoteException;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -41,7 +42,7 @@ import java.util.List;
  */
 public class IccProvider extends ContentProvider {
     private static final String TAG = "IccProvider";
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static final boolean DBG = true;
 
 
@@ -530,7 +531,7 @@ public class IccProvider extends ContentProvider {
      * @param record the ADN record to load from
      * @param cursor the cursor to receive the results
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void loadRecord(AdnRecord record, MatrixCursor cursor, int id) {
         if (!record.isEmpty()) {
             Object[] contact = new Object[4];
@@ -556,7 +557,7 @@ public class IccProvider extends ContentProvider {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String msg) {
         Rlog.d(TAG, "[IccProvider] " + msg);
     }

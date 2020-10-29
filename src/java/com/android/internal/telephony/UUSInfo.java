@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 public class UUSInfo {
 
@@ -76,7 +77,7 @@ public class UUSInfo {
         mUusData = uusData;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getDcs() {
         return mUusDcs;
     }
@@ -85,7 +86,7 @@ public class UUSInfo {
         mUusDcs = uusDcs;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getType() {
         return mUusType;
     }
@@ -94,7 +95,7 @@ public class UUSInfo {
         mUusType = uusType;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public byte[] getUserData() {
         return mUusData;
     }
