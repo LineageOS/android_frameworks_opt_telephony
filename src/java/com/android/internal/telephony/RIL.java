@@ -1894,8 +1894,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              Message result) {
-
+                              int pduSessionId, Message result) {
         IRadio radioProxy = getRadioProxy(result);
 
         if (radioProxy != null) {
@@ -1943,11 +1942,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 + ",accessNetworkType="
                                 + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
-                                + ",addresses=" + addresses15 + ",dnses=" + dnses);
+                                + ",addresses=" + addresses15 + ",dnses=" + dnses
+                                + ",pduSessionId=" + pduSessionId);
                     }
 
                     radioProxy16.setupDataCall_1_6(rr.mSerial, accessNetworkType, dpi, allowRoaming,
-                            reason, addresses15, dnses);
+                            reason, addresses15, dnses, pduSessionId);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     // IRadio V1.5
                     android.hardware.radio.V1_5.IRadio radioProxy15 =
@@ -5597,7 +5597,115 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void allocatePduSessionId(Message result) {
+        android.hardware.radio.V1_6.IRadio radioProxy16 = getRadioV16(result);
+
+        if (radioProxy16 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_ALLOCATE_PDU_SESSION_ID, result,
+                    mRILDefaultWorkSource);
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            try {
+                radioProxy16.allocatePduSessionId(rr.mSerial);
+            } catch (RemoteException e) {
+                handleRadioProxyExceptionForRR(rr, "allocatePduSessionId", e);
+            }
+        } else {
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void releasePduSessionId(Message result, int pduSessionId) {
+        android.hardware.radio.V1_6.IRadio radioProxy16 = getRadioV16(result);
+
+        if (radioProxy16 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_RELEASE_PDU_SESSION_ID, result,
+                    mRILDefaultWorkSource);
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            try {
+                radioProxy16.releasePduSessionId(rr.mSerial, pduSessionId);
+            } catch (RemoteException e) {
+                handleRadioProxyExceptionForRR(rr, "releasePduSessionId", e);
+            }
+        } else {
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void startHandover(Message result, int callId) {
+        android.hardware.radio.V1_6.IRadio radioProxy16 = getRadioV16(result);
+
+        if (radioProxy16 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_START_HANDOVER, result,
+                    mRILDefaultWorkSource);
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            try {
+                radioProxy16.startHandover(rr.mSerial, callId);
+            } catch (RemoteException e) {
+                handleRadioProxyExceptionForRR(rr, "startHandover", e);
+            }
+        } else {
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "startHandover: REQUEST_NOT_SUPPORTED");
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void cancelHandover(Message result, int callId) {
+        android.hardware.radio.V1_6.IRadio radioProxy16 = getRadioV16(result);
+
+        if (radioProxy16 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_CANCEL_HANDOVER, result,
+                    mRILDefaultWorkSource);
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            try {
+                radioProxy16.cancelHandover(rr.mSerial, callId);
+            } catch (RemoteException e) {
+                handleRadioProxyExceptionForRR(rr, "cancelHandover", e);
+            }
+        } else {
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "cancelHandover: REQUEST_NOT_SUPPORTED");
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
     //***** Private Methods
+    /** Helper that gets V1.6 of the radio interface OR sends back REQUEST_NOT_SUPPORTED */
+    @Nullable private android.hardware.radio.V1_6.IRadio getRadioV16(Message msg) {
+        IRadio radioProxy = getRadioProxy(msg);
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+            return (android.hardware.radio.V1_6.IRadio) radioProxy;
+        } else {
+            return (android.hardware.radio.V1_6.IRadio) null;
+        }
+    }
+
 
     /**
      * This is a helper function to be called when a RadioIndication callback is called.
@@ -6550,6 +6658,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY";
             case RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED:
                 return "RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED";
+            case RIL_REQUEST_ALLOCATE_PDU_SESSION_ID:
+                return "RIL_REQUEST_ALLOCATE_PDU_SESSION_ID";
+            case RIL_REQUEST_RELEASE_PDU_SESSION_ID:
+                return "RIL_REQUEST_RELEASE_PDU_SESSION_ID";
+            case RIL_REQUEST_START_HANDOVER:
+                return "RIL_REQUEST_START_HANDOVER";
+            case RIL_REQUEST_CANCEL_HANDOVER:
+                return "RIL_REQUEST_CANCEL_HANDOVER";
             default: return "<unknown request>";
         }
     }
@@ -7050,6 +7166,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         @HandoverFailureMode
         int handoverFailureMode = DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY;
 
+        int pduSessionId = DataCallResponse.PDU_SESSION_ID_NOT_SET;
+
         List<LinkAddress> laList = new ArrayList<>();
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
@@ -7137,6 +7255,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mtuV4 = result.mtuV4;
             mtuV6 = result.mtuV6;
             handoverFailureMode = result.handoverFailureMode;
+            pduSessionId = result.pduSessionId;
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
@@ -7202,6 +7321,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setMtuV4(mtuV4)
                 .setMtuV6(mtuV6)
                 .setHandoverFailureMode(handoverFailureMode)
+                .setPduSessionId(pduSessionId)
                 .build();
     }
 

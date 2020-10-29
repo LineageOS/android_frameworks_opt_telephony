@@ -2505,7 +2505,8 @@ public class RILTest extends TelephonyTest {
                 .build();
 
         mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
-                false, 0, null, obtainMessage());
+                false, 0, null,
+                DataCallResponse.PDU_SESSION_ID_NOT_SET, obtainMessage());
         ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
         verify(mRadioProxy).setupDataCall(
                 mSerialNumberCaptor.capture(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
