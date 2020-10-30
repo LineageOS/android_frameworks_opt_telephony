@@ -42,6 +42,7 @@ import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.ApnType;
+import android.telephony.CarrierBandwidth;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellIdentity;
@@ -215,8 +216,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE    = 56;
     protected static final int EVENT_REGISTRATION_FAILED = 57;
     protected static final int EVENT_BARRING_INFO_CHANGED = 58;
+    protected static final int EVENT_LINK_CAPACITY_CHANGED = 59;
 
-    protected static final int EVENT_LAST = EVENT_BARRING_INFO_CHANGED;
+    protected static final int EVENT_LAST = EVENT_LINK_CAPACITY_CHANGED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -2221,6 +2223,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void isNrDualConnectivityEnabled(Message message, WorkSource workSource) {
         mCi.isNrDualConnectivityEnabled(message, workSource);
+    }
+
+    /**
+     * get carrier bandwidth per primary and secondary carrier
+     * @return CarrierBandwidth with bandwidth of both primary and secondary carrier.
+     */
+    public CarrierBandwidth getCarrierBandwidth() {
+        return new CarrierBandwidth();
     }
 
     /**

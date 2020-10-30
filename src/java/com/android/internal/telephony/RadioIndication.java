@@ -84,7 +84,7 @@ import android.hardware.radio.V1_0.SsInfoData;
 import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
-import android.hardware.radio.V1_5.IRadioIndication;
+import android.hardware.radio.V1_6.IRadioIndication;
 import android.os.AsyncResult;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.RadioPowerState;
@@ -264,6 +264,22 @@ public class RadioIndication extends IRadioIndication.Stub {
     }
 
     /**
+     * Indicates current link capacity estimate.
+     */
+    public void currentLinkCapacityEstimate_1_6(int indicationType,
+            android.hardware.radio.V1_6.LinkCapacityEstimate lce) {
+        mRil.processIndication(indicationType);
+
+        LinkCapacityEstimate response = RIL.convertHalLceData(lce, mRil);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
+
+        if (mRil.mLceInfoRegistrants != null) {
+            mRil.mLceInfoRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+        }
+    }
+
+    /**
      * Indicates the current signal strength of the camped or primary serving cell.
      */
     public void currentSignalStrength_1_2(int indicationType,
@@ -357,6 +373,16 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void dataCallListChanged_1_5(int indicationType,
             ArrayList<android.hardware.radio.V1_5.SetupDataCallResult> dcList) {
         responseDataCallListChanged(indicationType, dcList);
+    }
+
+    /** Indicates current data call list with radio HAL 1.6. */
+    public void dataCallListChanged_1_6(int indicationType,
+            ArrayList<android.hardware.radio.V1_6.SetupDataCallResult> dcList) {
+        responseDataCallListChanged(indicationType, dcList);
+    }
+
+    /**  unthrottleApn */
+    public void unthrottleApn(int indicationType, String apn) {
     }
 
     public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {

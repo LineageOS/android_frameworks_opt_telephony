@@ -64,6 +64,7 @@ import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.BarringInfo;
+import android.telephony.CarrierBandwidth;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.ImsiEncryptionInfo;
@@ -244,6 +245,7 @@ public class GsmCdmaPhone extends Phone {
     private CarrierInfoManager mCIM;
 
     private final SettingsObserver mSettingsObserver;
+    private CarrierBandwidth mCarrierBandwidth = new CarrierBandwidth();
 
     // Constructors
 
@@ -389,6 +391,7 @@ public class GsmCdmaPhone extends Phone {
 
         mCi.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCi.registerForVoiceRadioTechChanged(this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
+        mCi.registerForLceInfo(this, EVENT_LINK_CAPACITY_CHANGED, null);
         IntentFilter filter = new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
@@ -511,6 +514,37 @@ public class GsmCdmaPhone extends Phone {
         if (radioState != TelephonyManager.RADIO_POWER_ON) {
             handleRadioOffOrNotAvailable();
         }
+    }
+
+    /**
+     * get carrier bandwidth per primary and secondary carrier
+     * @return CarrierBandwidth with bandwidth of both primary and secondary carrier.
+     */
+    public CarrierBandwidth getCarrierBandwidth() {
+        return mCarrierBandwidth;
+    }
+
+    private void updateCarrierBandwidths(LinkCapacityEstimate lce) {
+        if (DBG) logd("updateCarrierBandwidths: lce=" + lce);
+        if (lce == null) {
+            mCarrierBandwidth = new CarrierBandwidth();
+            return;
+        }
+        int primaryDownlinkCapacityKbps = lce.downlinkCapacityKbps;
+        int primaryUplinkCapacityKbps = lce.uplinkCapacityKbps;
+        if (primaryDownlinkCapacityKbps != CarrierBandwidth.INVALID
+                && lce.secondaryDownlinkCapacityKbps != CarrierBandwidth.INVALID) {
+            primaryDownlinkCapacityKbps =
+                    lce.downlinkCapacityKbps - lce.secondaryDownlinkCapacityKbps;
+        }
+        if (primaryUplinkCapacityKbps != CarrierBandwidth.INVALID
+                && lce.secondaryUplinkCapacityKbps != CarrierBandwidth.INVALID) {
+            primaryUplinkCapacityKbps =
+                    lce.uplinkCapacityKbps - lce.secondaryUplinkCapacityKbps;
+        }
+        mCarrierBandwidth = new CarrierBandwidth(primaryDownlinkCapacityKbps,
+                primaryUplinkCapacityKbps, lce.secondaryDownlinkCapacityKbps,
+                lce.secondaryUplinkCapacityKbps);
     }
 
     @Override
@@ -2790,6 +2824,15 @@ public class GsmCdmaPhone extends Phone {
                     }
                 } else {
                     loge(what + ": exception=" + ar.exception);
+                }
+                break;
+
+            case EVENT_LINK_CAPACITY_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null && ar.result != null) {
+                    updateCarrierBandwidths((LinkCapacityEstimate) ar.result);
+                } else {
+                    logd("Unexpected exception on EVENT_LINK_CAPACITY_CHANGED");
                 }
                 break;
 

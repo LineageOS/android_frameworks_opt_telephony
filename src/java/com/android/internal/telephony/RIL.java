@@ -6863,6 +6863,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return lce;
     }
 
+    static LinkCapacityEstimate convertHalLceData(
+            android.hardware.radio.V1_6.LinkCapacityEstimate halData, RIL ril) {
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
+                halData.downlinkCapacityKbps,
+                halData.uplinkCapacityKbps,
+                halData.secondaryDownlinkCapacityKbps,
+                halData.secondaryUplinkCapacityKbps);
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
+    }
+
     /**
      * Convert CellInfo defined in 1.0/types.hal to CellInfo type.
      * @param records List of CellInfo defined in 1.0/types.hal
