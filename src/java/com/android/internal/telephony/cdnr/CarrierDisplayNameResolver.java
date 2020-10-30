@@ -377,12 +377,15 @@ public class CarrierDisplayNameResolver {
      */
     private CarrierDisplayNameData getOutOfServiceDisplayName(CarrierDisplayNameData data) {
         // Out of service/Power off/Emergency Only override
-        // 1) In flight mode(service state is ServiceState.STATE_POWER_OFF), or the service
-        //    state is ServiceState.STATE_OUT_OF_SERVICE but emergency call is not allowed.
+        // 1) In flight mode (service state is ServiceState.STATE_POWER_OFF).
+        //    showPlmn = true
+        //    Only show null as PLMN
+        //
+        // 2) Service state is ServiceState.STATE_OUT_OF_SERVICE but emergency call is not allowed.
         //    showPlmn = true
         //    Only show "No Service" as PLMN
         //
-        // 2) Out of service but emergency call is allowed.
+        // 3) Out of service but emergency call is allowed.
         //    showPlmn = true
         //    Only show "Emergency call only" as PLMN
         String plmn = null;
@@ -391,8 +394,10 @@ public class CarrierDisplayNameResolver {
         boolean forceDisplayNoService =
                 mPhone.getServiceStateTracker().shouldForceDisplayNoService() && !isSimReady;
         ServiceState ss = getServiceState();
-        if (ss.getState() == ServiceState.STATE_POWER_OFF
-                || forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
+        if (ss.getState() == ServiceState.STATE_POWER_OFF && !forceDisplayNoService
+                && !Phone.isEmergencyCallOnly()) {
+            plmn = null;
+        } else if (forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
             plmn = mContext.getResources().getString(
                     com.android.internal.R.string.lockscreen_carrier_default);
         } else {
@@ -417,6 +422,10 @@ public class CarrierDisplayNameResolver {
                 if (DBG) {
                     Rlog.d(TAG, "CarrierName override by wifi-calling " + data);
                 }
+            } else if (getServiceState().getState() == ServiceState.STATE_POWER_OFF) {
+                // data in service due to IWLAN but APM on and WFC not available
+                data = getOutOfServiceDisplayName(data);
+                if (DBG) Rlog.d(TAG, "Out of service carrierName (APM) " + data);
             }
         } else {
             data = getOutOfServiceDisplayName(data);
