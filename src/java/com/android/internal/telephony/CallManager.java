@@ -27,6 +27,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 
+import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.telephony.Rlog;
 
@@ -2087,7 +2088,13 @@ public class CallManager {
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_NEW_RINGING_CONNECTION)");
                     Connection c = (Connection) ((AsyncResult) msg.obj).result;
                     int subId = c.getCall().getPhone().getSubId();
-                    if (getActiveFgCallState(subId).isDialing() || hasMoreThanOneRingingCall()) {
+                    boolean incomingRejected = false;
+                    if ((c.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS)
+                            && ((ImsPhoneConnection) c).isIncomingCallAutoRejected()) {
+                        incomingRejected = true;
+                    }
+                    if ((getActiveFgCallState(subId).isDialing() || hasMoreThanOneRingingCall())
+                            && (!incomingRejected)) {
                         try {
                             Rlog.d(LOG_TAG, "silently drop incoming call: " + c.getCall());
                             c.getCall().hangup();
