@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -131,7 +132,7 @@ public class UiccController extends Handler {
     // NOTE: any new EVENT_* values must be added to eventToString.
 
     // this needs to be here, because on bootup we dont know which index maps to which UiccSlot
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CommandsInterface[] mCis;
     @VisibleForTesting
     public UiccSlot[] mUiccSlots;
@@ -421,7 +422,7 @@ public class UiccController extends Handler {
     }
 
     // Easy to use API
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public IccRecords getIccRecords(int phoneId, int family) {
         synchronized (mLock) {
             UiccCardApplication app = getUiccCardApplication(phoneId, family);
@@ -433,7 +434,7 @@ public class UiccController extends Handler {
     }
 
     // Easy to use API
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public IccFileHandler getIccFileHandler(int phoneId, int family) {
         synchronized (mLock) {
             UiccCardApplication app = getUiccCardApplication(phoneId, family);
@@ -612,7 +613,7 @@ public class UiccController extends Handler {
     }
 
     // Easy to use API
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public UiccCardApplication getUiccCardApplication(int phoneId, int family) {
         synchronized (mLock) {
             UiccCard uiccCard = getUiccCardForPhone(phoneId);
@@ -1250,7 +1251,7 @@ public class UiccController extends Handler {
         return false;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String string) {
         Rlog.d(LOG_TAG, string);
     }

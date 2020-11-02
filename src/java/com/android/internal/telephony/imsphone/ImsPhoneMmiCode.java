@@ -33,6 +33,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ResultReceiver;
@@ -176,9 +177,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     //***** Instance Variables
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ImsPhone mPhone;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Context mContext;
     private IccRecords mIccRecords;
 
@@ -251,7 +252,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      * Please see flow chart in TS 22.030 6.5.3.2
      */
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     static ImsPhoneMmiCode newFromDialString(String dialString, ImsPhone phone) {
        return newFromDialString(dialString, phone, null);
     }
@@ -391,7 +392,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     }
 
     /** returns true of the string is empty or null */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private static boolean
     isEmptyOrNull(CharSequence s) {
         return s == null || (s.length() == 0);
@@ -623,7 +624,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     //***** Instance Methods
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     String getDialingNumber() {
         return mDialingNumber;
     }
@@ -718,7 +719,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      *  In temporary mode, to invoke CLIR for a single call enter:
      *       " # 31 # [called number] SEND "
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     boolean
     isTemporaryModeCLIR() {
         return mSc != null && mSc.equals(SC_CLIR) && mDialingNumber != null
@@ -729,7 +730,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      * returns CommandsInterface.CLIR_*
      * See also isTemporaryModeCLIR()
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     int
     getCLIRMode() {
         if (mSc != null && mSc.equals(SC_CLIR)) {
@@ -743,12 +744,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return CommandsInterface.CLIR_DEFAULT;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     boolean isActivate() {
         return mAction != null && mAction.equals(ACTION_ACTIVATE);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     boolean isDeactivate() {
         return mAction != null && mAction.equals(ACTION_DEACTIVATE);
     }
@@ -757,12 +758,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return mAction != null && mAction.equals(ACTION_INTERROGATE);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     boolean isRegister() {
         return mAction != null && mAction.equals(ACTION_REGISTER);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     boolean isErasure() {
         return mAction != null && mAction.equals(ACTION_ERASURE);
     }
@@ -780,7 +781,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return mIsUssdRequest;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     boolean
     isSupportedOverImsPhone() {
         if (isShortCode()) return true;
@@ -840,7 +841,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     }
 
     /** Process a MMI code or short code...anything that isn't a dialing number */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void
     processCode () throws CallStateException {
         try {
@@ -1257,7 +1258,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CharSequence getErrorMessage(AsyncResult ar) {
         CharSequence errorMessage;
         return ((errorMessage = getMmiErrorMessage(ar)) != null) ? errorMessage :
@@ -1299,7 +1300,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return null;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CharSequence getScString() {
         if (mSc != null) {
             if (isServiceCodeCallBarring(mSc)) {
@@ -1401,7 +1402,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      *        Returns null if unrecognized
      */
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CharSequence
     serviceClassToCFString (int serviceClass) {
         switch (serviceClass) {

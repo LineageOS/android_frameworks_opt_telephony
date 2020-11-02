@@ -46,6 +46,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
@@ -194,17 +195,17 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected static final Uri sRawUriPermanentDelete =
             Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw/permanentDelete");
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final Context mContext;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final ContentResolver mResolver;
 
     /** Special handler for WAP push messages. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final WapPushOverSms mWapPush;
 
     /** Wake lock to ensure device stays awake while dispatching the SMS intents. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final PowerManager.WakeLock mWakeLock;
 
     /** DefaultState throws an exception or logs an error for unhandled message types. */
@@ -214,15 +215,15 @@ public abstract class InboundSmsHandler extends StateMachine {
     private final StartupState mStartupState = new StartupState();
 
     /** Idle state. Waiting for messages to process. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final IdleState mIdleState = new IdleState();
 
     /** Delivering state. Saves the PDU in the raw table and acknowledges to SMSC. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final DeliveringState mDeliveringState = new DeliveringState();
 
     /** Broadcasting state. Waits for current broadcast to complete before delivering next. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final WaitingState mWaitingState = new WaitingState();
 
     /** Helper class to check whether storage is available for incoming messages. */
@@ -230,10 +231,10 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     private final boolean mSmsReceiveDisabled;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected Phone mPhone;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private UserManager mUserManager;
 
     protected TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
@@ -324,7 +325,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     // CAF_MSIM Is this used anywhere ? if not remove it
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public Phone getPhone() {
         return mPhone;
     }
@@ -632,7 +633,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void handleNewSms(AsyncResult ar) {
         if (ar.exception != null) {
             loge("Exception processing incoming SMS: " + ar.exception);
@@ -747,7 +748,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param result result code indicating any error
      * @param response callback message sent when operation completes.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected abstract void acknowledgeLastIncomingSms(boolean success,
             int result, Message response);
 
@@ -863,7 +864,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param tracker the tracker containing the message segment to process
      * @return true if an ordered broadcast was sent; false if waiting for more message segments
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean processMessagePart(InboundSmsTracker tracker) {
         int messageCount = tracker.getMessageCount();
         byte[][] pdus;
@@ -1111,7 +1112,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         return false;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void showNewMessageNotification() {
         // Do not show the notification on non-FBE devices.
         if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
@@ -1252,7 +1253,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param appOp app op that is being performed when dispatching to a receiver
      * @param user user to deliver the intent to
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void dispatchIntent(Intent intent, String permission, String appOp,
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user, int subId) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
@@ -1327,7 +1328,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /**
      * Helper for {@link SmsBroadcastUndelivered} to delete an old message in the raw table.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs,
                                     int deleteType) {
         Uri uri = deleteType == DELETE_PERMANENTLY ? sRawUriPermanentDelete : sRawUri;
@@ -1339,7 +1340,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Bundle handleSmsWhitelisting(ComponentName target, boolean bgActivityStartAllowed) {
         String pkgName;
         String reason;
@@ -1586,9 +1587,9 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     @VisibleForTesting
     public final class SmsBroadcastReceiver extends BroadcastReceiver {
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         private final String mDeleteWhere;
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         private final String[] mDeleteWhereArgs;
         private long mBroadcastTimeNano;
 
@@ -1753,7 +1754,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Checks whether the flag to skip new message notification is set in the bitmask returned
      *  from the carrier app.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean isSkipNotifyFlagSet(int callbackResult) {
         return (callbackResult
             & RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE) > 0;
@@ -1801,7 +1802,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Log with debug level.
      * @param s the string to log
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     protected void log(String s) {
         Rlog.d(getName(), s);
@@ -1820,7 +1821,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Log with error level.
      * @param s the string to log
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     protected void loge(String s) {
         Rlog.e(getName(), s);
