@@ -28,6 +28,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.ImsiEncryptionInfo;
@@ -45,7 +46,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final Context mContext;
     private final AppOpsManager mAppOps;
 
@@ -254,7 +255,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     /**
      * get Phone object based on subId.
      **/
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Phone getPhone(int subId) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
@@ -289,7 +290,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 "Requires MODIFY_PHONE_STATE");
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int getDefaultSubscription() {
         return  PhoneFactory.getDefaultSubscription();
     }
@@ -538,7 +539,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         Rlog.d(TAG, s);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void loge(String s) {
         Rlog.e(TAG, s);
     }

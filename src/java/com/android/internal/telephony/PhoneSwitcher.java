@@ -41,6 +41,7 @@ import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.net.TelephonyNetworkSpecifier;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -183,7 +184,7 @@ public class PhoneSwitcher extends Handler {
                 }
             };
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     // How many phones (correspondingly logical modems) are allowed for PS attach. This is used
     // when we specifically use setDataAllowed to initiate on-demand PS(data) attach for each phone.
     protected int mMaxDataAttachModemCount;
@@ -921,12 +922,12 @@ public class PhoneSwitcher extends Handler {
         public long lastRequested = 0;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void activate(int phoneId) {
         switchPhone(phoneId, true);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void deactivate(int phoneId) {
         switchPhone(phoneId, false);
     }
@@ -1363,7 +1364,7 @@ public class PhoneSwitcher extends Handler {
         return mPreferredDataPhoneId;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void log(String l) {
         Rlog.d(LOG_TAG, l);
         mLocalLog.log(l);

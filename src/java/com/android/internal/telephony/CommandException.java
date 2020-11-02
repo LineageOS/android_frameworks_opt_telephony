@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import com.android.telephony.Rlog;
 
@@ -24,7 +25,7 @@ import com.android.telephony.Rlog;
  * {@hide}
  */
 public class CommandException extends RuntimeException {
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Error mError;
 
     public enum Error {

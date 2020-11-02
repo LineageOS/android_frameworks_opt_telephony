@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import com.android.telephony.Rlog;
 
@@ -24,7 +25,7 @@ import com.android.telephony.Rlog;
  * Wrapper class for an ICC EF containing a bit field of enabled services.
  */
 public abstract class IccServiceTable {
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final byte[] mServiceTable;
 
     protected IccServiceTable(byte[] table) {
@@ -32,7 +33,7 @@ public abstract class IccServiceTable {
     }
 
     // Get the class name to use for log strings
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected abstract String getTag();
 
     // Get the array of enums to use for toString

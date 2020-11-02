@@ -18,6 +18,7 @@ package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
+import android.os.Build;
 
 /**
  * Interface for communication between STK App and CAT Telephony
@@ -140,7 +141,7 @@ public interface AppInterface {
          *         value}. If no CommandType object has that value, null is
          *         returned.
          */
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public static CommandType fromInt(int value) {
             for (CommandType e : CommandType.values()) {
                 if (e.mValue == value) {

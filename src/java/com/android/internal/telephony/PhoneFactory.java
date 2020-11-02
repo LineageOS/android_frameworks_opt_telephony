@@ -28,6 +28,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
+import android.os.Build;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.preference.PreferenceManager;
@@ -348,7 +349,7 @@ public class PhoneFactory {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static Phone[] getPhones() {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
@@ -408,7 +409,7 @@ public class PhoneFactory {
      * @return the preferred network mode that should be set.
      */
     // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static int calculatePreferredNetworkType(Context context, int phoneSubId) {
         int networkType = android.provider.Settings.Global.getInt(context.getContentResolver(),
                 android.provider.Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId,
@@ -432,7 +433,7 @@ public class PhoneFactory {
     }
 
     /* Gets the default subscription */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static int getDefaultSubscription() {
         return SubscriptionController.getInstance().getDefaultSubId();
     }
