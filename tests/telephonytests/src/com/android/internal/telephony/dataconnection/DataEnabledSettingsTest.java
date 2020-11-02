@@ -27,6 +27,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import android.os.HandlerThread;
+import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -104,7 +105,7 @@ public class DataEnabledSettingsTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetAlwaysAllowMmsData() throws Exception {
-        mDataEnabledSettingsUT.setUserDataEnabled(false);
+        mDataEnabledSettingsUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_USER, false);
         assertTrue(mDataEnabledSettingsUT.setAlwaysAllowMmsData(true));
         ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
         verify(mSubscriptionController).setDataEnabledOverrideRules(anyInt(),
@@ -120,7 +121,23 @@ public class DataEnabledSettingsTest extends TelephonyTest {
         assertEquals("", stringCaptor.getValue());
         assertFalse(mDataEnabledSettingsUT.isDataEnabled(ApnSetting.TYPE_MMS));
 
-        mDataEnabledSettingsUT.setUserDataEnabled(true);
+        mDataEnabledSettingsUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_USER, true);
         assertTrue(mDataEnabledSettingsUT.isDataEnabled(ApnSetting.TYPE_MMS));
+    }
+
+    @Test
+    @SmallTest
+    public void testSetThermalDataEnabled() throws Exception {
+        mDataEnabledSettingsUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_THERMAL,
+                false);
+        assertFalse(mDataEnabledSettingsUT.isDataEnabledForReason(
+                TelephonyManager.DATA_ENABLED_REASON_THERMAL));
+        assertFalse(mDataEnabledSettingsUT.isDataEnabled());
+
+        mDataEnabledSettingsUT.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_THERMAL,
+                true);
+        assertTrue(mDataEnabledSettingsUT.isDataEnabledForReason(
+                TelephonyManager.DATA_ENABLED_REASON_THERMAL));
+        assertTrue(mDataEnabledSettingsUT.isDataEnabled());
     }
 }
