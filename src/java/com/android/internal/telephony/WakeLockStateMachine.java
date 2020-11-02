@@ -20,6 +20,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Message;
 import android.os.PowerManager;
 
@@ -54,10 +55,10 @@ public abstract class WakeLockStateMachine extends StateMachine {
     /** Broadcast not required due to geo-fencing check */
     static final int EVENT_BROADCAST_NOT_REQUIRED = 4;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected Phone mPhone;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected Context mContext;
 
     protected AtomicInteger mReceiverCount = new AtomicInteger(0);
@@ -66,7 +67,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
     private static final int WAKE_LOCK_TIMEOUT = 3000;
 
     private final DefaultState mDefaultState = new DefaultState();
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final IdleState mIdleState = new IdleState();
     private final WaitingState mWaitingState = new WaitingState();
 
@@ -243,7 +244,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
      * Log with debug level.
      * @param s the string to log
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     protected void log(String s) {
         Rlog.d(getName(), s);

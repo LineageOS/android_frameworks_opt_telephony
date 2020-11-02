@@ -32,6 +32,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.PowerWhitelistManager;
@@ -62,14 +63,14 @@ public class WapPushOverSms implements ServiceConnection {
     private static final String TAG = "WAP PUSH";
     private static final boolean DBG = false;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final Context mContext;
     PowerWhitelistManager mPowerWhitelistManager;
 
     private String mWapPushManagerPackage;
 
     /** Assigned from ServiceConnection callback on main threaad. */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private volatile IWapPushManager mWapPushManager;
 
     /** Broadcast receiver that binds to WapPushManager when the user unlocks the phone for the
@@ -443,7 +444,7 @@ public class WapPushOverSms implements ServiceConnection {
     /**
      * Check whether the pdu is a MMS WAP push pdu that should be dispatched to the SMS app.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean isWapPushForMms(byte[] pdu, InboundSmsHandler handler) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         return result.statusCode == Activity.RESULT_OK

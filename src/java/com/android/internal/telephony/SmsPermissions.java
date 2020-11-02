@@ -22,6 +22,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Build;
 import android.service.carrier.CarrierMessagingService;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -33,11 +34,11 @@ import com.android.telephony.Rlog;
 public class SmsPermissions {
     static final String LOG_TAG = "SmsPermissions";
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final Phone mPhone;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final Context mContext;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final AppOpsManager mAppOps;
 
     public SmsPermissions(Phone phone, Context context, AppOpsManager appOps) {
@@ -184,7 +185,7 @@ public class SmsPermissions {
         }
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }

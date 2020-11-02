@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.telephony.SubscriptionInfo;
 
 /**
@@ -36,7 +37,7 @@ public class IccCardStatus {
         CARDSTATE_ERROR,
         CARDSTATE_RESTRICTED;
 
-        @UnsupportedAppUsage
+        @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public boolean isCardPresent() {
             return this == CARDSTATE_PRESENT ||
                 this == CARDSTATE_RESTRICTED;
@@ -69,20 +70,20 @@ public class IccCardStatus {
 
     @UnsupportedAppUsage
     public CardState  mCardState;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public PinState   mUniversalPinState;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int        mGsmUmtsSubscriptionAppIndex;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int        mCdmaSubscriptionAppIndex;
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int        mImsSubscriptionAppIndex;
     public int        physicalSlotIndex = UiccController.INVALID_SLOT_ID;
     public String     atr;
     public String     iccid;
     public String     eid;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public IccCardApplicationStatus[] mApplications;
 
     public void setCardState(int state) {

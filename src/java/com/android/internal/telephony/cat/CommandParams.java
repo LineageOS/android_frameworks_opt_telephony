@@ -18,23 +18,24 @@ package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.graphics.Bitmap;
+import android.os.Build;
 
 /**
  * Container class for proactive command parameters.
  *
  */
 class CommandParams {
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     CommandDetails mCmdDet;
     // Variable to track if an optional icon load has failed.
     boolean mLoadIconFailed = false;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     CommandParams(CommandDetails cmdDet) {
         mCmdDet = cmdDet;
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     AppInterface.CommandType getCommandType() {
         return AppInterface.CommandType.fromInt(mCmdDet.typeOfCommand);
     }
@@ -48,10 +49,10 @@ class CommandParams {
 }
 
 class DisplayTextParams extends CommandParams {
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     TextMessage mTextMsg;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     DisplayTextParams(CommandDetails cmdDet, TextMessage textMsg) {
         super(cmdDet);
         mTextMsg = textMsg;
@@ -112,7 +113,7 @@ class PlayToneParams extends CommandParams {
     TextMessage mTextMsg;
     ToneSettings mSettings;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     PlayToneParams(CommandDetails cmdDet, TextMessage textMsg,
             Tone tone, Duration duration, boolean vibrate) {
         super(cmdDet);
@@ -170,7 +171,7 @@ class SelectItemParams extends CommandParams {
     Menu mMenu = null;
     boolean mLoadTitleIcon = false;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     SelectItemParams(CommandDetails cmdDet, Menu menu, boolean loadTitleIcon) {
         super(cmdDet);
         mMenu = menu;
@@ -200,7 +201,7 @@ class SelectItemParams extends CommandParams {
 class GetInputParams extends CommandParams {
     Input mInput = null;
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     GetInputParams(CommandDetails cmdDet, Input input) {
         super(cmdDet);
         mInput = input;

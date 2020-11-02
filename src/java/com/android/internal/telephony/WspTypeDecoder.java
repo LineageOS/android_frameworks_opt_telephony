@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import java.util.HashMap;
 
@@ -198,7 +199,7 @@ public class WspTypeDecoder {
     public static final String CONTENT_TYPE_B_MMS = "application/vnd.wap.mms-message";
     public static final String CONTENT_TYPE_B_PUSH_SYNCML_NOTI = "application/vnd.syncml.notification";
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     byte[] mWspData;
     int    mDataLength;
     long   mUnsigned32bit;
@@ -602,7 +603,7 @@ public class WspTypeDecoder {
      *         method
      *         length of data in pdu can be retrieved by getDecodedDataLength() method
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean decodeXWapApplicationId(int startIndex) {
         if (decodeIntegerValue(startIndex) == true) {
             mStringValue = null;
@@ -620,7 +621,7 @@ public class WspTypeDecoder {
      * @return false when error(not a X-Wap-Application-Id) occur
      *         return value can be retrieved by getValue32()
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public boolean seekXWapApplicationId(int startIndex, int endIndex) {
         int index = startIndex;
 
@@ -736,7 +737,7 @@ public class WspTypeDecoder {
      *         unassigned parameter.  If a parameter has No-Value the value will be null.
      *
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public HashMap<String, String> getContentParameters() {
         return mContentParameters;
     }
