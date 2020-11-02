@@ -32,6 +32,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
+import com.android.internal.util.ArrayUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileOutputStream;
@@ -365,69 +366,40 @@ public class PersistAtomsStorage {
     /** Loads {@link PersistAtoms} from a file in private storage. */
     private PersistAtoms loadAtomsFromFile() {
         try {
-            PersistAtoms atomsFromFile =
+            PersistAtoms atoms =
                     PersistAtoms.parseFrom(
                             Files.readAllBytes(mContext.getFileStreamPath(FILENAME).toPath()));
             // check all the fields in case of situations such as OTA or crash during saving
-            if (atomsFromFile.rawVoiceCallRatUsage == null) {
-                atomsFromFile.rawVoiceCallRatUsage = new RawVoiceCallRatUsage[0];
-            }
-            if (atomsFromFile.voiceCallSession == null) {
-                atomsFromFile.voiceCallSession = new VoiceCallSession[0];
-            }
-            if (atomsFromFile.voiceCallSession.length > MAX_NUM_CALL_SESSIONS) {
-                atomsFromFile.voiceCallSession =
-                        Arrays.copyOf(atomsFromFile.voiceCallSession, MAX_NUM_CALL_SESSIONS);
-            }
-            if (atomsFromFile.incomingSms == null) {
-                atomsFromFile.incomingSms = new IncomingSms[0];
-            }
-            if (atomsFromFile.incomingSms.length > MAX_NUM_SMS) {
-                atomsFromFile.incomingSms = Arrays.copyOf(atomsFromFile.incomingSms, MAX_NUM_SMS);
-            }
-            if (atomsFromFile.outgoingSms == null) {
-                atomsFromFile.outgoingSms = new OutgoingSms[0];
-            }
-            if (atomsFromFile.outgoingSms.length > MAX_NUM_SMS) {
-                atomsFromFile.outgoingSms = Arrays.copyOf(atomsFromFile.outgoingSms, MAX_NUM_SMS);
-            }
-            if (atomsFromFile.carrierIdMismatch == null) {
-                atomsFromFile.carrierIdMismatch = new CarrierIdMismatch[0];
-            }
-            if (atomsFromFile.carrierIdMismatch.length > MAX_CARRIER_ID_MISMATCH) {
-                atomsFromFile.carrierIdMismatch =
-                        Arrays.copyOf(atomsFromFile.carrierIdMismatch, MAX_CARRIER_ID_MISMATCH);
-            }
-            if (atomsFromFile.dataCallSession == null) {
-                atomsFromFile.dataCallSession = new DataCallSession[0];
-            }
-            if (atomsFromFile.dataCallSession.length > MAX_NUM_DATA_CALL_SESSIONS) {
-                atomsFromFile.dataCallSession =
-                        Arrays.copyOf(atomsFromFile.dataCallSession, MAX_NUM_DATA_CALL_SESSIONS);
-            }
-            // out of caution, set timestamps to now if they are missing
-            if (atomsFromFile.rawVoiceCallRatUsagePullTimestampMillis == 0L) {
-                atomsFromFile.rawVoiceCallRatUsagePullTimestampMillis = getWallTimeMillis();
-            }
-            if (atomsFromFile.voiceCallSessionPullTimestampMillis == 0L) {
-                atomsFromFile.voiceCallSessionPullTimestampMillis = getWallTimeMillis();
-            }
-            if (atomsFromFile.incomingSmsPullTimestampMillis == 0L) {
-                atomsFromFile.incomingSmsPullTimestampMillis = getWallTimeMillis();
-            }
-            if (atomsFromFile.outgoingSmsPullTimestampMillis == 0L) {
-                atomsFromFile.outgoingSmsPullTimestampMillis = getWallTimeMillis();
-            }
-            if (atomsFromFile.dataCallSessionPullTimestampMillis == 0L) {
-                atomsFromFile.dataCallSessionPullTimestampMillis = getWallTimeMillis();
-            }
-            if (atomsFromFile.cellularServiceStatePullTimestampMillis == 0L) {
-                atomsFromFile.cellularServiceStatePullTimestampMillis = getWallTimeMillis();
-            }
-            if (atomsFromFile.cellularDataServiceSwitchPullTimestampMillis == 0L) {
-                atomsFromFile.cellularDataServiceSwitchPullTimestampMillis = getWallTimeMillis();
-            }
-            return atomsFromFile;
+            atoms.rawVoiceCallRatUsage = sanitizeAtoms(atoms.rawVoiceCallRatUsage,
+                    RawVoiceCallRatUsage.class);
+            atoms.voiceCallSession = sanitizeAtoms(atoms.voiceCallSession,
+                    VoiceCallSession.class, MAX_NUM_CALL_SESSIONS);
+            atoms.incomingSms = sanitizeAtoms(atoms.incomingSms, IncomingSms.class, MAX_NUM_SMS);
+            atoms.outgoingSms = sanitizeAtoms(atoms.outgoingSms, OutgoingSms.class, MAX_NUM_SMS);
+            atoms.carrierIdMismatch = sanitizeAtoms(atoms.carrierIdMismatch,
+                    CarrierIdMismatch.class, MAX_CARRIER_ID_MISMATCH);
+            atoms.dataCallSession = sanitizeAtoms(atoms.dataCallSession, DataCallSession.class,
+                    MAX_NUM_DATA_CALL_SESSIONS);
+            atoms.cellularServiceState = sanitizeAtoms(atoms.cellularServiceState,
+                    CellularServiceState.class, MAX_NUM_CELLULAR_SERVICE_STATES);
+            atoms.cellularDataServiceSwitch = sanitizeAtoms(atoms.cellularDataServiceSwitch,
+                    CellularDataServiceSwitch.class, MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
+            // out of caution, sanitize also the timestamps
+            atoms.rawVoiceCallRatUsagePullTimestampMillis =
+                    sanitizeTimestamp(atoms.rawVoiceCallRatUsagePullTimestampMillis);
+            atoms.voiceCallSessionPullTimestampMillis =
+                    sanitizeTimestamp(atoms.voiceCallSessionPullTimestampMillis);
+            atoms.incomingSmsPullTimestampMillis =
+                    sanitizeTimestamp(atoms.incomingSmsPullTimestampMillis);
+            atoms.outgoingSmsPullTimestampMillis =
+                    sanitizeTimestamp(atoms.outgoingSmsPullTimestampMillis);
+            atoms.dataCallSessionPullTimestampMillis =
+                    sanitizeTimestamp(atoms.dataCallSessionPullTimestampMillis);
+            atoms.cellularServiceStatePullTimestampMillis =
+                    sanitizeTimestamp(atoms.cellularServiceStatePullTimestampMillis);
+            atoms.cellularDataServiceSwitchPullTimestampMillis =
+                    sanitizeTimestamp(atoms.cellularDataServiceSwitchPullTimestampMillis);
+            return atoms;
         } catch (IOException | NullPointerException e) {
             Rlog.e(TAG, "cannot load/parse PersistAtoms", e);
             return makeNewPersistAtoms();
@@ -551,6 +523,25 @@ public class PersistAtomsStorage {
         }
 
         return sRandom.nextInt(array.length);
+    }
+
+    /** Sanitizes the loaded array of atoms to avoid null values. */
+    private <T> T[] sanitizeAtoms(T[] array, Class<T> cl) {
+        return ArrayUtils.emptyIfNull(array, cl);
+    }
+
+    /** Sanitizes the loaded array of atoms loaded to avoid null values and enforce max length. */
+    private <T> T[] sanitizeAtoms(T[] array, Class<T> cl, int maxLength) {
+        array = sanitizeAtoms(array, cl);
+        if (array.length > maxLength) {
+            return Arrays.copyOf(array, maxLength);
+        }
+        return array;
+    }
+
+    /** Sanitizes the timestamp of the last pull loaded from persistent storage. */
+    private long sanitizeTimestamp(long timestamp) {
+        return timestamp <= 0L ? getWallTimeMillis() : timestamp;
     }
 
     /** Returns an empty PersistAtoms with pull timestamp set to current time. */
