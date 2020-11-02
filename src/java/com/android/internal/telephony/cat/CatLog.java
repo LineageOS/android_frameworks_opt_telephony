@@ -17,6 +17,7 @@
 package com.android.internal.telephony.cat;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 
 import com.android.telephony.Rlog;
 
@@ -34,7 +35,7 @@ public abstract class CatLog {
                 + msg);
     }
 
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static void d(String caller, String msg) {
         if (!DEBUG) {
             return;
@@ -42,7 +43,7 @@ public abstract class CatLog {
 
         Rlog.d("CAT", caller + ": " + msg);
     }
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static void e(Object caller, String msg) {
         String className = caller.getClass().getName();
         Rlog.e("CAT", className.substring(className.lastIndexOf('.') + 1) + ": "
