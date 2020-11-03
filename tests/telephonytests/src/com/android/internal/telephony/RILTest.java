@@ -112,7 +112,7 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.SmsWriteArgs;
-import android.hardware.radio.V1_5.IRadio;
+import android.hardware.radio.V1_6.IRadio;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
@@ -201,6 +201,7 @@ public class RILTest extends TelephonyTest {
     private HalVersion mRadioVersionV13 = new HalVersion(1, 3);
     private HalVersion mRadioVersionV14 = new HalVersion(1, 4);
     private HalVersion mRadioVersionV15 = new HalVersion(1, 5);
+    private HalVersion mRadioVersionV16 = new HalVersion(1, 6);
 
     private RIL mRILInstance;
     private RIL mRILUnderTest;
@@ -704,6 +705,29 @@ public class RILTest extends TelephonyTest {
         mRILUnderTest.setRadioPower(on, obtainMessage());
         verify(mRadioProxy).setRadioPower(mSerialNumberCaptor.capture(), eq(on));
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_RADIO_POWER);
+    }
+
+    @FlakyTest
+    @Test
+    public void testSetRadioPower_1_6() throws Exception {
+        boolean on = true, forEmergencyCall = false, preferredForEmergencyCall = false;
+
+        // Use Radio HAL v1.6
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+        } catch (Exception e) {
+        }
+
+        mRILUnderTest.setRadioPower(
+                on, forEmergencyCall, preferredForEmergencyCall, obtainMessage());
+        verify(mRadioProxy)
+                .setRadioPower_1_6(
+                        mSerialNumberCaptor.capture(),
+                        eq(on),
+                        eq(forEmergencyCall),
+                        eq(preferredForEmergencyCall));
+        verifyRILResponse_1_6(
+                mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_RADIO_POWER);
     }
 
     @FlakyTest
@@ -1278,6 +1302,23 @@ public class RILTest extends TelephonyTest {
         assertFalse(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
     }
 
+    private static void verifyRILResponse_1_6(RIL ril, int serial, int requestType) {
+        android.hardware.radio.V1_6.RadioResponseInfo responseInfo =
+                createFakeRadioResponseInfo_1_6(
+                        serial, RadioError.NONE, RadioResponseType.SOLICITED);
+
+        RILRequest rr = ril.processResponse_1_6(responseInfo);
+        assertNotNull(rr);
+
+        assertEquals(serial, rr.getSerial());
+        assertEquals(requestType, rr.getRequest());
+        assertTrue(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+
+        ril.processResponseDone_1_6(rr, responseInfo, null);
+        assertEquals(0, ril.getRilRequestList().size());
+        assertFalse(ril.getWakeLock(RIL.FOR_WAKELOCK).isHeld());
+    }
+
     private static void verifyRILErrorResponse(RIL ril, int serial, int requestType, int error) {
         RadioResponseInfo responseInfo =
                 createFakeRadioResponseInfo(serial, error, RadioResponseType.SOLICITED);
@@ -1317,6 +1358,16 @@ public class RILTest extends TelephonyTest {
 
     private static RadioResponseInfo createFakeRadioResponseInfo(int serial, int error, int type) {
         RadioResponseInfo respInfo = new RadioResponseInfo();
+        respInfo.serial = serial;
+        respInfo.error = error;
+        respInfo.type = type;
+        return respInfo;
+    }
+
+    private static android.hardware.radio.V1_6.RadioResponseInfo createFakeRadioResponseInfo_1_6(
+            int serial, int error, int type) {
+        android.hardware.radio.V1_6.RadioResponseInfo respInfo =
+                new android.hardware.radio.V1_6.RadioResponseInfo();
         respInfo.serial = serial;
         respInfo.error = error;
         respInfo.type = type;
