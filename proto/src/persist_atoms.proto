@@ -106,6 +106,13 @@ message VoiceCallSession {
     optional bool rtt_enabled = 22;
     optional bool is_emergency = 23;
     optional bool is_roaming = 24;
+    optional int32 signal_strength_at_end = 25;
+    optional int32 band_at_end = 26;
+    optional int32 setup_duration_millis = 27;
+    optional int32 main_codec_quality = 28;
+    optional bool video_enabled = 29;
+    optional int32 rat_at_connected = 30;
+    optional bool is_multiparty = 31;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;

@@ -384,7 +384,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.isEmergency,
                 session.isRoaming,
                 // workaround: dimension required for keeping multiple pulled atoms
-                sRandom.nextInt());
+                sRandom.nextInt(),
+                // New fields introduced in Android S
+                session.signalStrengthAtEnd,
+                session.bandAtEnd,
+                session.setupDurationMillis,
+                session.mainCodecQuality,
+                session.videoEnabled,
+                session.ratAtConnected,
+                session.isMultiparty);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {

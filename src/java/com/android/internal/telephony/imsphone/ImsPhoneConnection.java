@@ -1087,6 +1087,7 @@ public class ImsPhoneConnection extends Connection implements
             mImsVideoCallProviderWrapper.onVideoStateChanged(newVideoState);
         }
         setVideoState(newVideoState);
+        mOwner.getPhone().getVoiceCallSessionStats().onVideoStateChange(this, newVideoState);
     }
 
 
