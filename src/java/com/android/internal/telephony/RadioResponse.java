@@ -480,6 +480,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void setRadioPowerResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
+        mRil.mLastRadioPowerResult = responseInfo.error;
     }
 
     /**
@@ -2067,6 +2068,18 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
+    private void responseVoid_1_6(android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+
+        if (rr != null) {
+            Object ret = null;
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, ret);
+        }
+    }
+
     private void responseString(RadioResponseInfo responseInfo, String str) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
@@ -2646,6 +2659,15 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void setRadioPowerResponse_1_5(RadioResponseInfo info) {
         responseVoid(info);
+        mRil.mLastRadioPowerResult = info.error;
+    }
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     */
+    public void setRadioPowerResponse_1_6(android.hardware.radio.V1_6.RadioResponseInfo info) {
+        responseVoid_1_6(info);
+        mRil.mLastRadioPowerResult = info.error;
     }
 
     /**
