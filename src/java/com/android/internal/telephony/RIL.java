@@ -1603,7 +1603,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         + " preferredForEmergencyCall="  + preferredForEmergencyCall);
             }
 
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                        (android.hardware.radio.V1_6.IRadio) radioProxy;
+                try {
+                    radioProxy16.setRadioPower_1_6(rr.mSerial, on, forEmergencyCall,
+                            preferredForEmergencyCall);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setRadioPower_1_6", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                 android.hardware.radio.V1_5.IRadio radioProxy15 =
                         (android.hardware.radio.V1_5.IRadio) radioProxy;
                 try {
@@ -5579,10 +5588,24 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @VisibleForTesting
     public RILRequest processResponse(RadioResponseInfo responseInfo) {
-        int serial = responseInfo.serial;
-        int error = responseInfo.error;
-        int type = responseInfo.type;
+        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+    }
 
+    /**
+     * This is a helper function for V1_6.RadioResponseInfo to be called when a RadioResponse
+     * callback is called.
+     * It takes care of acks, wakelocks, and finds and returns RILRequest corresponding to the
+     * response if one is found.
+     * @param responseInfo RadioResponseInfo received in response callback
+     * @return RILRequest corresponding to the response
+     */
+    @VisibleForTesting
+    public RILRequest processResponse_1_6(
+                    android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+    }
+
+    private RILRequest processResponseInternal(int serial, int error, int type) {
         RILRequest rr = null;
 
         if (type == RadioResponseType.SOLICITED_ACK) {
@@ -5686,7 +5709,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @VisibleForTesting
     public void processResponseDone(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
-        if (responseInfo.error == 0) {
+        processResponseDoneInternal(rr, responseInfo.error, responseInfo.type, ret);
+    }
+
+    /**
+     * This is a helper function to be called at the end of the RadioResponse callbacks using for
+     * V1_6.RadioResponseInfo.
+     * It takes care of sending error response, logging, decrementing wakelock if needed, and
+     * releases the request from memory pool.
+     * @param rr RILRequest for which response callback was called
+     * @param responseInfo RadioResponseInfo received in the callback
+     * @param ret object to be returned to request sender
+     */
+    @VisibleForTesting
+    public void processResponseDone_1_6(
+                    RILRequest rr, android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+                    Object ret) {
+        processResponseDoneInternal(rr, responseInfo.error, responseInfo.type, ret);
+    }
+
+    private void processResponseDoneInternal(
+            RILRequest rr, int rilError, int responseType, Object ret) {
+        if (rilError == 0) {
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
                         + " " + retToString(rr.mRequest, ret));
@@ -5694,11 +5738,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
         } else {
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
-                        + " error " + responseInfo.error);
+                        + " error " + rilError);
             }
-            rr.onError(responseInfo.error, ret);
+            rr.onError(rilError, ret);
         }
-        processResponseCleanUp(rr, responseInfo, ret);
+        processResponseCleanUp(rr, rilError, responseType, ret);
     }
 
     /**
@@ -5716,14 +5760,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
                     + " request not supported, falling back");
         }
-        processResponseCleanUp(rr, responseInfo, ret);
+        processResponseCleanUp(rr, responseInfo.error, responseInfo.type, ret);
     }
 
-    private void processResponseCleanUp(RILRequest rr, RadioResponseInfo responseInfo, Object ret) {
+    private void processResponseCleanUp(RILRequest rr, int rilError, int responseType, Object ret) {
         if (rr != null) {
-            mMetrics.writeOnRilSolicitedResponse(mPhoneId, rr.mSerial, responseInfo.error,
-                    rr.mRequest, ret);
-            if (responseInfo.type == RadioResponseType.SOLICITED) {
+            mMetrics.writeOnRilSolicitedResponse(mPhoneId, rr.mSerial, rilError, rr.mRequest, ret);
+            if (responseType == RadioResponseType.SOLICITED) {
                 decrementWakeLock(rr);
             }
             rr.release();
