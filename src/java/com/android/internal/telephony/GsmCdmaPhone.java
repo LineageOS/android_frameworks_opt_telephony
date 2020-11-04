@@ -1238,6 +1238,17 @@ public class GsmCdmaPhone extends Phone {
                 && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
     }
 
+    public boolean useImsForEmergency() {
+        CarrierConfigManager configManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        boolean alwaysTryImsForEmergencyCarrierConfig = configManager.getConfigForSubId(getSubId())
+                .getBoolean(CarrierConfigManager.KEY_CARRIER_USE_IMS_FIRST_FOR_EMERGENCY_BOOL);
+        return mImsPhone != null
+                && alwaysTryImsForEmergencyCarrierConfig
+                && ImsManager.getInstance(mContext, mPhoneId).isNonTtyOrTtyOnVolteEnabled()
+                && mImsPhone.isImsAvailable();
+    }
+
     @Override
     public Connection startConference(String[] participantsToDial, DialArgs dialArgs)
             throws CallStateException {
@@ -1283,19 +1294,13 @@ public class GsmCdmaPhone extends Phone {
 
         CarrierConfigManager configManager =
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        boolean alwaysTryImsForEmergencyCarrierConfig = configManager.getConfigForSubId(getSubId())
-                .getBoolean(CarrierConfigManager.KEY_CARRIER_USE_IMS_FIRST_FOR_EMERGENCY_BOOL);
 
         /** Check if the call is Wireless Priority Service call */
         boolean isWpsCall = dialString != null ? dialString.startsWith(PREFIX_WPS) : false;
         boolean allowWpsOverIms = configManager.getConfigForSubId(getSubId())
                 .getBoolean(CarrierConfigManager.KEY_SUPPORT_WPS_OVER_IMS_BOOL);
 
-        boolean useImsForEmergency = imsPhone != null
-                && isEmergency
-                && alwaysTryImsForEmergencyCarrierConfig
-                && ImsManager.getInstance(mContext, mPhoneId).isNonTtyOrTtyOnVolteEnabled()
-                && imsPhone.isImsAvailable();
+        boolean useImsForEmergency = isEmergency && useImsForEmergency();
 
         String dialPart = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
                 stripSeparators(dialString));
