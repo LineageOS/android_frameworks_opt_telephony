@@ -3436,7 +3436,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.enableNrDualConnectivity(rr.mSerial, nrDualConnectivityState);
+                radioProxy16.setNrDualConnectivityState(rr.mSerial, nrDualConnectivityState);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "enableNRDualConnectivity", e);
             }
