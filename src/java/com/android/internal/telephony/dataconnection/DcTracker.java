@@ -2437,7 +2437,8 @@ public class DcTracker extends Handler {
                                     + " found canHandle conn=" + curDc);
                         }
                         return curDc;
-                    } else if (curDc.isActivating()) {
+                    } else if (curDc.isActivating() || apnSetting.equals(
+                            apnContext.getNextApnSetting())) {
                         potentialDc = curDc;
                     }
                 }
