@@ -31,6 +31,7 @@ import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.DataEnabledReason;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
@@ -241,6 +242,11 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                                                    List<PhysicalChannelConfig> configs) {
         int subId = sender.getSubId();
         mTelephonyRegistryMgr.notifyPhysicalChannelConfigForSubscriber(subId, configs);
+    }
+
+    @Override
+    public void notifyDataEnabled(boolean enabled, @DataEnabledReason int reason) {
+        mTelephonyRegistryMgr.notifyDataEnabled(enabled, reason);
     }
 
     /**

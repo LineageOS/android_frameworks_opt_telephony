@@ -29,6 +29,7 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
+import android.telephony.TelephonyManager.DataEnabledReason;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
@@ -120,5 +121,8 @@ public interface PhoneNotifier {
 
     /** Notify of change to PhysicalChannelConfig. */
     void notifyPhysicalChannelConfig(Phone sender, List<PhysicalChannelConfig> configs);
+
+    /** Notify DataEnabled has changed. */
+    void notifyDataEnabled(boolean enabled, @DataEnabledReason int reason);
 
 }
