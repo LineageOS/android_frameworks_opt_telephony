@@ -45,7 +45,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceStat
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
-import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
+import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ConcurrentUtils;
 import com.android.telephony.Rlog;
@@ -215,7 +215,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     private int pullVoiceCallRatUsages(List<StatsEvent> data) {
-        RawVoiceCallRatUsage[] usages = mStorage.getVoiceCallRatUsages(MIN_COOLDOWN_MILLIS);
+        VoiceCallRatUsage[] usages = mStorage.getVoiceCallRatUsages(MIN_COOLDOWN_MILLIS);
         if (usages != null) {
             // sort by carrier/RAT and remove buckets with insufficient number of calls
             Arrays.stream(usages)
@@ -347,7 +347,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 (int) (round(state.totalTimeMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
     }
 
-    private static StatsEvent buildStatsEvent(RawVoiceCallRatUsage usage) {
+    private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
         return TelephonyStatsLog.buildStatsEvent(
                 VOICE_CALL_RAT_USAGE,
                 usage.carrierId,

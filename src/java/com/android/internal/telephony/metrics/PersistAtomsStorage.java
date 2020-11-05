@@ -30,7 +30,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
-import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
+import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ArrayUtils;
 import com.android.telephony.Rlog;
@@ -105,7 +105,7 @@ public class PersistAtomsStorage {
     public PersistAtomsStorage(Context context) {
         mContext = context;
         mAtoms = loadAtomsFromFile();
-        mVoiceCallRatTracker = VoiceCallRatTracker.fromProto(mAtoms.rawVoiceCallRatUsage);
+        mVoiceCallRatTracker = VoiceCallRatTracker.fromProto(mAtoms.voiceCallRatUsage);
 
         mHandlerThread = new HandlerThread("PersistAtomsThread");
         mHandlerThread.start();
@@ -123,7 +123,7 @@ public class PersistAtomsStorage {
     /** Adds RAT usages to the storage when a call session ends. */
     public synchronized void addVoiceCallRatUsage(VoiceCallRatTracker ratUsages) {
         mVoiceCallRatTracker.mergeWith(ratUsages);
-        mAtoms.rawVoiceCallRatUsage = mVoiceCallRatTracker.toProto();
+        mAtoms.voiceCallRatUsage = mVoiceCallRatTracker.toProto();
         saveAtomsToFile();
     }
 
@@ -258,13 +258,13 @@ public class PersistAtomsStorage {
      * minIntervalMillis} ago, otherwise returns {@code null}.
      */
     @Nullable
-    public synchronized RawVoiceCallRatUsage[] getVoiceCallRatUsages(long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.rawVoiceCallRatUsagePullTimestampMillis
+    public synchronized VoiceCallRatUsage[] getVoiceCallRatUsages(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.voiceCallRatUsagePullTimestampMillis
                 > minIntervalMillis) {
-            mAtoms.rawVoiceCallRatUsagePullTimestampMillis = getWallTimeMillis();
-            RawVoiceCallRatUsage[] previousUsages = mAtoms.rawVoiceCallRatUsage;
+            mAtoms.voiceCallRatUsagePullTimestampMillis = getWallTimeMillis();
+            VoiceCallRatUsage[] previousUsages = mAtoms.voiceCallRatUsage;
             mVoiceCallRatTracker.clear();
-            mAtoms.rawVoiceCallRatUsage = new RawVoiceCallRatUsage[0];
+            mAtoms.voiceCallRatUsage = new VoiceCallRatUsage[0];
             saveAtomsToFile();
             return previousUsages;
         } else {
@@ -370,8 +370,8 @@ public class PersistAtomsStorage {
                     PersistAtoms.parseFrom(
                             Files.readAllBytes(mContext.getFileStreamPath(FILENAME).toPath()));
             // check all the fields in case of situations such as OTA or crash during saving
-            atoms.rawVoiceCallRatUsage = sanitizeAtoms(atoms.rawVoiceCallRatUsage,
-                    RawVoiceCallRatUsage.class);
+            atoms.voiceCallRatUsage = sanitizeAtoms(atoms.voiceCallRatUsage,
+                    VoiceCallRatUsage.class);
             atoms.voiceCallSession = sanitizeAtoms(atoms.voiceCallSession,
                     VoiceCallSession.class, MAX_NUM_CALL_SESSIONS);
             atoms.incomingSms = sanitizeAtoms(atoms.incomingSms, IncomingSms.class, MAX_NUM_SMS);
@@ -385,8 +385,8 @@ public class PersistAtomsStorage {
             atoms.cellularDataServiceSwitch = sanitizeAtoms(atoms.cellularDataServiceSwitch,
                     CellularDataServiceSwitch.class, MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
             // out of caution, sanitize also the timestamps
-            atoms.rawVoiceCallRatUsagePullTimestampMillis =
-                    sanitizeTimestamp(atoms.rawVoiceCallRatUsagePullTimestampMillis);
+            atoms.voiceCallRatUsagePullTimestampMillis =
+                    sanitizeTimestamp(atoms.voiceCallRatUsagePullTimestampMillis);
             atoms.voiceCallSessionPullTimestampMillis =
                     sanitizeTimestamp(atoms.voiceCallSessionPullTimestampMillis);
             atoms.incomingSmsPullTimestampMillis =
@@ -409,8 +409,8 @@ public class PersistAtomsStorage {
     /**
      * Posts message to save a copy of {@link PersistAtoms} to a file after a delay.
      *
-     * The delay is introduced to avoid too frequent operations to disk, that would have negative
-     * impact on the power consumption.
+     * <p>The delay is introduced to avoid too frequent operations to disk, which would negatively
+     * impact the power consumption.
      */
     private void saveAtomsToFile() {
         if (mSaveDelay > 0) {
@@ -549,7 +549,7 @@ public class PersistAtomsStorage {
         PersistAtoms atoms = new PersistAtoms();
         // allow pulling only after some time so data are sufficiently aggregated
         long currentTime = getWallTimeMillis();
-        atoms.rawVoiceCallRatUsagePullTimestampMillis = currentTime;
+        atoms.voiceCallRatUsagePullTimestampMillis = currentTime;
         atoms.voiceCallSessionPullTimestampMillis = currentTime;
         atoms.incomingSmsPullTimestampMillis = currentTime;
         atoms.outgoingSmsPullTimestampMillis = currentTime;

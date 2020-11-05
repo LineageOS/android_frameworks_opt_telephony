@@ -59,8 +59,6 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
-import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.telephony.Rlog;
 
 import java.util.Random;
@@ -207,9 +205,9 @@ public class SmsStats {
         proto.blocked = false;
         proto.error = INCOMING_SMS__ERROR__SMS_SUCCESS;
         proto.isRoaming = getIsRoaming();
-        proto.simSlotIndex = getSimSlotId();
-        proto.isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
-        proto.isEsim = isEsim();
+        proto.simSlotIndex = getPhoneId();
+        proto.isMultiSim = SimSlotState.isMultiSim();
+        proto.isEsim = SimSlotState.isEsim(getPhoneId());
         proto.carrierId = getCarrierId();
         // Message ID is initialized with random number, as it is not available for all incoming
         // SMS messages (e.g. those handled by OS or error cases).
@@ -228,9 +226,9 @@ public class SmsStats {
         proto.errorCode = isOverIms ? SmsManager.RESULT_ERROR_NONE : NO_ERROR_CODE;
         proto.isRoaming = getIsRoaming();
         proto.isFromDefaultApp = isFromDefaultApp;
-        proto.simSlotIndex = getSimSlotId();
-        proto.isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
-        proto.isEsim = isEsim();
+        proto.simSlotIndex = getPhoneId();
+        proto.isMultiSim = SimSlotState.isMultiSim();
+        proto.isEsim = SimSlotState.isEsim(getPhoneId());
         proto.carrierId = getCarrierId();
         // If the message ID is invalid, generate a random value
         proto.messageId = messageId != 0L ? messageId : RANDOM.nextLong();
@@ -303,21 +301,12 @@ public class SmsStats {
         }
     }
 
-    private boolean isEsim() {
-        int slotId = getSimSlotId();
-        UiccSlot slot = UiccController.getInstance().getUiccSlot(slotId);
-        if (slot != null) {
-            return slot.isEuicc();
-        } else {
-            // should not happen, but assume we are not using eSIM
-            loge("isEsim: slot %d is null", slotId);
-            return false;
+    private int getPhoneId() {
+        Phone phone = mPhone;
+        if (mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            phone = mPhone.getDefaultPhone();
         }
-    }
-
-    private int getSimSlotId() {
-        // NOTE: UiccController's mapping hasn't be initialized when Phone was created
-        return UiccController.getInstance().getSlotIdFromPhoneId(mPhone.getPhoneId());
+        return phone.getPhoneId();
     }
 
     @Nullable

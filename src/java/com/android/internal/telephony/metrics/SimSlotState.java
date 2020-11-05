@@ -20,9 +20,12 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
+import com.android.telephony.Rlog;
 
 /** Snapshots and stores the current SIM state. */
 public class SimSlotState {
+    private static final String TAG = SimSlotState.class.getSimpleName();
+
     public final int numActiveSlots;
     public final int numActiveSims;
     public final int numActiveEsims;
@@ -61,5 +64,22 @@ public class SimSlotState {
         this.numActiveSlots = numActiveSlots;
         this.numActiveSims = numActiveSims;
         this.numActiveEsims = numActiveEsims;
+    }
+
+    /** Returns whether the given phone is using a eSIM. */
+    public static boolean isEsim(int phoneId) {
+        UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
+        if (slot != null) {
+            return slot.isEuicc();
+        } else {
+            // should not happen, but assume we are not using eSIM
+            Rlog.e(TAG, "isEsim: slot=null for phone " + phoneId);
+            return false;
+        }
+    }
+
+    /** Returns whether the device has multiple active SIM profiles. */
+    public static boolean isMultiSim() {
+        return (getCurrentState().numActiveSims > 1);
     }
 }
