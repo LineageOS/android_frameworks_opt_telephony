@@ -70,6 +70,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
 import android.telephony.ims.ProvisioningManager;
+import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -127,6 +128,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -3597,6 +3599,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mPhone.notifySuppServiceFailed(Phone.SuppService.TRANSFER);
         }
 
+        @Override
+        public void onCallSessionDtmfReceived(ImsCall imsCall, char digit) {
+            log("onCallSessionDtmfReceived digit=" + digit);
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                conn.receivedDtmfDigit(digit);
+            }
+        }
+
         /**
          * Handles a change to the multiparty state for an {@code ImsCall}.  Notifies the associated
          * {@link ImsPhoneConnection} of the change.
@@ -3630,6 +3641,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             cqm.saveCallQuality(callQuality);
             mCallQualityMetrics.put(callId, cqm);
+        }
+
+        /**
+         * Handles reception of RTP header extension data from the network.
+         * @param imsCall The ImsCall the data was received on.
+         * @param rtpHeaderExtensionData The RTP extension data received.
+         */
+        @Override
+        public void onCallSessionRtpHeaderExtensionsReceived(ImsCall imsCall,
+                @NonNull Set<RtpHeaderExtension> rtpHeaderExtensionData) {
+            log("onCallSessionRtpHeaderExtensionsReceived numExtensions="
+                    + rtpHeaderExtensionData.size());
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                conn.receivedRtpHeaderExtensions(rtpHeaderExtensionData);
+            }
         }
     };
 

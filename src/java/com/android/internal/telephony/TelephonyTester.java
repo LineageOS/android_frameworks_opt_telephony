@@ -125,6 +125,14 @@ public class TelephonyTester {
             "com.android.internal.telephony.TestImsECall";
 
     /**
+     * Test-only intent used to trigger signalling that an IMS call received a DTMF tone.
+     */
+    private static final String ACTION_TEST_RECEIVE_DTMF =
+            "com.android.internal.telephony.TestReceiveDtmf";
+
+    private static final String EXTRA_DIGIT = "digit";
+
+    /**
      * Test-only intent used to trigger a change to the current call's phone number.
      * Use the {@link #EXTRA_NUMBER} extra to specify the new phone number.
      */
@@ -197,6 +205,9 @@ public class TelephonyTester {
                 } else if (action.equals(ACTION_TEST_IMS_E_CALL)) {
                     log("handle test IMS ecall intent");
                     testImsECall();
+                } else if (action.equals(ACTION_TEST_RECEIVE_DTMF)) {
+                    log("handle test DTMF intent");
+                    testImsReceiveDtmf(intent);
                 } else if (action.equals(ACTION_TEST_CHANGE_NUMBER)) {
                     log("handle test change number intent");
                     testChangeNumber(intent);
@@ -229,6 +240,7 @@ public class TelephonyTester {
                 filter.addAction(ACTION_TEST_HANDOVER_FAIL);
                 filter.addAction(ACTION_TEST_SUPP_SRVC_NOTIFICATION);
                 filter.addAction(ACTION_TEST_IMS_E_CALL);
+                filter.addAction(ACTION_TEST_RECEIVE_DTMF);
                 mImsExternalCallStates = new ArrayList<ImsExternalCallState>();
             }
 
@@ -262,17 +274,7 @@ public class TelephonyTester {
 
     private void handleHandoverFailedIntent() {
         // Attempt to get the active IMS call
-        ImsPhone imsPhone = (ImsPhone) mPhone;
-        if (imsPhone == null) {
-            return;
-        }
-
-        ImsPhoneCall imsPhoneCall = imsPhone.getForegroundCall();
-        if (imsPhoneCall == null) {
-            return;
-        }
-
-        ImsCall imsCall = imsPhoneCall.getImsCall();
+        ImsCall imsCall = getImsCall();
         if (imsCall == null) {
             return;
         }
@@ -491,20 +493,8 @@ public class TelephonyTester {
 
     void testImsECall() {
         // Attempt to get the active IMS call before parsing the test XML file.
-        ImsPhone imsPhone = (ImsPhone) mPhone;
-        if (imsPhone == null) {
-            return;
-        }
-
-        ImsPhoneCall imsPhoneCall = imsPhone.getForegroundCall();
-        if (imsPhoneCall == null) {
-            return;
-        }
-
-        ImsCall imsCall = imsPhoneCall.getImsCall();
-        if (imsCall == null) {
-            return;
-        }
+        ImsCall imsCall = getImsCall();
+        if (imsCall == null) return;
 
         ImsCallProfile callProfile = imsCall.getCallProfile();
         Bundle extras = callProfile.getCallExtras();
@@ -515,6 +505,38 @@ public class TelephonyTester {
         callProfile.mCallExtras = extras;
         imsCall.getImsCallSessionListenerProxy().callSessionUpdated(imsCall.getSession(),
                 callProfile);
+    }
+
+    private ImsCall getImsCall() {
+        ImsPhone imsPhone = (ImsPhone) mPhone;
+        if (imsPhone == null) {
+            return null;
+        }
+
+        ImsPhoneCall imsPhoneCall = imsPhone.getForegroundCall();
+        if (imsPhoneCall == null) {
+            return null;
+        }
+
+        ImsCall imsCall = imsPhoneCall.getImsCall();
+        if (imsCall == null) {
+            return null;
+        }
+        return imsCall;
+    }
+
+    void testImsReceiveDtmf(Intent intent) {
+        if (!intent.hasExtra(EXTRA_DIGIT)) {
+            return;
+        }
+        char digit = intent.getStringExtra(EXTRA_DIGIT).charAt(0);
+
+        ImsCall imsCall = getImsCall();
+        if (imsCall == null) {
+            return;
+        }
+
+        imsCall.getImsCallSessionListenerProxy().callSessionDtmfReceived(digit);
     }
 
     void testChangeNumber(Intent intent) {
