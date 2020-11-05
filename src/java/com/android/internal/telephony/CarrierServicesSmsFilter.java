@@ -244,9 +244,10 @@ public class CarrierServicesSmsFilter {
         void filterSms(CarrierSmsFilterCallback smsFilterCallback) {
             mSmsFilterCallback = smsFilterCallback;
             if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
-                    mContext, mPackageName, ()-> onServiceReady())) {
+                    mContext, mPackageName, runnable -> runnable.run(), ()-> onServiceReady())) {
                 loge("CarrierSmsFilter::filterSms: bindService() for failed for " + mPackageName);
-                smsFilterCallback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
+                smsFilterCallback.onReceiveSmsComplete(
+                        CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             } else {
                 logv("CarrierSmsFilter::filterSms: bindService() for succeeded for "
                         + mPackageName);
@@ -260,12 +261,12 @@ public class CarrierServicesSmsFilter {
         private void onServiceReady() {
             try {
                 log("onServiceReady: calling filterSms on " + mPackageName);
-                mCarrierMessagingServiceWrapper.filterSms(
+                mCarrierMessagingServiceWrapper.receiveSms(
                         new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
-                        mPhone.getSubId(), mSmsFilterCallback);
+                        mPhone.getSubId(), runnable -> runnable.run(), mSmsFilterCallback);
             } catch (RuntimeException e) {
                 loge("Exception filtering the SMS with " + mPackageName + ": " + e);
-                mSmsFilterCallback.onFilterComplete(
+                mSmsFilterCallback.onReceiveSmsComplete(
                         CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
@@ -293,7 +294,7 @@ public class CarrierServicesSmsFilter {
          * This method should be called only once.
          */
         @Override
-        public void onFilterComplete(int result) {
+        public void onReceiveSmsComplete(int result) {
             log("CarrierSmsFilterCallback::onFilterComplete: Called from " + mPackageName
                     + " with result: " + result);
             // in the case that timeout has already passed and triggered, but the initial callback
@@ -400,7 +401,7 @@ public class CarrierServicesSmsFilter {
         private void handleFilterCallbacksTimeout() {
             for (CarrierSmsFilterCallback callback : mFilterAggregator.mCallbacks) {
                 log("handleFilterCallbacksTimeout: calling onFilterComplete");
-                callback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
+                callback.onReceiveSmsComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
     }

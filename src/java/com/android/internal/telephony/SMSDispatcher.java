@@ -367,7 +367,8 @@ public abstract class SMSDispatcher extends Handler {
                                         SmsSenderCallback senderCallback) {
             mSenderCallback = senderCallback;
             if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
-                    mContext, carrierPackageName, ()->onServiceReady())) {
+                    mContext, carrierPackageName, runnable -> runnable.run(),
+                    ()->onServiceReady())) {
                 Rlog.e(TAG, "bindService() for carrier messaging service failed");
                 mSenderCallback.onSendSmsComplete(
                         CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK,
@@ -402,6 +403,7 @@ public abstract class SMSDispatcher extends Handler {
                             (mTracker.mDeliveryIntent != null)
                                     ? CarrierMessagingService.SEND_FLAG_REQUEST_DELIVERY_STATUS
                                     : 0,
+                            runnable -> runnable.run(),
                             mSenderCallback);
                 } catch (RuntimeException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e);
@@ -441,6 +443,7 @@ public abstract class SMSDispatcher extends Handler {
                             (mTracker.mDeliveryIntent != null)
                                     ? CarrierMessagingService.SEND_FLAG_REQUEST_DELIVERY_STATUS
                                     : 0,
+                            runnable -> runnable.run(),
                             mSenderCallback);
                 } catch (RuntimeException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e
@@ -489,8 +492,8 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        public void onFilterComplete(int result) {
-            Rlog.e(TAG, "Unexpected onFilterComplete call with result: " + result);
+        public void onReceiveSmsComplete(int result) {
+            Rlog.e(TAG, "Unexpected onReceiveSmsComplete call with result: " + result);
         }
 
         @Override
@@ -563,7 +566,8 @@ public abstract class SMSDispatcher extends Handler {
                                  MultipartSmsSenderCallback senderCallback) {
             mSenderCallback = senderCallback;
             if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
-                    mContext, carrierPackageName, ()->onServiceReady())) {
+                    mContext, carrierPackageName, runnable -> runnable.run(),
+                    ()->onServiceReady())) {
                 Rlog.e(TAG, "bindService() for carrier messaging service failed");
                 mSenderCallback.onSendMultipartSmsComplete(
                         CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK,
@@ -590,6 +594,7 @@ public abstract class SMSDispatcher extends Handler {
                         statusReportRequested
                                 ? CarrierMessagingService.SEND_FLAG_REQUEST_DELIVERY_STATUS
                                 : 0,
+                        runnable -> runnable.run(),
                         mSenderCallback);
             } catch (RuntimeException e) {
                 Rlog.e(TAG, "Exception sending the SMS: " + e);
@@ -638,8 +643,8 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        public void onFilterComplete(int result) {
-            Rlog.e(TAG, "Unexpected onFilterComplete call with result: " + result);
+        public void onReceiveSmsComplete(int result) {
+            Rlog.e(TAG, "Unexpected onReceiveSmsComplete call with result: " + result);
         }
 
         @Override
