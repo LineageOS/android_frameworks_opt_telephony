@@ -1528,7 +1528,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
-    public void enableNrDualConnectivityResponse(RadioResponseInfo responseInfo) {
+    public void setNrDualConnectivityStateResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
     }
 
