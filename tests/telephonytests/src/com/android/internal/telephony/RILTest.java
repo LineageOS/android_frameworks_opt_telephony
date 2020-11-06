@@ -19,6 +19,8 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOW_DATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CHANGE_SIM_PIN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CHANGE_SIM_PIN2;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CONFERENCE;
@@ -168,6 +170,9 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -754,6 +759,24 @@ public class RILTest extends TelephonyTest {
 
     @FlakyTest
     @Test
+    public void testSendSMS_1_6() throws Exception {
+        // Use Radio HAL v1.6
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+        } catch (Exception e) {
+        }
+        String smscPdu = "smscPdu";
+        String pdu = "pdu";
+        GsmSmsMessage msg = new GsmSmsMessage();
+        msg.smscPdu = smscPdu;
+        msg.pdu = pdu;
+        mRILUnderTest.sendSMS(smscPdu, pdu, obtainMessage());
+        verify(mRadioProxy).sendSms_1_6(mSerialNumberCaptor.capture(), eq(msg));
+        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS);
+    }
+
+    @FlakyTest
+    @Test
     public void testSendSMSExpectMore() throws Exception {
         String smscPdu = "smscPdu";
         String pdu = "pdu";
@@ -764,6 +787,93 @@ public class RILTest extends TelephonyTest {
         verify(mRadioProxy).sendSMSExpectMore(mSerialNumberCaptor.capture(), eq(msg));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS_EXPECT_MORE);
+    }
+
+    @FlakyTest
+    @Test
+    public void testSendSMSExpectMore_1_6() throws Exception {
+        // Use Radio HAL v1.6
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+        } catch (Exception e) {
+        }
+        String smscPdu = "smscPdu";
+        String pdu = "pdu";
+        GsmSmsMessage msg = new GsmSmsMessage();
+        msg.smscPdu = smscPdu;
+        msg.pdu = pdu;
+        mRILUnderTest.sendSMSExpectMore(smscPdu, pdu, obtainMessage());
+        verify(mRadioProxy).sendSMSExpectMore_1_6(mSerialNumberCaptor.capture(), eq(msg));
+        verifyRILResponse(
+                mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS_EXPECT_MORE);
+    }
+
+    @FlakyTest
+    @Test
+    public void testSendCdmaSMS_1_6() throws Exception {
+        // Use Radio HAL v1.6
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+        } catch (Exception e) {
+        }
+        byte[] pdu = "000010020000000000000000000000000000000000".getBytes();
+        CdmaSmsMessage msg = new CdmaSmsMessage();
+        constructCdmaSendSmsRilRequest(msg, pdu);
+        mRILUnderTest.sendCdmaSms(pdu, obtainMessage());
+        verify(mRadioProxy).sendCdmaSms_1_6(mSerialNumberCaptor.capture(), eq(msg));
+        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_CDMA_SEND_SMS);
+    }
+
+    @FlakyTest
+    @Test
+    public void testSendCdmaSMSExpectMore_1_6() throws Exception {
+        // Use Radio HAL v1.6
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+        } catch (Exception e) {
+        }
+        byte[] pdu = "000010020000000000000000000000000000000000".getBytes();
+        CdmaSmsMessage msg = new CdmaSmsMessage();
+        constructCdmaSendSmsRilRequest(msg, pdu);
+        mRILUnderTest.sendCdmaSMSExpectMore(pdu, obtainMessage());
+        verify(mRadioProxy).sendCdmaSmsExpectMore_1_6(mSerialNumberCaptor.capture(), eq(msg));
+        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE);
+    }
+
+    private void constructCdmaSendSmsRilRequest(CdmaSmsMessage msg, byte[] pdu) {
+        int addrNbrOfDigits;
+        int subaddrNbrOfDigits;
+        int bearerDataLength;
+        ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
+        DataInputStream dis = new DataInputStream(bais);
+
+        try {
+            msg.teleserviceId = dis.readInt(); // teleServiceId
+            msg.isServicePresent = (byte) dis.readInt() == 1 ? true : false; // servicePresent
+            msg.serviceCategory = dis.readInt(); // serviceCategory
+            msg.address.digitMode = dis.read();  // address digit mode
+            msg.address.numberMode = dis.read(); // address number mode
+            msg.address.numberType = dis.read(); // address number type
+            msg.address.numberPlan = dis.read(); // address number plan
+            addrNbrOfDigits = (byte) dis.read();
+            for (int i = 0; i < addrNbrOfDigits; i++) {
+                msg.address.digits.add(dis.readByte()); // address_orig_bytes[i]
+            }
+            msg.subAddress.subaddressType = dis.read(); //subaddressType
+            msg.subAddress.odd = (byte) dis.read() == 1 ? true : false; //subaddr odd
+            subaddrNbrOfDigits = (byte) dis.read();
+            for (int i = 0; i < subaddrNbrOfDigits; i++) {
+                msg.subAddress.digits.add(dis.readByte()); //subaddr_orig_bytes[i]
+            }
+
+            bearerDataLength = dis.read();
+            for (int i = 0; i < bearerDataLength; i++) {
+                msg.bearerData.add(dis.readByte()); //bearerData[i]
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     @FlakyTest

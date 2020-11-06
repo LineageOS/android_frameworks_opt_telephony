@@ -1671,13 +1671,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
             GsmSmsMessage msg = constructGsmSendSmsRilRequest(smscPdu, pdu);
-
-            try {
-                radioProxy.sendSms(rr.mSerial, msg);
-                mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendSMS", e);
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                try {
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.sendSms_1_6(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendSMS", e);
+                }
+            } else {
+                try {
+                    radioProxy.sendSms(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendSMS", e);
+                }
             }
         }
     }
@@ -1710,13 +1723,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
             GsmSmsMessage msg = constructGsmSendSmsRilRequest(smscPdu, pdu);
-
-            try {
-                radioProxy.sendSMSExpectMore(rr.mSerial, msg);
-                mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendSMSExpectMore", e);
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                try {
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.sendSMSExpectMore_1_6(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendSMSExpectMore", e);
+                }
+            } else {
+                try {
+                    radioProxy.sendSMSExpectMore(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendSMSExpectMore", e);
+                }
             }
         }
     }
@@ -3665,21 +3691,30 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendCdmaSMSExpectMore(byte[] pdu, Message result) {
-        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
-            IRadio radioProxy = getRadioProxy(result);
-            // IRadio V1.5
-            android.hardware.radio.V1_5.IRadio radioProxy15 =
-                    (android.hardware.radio.V1_5.IRadio) radioProxy;
-            if (radioProxy15 != null) {
-                RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE, result,
-                        mRILDefaultWorkSource);
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE, result,
+                    mRILDefaultWorkSource);
 
-                // Do not log function arg for privacy
-                if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            // Do not log function arg for privacy
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
-                CdmaSmsMessage msg = new CdmaSmsMessage();
-                constructCdmaSendSmsRilRequest(msg, pdu);
-
+            CdmaSmsMessage msg = new CdmaSmsMessage();
+            constructCdmaSendSmsRilRequest(msg, pdu);
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                        (android.hardware.radio.V1_6.IRadio) radioProxy;
+                try {
+                    radioProxy16.sendCdmaSmsExpectMore_1_6(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
+                android.hardware.radio.V1_5.IRadio radioProxy15 =
+                        (android.hardware.radio.V1_5.IRadio) radioProxy;
                 try {
                     radioProxy15.sendCdmaSmsExpectMore(rr.mSerial, msg);
                     mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
@@ -3688,9 +3723,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
                 }
+            } else {
+                sendCdmaSms(pdu, result);
             }
-        } else {
-            sendCdmaSms(pdu, result);
         }
     }
 
@@ -3706,13 +3741,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             CdmaSmsMessage msg = new CdmaSmsMessage();
             constructCdmaSendSmsRilRequest(msg, pdu);
-
-            try {
-                radioProxy.sendCdmaSms(rr.mSerial, msg);
-                mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                        SmsSession.Event.Format.SMS_FORMAT_3GPP2, getOutgoingSmsMessageId(result));
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendCdmaSms", e);
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                try {
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.sendCdmaSms_1_6(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendCdmaSms", e);
+                }
+            } else {
+                try {
+                    radioProxy.sendCdmaSms(rr.mSerial, msg);
+                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
+                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
+                            getOutgoingSmsMessageId(result));
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "sendCdmaSms", e);
+                }
             }
         }
     }
