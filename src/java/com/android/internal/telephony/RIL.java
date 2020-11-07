@@ -7178,7 +7178,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         return new DataCallResponse.Builder()
                 .setCause(cause)
-                .setRetryIntervalMillis(suggestedRetryTime)
+                .setRetryDurationMillis(suggestedRetryTime)
                 .setId(cid)
                 .setLinkStatus(active)
                 .setProtocolType(protocolType)
