@@ -38,7 +38,7 @@ public class DataCallResponseTest extends AndroidTestCase {
     public void testParcel() throws Exception {
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(0)
-                .setRetryIntervalMillis(-1L)
+                .setRetryDurationMillis(-1L)
                 .setId(1)
                 .setLinkStatus(2)
                 .setProtocolType(ApnSetting.PROTOCOL_IP)
@@ -65,7 +65,7 @@ public class DataCallResponseTest extends AndroidTestCase {
     public void testEquals() throws Exception {
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(0)
-                .setRetryIntervalMillis(-1L)
+                .setRetryDurationMillis(-1L)
                 .setId(1)
                 .setLinkStatus(2)
                 .setProtocolType(ApnSetting.PROTOCOL_IP)
@@ -82,7 +82,7 @@ public class DataCallResponseTest extends AndroidTestCase {
 
         DataCallResponse response1 = new DataCallResponse.Builder()
                 .setCause(0)
-                .setRetryIntervalMillis(-1L)
+                .setRetryDurationMillis(-1L)
                 .setId(1)
                 .setLinkStatus(2)
                 .setProtocolType(ApnSetting.PROTOCOL_IP)
@@ -102,7 +102,7 @@ public class DataCallResponseTest extends AndroidTestCase {
 
         DataCallResponse response2 = new DataCallResponse.Builder()
                 .setCause(1)
-                .setRetryIntervalMillis(-1L)
+                .setRetryDurationMillis(-1L)
                 .setId(1)
                 .setLinkStatus(3)
                 .setProtocolType(ApnSetting.PROTOCOL_IP)
