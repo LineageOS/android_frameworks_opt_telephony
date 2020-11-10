@@ -90,6 +90,7 @@ import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -1367,6 +1368,12 @@ public class GsmCdmaPhone extends Phone {
         }
 
         Phone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mPhoneId, mContext);
+        if (imsPhone != null && !allowWpsOverIms && !useImsForCall && isWpsCall
+                && imsPhone.getCallTracker() instanceof ImsPhoneCallTracker) {
+            logi("WPS call placed over CS; disconnecting all IMS calls..");
+            ImsPhoneCallTracker tracker = (ImsPhoneCallTracker) imsPhone.getCallTracker();
+            tracker.hangupAllConnections();
+        }
 
         if ((useImsForCall && (!isMmiCode || isPotentialUssdCode))
                 || (isMmiCode && useImsForUt)
