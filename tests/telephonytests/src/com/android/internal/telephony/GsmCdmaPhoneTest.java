@@ -43,6 +43,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -487,6 +488,42 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
             Connection connection = mPhoneUT.dial("1234567890",
                     new PhoneInternalInterface.DialArgs.Builder().build());
             verify(mCT).dialGsm("1234567890", null, null);
+        } catch (CallStateException e) {
+            fail();
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testWpsDialOverCs() throws Exception {
+        try {
+            setupForWpsCallTest();
+
+            mContextFixture.getCarrierConfigBundle().putBoolean(
+                    CarrierConfigManager.KEY_SUPPORT_WPS_OVER_IMS_BOOL, false);
+
+            Connection connection = mPhoneUT.dial("*27216505551212",
+                    new PhoneInternalInterface.DialArgs.Builder().build());
+            verify(mCT).dialGsm("*27216505551212", null, null);
+            verify(mImsCT).hangupAllConnections();
+        } catch (CallStateException e) {
+            fail();
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testWpsDialOverIms() throws Exception {
+        try {
+            setupForWpsCallTest();
+
+            mContextFixture.getCarrierConfigBundle().putBoolean(
+                    CarrierConfigManager.KEY_SUPPORT_WPS_OVER_IMS_BOOL, true);
+
+            Connection connection = mPhoneUT.dial("*27216505551212",
+                    new PhoneInternalInterface.DialArgs.Builder().build());
+            verify(mCT).dialGsm("*27216505551212", null, null);
+            verify(mImsCT, never()).hangupAllConnections();
         } catch (CallStateException e) {
             fail();
         }
@@ -1385,5 +1422,16 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
         verify(mMockCi).getRadioCapability(captor.capture());
         assertEquals(captor.getValue().what, Phone.EVENT_GET_RADIO_CAPABILITY);
+    }
+
+    private void setupForWpsCallTest() throws Exception {
+        mSST.mSS = mServiceState;
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
+        when(mImsPhone.getCallTracker()).thenReturn(mImsCT);
+        mCT.mForegroundCall = mGsmCdmaCall;
+        mCT.mBackgroundCall = mGsmCdmaCall;
+        mCT.mRingingCall = mGsmCdmaCall;
+        doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
     }
 }

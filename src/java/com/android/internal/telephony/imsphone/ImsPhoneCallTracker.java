@@ -1050,6 +1050,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         updatePhoneState();
     }
 
+    /**
+     * Requests modem to hang up all connections.
+     */
+    public void hangupAllConnections() {
+        getConnections().stream().forEach(c -> {
+            logi("Disconnecting callId = " + c.getTelecomCallId());
+            try {
+                c.hangup();
+            } catch (CallStateException e) {
+                loge("Failed to disconnet call...");
+            }
+        });
+    }
+
     private void sendImsServiceStateIntent(String intentAction) {
         Intent intent = new Intent(intentAction);
         intent.putExtra(ImsManager.EXTRA_PHONE_ID, mPhone.getPhoneId());
