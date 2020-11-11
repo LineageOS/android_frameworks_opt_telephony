@@ -36,7 +36,7 @@ import android.hardware.radio.V1_0.SendSmsResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
 import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
 import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
-import android.hardware.radio.V1_5.IRadioResponse;
+import android.hardware.radio.V1_6.IRadioResponse;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -1071,11 +1071,11 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param sms Sms result struct as defined by SendSmsResult in types.hal
+     * @param sms Response to sms sent as defined by SendSmsResult in types.hal
      */
-    public void sendCdmaSMSExpectMoreResponse(RadioResponseInfo responseInfo, SendSmsResult sms) {
+    public void sendCdmaSmsExpectMoreResponse(RadioResponseInfo responseInfo,
+            SendSmsResult sms) {
         responseSms(responseInfo, sms);
     }
 
@@ -1085,9 +1085,17 @@ public class RadioResponse extends IRadioResponse.Stub {
      *                     is defined in 1.6/types.hal
      * @param sms Sms result struct as defined by SendSmsResult in types.hal
      */
-    public void sendCdmaSMSExpectMoreResponse_1_6(
+    public void sendCdmaSmsExpectMoreResponse_1_6(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo, SendSmsResult sms) {
         responseSms_1_6(responseInfo, sms);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setDataThrottlingResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
     }
 
     /**
@@ -1555,15 +1563,16 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param isEnabled Indicates whether NR dual connectivity is enabled or not, True if enabled
      *               else false.
      */
-    public void isNrDualConnectivityEnabledResponse(RadioResponseInfo responseInfo,
+    public void isNrDualConnectivityEnabledResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo  responseInfo,
             boolean isEnabled) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
 
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, isEnabled);
             }
-            mRil.processResponseDone(rr, responseInfo, isEnabled);
+            mRil.processResponseDone_1_6(rr, responseInfo, isEnabled);
         }
     }
 
@@ -1571,8 +1580,85 @@ public class RadioResponse extends IRadioResponse.Stub {
      *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
-    public void setNrDualConnectivityStateResponse(RadioResponseInfo responseInfo) {
-        responseVoid(responseInfo);
+    public void setNrDualConnectivityStateResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo  responseInfo) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dcResponse SetupDataCallResult
+     */
+    public void setupDataCallResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo  responseInfo,
+            android.hardware.radio.V1_6.SetupDataCallResult dcResponse) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dcResponse List of SetupDataCallResult
+     */
+    public void getDataCallListResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo  responseInfo,
+            ArrayList<android.hardware.radio.V1_6.SetupDataCallResult> dcResponse) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param id The allocated id. On an error, this is set to -1     */
+    public void allocatePduSessionIdResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo, int id) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void releasePduSessionIdResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void beginHandoverResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void cancelHandoverResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setAllowedNetworkTypeBitmapResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
+    }
+
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setSimCardPowerResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
     }
 
     /**
@@ -2780,14 +2866,5 @@ public class RadioResponse extends IRadioResponse.Stub {
             }
             mRil.processResponseDone(rr, responseInfo, bi);
         }
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param sms Response to sms sent as defined by SendSmsResult in types.hal
-     */
-    public void sendCdmaSmsExpectMoreResponse(RadioResponseInfo responseInfo,
-            SendSmsResult sms) {
-        responseSms(responseInfo, sms);
     }
 }
