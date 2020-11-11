@@ -365,7 +365,7 @@ public abstract class SMSDispatcher extends Handler {
         public void sendSmsByCarrierApp(String carrierPackageName,
                                         SmsSenderCallback senderCallback) {
             mSenderCallback = senderCallback;
-            if (mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
+            if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
                     mContext, carrierPackageName, ()->onServiceReady())) {
                 Rlog.e(TAG, "bindService() for carrier messaging service failed");
                 mSenderCallback.onSendSmsComplete(
@@ -561,7 +561,7 @@ public abstract class SMSDispatcher extends Handler {
         void sendSmsByCarrierApp(String carrierPackageName,
                                  MultipartSmsSenderCallback senderCallback) {
             mSenderCallback = senderCallback;
-            if (mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
+            if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
                     mContext, carrierPackageName, ()->onServiceReady())) {
                 Rlog.e(TAG, "bindService() for carrier messaging service failed");
                 mSenderCallback.onSendMultipartSmsComplete(
