@@ -1654,7 +1654,16 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void setRadioPower(boolean power, boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
-        mSST.setRadioPower(power, forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply);
+        setRadioPowerForReason(power, forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply,
+                Phone.RADIO_POWER_REASON_USER);
+    }
+
+    @Override
+    public void setRadioPowerForReason(boolean power, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply, int reason) {
+        mSST.setRadioPowerForReason(power, forEmergencyCall, isSelectedPhoneForEmergencyCall,
+                forceApply, reason);
+
     }
 
     private void storeVoiceMailNumber(String number) {

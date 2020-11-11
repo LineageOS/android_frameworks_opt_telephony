@@ -1297,11 +1297,12 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testSetRadioPower() throws Exception {
         mPhoneUT.setRadioPower(false);
-        verify(mSST).setRadioPower(false, false, false, false);
+        verify(mSST).setRadioPowerForReason(false, false, false, false,
+                Phone.RADIO_POWER_REASON_USER);
 
         // Turn on radio for emergency call.
         mPhoneUT.setRadioPower(true, true, false, true);
-        verify(mSST).setRadioPower(true, true, false, true);
+        verify(mSST).setRadioPowerForReason(true, true, false, true, Phone.RADIO_POWER_REASON_USER);
     }
 
     @Test
