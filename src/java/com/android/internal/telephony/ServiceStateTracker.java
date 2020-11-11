@@ -3241,8 +3241,9 @@ public class ServiceStateTracker extends Handler {
         boolean anyDataRegChanged = false;
         boolean anyDataRatChanged = false;
         boolean hasAlphaRawChanged =
-                mSS.getOperatorAlphaLongRaw() != mNewSS.getOperatorAlphaLongRaw()
-                        || mSS.getOperatorAlphaShortRaw() != mNewSS.getOperatorAlphaShortRaw();
+                !TextUtils.equals(mSS.getOperatorAlphaLongRaw(), mNewSS.getOperatorAlphaLongRaw())
+                        || !TextUtils.equals(mSS.getOperatorAlphaShortRaw(),
+                        mNewSS.getOperatorAlphaShortRaw());
 
         for (int transport : mTransportManager.getAvailableTransports()) {
             NetworkRegistrationInfo oldNrs = mSS.getNetworkRegistrationInfo(
