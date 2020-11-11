@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 17
+// Next id: 21
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -72,6 +72,18 @@ message PersistAtoms {
 
     /* Timestamp of last cellular_data_service_switch pull. */
     optional int64 cellular_data_service_switch_pull_timestamp_millis = 16;
+
+    /* List of IMS registration terminations. */
+    repeated ImsRegistrationTermination ims_registration_termination = 17;
+
+    /* Timestamp of last ims_registration_termination pull. */
+    optional int64 ims_registration_termination_pull_timestamp_millis = 18;
+
+    /* Durations of IMS registrations and capabilities. */
+    repeated ImsRegistrationStats ims_registration_stats = 19;
+
+    /* Timestamp of last ims_registration_stats pull. */
+    optional int64 ims_registration_stats_pull_timestamp_millis = 20;
 }
 
 // The canonical versions of the following enums live in:
@@ -208,6 +220,39 @@ message CellularDataServiceSwitch {
     optional bool is_multi_sim = 4;
     optional int32 carrier_id = 5;
     optional int32 switch_count = 6;
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
+}
+
+message ImsRegistrationTermination {
+    optional int32 carrier_id = 1;
+    optional bool is_multi_sim = 2;
+    optional int32 rat_at_end = 3;
+    optional bool setup_failed = 4;
+    optional int32 reason_code = 5;
+    optional int32 extra_code = 6;
+    optional string extra_message = 7;
+    optional int32 count = 8;
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
+}
+
+message ImsRegistrationStats {
+    optional int32 carrier_id = 1;
+    optional int32 sim_slot_index = 2;
+    optional int32 rat = 3;
+    // Durations need to be rounded when pulled
+    optional int64 registered_millis = 4;
+    optional int64 voice_capable_millis = 5;
+    optional int64 voice_available_millis = 6;
+    optional int64 sms_capable_millis = 7;
+    optional int64 sms_available_millis = 8;
+    optional int64 video_capable_millis = 9;
+    optional int64 video_available_millis = 10;
+    optional int64 ut_capable_millis = 11;
+    optional int64 ut_available_millis = 12;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
