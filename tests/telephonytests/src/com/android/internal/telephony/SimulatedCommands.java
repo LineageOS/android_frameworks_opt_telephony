@@ -2400,4 +2400,16 @@ public class SimulatedCommands extends BaseCommands
         SimulatedCommandsVerifier.getInstance().getBarringInfo(result);
         resultSuccess(result, null);
     }
+
+    @Override
+    public void allocatePduSessionId(Message message) {
+        SimulatedCommandsVerifier.getInstance().allocatePduSessionId(message);
+        resultSuccess(message, 1);
+    }
+
+    @Override
+    public void releasePduSessionId(Message message, int pduSessionId) {
+        SimulatedCommandsVerifier.getInstance().releasePduSessionId(message, pduSessionId);
+        resultSuccess(message, null);
+    }
 }

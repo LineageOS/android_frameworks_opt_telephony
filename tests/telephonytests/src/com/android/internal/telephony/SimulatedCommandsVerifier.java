@@ -1460,4 +1460,12 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void getBarringInfo(Message result) {
     }
+
+    @Override
+    public void allocatePduSessionId(Message result) {
+    }
+
+    @Override
+    public void releasePduSessionId(Message result, int pduSessionId) {
+    }
 }

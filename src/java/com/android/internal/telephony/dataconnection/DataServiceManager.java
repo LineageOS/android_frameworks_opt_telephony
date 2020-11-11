@@ -898,6 +898,7 @@ public class DataServiceManager extends Handler {
      *
      * @return
      */
+    @TransportType
     public int getTransportType() {
         return mTransportType;
     }
