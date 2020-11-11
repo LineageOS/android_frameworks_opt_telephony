@@ -25,7 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.CarrierMessagingServiceWrapper;
-import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallbackWrapper;
+import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallback;
 import android.service.carrier.MessagePdu;
 import android.util.LocalLog;
 
@@ -161,7 +161,8 @@ public class CarrierServicesSmsFilter {
         CarrierSmsFilter smsFilter = new CarrierSmsFilter(mPdus, mDestPort, mPduFormat,
                 packageName);
         CarrierSmsFilterCallback smsFilterCallback =
-                new CarrierSmsFilterCallback(filterAggregator, smsFilter, packageName);
+                new CarrierSmsFilterCallback(filterAggregator,
+                        smsFilter.mCarrierMessagingServiceWrapper, packageName);
         filterAggregator.addToCallbacks(smsFilterCallback);
 
         smsFilter.filterSms(smsFilterCallback);
@@ -213,13 +214,15 @@ public class CarrierServicesSmsFilter {
      * instructed to do so by the carrier messaging service. A new instance must be used for every
      * message.
      */
-    private final class CarrierSmsFilter extends CarrierMessagingServiceWrapper {
+    private final class CarrierSmsFilter {
         private final byte[][] mPdus;
         private final int mDestPort;
         private final String mSmsFormat;
         // Instantiated in filterSms.
         private volatile CarrierSmsFilterCallback mSmsFilterCallback;
         private final String mPackageName;
+        protected final CarrierMessagingServiceWrapper mCarrierMessagingServiceWrapper =
+                new CarrierMessagingServiceWrapper();
 
         CarrierSmsFilter(byte[][] pdus, int destPort, String smsFormat, String packageName) {
             mPdus = pdus;
@@ -234,7 +237,8 @@ public class CarrierServicesSmsFilter {
          */
         void filterSms(CarrierSmsFilterCallback smsFilterCallback) {
             mSmsFilterCallback = smsFilterCallback;
-            if (!bindToCarrierMessagingService(mContext, mPackageName)) {
+            if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
+                    mContext, mPackageName, ()-> onServiceReady())) {
                 loge("CarrierSmsFilter::filterSms: bindService() for failed for " + mPackageName);
                 smsFilterCallback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             } else {
@@ -247,11 +251,11 @@ public class CarrierServicesSmsFilter {
          * Invokes the {@code carrierMessagingService} to filter messages. The filtering result is
          * delivered to {@code smsFilterCallback}.
          */
-        @Override
-        public void onServiceReady() {
+        private void onServiceReady() {
             try {
                 log("onServiceReady: calling filterSms on " + mPackageName);
-                filterSms(new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
+                mCarrierMessagingServiceWrapper.filterSms(
+                        new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
                         mPhone.getSubId(), mSmsFilterCallback);
             } catch (RuntimeException e) {
                 loge("Exception filtering the SMS with " + mPackageName + ": " + e);
@@ -265,7 +269,7 @@ public class CarrierServicesSmsFilter {
      * A callback used to notify the platform of the carrier messaging app filtering result. Once
      * the result is ready, the carrier messaging service connection is disposed.
      */
-    private final class CarrierSmsFilterCallback extends CarrierMessagingCallbackWrapper {
+    private final class CarrierSmsFilterCallback implements CarrierMessagingCallback {
         private final FilterAggregator mFilterAggregator;
         private final CarrierMessagingServiceWrapper mCarrierMessagingServiceWrapper;
         private boolean mIsOnFilterCompleteCalled;
