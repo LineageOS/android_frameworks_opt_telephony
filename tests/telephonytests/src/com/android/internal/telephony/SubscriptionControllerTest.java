@@ -24,6 +24,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -1913,5 +1914,22 @@ public class SubscriptionControllerTest extends TelephonyTest {
         verify(mHandler).sendMessageAtTime(any(), anyLong());
         assertFalse(mSubscriptionControllerUT.getActiveSubscriptionInfo(
                 1, mContext.getOpPackageName(), null).areUiccApplicationsEnabled());
+    }
+
+    @Test
+    @SmallTest
+    public void testInsertEmptySubInfoRecord_returnsNull_ifRecordExists() {
+        final String mockedIccid = "123456789";
+        final int mockedSlotIndex = 1;
+
+        assertNotNull(mSubscriptionControllerUT.insertEmptySubInfoRecord(
+                mockedIccid, mockedSlotIndex));
+        // Insert second time with the same iccid should result in no-op and return null.
+        assertNull(mSubscriptionControllerUT.insertEmptySubInfoRecord(
+                mockedIccid, mockedSlotIndex));
+        assertEquals(
+                1,
+                mSubscriptionControllerUT
+                        .getAllSubInfoList(mCallingPackage, mCallingFeature).size());
     }
 }
