@@ -27,6 +27,8 @@ import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
@@ -82,6 +84,12 @@ public class PersistAtomsStorage {
     /** Maximum number of data service switches to store between pulls. */
     private static final int MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES = 50;
 
+    /** Maximum number of IMS registration stats to store between pulls. */
+    private static final int MAX_NUM_IMS_REGISTRATION_STATS = 10;
+
+    /** Maximum number of IMS registration terminations to store between pulls. */
+    private static final int MAX_NUM_IMS_REGISTRATION_TERMINATIONS = 10;
+
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected final PersistAtoms mAtoms;
 
@@ -96,12 +104,13 @@ public class PersistAtomsStorage {
     private final HandlerThread mHandlerThread;
     private static final SecureRandom sRandom = new SecureRandom();
 
-    private Runnable mSaveRunnable = new Runnable() {
-        @Override
-        public void run() {
-            saveAtomsToFileNow();
-        }
-    };
+    private Runnable mSaveRunnable =
+            new Runnable() {
+                @Override
+                public void run() {
+                    saveAtomsToFileNow();
+                }
+            };
 
     public PersistAtomsStorage(Context context) {
         mContext = context;
@@ -211,8 +220,10 @@ public class PersistAtomsStorage {
         // sent again in future.
         if (mAtoms.carrierIdMismatch.length == MAX_CARRIER_ID_MISMATCH) {
             System.arraycopy(
-                    mAtoms.carrierIdMismatch, 1,
-                    mAtoms.carrierIdMismatch, 0,
+                    mAtoms.carrierIdMismatch,
+                    1,
+                    mAtoms.carrierIdMismatch,
+                    0,
                     MAX_CARRIER_ID_MISMATCH - 1);
             mAtoms.carrierIdMismatch[MAX_CARRIER_ID_MISMATCH - 1] = carrierIdMismatch;
         } else {
@@ -222,6 +233,46 @@ public class PersistAtomsStorage {
         }
         saveAtomsToFile();
         return true;
+    }
+
+    /** Adds IMS registration stats to the storage. */
+    public synchronized void addImsRegistrationStats(ImsRegistrationStats stats) {
+        ImsRegistrationStats existingStats = find(stats);
+        if (existingStats != null) {
+            existingStats.registeredMillis += stats.registeredMillis;
+            existingStats.voiceCapableMillis += stats.voiceCapableMillis;
+            existingStats.voiceAvailableMillis += stats.voiceAvailableMillis;
+            existingStats.smsCapableMillis += stats.smsCapableMillis;
+            existingStats.smsAvailableMillis += stats.smsAvailableMillis;
+            existingStats.videoCapableMillis += stats.videoCapableMillis;
+            existingStats.videoAvailableMillis += stats.videoAvailableMillis;
+            existingStats.utCapableMillis += stats.utCapableMillis;
+            existingStats.utAvailableMillis += stats.utAvailableMillis;
+            existingStats.lastUsedMillis = getWallTimeMillis();
+        } else {
+            stats.lastUsedMillis = getWallTimeMillis();
+            mAtoms.imsRegistrationStats =
+                    insertAtRandomPlace(
+                            mAtoms.imsRegistrationStats, stats, MAX_NUM_IMS_REGISTRATION_STATS);
+        }
+        saveAtomsToFile();
+    }
+
+    /** Adds IMS registration termination to the storage. */
+    public synchronized void addImsRegistrationTermination(ImsRegistrationTermination termination) {
+        ImsRegistrationTermination existingTermination = find(termination);
+        if (existingTermination != null) {
+            existingTermination.count += termination.count;
+            existingTermination.lastUsedMillis = getWallTimeMillis();
+        } else {
+            termination.lastUsedMillis = getWallTimeMillis();
+            mAtoms.imsRegistrationTermination =
+                    insertAtRandomPlace(
+                            mAtoms.imsRegistrationTermination,
+                            termination,
+                            MAX_NUM_IMS_REGISTRATION_TERMINATIONS);
+        }
+        saveAtomsToFile();
     }
 
     /**
@@ -262,8 +313,7 @@ public class PersistAtomsStorage {
      */
     @Nullable
     public synchronized VoiceCallRatUsage[] getVoiceCallRatUsages(long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.voiceCallRatUsagePullTimestampMillis
-                > minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.voiceCallRatUsagePullTimestampMillis > minIntervalMillis) {
             mAtoms.voiceCallRatUsagePullTimestampMillis = getWallTimeMillis();
             VoiceCallRatUsage[] previousUsages = mAtoms.voiceCallRatUsage;
             mVoiceCallRatTracker.clear();
@@ -366,6 +416,46 @@ public class PersistAtomsStorage {
         }
     }
 
+    /**
+     * Returns and clears the IMS registration statistics if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized ImsRegistrationStats[] getImsRegistrationStats(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.imsRegistrationStatsPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.imsRegistrationStatsPullTimestampMillis = getWallTimeMillis();
+            ImsRegistrationStats[] previousStats = mAtoms.imsRegistrationStats;
+            Arrays.stream(previousStats).forEach(stats -> stats.lastUsedMillis = 0L);
+            mAtoms.imsRegistrationStats = new ImsRegistrationStats[0];
+            saveAtomsToFile();
+            return previousStats;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the IMS registration terminations if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized ImsRegistrationTermination[] getImsRegistrationTerminations(
+            long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.imsRegistrationTerminationPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.imsRegistrationTerminationPullTimestampMillis = getWallTimeMillis();
+            ImsRegistrationTermination[] previousTerminations = mAtoms.imsRegistrationTermination;
+            Arrays.stream(previousTerminations)
+                    .forEach(termination -> termination.lastUsedMillis = 0L);
+            mAtoms.imsRegistrationTermination = new ImsRegistrationTermination[0];
+            saveAtomsToFile();
+            return previousTerminations;
+        } else {
+            return null;
+        }
+    }
+
     /** Loads {@link PersistAtoms} from a file in private storage. */
     private PersistAtoms loadAtomsFromFile() {
         try {
@@ -373,20 +463,43 @@ public class PersistAtomsStorage {
                     PersistAtoms.parseFrom(
                             Files.readAllBytes(mContext.getFileStreamPath(FILENAME).toPath()));
             // check all the fields in case of situations such as OTA or crash during saving
-            atoms.voiceCallRatUsage = sanitizeAtoms(atoms.voiceCallRatUsage,
-                    VoiceCallRatUsage.class);
-            atoms.voiceCallSession = sanitizeAtoms(atoms.voiceCallSession,
-                    VoiceCallSession.class, MAX_NUM_CALL_SESSIONS);
+            atoms.voiceCallRatUsage =
+                    sanitizeAtoms(atoms.voiceCallRatUsage, VoiceCallRatUsage.class);
+            atoms.voiceCallSession =
+                    sanitizeAtoms(
+                            atoms.voiceCallSession, VoiceCallSession.class, MAX_NUM_CALL_SESSIONS);
             atoms.incomingSms = sanitizeAtoms(atoms.incomingSms, IncomingSms.class, MAX_NUM_SMS);
             atoms.outgoingSms = sanitizeAtoms(atoms.outgoingSms, OutgoingSms.class, MAX_NUM_SMS);
-            atoms.carrierIdMismatch = sanitizeAtoms(atoms.carrierIdMismatch,
-                    CarrierIdMismatch.class, MAX_CARRIER_ID_MISMATCH);
-            atoms.dataCallSession = sanitizeAtoms(atoms.dataCallSession, DataCallSession.class,
-                    MAX_NUM_DATA_CALL_SESSIONS);
-            atoms.cellularServiceState = sanitizeAtoms(atoms.cellularServiceState,
-                    CellularServiceState.class, MAX_NUM_CELLULAR_SERVICE_STATES);
-            atoms.cellularDataServiceSwitch = sanitizeAtoms(atoms.cellularDataServiceSwitch,
-                    CellularDataServiceSwitch.class, MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
+            atoms.carrierIdMismatch =
+                    sanitizeAtoms(
+                            atoms.carrierIdMismatch,
+                            CarrierIdMismatch.class,
+                            MAX_CARRIER_ID_MISMATCH);
+            atoms.dataCallSession =
+                    sanitizeAtoms(
+                            atoms.dataCallSession,
+                            DataCallSession.class,
+                            MAX_NUM_DATA_CALL_SESSIONS);
+            atoms.cellularServiceState =
+                    sanitizeAtoms(
+                            atoms.cellularServiceState,
+                            CellularServiceState.class,
+                            MAX_NUM_CELLULAR_SERVICE_STATES);
+            atoms.cellularDataServiceSwitch =
+                    sanitizeAtoms(
+                            atoms.cellularDataServiceSwitch,
+                            CellularDataServiceSwitch.class,
+                            MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
+            atoms.imsRegistrationStats =
+                    sanitizeAtoms(
+                            atoms.imsRegistrationStats,
+                            ImsRegistrationStats.class,
+                            MAX_NUM_IMS_REGISTRATION_STATS);
+            atoms.imsRegistrationTermination =
+                    sanitizeAtoms(
+                            atoms.imsRegistrationTermination,
+                            ImsRegistrationTermination.class,
+                            MAX_NUM_IMS_REGISTRATION_TERMINATIONS);
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
                     sanitizeTimestamp(atoms.voiceCallRatUsagePullTimestampMillis);
@@ -402,6 +515,10 @@ public class PersistAtomsStorage {
                     sanitizeTimestamp(atoms.cellularServiceStatePullTimestampMillis);
             atoms.cellularDataServiceSwitchPullTimestampMillis =
                     sanitizeTimestamp(atoms.cellularDataServiceSwitchPullTimestampMillis);
+            atoms.imsRegistrationStatsPullTimestampMillis =
+                    sanitizeTimestamp(atoms.imsRegistrationStatsPullTimestampMillis);
+            atoms.imsRegistrationTerminationPullTimestampMillis =
+                    sanitizeTimestamp(atoms.imsRegistrationTerminationPullTimestampMillis);
             return atoms;
         } catch (NoSuchFileException e) {
             Rlog.d(TAG, "PersistAtoms file not found");
@@ -491,6 +608,40 @@ public class PersistAtomsStorage {
     }
 
     /**
+     * Returns the IMS registration stats that has the same dimension values with the given one, or
+     * {@code null} if it does not exist.
+     */
+    private @Nullable ImsRegistrationStats find(ImsRegistrationStats key) {
+        for (ImsRegistrationStats stats : mAtoms.imsRegistrationStats) {
+            if (stats.carrierId == key.carrierId
+                    && stats.simSlotIndex == key.simSlotIndex
+                    && stats.rat == key.rat) {
+                return stats;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the IMS registration termination that has the same dimension values with the given
+     * one, or {@code null} if it does not exist.
+     */
+    private @Nullable ImsRegistrationTermination find(ImsRegistrationTermination key) {
+        for (ImsRegistrationTermination termination : mAtoms.imsRegistrationTermination) {
+            if (termination.carrierId == key.carrierId
+                    && termination.isMultiSim == key.isMultiSim
+                    && termination.ratAtEnd == key.ratAtEnd
+                    && termination.setupFailed == key.setupFailed
+                    && termination.reasonCode == key.reasonCode
+                    && termination.extraCode == key.extraCode
+                    && termination.extraMessage.equals(key.extraMessage)) {
+                return termination;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Inserts a new element in a random position in an array with a maximum size, replacing the
      * least recent item if possible.
      */
@@ -522,6 +673,20 @@ public class PersistAtomsStorage {
 
         if (array instanceof CellularDataServiceSwitch[]) {
             CellularDataServiceSwitch[] arr = (CellularDataServiceSwitch[]) array;
+            return IntStream.range(0, arr.length)
+                    .reduce((i, j) -> arr[i].lastUsedMillis < arr[j].lastUsedMillis ? i : j)
+                    .getAsInt();
+        }
+
+        if (array instanceof ImsRegistrationStats[]) {
+            ImsRegistrationStats[] arr = (ImsRegistrationStats[]) array;
+            return IntStream.range(0, arr.length)
+                    .reduce((i, j) -> arr[i].lastUsedMillis < arr[j].lastUsedMillis ? i : j)
+                    .getAsInt();
+        }
+
+        if (array instanceof ImsRegistrationTermination[]) {
+            ImsRegistrationTermination[] arr = (ImsRegistrationTermination[]) array;
             return IntStream.range(0, arr.length)
                     .reduce((i, j) -> arr[i].lastUsedMillis < arr[j].lastUsedMillis ? i : j)
                     .getAsInt();
@@ -562,6 +727,8 @@ public class PersistAtomsStorage {
         atoms.dataCallSessionPullTimestampMillis = currentTime;
         atoms.cellularServiceStatePullTimestampMillis = currentTime;
         atoms.cellularDataServiceSwitchPullTimestampMillis = currentTime;
+        atoms.imsRegistrationStatsPullTimestampMillis = currentTime;
+        atoms.imsRegistrationTerminationPullTimestampMillis = currentTime;
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;
     }

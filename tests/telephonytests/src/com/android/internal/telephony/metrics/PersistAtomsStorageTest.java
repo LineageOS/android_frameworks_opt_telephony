@@ -46,6 +46,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
@@ -66,6 +68,8 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class PersistAtomsStorageTest extends TelephonyTest {
     private static final String TEST_FILE = "PersistAtomsStorageTest.pb";
@@ -112,6 +116,18 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private CellularDataServiceSwitch[] mServiceSwitches;
     private CellularServiceState[] mServiceStates;
+
+    // IMS registrations for slot 0 and 1
+    private ImsRegistrationStats mImsRegistrationStatsLte0;
+    private ImsRegistrationStats mImsRegistrationStatsWifi0;
+    private ImsRegistrationStats mImsRegistrationStatsLte1;
+
+    // IMS registration terminations for slot 0 and 1
+    private ImsRegistrationTermination mImsRegistrationTerminationLte;
+    private ImsRegistrationTermination mImsRegistrationTerminationWifi;
+
+    private ImsRegistrationStats[] mImsRegistrationStats;
+    private ImsRegistrationTermination[] mImsRegistrationTerminations;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -336,7 +352,6 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState4Proto.carrierId = CARRIER2_ID;
         mServiceState4Proto.totalTimeMillis = 10000L;
 
-        // NOTE: service states and switches will always be reordered by HashMap
         mServiceSwitches =
                 new CellularDataServiceSwitch[] {mServiceSwitch1Proto, mServiceSwitch2Proto};
         mServiceStates =
@@ -345,6 +360,76 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     mServiceState2Proto,
                     mServiceState3Proto,
                     mServiceState4Proto
+                };
+
+        // IMS over LTE on slot 0, registered for 5 seconds
+        mImsRegistrationStatsLte0 = new ImsRegistrationStats();
+        mImsRegistrationStatsLte0.carrierId = CARRIER1_ID;
+        mImsRegistrationStatsLte0.simSlotIndex = 0;
+        mImsRegistrationStatsLte0.rat = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegistrationStatsLte0.registeredMillis = 5000L;
+        mImsRegistrationStatsLte0.voiceCapableMillis = 5000L;
+        mImsRegistrationStatsLte0.voiceAvailableMillis = 5000L;
+        mImsRegistrationStatsLte0.smsCapableMillis = 5000L;
+        mImsRegistrationStatsLte0.smsAvailableMillis = 5000L;
+        mImsRegistrationStatsLte0.videoCapableMillis = 5000L;
+        mImsRegistrationStatsLte0.videoAvailableMillis = 5000L;
+        mImsRegistrationStatsLte0.utCapableMillis = 5000L;
+        mImsRegistrationStatsLte0.utAvailableMillis = 5000L;
+
+        // IMS over WiFi on slot 0, registered for 10 seconds (voice only)
+        mImsRegistrationStatsWifi0 = new ImsRegistrationStats();
+        mImsRegistrationStatsWifi0.carrierId = CARRIER2_ID;
+        mImsRegistrationStatsWifi0.simSlotIndex = 0;
+        mImsRegistrationStatsWifi0.rat = TelephonyManager.NETWORK_TYPE_IWLAN;
+        mImsRegistrationStatsWifi0.registeredMillis = 10000L;
+        mImsRegistrationStatsWifi0.voiceCapableMillis = 10000L;
+        mImsRegistrationStatsWifi0.voiceAvailableMillis = 10000L;
+
+        // IMS over LTE on slot 1, registered for 20 seconds
+        mImsRegistrationStatsLte1 = new ImsRegistrationStats();
+        mImsRegistrationStatsLte1.carrierId = CARRIER1_ID;
+        mImsRegistrationStatsLte1.simSlotIndex = 0;
+        mImsRegistrationStatsLte1.rat = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegistrationStatsLte1.registeredMillis = 20000L;
+        mImsRegistrationStatsLte1.voiceCapableMillis = 20000L;
+        mImsRegistrationStatsLte1.voiceAvailableMillis = 20000L;
+        mImsRegistrationStatsLte1.smsCapableMillis = 20000L;
+        mImsRegistrationStatsLte1.smsAvailableMillis = 20000L;
+        mImsRegistrationStatsLte1.videoCapableMillis = 20000L;
+        mImsRegistrationStatsLte1.videoAvailableMillis = 20000L;
+        mImsRegistrationStatsLte1.utCapableMillis = 20000L;
+        mImsRegistrationStatsLte1.utAvailableMillis = 20000L;
+
+        // IMS terminations on LTE
+        mImsRegistrationTerminationLte = new ImsRegistrationTermination();
+        mImsRegistrationTerminationLte.carrierId = CARRIER1_ID;
+        mImsRegistrationTerminationLte.isMultiSim = true;
+        mImsRegistrationTerminationLte.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegistrationTerminationLte.setupFailed = false;
+        mImsRegistrationTerminationLte.reasonCode = ImsReasonInfo.CODE_REGISTRATION_ERROR;
+        mImsRegistrationTerminationLte.extraCode = 999;
+        mImsRegistrationTerminationLte.extraMessage = "Request Timeout";
+        mImsRegistrationTerminationLte.count = 2;
+
+        // IMS terminations on WiFi
+        mImsRegistrationTerminationWifi = new ImsRegistrationTermination();
+        mImsRegistrationTerminationWifi.carrierId = CARRIER2_ID;
+        mImsRegistrationTerminationWifi.isMultiSim = true;
+        mImsRegistrationTerminationWifi.ratAtEnd = TelephonyManager.NETWORK_TYPE_IWLAN;
+        mImsRegistrationTerminationWifi.setupFailed = false;
+        mImsRegistrationTerminationWifi.reasonCode = ImsReasonInfo.CODE_REGISTRATION_ERROR;
+        mImsRegistrationTerminationWifi.extraCode = 0;
+        mImsRegistrationTerminationWifi.extraMessage = "";
+        mImsRegistrationTerminationWifi.count = 1;
+
+        mImsRegistrationStats =
+                new ImsRegistrationStats[] {
+                    mImsRegistrationStatsLte0, mImsRegistrationStatsWifi0, mImsRegistrationStatsLte1
+                };
+        mImsRegistrationTerminations =
+                new ImsRegistrationTermination[] {
+                    mImsRegistrationTerminationLte, mImsRegistrationTerminationWifi
                 };
     }
 
@@ -798,19 +883,19 @@ public class PersistAtomsStorageTest extends TelephonyTest {
             throws Exception {
         createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-        CellularServiceState[] expectedServiceStates = new CellularServiceState[51];
-        CellularDataServiceSwitch[] expectedServiceSwitches = new CellularDataServiceSwitch[51];
+        Queue<CellularServiceState> expectedServiceStates = new LinkedList<>();
+        Queue<CellularDataServiceSwitch> expectedServiceSwitches = new LinkedList<>();
 
         // Add 51 service states, with the first being least recent
         for (int i = 0; i < 51; i++) {
             CellularServiceState state = new CellularServiceState();
             state.voiceRat = i / 10;
             state.dataRat = i % 10;
-            expectedServiceStates[i] = state;
+            expectedServiceStates.add(state);
             CellularDataServiceSwitch serviceSwitch = new CellularDataServiceSwitch();
             serviceSwitch.ratFrom = i / 10;
             serviceSwitch.ratTo = i % 10;
-            expectedServiceSwitches[i] = serviceSwitch;
+            expectedServiceSwitches.add(serviceSwitch);
             mPersistAtomsStorage.addCellularServiceStateAndCellularDataServiceSwitch(
                     copyOf(state), copyOf(serviceSwitch));
             mPersistAtomsStorage.incTimeMillis(100L);
@@ -819,12 +904,14 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         // The least recent (the first) service state should be evicted
         verifyCurrentStateSavedToFileOnce();
         CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
-        expectedServiceStates = Arrays.copyOfRange(expectedServiceStates, 1, 51);
-        assertProtoArrayEqualsIgnoringOrder(expectedServiceStates, serviceStates);
+        expectedServiceStates.remove();
+        assertProtoArrayEqualsIgnoringOrder(
+                expectedServiceStates.toArray(new CellularServiceState[0]), serviceStates);
         CellularDataServiceSwitch[] serviceSwitches =
                 mPersistAtomsStorage.getCellularDataServiceSwitches(0L);
-        expectedServiceSwitches = Arrays.copyOfRange(expectedServiceSwitches, 1, 51);
-        assertProtoArrayEqualsIgnoringOrder(expectedServiceSwitches, serviceSwitches);
+        expectedServiceSwitches.remove();
+        assertProtoArrayEqualsIgnoringOrder(
+                expectedServiceSwitches.toArray(new CellularDataServiceSwitch[0]), serviceSwitches);
     }
 
     @Test
@@ -921,6 +1008,270 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         inOrder.verifyNoMoreInteractions();
     }
 
+    @Test
+    @SmallTest
+    public void addImsRegistrationStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationStats(mImsRegistrationStatsLte0);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        assertProtoArrayEquals(new ImsRegistrationStats[] {mImsRegistrationStatsLte0}, regStats);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationStats(mImsRegistrationStatsLte0);
+
+        mPersistAtomsStorage.addImsRegistrationStats(mImsRegistrationStatsWifi0);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationStats[] {mImsRegistrationStatsLte0, mImsRegistrationStatsWifi0},
+                regStats);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationStats_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        ImsRegistrationStats newImsRegistrationStatsLte0 = copyOf(mImsRegistrationStatsLte0);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mImsRegistrationStatsLte0's durations should be doubled
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationStats[] serviceStates = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        newImsRegistrationStatsLte0.registeredMillis *= 2;
+        newImsRegistrationStatsLte0.voiceCapableMillis *= 2;
+        newImsRegistrationStatsLte0.voiceAvailableMillis *= 2;
+        newImsRegistrationStatsLte0.smsCapableMillis *= 2;
+        newImsRegistrationStatsLte0.smsAvailableMillis *= 2;
+        newImsRegistrationStatsLte0.videoCapableMillis *= 2;
+        newImsRegistrationStatsLte0.videoAvailableMillis *= 2;
+        newImsRegistrationStatsLte0.utCapableMillis *= 2;
+        newImsRegistrationStatsLte0.utAvailableMillis *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationStats[] {
+                    newImsRegistrationStatsLte0,
+                    mImsRegistrationStatsWifi0,
+                    mImsRegistrationStatsLte1
+                },
+                serviceStates);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationStats_tooManyRegistrationStats() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        Queue<ImsRegistrationStats> expectedRegistrationStats = new LinkedList<>();
+
+        // Add 11 registration stats
+        for (int i = 0; i < 11; i++) {
+            ImsRegistrationStats stats = copyOf(mImsRegistrationStatsLte0);
+            stats.rat = i;
+            expectedRegistrationStats.add(stats);
+            mPersistAtomsStorage.addImsRegistrationStats(stats);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // The least recent (the first) registration stats should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationStats[] stats = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        expectedRegistrationStats.remove();
+        assertProtoArrayEqualsIgnoringOrder(
+                expectedRegistrationStats.toArray(new ImsRegistrationStats[0]), stats);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationTermination_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationTermination(mImsRegistrationTerminationLte);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationTermination[] terminations =
+                mPersistAtomsStorage.getImsRegistrationTerminations(0L);
+        assertProtoArrayEquals(
+                new ImsRegistrationTermination[] {mImsRegistrationTerminationLte}, terminations);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationTermination_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationTermination(mImsRegistrationTerminationLte);
+
+        mPersistAtomsStorage.addImsRegistrationTermination(mImsRegistrationTerminationWifi);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationTermination[] terminations =
+                mPersistAtomsStorage.getImsRegistrationTerminations(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationTermination[] {
+                    mImsRegistrationTerminationLte, mImsRegistrationTerminationWifi
+                },
+                terminations);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationTermination_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        ImsRegistrationTermination newTermination = copyOf(mImsRegistrationTerminationWifi);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addImsRegistrationTermination(copyOf(mImsRegistrationTerminationWifi));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mImsRegistrationTerminationWifi's count should be doubled
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationTermination[] terminations =
+                mPersistAtomsStorage.getImsRegistrationTerminations(0L);
+        newTermination.count *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationTermination[] {mImsRegistrationTerminationLte, newTermination},
+                terminations);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationTermination_tooManyTerminations() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        Queue<ImsRegistrationTermination> expectedTerminations = new LinkedList<>();
+
+        // Add 11 registration terminations
+        for (int i = 0; i < 11; i++) {
+            ImsRegistrationTermination termination = copyOf(mImsRegistrationTerminationLte);
+            termination.reasonCode = i;
+            expectedTerminations.add(termination);
+            mPersistAtomsStorage.addImsRegistrationTermination(termination);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // The least recent (the first) registration termination should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationTermination[] terminations =
+                mPersistAtomsStorage.getImsRegistrationTerminations(0L);
+        expectedTerminations.remove();
+        assertProtoArrayEqualsIgnoringOrder(
+                expectedTerminations.toArray(new ImsRegistrationTermination[0]), terminations);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        ImsRegistrationStats[] stats = mPersistAtomsStorage.getImsRegistrationStats(100L);
+
+        // should be denied
+        assertNull(stats);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationStats_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationStats[] stats1 = mPersistAtomsStorage.getImsRegistrationStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationStats[] stats2 = mPersistAtomsStorage.getImsRegistrationStats(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationStats[] {
+                    mImsRegistrationStatsLte0, mImsRegistrationStatsWifi0, mImsRegistrationStatsLte1
+                },
+                stats1);
+        assertProtoArrayEquals(new ImsRegistrationStats[0], stats2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto().imsRegistrationStatsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).imsRegistrationStatsPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).imsRegistrationStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationTerminations_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        ImsRegistrationTermination[] terminations =
+                mPersistAtomsStorage.getImsRegistrationTerminations(100L);
+
+        // should be denied
+        assertNull(terminations);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationTerminations_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationTermination[] terminations1 =
+                mPersistAtomsStorage.getImsRegistrationTerminations(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationTermination[] terminations2 =
+                mPersistAtomsStorage.getImsRegistrationTerminations(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationTermination[] {
+                    mImsRegistrationTerminationLte, mImsRegistrationTerminationWifi
+                },
+                terminations1);
+        assertProtoArrayEquals(new ImsRegistrationTermination[0], terminations2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto().imsRegistrationTerminationPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).imsRegistrationTerminationPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).imsRegistrationTerminationPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
     /* Utilities */
 
     private void createEmptyTestFile() throws Exception {
@@ -940,6 +1291,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         atoms.cellularServiceState = mServiceStates;
         atoms.cellularDataServiceSwitchPullTimestampMillis = lastPullTimeMillis;
         atoms.cellularDataServiceSwitch = mServiceSwitches;
+        atoms.imsRegistrationStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.imsRegistrationStats = mImsRegistrationStats;
+        atoms.imsRegistrationTerminationPullTimestampMillis = lastPullTimeMillis;
+        atoms.imsRegistrationTermination = mImsRegistrationTerminations;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -983,6 +1338,15 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static CellularDataServiceSwitch copyOf(CellularDataServiceSwitch source)
             throws Exception {
         return CellularDataServiceSwitch.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static ImsRegistrationStats copyOf(ImsRegistrationStats source) throws Exception {
+        return ImsRegistrationStats.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static ImsRegistrationTermination copyOf(ImsRegistrationTermination source)
+            throws Exception {
+        return ImsRegistrationTermination.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {

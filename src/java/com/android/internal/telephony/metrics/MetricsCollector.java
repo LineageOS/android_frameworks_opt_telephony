@@ -24,6 +24,8 @@ import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION;
+import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_TERMINATION;
 import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
@@ -40,9 +42,12 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyStatsLog;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
@@ -111,6 +116,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(OUTGOING_SMS, POLICY_PULL_DAILY);
             registerAtom(CARRIER_ID_TABLE_VERSION, null);
             registerAtom(DATA_CALL_SESSION, POLICY_PULL_DAILY);
+            registerAtom(IMS_REGISTRATION_STATS, POLICY_PULL_DAILY);
+            registerAtom(IMS_REGISTRATION_TERMINATION, POLICY_PULL_DAILY);
 
             Rlog.d(TAG, "registered");
         } else {
@@ -156,6 +163,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullCarrierIdTableVersion(data);
             case DATA_CALL_SESSION:
                 return pullDataCallSession(data);
+            case IMS_REGISTRATION_STATS:
+                return pullImsRegistrationStats(data);
+            case IMS_REGISTRATION_TERMINATION:
+                return pullImsRegistrationTermination(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -317,6 +328,41 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
+    private int pullImsRegistrationStats(List<StatsEvent> data) {
+        // Include the latest durations
+        for (Phone phone : getPhonesIfAny()) {
+            ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
+            if (imsPhone != null) {
+                imsPhone.getImsStats().conclude();
+            }
+        }
+
+        ImsRegistrationStats[] persistAtoms = mStorage.getImsRegistrationStats(MIN_COOLDOWN_MILLIS);
+        if (persistAtoms != null) {
+            // list is already shuffled when instances were inserted
+            Arrays.stream(persistAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "IMS_REGISTRATION_STATS pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullImsRegistrationTermination(List<StatsEvent> data) {
+        ImsRegistrationTermination[] persistAtoms =
+                mStorage.getImsRegistrationTerminations(MIN_COOLDOWN_MILLIS);
+        if (persistAtoms != null) {
+            // list is already shuffled when instances were inserted
+            Arrays.stream(persistAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "IMS_REGISTRATION_TERMINATION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */
     private void registerAtom(int atomId, @Nullable StatsManager.PullAtomMetadata policy) {
         mStatsManager.setPullAtomCallback(atomId, policy, ConcurrentUtils.DIRECT_EXECUTOR, this);
@@ -453,6 +499,40 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.deactivateReason,
                 dataCallSession.durationMinutes,
                 dataCallSession.ongoing);
+    }
+
+    private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                IMS_REGISTRATION_STATS,
+                stats.carrierId,
+                stats.simSlotIndex,
+                stats.rat,
+                (int) (round(stats.registeredMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.voiceCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int)
+                        (round(stats.voiceAvailableMillis, DURATION_BUCKET_MILLIS)
+                                / SECOND_IN_MILLIS),
+                (int) (round(stats.smsCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.smsAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.videoCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int)
+                        (round(stats.videoAvailableMillis, DURATION_BUCKET_MILLIS)
+                                / SECOND_IN_MILLIS),
+                (int) (round(stats.utCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.utAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+    }
+
+    private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
+        return TelephonyStatsLog.buildStatsEvent(
+                IMS_REGISTRATION_TERMINATION,
+                termination.carrierId,
+                termination.isMultiSim,
+                termination.ratAtEnd,
+                termination.setupFailed,
+                termination.reasonCode,
+                termination.extraCode,
+                termination.extraMessage,
+                termination.count);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
