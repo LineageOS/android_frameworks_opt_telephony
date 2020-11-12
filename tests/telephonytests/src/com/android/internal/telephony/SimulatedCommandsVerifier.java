@@ -181,6 +181,16 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void registerForApnUnthrottled(Handler h, int what, Object obj) {
+
+    }
+
+    @Override
+    public void unregisterForApnUnthrottled(Handler h) {
+
+    }
+
+    @Override
     public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj) {
 
     }
