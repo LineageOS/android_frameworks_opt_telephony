@@ -55,6 +55,7 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CarrierBandwidth;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -1433,5 +1434,18 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mCT.mRingingCall = mGsmCdmaCall;
         doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
         replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+    }
+
+    @Test
+    public void testEventLCEUpdate() {
+        mPhoneUT.mCi = mMockCi;
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_LINK_CAPACITY_CHANGED,
+                new AsyncResult(null, new LinkCapacityEstimate(1000, 500, 100, 50), null)));
+        processAllMessages();
+        CarrierBandwidth bandwidth = mPhoneUT.getCarrierBandwidth();
+        assertEquals(bandwidth.getPrimaryDownlinkCapacityKbps(), 900);
+        assertEquals(bandwidth.getPrimaryUplinkCapacityKbps(), 450);
+        assertEquals(bandwidth.getSecondaryDownlinkCapacityKbps(), 100);
+        assertEquals(bandwidth.getSecondaryUplinkCapacityKbps(), 50);
     }
 }
