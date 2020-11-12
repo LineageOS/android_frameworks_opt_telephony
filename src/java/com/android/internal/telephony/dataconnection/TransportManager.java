@@ -473,6 +473,15 @@ public class TransportManager extends Handler {
     }
 
     /**
+     * Registers the data throttler with DcTracker.
+     */
+    public void registerDataThrottler(DataThrottler dataThrottler) {
+        if (mAccessNetworksManager != null) {
+            mAccessNetworksManager.registerDataThrottler(dataThrottler);
+        }
+    }
+
+    /**
      * Dump the state of transport manager
      *
      * @param fd File descriptor

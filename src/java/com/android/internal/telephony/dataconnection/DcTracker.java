@@ -668,7 +668,7 @@ public class DcTracker extends Handler {
     private DataStallRecoveryHandler mDsRecoveryHandler;
     private HandlerThread mHandlerThread;
 
-    private final DataThrottler mDataThrottler = new DataThrottler();
+    private final DataThrottler mDataThrottler;
 
     /**
      * Request network completion message map. Key is the APN type, value is the list of completion
@@ -692,6 +692,7 @@ public class DcTracker extends Handler {
 
         mTransportType = transportType;
         mDataServiceManager = new DataServiceManager(phone, transportType, mLogTagSuffix);
+        mDataThrottler = new DataThrottler(mPhone.getPhoneId(), transportType);
 
         mResolver = mPhone.getContext().getContentResolver();
         mAlarmManager =
@@ -761,6 +762,7 @@ public class DcTracker extends Handler {
         mDataEnabledSettings = null;
         mTransportType = 0;
         mDataServiceManager = null;
+        mDataThrottler = null;
     }
 
     public void registerServiceStateTrackerEvents() {
@@ -2410,6 +2412,22 @@ public class DcTracker extends Handler {
         }
     }
 
+    private void onApnUnthrottled(Message msg) {
+        String apn = (String) msg.obj;
+        if (apn != null) {
+            ApnContext ac = mApnContexts.get(apn);
+            if (ac != null) {
+                @ApnType int apnTypes = ac.getApnTypeBitmask();
+                mDataThrottler.setRetryTime(apnTypes, RetryManager.NO_SUGGESTED_RETRY_DELAY,
+                        DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL);
+            } else {
+                loge("EVENT_APN_UNTHROTTLED: Invalid APN passed: " + apn);
+            }
+        } else {
+            loge("EVENT_APN_UNTHROTTLED: apn is null");
+        }
+    }
+
     private DataConnection checkForCompatibleDataConnection(ApnContext apnContext,
             ApnSetting nextApn) {
         int apnType = apnContext.getApnTypeBitmask();
@@ -3022,12 +3040,21 @@ public class DcTracker extends Handler {
                 apnContext.markApnPermanentFailed(apn);
             }
 
-            requestType = (handoverFailureMode
-                    == DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER)
-                    ? REQUEST_TYPE_HANDOVER : REQUEST_TYPE_NORMAL;
+            requestType = calcRequestType(handoverFailureMode);
             onDataSetupCompleteError(apnContext, requestType,
                     shouldFallbackOnFailedHandover(handoverFailureMode, requestType, cause));
         }
+    }
+
+    /**
+     * Converts the handover failure mode to the corresponding request network type.
+     */
+    @RequestNetworkType
+    public static int calcRequestType(
+            @HandoverFailureMode int handoverFailureMode) {
+        return (handoverFailureMode
+            == DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER)
+            ? REQUEST_TYPE_HANDOVER : REQUEST_TYPE_NORMAL;
     }
 
     /**
@@ -3918,6 +3945,9 @@ public class DcTracker extends Handler {
             case DctConstants.EVENT_SIM_STATE_UPDATED:
                 int simState = msg.arg1;
                 onSimStateUpdated(simState);
+                break;
+            case DctConstants.EVENT_APN_UNTHROTTLED:
+                onApnUnthrottled(msg);
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);

@@ -65,6 +65,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
 
@@ -86,6 +87,7 @@ import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
 import android.hardware.radio.V1_6.IRadioIndication;
 import android.os.AsyncResult;
+import android.os.RemoteException;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.AnomalyReporter;
@@ -381,8 +383,10 @@ public class RadioIndication extends IRadioIndication.Stub {
         responseDataCallListChanged(indicationType, dcList);
     }
 
-    /**  unthrottleApn */
-    public void unthrottleApn(int indicationType, String apn) {
+    @Override
+    public void unthrottleApn(int indicationType, String apn)
+            throws RemoteException {
+        responseApnUnthrottled(indicationType, apn);
     }
 
     public void suppSvcNotify(int indicationType, SuppSvcNotification suppSvcNotification) {
@@ -1233,5 +1237,14 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<DataCallResponse> response = RIL.convertDataCallResultList(dcList);
         mRil.mDataCallListChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
+    }
+
+    private void responseApnUnthrottled(int indicationType, String apn) {
+        mRil.processIndication(indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
+
+        mRil.mApnUnthrottledRegistrants.notifyRegistrants(
+                new AsyncResult(null, apn, null));
     }
 }

@@ -26,7 +26,6 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -36,6 +35,7 @@ import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
+import android.telephony.data.ApnThrottleStatus;
 import android.telephony.data.IQualifiedNetworksService;
 import android.telephony.data.IQualifiedNetworksServiceCallback;
 import android.telephony.data.QualifiedNetworksService;
@@ -49,7 +49,9 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -72,8 +74,6 @@ public class AccessNetworksManager extends Handler {
             ApnSetting.TYPE_XCAP
     };
 
-    private static final int EVENT_BIND_QUALIFIED_NETWORKS_SERVICE = 1;
-
     private final Phone mPhone;
 
     private final CarrierConfigManager mCarrierConfigManager;
@@ -91,6 +91,8 @@ public class AccessNetworksManager extends Handler {
 
     private final RegistrantList mQualifiedNetworksChangedRegistrants = new RegistrantList();
 
+    private final Set<DataThrottler> mDataThrottlers = new HashSet<>();
+
     private final BroadcastReceiver mConfigChangedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -102,10 +104,25 @@ public class AccessNetworksManager extends Handler {
                 // package name can come from the carrier config. Note that we still get this event
                 // even when SIM is absent.
                 if (DBG) log("Carrier config changed. Try to bind qualified network service.");
-                sendEmptyMessage(EVENT_BIND_QUALIFIED_NETWORKS_SERVICE);
+                bindQualifiedNetworksService();
             }
         }
     };
+
+    /**
+     * Registers the data throttler in order to receive APN status changes.
+     *
+     * @param dataThrottler the data throttler to register
+     */
+    public void registerDataThrottler(DataThrottler dataThrottler) {
+        this.post(() -> {
+            QualifiedNetworksServiceConnection serviceConnection = mServiceConnection;
+            this.mDataThrottlers.add(dataThrottler);
+            if (serviceConnection != null) {
+                serviceConnection.registerDataThrottler(dataThrottler);
+            }
+        });
+    }
 
     /**
      * Represents qualified network types list on a specific APN type.
@@ -144,6 +161,18 @@ public class AccessNetworksManager extends Handler {
     }
 
     private final class QualifiedNetworksServiceConnection implements ServiceConnection {
+
+        /**
+         * The APN throttle status callback is attached to the service connection so that they have
+         * the same life cycle.
+         */
+        @NonNull
+        private final ApnThrottleStatusChangedCallback mThrottleStatusCallback;
+
+        QualifiedNetworksServiceConnection() {
+            mThrottleStatusCallback = new ApnThrottleStatusChangedCallback();
+        }
+
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             if (DBG) log("onServiceConnected " + name);
@@ -154,15 +183,65 @@ public class AccessNetworksManager extends Handler {
                 service.linkToDeath(mDeathRecipient, 0 /* flags */);
                 mIQualifiedNetworksService.createNetworkAvailabilityProvider(mPhone.getPhoneId(),
                         new QualifiedNetworksServiceCallback());
+
+                registerDataThrottlersFirstTime();
+
             } catch (RemoteException e) {
                 mDeathRecipient.binderDied();
                 loge("Remote exception. " + e);
             }
         }
+
         @Override
         public void onServiceDisconnected(ComponentName name) {
             if (DBG) log("onServiceDisconnected " + name);
+            unregisterForThrottleCallbacks();
             mTargetBindingPackageName = null;
+        }
+
+        /**
+         * Runs on all of the data throttlers when the service is connected
+         */
+        private void registerDataThrottlersFirstTime() {
+            post(() -> {
+                for (DataThrottler dataThrottler : mDataThrottlers) {
+                    dataThrottler.registerForApnThrottleStatusChanges(mThrottleStatusCallback);
+                }
+            });
+        }
+
+        private void registerDataThrottler(DataThrottler dataThrottler) {
+            post(() -> {
+                dataThrottler.registerForApnThrottleStatusChanges(mThrottleStatusCallback);
+            });
+        }
+
+        private void unregisterForThrottleCallbacks() {
+            post(() -> {
+                for (DataThrottler dataThrottler : mDataThrottlers) {
+                    dataThrottler.unregisterForApnThrottleStatusChanges(mThrottleStatusCallback);
+                }
+            });
+        }
+    }
+
+    private class ApnThrottleStatusChangedCallback implements DataThrottler.Callback {
+        @Override
+        public void onApnThrottleStatusChanged(List<ApnThrottleStatus> apnThrottleStatuses) {
+            post(() -> {
+                try {
+                    List<ApnThrottleStatus> apnThrottleStatusesBySlot =
+                            apnThrottleStatuses
+                                    .stream()
+                                    .filter(x -> x.getSlotIndex() == mPhone.getPhoneId())
+                                    .collect(Collectors.toList());
+
+                    mIQualifiedNetworksService.reportApnThrottleStatusChanged(mPhone.getPhoneId(),
+                            apnThrottleStatusesBySlot);
+                } catch (Exception ex) {
+                    loge("onApnThrottleStatusChanged", ex);
+                }
+            });
         }
     }
 
@@ -221,23 +300,7 @@ public class AccessNetworksManager extends Handler {
         } catch (PackageManager.NameNotFoundException e) {
             Rlog.e(TAG, "Package name not found: " + e.getMessage());
         }
-        sendEmptyMessage(EVENT_BIND_QUALIFIED_NETWORKS_SERVICE);
-    }
-
-    /**
-     * Handle message events
-     *
-     * @param msg The message to handle
-     */
-    @Override
-    public void handleMessage(Message msg) {
-        switch (msg.what) {
-            case EVENT_BIND_QUALIFIED_NETWORKS_SERVICE:
-                bindQualifiedNetworksService();
-                break;
-            default:
-                loge("Unhandled event " + msg.what);
-        }
+        bindQualifiedNetworksService();
     }
 
     /**
@@ -245,54 +308,57 @@ public class AccessNetworksManager extends Handler {
      * configuration from carrier config if it exists. If not, read it from resources.
      */
     private void bindQualifiedNetworksService() {
-        Intent intent = null;
-        String packageName = getQualifiedNetworksServicePackageName();
-        String className = getQualifiedNetworksServiceClassName();
+        post(() -> {
+            Intent intent = null;
+            String packageName = getQualifiedNetworksServicePackageName();
+            String className = getQualifiedNetworksServiceClassName();
 
-        if (DBG) log("Qualified network service package = " + packageName);
-        if (TextUtils.isEmpty(packageName)) {
-            loge("Can't find the binding package");
-            return;
-        }
-
-        if (TextUtils.isEmpty(className)) {
-            intent = new Intent(QualifiedNetworksService.QUALIFIED_NETWORKS_SERVICE_INTERFACE);
-            intent.setPackage(packageName);
-        } else {
-            ComponentName cm = new ComponentName(packageName, className);
-            intent = new Intent(QualifiedNetworksService.QUALIFIED_NETWORKS_SERVICE_INTERFACE)
-                    .setComponent(cm);
-        }
-
-        if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
-            if (DBG) log("Service " + packageName + " already bound or being bound.");
-            return;
-        }
-
-        if (mIQualifiedNetworksService != null
-                && mIQualifiedNetworksService.asBinder().isBinderAlive()) {
-            // Remove the network availability updater and then unbind the service.
-            try {
-                mIQualifiedNetworksService.removeNetworkAvailabilityProvider(mPhone.getPhoneId());
-            } catch (RemoteException e) {
-                loge("Cannot remove network availability updater. " + e);
-            }
-
-            mPhone.getContext().unbindService(mServiceConnection);
-        }
-
-        try {
-            mServiceConnection = new QualifiedNetworksServiceConnection();
-            log("bind to " + packageName);
-            if (!mPhone.getContext().bindService(intent, mServiceConnection,
-                        Context.BIND_AUTO_CREATE)) {
-                loge("Cannot bind to the qualified networks service.");
+            if (DBG) log("Qualified network service package = " + packageName);
+            if (TextUtils.isEmpty(packageName)) {
+                loge("Can't find the binding package");
                 return;
             }
-            mTargetBindingPackageName = packageName;
-        } catch (Exception e) {
-            loge("Cannot bind to the qualified networks service. Exception: " + e);
-        }
+
+            if (TextUtils.isEmpty(className)) {
+                intent = new Intent(QualifiedNetworksService.QUALIFIED_NETWORKS_SERVICE_INTERFACE);
+                intent.setPackage(packageName);
+            } else {
+                ComponentName cm = new ComponentName(packageName, className);
+                intent = new Intent(QualifiedNetworksService.QUALIFIED_NETWORKS_SERVICE_INTERFACE)
+                        .setComponent(cm);
+            }
+
+            if (TextUtils.equals(packageName, mTargetBindingPackageName)) {
+                if (DBG) log("Service " + packageName + " already bound or being bound.");
+                return;
+            }
+
+            if (mIQualifiedNetworksService != null
+                    && mIQualifiedNetworksService.asBinder().isBinderAlive()) {
+                // Remove the network availability updater and then unbind the service.
+                try {
+                    mIQualifiedNetworksService.removeNetworkAvailabilityProvider(
+                            mPhone.getPhoneId());
+                } catch (RemoteException e) {
+                    loge("Cannot remove network availability updater. " + e);
+                }
+
+                mPhone.getContext().unbindService(mServiceConnection);
+            }
+
+            try {
+                mServiceConnection = new QualifiedNetworksServiceConnection();
+                log("bind to " + packageName);
+                if (!mPhone.getContext().bindService(intent, mServiceConnection,
+                        Context.BIND_AUTO_CREATE)) {
+                    loge("Cannot bind to the qualified networks service.");
+                    return;
+                }
+                mTargetBindingPackageName = packageName;
+            } catch (Exception e) {
+                loge("Cannot bind to the qualified networks service. Exception: " + e);
+            }
+        });
     }
 
     /**
@@ -416,6 +482,10 @@ public class AccessNetworksManager extends Handler {
 
     private void loge(String s) {
         Rlog.e(TAG, s);
+    }
+
+    private void loge(String s, Exception ex) {
+        Rlog.e(TAG, s, ex);
     }
 
 }

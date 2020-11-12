@@ -105,6 +105,8 @@ public class DataServiceManager extends Handler {
 
     private final RegistrantList mDataCallListChangedRegistrants = new RegistrantList();
 
+    private final RegistrantList mApnUnthrottledRegistrants = new RegistrantList();
+
     private String mTargetBindingPackageName;
 
     private CellularDataServiceConnection mServiceConnection;
@@ -314,6 +316,15 @@ public class DataServiceManager extends Handler {
             if (DBG) log("onHandoverCancelled. resultCode = " + resultCode);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
+        }
+
+        public void onApnUnthrottled(String apn) {
+            if (apn != null) {
+                mApnUnthrottledRegistrants.notifyRegistrants(
+                        new AsyncResult(null, apn, null));
+            } else {
+                loge("onApnUnthrottled: apn is null");
+            }
         }
     }
 
@@ -865,6 +876,29 @@ public class DataServiceManager extends Handler {
     public void unregisterForDataCallListChanged(Handler h) {
         if (h != null) {
             mDataCallListChangedRegistrants.remove(h);
+        }
+    }
+
+    /**
+     * Register apn unthrottled event
+     *
+     * @param h The target to post the event message to.
+     * @param what The event.
+     */
+    public void registerForApnUnthrottled(Handler h, int what) {
+        if (h != null) {
+            mApnUnthrottledRegistrants.addUnique(h, what, null);
+        }
+    }
+
+    /**
+     * Unregister for apn unthrottled event
+     *
+     * @param h The handler
+     */
+    public void unregisterForApnUnthrottled(Handler h) {
+        if (h != null) {
+            mApnUnthrottledRegistrants.remove(h);
         }
     }
 
