@@ -29,11 +29,19 @@ public class LinkCapacityEstimate {
     /** LCE is suspended; Deprecated in HAL 1.2 */
     public static final int STATUS_SUSPENDED = 1;
 
-    /** Downlink radio link capacity in kbps */
+    /** Downlink radio link capacity in kbps. In case of a dual connected network,
+     * this includes capacity of both primary and secondary */
     public final int downlinkCapacityKbps;
 
-    /** Uplink radio link capacity; added in HAL 1.2 */
+    /** Uplink radio link capacity; added in HAL 1.2. In case of a dual connected network,
+     * this includes capacity of both primary and secondary */
     public final int uplinkCapacityKbps;
+
+    /** Downlink radio link capacity of secondary network in kbps */
+    public final int secondaryDownlinkCapacityKbps;
+
+    /** Uplink radio link capacity of secondary network in kbps */
+    public final int secondaryUplinkCapacityKbps;
 
     /** Confidence of the downlink estimate as a percentage [1, 100]; deprecated in HAL 1.2 */
     public final int confidence;
@@ -47,6 +55,8 @@ public class LinkCapacityEstimate {
         this.confidence = confidence;
         this.status = status;
         this.uplinkCapacityKbps = INVALID;
+        this.secondaryDownlinkCapacityKbps = INVALID;
+        this.secondaryUplinkCapacityKbps = INVALID;
     }
 
     /** Constructor matching the estimate in Radio HAL v1.2 */
@@ -55,6 +65,19 @@ public class LinkCapacityEstimate {
         this.uplinkCapacityKbps = uplinkCapacityKbps;
         this.confidence = INVALID;
         this.status = INVALID;
+        this.secondaryDownlinkCapacityKbps = INVALID;
+        this.secondaryUplinkCapacityKbps = INVALID;
+    }
+
+    /** Constructor matching the estimate in Radio HAL v1.6 */
+    public LinkCapacityEstimate(int downlinkCapacityKbps, int uplinkCapacityKbps,
+            int secondaryDownlinkCapacityKbps, int secondaryUplinkCapacityKbps) {
+        this.downlinkCapacityKbps = downlinkCapacityKbps;
+        this.uplinkCapacityKbps = uplinkCapacityKbps;
+        this.confidence = INVALID;
+        this.status = INVALID;
+        this.secondaryDownlinkCapacityKbps = secondaryDownlinkCapacityKbps;
+        this.secondaryUplinkCapacityKbps = secondaryUplinkCapacityKbps;
     }
 
     @Override
@@ -68,6 +91,10 @@ public class LinkCapacityEstimate {
                 .append(confidence)
                 .append(", status=")
                 .append(status)
+                .append("{secondaryDownlinkCapacityKbps=")
+                .append(secondaryDownlinkCapacityKbps)
+                .append(", secondaryUplinkCapacityKbps=")
+                .append(secondaryUplinkCapacityKbps)
                 .toString();
     }
 }
