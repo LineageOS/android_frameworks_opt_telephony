@@ -36,6 +36,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.AudioCodecAttributes;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.text.TextUtils;
@@ -1067,6 +1068,24 @@ public class ImsPhoneConnection extends Connection implements
                 mAudioCodec = localCallProfile.mMediaProfile.mAudioQuality;
                 mMetrics.writeAudioCodecIms(mOwner.mPhone.getPhoneId(), imsCall.getCallSession());
                 mOwner.getPhone().getVoiceCallSessionStats().onAudioCodecChanged(this, mAudioCodec);
+            }
+
+            if (localCallProfile != null
+                    && localCallProfile.mMediaProfile.getAudioCodecAttributes() != null) {
+                AudioCodecAttributes audioCodecAttributes =
+                        localCallProfile.mMediaProfile.getAudioCodecAttributes();
+
+                if (Math.abs(mAudioCodecBitrateKbps
+                        - audioCodecAttributes.getBitrateRangeKbps().getUpper()) > THRESHOLD) {
+                    mAudioCodecBitrateKbps = audioCodecAttributes.getBitrateRangeKbps().getUpper();
+                    changed = true;
+                }
+                if (Math.abs(mAudioCodecBandwidthKhz
+                        - audioCodecAttributes.getBandwidthRangeKhz().getUpper()) > THRESHOLD) {
+                    mAudioCodecBandwidthKhz =
+                            audioCodecAttributes.getBandwidthRangeKhz().getUpper();
+                    changed = true;
+                }
             }
 
             int newAudioQuality =
