@@ -28,12 +28,17 @@ import android.telephony.ims.stub.ImsMultiEndpointImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
 
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+
 public class TestMmTelFeature extends MmTelFeature {
 
     public boolean queryConfigurationResult = false;
     public int setCapabilitiesResult = ImsFeature.CAPABILITY_SUCCESS;
     public CapabilityChangeRequest lastRequest;
     public boolean isUtInterfaceCalled = false;
+    public CountDownLatch configuredRtpHeaderExtensions = new CountDownLatch(1);
+    Set<RtpHeaderExtensionType> receivedExtensions = null;
 
     private final TestImsCallSession mCallSession = new TestImsCallSession();
     private class TestImsCallSession extends ImsCallSessionImplBase {
@@ -58,6 +63,12 @@ public class TestMmTelFeature extends MmTelFeature {
     @Override
     public ImsCallProfile createCallProfile(int callSessionType, int callType) {
         return super.createCallProfile(callSessionType, callType);
+    }
+
+    @Override
+    public void changeOfferedRtpHeaderExtensionTypes(Set<RtpHeaderExtensionType> types) {
+        receivedExtensions = types;
+        configuredRtpHeaderExtensions.countDown();
     }
 
     @Override
