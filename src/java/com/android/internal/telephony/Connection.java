@@ -190,6 +190,8 @@ public abstract class Connection {
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
     public static final int AUDIO_QUALITY_HIGH_DEFINITION = 2;
+    // the threshold used to compare mAudioCodecBitrateKbps and mAudioCodecBandwidth.
+    public static final float THRESHOLD = 0.01f;
 
     /**
      * The telecom internal call ID associated with this connection.  Only to be used for debugging
@@ -247,6 +249,10 @@ public abstract class Connection {
 
     // Store the current audio code
     protected int mAudioCodec;
+    // audio codec bitrate in kbps
+    protected float mAudioCodecBitrateKbps;
+    // audio codec bandwidth in kHz
+    protected float mAudioCodecBandwidthKhz;
 
     @UnsupportedAppUsage
     private static String LOG_TAG = "Connection";
@@ -1428,6 +1434,20 @@ public abstract class Connection {
      */
     public int getAudioCodec() {
         return mAudioCodec;
+    }
+
+    /**
+     * @return the audio codec bitrate in kbps.
+     */
+    public float getAudioCodecBitrateKbps() {
+        return mAudioCodecBitrateKbps;
+    }
+
+    /**
+     * @return the audio codec bandwidth in kHz.
+     */
+    public float getAudioCodecBandwidthKhz() {
+        return mAudioCodecBandwidthKhz;
     }
 
     /**
