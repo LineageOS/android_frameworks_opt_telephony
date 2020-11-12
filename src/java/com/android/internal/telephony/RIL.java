@@ -3472,7 +3472,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.enableNrDualConnectivity(rr.mSerial, nrDualConnectivityState);
+                radioProxy16.setNrDualConnectivityState(rr.mSerial, nrDualConnectivityState);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "enableNRDualConnectivity", e);
             }
@@ -6853,6 +6853,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
         final LinkCapacityEstimate lce = new LinkCapacityEstimate(
                 halData.downlinkCapacityKbps,
                 halData.uplinkCapacityKbps);
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
+    }
+
+    static LinkCapacityEstimate convertHalLceData(
+            android.hardware.radio.V1_6.LinkCapacityEstimate halData, RIL ril) {
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
+                halData.downlinkCapacityKbps,
+                halData.uplinkCapacityKbps,
+                halData.secondaryDownlinkCapacityKbps,
+                halData.secondaryUplinkCapacityKbps);
         ril.riljLog("LCE capacity information received:" + lce);
         return lce;
     }
