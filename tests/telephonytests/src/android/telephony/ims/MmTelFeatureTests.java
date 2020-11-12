@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -46,6 +47,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+
+import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidJUnit4.class)
 public class MmTelFeatureTests extends ImsTestBase {
@@ -170,5 +174,21 @@ public class MmTelFeatureTests extends ImsTestBase {
         callSession.sendDtmf('0', resultMessage);
         waitForHandlerAction(mHandler, TEST_RESULT_DELAY_MS);
         assertTrue(mHandlerResults[TEST_SEND_DTMF_RESULT]);
+    }
+
+    @SmallTest
+    @Test
+    public void testChangeOfferedRtpHeaderExtensionTypes() throws Exception {
+        Message resultMessage = Message.obtain(mHandler, TEST_SEND_DTMF_RESULT);
+        resultMessage.replyTo = mHandlerMessenger;
+        RtpHeaderExtensionType type = new RtpHeaderExtensionType(1,
+                Uri.parse("http://developer.android.com/test"));
+        ArrayList<RtpHeaderExtensionType> types = new ArrayList<>();
+        types.add(type);
+        mFeatureBinder.changeOfferedRtpHeaderExtensionTypes(types);
+        waitForHandlerAction(mHandler, TEST_RESULT_DELAY_MS);
+        mFeature.configuredRtpHeaderExtensions.await(TEST_RESULT_DELAY_MS, TimeUnit.MILLISECONDS);
+        assertEquals(types.size(), mFeature.receivedExtensions.size());
+        assertEquals(types.get(0), mFeature.receivedExtensions.iterator().next());
     }
 }
