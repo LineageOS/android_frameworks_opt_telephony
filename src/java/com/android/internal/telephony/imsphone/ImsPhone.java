@@ -259,6 +259,7 @@ public class ImsPhone extends ImsPhoneBase {
     // The helper class to receive and store the MmTel registration status updated.
     private ImsRegistrationCallbackHelper mImsMmTelRegistrationHelper;
 
+    // The roaming state if currently in service, or the last roaming state when was in service.
     private boolean mRoaming = false;
 
     private boolean mIsInImsEcm = false;
@@ -2440,6 +2441,10 @@ public class ImsPhone extends ImsPhoneBase {
     public boolean hasAliveCall() {
         return (getForegroundCall().getState() != Call.State.IDLE ||
                 getBackgroundCall().getState() != Call.State.IDLE);
+    }
+
+    public boolean getRoamingState() {
+        return mRoaming;
     }
 
     @Override
