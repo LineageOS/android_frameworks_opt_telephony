@@ -19,16 +19,19 @@ package com.android.internal.telephony;
 import static android.telephony.TelephonyManager.ACTION_MULTI_SIM_CONFIG_CHANGED;
 import static android.telephony.TelephonyManager.EXTRA_ACTIVE_SIM_SUPPORTED_COUNT;
 
+import android.annotation.NonNull;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RegistrantList;
 import android.os.storage.StorageManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
+import android.telephony.RadioInterfaceCapabilities;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -56,6 +59,7 @@ public class PhoneConfigurationManager {
     private static final int EVENT_GET_MODEM_STATUS = 101;
     private static final int EVENT_GET_MODEM_STATUS_DONE = 102;
     private static final int EVENT_GET_PHONE_CAPABILITY_DONE = 103;
+    private static final int EVENT_GET_HAL_DEVICE_CAPABILITIES_DONE = 104;
 
     private static PhoneConfigurationManager sInstance = null;
     private final Context mContext;
@@ -69,6 +73,8 @@ public class PhoneConfigurationManager {
     private MockableInterface mMi = new MockableInterface();
     private TelephonyManager mTelephonyManager;
     private static final RegistrantList sMultiSimConfigChangeRegistrants = new RegistrantList();
+    private RadioInterfaceCapabilities mRadioInterfaceCapabilities;
+    private final Object mLockRadioInterfaceCapabilities = new Object();
 
     /**
      * Init method to instantiate the object
@@ -157,6 +163,7 @@ public class PhoneConfigurationManager {
                                 + "No phone object provided for event " + msg.what);
                     }
                     getStaticPhoneCapability();
+                    getRadioInterfaceCapabilities();
                     break;
                 case EVENT_SWITCH_DSDS_CONFIG_DONE:
                     ar = (AsyncResult) msg.obj;
@@ -186,6 +193,10 @@ public class PhoneConfigurationManager {
                     } else {
                         log(msg.what + " failure. Not getting phone capability." + ar.exception);
                     }
+                    break;
+                case EVENT_GET_HAL_DEVICE_CAPABILITIES_DONE:
+                    setupRadioInterfaceCapabilities((AsyncResult) msg.obj);
+                    break;
             }
         }
     }
@@ -301,6 +312,51 @@ public class PhoneConfigurationManager {
         }
         log("getStaticPhoneCapability: mStaticCapability " + mStaticCapability);
         return mStaticCapability;
+    }
+
+    /**
+     * Gets the radio interface capabilities for the device
+     */
+    @NonNull
+    public synchronized RadioInterfaceCapabilities getRadioInterfaceCapabilities() {
+        if (mRadioInterfaceCapabilities == null) {
+            //Only incur cost of synchronization block if mRadioInterfaceCapabilities isn't null
+            synchronized (mLockRadioInterfaceCapabilities) {
+                if (mRadioInterfaceCapabilities == null) {
+                    mRadioConfig.getHalDeviceCapabilities(
+                            mHandler.obtainMessage(EVENT_GET_HAL_DEVICE_CAPABILITIES_DONE));
+                    try {
+                        if (Looper.myLooper() == this.mHandler.getLooper()) {
+                            //Expected if this is called after the radio just turns on
+                            log("getRadioInterfaceCapabilities: myLoop == handler.getLooper "
+                                    + "returning non-available capabilities.");
+                        } else {
+                            mLockRadioInterfaceCapabilities.wait(2000);
+                        }
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }
+        }
+        if (mRadioInterfaceCapabilities == null) return new RadioInterfaceCapabilities();
+        else return mRadioInterfaceCapabilities;
+    }
+
+    private void setupRadioInterfaceCapabilities(@NonNull AsyncResult ar) {
+        if (mRadioInterfaceCapabilities == null) {
+            synchronized (mLockRadioInterfaceCapabilities) {
+                if (mRadioInterfaceCapabilities == null) {
+                    if (ar.exception != null) {
+                        loge("setupRadioInterfaceCapabilities: " + ar.exception);
+                    }
+                    log("setupRadioInterfaceCapabilities: "
+                            + "mRadioInterfaceCapabilities now setup");
+
+                    mRadioInterfaceCapabilities = (RadioInterfaceCapabilities) ar.result;
+                }
+                mLockRadioInterfaceCapabilities.notify();
+            }
+        }
     }
 
     /**
@@ -496,5 +552,13 @@ public class PhoneConfigurationManager {
 
     private static void log(String s) {
         Rlog.d(LOG_TAG, s);
+    }
+
+    private static void loge(String s) {
+        Rlog.e(LOG_TAG, s);
+    }
+
+    private static void loge(String s, Exception ex) {
+        Rlog.e(LOG_TAG, s, ex);
     }
 }
