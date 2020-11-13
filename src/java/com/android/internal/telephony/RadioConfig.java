@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.RADIO_NOT_AVAILABLE;
 import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_STATUS;
 import static com.android.internal.telephony.RILConstants
@@ -38,6 +39,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.WorkSource;
+import android.telephony.RadioInterfaceCapabilities;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
@@ -63,6 +65,8 @@ public class RadioConfig extends Handler {
     private static final HalVersion RADIO_CONFIG_HAL_VERSION_1_0 = new HalVersion(1, 0);
 
     private static final HalVersion RADIO_CONFIG_HAL_VERSION_1_1 = new HalVersion(1, 1);
+
+    private static final HalVersion RADIO_CONFIG_HAL_VERSION_1_3 = new HalVersion(1, 3);
 
     private final boolean mIsMobileNetworkSupported;
     private volatile IRadioConfig mRadioConfigProxy = null;
@@ -194,12 +198,24 @@ public class RadioConfig extends Handler {
 
     private void updateRadioConfigProxy() {
         try {
+
             // Try to get service from different versions.
             try {
-                mRadioConfigProxy = android.hardware.radio.config.V1_1.IRadioConfig.getService(
+                mRadioConfigProxy = android.hardware.radio.config.V1_3.IRadioConfig.getService(
                         true);
-                mRadioConfigVersion = RADIO_CONFIG_HAL_VERSION_1_1;
+                mRadioConfigVersion = RADIO_CONFIG_HAL_VERSION_1_3;
             } catch (NoSuchElementException e) {
+            }
+
+
+            if (mRadioConfigProxy == null) {
+                // Try to get service from different versions.
+                try {
+                    mRadioConfigProxy = android.hardware.radio.config.V1_1.IRadioConfig.getService(
+                            true);
+                    mRadioConfigVersion = RADIO_CONFIG_HAL_VERSION_1_1;
+                } catch (NoSuchElementException e) {
+                }
             }
 
             if (mRadioConfigProxy == null) {
@@ -255,6 +271,31 @@ public class RadioConfig extends Handler {
      * @return RILRequest corresponding to the response
      */
     public RILRequest processResponse(RadioResponseInfo responseInfo) {
+        int serial = responseInfo.serial;
+        int error = responseInfo.error;
+        int type = responseInfo.type;
+
+        if (type != RadioResponseType.SOLICITED) {
+            loge("processResponse: Unexpected response type " + type);
+        }
+
+        RILRequest rr = findAndRemoveRequestFromList(serial);
+        if (rr == null) {
+            loge("processResponse: Unexpected response! serial: " + serial + " error: " + error);
+            return null;
+        }
+
+        return rr;
+    }
+
+    /**
+     * This is a helper function to be called when a RadioConfigResponse callback is called.
+     * It finds and returns RILRequest corresponding to the response if one is found.
+     * @param responseInfo RadioResponseInfo received in response callback
+     * @return RILRequest corresponding to the response
+     */
+    public RILRequest processResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
         int serial = responseInfo.serial;
         int error = responseInfo.error;
         int type = responseInfo.type;
@@ -403,6 +444,8 @@ public class RadioConfig extends Handler {
                 return "SET_PREFERRED_DATA_MODEM";
             case RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG:
                 return "SWITCH_DUAL_SIM_CONFIG";
+            case RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES:
+                return "GET_HAL_DEVICE_CAPABILITIES";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -453,6 +496,46 @@ public class RadioConfig extends Handler {
         if (mSimSlotStatusRegistrant != null && mSimSlotStatusRegistrant.getHandler() == h) {
             mSimSlotStatusRegistrant.clear();
             mSimSlotStatusRegistrant = null;
+        }
+    }
+
+    /**
+     * Gets the hal capabilities from the device.
+     */
+    public void getHalDeviceCapabilities(Message result) {
+        IRadioConfig radioConfigProxy = getRadioConfigProxy(result);
+        if (radioConfigProxy != null
+                && mRadioConfigVersion.greaterOrEqual(RADIO_CONFIG_HAL_VERSION_1_3)) {
+            android.hardware.radio.config.V1_3.IRadioConfig radioConfigProxy13 =
+                    (android.hardware.radio.config.V1_3.IRadioConfig) radioConfigProxy;
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES,
+                    result, mDefaultWorkSource);
+
+            if (DBG) {
+                logd(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                mRadioConfigVersion = RADIO_CONFIG_HAL_VERSION_1_3;
+                radioConfigProxy13.getHalDeviceCapabilities(rr.mSerial);
+
+            } catch (RemoteException | RuntimeException e) {
+                resetProxyAndRequestList("getHalDeviceCapabilities", e);
+            }
+        } else {
+            if (result != null) {
+                if (DBG) {
+                    logd("RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES > REQUEST_NOT_SUPPORTED");
+                }
+                AsyncResult.forMessage(result, new RadioInterfaceCapabilities() /* send empty */,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            } else {
+                if (DBG) {
+                    logd("RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES > REQUEST_NOT_SUPPORTED "
+                            + "on complete message not set.");
+                }
+            }
         }
     }
 
