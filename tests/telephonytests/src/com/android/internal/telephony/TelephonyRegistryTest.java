@@ -431,6 +431,29 @@ public class TelephonyRegistryTest extends TelephonyTest {
     }
 
     /**
+     * Test a bit-fiddling method in TelephonyRegistry
+     */
+    @Test
+    public void testGetApnTypesStringFromBitmask() {
+        {
+            int mask = 0;
+            assertEquals("", TelephonyRegistry.getApnTypesStringFromBitmask(mask));
+        }
+
+        {
+            int mask = ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS;
+            assertEquals(String.join(
+                    ",", ApnSetting.TYPE_DEFAULT_STRING, ApnSetting.TYPE_MMS_STRING),
+                    TelephonyRegistry.getApnTypesStringFromBitmask(mask));
+        }
+
+        {
+            int mask = 1 << 31;
+            assertEquals("", TelephonyRegistry.getApnTypesStringFromBitmask(mask));
+        }
+    }
+
+    /**
      * Test listen to events that require READ_PRIVILEGED_PHONE_STATE permission.
      */
     @Test

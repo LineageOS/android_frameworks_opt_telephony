@@ -126,7 +126,7 @@ public class AccessNetworksManager extends Handler {
                 accessNetworkStrings.add(AccessNetworkType.toString(network));
             }
             return "[QualifiedNetworks: apnType="
-                    + ApnSetting.getApnTypeString(apnType)
+                    + ApnSetting.getApnTypeStringInternal(apnType)
                     + ", networks="
                     + Arrays.stream(qualifiedNetworks)
                     .mapToObj(type -> AccessNetworkType.toString(type))
@@ -400,7 +400,8 @@ public class AccessNetworksManager extends Handler {
         pw.increaseIndent();
 
         for (int i = 0; i < mAvailableNetworks.size(); i++) {
-            pw.println("APN type " + ApnSetting.getApnTypeString(mAvailableNetworks.keyAt(i))
+            pw.println("APN type "
+                    + ApnSetting.getApnTypeStringInternal(mAvailableNetworks.keyAt(i))
                     + ": [" + Arrays.stream(mAvailableNetworks.valueAt(i))
                     .mapToObj(type -> AccessNetworkType.toString(type))
                     .collect(Collectors.joining(",")) + "]");
