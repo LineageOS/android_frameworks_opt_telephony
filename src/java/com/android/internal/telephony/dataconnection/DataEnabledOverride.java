@@ -131,7 +131,7 @@ public class DataEnabledOverride {
 
         @Override
         public String toString() {
-            return ApnSetting.getApnTypeString(mApnType) + "=" + mRequiredConditions;
+            return ApnSetting.getApnTypeStringInternal(mApnType) + "=" + mRequiredConditions;
         }
 
         @Override
