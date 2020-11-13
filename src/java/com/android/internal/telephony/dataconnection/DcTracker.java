@@ -1067,7 +1067,7 @@ public class DcTracker extends Handler {
             mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType()),
                     apnContext);
 
-            log("initApnContexts: apnContext=" + ApnSetting.getApnTypeString(
+            log("initApnContexts: apnContext=" + ApnSetting.getApnTypeStringInternal(
                     apnConfigType.getType()));
         }
         mPrioritySortedApnContexts.sort((c1, c2) -> c2.getPriority() - c1.getPriority());
@@ -1841,7 +1841,7 @@ public class DcTracker extends Handler {
         if (defaultPreferredApn != null
                 && defaultPreferredApn.canHandleType(mRequestedApnType)) {
             log("setDefaultPreferredApnIfNeeded: For APN type "
-                    + ApnSetting.getApnTypeString(mRequestedApnType)
+                    + ApnSetting.getApnTypeStringInternal(mRequestedApnType)
                     + " found default apnSetting "
                     + defaultPreferredApn);
 
@@ -2567,7 +2567,7 @@ public class DcTracker extends Handler {
             return;
         }
 
-        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
+        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
                 + ", request type=" + requestTypeToString(requestType);
         if (DBG) log(str);
         apnContext.requestLog(str);
@@ -2650,7 +2650,7 @@ public class DcTracker extends Handler {
         }
 
         boolean cleanup = false;
-        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
+        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
                 + ", release type=" + releaseTypeToString(releaseType);
         if (DBG) log(str);
         apnContext.requestLog(str);
@@ -3585,8 +3585,8 @@ public class DcTracker extends Handler {
             for(ApnSetting p : mAllApnSettings) {
                 if (p.getId() == pos && p.canHandleType(mRequestedApnType)) {
                     log("getPreferredApn: For APN type "
-                            + ApnSetting.getApnTypeString(mRequestedApnType) + " found apnSetting "
-                            + p);
+                            + ApnSetting.getApnTypeStringInternal(mRequestedApnType)
+                            + " found apnSetting " + p);
                     cursor.close();
                     return p;
                 }
@@ -4940,7 +4940,7 @@ public class DcTracker extends Handler {
                         EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP,
                             mSentSinceLastRecv);
                         if (DBG) log("doRecovery() cleanup all connections");
-                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeString(
+                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeStringInternal(
                                 ApnSetting.TYPE_DEFAULT)));
                         putRecoveryAction(RECOVERY_ACTION_REREGISTER);
                         break;
