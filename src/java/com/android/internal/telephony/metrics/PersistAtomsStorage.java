@@ -38,6 +38,7 @@ import com.android.telephony.Rlog;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.stream.IntStream;
@@ -118,6 +119,8 @@ public class PersistAtomsStorage {
         mAtoms.voiceCallSession =
                 insertAtRandomPlace(mAtoms.voiceCallSession, call, MAX_NUM_CALL_SESSIONS);
         saveAtomsToFile();
+
+        Rlog.d(TAG, "Add new voice call session: " + call.toString());
     }
 
     /** Adds RAT usages to the storage when a call session ends. */
@@ -400,10 +403,12 @@ public class PersistAtomsStorage {
             atoms.cellularDataServiceSwitchPullTimestampMillis =
                     sanitizeTimestamp(atoms.cellularDataServiceSwitchPullTimestampMillis);
             return atoms;
+        } catch (NoSuchFileException e) {
+            Rlog.d(TAG, "PersistAtoms file not found");
         } catch (IOException | NullPointerException e) {
             Rlog.e(TAG, "cannot load/parse PersistAtoms", e);
-            return makeNewPersistAtoms();
         }
+        return makeNewPersistAtoms();
     }
 
     /**
