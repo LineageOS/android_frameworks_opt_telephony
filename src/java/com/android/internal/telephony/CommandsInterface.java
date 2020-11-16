@@ -1831,7 +1831,7 @@ public interface CommandsInterface {
      */
     void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                        boolean allowRoaming, int reason, LinkProperties linkProperties,
-                       Message result);
+                       int pduSessionId, Message result);
 
     /**
      * Deactivate packet data connection
@@ -2543,4 +2543,39 @@ public interface CommandsInterface {
      * @param result Message will be sent back to handler and result.obj will be the AsycResult.
      */
     default void getBarringInfo(Message result) {};
+
+    /**
+     * Allocates a pdu session id
+     *
+     * AsyncResult.result is the allocated pdu session id
+     *
+     * @param result Message will be sent back to handler and result.obj will be the AsycResult.
+     *
+     */
+    default void allocatePduSessionId(Message result) {};
+
+    /**
+     * Release the pdu session id
+     *
+     * @param result Message that will be sent back to handler.
+     * @param pduSessionId The id that was allocated and should now be released.
+     *
+     */
+    default void releasePduSessionId(Message result, int pduSessionId) {};
+
+    /**
+     * Indicates that a handover has started
+     *
+     * @param result Message that will be sent back to handler.
+     * @param callId Identifier associated with the data call
+     */
+    default void startHandover(Message result, int callId) {};
+
+    /**
+     * Indicates that a handover has been cancelled
+     *
+     * @param result Message that will be sent back to handler.
+     * @param callId Identifier associated with the data call
+     */
+    default void cancelHandover(Message result, int callId) {};
 }

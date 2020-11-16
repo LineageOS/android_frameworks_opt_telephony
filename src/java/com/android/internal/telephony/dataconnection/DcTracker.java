@@ -662,6 +662,7 @@ public class DcTracker extends Handler {
 
     private final DataServiceManager mDataServiceManager;
 
+    @AccessNetworkConstants.TransportType
     private final int mTransportType;
 
     private DataStallRecoveryHandler mDsRecoveryHandler;
@@ -3353,8 +3354,10 @@ public class DcTracker extends Handler {
         if (DBG) log("createDataConnection E");
 
         int id = mUniqueIdGenerator.getAndIncrement();
+        boolean doAllocatePduSessionId =
+                mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WLAN;
         DataConnection dataConnection = DataConnection.makeDataConnection(mPhone, id, this,
-                mDataServiceManager, mDcTesterFailBringUpAll, mDcc);
+                mDataServiceManager, mDcTesterFailBringUpAll, mDcc, doAllocatePduSessionId);
         mDataConnections.put(id, dataConnection);
         if (DBG) log("createDataConnection() X id=" + id + " dc=" + dataConnection);
         return dataConnection;

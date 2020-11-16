@@ -31,9 +31,9 @@ import android.telephony.emergency.EmergencyNumber;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 
 public class SimulatedCommandsVerifier implements CommandsInterface {
     private static SimulatedCommandsVerifier sInstance;
@@ -1181,7 +1181,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              Message result) {
+                              int pduSessionId, Message result) {
     }
 
     @Override
@@ -1459,5 +1459,13 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
 
     @Override
     public void getBarringInfo(Message result) {
+    }
+
+    @Override
+    public void allocatePduSessionId(Message result) {
+    }
+
+    @Override
+    public void releasePduSessionId(Message result, int pduSessionId) {
     }
 }

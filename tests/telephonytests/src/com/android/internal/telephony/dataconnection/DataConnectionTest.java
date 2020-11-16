@@ -258,7 +258,7 @@ public class DataConnectionTest extends TelephonyTest {
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN, "");
             mDcc = DcController.makeDcc(mPhone, mDcTracker, manager, h.getLooper(), "");
             mDc = DataConnection.makeDataConnection(mPhone, 0, mDcTracker, manager,
-                    mDcTesterFailBringUpAll, mDcc);
+                    mDcTesterFailBringUpAll, mDcc, true);
         }
     }
 
@@ -390,12 +390,17 @@ public class DataConnectionTest extends TelephonyTest {
         ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(AccessNetworkType.UTRAN), dpCaptor.capture(), eq(false),
-                eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(), any(Message.class));
+                eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                anyInt(), any(Message.class));
+
+        verify(mSimulatedCommandsVerifier, times(1))
+                .allocatePduSessionId(any());
 
         assertEquals("spmode.ne.jp", dpCaptor.getValue().getApn());
 
         assertEquals("DcActiveState", getCurrentState().getName());
 
+        assertEquals(mDc.getPduSessionId(), 1);
         assertEquals(3, mDc.getPcscfAddresses().length);
         assertTrue(Arrays.stream(mDc.getPcscfAddresses()).anyMatch("fd00:976a:c305:1d::8"::equals));
         assertTrue(Arrays.stream(mDc.getPcscfAddresses()).anyMatch("fd00:976a:c202:1d::7"::equals));
@@ -407,6 +412,7 @@ public class DataConnectionTest extends TelephonyTest {
     public void testDisconnectEvent() throws Exception {
         testConnectEvent();
 
+        mDc.setPduSessionId(5);
         mDc.sendMessage(DataConnection.EVENT_DISCONNECT, mDcp);
         waitForMs(100);
 
@@ -415,6 +421,8 @@ public class DataConnectionTest extends TelephonyTest {
                 .unregisterForNattKeepaliveStatus(any(Handler.class));
         verify(mSimulatedCommandsVerifier, times(1)).deactivateDataCall(eq(1),
                 eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(1))
+                .releasePduSessionId(any(), eq(5));
 
         assertEquals("DcInactiveState", getCurrentState().getName());
     }

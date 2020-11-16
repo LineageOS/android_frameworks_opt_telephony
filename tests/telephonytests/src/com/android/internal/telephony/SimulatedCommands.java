@@ -1177,10 +1177,10 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              Message result) {
+                              int pduSessionId, Message result) {
 
         SimulatedCommandsVerifier.getInstance().setupDataCall(accessNetworkType, dataProfile,
-                isRoaming, allowRoaming, reason, linkProperties, result);
+                isRoaming, allowRoaming, reason, linkProperties, pduSessionId, result);
 
         if (mSetupDataCallResult == null) {
             try {
@@ -2399,5 +2399,17 @@ public class SimulatedCommands extends BaseCommands
     public void getBarringInfo(Message result) {
         SimulatedCommandsVerifier.getInstance().getBarringInfo(result);
         resultSuccess(result, null);
+    }
+
+    @Override
+    public void allocatePduSessionId(Message message) {
+        SimulatedCommandsVerifier.getInstance().allocatePduSessionId(message);
+        resultSuccess(message, 1);
+    }
+
+    @Override
+    public void releasePduSessionId(Message message, int pduSessionId) {
+        SimulatedCommandsVerifier.getInstance().releasePduSessionId(message, pduSessionId);
+        resultSuccess(message, null);
     }
 }
