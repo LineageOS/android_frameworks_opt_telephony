@@ -104,6 +104,8 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
+import android.telephony.data.Qos;
+import android.telephony.data.QosSession;
 import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
 import android.util.Log;
@@ -1980,7 +1982,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
 
                     radioProxy15.setupDataCall_1_5(rr.mSerial, accessNetworkType, dpi, allowRoaming,
-                            reason, addresses15, dnses);
+                             reason, addresses15, dnses);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
                     // IRadio V1.4
                     android.hardware.radio.V1_4.IRadio radioProxy14 =
@@ -2912,7 +2914,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
             try {
-                radioProxy.getDataCallList(rr.mSerial);
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.getDataCallList_1_6(rr.mSerial);
+                } else {
+                    radioProxy.getDataCallList(rr.mSerial);
+                }
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getDataCallList", e);
             }
@@ -7146,7 +7154,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
-     * Convert SetupDataCallResult defined in 1.0, 1.4, or 1.5 types.hal into DataCallResponse
+     * Convert SetupDataCallResult defined in 1.0, 1.4, 1.5 or 1.6 types.hal into DataCallResponse
      * @param dcResult setup data call result
      * @return converted DataCallResponse object
      */
@@ -7162,6 +7170,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         String[] dnses = null;
         String[] gateways = null;
         String[] pcscfs = null;
+        Qos defaultQos = null;
 
         @HandoverFailureMode
         int handoverFailureMode = DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY;
@@ -7169,6 +7178,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int pduSessionId = DataCallResponse.PDU_SESSION_ID_NOT_SET;
 
         List<LinkAddress> laList = new ArrayList<>();
+        List<QosSession> qosSessions = new ArrayList<>();
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
@@ -7256,6 +7266,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mtuV6 = result.mtuV6;
             handoverFailureMode = result.handoverFailureMode;
             pduSessionId = result.pduSessionId;
+            defaultQos = Qos.create(result.defaultQos);
+            qosSessions = result.qosSessions.stream().map(session ->
+                    QosSession.create(session)).collect(Collectors.toList());
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
@@ -7322,6 +7335,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setMtuV6(mtuV6)
                 .setHandoverFailureMode(handoverFailureMode)
                 .setPduSessionId(pduSessionId)
+                .setDefaultQos(defaultQos)
+                .setQosSessions(qosSessions)
                 .build();
     }
 
