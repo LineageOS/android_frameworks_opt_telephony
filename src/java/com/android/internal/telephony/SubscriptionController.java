@@ -296,7 +296,9 @@ public class SubscriptionController extends ISub.Stub {
             SubscriptionManager.DISPLAY_NAME,
             SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES,
             SubscriptionManager.UICC_APPLICATIONS_ENABLED,
-            SubscriptionManager.IMS_RCS_UCE_ENABLED));
+            SubscriptionManager.IMS_RCS_UCE_ENABLED,
+            SubscriptionManager.CROSS_SIM_CALLING_ENABLED
+    ));
 
     public static SubscriptionController init(Context c) {
         synchronized (SubscriptionController.class) {
@@ -2097,6 +2099,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
             case SubscriptionManager.DATA_ROAMING:
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
+            case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
                 values.put(propKey, cursor.getInt(columnIndex));
                 break;
             case SubscriptionManager.DISPLAY_NAME:
@@ -2997,6 +3000,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.WFC_IMS_ROAMING_MODE:
             case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
+            case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3069,6 +3073,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.WFC_IMS_ROAMING_MODE:
                         case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
                         case SubscriptionManager.IMS_RCS_UCE_ENABLED:
+                        case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
                         case SubscriptionManager.IS_OPPORTUNISTIC:
                         case SubscriptionManager.GROUP_UUID:
                         case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
