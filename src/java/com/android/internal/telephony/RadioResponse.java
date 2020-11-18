@@ -2830,6 +2830,15 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseVoid(info);
     }
 
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     */
+    public void getSystemSelectionChannelsResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo info) {
+        responseVoid_1_6(info);
+    }
+
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error.
      * @param cellIdentity CellIdentity for the barringInfos.
