@@ -16,16 +16,16 @@
 
 package com.android.internal.telephony.cdma;
 
-import android.telephony.CdmaEriInformation;
+import android.telephony.TelephonyManager;
 
 public final class EriInfo {
 
-    public static final int ROAMING_INDICATOR_ON    = CdmaEriInformation.ERI_ON;
-    public static final int ROAMING_INDICATOR_OFF   = CdmaEriInformation.ERI_OFF;
-    public static final int ROAMING_INDICATOR_FLASH = CdmaEriInformation.ERI_FLASH;
+    public static final int ROAMING_INDICATOR_ON    = TelephonyManager.ERI_ON;
+    public static final int ROAMING_INDICATOR_OFF   = TelephonyManager.ERI_OFF;
+    public static final int ROAMING_INDICATOR_FLASH = TelephonyManager.ERI_FLASH;
 
-    public static final int ROAMING_ICON_MODE_NORMAL    = CdmaEriInformation.ERI_ICON_MODE_NORMAL;
-    public static final int ROAMING_ICON_MODE_FLASH     = CdmaEriInformation.ERI_ICON_MODE_FLASH;
+    public static final int ROAMING_ICON_MODE_NORMAL    = TelephonyManager.ERI_ICON_MODE_NORMAL;
+    public static final int ROAMING_ICON_MODE_FLASH     = TelephonyManager.ERI_ICON_MODE_FLASH;
 
     public int roamingIndicator;
     public int iconIndex;
