@@ -896,6 +896,12 @@ public abstract class SMSDispatcher extends Handler {
                 return SmsManager.RESULT_RIL_SIM_ABSENT;
             case FDN_CHECK_FAILURE:
                 return SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE;
+            case SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED:
+                return SmsManager.RESULT_RIL_SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED;
+            case ACCESS_BARRED:
+                return SmsManager.RESULT_RIL_ACCESS_BARRED;
+            case BLOCKED_DUE_TO_CALL:
+                return SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL;
             default:
                 return RESULT_ERROR_GENERIC_FAILURE;
         }
