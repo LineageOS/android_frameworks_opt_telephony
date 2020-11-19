@@ -1047,10 +1047,7 @@ public class DataConnection extends StateMachine {
         } else {
             if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
             mCid = response.getId();
-
-            mPcscfAddr = response.getPcscfAddresses().stream()
-                    .map(InetAddress::getHostAddress).toArray(String[]::new);
-
+            updatePcscfAddr(response);
             result = updateLinkProperty(response).setupResult;
         }
 
@@ -2883,6 +2880,16 @@ public class DataConnection extends StateMachine {
      */
     public ConnectionParams getConnectionParams() {
         return mConnectionParams;
+    }
+
+    /**
+     * Update PCSCF addresses
+     *
+     * @param response
+     */
+    public void updatePcscfAddr(DataCallResponse response) {
+        mPcscfAddr = response.getPcscfAddresses().stream()
+                .map(InetAddress::getHostAddress).toArray(String[]::new);
     }
 
     /**
