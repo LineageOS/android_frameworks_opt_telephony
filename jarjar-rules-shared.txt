@@ -1,5 +1,5 @@
 rule android.net.NetworkFactory* com.android.internal.telephony.NetworkFactory@1
-rule android.os.BasicShellCommandHandler* com.android.internal.telephony.BasicShellCommandHandler@1
+rule com.android.modules.utils.** com.android.internal.telephony.@1
 rule android.os.RegistrantList* com.android.internal.telephony.RegistrantList@1
 rule android.os.Registrant* com.android.internal.telephony.Registrant@1
 rule android.hidl.** android.internal.hidl.@1
