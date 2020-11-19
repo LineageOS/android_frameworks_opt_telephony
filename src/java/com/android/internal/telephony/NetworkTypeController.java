@@ -506,7 +506,8 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_PREFERRED_NETWORK_MODE_CHANGED:
                     resetAllTimers();
-                    transitionToCurrentState();
+                    // Don't transition to current state. If anything significant changes,
+                    // a new broadcast will be sent to update the state then.
                     break;
                 default:
                     throw new RuntimeException("Received invalid event: " + msg.what);
