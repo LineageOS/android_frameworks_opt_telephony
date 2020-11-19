@@ -2624,7 +2624,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /** Notify {@link PhysicalChannelConfig} changes. */
-    public void notifyPhysicalChannelConfig(List<PhysicalChannelConfig> configs) {
+    public void notifyPhysicalChannelConfiguration(List<PhysicalChannelConfig> configs) {
         mPhysicalChannelConfigRegistrants.notifyRegistrants(new AsyncResult(null, configs, null));
     }
 
