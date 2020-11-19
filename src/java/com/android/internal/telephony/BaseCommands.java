@@ -52,6 +52,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCallStateRegistrants = new RegistrantList();
     protected RegistrantList mNetworkStateRegistrants = new RegistrantList();
     protected RegistrantList mDataCallListChangedRegistrants = new RegistrantList();
+    protected RegistrantList mApnUnthrottledRegistrants = new RegistrantList();
     @UnsupportedAppUsage
     protected RegistrantList mVoiceRadioTechChangedRegistrants = new RegistrantList();
     @UnsupportedAppUsage
@@ -301,6 +302,16 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForDataCallListChanged(Handler h) {
         mDataCallListChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForApnUnthrottled(Handler h, int what, Object obj) {
+        mApnUnthrottledRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForApnUnthrottled(Handler h) {
+        mApnUnthrottledRegistrants.remove(h);
     }
 
     @Override

@@ -291,8 +291,10 @@ public class GsmCdmaPhone extends Phone {
         // DcTracker uses ServiceStateTracker and DisplayInfoController so needs to be created
         // after they are instantiated
         for (int transport : mTransportManager.getAvailableTransports()) {
-            mDcTrackers.put(transport, mTelephonyComponentFactory.inject(DcTracker.class.getName())
-                    .makeDcTracker(this, transport));
+            DcTracker dcTracker = mTelephonyComponentFactory.inject(DcTracker.class.getName())
+                    .makeDcTracker(this, transport);
+            mDcTrackers.put(transport, dcTracker);
+            mTransportManager.registerDataThrottler(dcTracker.getDataThrottler());
         }
 
         mCarrierResolver = mTelephonyComponentFactory.inject(CarrierResolver.class.getName())

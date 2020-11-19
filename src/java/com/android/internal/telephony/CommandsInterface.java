@@ -220,6 +220,10 @@ public interface CommandsInterface {
     void registerForDataCallListChanged(Handler h, int what, Object obj);
     /** Unregister from data call list changed event */
     void unregisterForDataCallListChanged(Handler h);
+    /** Register for the apn unthrottled event */
+    void registerForApnUnthrottled(Handler h, int what, Object obj);
+    /** Unregister for apn unthrottled event */
+    void unregisterForApnUnthrottled(Handler h);
 
     /** InCall voice privacy notifications */
     void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);
