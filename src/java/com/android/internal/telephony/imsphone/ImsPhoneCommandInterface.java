@@ -31,9 +31,9 @@ import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 
 /**
  * Volte doesn't need CommandsInterface. The class does nothing but made to work
@@ -283,7 +283,7 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              Message result) {
+                              int pduSessionId, Message result) {
     }
 
     @Override
@@ -662,5 +662,21 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
 
     @Override
     public void stopNattKeepalive(int sessionHandle, Message result) {
+    }
+
+    @Override
+    public void allocatePduSessionId(Message result) {
+    }
+
+    @Override
+    public void releasePduSessionId(Message result, int pduSessionId) {
+    }
+
+    @Override
+    public void startHandover(Message result, int callId) {
+    }
+
+    @Override
+    public void cancelHandover(Message result, int callId) {
     }
 }
