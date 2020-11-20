@@ -1223,6 +1223,39 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void getSystemSelectionChannels(Message onComplete) {
+        IRadio radioProxy = getRadioProxy(onComplete);
+        if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
+            if (RILJ_LOGV) riljLog("getSystemSelectionChannels: not supported.");
+            if (onComplete != null) {
+                AsyncResult.forMessage(onComplete, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                onComplete.sendToTarget();
+            }
+            return;
+        }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS, onComplete,
+                mRILDefaultWorkSource);
+
+        android.hardware.radio.V1_6.IRadio radioProxy16 =
+                (android.hardware.radio.V1_6.IRadio) radioProxy;
+
+        if (radioProxy16 != null) {
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " getSystemSelectionChannels");
+            }
+
+            try {
+                radioProxy16.getSystemSelectionChannels(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "getSystemSelectionChannels", e);
+            }
+        }
+    }
+
+    @Override
     public void getModemStatus(Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (mRadioVersion.less(RADIO_HAL_VERSION_1_3)) {

@@ -2586,6 +2586,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.setSystemSelectionChannels(specifiers, response);
     }
 
+    /**
+     * Get which bands the modem's background scan is acting on.
+     *
+     * @param response Callback message.
+     */
+    public void getSystemSelectionChannels(Message response) {
+        mCi.getSystemSelectionChannels(response);
+    }
+
     public void notifyDataActivity() {
         mNotifier.notifyDataActivity(this);
     }

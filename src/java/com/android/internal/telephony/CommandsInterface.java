@@ -2506,6 +2506,13 @@ public interface CommandsInterface {
             Message onComplete) {}
 
     /**
+     * Get which bands the modem's background scan is acting on.
+     *
+     * @param onComplete a message to send when complete.
+     */
+    default void getSystemSelectionChannels(Message onComplete) {}
+
+    /**
      * Whether uicc applications are enabled or not.
      *
      * @param onCompleteMessage a Message to return to the requester
