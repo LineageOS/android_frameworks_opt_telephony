@@ -18,8 +18,11 @@ package com.android.internal.telephony.dataconnection;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
 
 import android.os.PersistableBundle;
+import android.os.SystemClock;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -148,7 +151,7 @@ public class RetryManagerTest extends TelephonyTest {
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
                 new String[]{"default:2000"});
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
 
         long delay = rm.getDelayForNextApn(false);
         assertEquals(RetryManager.NO_RETRY, delay);
@@ -173,7 +176,7 @@ public class RetryManagerTest extends TelephonyTest {
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -195,7 +198,7 @@ public class RetryManagerTest extends TelephonyTest {
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
 
-        RetryManager rm = new RetryManager(mPhone, "supl");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_SUPL);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -250,7 +253,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
         waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -288,7 +291,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
         waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "dun");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DUN);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -336,7 +339,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
         waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "mms");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_MMS);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -384,7 +387,7 @@ public class RetryManagerTest extends TelephonyTest {
         ApnSetting apn = ApnSetting.makeApnSetting(mApn1);
         waitingApns.add(apn);
 
-        RetryManager rm = new RetryManager(mPhone, "fota");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_FOTA);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -411,7 +414,7 @@ public class RetryManagerTest extends TelephonyTest {
     public void testRetryManagerApnPermanentFailedWithTwoApns() throws Exception {
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
-                new String[]{"xyz  :   1000,4000,7000"});
+                new String[]{"mms  :   1000,4000,7000"});
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
@@ -419,7 +422,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "xyz");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_MMS);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -478,7 +481,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn2);
         waitingApns.add(myApn3);
 
-        RetryManager rm = new RetryManager(mPhone, "ims");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_IMS);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -535,7 +538,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -587,7 +590,7 @@ public class RetryManagerTest extends TelephonyTest {
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -625,7 +628,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
         waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -683,7 +686,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
         waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "hipri");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_HIPRI);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -753,7 +756,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(ApnSetting.makeApnSetting(mApn1));
         waitingApns.add(ApnSetting.makeApnSetting(mApn2));
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -803,7 +806,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "dun");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DUN);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -868,6 +871,11 @@ public class RetryManagerTest extends TelephonyTest {
         assertEquals(RetryManager.NO_RETRY, delay);
     }
 
+    private void assertRange(long low, long high, long value) {
+        if (value >= low && value <= high) return;
+        fail("Not in range[" + low + "," + high + "], value=" + value);
+    }
+
     /**
      * Test the scenario where modem suggests retry the current APN once
      */
@@ -884,7 +892,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "mms");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_MMS);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -899,27 +907,32 @@ public class RetryManagerTest extends TelephonyTest {
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        // Modem suggests retrying the current APN
-        rm.setModemSuggestedDelay(2500);
+        // Network suggests retrying the current APN
+        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_MMS);
         delay = rm.getDelayForNextApn(false);
-        assertEquals(2500, delay);
+        assertRange(2450, 2500, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        rm.setModemSuggestedDelay(RetryManager.NO_SUGGESTED_RETRY_DELAY);
+        doReturn(RetryManager.NO_SUGGESTED_RETRY_DELAY).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_MMS);
         delay = rm.getDelayForNextApn(false);
         assertEquals(20000, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn2));
         // Modem suggests retrying the current APN
-        rm.setModemSuggestedDelay(30000);
+        //rm.setModemSuggestedDelay(30000);
+        doReturn(30000 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_MMS);
         delay = rm.getDelayForNextApn(false);
-        assertEquals(30000, delay);
+        assertRange(29950, 30000, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn2));
-        rm.setModemSuggestedDelay(RetryManager.NO_SUGGESTED_RETRY_DELAY);
+        doReturn(RetryManager.NO_SUGGESTED_RETRY_DELAY).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_MMS);
         delay = rm.getDelayForNextApn(false);
         assertEquals(4000, delay);
     }
@@ -940,7 +953,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -956,13 +969,15 @@ public class RetryManagerTest extends TelephonyTest {
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
         // Modem suggests retrying the current APN
-        rm.setModemSuggestedDelay(2500);
+        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
-        assertEquals(2500, delay);
+        assertRange(2450, 2500, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        rm.setModemSuggestedDelay(RetryManager.NO_RETRY);
+        doReturn(RetryManager.NO_RETRY).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
         assertEquals(RetryManager.NO_RETRY, delay);
     }
@@ -983,7 +998,7 @@ public class RetryManagerTest extends TelephonyTest {
         waitingApns.add(myApn1);
         waitingApns.add(myApn2);
 
-        RetryManager rm = new RetryManager(mPhone, "default");
+        RetryManager rm = new RetryManager(mPhone, mDataThrottler, ApnSetting.TYPE_DEFAULT);
         rm.setWaitingApns(waitingApns);
 
         ApnSetting nextApn = rm.getNextApnSetting();
@@ -998,59 +1013,37 @@ public class RetryManagerTest extends TelephonyTest {
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        rm.setModemSuggestedDelay(2500);
+        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
-        assertEquals(2500, delay);
+        assertRange(2450, 2500, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        rm.setModemSuggestedDelay(2500);
+        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
-        assertEquals(2500, delay);
+        assertRange(2450, 2500, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        rm.setModemSuggestedDelay(2500);
+        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
-        assertEquals(2500, delay);
+        assertRange(2450, 2500, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));
-        rm.setModemSuggestedDelay(2500);
+        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
         assertEquals(20000, delay);
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn2));
-        rm.setModemSuggestedDelay(RetryManager.NO_SUGGESTED_RETRY_DELAY);
+        doReturn(RetryManager.NO_SUGGESTED_RETRY_DELAY).when(mDataThrottler)
+                .getRetryTime(ApnSetting.TYPE_DEFAULT);
         delay = rm.getDelayForNextApn(false);
         assertEquals(4000, delay);
-    }
-
-    /**
-     * Test the scenario where reset happens before modem suggests retry.
-     */
-    @Test
-    @SmallTest
-    public void testRetryManagerResetBeforeModemSuggestedRetry() throws Exception {
-
-        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
-                new String[]{"others:1000,4000,7000,9000"});
-
-        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
-        ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
-        ApnSetting myApn2 = ApnSetting.makeApnSetting(mApn2);
-        waitingApns.add(myApn1);
-        waitingApns.add(myApn2);
-
-        RetryManager rm = new RetryManager(mPhone, "mms");
-        rm.setWaitingApns(waitingApns);
-
-        rm.setModemSuggestedDelay(10);
-
-        ApnSetting nextApn = rm.getNextApnSetting();
-        assertTrue(nextApn.equals(mApn1));
-        long delay = rm.getDelayForNextApn(false);
-        assertEquals(20000, delay);
     }
 }

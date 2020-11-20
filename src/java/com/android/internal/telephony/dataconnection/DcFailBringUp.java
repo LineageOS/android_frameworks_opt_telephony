@@ -48,8 +48,8 @@ public class DcFailBringUp {
 
     // suggestedRetryTime with its --ei option name and default value
     static final String SUGGESTED_RETRY_TIME = "suggested_retry_time";
-    static final int DEFAULT_SUGGESTED_RETRY_TIME = -1;
-    int mSuggestedRetryTime;
+    static final long DEFAULT_SUGGESTED_RETRY_TIME = -1;
+    long mSuggestedRetryTime;
 
     // Get the Extra Intent parameters
     void saveParameters(Intent intent, String s) {
@@ -58,14 +58,14 @@ public class DcFailBringUp {
         mFailCause = DataFailCause.getFailCause(
                 intent.getIntExtra(FAIL_CAUSE, DEFAULT_FAIL_CAUSE));
         mSuggestedRetryTime =
-                intent.getIntExtra(SUGGESTED_RETRY_TIME, DEFAULT_SUGGESTED_RETRY_TIME);
+                intent.getLongExtra(SUGGESTED_RETRY_TIME, DEFAULT_SUGGESTED_RETRY_TIME);
         if (DBG) {
             log(s + ".saveParameters: " + this);
         }
     }
 
     public void saveParameters(int counter, @DataFailureCause int failCause,
-                               int suggestedRetryTime) {
+                               long suggestedRetryTime) {
         mCounter = counter;
         mFailCause = DataFailCause.getFailCause(failCause);
         mSuggestedRetryTime = suggestedRetryTime;
