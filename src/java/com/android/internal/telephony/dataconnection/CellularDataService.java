@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.telephony.data.DataServiceCallback.RESULT_SUCCESS;
+
+import android.annotation.Nullable;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -27,6 +30,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.telephony.Rlog;
@@ -50,6 +54,8 @@ public class CellularDataService extends DataService {
     private static final int SET_DATA_PROFILE_COMPLETE              = 4;
     private static final int REQUEST_DATA_CALL_LIST_COMPLETE        = 5;
     private static final int DATA_CALL_LIST_CHANGED                 = 6;
+    private static final int START_HANDOVER                         = 7;
+    private static final int CANCEL_HANDOVER                        = 8;
 
     private class CellularDataServiceProvider extends DataService.DataServiceProvider {
 
@@ -75,29 +81,29 @@ public class CellularDataService extends DataService {
                             DataCallResponse response = (DataCallResponse) ar.result;
                             callback.onSetupDataCallComplete(ar.exception != null
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                    : DataServiceCallback.RESULT_SUCCESS,
+                                    : RESULT_SUCCESS,
                                     response);
                             break;
                         case DEACTIVATE_DATA_ALL_COMPLETE:
                             callback.onDeactivateDataCallComplete(ar.exception != null
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                    : DataServiceCallback.RESULT_SUCCESS);
+                                    : RESULT_SUCCESS);
                             break;
                         case SET_INITIAL_ATTACH_APN_COMPLETE:
                             callback.onSetInitialAttachApnComplete(ar.exception != null
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                    : DataServiceCallback.RESULT_SUCCESS);
+                                    : RESULT_SUCCESS);
                             break;
                         case SET_DATA_PROFILE_COMPLETE:
                             callback.onSetDataProfileComplete(ar.exception != null
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                    : DataServiceCallback.RESULT_SUCCESS);
+                                    : RESULT_SUCCESS);
                             break;
                         case REQUEST_DATA_CALL_LIST_COMPLETE:
                             callback.onRequestDataCallListComplete(
                                     ar.exception != null
                                             ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                            : DataServiceCallback.RESULT_SUCCESS,
+                                            : RESULT_SUCCESS,
                                     ar.exception != null
                                             ? null : (List<DataCallResponse>) ar.result
                                     );
@@ -105,9 +111,14 @@ public class CellularDataService extends DataService {
                         case DATA_CALL_LIST_CHANGED:
                             notifyDataCallListChanged((List<DataCallResponse>) ar.result);
                             break;
+                        case START_HANDOVER:
+                            callback.onHandoverStarted(toResultCode(ar.exception));
+                            break;
+                        case CANCEL_HANDOVER:
+                            callback.onHandoverCancelled(toResultCode(ar.exception));
+                            break;
                         default:
                             loge("Unexpected event: " + message.what);
-                            return;
                     }
                 }
             };
@@ -116,10 +127,31 @@ public class CellularDataService extends DataService {
             mPhone.mCi.registerForDataCallListChanged(mHandler, DATA_CALL_LIST_CHANGED, null);
         }
 
+
+        /* Converts the result code for start handover and cancel handover */
+        @DataServiceCallback.ResultCode private int toResultCode(@Nullable Throwable t) {
+            if (t == null) {
+                return RESULT_SUCCESS;
+            } else {
+                if (t instanceof CommandException) {
+                    CommandException ce = (CommandException) t;
+                    if (ce.getCommandError() == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                        return DataServiceCallback.RESULT_ERROR_UNSUPPORTED;
+                    } else {
+                        return DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE;
+                    }
+                } else {
+                    loge("Throwable is of type " + t.getClass().getSimpleName()
+                            + " but should be CommandException");
+                    return DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE;
+                }
+            }
+        }
+
         @Override
-        public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
-                                  boolean allowRoaming, int reason, LinkProperties linkProperties,
-                                  DataServiceCallback callback) {
+        public void setupDataCall(int accessNetworkType, DataProfile dataProfile,
+                boolean isRoaming, boolean allowRoaming, int reason, LinkProperties linkProperties,
+                int pduSessionId, DataServiceCallback callback) {
             if (DBG) log("setupDataCall " + getSlotIndex());
 
             Message message = null;
@@ -131,7 +163,7 @@ public class CellularDataService extends DataService {
             }
 
             mPhone.mCi.setupDataCall(accessNetworkType, dataProfile, isRoaming, allowRoaming,
-                    reason, linkProperties, message);
+                    reason, linkProperties, pduSessionId, message);
         }
 
         @Override
@@ -193,6 +225,31 @@ public class CellularDataService extends DataService {
                 mCallbackMap.put(message, callback);
             }
             mPhone.mCi.getDataCallList(message);
+        }
+
+        @Override
+        public void startHandover(int cid, DataServiceCallback callback) {
+            if (DBG) log("startHandover " + getSlotIndex());
+            Message message = null;
+            // Only obtain the message when the caller wants a callback. If the caller doesn't care
+            // the request completed or results, then no need to pass the message down.
+            if (callback != null) {
+                message = Message.obtain(mHandler, START_HANDOVER);
+                mCallbackMap.put(message, callback);
+            }
+            mPhone.mCi.startHandover(message, cid);
+        }
+
+        @Override
+        public void cancelHandover(int cid, DataServiceCallback callback) {
+            Message message = null;
+            // Only obtain the message when the caller wants a callback. If the caller doesn't care
+            // the request completed or results, then no need to pass the message down.
+            if (callback != null) {
+                message = Message.obtain(mHandler, CANCEL_HANDOVER);
+                mCallbackMap.put(message, callback);
+            }
+            mPhone.mCi.cancelHandover(message, cid);
         }
 
         @Override
