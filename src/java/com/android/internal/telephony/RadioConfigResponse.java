@@ -19,12 +19,14 @@ package com.android.internal.telephony;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.config.V1_1.ModemsConfig;
-import android.hardware.radio.config.V1_2.IRadioConfigResponse;
+import android.hardware.radio.config.V1_3.HalDeviceCapabilities;
+import android.hardware.radio.config.V1_3.IRadioConfigResponse;
 import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
-import com.android.telephony.Rlog;
+import android.telephony.RadioInterfaceCapabilities;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -224,6 +226,42 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             }
         } else {
             Rlog.e(TAG, "getModemsConfigResponse: Error " + responseInfo.toString());
+        }
+    }
+
+    /**
+     * Response function IRadioConfig.getHalDeviceCapabilities()
+     */
+    public void getHalDeviceCapabilitiesResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            HalDeviceCapabilities halDeviceCapabilities) {
+
+        //convert hal device capabilities to RadioInterfaceCapabilities
+
+        RILRequest rr = mRadioConfig.processResponse_1_6(responseInfo);
+        if (rr != null) {
+
+            RadioInterfaceCapabilities ret = new RadioInterfaceCapabilities();
+            /*
+             Code actual capabilities aren't ready yet, but it will look like this:
+             if (halDeviceCapability.cap1 == true) {
+                ret.addAvailableCapability(TelephonyManager.RADIO_INTERFACE_CAPABILITY_CAP1);
+             }
+             */
+
+            if (responseInfo.error == RadioError.NONE) {
+                // send response
+                RadioResponse.sendMessageResponse(rr.mResult, ret);
+                Rlog.d(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest));
+            } else {
+                rr.onError(responseInfo.error, ret);
+                Rlog.e(TAG, rr.serialString() + "< "
+                        + mRadioConfig.requestToString(rr.mRequest) + " error "
+                        + responseInfo.error);
+            }
+        } else {
+            Rlog.e(TAG, "getHalDeviceCapabilities: Error " + responseInfo.toString());
         }
     }
 }
