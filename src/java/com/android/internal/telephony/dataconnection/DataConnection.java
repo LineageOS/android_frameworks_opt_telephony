@@ -19,7 +19,10 @@ package com.android.internal.telephony.dataconnection;
 import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED;
 import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED;
 
+import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_HANDOVER;
+
 import android.annotation.IntDef;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -105,6 +108,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * {@hide}
@@ -273,6 +277,7 @@ public class DataConnection extends StateMachine {
     private DataServiceManager mDataServiceManager;
     private final int mTransportType;
     private LinkProperties mLinkProperties = new LinkProperties();
+    private int mPduSessionId;
     private long mCreateTime;
     private long mLastFailTime;
     @DataFailureCause
@@ -343,7 +348,10 @@ public class DataConnection extends StateMachine {
     static final int EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED = BASE + 31;
     static final int EVENT_CSS_INDICATOR_CHANGED = BASE + 32;
     static final int EVENT_UPDATE_SUSPENDED_STATE = BASE + 33;
-    private static final int CMD_TO_STRING_COUNT = EVENT_UPDATE_SUSPENDED_STATE - BASE + 1;
+    static final int EVENT_START_HANDOVER = BASE + 34;
+    static final int EVENT_CANCEL_HANDOVER = BASE + 35;
+    static final int EVENT_START_HANDOVER_ON_TARGET = BASE + 36;
+    private static final int CMD_TO_STRING_COUNT = EVENT_START_HANDOVER_ON_TARGET - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -389,6 +397,9 @@ public class DataConnection extends StateMachine {
                 "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
         sCmdToString[EVENT_CSS_INDICATOR_CHANGED - BASE] = "EVENT_CSS_INDICATOR_CHANGED";
         sCmdToString[EVENT_UPDATE_SUSPENDED_STATE - BASE] = "EVENT_UPDATE_SUSPENDED_STATE";
+        sCmdToString[EVENT_START_HANDOVER - BASE] = "EVENT_START_HANDOVER";
+        sCmdToString[EVENT_CANCEL_HANDOVER - BASE] = "EVENT_CANCEL_HANDOVER";
+        sCmdToString[EVENT_START_HANDOVER_ON_TARGET - BASE] = "EVENT_START_HANDOVER_ON_TARGET";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -573,6 +584,10 @@ public class DataConnection extends StateMachine {
         return ret;
     }
 
+    public int getPduSessionId() {
+        return mPduSessionId;
+    }
+
     @VisibleForTesting
     public UpdateLinkPropertyResult updateLinkProperty(DataCallResponse newState) {
         UpdateLinkPropertyResult result = new UpdateLinkPropertyResult(mLinkProperties);
@@ -607,6 +622,14 @@ public class DataConnection extends StateMachine {
         }
 
         return result;
+    }
+
+    void setPduSessionId(int pduSessionId) {
+        if (mPduSessionId != pduSessionId) {
+            logd("Changing pdu session id from: " + mPduSessionId + " to: " + pduSessionId + ", "
+                    + "Handover state: " + handoverStateToString(this.mHandoverState));
+            mPduSessionId = pduSessionId;
+        }
     }
 
     /**
@@ -771,42 +794,47 @@ public class DataConnection extends StateMachine {
         // Check if this data setup is a handover.
         LinkProperties linkProperties = null;
         int reason = DataService.REQUEST_REASON_NORMAL;
-        if (cp.mRequestType == DcTracker.REQUEST_TYPE_HANDOVER) {
+        if (cp.mRequestType == REQUEST_TYPE_HANDOVER) {
             // If this is a data setup for handover, we need to pass the link properties
             // of the existing data connection to the modem.
-            DcTracker dcTracker = mPhone.getDcTracker(getHandoverSourceTransport());
-            if (dcTracker == null || cp.mApnContext == null) {
-                loge("connect: Handover failed. dcTracker=" + dcTracker + ", apnContext="
+            DcTracker srcDcTracker = mPhone.getDcTracker(getHandoverSourceTransport());
+            if (srcDcTracker == null || cp.mApnContext == null) {
+                loge("connect: Handover failed. dcTracker=" + srcDcTracker + ", apnContext="
                         + cp.mApnContext);
                 return DataFailCause.HANDOVER_FAILED;
             }
 
-            DataConnection dc = dcTracker.getDataConnectionByApnType(cp.mApnContext.getApnType());
-            if (dc == null) {
+
+            // srcDc is the source data connection while the current instance is the target
+            DataConnection srcDc =
+                    srcDcTracker.getDataConnectionByApnType(cp.mApnContext.getApnType());
+            if (srcDc == null) {
                 loge("connect: Can't find data connection for handover.");
                 return DataFailCause.HANDOVER_FAILED;
             }
 
-            // Preserve the potential network agent from the source data connection. The ownership
-            // is not transferred at this moment.
-            mHandoverSourceNetworkAgent = dc.getNetworkAgent();
-            if (mHandoverSourceNetworkAgent == null) {
-                loge("Cannot get network agent from the source dc " + dc.getName());
-                return DataFailCause.HANDOVER_FAILED;
-            }
+            // Helpful for logging purposes
+            DataServiceManager srcDsm = srcDc.mDataServiceManager;
+            String srcDsmTag = (srcDsm == null ? "(null)" : srcDsm.getTag());
+            logd("connect: REQUEST_TYPE_HANDOVER - Request handover from " + srcDc.getName()
+                    + ", targetDsm=" + mDataServiceManager.getTag()
+                    + ", sourceDsm=" + srcDsmTag);
 
-            linkProperties = dc.getLinkProperties();
-            if (linkProperties == null || linkProperties.getLinkAddresses().isEmpty()) {
-                loge("connect: Can't find link properties of handover data connection. dc="
-                        + dc);
-                return DataFailCause.HANDOVER_FAILED;
-            }
 
-            mHandoverLocalLog.log("Handover started. Preserved the agent.");
-            log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
-
-            dc.setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
-            reason = DataService.REQUEST_REASON_HANDOVER;
+            /* startHandover is called on the source data connection, and if successful,
+               we ask the target data connection (which is the current instance) to call
+               #setupDataCall with request type handover.
+            */
+            Consumer<Integer> onCompleted = (dataServiceCallbackResultCode) ->
+                    /* startHandover is called on the srcDc handler, but the callback needs to
+                       be called on the current (which is the targetDc) handler which is why we
+                       call sendRunnableMessage. */
+                    sendRunnableMessage(EVENT_START_HANDOVER_ON_TARGET,
+                        (inCorrectState) -> requestHandover(inCorrectState, srcDc,
+                            dataServiceCallbackResultCode,
+                            cp, msg, dp, isModemRoaming, allowRoaming));
+            srcDc.startHandover(onCompleted);
+            return DataFailCause.NONE;
         }
 
         mDataServiceManager.setupDataCall(
@@ -816,10 +844,127 @@ public class DataConnection extends StateMachine {
                 allowRoaming,
                 reason,
                 linkProperties,
+                DataCallResponse.PDU_SESSION_ID_NOT_SET,
                 msg);
         TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
                 dp.getProfileId(), dp.getApn(), dp.getProtocolType());
         return DataFailCause.NONE;
+    }
+
+    private void requestHandover(boolean inCorrectState, DataConnection srcDc,
+            @DataServiceCallback.ResultCode int resultCode,
+            ConnectionParams cp, Message msg, DataProfile dp, boolean isModemRoaming,
+            boolean allowRoaming) {
+
+        if (!inCorrectState) {
+            logd("requestHandover: Not in correct state");
+            if (isResultCodeSuccess(resultCode)) {
+                if (srcDc != null) {
+                    logd("requestHandover: Not in correct state - Success result code");
+                    // We need to cancel the handover on source if we ended up in the wrong state.
+                    srcDc.cancelHandover();
+                } else {
+                    logd("requestHandover: Not in correct state - Success result code - "
+                            + "srcdc = null");
+                }
+            }
+            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            return;
+        } else if (!isResultCodeSuccess(resultCode)) {
+            if (DBG) {
+                logd("requestHandover: Non success result code from DataService, "
+                        + "setupDataCall will not be called, result code = "
+                        + DataServiceCallback.resultCodeToString(resultCode));
+            }
+            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            return;
+        }
+
+        if (srcDc == null) {
+            return;
+        }
+
+        LinkProperties linkProperties;
+        int reason;
+
+        // Preserve the potential network agent from the source data connection. The ownership
+        // is not transferred at this moment.
+        mHandoverSourceNetworkAgent = srcDc.getNetworkAgent();
+        if (mHandoverSourceNetworkAgent == null) {
+            loge("requestHandover: Cannot get network agent from the source dc " + srcDc.getName());
+            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            return;
+        }
+
+        linkProperties = srcDc.getLinkProperties();
+        if (linkProperties == null || linkProperties.getLinkAddresses().isEmpty()) {
+            loge("requestHandover: Can't find link properties of handover data connection. dc="
+                    + srcDc);
+            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            return;
+        }
+
+        mHandoverLocalLog.log("Handover started. Preserved the agent.");
+        log("Get the handover source network agent: " + mHandoverSourceNetworkAgent);
+
+        reason = DataService.REQUEST_REASON_HANDOVER;
+
+        mDataServiceManager.setupDataCall(
+                ServiceState.rilRadioTechnologyToAccessNetworkType(cp.mRilRat),
+                dp,
+                isModemRoaming,
+                allowRoaming,
+                reason,
+                linkProperties,
+                srcDc.getPduSessionId(),
+                msg);
+        TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
+                dp.getProfileId(), dp.getApn(), dp.getProtocolType());
+    }
+
+    /**
+     * Called on the source data connection from the target data connection.
+     */
+    private void startHandover(Consumer<Integer> onTargetDcComplete) {
+        logd("startHandover: " + toStringSimple());
+        // Set the handover state to being transferred on "this" data connection which is the src.
+        setHandoverState(HANDOVER_STATE_BEING_TRANSFERRED);
+
+        Consumer<Integer> onSrcDcComplete =
+                resultCode -> onHandoverStarted(resultCode, onTargetDcComplete);
+        /*
+            The flow here is:
+            srcDc#startHandover -> dataService#startHandover -> (onHandoverStarted) ->
+                onSrcDcComplete -> onTargetDcComplete
+         */
+        mDataServiceManager.startHandover(mCid,
+                this.obtainMessage(EVENT_START_HANDOVER,
+                        onSrcDcComplete));
+    }
+
+    /**
+     * Called on the source data connection when the async call to start handover is complete
+     */
+    private void onHandoverStarted(@DataServiceCallback.ResultCode int resultCode,
+            Consumer<Integer> onTargetDcComplete) {
+        logd("onHandoverStarted: " + toStringSimple());
+        if (!isResultCodeSuccess(resultCode)) {
+            setHandoverState(HANDOVER_STATE_IDLE);
+        }
+        onTargetDcComplete.accept(resultCode);
+    }
+
+    private void cancelHandover() {
+        if (mHandoverState != HANDOVER_STATE_BEING_TRANSFERRED) {
+            logd("cancelHandover: handover state is " + handoverStateToString(mHandoverState)
+                    + ", expecting HANDOVER_STATE_BEING_TRANSFERRED");
+        }
+        mDataServiceManager.cancelHandover(mCid, this.obtainMessage(EVENT_CANCEL_HANDOVER));
+        setHandoverState(HANDOVER_STATE_IDLE);
     }
 
     public void onSubscriptionOverride(int overrideMask, int overrideValue) {
@@ -959,6 +1104,10 @@ public class DataConnection extends StateMachine {
         if (DBG) log("NotifyDisconnectCompleted DisconnectParams=" + dp);
     }
 
+    private void sendRunnableMessage(int eventCode, @NonNull final Consumer<Boolean> r) {
+        sendMessage(eventCode, r);
+    }
+
     /*
      * **************************************************************************
      * Begin Members and methods owned by DataConnectionTracker but stored
@@ -1048,10 +1197,18 @@ public class DataConnection extends StateMachine {
             if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
             mCid = response.getId();
             updatePcscfAddr(response);
+
             result = updateLinkProperty(response).setupResult;
+
+            setPduSessionId(response.getPduSessionId());
         }
 
         return result;
+    }
+
+    private static boolean isResultCodeSuccess(int resultCode) {
+        return resultCode == DataServiceCallback.RESULT_SUCCESS
+                || resultCode == DataServiceCallback.RESULT_ERROR_UNSUPPORTED;
     }
 
     private boolean isDnsOk(String[] domainNameServers) {
@@ -1817,6 +1974,29 @@ public class DataConnection extends StateMachine {
                                 + " mRilRat=" + mRilRat);
                     }
                     break;
+
+                case EVENT_START_HANDOVER:  //calls startHandover()
+                    if (DBG) {
+                        log("DcDefaultState: EVENT_START_HANDOVER not expected.");
+                    }
+                    Consumer<Integer> r = (Consumer<Integer>) msg.obj;
+                    r.accept(DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
+                    break;
+                case EVENT_START_HANDOVER_ON_TARGET:
+                    if (DBG) {
+                        log("DcDefaultState: EVENT_START_HANDOVER not expected, but will "
+                                + "clean up, result code: "
+                                + DataServiceCallback.resultCodeToString(msg.arg1));
+                    }
+                    ((Consumer<Boolean>) msg.obj).accept(false /* is in correct state*/);
+                    break;
+                case EVENT_CANCEL_HANDOVER:
+                    // We don't need to do anything in this case
+                    if (DBG) {
+                        log("DcDefaultState: EVENT_CANCEL_HANDOVER resultCode="
+                                + DataServiceCallback.resultCodeToString(msg.arg1));
+                    }
+                    break;
                 default:
                     if (DBG) {
                         log("DcDefaultState: ignore msg.what=" + getWhatToString(msg.what));
@@ -1907,7 +2087,7 @@ public class DataConnection extends StateMachine {
                     mHandoverLocalLog.log(
                             "Handover failed. Reset the source dc " + sourceDc.getName()
                                     + " state to idle");
-                    sourceDc.setHandoverState(HANDOVER_STATE_IDLE);
+                    sourceDc.cancelHandover();
                 } else {
                     // The agent is now a dangling agent. No data connection owns this agent.
                     // Gracefully notify connectivity service disconnected.
@@ -1927,7 +2107,8 @@ public class DataConnection extends StateMachine {
                     log("DcInactiveState: enter notifyConnectCompleted +ALL failCause="
                             + mDcFailCause);
                 }
-                notifyConnectCompleted(mConnectionParams, mDcFailCause, mHandoverFailureMode, true);
+                notifyConnectCompleted(mConnectionParams, mDcFailCause, mHandoverFailureMode,
+                        true);
             }
             if (mDisconnectParams != null) {
                 if (DBG) {
@@ -2148,6 +2329,11 @@ public class DataConnection extends StateMachine {
                     mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
                     retVal = HANDLED;
                     break;
+                case EVENT_START_HANDOVER_ON_TARGET:
+                    //called after startHandover on target transport
+                    ((Consumer<Boolean>) msg.obj).accept(true /* is in correct state*/);
+                    retVal = HANDLED;
+                    break;
                 default:
                     if (VDBG) {
                         log("DcActivatingState not handled msg.what=" +
@@ -2219,7 +2405,7 @@ public class DataConnection extends StateMachine {
             }
 
             if (mConnectionParams != null
-                    && mConnectionParams.mRequestType == DcTracker.REQUEST_TYPE_HANDOVER) {
+                    && mConnectionParams.mRequestType == REQUEST_TYPE_HANDOVER) {
                 // If this is a data setup for handover, we need to reuse the existing network agent
                 // instead of creating a new one. This should be transparent to connectivity
                 // service.
@@ -2657,6 +2843,11 @@ public class DataConnection extends StateMachine {
                     }
                     retVal = HANDLED;
                     break;
+                case EVENT_START_HANDOVER:  //calls startHandover()
+                    Consumer<Integer> r = (Consumer<Integer>) msg.obj;
+                    r.accept(msg.arg1);
+                    retVal = HANDLED;
+                    break;
                 default:
                     if (VDBG) {
                         log("DcActiveState not handled msg.what=" + getWhatToString(msg.what));
@@ -2952,8 +3143,10 @@ public class DataConnection extends StateMachine {
 
     void setHandoverState(@HandoverState int state) {
         if (mHandoverState != state) {
-            mHandoverLocalLog.log("State changed from " + handoverStateToString(mHandoverState)
-                    + " to " + handoverStateToString(state));
+            String logStr = "State changed from " + handoverStateToString(mHandoverState)
+                    + " to " + handoverStateToString(state);
+            mHandoverLocalLog.log(logStr);
+            logd(logStr);
             mHandoverState = state;
         }
     }
