@@ -4195,6 +4195,21 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Control the data throttling at modem.
+     *
+     * @param result Message that will be sent back to the requester
+     * @param workSource calling Worksource
+     * @param dataThrottlingAction the DataThrottlingAction that is being requested. Defined in
+     *      android.telephony.TelephonyManger.
+     * @param completionWindowMillis milliseconds in which data throttling action has to be
+     *      achieved.
+     */
+    public void setDataThrottling(Message result, WorkSource workSource,
+            int dataThrottlingAction, long completionWindowMillis) {
+        mCi.setDataThrottling(result, workSource, dataThrottlingAction, completionWindowMillis);
+    }
+
+    /**
      * Set allowed carriers
      */
     public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
