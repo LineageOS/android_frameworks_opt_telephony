@@ -1628,12 +1628,20 @@ public class SubscriptionController extends ISub.Stub {
      * Insert an empty SubInfo record into the database.
      *
      * <p>NOTE: This is not accessible to external processes, so it does not need a permission
-     * check. It is only intended for use by {@link SubscriptionInfoUpdater}.
+     * check. It is only intended for use by {@link SubscriptionInfoUpdater}. If there is a
+     * subscription record exist with the same ICCID, no new empty record will be created.
      *
-     * <p>Precondition: No record exists with this iccId.
+     * @return the URL of the newly created row. Return <code>null</code> if no new empty record is
+     * created.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    @Nullable
     public Uri insertEmptySubInfoRecord(String iccId, int slotIndex) {
+        if (getSubInfoForIccId(iccId) != null) {
+            loge("insertEmptySubInfoRecord: Found existing record by ICCID. Do not create a "
+                    + "new empty entry.");
+            return null;
+        }
         return insertEmptySubInfoRecord(iccId, null, slotIndex,
                 SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
     }
