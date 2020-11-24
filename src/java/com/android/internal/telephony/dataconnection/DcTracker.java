@@ -2994,10 +2994,8 @@ public class DcTracker extends Handler {
                         value[0] = (byte) pcoVal;
                         final Intent intent =
                                 new Intent(TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE);
-                        intent.putExtra(TelephonyManager.EXTRA_APN_TYPE, "default");
-                        intent.putExtra(TelephonyManager.EXTRA_APN_TYPE_INT, TYPE_DEFAULT);
-                        intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL, "IPV4V6");
-                        intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL_INT, PROTOCOL_IPV4V6);
+                        intent.putExtra(TelephonyManager.EXTRA_APN_TYPE, TYPE_DEFAULT);
+                        intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL, PROTOCOL_IPV4V6);
                         intent.putExtra(TelephonyManager.EXTRA_PCO_ID, 0xFF00);
                         intent.putExtra(TelephonyManager.EXTRA_PCO_VALUE, value);
                         mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
@@ -3021,9 +3019,8 @@ public class DcTracker extends Handler {
             // Compose broadcast intent send to the specific carrier signaling receivers
             Intent intent = new Intent(TelephonyManager
                     .ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED);
-            intent.putExtra(TelephonyManager.EXTRA_ERROR_CODE, cause);
-            intent.putExtra(TelephonyManager.EXTRA_APN_TYPE, apnContext.getApnType());
-            intent.putExtra(TelephonyManager.EXTRA_APN_TYPE_INT,
+            intent.putExtra(TelephonyManager.EXTRA_DATA_FAIL_CAUSE, cause);
+            intent.putExtra(TelephonyManager.EXTRA_APN_TYPE,
                     ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType()));
             mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
 
@@ -4676,11 +4673,9 @@ public class DcTracker extends Handler {
                 String apnType = apnContext.getApnType();
 
                 final Intent intent = new Intent(TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE);
-                intent.putExtra(TelephonyManager.EXTRA_APN_TYPE, apnType);
-                intent.putExtra(TelephonyManager.EXTRA_APN_TYPE_INT,
+                intent.putExtra(TelephonyManager.EXTRA_APN_TYPE,
                         ApnSetting.getApnTypesBitmaskFromString(apnType));
-                intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL, pcoData.bearerProto);
-                intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL_INT,
+                intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL,
                         ApnSetting.getProtocolIntFromString(pcoData.bearerProto));
                 intent.putExtra(TelephonyManager.EXTRA_PCO_ID, pcoData.pcoId);
                 intent.putExtra(TelephonyManager.EXTRA_PCO_VALUE, pcoData.contents);
