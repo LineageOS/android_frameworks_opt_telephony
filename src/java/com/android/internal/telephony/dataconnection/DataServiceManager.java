@@ -307,6 +307,7 @@ public class DataServiceManager extends Handler {
         @Override
         public void onHandoverStarted(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onHandoverStarted. resultCode = " + resultCode);
+            removeMessages(EVENT_WATCHDOG_TIMEOUT, CellularDataServiceCallback.this);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
@@ -314,6 +315,7 @@ public class DataServiceManager extends Handler {
         @Override
         public void onHandoverCancelled(@DataServiceCallback.ResultCode int resultCode) {
             if (DBG) log("onHandoverCancelled. resultCode = " + resultCode);
+            removeMessages(EVENT_WATCHDOG_TIMEOUT, CellularDataServiceCallback.this);
             Message msg = mMessageMap.remove(asBinder());
             sendCompleteMessage(msg, resultCode);
         }
