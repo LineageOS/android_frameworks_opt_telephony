@@ -4166,7 +4166,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getCellInfoList(Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_GET_CELL_INFO_LIST, result,
@@ -4186,7 +4186,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setCellInfoListRate(int rateInMillis, Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE, result,
@@ -4441,7 +4441,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvReadItem(int itemID, Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_NV_READ_ITEM, result,
@@ -4462,7 +4462,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvWriteItem(int itemId, String itemValue, Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_NV_WRITE_ITEM, result,
@@ -4854,7 +4854,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getModemActivityInfo(Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_GET_ACTIVITY_INFO, result,
@@ -4920,7 +4920,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         riljLog("RIL.java - setAllowedCarriers");
 
         checkNotNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
 
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy == null) return;
@@ -5000,7 +5000,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getAllowedCarriers(Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
 
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy == null) return;
@@ -5240,7 +5240,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setSimCardPower(int state, Message result, WorkSource workSource) {
-        workSource = getDeafultWorkSourceIfInvalid(workSource);
+        workSource = getDefaultWorkSourceIfInvalid(workSource);
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_SIM_CARD_POWER, result,
@@ -5250,7 +5250,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " + state);
             }
 
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                try {
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.setSimCardPower_1_6(rr.mSerial, state);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setSimCardPower", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
                 try {
                     android.hardware.radio.V1_1.IRadio radioProxy11 =
                             (android.hardware.radio.V1_1.IRadio) radioProxy;
@@ -5952,7 +5960,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         rr.release();
     }
 
-    private WorkSource getDeafultWorkSourceIfInvalid(WorkSource workSource) {
+    private WorkSource getDefaultWorkSourceIfInvalid(WorkSource workSource) {
         if (workSource == null) {
             workSource = mRILDefaultWorkSource;
         }
