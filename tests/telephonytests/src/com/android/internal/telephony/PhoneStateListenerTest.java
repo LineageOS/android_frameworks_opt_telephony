@@ -47,8 +47,6 @@ public class PhoneStateListenerTest extends TelephonyTest {
     private boolean mUserMobileDataState = false;
     private EmergencyNumber mCalledEmergencyNumber;
     private EmergencyNumber mTextedEmergencyNumber;
-    private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
-
 
     @Before
     public void setUp() throws Exception {
@@ -76,12 +74,6 @@ public class PhoneStateListenerTest extends TelephonyTest {
             public void onOutgoingEmergencySms(EmergencyNumber emergencyNumber) {
                 logd("OutgoingSmsEmergencyNumber Changed");
                 mTextedEmergencyNumber = emergencyNumber;
-            }
-
-            @Override
-            public void onPhysicalChannelConfigurationChanged(List<PhysicalChannelConfig> configs) {
-                logd("PhysicalChannelConfig Changed");
-                mPhysicalChannelConfigs = configs;
             }
         };
         processAllMessages();
@@ -165,26 +157,5 @@ public class PhoneStateListenerTest extends TelephonyTest {
         processAllMessages();
 
         assertTrue(mTextedEmergencyNumber.equals(emergencyNumber));
-    }
-
-    @Test @SmallTest
-    public void testTriggerPhysicalChannelConfigurationChanged() throws Exception {
-        Field field = PhoneStateListener.class.getDeclaredField("callback");
-        field.setAccessible(true);
-
-        assertNull(mPhysicalChannelConfigs);
-
-        PhysicalChannelConfig config = new PhysicalChannelConfig.Builder()
-                .setCellConnectionStatus(PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING)
-                .setCellBandwidthDownlinkKhz(20000 /* bandwidth */)
-                .build();
-
-        List<PhysicalChannelConfig> configs = Collections.singletonList(config);
-
-        ((IPhoneStateListener) field.get(mPhoneStateListenerUT))
-                .onPhysicalChannelConfigurationChanged(configs);
-        processAllMessages();
-
-        assertTrue(mPhysicalChannelConfigs.equals(configs));
     }
 }
