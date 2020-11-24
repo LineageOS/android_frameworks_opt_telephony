@@ -34,10 +34,13 @@ import android.content.res.Resources;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
+import com.android.internal.R;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.cdnr.EfData.EFSource;
@@ -377,6 +380,47 @@ public class CarrierDisplayNameResolver {
         return result;
     }
 
+    private CarrierDisplayNameData getCarrierDisplayNameFromCrossSimCallingOverride(
+            CarrierDisplayNameData rawCarrierDisplayNameData) {
+        PersistableBundle config = getCarrierConfig();
+        int crossSimSpnFormatIdx =
+                config.getInt(CarrierConfigManager.KEY_CROSS_SIM_SPN_FORMAT_INT);
+        boolean useRootLocale =
+                config.getBoolean(CarrierConfigManager.KEY_WFC_SPN_USE_ROOT_LOCALE);
+
+        String[] crossSimSpnFormats = SubscriptionManager.getResourcesForSubId(
+                mPhone.getContext(),
+                mPhone.getSubId(), useRootLocale)
+                .getStringArray(R.array.crossSimSpnFormats);
+
+        if (crossSimSpnFormatIdx < 0 || crossSimSpnFormatIdx >= crossSimSpnFormats.length) {
+            Rlog.e(TAG, "updateSpnDisplay: KEY_CROSS_SIM_SPN_FORMAT_INT out of bounds: "
+                    + crossSimSpnFormatIdx);
+            crossSimSpnFormatIdx = 0;
+        }
+        String crossSimSpnFormat = crossSimSpnFormats[crossSimSpnFormatIdx];
+        // Override the spn, data spn, plmn by Cross-SIM Calling
+        List<PlmnNetworkName> efPnn = getEfPnn();
+        String plmn = efPnn.isEmpty() ? "" : getPlmnNetworkName(efPnn.get(0));
+        CarrierDisplayNameData result = rawCarrierDisplayNameData;
+        String crossSimSpn = String.format(crossSimSpnFormat, rawCarrierDisplayNameData.getSpn());
+        String crossSimPlmn = String.format(crossSimSpnFormat,
+                TextUtils.isEmpty(plmn) ? rawCarrierDisplayNameData.getPlmn() : plmn);
+        if (!TextUtils.isEmpty(crossSimSpn)) {
+            result = new CarrierDisplayNameData.Builder()
+                    .setSpn(crossSimSpn)
+                    .setDataSpn(crossSimSpn)
+                    .setShowSpn(true)
+                    .build();
+        } else if (!TextUtils.isEmpty(crossSimPlmn)) {
+            result = new CarrierDisplayNameData.Builder()
+                    .setPlmn(crossSimPlmn)
+                    .setShowPlmn(true)
+                    .build();
+        }
+        return result;
+    }
+
     /**
      * Override the given carrier display name data {@code data} by out of service rule.
      * @param data the carrier display name data need to be overridden.
@@ -423,7 +467,13 @@ public class CarrierDisplayNameResolver {
     private void resolveCarrierDisplayName() {
         CarrierDisplayNameData data = getCarrierDisplayNameFromEf();
         if (DBG) Rlog.d(TAG, "CarrierName from EF: " + data);
-        if (getCombinedRegState(getServiceState()) == ServiceState.STATE_IN_SERVICE) {
+        if ((mPhone.getImsPhone() != null) && (mPhone.getImsPhone().getImsRegistrationTech()
+                == ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM)) {
+            data = getCarrierDisplayNameFromCrossSimCallingOverride(data);
+            if (DBG) {
+                Rlog.d(TAG, "CarrierName override by Cross-SIM Calling " + data);
+            }
+        } else if (getCombinedRegState(getServiceState()) == ServiceState.STATE_IN_SERVICE) {
             if (mPhone.isWifiCallingEnabled()) {
                 data = getCarrierDisplayNameFromWifiCallingOverride(data);
                 if (DBG) {

@@ -83,6 +83,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.VoiceSpecificRegistrationInfo;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.LocalLog;
@@ -90,6 +91,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
@@ -2789,6 +2791,36 @@ public class ServiceStateTracker extends Handler {
             wfcFlightSpnFormat = wfcSpnFormats[flightModeIdx];
         }
 
+        String crossSimSpnFormat = null;
+        if (mPhone.getImsPhone() != null
+                && (mPhone.getImsPhone() != null)
+                && (mPhone.getImsPhone().getImsRegistrationTech()
+                == ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM)) {
+            // In Cros SIM Calling mode show SPN or PLMN + Cross SIM Calling
+            //
+            // 1) Show SPN + Cross SIM Calling If SIM has SPN and SPN display condition
+            //    is satisfied or SPN override is enabled for this carrier
+            //
+            // 2) Show PLMN + Cross SIM Calling if there is no valid SPN in case 1
+            PersistableBundle bundle = getCarrierConfig();
+            int crossSimSpnFormatIdx =
+                    bundle.getInt(CarrierConfigManager.KEY_CROSS_SIM_SPN_FORMAT_INT);
+            boolean useRootLocale =
+                    bundle.getBoolean(CarrierConfigManager.KEY_WFC_SPN_USE_ROOT_LOCALE);
+
+            String[] crossSimSpnFormats = SubscriptionManager.getResourcesForSubId(
+                    mPhone.getContext(),
+                    mPhone.getSubId(), useRootLocale)
+                    .getStringArray(R.array.crossSimSpnFormats);
+
+            if (crossSimSpnFormatIdx < 0 || crossSimSpnFormatIdx >= crossSimSpnFormats.length) {
+                loge("updateSpnDisplay: KEY_CROSS_SIM_SPN_FORMAT_INT out of bounds: "
+                        + crossSimSpnFormatIdx);
+                crossSimSpnFormatIdx = 0;
+            }
+            crossSimSpnFormat = crossSimSpnFormats[crossSimSpnFormatIdx];
+        }
+
         if (mPhone.isPhoneTypeGsm()) {
             // The values of plmn/showPlmn change in different scenarios.
             // 1) No service but emergency call allowed -> expected
@@ -2856,9 +2888,27 @@ public class ServiceStateTracker extends Handler {
                     && ((rule & CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN)
                     == CARRIER_NAME_DISPLAY_BITMASK_SHOW_SPN);
             if (DBG) log("updateSpnDisplay: rawSpn = " + spn);
-
-            if (!TextUtils.isEmpty(spn) && !TextUtils.isEmpty(wfcVoiceSpnFormat) &&
-                    !TextUtils.isEmpty(wfcDataSpnFormat)) {
+            if (!TextUtils.isEmpty(crossSimSpnFormat)) {
+                if (!TextUtils.isEmpty(spn)) {
+                    // Show SPN + Cross-SIM Calling If SIM has SPN and SPN display condition
+                    // is satisfied or SPN override is enabled for this carrier.
+                    String originalSpn = spn.trim();
+                    spn = String.format(crossSimSpnFormat, originalSpn);
+                    dataSpn = spn;
+                    showSpn = true;
+                    showPlmn = false;
+                } else if (!TextUtils.isEmpty(plmn)) {
+                    // Show PLMN + Cross-SIM Calling if there is no valid SPN in the above case
+                    String originalPlmn = plmn.trim();
+                    PersistableBundle config = getCarrierConfig();
+                    if (mIccRecords != null && config.getBoolean(
+                            CarrierConfigManager.KEY_WFC_CARRIER_NAME_OVERRIDE_BY_PNN_BOOL)) {
+                        originalPlmn = mIccRecords.getPnnHomeName();
+                    }
+                    plmn = String.format(crossSimSpnFormat, originalPlmn);
+                }
+            } else if (!TextUtils.isEmpty(spn) && !TextUtils.isEmpty(wfcVoiceSpnFormat)
+                    && !TextUtils.isEmpty(wfcDataSpnFormat)) {
                 // Show SPN + Wi-Fi Calling If SIM has SPN and SPN display condition
                 // is satisfied or SPN override is enabled for this carrier.
 

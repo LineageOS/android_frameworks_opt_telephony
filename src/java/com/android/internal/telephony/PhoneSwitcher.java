@@ -357,8 +357,8 @@ public class PhoneSwitcher extends Handler {
 
         int imsRegTech = mImsRegTechProvider.get(mContext, phoneId);
         // If IMS is registered on IWLAN or cross SIM, return false.
-        boolean isOnOriginalNetwork = imsRegTech != REGISTRATION_TECH_IWLAN
-                || imsRegTech != REGISTRATION_TECH_CROSS_SIM;
+        boolean isOnOriginalNetwork = (imsRegTech != REGISTRATION_TECH_IWLAN)
+                && (imsRegTech != REGISTRATION_TECH_CROSS_SIM);
         if (!isOnOriginalNetwork) {
             log("IMS call on IWLAN or cross SIM. Call will be ignored for DDS switch");
         }
