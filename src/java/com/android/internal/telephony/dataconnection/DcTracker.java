@@ -293,6 +293,16 @@ public class DcTracker extends Handler {
     /* Indicating data service is bound or not */
     private boolean mDataServiceBound = false;
 
+    /* Intent to hide/show the sign-in error notification for provisioning */
+    private static final String INTENT_PROVISION = "com.android.internal.telephony.PROVISION";
+
+    /**
+     * Extra containing the phone ID for INTENT_PROVISION
+     * Must be kept consistent with NetworkNotificationManager#setProvNotificationVisible.
+     * TODO: refactor the deprecated API to prevent hardcoding values.
+     */
+    private static final String EXTRA_PROVISION_PHONE_ID = "provision.phone.id";
+
     /* Intent for the provisioning apn alarm */
     private static final String INTENT_PROVISIONING_APN_ALARM =
             "com.android.internal.telephony.provisioning_apn_alarm";
@@ -652,7 +662,6 @@ public class DcTracker extends Handler {
     /** Watches for changes to the APN db. */
     private ApnChangeObserver mApnObserver;
 
-    private final String mProvisionActionName;
     private BroadcastReceiver mProvisionBroadcastReceiver;
     private ProgressDialog mProvisioningSpinner;
 
@@ -737,8 +746,6 @@ public class DcTracker extends Handler {
         initEmergencyApnSetting();
         addEmergencyApnSetting();
 
-        mProvisionActionName = "com.android.internal.telephony.PROVISION" + phone.getPhoneId();
-
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         registerSettingsObserver();
     }
@@ -751,7 +758,6 @@ public class DcTracker extends Handler {
         mAlarmManager = null;
         mPhone = null;
         mDataConnectionTracker = null;
-        mProvisionActionName = null;
         mSettingsObserver = new SettingsObserver(null, this);
         mDataEnabledSettings = null;
         mTransportType = 0;
@@ -958,6 +964,10 @@ public class DcTracker extends Handler {
 
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (mPhone.getPhoneId() != intent.getIntExtra(EXTRA_PROVISION_PHONE_ID,
+                    SubscriptionManager.INVALID_PHONE_INDEX)) {
+                return;
+            }
             // Turning back on the radio can take time on the order of a minute, so show user a
             // spinner so they know something is going on.
             log("onReceive : ProvisionNotificationBroadcastReceiver");
@@ -2924,7 +2934,7 @@ public class DcTracker extends Handler {
                 if ((!isProvApn) || mIsProvisioning) {
                     // Hide any provisioning notification.
                     cm.setProvisioningNotificationVisible(false, ConnectivityManager.TYPE_MOBILE,
-                            mProvisionActionName);
+                            INTENT_PROVISION + ":" + mPhone.getPhoneId());
                     // Complete the connection normally notifying the world we're connected.
                     // We do this if this isn't a special provisioning apn or if we've been
                     // told its time to provision.
@@ -2947,10 +2957,10 @@ public class DcTracker extends Handler {
                             cm.getMobileProvisioningUrl(),
                             mTelephonyManager.getNetworkOperatorName());
                     mPhone.getContext().registerReceiver(mProvisionBroadcastReceiver,
-                            new IntentFilter(mProvisionActionName));
+                            new IntentFilter(INTENT_PROVISION));
                     // Put up user notification that sign-in is required.
                     cm.setProvisioningNotificationVisible(true, ConnectivityManager.TYPE_MOBILE,
-                            mProvisionActionName);
+                            INTENT_PROVISION + ":" + mPhone.getPhoneId());
                     // Turn off radio to save battery and avoid wasting carrier resources.
                     // The network isn't usable and network validation will just fail anyhow.
                     setRadio(false);
