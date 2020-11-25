@@ -822,12 +822,20 @@ public abstract class TelephonyTest {
 
         // TelephonyPermissions uses a SystemAPI to check if the calling package meets any of the
         // generic requirements for device identifier access (currently READ_PRIVILEGED_PHONE_STATE,
-        // appop, and device / profile owner checks. This sets up the PermissionManager to return
+        // appop, and device / profile owner checks). This sets up the PermissionManager to return
         // that access requirements are met.
         setIdentifierAccess(true);
         PermissionManager permissionManager = new PermissionManager(mContext, null,
                 mMockPermissionManager);
         doReturn(permissionManager).when(mContext).getSystemService(eq(Context.PERMISSION_SERVICE));
+        // Also make sure all appop checks fails, to not interfere tests. Tests should explicitly
+        // mock AppOpManager to return allowed/default mode. Note by default a mock returns 0 which
+        // is MODE_ALLOWED, hence this setup is necessary.
+        doReturn(AppOpsManager.MODE_IGNORED).when(mAppOpsManager).noteOpNoThrow(
+                /* op= */ anyString(), /* uid= */ anyInt(),
+                /* packageName= */ nullable(String.class),
+                /* attributionTag= */ nullable(String.class),
+                /* message= */ nullable(String.class));
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access
         // restrictions should be enabled; this results in a NPE when DeviceConfig uses
