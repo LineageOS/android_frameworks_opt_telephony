@@ -2342,10 +2342,12 @@ public class ServiceStateTracker extends Handler {
                                 && !mIsSimReady;
                 if (mEmergencyOnly && !forceDisplayNoService) {
                     // No service but emergency call allowed
+                    SystemProperties.set("gsm.status", "0");
                     plmn = Resources.getSystem().
                             getText(com.android.internal.R.string.emergency_calls_only).toString();
                 } else {
                     // No service at all
+                    SystemProperties.set("gsm.status", "1");
                     plmn = Resources.getSystem().
                             getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
                     noService = true;
@@ -2354,12 +2356,14 @@ public class ServiceStateTracker extends Handler {
                         "of service, set plmn='" + plmn + "'");
             } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
                 // In either home or roaming service
+                SystemProperties.set("gsm.status", "2");
                 plmn = mSS.getOperatorAlpha();
                 showPlmn = !TextUtils.isEmpty(plmn) &&
                         ((rule & SIMRecords.SPN_RULE_SHOW_PLMN)
                                 == SIMRecords.SPN_RULE_SHOW_PLMN);
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
+                SystemProperties.set("gsm.status", "3");
                 showPlmn = true;
                 plmn = Resources.getSystem().
                         getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
@@ -2412,6 +2416,7 @@ public class ServiceStateTracker extends Handler {
                     || !TextUtils.equals(spn, mCurSpn)
                     || !TextUtils.equals(dataSpn, mCurDataSpn)
                     || !TextUtils.equals(plmn, mCurPlmn)) {
+                SystemProperties.set("gsm.plmn", plmn);
                 if (DBG) {
                     log(String.format("updateSpnDisplay: changed sending intent rule=" + rule +
                             " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' " +
