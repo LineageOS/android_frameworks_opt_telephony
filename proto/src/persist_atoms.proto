@@ -75,9 +75,9 @@ message PersistAtoms {
 }
 
 // The canonical versions of the following enums live in:
-//   frameworks/base/core/proto/android/telephony/enums.proto
+//   frameworks/proto_logging/stats/enums/telephony/enums.proto
 // The canonical versions of the following atoms live in:
-//   frameworks/base/cmds/statsd/src/atoms.proto
+//   frameworks/proto_logging/stats/atoms.proto
 // We cannot link against framework's and statsd's protolite libraries as it is "for test only".
 // NOTE: StatsLog functions use int in place of enum
 
