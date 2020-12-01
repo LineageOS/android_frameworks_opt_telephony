@@ -122,6 +122,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // Sent when the number of slots has dynamically changed on the device. We will need to
     // resize available ImsServiceController slots and perform dynamic queries again.
     private static final int HANDLER_MSIM_CONFIGURATION_CHANGE = 7;
+    // clear any carrier ImsService test overrides.
+    private static final int HANDLER_CLEAR_CARRIER_IMS_SERVICE_CONFIG = 8;
 
     // Delay between dynamic ImsService queries.
     private static final int DELAY_DYNAMIC_QUERY_MS = 5000;
@@ -476,6 +478,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 handleMsimConfigChange((Integer) result.result);
                 break;
             }
+            case HANDLER_CLEAR_CARRIER_IMS_SERVICE_CONFIG: {
+                clearCarrierServiceOverrides(msg.arg1);
+                break;
+            }
             default:
                 return false;
         }
@@ -725,6 +731,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     // Used for testing only.
+    public boolean clearCarrierImsServiceConfiguration(int slotId) {
+        if (slotId < 0 || slotId >= mNumSlots) {
+            Log.w(TAG, "clearCarrierImsServiceConfiguration: invalid slotId!");
+            return false;
+        }
+
+        Message.obtain(mHandler, HANDLER_CLEAR_CARRIER_IMS_SERVICE_CONFIG, slotId, 0 /*arg2*/)
+                .sendToTarget();
+        return true;
+    }
+
+    // Used for testing only.
     public boolean overrideImsServiceConfiguration(int slotId, boolean isCarrierService,
             Map<Integer, String> featureConfig) {
         if (slotId < 0 || slotId >= mNumSlots) {
@@ -768,6 +786,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             mCarrierServices.put(slotId, carrierConfig);
         }
         return carrierConfig;
+    }
+
+    // not synchronized, access in handler ONLY.
+    private void removeOverridePackageName(int slotId) {
+        for (int f = ImsFeature.FEATURE_EMERGENCY_MMTEL; f < ImsFeature.FEATURE_MAX; f++) {
+            getOverridePackageName(slotId).remove(f);
+        }
     }
 
     // not synchronized, access in handler ONLY.
@@ -1135,6 +1160,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     // Possibly rebind to another ImsService for testing carrier ImsServices.
     // Called from the handler ONLY
+    private void clearCarrierServiceOverrides(int slotId) {
+        Log.i(TAG, "clearing carrier ImsService overrides");
+        mEventLog.log("clearing carrier ImsService overrides");
+        removeOverridePackageName(slotId);
+        carrierConfigChanged(slotId);
+    }
+
+    // Possibly rebind to another ImsService for testing carrier ImsServices.
+    // Called from the handler ONLY
     private void overrideDeviceService(Map<Integer, String> featureMap) {
         boolean requiresRecalc = false;
         for (Integer featureType : featureMap.keySet()) {
@@ -1214,6 +1248,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             // Carrier config may have not changed, but we still want to kick off a recalculation
             // in case there has been a change to the supported device features.
             ImsServiceInfo info = getImsServiceInfoFromCache(newPackageName);
+            Log.i(TAG, "updateBoundServices - carrier package changed: "
+                    + oldPackageName + " -> " + newPackageName + " on slot " + slotId
+                    + ", hasConfigChanged=" + hasConfigChanged);
             mEventLog.log("updateBoundServices - carrier package changed: "
                     + oldPackageName + " -> " + newPackageName + " on slot " + slotId
                     + ", hasConfigChanged=" + hasConfigChanged);
