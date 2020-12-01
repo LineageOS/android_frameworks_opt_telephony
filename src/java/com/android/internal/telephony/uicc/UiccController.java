@@ -1285,9 +1285,10 @@ public class UiccController extends Handler {
         pw.println(" mIsCdmaSupported=" + isCdmaSupported(mContext));
         pw.println(" mHasBuiltInEuicc=" + mHasBuiltInEuicc);
         pw.println(" mHasActiveBuiltInEuicc=" + mHasActiveBuiltInEuicc);
-        pw.println(" mUiccSlots: size=" + mUiccSlots.length);
         pw.println(" mCardStrings=" + mCardStrings);
         pw.println(" mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+        pw.println(" mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
+        pw.println(" mUiccSlots: size=" + mUiccSlots.length);
         for (int i = 0; i < mUiccSlots.length; i++) {
             if (mUiccSlots[i] == null) {
                 pw.println("  mUiccSlots[" + i + "]=null");
