@@ -284,6 +284,30 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     }
 
     /**
+     * Tests sending the ACTION_CARRIER_CONFIG_CHANGED intent with an empty key.
+     * Verify that the carrier keys are removed if IMSI_KEY_DOWNLOAD_URL_STRING is null.
+     */
+    @Test
+    @SmallTest
+    public void testCarrierConfigChangedEmptyKey() {
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        int slotId = mPhone.getPhoneId();
+        PersistableBundle bundle = carrierConfigManager.getConfigForSubId(slotId);
+        bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
+        bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, null);
+
+        Intent mIntent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
+        mContext.sendBroadcast(mIntent);
+        processAllMessages();
+        SharedPreferences preferences = getDefaultSharedPreferences(mContext);
+        String mccMnc = preferences.getString("CARRIER_KEY_DM_MCC_MNC" + slotId, null);
+        assertEquals(null, mccMnc);
+        verify(mPhone).deleteCarrierInfoForImsiEncryption();
+    }
+
+    /**
      * Tests sending the INTENT_KEY_RENEWAL_ALARM_PREFIX intent.
      * Verify that the right mnc/mcc gets stored in the preferences.
      **/

@@ -3677,6 +3677,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return;
     }
 
+    /**
+     * Deletes all the keys for a given Carrier from the device keystore.
+     */
+    public void deleteCarrierInfoForImsiEncryption() {
+        return;
+    }
+
     public int getCarrierId() {
         return TelephonyManager.UNKNOWN_CARRIER_ID;
     }
