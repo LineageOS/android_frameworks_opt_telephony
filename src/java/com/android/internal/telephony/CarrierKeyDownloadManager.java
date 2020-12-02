@@ -60,6 +60,7 @@ import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.Random;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipException;
 
 /**
  * This class contains logic to get Certificates and keep them current.
@@ -337,7 +338,6 @@ public class CarrierKeyDownloadManager extends Handler {
         DownloadManager.Query query = new DownloadManager.Query();
         query.setFilterById(carrierKeyDownloadIdentifier);
         Cursor cursor = mDownloadManager.query(query);
-        InputStream source = null;
 
         if (cursor == null) {
             return;
@@ -346,21 +346,18 @@ public class CarrierKeyDownloadManager extends Handler {
             int columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
             if (DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(columnIndex)) {
                 try {
-                    source = new FileInputStream(
-                            mDownloadManager.openDownloadedFile(carrierKeyDownloadIdentifier)
-                                    .getFileDescriptor());
-                    jsonStr = convertToString(source);
+                    jsonStr = convertToString(mDownloadManager, carrierKeyDownloadIdentifier);
+                    if (TextUtils.isEmpty(jsonStr)) {
+                        Log.d(LOG_TAG, "fallback to no gzip");
+                        jsonStr = convertToStringNoGZip(mDownloadManager,
+                                carrierKeyDownloadIdentifier);
+                    }
                     parseJsonAndPersistKey(jsonStr, mccMnc);
                 } catch (Exception e) {
                     Log.e(LOG_TAG, "Error in download:" + carrierKeyDownloadIdentifier
                             + ". " + e);
                 } finally {
                     mDownloadManager.remove(carrierKeyDownloadIdentifier);
-                    try {
-                        source.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
                 }
             }
             Log.d(LOG_TAG, "Completed downloading keys");
@@ -401,13 +398,31 @@ public class CarrierKeyDownloadManager extends Handler {
         return false;
     }
 
-    private static String convertToString(InputStream is) {
-        try {
-            // The current implementation at certain Carriers has the data gzipped, which requires
-            // us to unzip the contents. Longer term, we want to add a flag in carrier config which
-            // determines if the data needs to be zipped or not.
-            GZIPInputStream gunzip = new GZIPInputStream(is);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(gunzip, UTF_8));
+    private static String convertToStringNoGZip(DownloadManager downloadManager, long downloadId) {
+        StringBuilder sb = new StringBuilder();
+        try (InputStream source = new FileInputStream(
+                    downloadManager.openDownloadedFile(downloadId).getFileDescriptor())) {
+            // If the carrier does not have the data gzipped, fallback to assuming it is not zipped.
+            // parseJsonAndPersistKey may still fail if the data is malformed, so we won't be
+            // persisting random bogus strings thinking it's the cert
+            BufferedReader reader = new BufferedReader(new InputStreamReader(source, UTF_8));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return sb.toString();
+    }
+
+    private static String convertToString(DownloadManager downloadManager, long downloadId) {
+        try (InputStream source = new FileInputStream(
+                    downloadManager.openDownloadedFile(downloadId).getFileDescriptor());
+                    InputStream gzipIs = new GZIPInputStream(source)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(gzipIs, UTF_8));
             StringBuilder sb = new StringBuilder();
 
             String line;
@@ -415,10 +430,14 @@ public class CarrierKeyDownloadManager extends Handler {
                 sb.append(line).append('\n');
             }
             return sb.toString();
+        } catch (ZipException e) {
+            // GZIPInputStream constructor will throw exception if stream is not GZIP
+            Log.d(LOG_TAG, "Stream is not gzipped e=" + e);
+            return null;
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(LOG_TAG, "Unexpected exception in convertToString e=" + e);
+            return null;
         }
-        return null;
     }
 
     /**
