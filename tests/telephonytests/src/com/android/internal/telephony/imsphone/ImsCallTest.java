@@ -123,6 +123,20 @@ public class ImsCallTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testNullCallProfileAfterNonNull() {
+        ImsCallProfile profile = new ImsCallProfile();
+        profile.mCallType = ImsCallProfile.CALL_TYPE_VT_TX;
+
+        ImsCall imsCall = new ImsCall(mContext, profile);
+        assertNotNull(imsCall);
+        assertTrue(imsCall.wasVideoCall());
+
+        imsCall.setCallProfile(null);
+        assertTrue(imsCall.wasVideoCall());
+    }
+
+    @Test
+    @SmallTest
     public void testSetWifi() {
         ImsCall mTestImsCall = new ImsCall(mContext, mTestCallProfile);
         assertFalse(mTestImsCall.isWifiCall());
