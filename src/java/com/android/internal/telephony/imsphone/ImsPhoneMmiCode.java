@@ -1382,7 +1382,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             } else if (ar.exception instanceof ImsException) {
                 sb.append(getImsErrorMessage(ar));
             }
-        } else if (ar.result != null && (int) ar.result == CommandsInterface.SS_STATUS_UNKNOWN) {
+        } else if (ar.result != null && ar.result instanceof Integer
+                && (int) ar.result == CommandsInterface.SS_STATUS_UNKNOWN) {
             mState = State.FAILED;
             sb = null;
         } else if (isActivate()) {
