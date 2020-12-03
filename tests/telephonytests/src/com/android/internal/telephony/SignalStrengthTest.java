@@ -38,6 +38,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Unit tests for {@link IpSecConfig}. */
@@ -88,13 +90,14 @@ public class SignalStrengthTest {
     public void testParcelUnparcel() throws Exception {
         assertParcelingIsLossless(new SignalStrength());
 
+        List<Integer> NrCqiReport = new ArrayList<>(Arrays.asList(3, 2, 1));
         SignalStrength s = new SignalStrength(
                 new CellSignalStrengthCdma(-93, -132, -89, -125, 5),
                 new CellSignalStrengthGsm(-79, 2, 5),
                 new CellSignalStrengthWcdma(-94, 4, -102, -5),
                 new CellSignalStrengthTdscdma(-95, 2, -103),
-                new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1),
-                new CellSignalStrengthNr(-91, -6, 3, -80, -7, 4));
+                new CellSignalStrengthLte(-85, -91, -6, -10, 1, 12, 1),
+                new CellSignalStrengthNr(-91, -6, 3, 1, NrCqiReport, -80, -7, 4));
         assertParcelingIsLossless(s);
 
         PersistableBundle bundle = new PersistableBundle();
@@ -125,7 +128,7 @@ public class SignalStrengthTest {
 
     @Test
     public void testGetCellSignalStrengths() throws Exception {
-        CellSignalStrengthLte lte = new CellSignalStrengthLte(-85, -91, -6, -10, 12, 1);
+        CellSignalStrengthLte lte = new CellSignalStrengthLte(-85, -91, -6, -10, 1, 12, 1);
         CellSignalStrengthGsm gsm = new CellSignalStrengthGsm(-79, 2, 5);
         CellSignalStrengthCdma cdma = new CellSignalStrengthCdma(-93, -132, -89, -125, 5);
         CellSignalStrengthWcdma wcdma = new CellSignalStrengthWcdma(-94, 4, -102, -5);
@@ -166,6 +169,7 @@ public class SignalStrengthTest {
                 lteRsrp,               // rsrp
                 lteRsrq,               // rsrq
                 -25,                   // rssnr
+                CellInfo.UNAVAILABLE,  // cqiTableIndex
                 CellInfo.UNAVAILABLE,  // cqi
                 CellInfo.UNAVAILABLE); // timingAdvance
 
@@ -198,6 +202,7 @@ public class SignalStrengthTest {
                 lteRsrp,               // rsrp
                 15,                    // rsrq
                 lteRssnr,              // rssnr
+                CellInfo.UNAVAILABLE,  // cqiTableIndex
                 CellInfo.UNAVAILABLE,  // cqi
                 CellInfo.UNAVAILABLE); // timingAdvance
 
