@@ -161,6 +161,10 @@ public class ServiceStateTracker extends Handler {
     public ServiceState mSS;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ServiceState mNewSS;
+    // A placeholder service state which will always be out of service. This is broadcast to
+    // listeners when the subscription ID for a phone becomes invalid so that they get a final
+    // state update.
+    private final ServiceState mOutOfServiceSS;
 
     // This is the minimum interval at which CellInfo requests will be serviced by the modem.
     // Any requests that arrive within MinInterval of the previous reuqest will simply receive the
@@ -397,9 +401,17 @@ public class ServiceStateTracker extends Handler {
             // which seems desirable.
             mPhone.updateVoiceMail();
 
-            // If the new subscription ID isn't valid, then we don't need to do all the
-            // UI updating, so we're done.
-            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) return;
+            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) {
+                if (SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
+                    // just went from valid to invalid subId, so notify phone state listeners
+                    // with final broadcast
+                    mPhone.notifyServiceStateChangedForSubId(mOutOfServiceSS,
+                            ServiceStateTracker.this.mPrevSubId);
+                }
+                // If the new subscription ID isn't valid, then we don't need to do all the
+                // UI updating, so we're done.
+                return;
+            }
 
             Context context = mPhone.getContext();
 
@@ -643,6 +655,9 @@ public class ServiceStateTracker extends Handler {
                 .getSystemService(Context.TELEPHONY_SERVICE))
                 .isVoiceCapable();
         mUiccController = UiccController.getInstance();
+
+        mOutOfServiceSS = new ServiceState();
+        mOutOfServiceSS.setStateOutOfService();
 
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
@@ -3483,13 +3498,15 @@ public class ServiceStateTracker extends Handler {
 
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
 
-            // If the OPERATOR command hasn't returned a valid operator, but if the device has
-            // camped on a cell either to attempt registration or for emergency services, then
-            // for purposes of setting the locale, we don't care if registration fails or is
+            // If the OPERATOR command hasn't returned a valid operator or the device is on IWLAN (
+            // because operatorNumeric would be SIM's mcc/mnc when device is on IWLAN), but if the
+            // device has camped on a cell either to attempt registration or for emergency services,
+            // then for purposes of setting the locale, we don't care if registration fails or is
             // incomplete.
             // CellIdentity can return a null MCC and MNC in CDMA
             String localeOperator = operatorNumeric;
-            if (isInvalidOperatorNumeric(operatorNumeric)) {
+            if (isInvalidOperatorNumeric(operatorNumeric)
+                    || mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
                 for (CellIdentity cid : prioritizedCids) {
                     if (!TextUtils.isEmpty(cid.getPlmn())) {
                         localeOperator = cid.getPlmn();

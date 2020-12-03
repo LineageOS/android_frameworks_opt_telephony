@@ -290,6 +290,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.POWER_WHITELIST_MANAGER;
             } else if (serviceClass == SystemConfigManager.class) {
                 return Context.SYSTEM_CONFIG_SERVICE;
+            } else if (serviceClass == CarrierConfigManager.class){
+                return Context.CARRIER_CONFIG_SERVICE;
             } else if (serviceClass == ActivityManager.class) {
                 return Context.ACTIVITY_SERVICE;
             } else if (serviceClass == TelephonyManager.class) {
