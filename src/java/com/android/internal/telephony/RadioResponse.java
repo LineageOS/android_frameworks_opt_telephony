@@ -384,6 +384,23 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param voiceRegResponse Current Voice registration response as defined by VoiceRegStateResult
+     *        in 1.6/types.hal
+     */
+    public void getVoiceRegistrationStateResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_6.RegStateResult voiceRegResponse) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, voiceRegResponse);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, voiceRegResponse);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
      *        types.hal
      */
@@ -461,6 +478,24 @@ public class RadioResponse extends IRadioResponse.Stub {
             sendMessageResponse(rr.mResult, dataRegResponse);
         }
         mRil.processResponseDone(rr, responseInfo, dataRegResponse);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param dataRegResponse Current Data registration response as defined by DataRegStateResult in
+     *        1.6/types.hal
+     */
+    public void getDataRegistrationStateResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_6.RegStateResult dataRegResponse) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dataRegResponse);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, dataRegResponse);
+        }
     }
 
     /**
