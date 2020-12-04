@@ -808,6 +808,18 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.mRilCellInfoListRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
 
+    /** Get unsolicited message for cellInfoList using HAL V1_5 */
+    public void cellInfoList_1_6(int indicationType,
+            ArrayList<android.hardware.radio.V1_6.CellInfo> records) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<CellInfo> response = RIL.convertHalCellInfoList_1_6(records);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
+
+        mRil.mRilCellInfoListRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
     /** Get unsolicited message for uicc applications enablement changes. */
     public void uiccApplicationsEnablementChanged(int indicationType, boolean enabled) {
         mRil.processIndication(indicationType);
@@ -841,6 +853,12 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void networkScanResult_1_5(int indicationType,
             android.hardware.radio.V1_5.NetworkScanResult result) {
         responseNetworkScan_1_5(indicationType, result);
+    }
+
+    /** Incremental network scan results with HAL V1_6 */
+    public void networkScanResult_1_6(int indicationType,
+            android.hardware.radio.V1_6.NetworkScanResult result) {
+        responseNetworkScan_1_6(indicationType, result);
     }
 
     public void imsNetworkStateChanged(int indicationType) {
@@ -1224,6 +1242,16 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(indicationType);
 
         ArrayList<CellInfo> cellInfos = RIL.convertHalCellInfoList_1_5(result.networkInfos);
+        NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
+    }
+
+    private void responseNetworkScan_1_6(int indicationType,
+            android.hardware.radio.V1_6.NetworkScanResult result) {
+        mRil.processIndication(indicationType);
+
+        ArrayList<CellInfo> cellInfos = RIL.convertHalCellInfoList_1_6(result.networkInfos);
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));

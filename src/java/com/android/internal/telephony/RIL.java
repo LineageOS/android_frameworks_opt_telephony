@@ -4219,7 +4219,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.getCellInfoList(rr.mSerial);
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.getCellInfoList_1_6(rr.mSerial);
+
+                } else {
+                    radioProxy.getCellInfoList(rr.mSerial);
+                }
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getCellInfoList", e);
             }
@@ -7195,6 +7202,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         final long nanotime = SystemClock.elapsedRealtimeNanos();
         for (android.hardware.radio.V1_5.CellInfo record : records) {
+            response.add(CellInfo.create(record, nanotime));
+        }
+        return response;
+    }
+
+    /**
+     * Convert CellInfo defined in 1.6/types.hal to CellInfo type.
+     * @param records List of CellInfo defined in 1.6/types.hal.
+     * @return List of converted CellInfo object.
+     */
+    @VisibleForTesting
+    public static ArrayList<CellInfo> convertHalCellInfoList_1_6(
+            ArrayList<android.hardware.radio.V1_6.CellInfo> records) {
+        ArrayList<CellInfo> response = new ArrayList<>(records.size());
+
+        final long nanotime = SystemClock.elapsedRealtimeNanos();
+        for (android.hardware.radio.V1_6.CellInfo record : records) {
             response.add(CellInfo.create(record, nanotime));
         }
         return response;
