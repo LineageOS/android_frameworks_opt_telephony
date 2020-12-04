@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Build;
@@ -33,6 +34,8 @@ import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.PhoneConstants.DataState;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 
 /**
@@ -161,6 +164,16 @@ public interface PhoneInternalInterface {
     static final String REASON_RELEASED_BY_CONNECTIVITY_SERVICE = "releasedByConnectivityService";
     static final String REASON_DATA_ENABLED_OVERRIDE = "dataEnabledOverride";
     static final String REASON_IWLAN_DATA_SERVICE_DIED = "iwlanDataServiceDied";
+
+    // Reasons for Radio being powered off
+    int RADIO_POWER_REASON_USER = 0;
+    int RADIO_POWER_REASON_THERMAL = 1;
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"RADIO_POWER_REASON_"},
+        value = {
+            RADIO_POWER_REASON_USER,
+            RADIO_POWER_REASON_THERMAL})
+    public @interface RadioPowerReason {}
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = RILConstants.BAND_MODE_UNSPECIFIED; // automatic
@@ -513,7 +526,10 @@ public interface PhoneInternalInterface {
      * <strong>Note: </strong>This request is asynchronous.
      * getServiceState().getState() will not change immediately after this call.
      * registerForServiceStateChanged() to find out when the
-     * request is complete.
+     * request is complete. This will set the reason for radio power state as {@link
+     * #RADIO_POWER_REASON_USER}. This will not guarantee that the requested radio power state will
+     * actually be set. See {@link #setRadioPowerForReason(boolean, boolean, boolean, boolean, int)}
+     * for details.
      *
      * @param power true means "on", false means "off".
      */
@@ -529,7 +545,10 @@ public interface PhoneInternalInterface {
      * <strong>Note: </strong>This request is asynchronous.
      * getServiceState().getState() will not change immediately after this call.
      * registerForServiceStateChanged() to find out when the
-     * request is complete.
+     * request is complete. This will set the reason for radio power state as {@link
+     * #RADIO_POWER_REASON_USER}. This will not guarantee that the requested radio power state will
+     * actually be set. See {@link #setRadioPowerForReason(boolean, boolean, boolean, boolean, int)}
+     * for details.
      *
      * @param power true means "on", false means "off".
      * @param forEmergencyCall true means the purpose of turning radio power on is for emergency
@@ -543,7 +562,57 @@ public interface PhoneInternalInterface {
      *                   power on again with forEmergencyCall being false.
      */
     default void setRadioPower(boolean power, boolean forEmergencyCall,
-            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {}
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
+        setRadioPowerForReason(power, forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply,
+                RADIO_POWER_REASON_USER);
+    }
+
+    /**
+     * Sets the radio power on/off state (off is sometimes
+     * called "airplane mode") for the specified reason, if possible. Current state can be gotten
+     * via {@link #getServiceState()}.{@link
+     * android.telephony.ServiceState#getState() getState()}.
+     * <strong>Note: </strong>This request is asynchronous.
+     * getServiceState().getState() will not change immediately after this call.
+     * registerForServiceStateChanged() to find out when the
+     * request is complete. Radio power will not be set if it is currently off for a reason other
+     * than the reason for which it is being turned on. However, if forEmergency call is {@code
+     * true}, it will forcefully turn radio power on.
+     *
+     * @param power true means "on", false means "off".
+     * @param reason RadioPowerReason constant defining the reason why the radio power was set.
+     */
+    default void setRadioPowerForReason(boolean power, @RadioPowerReason int reason) {
+        setRadioPowerForReason(power, false, false, false, reason);
+    }
+
+    /**
+     * Sets the radio power on/off state with option to specify whether it's for emergency call
+     * (off is sometimes called "airplane mode") and option to set the reason for setting the power
+     * state. Current state can be gotten via {@link #getServiceState()}.
+     * {@link android.telephony.ServiceState#getState() getState()}.
+     * <strong>Note: </strong>This request is asynchronous.
+     * getServiceState().getState() will not change immediately after this call.
+     * registerForServiceStateChanged() to find out when the
+     * request is complete. Radio power will not be set if it is currently off for a reason other
+     * than the reason for which it is being turned on. However, if forEmergency call is {@code
+     * true}, it will forcefully turn radio power on.
+     *
+     * @param power true means "on", false means "off".
+     * @param forEmergencyCall true means the purpose of turning radio power on is for emergency
+     *                         call. No effect if power is set false.
+     * @param isSelectedPhoneForEmergencyCall true means this phone / modem is selected to place
+     *                                  emergency call after turning power on. No effect if power
+     *                                  or forEmergency is set false.
+     * @param forceApply true means always call setRadioPower HAL API without checking against
+     *                   current radio power state. It's needed when: radio was powered on into
+     *                   emergency call mode, to exit from that mode, we set radio
+     *                   power on again with forEmergencyCall being false.
+     * @param reason RadioPowerReason constant defining the reason why the radio power was set.
+     */
+    default void setRadioPowerForReason(boolean power, boolean forEmergencyCall,
+            boolean isSelectedPhoneForEmergencyCall, boolean forceApply,
+            @RadioPowerReason int reason) {}
 
     /**
      * Get the line 1 phone number (MSISDN). For CDMA phones, the MDN is returned

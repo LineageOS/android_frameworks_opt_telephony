@@ -4861,12 +4861,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
      * @param result Message that will be sent back to the requester
      * @param workSource calling Worksource
      * @param dataThrottlingAction the DataThrottlingAction that is being requested. Defined in
-     * android.hardware.radio@1.6.types.
-     * @param completionWindowSecs seconds in which full throttling has to be achieved.
+     *      android.hardware.radio@1.6.types.
+     * @param completionWindowMillis milliseconds in which full throttling has to be achieved.
      */
     @Override
     public void setDataThrottling(Message result, WorkSource workSource, int dataThrottlingAction,
-            int completionWindowSecs) {
+            long completionWindowMillis) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
@@ -4887,12 +4887,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> "
                         + requestToString(rr.mRequest)
                         + " dataThrottlingAction = " + dataThrottlingAction
-                        + " completionWindowSecs " + completionWindowSecs);
+                        + " completionWindowMillis " + completionWindowMillis);
             }
 
             try {
                 radioProxy16.setDataThrottling(rr.mSerial, dataThrottlingAction,
-                        completionWindowSecs);
+                        completionWindowMillis);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setDataThrottling", e);
             }
