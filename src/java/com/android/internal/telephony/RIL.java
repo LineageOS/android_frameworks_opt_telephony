@@ -106,7 +106,7 @@ import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.Qos;
-import android.telephony.data.QosSession;
+import android.telephony.data.QosBearerSession;
 import android.telephony.data.SliceInfo;
 import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
@@ -7383,7 +7383,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int pduSessionId = DataCallResponse.PDU_SESSION_ID_NOT_SET;
 
         List<LinkAddress> laList = new ArrayList<>();
-        List<QosSession> qosSessions = new ArrayList<>();
+        List<QosBearerSession> qosSessions = new ArrayList<>();
         SliceInfo sliceInfo = null;
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
@@ -7473,7 +7473,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             pduSessionId = result.pduSessionId;
             defaultQos = Qos.create(result.defaultQos);
             qosSessions = result.qosSessions.stream().map(session ->
-                    QosSession.create(session)).collect(Collectors.toList());
+                    QosBearerSession.create(session)).collect(Collectors.toList());
             sliceInfo = convertToSliceInfo(result.sliceInfo);
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
@@ -7542,7 +7542,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setHandoverFailureMode(handoverFailureMode)
                 .setPduSessionId(pduSessionId)
                 .setDefaultQos(defaultQos)
-                .setQosSessions(qosSessions)
+                .setQosBearerSessions(qosSessions)
                 .setSliceInfo(sliceInfo)
                 .build();
     }
