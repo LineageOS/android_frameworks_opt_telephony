@@ -409,14 +409,18 @@ public class TransportManager extends Handler {
      * @return {@code true} if the device operates in legacy mode, otherwise {@code false}.
      */
     public boolean isInLegacyMode() {
-        // Get IWLAN operation mode from the system property. If the system property is missing or
-        // mis-configured the default behavior is tied to the IRadio version. For 1.4 or above, it's
-        // AP-assisted mode, for 1.3 or below, it's legacy mode. For IRadio 1.3 or below, no matter
-        // what the configuration is, it will always be legacy mode.
+        // Get IWLAN operation mode from the system property. If the system property is configured
+        // to default or not configured, the mode is tied to IRadio version. For 1.4 or above, it's
+        // AP-assisted mode, for 1.3 or below, it's legacy mode.
         String mode = SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE);
 
-        return mode.equals(IWLAN_OPERATION_MODE_LEGACY)
-                || mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
+        if (mode.equals(IWLAN_OPERATION_MODE_AP_ASSISTED)) {
+            return false;
+        } else if (mode.equals(IWLAN_OPERATION_MODE_LEGACY)) {
+            return true;
+        }
+
+        return mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
     }
 
     /**
