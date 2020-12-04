@@ -197,6 +197,7 @@ public class CarrierKeyDownloadManager extends Handler {
         } else {
             // delete any existing alarms.
             cleanupRenewalAlarms();
+            mPhone.deleteCarrierInfoForImsiEncryption();
         }
     }
 
