@@ -1063,13 +1063,13 @@ public class EuiccCard extends UiccCard {
                 devCapBuilder.addChildAsBytes(Tags.TAG_CTX_7, versionBytes);
                 break;
             case DEV_CAP_NREPC:
-                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_9, versionBytes);
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_8, versionBytes);
                 break;
             case DEV_CAP_NR5GC:
-                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_10, versionBytes);
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_9, versionBytes);
                 break;
             case DEV_CAP_EUTRAN5GC:
-                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_11, versionBytes);
+                devCapBuilder.addChildAsBytes(Tags.TAG_CTX_10, versionBytes);
                 break;
             default:
                 loge("Invalid device capability name: " + devCap);
