@@ -308,6 +308,7 @@ public class RadioResponse extends IRadioResponse.Stub {
             android.hardware.radio.V1_2.SignalStrength signalStrength) {
         responseSignalStrength_1_2(responseInfo, signalStrength);
     }
+
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param signalStrength Current signal strength of camped/connected cells
@@ -316,6 +317,16 @@ public class RadioResponse extends IRadioResponse.Stub {
             RadioResponseInfo responseInfo,
             android.hardware.radio.V1_4.SignalStrength signalStrength) {
         responseSignalStrength_1_4(responseInfo, signalStrength);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param signalStrength Current signal strength of camped/connected cells
+     */
+    public void getSignalStrengthResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_6.SignalStrength signalStrength) {
+        responseSignalStrength_1_6(responseInfo, signalStrength);
     }
 
     /**
@@ -2325,6 +2336,20 @@ public class RadioResponse extends IRadioResponse.Stub {
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseSignalStrength_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_6.SignalStrength signalStrength) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+
+        if (rr != null) {
+            SignalStrength ret = new SignalStrength(signalStrength);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, ret);
         }
     }
 
