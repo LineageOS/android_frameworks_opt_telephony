@@ -237,10 +237,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyPhysicalChannelConfiguration(Phone sender,
+    public void notifyPhysicalChannelConfig(Phone sender,
                                                    List<PhysicalChannelConfig> configs) {
         int subId = sender.getSubId();
-        mTelephonyRegistryMgr.notifyPhysicalChannelConfigurationForSubscriber(subId, configs);
+        mTelephonyRegistryMgr.notifyPhysicalChannelConfigForSubscriber(subId, configs);
     }
 
     /**

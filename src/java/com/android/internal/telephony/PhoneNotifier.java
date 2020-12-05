@@ -118,7 +118,7 @@ public interface PhoneNotifier {
     /** Notify barring info has changed */
     void notifyBarringInfoChanged(Phone sender, @NonNull BarringInfo barringInfo);
 
-    /** Notify of change to PhysicalChannelConfiguration. */
-    void notifyPhysicalChannelConfiguration(Phone sender, List<PhysicalChannelConfig> configs);
+    /** Notify of change to PhysicalChannelConfig. */
+    void notifyPhysicalChannelConfig(Phone sender, List<PhysicalChannelConfig> configs);
 
 }
