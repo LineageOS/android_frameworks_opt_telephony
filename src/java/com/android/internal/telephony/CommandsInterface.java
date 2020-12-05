@@ -2593,9 +2593,10 @@ public interface CommandsInterface {
      * @param result Message that will be sent back to the requester
      * @param workSource calling Worksource
      * @param dataThrottlingAction the DataThrottlingAction that is being requested.
-     * Defined in android.hardware.radio@1.6.types.
-     * @param completionWindowSecs seconds in which data throttling action has to be achieved.
+     *      Defined in android.hardware.radio@1.6.types.
+     * @param completionWindowMillis milliseconds in which data throttling action has to be
+     *      achieved.
      */
     default void setDataThrottling(Message result, WorkSource workSource,
-            int dataThrottlingAction, int completionWindowSecs) {};
+            int dataThrottlingAction, long completionWindowMillis) {};
 }
