@@ -31,6 +31,7 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.PhoneConstants.DataState;
 
@@ -76,11 +77,34 @@ public interface PhoneInternalInterface {
     public static class DialArgs {
         public static class Builder<T extends Builder<T>> {
             protected UUSInfo mUusInfo;
+            protected int mClirMode = CommandsInterface.CLIR_DEFAULT;
+            protected boolean mIsEmergency;
             protected int mVideoState = VideoProfile.STATE_AUDIO_ONLY;
             protected Bundle mIntentExtras;
+            protected int mEccCategory = EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
+
+            public static DialArgs.Builder from(DialArgs dialArgs) {
+                return new DialArgs.Builder()
+                    .setUusInfo(dialArgs.uusInfo)
+                    .setClirMode(dialArgs.clirMode)
+                    .setIsEmergency(dialArgs.isEmergency)
+                    .setVideoState(dialArgs.videoState)
+                    .setIntentExtras(dialArgs.intentExtras)
+                    .setEccCategory(dialArgs.eccCategory);
+            }
 
             public T setUusInfo(UUSInfo uusInfo) {
                 mUusInfo = uusInfo;
+                return (T) this;
+            }
+
+            public T setClirMode(int clirMode) {
+                mClirMode = clirMode;
+                return (T) this;
+            }
+
+            public T setIsEmergency(boolean isEmergency) {
+                mIsEmergency = isEmergency;
                 return (T) this;
             }
 
@@ -94,6 +118,11 @@ public interface PhoneInternalInterface {
                 return (T) this;
             }
 
+            public T setEccCategory(int eccCategory) {
+                mEccCategory = eccCategory;
+                return (T) this;
+            }
+
             public PhoneInternalInterface.DialArgs build() {
                 return new DialArgs(this);
             }
@@ -102,16 +131,28 @@ public interface PhoneInternalInterface {
         /** The UUSInfo */
         public final UUSInfo uusInfo;
 
+        /** The CLIR mode to use */
+        public final int clirMode;
+
+        /** Indicates emergency call */
+        public final boolean isEmergency;
+
         /** The desired video state for the connection. */
         public final int videoState;
 
         /** The extras from the original CALL intent. */
         public final Bundle intentExtras;
 
+        /** Indicates emergency service category */
+        public final int eccCategory;
+
         protected DialArgs(Builder b) {
             this.uusInfo = b.mUusInfo;
+            this.clirMode = b.mClirMode;
+            this.isEmergency = b.mIsEmergency;
             this.videoState = b.mVideoState;
             this.intentExtras = b.mIntentExtras;
+            this.eccCategory = b.mEccCategory;
         }
     }
 

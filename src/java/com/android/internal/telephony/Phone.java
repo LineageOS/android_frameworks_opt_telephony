@@ -717,10 +717,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 Rlog.d(LOG_TAG, "Event EVENT_INITIATE_SILENT_REDIAL Received");
                 ar = (AsyncResult) msg.obj;
                 if ((ar.exception == null) && (ar.result != null)) {
-                    String dialString = (String) ar.result;
+                    SilentRedialParam result = (SilentRedialParam) ar.result;
+                    String dialString = result.dialString;
+                    int causeCode = result.causeCode;
+                    DialArgs dialArgs = result.dialArgs;
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
-                        Connection cn = dialInternal(dialString, new DialArgs.Builder().build());
+                        Connection cn = dialInternal(dialString, dialArgs);
                         Rlog.d(LOG_TAG, "Notify redial connection changed cn: " + cn);
                         if (mImsPhone != null) {
                             // Don't care it is null or not.

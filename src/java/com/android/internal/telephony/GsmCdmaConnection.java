@@ -26,6 +26,7 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -38,6 +39,7 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.telephony.Rlog;
 
 /**
@@ -158,7 +160,7 @@ public class GsmCdmaConnection extends Connection {
 
     /** This is an MO call, created when dialing */
     public GsmCdmaConnection (GsmCdmaPhone phone, String dialString, GsmCdmaCallTracker ct,
-                              GsmCdmaCall parent, boolean isEmergencyCall) {
+                              GsmCdmaCall parent, DialArgs dialArgs) {
         super(phone.getPhoneType());
         createWakeLock(phone.getContext());
         acquireWakeLock();
@@ -177,8 +179,15 @@ public class GsmCdmaConnection extends Connection {
         }
 
         mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
-        if (isEmergencyCall) {
+        if (dialArgs.isEmergency) {
             setEmergencyCallInfo(mOwner);
+
+            // There was no emergency number info found for this call, however it is
+            // still marked as an emergency number. This may happen if it was a redialed
+            // non-detectable emergency call from IMS.
+            if (getEmergencyNumberInfo() == null) {
+                setNonDetectableEmergencyCallInfo(dialArgs.eccCategory);
+            }
         }
 
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
