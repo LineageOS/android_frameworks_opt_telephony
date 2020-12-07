@@ -488,7 +488,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
             Connection connection = mPhoneUT.dial("1234567890",
                     new PhoneInternalInterface.DialArgs.Builder().build());
-            verify(mCT).dialGsm("1234567890", null, null);
+            verify(mCT).dialGsm(eq("1234567890"), any(PhoneInternalInterface.DialArgs.class));
         } catch (CallStateException e) {
             fail();
         }
@@ -505,7 +505,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
             mPhoneUT.dial("*27216505551212", new PhoneInternalInterface.DialArgs.Builder().build());
 
-            verify(mCT).dialGsm("*27216505551212", null, null);
+            verify(mCT).dialGsm(eq("*27216505551212"), any(PhoneInternalInterface.DialArgs.class));
             verify(mImsCT).hangupAllConnections();
         } catch (CallStateException e) {
             fail();
@@ -561,7 +561,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
             mPhoneUT.dial("*27216505551212",
                     new PhoneInternalInterface.DialArgs.Builder().build());
-            verify(mCT).dialGsm("*27216505551212", null, null);
+            verify(mCT).dialGsm(eq("*27216505551212"), any(PhoneInternalInterface.DialArgs.class));
             verify(mImsCT, never()).hangupAllConnections();
         } catch (CallStateException e) {
             fail();
@@ -1485,7 +1485,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Throw CallStateException(Phone.CS_FALLBACK) from ImsPhone.dial().
         doReturn(Phone.CS_FALLBACK).when(callStateException).getMessage();
-        doThrow(callStateException).when(mImsPhone).dial("*135#", dialArgs);
+        doThrow(callStateException).when(mImsPhone).dial(eq("*135#"),
+                any(PhoneInternalInterface.DialArgs.class));
 
         replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
     }

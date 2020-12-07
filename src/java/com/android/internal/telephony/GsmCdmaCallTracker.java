@@ -45,6 +45,7 @@ import android.util.EventLog;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -275,16 +276,17 @@ public class GsmCdmaCallTracker extends CallTracker {
     /**
      * clirMode is one of the CLIR_ constants
      */
-    public synchronized Connection dialGsm(String dialString, int clirMode, UUSInfo uusInfo,
-                                        Bundle intentExtras)
+    public synchronized Connection dialGsm(String dialString, DialArgs dialArgs)
             throws CallStateException {
+        int clirMode = dialArgs.clirMode;
+        UUSInfo uusInfo = dialArgs.uusInfo;
+        Bundle intentExtras = dialArgs.intentExtras;
+        boolean isEmergencyCall = dialArgs.isEmergency;
+
         // note that this triggers call state changed notif
         clearDisconnected();
 
         // Check for issues which would preclude dialing and throw a CallStateException.
-        TelephonyManager tm =
-                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
-        boolean isEmergencyCall = tm.isEmergencyNumber(dialString);
         checkForDialIssues(isEmergencyCall);
 
         String origNumber = dialString;
@@ -322,7 +324,8 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
 
         mPendingMO = new GsmCdmaConnection(mPhone, dialString, this, mForegroundCall,
-                isEmergencyCall);
+                dialArgs);
+
         if (intentExtras != null) {
             Rlog.d(LOG_TAG, "dialGsm - emergency dialer: " + intentExtras.getBoolean(
                     TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -396,18 +399,20 @@ public class GsmCdmaCallTracker extends CallTracker {
     /**
      * clirMode is one of the CLIR_ constants
      */
-    private Connection dialCdma(String dialString, int clirMode, Bundle intentExtras)
+    private Connection dialCdma(String dialString, DialArgs dialArgs)
             throws CallStateException {
+        int clirMode = dialArgs.clirMode;
+        Bundle intentExtras = dialArgs.intentExtras;
+        boolean isEmergencyCall = dialArgs.isEmergency;
+
         // note that this triggers call state changed notif
         clearDisconnected();
-
-        TelephonyManager tm =
-                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
-        boolean isEmergencyCall = tm.isEmergencyNumber(dialString);
 
         // Check for issues which would preclude dialing and throw a CallStateException.
         checkForDialIssues(isEmergencyCall);
 
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
         String origNumber = dialString;
         String operatorIsoContry = tm.getNetworkCountryIso(mPhone.getPhoneId());
         String simIsoContry = tm.getSimCountryIsoForPhone(mPhone.getPhoneId());
@@ -436,11 +441,12 @@ public class GsmCdmaCallTracker extends CallTracker {
         // That call must be idle, so place anything that's
         // there on hold
         if (mForegroundCall.getState() == GsmCdmaCall.State.ACTIVE) {
-            return dialThreeWay(dialString, intentExtras);
+            return dialThreeWay(dialString, dialArgs);
         }
 
         mPendingMO = new GsmCdmaConnection(mPhone, dialString, this, mForegroundCall,
-                isEmergencyCall);
+                dialArgs);
+
         if (intentExtras != null) {
             Rlog.d(LOG_TAG, "dialGsm - emergency dialer: " + intentExtras.getBoolean(
                     TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -490,14 +496,16 @@ public class GsmCdmaCallTracker extends CallTracker {
     }
 
     //CDMA
-    private Connection dialThreeWay(String dialString, Bundle intentExtras) {
+    private Connection dialThreeWay(String dialString, DialArgs dialArgs) {
+        Bundle intentExtras = dialArgs.intentExtras;
+
         if (!mForegroundCall.isIdle()) {
             // Check data call and possibly set mIsInEmergencyCall
             disableDataCallInEmergencyCall(dialString);
 
             // Attach the new connection to foregroundCall
             mPendingMO = new GsmCdmaConnection(mPhone, dialString, this, mForegroundCall,
-                    mIsInEmergencyCall);
+                    dialArgs);
             if (intentExtras != null) {
                 Rlog.d(LOG_TAG, "dialThreeWay - emergency dialer " + intentExtras.getBoolean(
                         TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -526,24 +534,41 @@ public class GsmCdmaCallTracker extends CallTracker {
         return null;
     }
 
-    public Connection dial(String dialString, Bundle intentExtras) throws CallStateException {
+    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
         if (isPhoneTypeGsm()) {
-            return dialGsm(dialString, CommandsInterface.CLIR_DEFAULT, intentExtras);
+            return dialGsm(dialString, dialArgs);
         } else {
-            return dialCdma(dialString, CommandsInterface.CLIR_DEFAULT, intentExtras);
+            return dialCdma(dialString, dialArgs);
         }
     }
 
     //GSM
     public Connection dialGsm(String dialString, UUSInfo uusInfo, Bundle intentExtras)
             throws CallStateException {
-        return dialGsm(dialString, CommandsInterface.CLIR_DEFAULT, uusInfo, intentExtras);
+        return dialGsm(dialString, new DialArgs.Builder<>()
+                        .setUusInfo(uusInfo)
+                        .setClirMode(CommandsInterface.CLIR_DEFAULT)
+                        .setIntentExtras(intentExtras)
+                        .build());
     }
 
     //GSM
     private Connection dialGsm(String dialString, int clirMode, Bundle intentExtras)
             throws CallStateException {
-        return dialGsm(dialString, clirMode, null, intentExtras);
+        return dialGsm(dialString, new DialArgs.Builder<>()
+                        .setClirMode(clirMode)
+                        .setIntentExtras(intentExtras)
+                        .build());
+    }
+
+    //GSM
+    public Connection dialGsm(String dialString, int clirMode, UUSInfo uusInfo, Bundle intentExtras)
+             throws CallStateException {
+        return dialGsm(dialString, new DialArgs.Builder<>()
+                        .setClirMode(clirMode)
+                        .setUusInfo(uusInfo)
+                        .setIntentExtras(intentExtras)
+                        .build());
     }
 
     public void acceptCall() throws CallStateException {

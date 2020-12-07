@@ -71,6 +71,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
@@ -162,36 +163,33 @@ public class ImsPhone extends ImsPhoneBase {
     public static class ImsDialArgs extends DialArgs {
         public static class Builder extends DialArgs.Builder<ImsDialArgs.Builder> {
             private android.telecom.Connection.RttTextStream mRttTextStream;
-            private int mClirMode = CommandsInterface.CLIR_DEFAULT;
             private int mRetryCallFailCause = ImsReasonInfo.CODE_UNSPECIFIED;
             private int mRetryCallFailNetworkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
 
             public static ImsDialArgs.Builder from(DialArgs dialArgs) {
+                if (dialArgs instanceof ImsDialArgs) {
+                    return new ImsDialArgs.Builder()
+                            .setUusInfo(dialArgs.uusInfo)
+                            .setIsEmergency(dialArgs.isEmergency)
+                            .setVideoState(dialArgs.videoState)
+                            .setIntentExtras(dialArgs.intentExtras)
+                            .setRttTextStream(((ImsDialArgs)dialArgs).rttTextStream)
+                            .setClirMode(dialArgs.clirMode)
+                            .setRetryCallFailCause(((ImsDialArgs)dialArgs).retryCallFailCause)
+                            .setRetryCallFailNetworkType(
+                                    ((ImsDialArgs)dialArgs).retryCallFailNetworkType);
+                }
                 return new ImsDialArgs.Builder()
                         .setUusInfo(dialArgs.uusInfo)
+                        .setIsEmergency(dialArgs.isEmergency)
                         .setVideoState(dialArgs.videoState)
-                        .setIntentExtras(dialArgs.intentExtras);
-            }
-
-            public static ImsDialArgs.Builder from(ImsDialArgs dialArgs) {
-                return new ImsDialArgs.Builder()
-                        .setUusInfo(dialArgs.uusInfo)
-                        .setVideoState(dialArgs.videoState)
-                        .setIntentExtras(dialArgs.intentExtras)
-                        .setRttTextStream(dialArgs.rttTextStream)
                         .setClirMode(dialArgs.clirMode)
-                        .setRetryCallFailCause(dialArgs.retryCallFailCause)
-                        .setRetryCallFailNetworkType(dialArgs.retryCallFailNetworkType);
+                        .setIntentExtras(dialArgs.intentExtras);
             }
 
             public ImsDialArgs.Builder setRttTextStream(
                     android.telecom.Connection.RttTextStream s) {
                 mRttTextStream = s;
-                return this;
-            }
-
-            public ImsDialArgs.Builder setClirMode(int clirMode) {
-                this.mClirMode = clirMode;
                 return this;
             }
 
@@ -216,15 +214,12 @@ public class ImsPhone extends ImsPhoneBase {
          */
         public final android.telecom.Connection.RttTextStream rttTextStream;
 
-        /** The CLIR mode to use */
-        public final int clirMode;
         public final int retryCallFailCause;
         public final int retryCallFailNetworkType;
 
         private ImsDialArgs(ImsDialArgs.Builder b) {
             super(b);
             this.rttTextStream = b.mRttTextStream;
-            this.clirMode = b.mClirMode;
             this.retryCallFailCause = b.mRetryCallFailCause;
             this.retryCallFailNetworkType = b.mRetryCallFailNetworkType;
         }
@@ -885,11 +880,7 @@ public class ImsPhone extends ImsPhoneBase {
     public Connection startConference(String[] participantsToDial, DialArgs dialArgs)
             throws CallStateException {
          ImsDialArgs.Builder imsDialArgsBuilder;
-         if (!(dialArgs instanceof ImsDialArgs)) {
-             imsDialArgsBuilder = ImsDialArgs.Builder.from(dialArgs);
-         } else {
-             imsDialArgsBuilder = ImsDialArgs.Builder.from((ImsDialArgs) dialArgs);
-         }
+         imsDialArgsBuilder = ImsDialArgs.Builder.from(dialArgs);
          return mCT.startConference(participantsToDial, imsDialArgsBuilder.build());
     }
 
@@ -913,12 +904,8 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         ImsDialArgs.Builder imsDialArgsBuilder;
+        imsDialArgsBuilder = ImsDialArgs.Builder.from(dialArgs);
         // Get the CLIR info if needed
-        if (!(dialArgs instanceof ImsDialArgs)) {
-            imsDialArgsBuilder = ImsDialArgs.Builder.from(dialArgs);
-        } else {
-            imsDialArgsBuilder = ImsDialArgs.Builder.from((ImsDialArgs) dialArgs);
-        }
         imsDialArgsBuilder.setClirMode(mCT.getClirMode());
 
         if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
@@ -1539,8 +1526,19 @@ public class ImsPhone extends ImsPhoneBase {
 
     /* package */ void
     initiateSilentRedial() {
-        String result = mLastDialString;
-        AsyncResult ar = new AsyncResult(null, result, null);
+        initiateSilentRedial(false, EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED);
+    }
+
+    /* package */ void
+    initiateSilentRedial(boolean isEmergency, int eccCategory) {
+        DialArgs dialArgs = new DialArgs.Builder()
+                                        .setIsEmergency(isEmergency)
+                                        .setEccCategory(eccCategory)
+                                        .build();
+        int cause = CallFailCause.LOCAL_CALL_CS_RETRY_REQUIRED;
+        AsyncResult ar = new AsyncResult(null,
+                                         new SilentRedialParam(mLastDialString, cause, dialArgs),
+                                         null);
         if (ar != null) {
             mSilentRedialRegistrants.notifyRegistrants(ar);
         }
@@ -2412,13 +2410,8 @@ public class ImsPhone extends ImsPhoneBase {
     public DialArgs updateDialArgsForVolteSilentRedial(DialArgs dialArgs, int causeCode) {
         if (dialArgs != null) {
             ImsPhone.ImsDialArgs.Builder imsDialArgsBuilder;
-            if (dialArgs instanceof ImsPhone.ImsDialArgs) {
-                imsDialArgsBuilder = ImsPhone.ImsDialArgs.Builder
-                                      .from((ImsPhone.ImsDialArgs) dialArgs);
-            } else {
-                imsDialArgsBuilder = ImsPhone.ImsDialArgs.Builder
-                                      .from(dialArgs);
-            }
+            imsDialArgsBuilder = ImsPhone.ImsDialArgs.Builder.from(dialArgs);
+
             Bundle extras = new Bundle(dialArgs.intentExtras);
             if (causeCode == CallFailCause.EMC_REDIAL_ON_VOWIFI && isWifiCallingEnabled()) {
                 extras.putString(ImsCallProfile.EXTRA_CALL_RAT_TYPE,
