@@ -594,6 +594,20 @@ public abstract class Connection {
     }
 
     /**
+     * Set the non-detectable emergency number information.
+     */
+    public void setNonDetectableEmergencyCallInfo(int eccCategory) {
+        if (!mIsEmergencyCall) {
+            mIsEmergencyCall = true;
+            mEmergencyNumberInfo = new EmergencyNumber(mAddress, ""/*countryIso*/,
+                                    ""/*mnc*/, eccCategory,
+                                    new ArrayList<String>(),
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                                    EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        }
+    }
+
+    /**
      * Set if we have known the user's intent for the call is emergency.
      *
      * This is only used to specify when the dialed number is ambiguous, identified as both
