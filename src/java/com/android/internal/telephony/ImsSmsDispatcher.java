@@ -203,17 +203,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     throw new RemoteException(
                             "Status report received with a PDU that could not be parsed.");
                 }
-                int messageRef = message.mWrappedSmsMessage.mMessageRef;
-                boolean handled = mSmsDispatchersController.handleSmsStatusReport(format, pdu);
-                if (!handled) {
-                    loge("Can not handle the status report for messageRef " + messageRef);
-                }
+                mSmsDispatchersController.handleSmsStatusReport(format, pdu);
                 try {
                     getImsManager().acknowledgeSmsReport(
                             token,
-                            messageRef,
-                            handled ? ImsSmsImplBase.STATUS_REPORT_STATUS_OK
-                                    : ImsSmsImplBase.STATUS_REPORT_STATUS_ERROR);
+                            message.mWrappedSmsMessage.mMessageRef,
+                            ImsSmsImplBase.STATUS_REPORT_STATUS_OK);
                 } catch (ImsException e) {
                     loge("Failed to acknowledgeSmsReport(). Error: " + e.getMessage());
                 }

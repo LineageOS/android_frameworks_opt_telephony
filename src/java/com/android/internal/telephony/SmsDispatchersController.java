@@ -801,9 +801,8 @@ public class SmsDispatchersController extends Handler {
      *
      * @param format the format.
      * @param pdu the pdu of the report.
-     * @return true if the report is handled successfully, false Otherwise.
      */
-    public boolean handleSmsStatusReport(String format, byte[] pdu) {
+    public void handleSmsStatusReport(String format, byte[] pdu) {
         int messageRef;
         SMSDispatcher.SmsTracker tracker;
         boolean handled = false;
@@ -848,7 +847,10 @@ public class SmsDispatchersController extends Handler {
                 }
             }
         }
-        return handled;
+
+        if (!handled) {
+            Rlog.e(TAG, "handleSmsStatusReport: can not handle the status report!");
+        }
     }
 
     private boolean triggerDeliveryIntent(SMSDispatcher.SmsTracker tracker, String format,
