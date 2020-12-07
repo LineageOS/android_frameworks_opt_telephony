@@ -21,6 +21,7 @@ import static android.telephony.TelephonyManager.ACTION_PRIMARY_SUBSCRIPTION_LIS
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
+import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DISMISS;
 import static android.telephony.TelephonyManager.EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
 import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_NAMES;
 import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE;
@@ -536,6 +537,7 @@ public class MultiSimSettingController extends Handler {
             mSubController.setDefaultDataSubId(subId);
             mSubController.setDefaultVoiceSubId(subId);
             mSubController.setDefaultSmsSubId(subId);
+            sendDefaultSubConfirmedNotification(subId);
             return;
         }
 
@@ -607,6 +609,19 @@ public class MultiSimSettingController extends Handler {
             }
             return PRIMARY_SUB_MARKED_OPPT;
         }
+    }
+
+    private void sendDefaultSubConfirmedNotification(int defaultSubId) {
+        Intent intent = new Intent();
+        intent.setAction(ACTION_PRIMARY_SUBSCRIPTION_LIST_CHANGED);
+        intent.setClassName("com.android.settings",
+                "com.android.settings.sim.SimSelectNotification");
+
+        intent.putExtra(EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE,
+                EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DISMISS);
+        intent.putExtra(EXTRA_SUBSCRIPTION_ID, defaultSubId);
+
+        mContext.sendBroadcast(intent);
     }
 
     private void sendSubChangeNotificationIfNeeded(int change, boolean dataSelected,
