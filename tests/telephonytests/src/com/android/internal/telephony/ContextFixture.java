@@ -266,6 +266,7 @@ public class ContextFixture implements TestFixture<Context> {
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
                 case Context.PERMISSION_SERVICE:
+                case Context.LEGACY_PERMISSION_SERVICE:
                     // These are final classes so cannot be mocked,
                     // return real services.
                     return TestApplication.getAppContext().getSystemService(name);

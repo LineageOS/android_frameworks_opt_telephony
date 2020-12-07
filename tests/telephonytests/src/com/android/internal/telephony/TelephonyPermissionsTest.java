@@ -36,7 +36,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ServiceManager;
-import android.permission.PermissionManager;
+import android.permission.LegacyPermissionManager;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.telephony.SubscriptionManager;
@@ -46,7 +46,7 @@ import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.util.test.FakeSettingsProvider;
-import com.android.server.pm.permission.PermissionManagerService;
+import com.android.server.pm.permission.LegacyPermissionManagerService;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -88,7 +88,7 @@ public class TelephonyPermissionsTest {
     @Mock
     private TelephonyManager mTelephonyManagerMockForSub2;
     @Mock
-    private PermissionManagerService mMockPermissionManagerService;
+    private LegacyPermissionManagerService mMockLegacyPermissionManagerService;
 
     private MockContentResolver mMockContentResolver;
     private FakeSettingsConfigProvider mFakeSettingsConfigProvider;
@@ -107,10 +107,10 @@ public class TelephonyPermissionsTest {
         when(mMockSubscriptionManager.getCompleteActiveSubscriptionIdList()).thenReturn(
                 new int[]{SUB_ID});
 
-        PermissionManager permissionManager = new PermissionManager(mMockContext, null,
-                mMockPermissionManagerService);
-        when(mMockContext.getSystemService(Context.PERMISSION_SERVICE)).thenReturn(
-                permissionManager);
+        LegacyPermissionManager legacyPermissionManager = new LegacyPermissionManager(
+                mMockLegacyPermissionManagerService);
+        when(mMockContext.getSystemService(Context.LEGACY_PERMISSION_SERVICE)).thenReturn(
+                legacyPermissionManager);
 
         // By default, assume we have no permissions or app-ops bits.
         doThrow(new SecurityException()).when(mMockContext)
@@ -325,8 +325,8 @@ public class TelephonyPermissionsTest {
         // performed by a SystemAPI in PermissionManager; this test verifies when this API returns
         // the calling package meets the requirements for device identifier access the telephony
         // check also returns true.
-        when(mMockPermissionManagerService.checkDeviceIdentifierAccess(PACKAGE, MSG, FEATURE, PID,
-                UID)).thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mMockLegacyPermissionManagerService.checkDeviceIdentifierAccess(PACKAGE, MSG, FEATURE,
+                PID, UID)).thenReturn(PackageManager.PERMISSION_GRANTED);
         assertTrue(
                 TelephonyPermissions.checkCallingOrSelfReadDeviceIdentifiers(mMockContext,
                         SUB_ID, PACKAGE, FEATURE, MSG));
@@ -616,7 +616,7 @@ public class TelephonyPermissionsTest {
                 android.Manifest.permission.READ_DEVICE_CONFIG)).thenReturn(
                 PackageManager.PERMISSION_GRANTED);
 
-        when(mMockPermissionManagerService.checkDeviceIdentifierAccess(any(), any(), any(),
+        when(mMockLegacyPermissionManagerService.checkDeviceIdentifierAccess(any(), any(), any(),
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access

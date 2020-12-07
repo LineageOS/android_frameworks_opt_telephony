@@ -53,7 +53,7 @@ import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.UserManager;
-import android.permission.PermissionManager;
+import android.permission.LegacyPermissionManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -106,6 +106,7 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.server.pm.PackageManagerService;
+import com.android.server.pm.permission.LegacyPermissionManagerService;
 import com.android.server.pm.permission.PermissionManagerService;
 
 import org.mockito.Mock;
@@ -201,6 +202,8 @@ public abstract class TelephonyTest {
     protected ServiceState mServiceState;
     @Mock
     protected PackageManagerService mMockPackageManager;
+    @Mock
+    protected LegacyPermissionManagerService mMockLegacyPermissionManager;
     @Mock
     protected PermissionManagerService mMockPermissionManager;
 
@@ -622,6 +625,7 @@ public abstract class TelephonyTest {
         mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
         mServiceManagerMockedServices.put("package", mMockPackageManager);
+        mServiceManagerMockedServices.put("legacy_permission", mMockLegacyPermissionManager);
         mServiceManagerMockedServices.put("permissionmgr", mMockPermissionManager);
         logd("mMockPermissionManager replaced");
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
@@ -829,9 +833,10 @@ public abstract class TelephonyTest {
         // appop, and device / profile owner checks). This sets up the PermissionManager to return
         // that access requirements are met.
         setIdentifierAccess(true);
-        PermissionManager permissionManager = new PermissionManager(mContext, null,
-                mMockPermissionManager);
-        doReturn(permissionManager).when(mContext).getSystemService(eq(Context.PERMISSION_SERVICE));
+        LegacyPermissionManager legacyPermissionManager =
+                new LegacyPermissionManager(mMockLegacyPermissionManager);
+        doReturn(legacyPermissionManager).when(mContext)
+                .getSystemService(Context.LEGACY_PERMISSION_SERVICE);
         // Also make sure all appop checks fails, to not interfere tests. Tests should explicitly
         // mock AppOpManager to return allowed/default mode. Note by default a mock returns 0 which
         // is MODE_ALLOWED, hence this setup is necessary.
@@ -866,9 +871,8 @@ public abstract class TelephonyTest {
 
     protected void setIdentifierAccess(boolean hasAccess) {
         doReturn(hasAccess ? PackageManager.PERMISSION_GRANTED
-                : PackageManager.PERMISSION_DENIED).when(
-                mMockPermissionManager).checkDeviceIdentifierAccess(any(), any(), any(), anyInt(),
-                anyInt());
+                : PackageManager.PERMISSION_DENIED).when(mMockLegacyPermissionManager)
+                .checkDeviceIdentifierAccess(any(), any(), any(), anyInt(), anyInt());
     }
 
     protected void setCarrierPrivileges(boolean hasCarrierPrivileges) {
