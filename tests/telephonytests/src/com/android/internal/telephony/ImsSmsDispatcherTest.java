@@ -180,8 +180,6 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         pdu[2] = (byte) messageRef;
 
         when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
-        when(mSmsDispatchersController.handleSmsStatusReport(eq(SmsMessage.FORMAT_3GPP), eq(pdu)))
-                .thenReturn(true);
 
         // Receive the status report
         mImsSmsDispatcher
