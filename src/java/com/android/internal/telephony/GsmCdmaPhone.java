@@ -314,6 +314,8 @@ public class GsmCdmaPhone extends Phone {
                 EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED, null, false);
 
         loadTtyMode();
+
+        CallManager.getInstance().registerPhone(this);
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
     }
 
