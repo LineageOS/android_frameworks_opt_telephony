@@ -4383,8 +4383,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * - {@link android.telephony.TelephonyManager#CARD_POWER_UP}
      * - {@link android.telephony.TelephonyManager#CARD_POWER_UP_PASS_THROUGH}
      **/
-    public void setSimPowerState(int state, WorkSource workSource) {
-        mCi.setSimCardPower(state, null, workSource);
+    public void setSimPowerState(int state, Message result, WorkSource workSource) {
+        mCi.setSimCardPower(state, result, workSource);
     }
 
     public void setCarrierTestOverride(String mccmnc, String imsi, String iccid, String gid1,
