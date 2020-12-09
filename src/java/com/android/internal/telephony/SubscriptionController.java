@@ -38,6 +38,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.ParcelUuid;
+import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
@@ -68,6 +69,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -488,9 +490,6 @@ public class SubscriptionController extends ISub.Stub {
             notifyOpportunisticSubscriptionInfoChanged();
         }
         metrics.updateActiveSubscriptionInfoList(subInfos);
-        for (Phone phone : PhoneFactory.getPhones()) {
-            phone.getVoiceCallSessionStats().onActiveSubscriptionInfoChanged(subInfos);
-        }
     }
 
     /**
@@ -739,16 +738,18 @@ public class SubscriptionController extends ISub.Stub {
      * @hide
      */
     public SubscriptionInfo getSubscriptionInfo(int subId) {
-        // check cache for active subscriptions first, before querying db
-        for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
-            if (subInfo.getSubscriptionId() == subId) {
-                return subInfo;
+        synchronized (mSubInfoListLock) {
+            // check cache for active subscriptions first, before querying db
+            for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId) {
+                    return subInfo;
+                }
             }
-        }
-        // check cache for opportunistic subscriptions too, before querying db
-        for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
-            if (subInfo.getSubscriptionId() == subId) {
-                return subInfo;
+            // check cache for opportunistic subscriptions too, before querying db
+            for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
+                if (subInfo.getSubscriptionId() == subId) {
+                    return subInfo;
+                }
             }
         }
 
@@ -899,11 +900,17 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    private List<SubscriptionInfo> makeCacheListCopyWithLock(List<SubscriptionInfo> cacheSubList) {
+        synchronized (mSubInfoListLock) {
+            return new ArrayList<>(cacheSubList);
+        }
+    }
+
     @Deprecated
     @UnsupportedAppUsage
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
         return getSubscriptionInfoListFromCacheHelper(callingPackage, null,
-                mCacheActiveSubInfoList);
+                makeCacheListCopyWithLock(mCacheActiveSubInfoList));
     }
 
     /**
@@ -917,7 +924,7 @@ public class SubscriptionController extends ISub.Stub {
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage,
             String callingFeatureId) {
         return getSubscriptionInfoListFromCacheHelper(callingPackage, callingFeatureId,
-                mCacheActiveSubInfoList);
+                makeCacheListCopyWithLock(mCacheActiveSubInfoList));
     }
 
     /**
@@ -928,13 +935,13 @@ public class SubscriptionController extends ISub.Stub {
     public void refreshCachedActiveSubscriptionInfoList() {
         boolean opptSubListChanged;
 
-        synchronized (mSubInfoListLock) {
-            List<SubscriptionInfo> activeSubscriptionInfoList = getSubInfo(
-                    SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
-                    + SubscriptionManager.SUBSCRIPTION_TYPE + "="
-                    + SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM,
-                    null);
+        List<SubscriptionInfo> activeSubscriptionInfoList = getSubInfo(
+                SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
+                + SubscriptionManager.SUBSCRIPTION_TYPE + "="
+                + SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM,
+                null);
 
+        synchronized (mSubInfoListLock) {
             if (activeSubscriptionInfoList != null) {
                 // Log when active sub info changes.
                 if (mCacheActiveSubInfoList.size() != activeSubscriptionInfoList.size()
@@ -949,10 +956,6 @@ public class SubscriptionController extends ISub.Stub {
                 logd("activeSubscriptionInfoList is null.");
                 mCacheActiveSubInfoList.clear();
             }
-
-            // Refresh cached opportunistic sub list and detect whether it's changed.
-            refreshCachedOpportunisticSubscriptionInfoList();
-
             if (DBG_CACHE) {
                 if (!mCacheActiveSubInfoList.isEmpty()) {
                     for (SubscriptionInfo si : mCacheActiveSubInfoList) {
@@ -964,6 +967,9 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
+
+        // Refresh cached opportunistic sub list and detect whether it's changed.
+        refreshCachedOpportunisticSubscriptionInfoList();
     }
 
     @Deprecated
@@ -1530,12 +1536,14 @@ public class SubscriptionController extends ISub.Stub {
         // validate the given info - does it exist in the active subscription list
         int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         int slotIndex = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-        for (SubscriptionInfo info : mCacheActiveSubInfoList) {
-            if ((info.getSubscriptionType() == subscriptionType)
-                    && info.getIccId().equalsIgnoreCase(uniqueId)) {
-                subId = info.getSubscriptionId();
-                slotIndex = info.getSimSlotIndex();
-                break;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo info : mCacheActiveSubInfoList) {
+                if ((info.getSubscriptionType() == subscriptionType)
+                        && info.getIccId().equalsIgnoreCase(uniqueId)) {
+                    subId = info.getSubscriptionId();
+                    slotIndex = info.getSimSlotIndex();
+                    break;
+                }
             }
         }
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
@@ -1786,6 +1794,66 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Validate whether the NAME_SOURCE_SIM_PNN, NAME_SOURCE_SIM_SPN and
+     * NAME_SOURCE_CARRIER exist or not.
+     */
+    @VisibleForTesting
+    public boolean isExistingNameSourceStillValid(SubscriptionInfo subInfo) {
+
+        int subId = subInfo.getSubscriptionId();
+        int phoneId = getPhoneId(subInfo.getSubscriptionId());
+
+        Phone phone = PhoneFactory.getPhone(phoneId);
+        if (phone == null) {
+            return true;
+        }
+
+        String spn;
+
+        switch (subInfo.getNameSource()) {
+            case SubscriptionManager.NAME_SOURCE_SIM_PNN:
+                String pnn = phone.getPlmn();
+                return !TextUtils.isEmpty(pnn);
+            case SubscriptionManager.NAME_SOURCE_SIM_SPN:
+                spn = getServiceProviderName(phoneId);
+                return !TextUtils.isEmpty(spn);
+            case SubscriptionManager.NAME_SOURCE_CARRIER:
+                // Can not validate eSIM since it should not override with a lower priority source
+                // if the name is actually coming from eSIM and not from carrier config.
+                if (subInfo.isEmbedded()) {
+                    return true;
+                }
+                CarrierConfigManager configLoader =
+                        mContext.getSystemService(CarrierConfigManager.class);
+                PersistableBundle config =
+                        configLoader.getConfigForSubId(subId);
+                if (config == null) {
+                    return true;
+                }
+                boolean isCarrierNameOverride = config.getBoolean(
+                        CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL, false);
+                String carrierName = config.getString(
+                        CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+                spn = getServiceProviderName(phoneId);
+                return isCarrierNameOverride
+                        || (TextUtils.isEmpty(spn) && !TextUtils.isEmpty(carrierName));
+            case SubscriptionManager.NAME_SOURCE_CARRIER_ID:
+            case SubscriptionManager.NAME_SOURCE_USER_INPUT:
+                return true;
+        }
+        return false;
+    }
+
+    @VisibleForTesting
+    public String getServiceProviderName(int phoneId) {
+        UiccProfile profile = mUiccController.getUiccProfileForPhone(phoneId);
+        if (profile == null) {
+            return null;
+        }
+        return profile.getServiceProviderName();
+    }
+
+    /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
@@ -1810,12 +1878,17 @@ public class SubscriptionController extends ISub.Stub {
             // if there is no sub in the db, return 0 since subId does not exist in db
             if (allSubInfo == null || allSubInfo.isEmpty()) return 0;
             for (SubscriptionInfo subInfo : allSubInfo) {
+                int subInfoNameSource = subInfo.getNameSource();
+                boolean isHigherPriority = (getNameSourcePriority(subInfoNameSource)
+                        > getNameSourcePriority(nameSource));
+                boolean isEqualPriorityAndName = (getNameSourcePriority(subInfoNameSource)
+                        == getNameSourcePriority(nameSource))
+                        && (TextUtils.equals(displayName, subInfo.getDisplayName()));
                 if (subInfo.getSubscriptionId() == subId
-                        && (getNameSourcePriority(subInfo.getNameSource())
-                                > getNameSourcePriority(nameSource)
-                        || (displayName != null && displayName.equals(subInfo.getDisplayName())))) {
-                    logd("Name source " + subInfo.getNameSource() + "'s priority "
-                            + getNameSourcePriority(subInfo.getNameSource()) + " is greater than "
+                        && isExistingNameSourceStillValid(subInfo)
+                        && (isHigherPriority || isEqualPriorityAndName)) {
+                    logd("Name source " + subInfoNameSource + "'s priority "
+                            + getNameSourcePriority(subInfoNameSource) + " is greater than "
                             + "name source " + nameSource + "'s priority "
                             + getNameSourcePriority(nameSource) + ", return now.");
                     return 0;
@@ -2752,11 +2825,13 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubscriptionVisible(int subId) {
-        for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
-            if (info.getSubscriptionId() == subId) {
-                // If group UUID is null, it's stand alone opportunistic profile. So it's visible.
-                // otherwise, it's bundled opportunistic profile, and is not visible.
-                return info.getGroupUuid() == null;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo info : mCacheOpportunisticSubInfoList) {
+                if (info.getSubscriptionId() == subId) {
+                    // If group UUID is null, it's stand alone opportunistic profile. So it's
+                    // visible. Otherwise, it's bundled opportunistic profile, and is not visible.
+                    return info.getGroupUuid() == null;
+                }
             }
         }
 
@@ -3235,8 +3310,8 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public List<SubscriptionInfo> getOpportunisticSubscriptions(String callingPackage,
             String callingFeatureId) {
-        return getSubscriptionInfoListFromCacheHelper(
-                callingPackage, callingFeatureId, mCacheOpportunisticSubInfoList);
+        return getSubscriptionInfoListFromCacheHelper(callingPackage, callingFeatureId,
+                makeCacheListCopyWithLock(mCacheOpportunisticSubInfoList));
     }
 
     /**
@@ -3899,8 +3974,14 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    // Helper function of getOpportunisticSubscriptions and getActiveSubscriptionInfoList.
-    // They are doing similar things except operating on different cache.
+    /**
+     * Helper function of getOpportunisticSubscriptions and getActiveSubscriptionInfoList.
+     * They are doing similar things except operating on different cache.
+     *
+     * NOTE: the cacheSubList passed in is a *copy* of mCacheActiveSubInfoList or
+     * mCacheOpportunisticSubInfoList, so mSubInfoListLock is not required to access it. Also, this
+     * method may modify cacheSubList depending on the permissions the caller has.
+     */
     private List<SubscriptionInfo> getSubscriptionInfoListFromCacheHelper(
             String callingPackage, String callingFeatureId, List<SubscriptionInfo> cacheSubList) {
         boolean canReadPhoneState = false;
@@ -3929,37 +4010,30 @@ public class SubscriptionController extends ISub.Stub {
             // the identifier and phone number access checks are not required.
         }
 
-        synchronized (mSubInfoListLock) {
-            // If the caller can read all phone state, just return the full list.
-            if (canReadIdentifiers && canReadPhoneNumber) {
-                return new ArrayList<>(cacheSubList);
-            }
-            // Filter the list to only include subscriptions which the caller can manage.
-            List<SubscriptionInfo> subscriptions = new ArrayList<>(cacheSubList.size());
-            for (SubscriptionInfo subscriptionInfo : cacheSubList) {
-                int subId = subscriptionInfo.getSubscriptionId();
-                boolean hasCarrierPrivileges = TelephonyPermissions.checkCarrierPrivilegeForSubId(
-                        mContext, subId);
-                // If the caller does not have the READ_PHONE_STATE permission nor carrier
-                // privileges then they cannot access the current subscription.
-                if (!canReadPhoneState && !hasCarrierPrivileges) {
-                    continue;
-                }
-                // If the caller has carrier privileges then they are granted access to all
-                // identifiers for their subscription.
-                if (hasCarrierPrivileges) {
-                    subscriptions.add(subscriptionInfo);
-                } else {
-                    // The caller does not have carrier privileges for this subId, filter the
-                    // identifiers in the subscription based on the results of the initial
-                    // permission checks.
-                    subscriptions.add(
-                            conditionallyRemoveIdentifiers(subscriptionInfo, canReadIdentifiers,
-                                    canReadPhoneNumber));
-                }
-            }
-            return subscriptions;
+        if (canReadIdentifiers && canReadPhoneNumber) {
+            return cacheSubList;
         }
+        // Filter the list to only include subscriptions which the caller can manage.
+        for (int subIndex = cacheSubList.size() - 1; subIndex >= 0; subIndex--) {
+            SubscriptionInfo subscriptionInfo = cacheSubList.get(subIndex);
+
+            int subId = subscriptionInfo.getSubscriptionId();
+            boolean hasCarrierPrivileges = TelephonyPermissions.checkCarrierPrivilegeForSubId(
+                    mContext, subId);
+            // If the caller has carrier privileges then they are granted access to all
+            // identifiers for their subscription.
+            if (hasCarrierPrivileges) continue;
+
+            cacheSubList.remove(subIndex);
+            if (canReadPhoneState) {
+                // The caller does not have carrier privileges for this subId, filter the
+                // identifiers in the subscription based on the results of the initial
+                // permission checks.
+                cacheSubList.add(subIndex, conditionallyRemoveIdentifiers(
+                        subscriptionInfo, canReadIdentifiers, canReadPhoneNumber));
+            }
+        }
+        return cacheSubList;
     }
 
     /**
@@ -4074,13 +4148,12 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private void refreshCachedOpportunisticSubscriptionInfoList() {
+        List<SubscriptionInfo> subList = getSubInfo(
+                SubscriptionManager.IS_OPPORTUNISTIC + "=1 AND ("
+                        + SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
+                        + SubscriptionManager.IS_EMBEDDED + "=1)", null);
         synchronized (mSubInfoListLock) {
             List<SubscriptionInfo> oldOpptCachedList = mCacheOpportunisticSubInfoList;
-
-            List<SubscriptionInfo> subList = getSubInfo(
-                    SubscriptionManager.IS_OPPORTUNISTIC + "=1 AND ("
-                            + SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
-                            + SubscriptionManager.IS_EMBEDDED + "=1)", null);
 
             if (subList != null) {
                 subList.sort(SUBSCRIPTION_INFO_COMPARATOR);
@@ -4116,9 +4189,11 @@ public class SubscriptionController extends ISub.Stub {
     private boolean shouldDisableSubGroup(ParcelUuid groupUuid) {
         if (groupUuid == null) return false;
 
-        for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
-            if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
-                return false;
+        synchronized (mSubInfoListLock) {
+            for (SubscriptionInfo activeInfo : mCacheActiveSubInfoList) {
+                if (!activeInfo.isOpportunistic() && groupUuid.equals(activeInfo.getGroupUuid())) {
+                    return false;
+                }
             }
         }
 

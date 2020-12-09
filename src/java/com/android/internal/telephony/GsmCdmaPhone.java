@@ -839,6 +839,10 @@ public class GsmCdmaPhone extends Phone {
         super.notifyServiceStateChangedP(ss);
     }
 
+    void notifyServiceStateChangedForSubId(ServiceState ss, int subId) {
+        super.notifyServiceStateChangedPForSubId(ss, subId);
+    }
+
     /**
      * Notify that the cell location has changed.
      *

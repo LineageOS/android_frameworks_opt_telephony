@@ -2883,9 +2883,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
 
             String callId = imsCall.getSession().getCallId();
-            EmergencyNumberTracker emergencyNumberTracker = conn.getEmergencyNumberTracker();
+            EmergencyNumberTracker emergencyNumberTracker = null;
+            EmergencyNumber num = null;
+
+            if (conn != null) {
+                emergencyNumberTracker = conn.getEmergencyNumberTracker();
+                num = conn.getEmergencyNumberInfo();
+            }
+
             mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
-                    reasonInfo, mCallQualityMetrics.get(callId), conn.getEmergencyNumberInfo(),
+                    reasonInfo, mCallQualityMetrics.get(callId), num,
                     getNetworkCountryIso(), emergencyNumberTracker != null
                     ? emergencyNumberTracker.getEmergencyNumberDbVersion()
                     : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
@@ -2926,10 +2933,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     // Drop pending MO. We should address incoming call first
                     mPendingMO = null;
                 }
-            }
-
-            if (conn != null) {
-                conn.onRemoteDisconnect(reasonInfo.getExtraMessage());
             }
 
             if (mHoldSwitchingState == HoldSwapState.SWAPPING_ACTIVE_AND_HELD) {
@@ -3735,9 +3738,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             callState = Call.State.DIALING;
         }
         int cause = getDisconnectCauseFromReasonInfo(reasonInfo, callState);
-        if (conn != null) {
-            conn.onRemoteDisconnect(reasonInfo.getExtraMessage());
-        }
 
         processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 

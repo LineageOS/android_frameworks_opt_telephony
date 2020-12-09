@@ -288,6 +288,7 @@ public class CarrierDisplayNameResolver {
     private CarrierDisplayNameData getCarrierDisplayNameFromEf() {
         CarrierDisplayNameConditionRule displayRule = getDisplayRule();
 
+        String registeredPlmnName = getServiceState().getOperatorAlpha();
         String registeredPlmnNumeric = getServiceState().getOperatorNumeric();
         List<String> efSpdi = getEfSpdi();
 
@@ -297,8 +298,6 @@ public class CarrierDisplayNameResolver {
         // All the PLMNs will be considered HOME PLMNs if there is a brand override.
         boolean isRoaming = getServiceState().getRoaming()
                 && !efSpdi.contains(registeredPlmnNumeric);
-        boolean showSpn = displayRule.shouldShowSpn(isRoaming);
-        boolean showPlmn = displayRule.shouldShowPnn(isRoaming);
         String spn = getEfSpn();
 
         // Resolve the PLMN network name
@@ -306,20 +305,28 @@ public class CarrierDisplayNameResolver {
         List<PlmnNetworkName> efPnn = getEfPnn();
 
         String plmn = null;
-        if (efOpl.isEmpty()) {
-            // If the EF_OPL is not present, then the first record in EF_PNN is used for the
-            // default network name when registered in the HPLMN or an EHPLMN(if the EHPLMN list
-            // is present).
-            plmn = efPnn.isEmpty() ? "" : getPlmnNetworkName(efPnn.get(0));
+        if (isRoaming) {
+            plmn = registeredPlmnName;
         } else {
-            // TODO: Check the TAC/LAC & registered PLMN numeric in OPL list to determine which
-            // PLMN name should be used to override the current one.
+            if (efOpl.isEmpty()) {
+                // If the EF_OPL is not present, then the first record in EF_PNN is used for the
+                // default network name when registered in the HPLMN or an EHPLMN(if the EHPLMN
+                // list is present).
+                plmn = efPnn.isEmpty() ? "" : getPlmnNetworkName(efPnn.get(0));
+            } else {
+                // TODO: Check the TAC/LAC & registered PLMN numeric in OPL list to determine which
+                // PLMN name should be used to override the current one.
+            }
         }
 
         // If no PLMN override is present, then the PLMN should be displayed numerically.
         if (TextUtils.isEmpty(plmn)) {
-            plmn = registeredPlmnNumeric;
+            plmn = TextUtils.isEmpty(registeredPlmnName) ? registeredPlmnNumeric
+                    : registeredPlmnName;
         }
+
+        boolean showSpn = displayRule.shouldShowSpn(isRoaming, spn);
+        boolean showPlmn = TextUtils.isEmpty(spn) || displayRule.shouldShowPlmn(isRoaming, plmn);
 
         return new CarrierDisplayNameData.Builder()
                 .setSpn(spn)
@@ -342,7 +349,11 @@ public class CarrierDisplayNameResolver {
         // Override the spn, data spn, plmn by wifi-calling
         String wfcSpn = wfcFormatter.formatVoiceName(rawCarrierDisplayNameData.getSpn());
         String wfcDataSpn = wfcFormatter.formatDataName(rawCarrierDisplayNameData.getSpn());
-        String wfcPlmn = wfcFormatter.formatVoiceName(rawCarrierDisplayNameData.getPlmn());
+        List<PlmnNetworkName> efPnn = getEfPnn();
+        String plmn = efPnn.isEmpty() ? "" : getPlmnNetworkName(efPnn.get(0));
+        String wfcPlmn = wfcFormatter.formatVoiceName(
+                TextUtils.isEmpty(plmn) ? rawCarrierDisplayNameData.getPlmn() : plmn);
+
         CarrierDisplayNameData result = rawCarrierDisplayNameData;
         if (!TextUtils.isEmpty(wfcSpn) && !TextUtils.isEmpty(wfcDataSpn)) {
             result = new CarrierDisplayNameData.Builder()
@@ -366,12 +377,15 @@ public class CarrierDisplayNameResolver {
      */
     private CarrierDisplayNameData getOutOfServiceDisplayName(CarrierDisplayNameData data) {
         // Out of service/Power off/Emergency Only override
-        // 1) In flight mode(service state is ServiceState.STATE_POWER_OFF), or the service
-        //    state is ServiceState.STATE_OUT_OF_SERVICE but emergency call is not allowed.
+        // 1) In flight mode (service state is ServiceState.STATE_POWER_OFF).
+        //    showPlmn = true
+        //    Only show null as PLMN
+        //
+        // 2) Service state is ServiceState.STATE_OUT_OF_SERVICE but emergency call is not allowed.
         //    showPlmn = true
         //    Only show "No Service" as PLMN
         //
-        // 2) Out of service but emergency call is allowed.
+        // 3) Out of service but emergency call is allowed.
         //    showPlmn = true
         //    Only show "Emergency call only" as PLMN
         String plmn = null;
@@ -380,8 +394,10 @@ public class CarrierDisplayNameResolver {
         boolean forceDisplayNoService =
                 mPhone.getServiceStateTracker().shouldForceDisplayNoService() && !isSimReady;
         ServiceState ss = getServiceState();
-        if (ss.getState() == ServiceState.STATE_POWER_OFF
-                || forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
+        if (ss.getState() == ServiceState.STATE_POWER_OFF && !forceDisplayNoService
+                && !Phone.isEmergencyCallOnly()) {
+            plmn = null;
+        } else if (forceDisplayNoService || !Phone.isEmergencyCallOnly()) {
             plmn = mContext.getResources().getString(
                     com.android.internal.R.string.lockscreen_carrier_default);
         } else {
@@ -406,6 +422,10 @@ public class CarrierDisplayNameResolver {
                 if (DBG) {
                     Rlog.d(TAG, "CarrierName override by wifi-calling " + data);
                 }
+            } else if (getServiceState().getState() == ServiceState.STATE_POWER_OFF) {
+                // data in service due to IWLAN but APM on and WFC not available
+                data = getOutOfServiceDisplayName(data);
+                if (DBG) Rlog.d(TAG, "Out of service carrierName (APM) " + data);
             }
         } else {
             data = getOutOfServiceDisplayName(data);
@@ -452,16 +472,22 @@ public class CarrierDisplayNameResolver {
             mDisplayConditionBitmask = carrierDisplayConditionBitmask;
         }
 
-        boolean shouldShowSpn(boolean isRoaming) {
-            return !isRoaming || ((mDisplayConditionBitmask
+        boolean shouldShowSpn(boolean isRoaming, String spn) {
+            //Check if show SPN is required when roaming.
+            Boolean showSpnInRoaming = ((mDisplayConditionBitmask
                     & IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN)
                     == IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN);
+
+            return !TextUtils.isEmpty(spn) && (!isRoaming || showSpnInRoaming);
         }
 
-        boolean shouldShowPnn(boolean isRoaming) {
-            return isRoaming || ((mDisplayConditionBitmask
+        boolean shouldShowPlmn(boolean isRoaming, String plmn) {
+            // Check if show PLMN is required when not roaming.
+            Boolean showPlmnInNotRoaming = ((mDisplayConditionBitmask
                     & IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN)
                     == IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN);
+
+            return !TextUtils.isEmpty(plmn) && (isRoaming || showPlmnInNotRoaming);
         }
 
         @Override

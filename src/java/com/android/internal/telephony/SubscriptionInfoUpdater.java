@@ -340,7 +340,6 @@ public class SubscriptionInfoUpdater extends Handler {
                 Context.TELEPHONY_SERVICE)).getActiveModemCount();
         // For inactive modems, reset its states.
         for (int phoneId = activeModemCount; phoneId < SUPPORTED_MODEM_COUNT; phoneId++) {
-            SubscriptionController.getInstance().clearSubInfoRecord(phoneId);
             sIccId[phoneId] = null;
             sSimCardState[phoneId] = TelephonyManager.SIM_STATE_UNKNOWN;
             sSimApplicationState[phoneId] = TelephonyManager.SIM_STATE_UNKNOWN;

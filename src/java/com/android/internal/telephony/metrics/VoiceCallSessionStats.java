@@ -37,7 +37,6 @@ import android.os.SystemClock;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DisconnectCause;
 import android.telephony.ServiceState;
-import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
@@ -74,13 +73,6 @@ public class VoiceCallSessionStats {
     /** Bitmask value of unknown audio codecs. */
     private static final long AUDIO_CODEC_UNKNOWN = 1L << AudioCodec.AUDIO_CODEC_UNKNOWN;
 
-    /**
-     * Value denoting the carrier ID being unknown.
-     *
-     * <p>NOTE: 0 is unused in {@code carrier_list.textpb} (it starts from 1).
-     */
-    private static final int CARRIER_ID_UNKNOWN = 0;
-
     /** Holds the audio codec bitmask value for CS calls. */
     private static final SparseLongArray CS_CODEC_MAP = buildGsmCdmaCodecMap();
 
@@ -106,7 +98,6 @@ public class VoiceCallSessionStats {
 
     private final int mPhoneId;
     private final Phone mPhone;
-    private int mCarrierId = CARRIER_ID_UNKNOWN;
 
     private final PersistAtomsStorage mAtomsStorage =
             PhoneFactory.getMetricsCollector().getAtomsStorage();
@@ -218,18 +209,6 @@ public class VoiceCallSessionStats {
     }
 
     /* general & misc. */
-
-    /** Updates internal states when carrier changes. */
-    public synchronized void onActiveSubscriptionInfoChanged(List<SubscriptionInfo> subInfos) {
-        int slotId = getSimSlotId();
-        if (subInfos != null) {
-            for (SubscriptionInfo subInfo : subInfos) {
-                if (subInfo.getSimSlotIndex() == slotId) {
-                    mCarrierId = subInfo.getCarrierId();
-                }
-            }
-        }
-    }
 
     /** Updates internal states when audio codec for a call is changed. */
     public synchronized void onAudioCodecChanged(Connection conn, int audioQuality) {
@@ -344,7 +323,7 @@ public class VoiceCallSessionStats {
             proto.simSlotIndex = getSimSlotId();
             proto.isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
             proto.isEsim = isEsim();
-            proto.carrierId = mCarrierId;
+            proto.carrierId = mPhone.getCarrierId();
             proto.srvccCompleted = false;
             proto.srvccFailureCount = 0L;
             proto.srvccCancellationCount = 0L;
@@ -441,7 +420,7 @@ public class VoiceCallSessionStats {
 
     private void updateRatTracker(ServiceState state) {
         int rat = getRat(state);
-        mRatUsage.add(mCarrierId, rat, getTimeMillis(), getConnectionIds());
+        mRatUsage.add(mPhone.getCarrierId(), rat, getTimeMillis(), getConnectionIds());
         for (int i = 0; i < mCallProtos.size(); i++) {
             VoiceCallSession proto = mCallProtos.valueAt(i);
             if (proto.ratAtEnd != rat) {

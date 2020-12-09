@@ -354,6 +354,10 @@ public class SIMRecords extends IccRecords {
     @Override
     public void setVoiceMailNumber(String alphaTag, String voiceNumber,
             Message onComplete) {
+        if (mDestroyed.get()) {
+            return;
+        }
+
         if (mIsVoiceMailFixed) {
             AsyncResult.forMessage((onComplete)).exception =
                     new IccVmFixedException("Voicemail number is fixed by operator");

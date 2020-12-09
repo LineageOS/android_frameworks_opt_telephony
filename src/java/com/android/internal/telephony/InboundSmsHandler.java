@@ -24,6 +24,7 @@ import static android.provider.Telephony.Sms.Intents.RESULT_SMS_NULL_PDU;
 import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_PROTECTED_STORAGE_UNAVAILABLE;
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
+import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
@@ -84,6 +85,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 /**
@@ -164,7 +166,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int EVENT_BROADCAST_SMS = 2;
 
     /** Message from resultReceiver notifying {@link WaitingState} of a completed broadcast. */
-    private static final int EVENT_BROADCAST_COMPLETE = 3;
+    public static final int EVENT_BROADCAST_COMPLETE = 3;
 
     /** Sent on exit from {@link WaitingState} to return to idle after sending all broadcasts. */
     private static final int EVENT_RETURN_TO_IDLE = 4;
@@ -260,6 +262,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         others in order to update metrics. */
     private boolean mLastSmsWasInjected = false;
 
+    private List<SmsFilter> mSmsFilters;
+
     /**
      * Create a new SMS broadcast helper.
      * @param name the class name for logging
@@ -288,6 +292,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         mPowerWhitelistManager =
                 (PowerWhitelistManager) mContext.getSystemService(Context.POWER_WHITELIST_MANAGER);
         mCellBroadcastServiceManager = new CellBroadcastServiceManager(context, phone);
+
+        mSmsFilters = createDefaultSmsFilters();
 
         addState(mDefaultState);
         addState(mStartupState, mDefaultState);
@@ -1051,18 +1057,23 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
-        if (block) {
-            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
-                    DELETE_PERMANENTLY);
-            log("processMessagePart: returning false as the phone number is blocked",
-                    tracker.getMessageId());
-            return false;
-        }
-
+        // Always invoke SMS filters, even if the number ends up being blocked, to prevent
+        // surprising bugs due to blocking numbers that happen to be used for visual voicemail SMS
+        // or other carrier system messages.
         boolean filterInvoked = filterSms(
-            pdus, destPort, tracker, resultReceiver, true /* userUnlocked */);
+                pdus, destPort, tracker, resultReceiver, true /* userUnlocked */, block);
 
         if (!filterInvoked) {
+            // Block now if the filter wasn't invoked. Otherwise, it will be the responsibility of
+            // the filter to delete the SMS once processing completes.
+            if (block) {
+                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
+                        DELETE_PERMANENTLY);
+                log("processMessagePart: returning false as the phone number is blocked",
+                        tracker.getMessageId());
+                return false;
+            }
+
             dispatchSmsDeliveryIntent(pdus, format, destPort, resultReceiver,
                     tracker.isClass0(), tracker.getSubId(), tracker.getMessageId());
         }
@@ -1088,7 +1099,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (destPort == -1) {
             // This is a regular SMS - hand it to the carrier or system app for filtering.
             boolean filterInvoked = filterSms(
-                pdus, destPort, tracker, resultReceiver, false /* userUnlocked */);
+                    pdus, destPort, tracker, resultReceiver, false /* userUnlocked */,
+                    false /* block */);
             if (filterInvoked) {
                 // filter invoked, wait for it to return the result.
                 return true;
@@ -1136,53 +1148,100 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
+     * Creates the default filters used to filter SMS messages.
+     *
+     * <p>Currently 3 filters exist: the carrier package, the VisualVoicemailSmsFilter, and the
+     * missed incoming call SMS filter.
+     *
+     * <p>Since the carrier filter is asynchronous, if a message passes through the carrier filter,
+     * the remaining filters will be applied in the callback.
+     */
+    private List<SmsFilter> createDefaultSmsFilters() {
+        List<SmsFilter> smsFilters = new ArrayList<>(3);
+        smsFilters.add(
+                (pdus, destPort, tracker, resultReceiver, userUnlocked, block, remainingFilters)
+                        -> {
+                    CarrierServicesSmsFilterCallback filterCallback =
+                            new CarrierServicesSmsFilterCallback(
+                                    pdus, destPort, tracker, tracker.getFormat(), resultReceiver,
+                                    userUnlocked,
+                                    tracker.isClass0(), tracker.getSubId(), tracker.getMessageId(),
+                                    block, remainingFilters);
+                    CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
+                            mContext, mPhone, pdus, destPort, tracker.getFormat(),
+                            filterCallback, getName() + "::CarrierServicesSmsFilter",
+                            mCarrierServiceLocalLog, tracker.getMessageId());
+                    if (carrierServicesFilter.filter()) {
+                        log("SMS is being handled by carrier service", tracker.getMessageId());
+                        return true;
+                    } else {
+                        return false;
+                    }
+                });
+        smsFilters.add(
+                (pdus, destPort, tracker, resultReceiver, userUnlocked, block, remainingFilters)
+                        -> {
+                    if (VisualVoicemailSmsFilter.filter(
+                            mContext, pdus, tracker.getFormat(), destPort, tracker.getSubId())) {
+                        logWithLocalLog("Visual voicemail SMS dropped", tracker.getMessageId());
+                        dropFilteredSms(tracker, resultReceiver, block);
+                        return true;
+                    }
+                    return false;
+                });
+        smsFilters.add(
+                (pdus, destPort, tracker, resultReceiver, userUnlocked, block, remainingFilters)
+                        -> {
+                    MissedIncomingCallSmsFilter missedIncomingCallSmsFilter =
+                            new MissedIncomingCallSmsFilter(mPhone);
+                    if (missedIncomingCallSmsFilter.filter(pdus, tracker.getFormat())) {
+                        logWithLocalLog("Missed incoming call SMS received",
+                                tracker.getMessageId());
+                        dropFilteredSms(tracker, resultReceiver, block);
+                        return true;
+                    }
+                    return false;
+                });
+        return smsFilters;
+    }
+
+    private void dropFilteredSms(
+            InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean block) {
+        if (block) {
+            deleteFromRawTable(
+                    tracker.getDeleteWhere(), tracker.getDeleteWhereArgs(),
+                    DELETE_PERMANENTLY);
+            sendMessage(EVENT_BROADCAST_COMPLETE);
+        } else {
+            dropSms(resultReceiver);
+        }
+    }
+
+    /**
      * Filters the SMS.
      *
-     * <p>currently 3 filters exists: the carrier package, the system package, and the
-     * VisualVoicemailSmsFilter.
-     *
-     * <p>The filtering process is:
-     *
-     * <p>If the carrier package exists, the SMS will be filtered with it first. If the carrier
-     * package did not drop the SMS, then the VisualVoicemailSmsFilter will filter it in the
-     * callback.
-     *
-     * <p>If the carrier package does not exists, we will let the VisualVoicemailSmsFilter filter
-     * it. If the SMS passed the filter, then we will try to find the system package to do the
-     * filtering.
+     * <p>Each filter in {@link #mSmsFilters} is invoked sequentially. If any filter returns true,
+     * this method returns true and subsequent filters are ignored.
      *
      * @return true if a filter is invoked and the SMS processing flow is diverted, false otherwise.
      */
     private boolean filterSms(byte[][] pdus, int destPort,
-        InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
-        CarrierServicesSmsFilterCallback filterCallback =
-                new CarrierServicesSmsFilterCallback(
-                        pdus, destPort, tracker.getFormat(), resultReceiver, userUnlocked,
-                        tracker.isClass0(), tracker.getSubId(), tracker.getMessageId());
-        CarrierServicesSmsFilter carrierServicesFilter = new CarrierServicesSmsFilter(
-                mContext, mPhone, pdus, destPort, tracker.getFormat(),
-                filterCallback, getName() + "::CarrierServicesSmsFilter", mCarrierServiceLocalLog,
-                tracker.getMessageId());
-        if (carrierServicesFilter.filter()) {
-            log("filterSms: SMS is being handled by carrier service", tracker.getMessageId());
-            return true;
-        }
+            InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked,
+            boolean block) {
+        return filterSms(pdus, destPort, tracker, resultReceiver, userUnlocked, block, mSmsFilters);
+    }
 
-        if (VisualVoicemailSmsFilter.filter(
-                mContext, pdus, tracker.getFormat(), destPort, tracker.getSubId())) {
-            logWithLocalLog("filterSms: Visual voicemail SMS dropped", tracker.getMessageId());
-            dropSms(resultReceiver);
-            return true;
+    private static boolean filterSms(byte[][] pdus, int destPort,
+            InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked,
+            boolean block, List<SmsFilter> filters) {
+        ListIterator<SmsFilter> iterator = filters.listIterator();
+        while (iterator.hasNext()) {
+            SmsFilter smsFilter = iterator.next();
+            if (smsFilter.filterSms(pdus, destPort, tracker, resultReceiver, userUnlocked, block,
+                    filters.subList(iterator.nextIndex(), filters.size()))) {
+                return true;
+            }
         }
-
-        MissedIncomingCallSmsFilter missedIncomingCallSmsFilter =
-                new MissedIncomingCallSmsFilter(mPhone);
-        if (missedIncomingCallSmsFilter.filter(pdus, tracker.getFormat())) {
-            logWithLocalLog("filterSms: Missed incoming call SMS received", tracker.getMessageId());
-            dropSms(resultReceiver);
-            return true;
-        }
-
         return false;
     }
 
@@ -1527,7 +1586,8 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Handler for an {@link InboundSmsTracker} broadcast. Deletes PDUs from the raw table and
      * logs the broadcast duration (as an error if the other receivers were especially slow).
      */
-    private final class SmsBroadcastReceiver extends BroadcastReceiver {
+    @VisibleForTesting
+    public final class SmsBroadcastReceiver extends BroadcastReceiver {
         @UnsupportedAppUsage
         private final String mDeleteWhere;
         @UnsupportedAppUsage
@@ -1612,53 +1672,76 @@ public abstract class InboundSmsHandler extends StateMachine {
             CarrierServicesSmsFilter.CarrierServicesSmsFilterCallbackInterface {
         private final byte[][] mPdus;
         private final int mDestPort;
+        private final InboundSmsTracker mTracker;
         private final String mSmsFormat;
         private final SmsBroadcastReceiver mSmsBroadcastReceiver;
         private final boolean mUserUnlocked;
         private final boolean mIsClass0;
         private final int mSubId;
         private final long mMessageId;
+        private final boolean mBlock;
+        private final List<SmsFilter> mRemainingFilters;
 
-        CarrierServicesSmsFilterCallback(byte[][] pdus, int destPort, String smsFormat,
-                SmsBroadcastReceiver smsBroadcastReceiver,  boolean userUnlocked,
-                boolean isClass0, int subId, long messageId) {
+        CarrierServicesSmsFilterCallback(byte[][] pdus, int destPort, InboundSmsTracker tracker,
+                String smsFormat, SmsBroadcastReceiver smsBroadcastReceiver, boolean userUnlocked,
+                boolean isClass0, int subId, long messageId, boolean block,
+                List<SmsFilter> remainingFilters) {
             mPdus = pdus;
             mDestPort = destPort;
+            mTracker = tracker;
             mSmsFormat = smsFormat;
             mSmsBroadcastReceiver = smsBroadcastReceiver;
             mUserUnlocked = userUnlocked;
             mIsClass0 = isClass0;
             mSubId = subId;
             mMessageId = messageId;
+            mBlock = block;
+            mRemainingFilters = remainingFilters;
         }
 
         @Override
         public void onFilterComplete(int result) {
             log("onFilterComplete: result is " + result, mMessageId);
-            if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
-                if (VisualVoicemailSmsFilter.filter(mContext, mPdus,
-                        mSmsFormat, mDestPort, mSubId)) {
-                    logWithLocalLog("Visual voicemail SMS dropped", mMessageId);
-                    dropSms(mSmsBroadcastReceiver);
-                    return;
-                }
 
-                if (mUserUnlocked) {
-                    dispatchSmsDeliveryIntent(
-                            mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver, mIsClass0, mSubId,
-                            mMessageId);
-                } else {
-                    // Don't do anything further, leave the message in the raw table if the
-                    // credential-encrypted storage is still locked and show the new message
-                    // notification if the message is visible to the user.
-                    if (!isSkipNotifyFlagSet(result)) {
-                        showNewMessageNotification();
-                    }
-                    sendMessage(EVENT_BROADCAST_COMPLETE);
-                }
+            boolean carrierRequestedDrop =
+                    (result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) != 0;
+            if (carrierRequestedDrop) {
+                // Carrier app asked the platform to drop the SMS. Drop it from the database and
+                // complete processing.
+                dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+                return;
+            }
+
+            boolean filterInvoked = filterSms(mPdus, mDestPort, mTracker, mSmsBroadcastReceiver,
+                    mUserUnlocked, mBlock, mRemainingFilters);
+            if (filterInvoked) {
+                // A remaining filter has assumed responsibility for further message processing.
+                return;
+            }
+
+            // Now that all filters have been invoked, drop the message if it is blocked.
+            // TODO(b/156910035): Remove mUserUnlocked once we stop showing the new message
+            // notification for blocked numbers.
+            if (mUserUnlocked && mBlock) {
+                log("onFilterComplete: dropping message as the sender is blocked",
+                        mTracker.getMessageId());
+                dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+                return;
+            }
+
+            // Message matched no filters and is not blocked, so complete processing.
+            if (mUserUnlocked) {
+                dispatchSmsDeliveryIntent(
+                        mPdus, mSmsFormat, mDestPort, mSmsBroadcastReceiver, mIsClass0, mSubId,
+                        mMessageId);
             } else {
-                // Drop this SMS.
-                dropSms(mSmsBroadcastReceiver);
+                // Don't do anything further, leave the message in the raw table if the
+                // credential-encrypted storage is still locked and show the new message
+                // notification if the message is visible to the user.
+                if (!isSkipNotifyFlagSet(result)) {
+                    showNewMessageNotification();
+                }
+                sendMessage(EVENT_BROADCAST_COMPLETE);
             }
         }
     }
@@ -1885,6 +1968,20 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
+     * Set the SMS filters used by {@link #filterSms} for testing purposes.
+     *
+     * @param smsFilters List of SMS filters, or null to restore the default filters.
+     */
+    @VisibleForTesting
+    public void setSmsFiltersForTesting(@Nullable List<SmsFilter> smsFilters) {
+        if (smsFilters == null) {
+            mSmsFilters = createDefaultSmsFilters();
+        } else {
+            mSmsFilters = smsFilters;
+        }
+    }
+
+    /**
      * Handler for the broadcast sent when the new message notification is clicked. It launches the
      * default SMS app.
      */
@@ -1962,5 +2059,28 @@ public abstract class InboundSmsHandler extends StateMachine {
                 handleTestAction(intent);
             }
         }
+    }
+
+    /** A filter for incoming messages allowing the normal processing flow to be skipped. */
+    @VisibleForTesting
+    public interface SmsFilter {
+        /**
+         * Returns true if a filter is invoked and the SMS processing flow should be diverted, false
+         * otherwise.
+         *
+         * <p>If the filter can immediately determine that the message matches, it must call
+         * {@link #dropFilteredSms} to drop the message from the database once it has been
+         * processed.
+         *
+         * <p>If the filter must perform some asynchronous work to determine if the message matches,
+         * it should return true to defer processing. Once it has made a determination, if it finds
+         * the message matches, it must call {@link #dropFilteredSms}. If the message does not
+         * match, it must be passed through {@code remainingFilters} and either dropped if the
+         * remaining filters all return false or if {@code block} is true, or else it must be
+         * broadcast.
+         */
+        boolean filterSms(byte[][] pdus, int destPort, InboundSmsTracker tracker,
+                SmsBroadcastReceiver resultReceiver, boolean userUnlocked, boolean block,
+                List<SmsFilter> remainingFilters);
     }
 }

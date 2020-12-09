@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
 import android.net.NattKeepalivePacketData;
@@ -32,7 +33,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.AnomalyReporter;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
+import android.util.ArrayMap;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
@@ -46,8 +47,8 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -63,6 +64,8 @@ import java.util.UUID;
 public class DcNetworkAgent extends NetworkAgent {
     private final String mTag;
 
+    private final int mId;
+
     private Phone mPhone;
 
     private int mTransportType;
@@ -77,8 +80,8 @@ public class DcNetworkAgent extends NetworkAgent {
 
     private NetworkInfo mNetworkInfo;
 
-    // For debugging duplicate interface issue. Remove before R released.
-    private static Set<String> sInterfaceNames = new HashSet<>();
+    // For interface duplicate detection. Key is the net id, value is the interface name in string.
+    private static Map<Integer, String> sInterfaceNames = new ArrayMap<>();
 
     DcNetworkAgent(DataConnection dc, Phone phone, NetworkInfo ni, int score,
             NetworkAgentConfig config, NetworkProvider networkProvider, int transportType) {
@@ -86,7 +89,8 @@ public class DcNetworkAgent extends NetworkAgent {
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
                 networkProvider);
         register();
-        mTag = "DcNetworkAgent" + "-" + getNetwork().netId;
+        mId = getNetwork().netId;
+        mTag = "DcNetworkAgent" + "-" + mId;
         mPhone = phone;
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
@@ -94,26 +98,30 @@ public class DcNetworkAgent extends NetworkAgent {
         mNetworkInfo = new NetworkInfo(ni);
         setLegacySubtype(ni.getSubtype(), ni.getSubtypeName());
         setLegacyExtraInfo(ni.getExtraInfo());
-        // TODO: Remove before R is released.
-        if (dc.getLinkProperties() != null
-                && !TextUtils.isEmpty(dc.getLinkProperties().getInterfaceName())) {
-            checkDuplicateInterface(dc.getLinkProperties().getInterfaceName());
+        if (dc.getLinkProperties() != null) {
+            checkDuplicateInterface(mId, dc.getLinkProperties().getInterfaceName());
+            logd("created for data connection " + dc.getName() + ", "
+                    + dc.getLinkProperties().getInterfaceName());
+        } else {
+            loge("The connection does not have a valid link properties.");
         }
-        logd(mTag + " created for data connection " + dc.getName());
     }
 
-    // This is a temp code to catch the duplicate network interface issue.
-    // TODO: Remove before R is released.
-    private void checkDuplicateInterface(String interfaceName) {
-        if (sInterfaceNames.contains(interfaceName)) {
-            String message = "Duplicate interface " + interfaceName + " is detected.";
-            log(message);
-            // Using fixed UUID to avoid duplicate bugreport notification
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("02f3d3f6-4613-4415-b6cb-8d92c8a938a6"),
-                    message);
+    private void checkDuplicateInterface(int netId, @Nullable String interfaceName) {
+        for (Map.Entry<Integer, String> entry: sInterfaceNames.entrySet()) {
+            if (Objects.equals(interfaceName, entry.getValue())) {
+                String message = "Duplicate interface " + interfaceName
+                        + " is detected. DcNetworkAgent-" + entry.getKey()
+                        + " already used this interface name.";
+                loge(message);
+                // Using fixed UUID to avoid duplicate bugreport notification
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("02f3d3f6-4613-4415-b6cb-8d92c8a938a6"),
+                        message);
+                return;
+            }
         }
-        sInterfaceNames.add(interfaceName);
+        sInterfaceNames.put(netId, interfaceName);
     }
 
     /**
@@ -144,7 +152,7 @@ public class DcNetworkAgent extends NetworkAgent {
             loge("releaseOwnership called on no-owner DcNetworkAgent!");
             return;
         } else if (mDataConnection != dc) {
-            log("releaseOwnership: This agent belongs to "
+            loge("releaseOwnership: This agent belongs to "
                     + mDataConnection.getName() + ", ignored the request from " + dc.getName());
             return;
         }
@@ -253,9 +261,11 @@ public class DcNetworkAgent extends NetworkAgent {
      * @param linkProperties The link properties
      * @param dc The data connection that invokes this method.
      */
-    public synchronized void sendLinkProperties(LinkProperties linkProperties,
+    public synchronized void sendLinkProperties(@NonNull LinkProperties linkProperties,
                                                 DataConnection dc) {
         if (!isOwned(dc, "sendLinkProperties")) return;
+
+        sInterfaceNames.put(mId, dc.getLinkProperties().getInterfaceName());
         sendLinkProperties(linkProperties);
     }
 
@@ -278,11 +288,8 @@ public class DcNetworkAgent extends NetworkAgent {
     public synchronized void unregister(DataConnection dc) {
         if (!isOwned(dc, "unregister")) return;
 
-        if (dc.getLinkProperties() != null
-                && !TextUtils.isEmpty(dc.getLinkProperties().getInterfaceName())) {
-            sInterfaceNames.remove(dc.getLinkProperties().getInterfaceName());
-        }
-        logd("Unregister from connectivity service");
+        logd("Unregister from connectivity service. " + sInterfaceNames.get(mId) + " removed.");
+        sInterfaceNames.remove(mId);
         super.unregister();
     }
 
@@ -348,11 +355,13 @@ public class DcNetworkAgent extends NetworkAgent {
 
     @Override
     public String toString() {
-        return "DcNetworkAgent:"
+        return "DcNetworkAgent-"
+                + mId
                 + " mDataConnection="
                 + ((mDataConnection != null) ? mDataConnection.getName() : null)
                 + " mTransportType="
                 + AccessNetworkConstants.transportTypeToString(mTransportType)
+                + " " + ((mDataConnection != null) ? mDataConnection.getLinkProperties() : null)
                 + " mNetworkCapabilities=" + mNetworkCapabilities;
     }
 

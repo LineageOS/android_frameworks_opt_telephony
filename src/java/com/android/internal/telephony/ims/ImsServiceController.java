@@ -69,6 +69,9 @@ import java.util.stream.Collectors;
 public class ImsServiceController {
 
     class ImsServiceConnection implements ServiceConnection {
+        // Track the status of whether or not the Service has died in case we need to permanently
+        // unbind (see onNullBinding below).
+        private boolean mIsServiceConnectionDead = false;
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -113,6 +116,7 @@ public class ImsServiceController {
 
         @Override
         public void onBindingDied(ComponentName name) {
+            mIsServiceConnectionDead = true;
             synchronized (mLock) {
                 mIsBinding = false;
                 mIsBound = false;
@@ -129,8 +133,12 @@ public class ImsServiceController {
 
         @Override
         public void onNullBinding(ComponentName name) {
-            Log.w(LOG_TAG, "ImsService(" + name + "): onNullBinding. Removing.");
-            mLocalLog.log("onNullBinding");
+            Log.w(LOG_TAG, "ImsService(" + name + "): onNullBinding. Is service dead = "
+                    + mIsServiceConnectionDead);
+            mLocalLog.log("onNullBinding, is service dead = " + mIsServiceConnectionDead);
+            // onNullBinding will happen after onBindingDied. In this case, we should not
+            // permanently unbind and instead let the automatic rebind occur.
+            if (mIsServiceConnectionDead) return;
             synchronized (mLock) {
                 mIsBinding = false;
                 mIsBound = false;
