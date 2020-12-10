@@ -624,7 +624,13 @@ public class UiccController extends Handler {
         }
     }
 
-    static String getIccStateIntentString(IccCardConstants.State state) {
+    /**
+     * Convert IccCardConstants.State enum values to corresponding IccCardConstants String
+     * constants
+     * @param state IccCardConstants.State enum value
+     * @return IccCardConstants String constant representing ICC state
+     */
+    public static String getIccStateIntentString(IccCardConstants.State state) {
         switch (state) {
             case ABSENT: return IccCardConstants.INTENT_VALUE_ICC_ABSENT;
             case PIN_REQUIRED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
