@@ -637,6 +637,13 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseVoid_1_6(info);
     }
 
+    @Override
+    public void getAllowedNetworkTypeBitmapResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo info,
+            int halRadioAccessFamilyBitmap) {
+        responseInts_1_6(info, halRadioAccessFamilyBitmap);
+    }
+
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param iccIo ICC io operation response as defined by IccIoResult in types.hal
@@ -2047,6 +2054,15 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseIntArrayList(responseInfo, ints);
     }
 
+    private void responseInts_1_6(android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            int ...var) {
+        final ArrayList<Integer> ints = new ArrayList<>();
+        for (int i = 0; i < var.length; i++) {
+            ints.add(var[i]);
+        }
+        responseIntArrayList_1_6(responseInfo, ints);
+    }
+
     private void responseIntArrayList(RadioResponseInfo responseInfo, ArrayList<Integer> var) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
@@ -2059,6 +2075,22 @@ public class RadioResponse extends IRadioResponse.Stub {
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private void responseIntArrayList_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo, ArrayList<Integer> var) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+
+        if (rr != null) {
+            int[] ret = new int[var.size()];
+            for (int i = 0; i < var.size(); i++) {
+                ret[i] = var.get(i);
+            }
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, ret);
         }
     }
 
