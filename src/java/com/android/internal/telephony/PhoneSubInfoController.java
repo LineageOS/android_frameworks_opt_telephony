@@ -264,6 +264,17 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return PhoneFactory.getPhone(phoneId);
     }
 
+    private boolean enforceIccSimChallengeResponsePermission(Context context, int subId,
+            String callingPackage, String callingFeatureId, String message) {
+        if (TelephonyPermissions.checkCallingOrSelfUseIccAuthWithDeviceIdentifier(context,
+                callingPackage, callingFeatureId, message)) {
+            return true;
+        }
+        if (VDBG) log("No USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER permission.");
+        enforcePrivilegedPermissionOrCarrierPrivilege(subId, message);
+        return true;
+    }
+
     /**
      * Make sure caller has either read privileged phone permission or carrier privilege.
      *
@@ -370,8 +381,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 });
     }
 
-    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data)
-            throws RemoteException {
+    @Override
+    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data,
+            String callingPackage, String callingFeatureId) throws RemoteException {
         CallPhoneMethodHelper<String> toExecute = (phone)-> {
             UiccCard uiccCard = phone.getUiccCard();
             if (uiccCard == null) {
@@ -396,12 +408,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             return uiccApp.getIccRecords().getIccSimChallengeResponse(authType, data);
         };
 
-        return callPhoneMethodWithPermissionCheck(subId, null, null, "getIccSimChallengeResponse",
-                toExecute,
-                (aContext, aSubId, aCallingPackage, aCallingFeatureId, aMessage) -> {
-                    enforcePrivilegedPermissionOrCarrierPrivilege(aSubId, aMessage);
-                    return true;
-                });
+        return callPhoneMethodWithPermissionCheck(subId, callingPackage, callingFeatureId,
+                "getIccSimChallengeResponse", toExecute,
+                this::enforceIccSimChallengeResponsePermission);
     }
 
     public String getGroupIdLevel1ForSubscriber(int subId, String callingPackage,
