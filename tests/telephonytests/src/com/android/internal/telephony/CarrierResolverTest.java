@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import android.database.Cursor;
 import android.database.MatrixCursor;
@@ -257,12 +258,15 @@ public class CarrierResolverTest extends TelephonyTest {
         assertEquals(CID_VZW, mCarrierResolver.getCarrierId());
         assertEquals(NAME, mCarrierResolver.getCarrierName());
         // mock apn
+        doReturn(IccCardConstants.State.LOADED).when(mUiccProfile).getState();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Carriers.CONTENT_URI.getAuthority(), new CarrierIdContentProvider());
         mCarrierResolver.sendEmptyMessage(PREFER_APN_SET_EVENT);
         processAllMessages();
         assertEquals(CID_DOCOMO, mCarrierResolver.getCarrierId());
         assertEquals(NAME_DOCOMO, mCarrierResolver.getCarrierName());
+        verify(mCarrierConfigManager).updateConfigForPhoneId(phoneId,
+                IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
     private class CarrierIdContentProvider extends MockContentProvider {
