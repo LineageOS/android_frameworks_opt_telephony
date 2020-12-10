@@ -88,6 +88,7 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
+import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.MetricsCollector;
 import com.android.internal.telephony.metrics.PersistAtomsStorage;
 import com.android.internal.telephony.metrics.SmsStats;
@@ -310,6 +311,8 @@ public abstract class TelephonyTest {
     protected WifiManager mWifiManager;
     @Mock
     protected WifiInfo mWifiInfo;
+    @Mock
+    protected ImsStats mImsStats;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -542,6 +545,7 @@ public abstract class TelephonyTest {
         doReturn(mVoiceCallSessionStats).when(mPhone).getVoiceCallSessionStats();
         doReturn(mVoiceCallSessionStats).when(mImsPhone).getVoiceCallSessionStats();
         doReturn(mSmsStats).when(mPhone).getSmsStats();
+        doReturn(mImsStats).when(mImsPhone).getImsStats();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
 
         //mUiccController
