@@ -494,6 +494,7 @@ public class DataEnabledSettings {
 
     private void notifyDataEnabledChanged(boolean enabled, int reason) {
         mOverallDataEnabledChangedRegistrants.notifyResult(new Pair<>(enabled, reason));
+        mPhone.notifyDataEnabled(enabled, reason);
     }
 
     public void registerForDataEnabledChanged(Handler h, int what, Object obj) {

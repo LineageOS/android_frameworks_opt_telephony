@@ -2706,6 +2706,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyOutgoingEmergencySms(this, emergencyNumber);
     }
 
+    /** Notify the data enabled changes. */
+    public void notifyDataEnabled(boolean enabled,
+            @TelephonyManager.DataEnabledReason int reason) {
+        mNotifier.notifyDataEnabled(enabled, reason);
+    }
+
     /**
      * @return true if a mobile originating emergency call is active
      */
