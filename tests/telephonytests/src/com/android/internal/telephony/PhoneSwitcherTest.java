@@ -20,6 +20,8 @@ import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
 
 import static com.android.internal.telephony.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
@@ -56,6 +58,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
+import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -84,6 +87,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Mock
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
     @Mock
+    private Phone mImsPhone;
+    @Mock
     private DataEnabledSettings mDataEnabledSettings2;
     @Mock
     private Handler mActivePhoneSwitchHandler;
@@ -99,6 +104,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private ISetOpportunisticDataCallback mSetOpptDataCallback2;
     @Mock
     CompletableFuture<Boolean> mFuturePhone;
+    @Mock
+    PhoneSwitcher.ImsRegTechProvider mMockImsRegTechProvider;
 
     private PhoneSwitcher mPhoneSwitcher;
     private SubscriptionManager.OnSubscriptionsChangedListener mSubChangedListener;
@@ -526,6 +533,66 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 eq(mPhoneSwitcher.mValidationCallback));
         mPhoneSwitcher.mValidationCallback.onValidationDone(true, 1);
         processAllMessages();
+        assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
+    }
+
+    private void mockImsRegTech(int phoneId, int regTech) {
+        doReturn(regTech).when(mMockImsRegTechProvider).get(any(), eq(phoneId));
+        mPhoneSwitcher.mImsRegTechProvider = mMockImsRegTechProvider;
+    }
+
+    @Test
+    @SmallTest
+    public void testNonDefaultDataPhoneInCall_ImsCallOnLte_shouldSwitchDds() throws Exception {
+        initialize();
+        setAllPhonesInactive();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        processAllMessages();
+
+        // Phone 0 should be the default data phoneId.
+        assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
+
+        // Phone2 has active IMS call on LTE. And data of DEFAULT apn is enabled. This should
+        // trigger data switch.
+        doReturn(mImsPhone).when(mPhone2).getImsPhone();
+        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        mockImsRegTech(1, REGISTRATION_TECH_LTE);
+        notifyPhoneAsInCall(mImsPhone);
+
+        // Phone 1 should become the default data phone.
+        assertEquals(1, mPhoneSwitcher.getPreferredDataPhoneId());
+    }
+
+    @Test
+    @SmallTest
+    public void testNonDefaultDataPhoneInCall_ImsCallOnWlan_shouldNotSwitchDds() throws Exception {
+        initialize();
+        setAllPhonesInactive();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        processAllMessages();
+
+        // Phone 0 should be the default data phoneId.
+        assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
+
+        // Phone2 has active call, but data is turned off. So no data switching should happen.
+        doReturn(mImsPhone).when(mPhone2).getImsPhone();
+        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        mockImsRegTech(1, REGISTRATION_TECH_IWLAN);
+        notifyPhoneAsInCall(mImsPhone);
+
+        // Phone 0 should remain the default data phone.
         assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
     }
 
@@ -1005,6 +1072,9 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(mInactiveCall).when(mPhone2).getForegroundCall();
         doReturn(mInactiveCall).when(mPhone2).getBackgroundCall();
         doReturn(mInactiveCall).when(mPhone2).getRingingCall();
+        doReturn(mInactiveCall).when(mImsPhone).getForegroundCall();
+        doReturn(mInactiveCall).when(mImsPhone).getBackgroundCall();
+        doReturn(mInactiveCall).when(mImsPhone).getRingingCall();
     }
 
     private void notifyPhoneAsInCall(Phone phone) {

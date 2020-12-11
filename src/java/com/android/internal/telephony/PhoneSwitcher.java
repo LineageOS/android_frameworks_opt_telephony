@@ -24,6 +24,7 @@ import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 
 import static java.util.Arrays.copyOf;
 
@@ -56,8 +57,10 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.LocalLog;
 
+import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
 import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
@@ -309,6 +312,19 @@ public class PhoneSwitcher extends Handler {
     private final DefaultNetworkCallback mDefaultNetworkCallback = new DefaultNetworkCallback();
 
     /**
+     * Interface to get ImsRegistrationTech. It's a wrapper of ImsManager#getRegistrationTech,
+     * to make it mock-able in unittests.
+     */
+    public interface ImsRegTechProvider {
+        /** Get IMS registration tech. */
+        @ImsRegistrationImplBase.ImsRegistrationTech int get(Context context, int phoneId);
+    }
+
+    @VisibleForTesting
+    public ImsRegTechProvider mImsRegTechProvider =
+            (context, phoneId) -> ImsManager.getInstance(context, phoneId).getRegistrationTech();
+
+    /**
      * Method to get singleton instance.
      */
     public static PhoneSwitcher getInstance() {
@@ -327,6 +343,26 @@ public class PhoneSwitcher extends Handler {
         return sPhoneSwitcher;
     }
 
+    /**
+     * Whether this phone IMS registration is on its original network. This result impacts
+     * whether we want to do DDS switch to the phone having voice call.
+     * If it's registered on IWLAN or cross SIM in multi-SIM case, return false. Otherwise,
+     * return true.
+     */
+    private boolean isImsOnOriginalNetwork(Phone phone) {
+        if (phone == null) return false;
+        int phoneId = phone.getPhoneId();
+        if (!SubscriptionManager.isValidPhoneId(phoneId)) return false;
+
+        int imsRegTech = mImsRegTechProvider.get(mContext, phoneId);
+        // If IMS is registered on IWLAN or cross SIM, return false.
+        boolean isOnOriginalNetwork = imsRegTech != REGISTRATION_TECH_IWLAN;
+        if (!isOnOriginalNetwork) {
+            log("IMS call on IWLAN or cross SIM. Call will be ignored for DDS switch");
+        }
+        return isOnOriginalNetwork;
+    }
+
     private boolean isPhoneInVoiceCallChanged() {
         int oldPhoneIdInVoiceCall = mPhoneIdInVoiceCall;
         // If there's no active call, the value will become INVALID_PHONE_INDEX
@@ -334,7 +370,8 @@ public class PhoneSwitcher extends Handler {
         // subscription.
         mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
         for (Phone phone : PhoneFactory.getPhones()) {
-            if (isPhoneInVoiceCall(phone) || isPhoneInVoiceCall(phone.getImsPhone())) {
+            if (isPhoneInVoiceCall(phone) || (isPhoneInVoiceCall(phone.getImsPhone())
+                    && isImsOnOriginalNetwork(phone))) {
                 mPhoneIdInVoiceCall = phone.getPhoneId();
                 break;
             }
