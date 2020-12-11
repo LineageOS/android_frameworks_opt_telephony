@@ -28,7 +28,7 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
 import android.os.UserHandle;
-import android.permission.PermissionManager;
+import android.permission.LegacyPermissionManager;
 import android.telephony.AnomalyReporter;
 import android.telephony.ims.ImsService;
 import android.telephony.ims.aidl.IImsConfig;
@@ -223,7 +223,7 @@ public class ImsServiceController {
     private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * 1000; // 15 seconds
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
-    private final PermissionManager mPermissionManager;
+    private final LegacyPermissionManager mPermissionManager;
     private ImsFeatureBinderRepository mRepo;
     private ImsServiceControllerCallbacks mCallbacks;
     private ExponentialBackoff mBackoff;
@@ -321,8 +321,8 @@ public class ImsServiceController {
                 2, /* multiplier */
                 mHandlerThread.getLooper(),
                 mRestartImsServiceRunnable);
-        mPermissionManager =
-                (PermissionManager) mContext.getSystemService(Context.PERMISSION_SERVICE);
+        mPermissionManager = (LegacyPermissionManager) mContext.getSystemService(
+                Context.LEGACY_PERMISSION_SERVICE);
         mRepo = repo;
 
         mPackageManager = mContext.getPackageManager();
