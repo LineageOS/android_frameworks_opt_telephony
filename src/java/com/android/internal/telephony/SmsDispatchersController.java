@@ -810,8 +810,19 @@ public class SmsDispatchersController extends Handler {
             com.android.internal.telephony.cdma.SmsMessage sms =
                     com.android.internal.telephony.cdma.SmsMessage.createFromPdu(pdu);
             if (sms != null) {
+                boolean foundIn3GPPMap = false;
                 messageRef = sms.mMessageRef;
                 tracker = mDeliveryPendingMapFor3GPP2.get(messageRef);
+                if (tracker == null) {
+                    // A tracker for this 3GPP2 report may be in the 3GPP map instead if the
+                    // previously submitted SMS was 3GPP format.
+                    // (i.e. Some carriers require that devices receive 3GPP2 SMS also even if IMS
+                    // SMS format is 3GGP.)
+                    tracker = mDeliveryPendingMapFor3GPP.get(messageRef);
+                    if (tracker != null) {
+                        foundIn3GPPMap = true;
+                    }
+                }
                 if (tracker != null) {
                     // The status is composed of an error class (bits 25-24) and a status code
                     // (bits 23-16).
@@ -824,7 +835,11 @@ public class SmsDispatchersController extends Handler {
                                         ? Sms.STATUS_COMPLETE
                                         : Sms.STATUS_FAILED);
                         // No longer need to be kept.
-                        mDeliveryPendingMapFor3GPP2.remove(messageRef);
+                        if (foundIn3GPPMap) {
+                            mDeliveryPendingMapFor3GPP.remove(messageRef);
+                        } else {
+                            mDeliveryPendingMapFor3GPP2.remove(messageRef);
+                        }
                     }
                     handled = triggerDeliveryIntent(tracker, format, pdu);
                 }
