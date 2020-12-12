@@ -569,7 +569,7 @@ public class DataConnection extends StateMachine {
 
         @Override
         public String toString() {
-            return name() + "  SetupResult.mFailCause=" + mFailCause;
+            return name() + "  SetupResult.mFailCause=" + DataFailCause.toString(mFailCause);
         }
     }
 
@@ -1128,8 +1128,9 @@ public class DataConnection extends StateMachine {
                         new Throwable(DataFailCause.toString(cause)));
             }
             if (DBG) {
-                log("notifyConnectCompleted at " + timeStamp + " cause=" + cause
-                        + " connectionCompletedMsg=" + msgToString(connectionCompletedMsg));
+                log("notifyConnectCompleted at " + timeStamp + " cause="
+                        + DataFailCause.toString(cause) + " connectionCompletedMsg="
+                        + msgToString(connectionCompletedMsg));
             }
 
             connectionCompletedMsg.sendToTarget();
@@ -2232,7 +2233,7 @@ public class DataConnection extends StateMachine {
             if (mConnectionParams != null) {
                 if (DBG) {
                     log("DcInactiveState: enter notifyConnectCompleted +ALL failCause="
-                            + mDcFailCause);
+                            + DataFailCause.toString(mDcFailCause));
                 }
                 notifyConnectCompleted(mConnectionParams, mDcFailCause, mHandoverFailureMode,
                         true);
@@ -2240,7 +2241,7 @@ public class DataConnection extends StateMachine {
             if (mDisconnectParams != null) {
                 if (DBG) {
                     log("DcInactiveState: enter notifyDisconnectCompleted +ALL failCause="
-                            + mDcFailCause);
+                            + DataFailCause.toString(mDcFailCause));
                 }
                 notifyDisconnectCompleted(mDisconnectParams, true);
             }
@@ -2248,7 +2249,7 @@ public class DataConnection extends StateMachine {
                     && mDcFailCause != DataFailCause.NONE) {
                 if (DBG) {
                     log("DcInactiveState: enter notifyAllDisconnectCompleted failCause="
-                            + mDcFailCause);
+                            + DataFailCause.toString(mDcFailCause));
                 }
                 notifyAllWithEvent(null, DctConstants.EVENT_DISCONNECT_DONE,
                         DataFailCause.toString(mDcFailCause));
@@ -3426,7 +3427,7 @@ public class DataConnection extends StateMachine {
                 + " mApnSetting=" + mApnSetting + " RefCount=" + mApnContexts.size()
                 + " mCid=" + mCid + " mCreateTime=" + mCreateTime
                 + " mLastastFailTime=" + mLastFailTime
-                + " mLastFailCause=" + mLastFailCause
+                + " mLastFailCause=" + DataFailCause.toString(mLastFailCause)
                 + " mTag=" + mTag
                 + " mLinkProperties=" + mLinkProperties
                 + " linkCapabilities=" + getNetworkCapabilities()
@@ -3583,7 +3584,7 @@ public class DataConnection extends StateMachine {
         pw.println("mCid=" + mCid);
         pw.println("mConnectionParams=" + mConnectionParams);
         pw.println("mDisconnectParams=" + mDisconnectParams);
-        pw.println("mDcFailCause=" + mDcFailCause);
+        pw.println("mDcFailCause=" + DataFailCause.toString(mDcFailCause));
         pw.println("mPhone=" + mPhone);
         pw.println("mSubId=" + mSubId);
         pw.println("mLinkProperties=" + mLinkProperties);
@@ -3594,7 +3595,7 @@ public class DataConnection extends StateMachine {
         pw.println("mNetworkCapabilities=" + getNetworkCapabilities());
         pw.println("mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
         pw.println("mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
-        pw.println("mLastFailCause=" + mLastFailCause);
+        pw.println("mLastFailCause=" + DataFailCause.toString(mLastFailCause));
         pw.println("mUserData=" + mUserData);
         pw.println("mSubscriptionOverride=" + Integer.toHexString(mSubscriptionOverride));
         pw.println("mRestrictedNetworkOverride=" + mRestrictedNetworkOverride);

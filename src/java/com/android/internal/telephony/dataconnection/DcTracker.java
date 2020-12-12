@@ -3005,8 +3005,9 @@ public class DcTracker extends Handler {
         } else {
             if (DBG) {
                 ApnSetting apn = apnContext.getApnSetting();
-                log("onDataSetupComplete: error apn=" + apn.getApnName() + ", cause=" + cause
-                        + ", requestType=" + requestTypeToString(requestType));
+                log("onDataSetupComplete: error apn=" + apn.getApnName() + ", cause="
+                        + DataFailCause.toString(cause) + ", requestType="
+                        + requestTypeToString(requestType));
             }
             if (DataFailCause.isEventLoggable(cause)) {
                 // Log this failure to the Event Logs.
@@ -3033,7 +3034,8 @@ public class DcTracker extends Handler {
             // If the data call failure cause is a permanent failure, we mark the APN as permanent
             // failed.
             if (isPermanentFailure(cause)) {
-                log("cause = " + cause + ", mark apn as permanent failed. apn = " + apn);
+                log("cause=" + DataFailCause.toString(cause)
+                        + ", mark apn as permanent failed. apn = " + apn);
                 apnContext.markApnPermanentFailed(apn);
             }
 
