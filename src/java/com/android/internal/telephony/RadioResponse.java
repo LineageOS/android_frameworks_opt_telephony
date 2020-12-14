@@ -227,6 +227,16 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param calls Current call list
+     */
+    public void getCurrentCallsResponse_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            ArrayList<android.hardware.radio.V1_6.Call> calls) {
+        responseCurrentCalls_1_6(responseInfo, calls);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void dialResponse(RadioResponseInfo responseInfo) {
         responseVoid(responseInfo);
@@ -2104,46 +2114,7 @@ public class RadioResponse extends IRadioResponse.Stub {
             DriverCall dc;
 
             for (int i = 0; i < num; i++) {
-                dc = new DriverCall();
-                // TODO: change name of function stateFromCLCC() in DriverCall.java to name
-                // clarifying what is CLCC
-                dc.state = DriverCall.stateFromCLCC((int) (calls.get(i).state));
-                dc.index = calls.get(i).index;
-                dc.TOA = calls.get(i).toa;
-                dc.isMpty = calls.get(i).isMpty;
-                dc.isMT = calls.get(i).isMT;
-                dc.als = calls.get(i).als;
-                dc.isVoice = calls.get(i).isVoice;
-                dc.isVoicePrivacy = calls.get(i).isVoicePrivacy;
-                dc.number = calls.get(i).number;
-                dc.numberPresentation =
-                        DriverCall.presentationFromCLIP(
-                                (int) (calls.get(i).numberPresentation));
-                dc.name = calls.get(i).name;
-                dc.namePresentation =
-                        DriverCall.presentationFromCLIP((int) (calls.get(i).namePresentation));
-                if (calls.get(i).uusInfo.size() == 1) {
-                    dc.uusInfo = new UUSInfo();
-                    dc.uusInfo.setType(calls.get(i).uusInfo.get(0).uusType);
-                    dc.uusInfo.setDcs(calls.get(i).uusInfo.get(0).uusDcs);
-                    if (!TextUtils.isEmpty(calls.get(i).uusInfo.get(0).uusData)) {
-                        byte[] userData = calls.get(i).uusInfo.get(0).uusData.getBytes();
-                        dc.uusInfo.setUserData(userData);
-                    } else {
-                        mRil.riljLog("responseCurrentCalls: uusInfo data is null or empty");
-                    }
-
-                    mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
-                            dc.uusInfo.getType(), dc.uusInfo.getDcs(),
-                            dc.uusInfo.getUserData().length));
-                    mRil.riljLogv("Incoming UUS : data (hex): "
-                            + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
-                } else {
-                    mRil.riljLogv("Incoming UUS : NOT present!");
-                }
-
-                // Make sure there's a leading + on addresses with a TOA of 145
-                dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
+                dc = convertToDriverCall(calls.get(i));
 
                 dcCalls.add(dc);
 
@@ -2183,48 +2154,7 @@ public class RadioResponse extends IRadioResponse.Stub {
             DriverCall dc;
 
             for (int i = 0; i < num; i++) {
-                dc = new DriverCall();
-                // TODO: change name of function stateFromCLCC() in DriverCall.java to name
-                // clarifying what is CLCC
-                dc.state = DriverCall.stateFromCLCC((int) (calls.get(i).base.state));
-                dc.index = calls.get(i).base.index;
-                dc.TOA = calls.get(i).base.toa;
-                dc.isMpty = calls.get(i).base.isMpty;
-                dc.isMT = calls.get(i).base.isMT;
-                dc.als = calls.get(i).base.als;
-                dc.isVoice = calls.get(i).base.isVoice;
-                dc.isVoicePrivacy = calls.get(i).base.isVoicePrivacy;
-                dc.number = calls.get(i).base.number;
-                dc.numberPresentation =
-                        DriverCall.presentationFromCLIP(
-                                (int) (calls.get(i).base.numberPresentation));
-                dc.name = calls.get(i).base.name;
-                dc.namePresentation =
-                        DriverCall.presentationFromCLIP((int) (calls.get(i).base.namePresentation));
-                if (calls.get(i).base.uusInfo.size() == 1) {
-                    dc.uusInfo = new UUSInfo();
-                    dc.uusInfo.setType(calls.get(i).base.uusInfo.get(0).uusType);
-                    dc.uusInfo.setDcs(calls.get(i).base.uusInfo.get(0).uusDcs);
-                    if (!TextUtils.isEmpty(calls.get(i).base.uusInfo.get(0).uusData)) {
-                        byte[] userData = calls.get(i).base.uusInfo.get(0).uusData.getBytes();
-                        dc.uusInfo.setUserData(userData);
-                    } else {
-                        mRil.riljLog("responseCurrentCalls: uusInfo data is null or empty");
-                    }
-
-                    mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
-                            dc.uusInfo.getType(), dc.uusInfo.getDcs(),
-                            dc.uusInfo.getUserData().length));
-                    mRil.riljLogv("Incoming UUS : data (hex): "
-                            + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
-                } else {
-                    mRil.riljLogv("Incoming UUS : NOT present!");
-                }
-
-                // Make sure there's a leading + on addresses with a TOA of 145
-                dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
-
-                dc.audioQuality = (int) (calls.get(i).audioQuality);
+                dc = convertToDriverCall_1_2(calls.get(i));
 
                 dcCalls.add(dc);
 
@@ -2254,6 +2184,102 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
+    private void responseCurrentCalls_1_6(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            ArrayList<android.hardware.radio.V1_6.Call> calls) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+
+        if (rr != null) {
+            int num = calls.size();
+            ArrayList<DriverCall> dcCalls = new ArrayList<DriverCall>(num);
+            DriverCall dc;
+
+            for (int i = 0; i < num; i++) {
+                dc = convertToDriverCall_1_6(calls.get(i));
+
+                dcCalls.add(dc);
+
+                if (dc.isVoicePrivacy) {
+                    mRil.mVoicePrivacyOnRegistrants.notifyRegistrants();
+                    mRil.riljLog("InCall VoicePrivacy is enabled");
+                } else {
+                    mRil.mVoicePrivacyOffRegistrants.notifyRegistrants();
+                    mRil.riljLog("InCall VoicePrivacy is disabled");
+                }
+            }
+
+            Collections.sort(dcCalls);
+
+            if ((num == 0) && mRil.mTestingEmergencyCall.getAndSet(false)) {
+                if (mRil.mEmergencyCallbackModeRegistrant != null) {
+                    mRil.riljLog("responseCurrentCalls: call ended, testing emergency call,"
+                            + " notify ECM Registrants");
+                    mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
+                }
+            }
+
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, dcCalls);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, dcCalls);
+        }
+    }
+
+    private DriverCall convertToDriverCall(android.hardware.radio.V1_0.Call call) {
+        DriverCall dc = new DriverCall();
+        // TODO: change name of function stateFromCLCC() in DriverCall.java to name
+        // clarifying what is CLCC
+        dc.state = DriverCall.stateFromCLCC((int) (call.state));
+        dc.index = call.index;
+        dc.TOA = call.toa;
+        dc.isMpty = call.isMpty;
+        dc.isMT = call.isMT;
+        dc.als = call.als;
+        dc.isVoice = call.isVoice;
+        dc.isVoicePrivacy = call.isVoicePrivacy;
+        dc.number = call.number;
+        dc.numberPresentation = DriverCall.presentationFromCLIP((int) (call.numberPresentation));
+        dc.name = call.name;
+        dc.namePresentation = DriverCall.presentationFromCLIP((int) (call.namePresentation));
+        if (call.uusInfo.size() == 1) {
+            dc.uusInfo = new UUSInfo();
+            dc.uusInfo.setType(call.uusInfo.get(0).uusType);
+            dc.uusInfo.setDcs(call.uusInfo.get(0).uusDcs);
+            if (!TextUtils.isEmpty(call.uusInfo.get(0).uusData)) {
+                byte[] userData = call.uusInfo.get(0).uusData.getBytes();
+                dc.uusInfo.setUserData(userData);
+            } else {
+                mRil.riljLog("convertToDriverCall: uusInfo data is null or empty");
+            }
+
+            mRil.riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
+                    dc.uusInfo.getType(), dc.uusInfo.getDcs(),
+                    dc.uusInfo.getUserData().length));
+            mRil.riljLogv("Incoming UUS : data (hex): "
+                    + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
+        } else {
+            mRil.riljLogv("Incoming UUS : NOT present!");
+        }
+
+        // Make sure there's a leading + on addresses with a TOA of 145
+        dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
+
+        return dc;
+    }
+
+    private DriverCall convertToDriverCall_1_2(android.hardware.radio.V1_2.Call call) {
+        android.hardware.radio.V1_0.Call earlierVersionCall = call.base;
+        DriverCall dc = convertToDriverCall(earlierVersionCall);
+        dc.audioQuality = (int) (call.audioQuality);
+        return dc;
+    }
+
+    private DriverCall convertToDriverCall_1_6(android.hardware.radio.V1_6.Call call) {
+        android.hardware.radio.V1_2.Call earlierVersionCall = call.base;
+        DriverCall dc = convertToDriverCall_1_2(earlierVersionCall);
+        dc.forwardedNumber = call.forwardedNumber;
+        return dc;
+    }
 
     private void responseVoid(RadioResponseInfo responseInfo) {
         RILRequest rr = mRil.processResponse(responseInfo);

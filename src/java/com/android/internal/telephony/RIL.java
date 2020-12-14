@@ -1107,7 +1107,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.getCurrentCalls(rr.mSerial);
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                    // IRadio V1.6
+                    android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            (android.hardware.radio.V1_6.IRadio) radioProxy;
+                    radioProxy16.getCurrentCalls_1_6(rr.mSerial);
+                } else {
+                    radioProxy.getCurrentCalls(rr.mSerial);
+                }
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getCurrentCalls", e);
             }
