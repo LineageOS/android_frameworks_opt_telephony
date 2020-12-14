@@ -157,8 +157,6 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.EpsQos;
-import android.telephony.data.NrQos;
-import android.telephony.data.Qos;
 import android.telephony.data.QosFilter;
 import android.telephony.data.QosSession;
 import android.testing.AndroidTestingRunner;
@@ -2618,7 +2616,7 @@ public class RILTest extends TelephonyTest {
 
         mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
                 false, 0, null,
-                DataCallResponse.PDU_SESSION_ID_NOT_SET, obtainMessage());
+                DataCallResponse.PDU_SESSION_ID_NOT_SET, null, obtainMessage());
         ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
         verify(mRadioProxy).setupDataCall(
                 mSerialNumberCaptor.capture(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
