@@ -444,7 +444,7 @@ public class TelephonyComponentFactory {
     }
 
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Looper looper, Context context,
-            CommandsInterface[] ci) {
-        return new SubscriptionInfoUpdater(looper, context, ci);
+            SubscriptionController sc) {
+        return new SubscriptionInfoUpdater(looper, context, sc);
     }
 }
