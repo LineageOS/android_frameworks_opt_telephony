@@ -79,6 +79,7 @@ public class DriverCall implements Comparable<DriverCall> {
     public boolean isMpty;
     @UnsupportedAppUsage
     public String number;
+    public String forwardedNumber;     // May be null. Incoming calls only.
     public int TOA;
     @UnsupportedAppUsage
     public boolean isVoice;
