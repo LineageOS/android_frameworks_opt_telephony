@@ -1068,6 +1068,7 @@ public class ImsPhoneConnection extends Connection implements
                 mAudioCodec = localCallProfile.mMediaProfile.mAudioQuality;
                 mMetrics.writeAudioCodecIms(mOwner.mPhone.getPhoneId(), imsCall.getCallSession());
                 mOwner.getPhone().getVoiceCallSessionStats().onAudioCodecChanged(this, mAudioCodec);
+                changed = true;
             }
 
             if (localCallProfile != null
