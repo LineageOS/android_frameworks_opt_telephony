@@ -481,7 +481,7 @@ public class ProxyController {
                 mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_SUCCESS;
                 // The modems may have been restarted and forgotten this
                 mPhoneSwitcher.onRadioCapChanged(id);
-                mPhones[id].radioCapabilityUpdated(rc);
+                mPhones[id].radioCapabilityUpdated(rc, true);
             }
 
             mRadioAccessFamilyStatusCounter--;
