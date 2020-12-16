@@ -24,6 +24,7 @@ import android.os.Message;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.SignalThresholdInfo;
+import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -453,6 +454,15 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getPreferredNetworkType(Message response) {
+    }
+
+    @Override
+    public void setAllowedNetworkTypeBitmask(
+            @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message response) {
+    }
+
+    @Override
+    public void getAllowedNetworkTypeBitmask(Message response) {
     }
 
     @Override
