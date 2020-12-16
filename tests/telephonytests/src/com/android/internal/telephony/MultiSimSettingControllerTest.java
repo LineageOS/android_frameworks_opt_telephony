@@ -513,6 +513,46 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         verifyDismissIntentSent();
     }
 
+    @Test
+    @SmallTest
+    public void testGroupedPrimaryRemoved() throws Exception {
+        // Create subscription grouping of subs 1 and 2.
+        replaceInstance(SubscriptionInfo.class, "mGroupUUID", mSubInfo1, mGroupUuid1);
+        doReturn(mGroupUuid1).when(mSubControllerMock).getGroupUuid(1);
+        doReturn(mGroupUuid1).when(mSubControllerMock).getGroupUuid(2);
+        doReturn(Arrays.asList(mSubInfo1, mSubInfo2)).when(mSubControllerMock)
+                .getSubscriptionsInGroup(any(), anyString(), nullable(String.class));
+
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        mMultiSimSettingControllerUT.notifySubscriptionGroupChanged(mGroupUuid1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0, 1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 2);
+        processAllMessages();
+
+        // Defaults not touched, sub 1 is already default.
+        verify(mSubControllerMock, never()).setDefaultDataSubId(anyInt());
+
+        // Take out SIM 1.
+        clearInvocations(mSubControllerMock);
+        doReturn(false).when(mSubControllerMock).isActiveSubId(1);
+        doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(1);
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mPhoneMock1).getSubId();
+        List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo2);
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
+        doReturn(new int[]{2}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
+        mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(
+                0, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        processAllMessages();
+
+        // Sub 2 should be made the default sub silently.
+        verify(mSubControllerMock).setDefaultDataSubId(2);
+        verify(mSubControllerMock).setDefaultVoiceSubId(2);
+        verify(mSubControllerMock).setDefaultSmsSubId(2);
+        verifyDismissIntentSent();
+    }
+
     private Intent captureBroadcastIntent() {
         ArgumentCaptor<Intent> intentCapture = ArgumentCaptor.forClass(Intent.class);
         verify(mContext).sendBroadcast(intentCapture.capture());

@@ -92,7 +92,8 @@ public class MultiSimSettingController extends Handler {
                     PRIMARY_SUB_SWAPPED,
                     PRIMARY_SUB_SWAPPED_IN_GROUP,
                     PRIMARY_SUB_MARKED_OPPT,
-                    PRIMARY_SUB_INITIALIZED
+                    PRIMARY_SUB_INITIALIZED,
+                    PRIMARY_SUB_REMOVED_IN_GROUP
     })
     private @interface PrimarySubChangeType {}
 
@@ -110,6 +111,9 @@ public class MultiSimSettingController extends Handler {
     private static final int PRIMARY_SUB_MARKED_OPPT            = 5;
     // Subscription information is initially loaded.
     private static final int PRIMARY_SUB_INITIALIZED            = 6;
+    // One or more primary subscriptions are deactivated but within the same group as another active
+    // sub.
+    private static final int PRIMARY_SUB_REMOVED_IN_GROUP       = 7;
 
     protected final Context mContext;
     protected final SubscriptionController mSubController;
@@ -600,7 +604,14 @@ public class MultiSimSettingController extends Handler {
             // any previous primary subscription becomes inactive, we consider it
             for (int subId : prevPrimarySubList) {
                 if (mPrimarySubList.contains(subId)) continue;
-                if (!mSubController.isActiveSubId(subId)) return PRIMARY_SUB_REMOVED;
+                if (!mSubController.isActiveSubId(subId)) {
+                    for (int currentSubId : mPrimarySubList) {
+                        if (areSubscriptionsInSameGroup(currentSubId, subId)) {
+                            return PRIMARY_SUB_REMOVED_IN_GROUP;
+                        }
+                    }
+                    return PRIMARY_SUB_REMOVED;
+                }
                 if (!mSubController.isOpportunistic(subId)) {
                     // Should never happen.
                     loge("[updatePrimarySubListAndGetChangeType]: missing active primary subId "
