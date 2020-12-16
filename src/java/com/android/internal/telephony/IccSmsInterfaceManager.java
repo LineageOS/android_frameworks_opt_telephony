@@ -21,6 +21,7 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
 import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
 
 import android.Manifest;
+import android.annotation.RequiresPermission;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.compat.annotation.UnsupportedAppUsage;
@@ -1049,8 +1050,9 @@ public class IccSmsInterfaceManager {
     /**
      * Reset all cell broadcast ranges. Previously enabled ranges will become invalid after this.
      */
+    @RequiresPermission(android.Manifest.permission.MODIFY_CELL_BROADCASTS)
     public void resetAllCellBroadcastRanges() {
-        mContext.enforceCallingPermission(android.Manifest.permission.RECEIVE_EMERGENCY_BROADCAST,
+        mContext.enforceCallingPermission(android.Manifest.permission.MODIFY_CELL_BROADCASTS,
                 "resetAllCellBroadcastRanges");
         mCdmaBroadcastRangeManager.clearRanges();
         mCellBroadcastRangeManager.clearRanges();
