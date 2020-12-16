@@ -3440,6 +3440,67 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void setAllowedNetworkTypeBitmask(
+            @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+
+            android.hardware.radio.V1_6.IRadio radioProxy16 =
+                    (android.hardware.radio.V1_6.IRadio) radioProxy;
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy16.setAllowedNetworkTypeBitmap(rr.mSerial, networkTypeBitmask);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setAllowedNetworkTypeBitmask", e);
+            }
+        }
+    }
+
+    @Override
+    public void getAllowedNetworkTypeBitmask(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+
+            android.hardware.radio.V1_6.IRadio radioProxy16 =
+                    (android.hardware.radio.V1_6.IRadio) radioProxy;
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            try {
+                radioProxy16.getAllowedNetworkTypeBitmap(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "getAllowedNetworkTypeBitmask", e);
+            }
+        }
+    }
+
+    @Override
     public void setLocationUpdates(boolean enable, WorkSource workSource, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {

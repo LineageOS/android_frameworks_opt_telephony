@@ -1059,6 +1059,17 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void setAllowedNetworkTypeBitmask(
+            @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message response) {
+
+    }
+
+    @Override
+    public void getAllowedNetworkTypeBitmask(Message response) {
+
+    }
+
+    @Override
     public void setLocationUpdates(boolean enable, Message response) {
 
     }
