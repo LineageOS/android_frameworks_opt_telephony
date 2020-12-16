@@ -1542,6 +1542,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     );
                 }
 
+                if (intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_PRIORITY)) {
+                    profile.setCallExtraInt(ImsCallProfile.EXTRA_PRIORITY, intentExtras.getInt(
+                            android.telecom.TelecomManager.EXTRA_PRIORITY));
+                }
+
+                if (intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_LOCATION)) {
+                    profile.setCallExtraParcelable(ImsCallProfile.EXTRA_LOCATION,
+                            intentExtras.getParcelable(
+                                    android.telecom.TelecomManager.EXTRA_LOCATION));
+                }
+
+                if (intentExtras.containsKey(
+                        android.telecom.TelecomManager.EXTRA_OUTGOING_PICTURE)) {
+                    // TODO(hallliu) Set ImsCallProfile.EXTRA_PICTURE_URL with cached URL string
+                }
+
                 if (conn.hasRttTextStream()) {
                     profile.mMediaProfile.mRttMode = ImsStreamMediaProfile.RTT_MODE_FULL;
                 }
