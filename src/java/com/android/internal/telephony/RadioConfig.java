@@ -503,7 +503,7 @@ public class RadioConfig extends Handler {
      * Gets the hal capabilities from the device.
      */
     public void getHalDeviceCapabilities(Message result) {
-        IRadioConfig radioConfigProxy = getRadioConfigProxy(result);
+        IRadioConfig radioConfigProxy = getRadioConfigProxy(Message.obtain(result));
         if (radioConfigProxy != null
                 && mRadioConfigVersion.greaterOrEqual(RADIO_CONFIG_HAL_VERSION_1_3)) {
             android.hardware.radio.config.V1_3.IRadioConfig radioConfigProxy13 =
