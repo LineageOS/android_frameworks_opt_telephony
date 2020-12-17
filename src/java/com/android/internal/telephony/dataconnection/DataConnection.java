@@ -912,7 +912,7 @@ public class DataConnection extends StateMachine {
             msg.obj = allocateCallback;
             mPhone.mCi.allocatePduSessionId(msg);
         } else {
-            allocateCallback.accept(EVENT_ALLOCATE_PDU_SESSION_ID);
+            allocateCallback.accept(PDU_SESSION_ID_NOT_SET);
         }
     }
 
