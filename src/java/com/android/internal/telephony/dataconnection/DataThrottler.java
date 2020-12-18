@@ -22,7 +22,6 @@ import android.telephony.Annotation;
 import android.telephony.Annotation.ApnType;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnThrottleStatus;
-import android.telephony.data.DataCallResponse;
 
 import com.android.internal.telephony.RetryManager;
 import com.android.telephony.Rlog;
@@ -67,7 +66,7 @@ public class DataThrottler {
      * {@link RetryManager#NO_RETRY} indicates retry should never happen.
      */
     public void setRetryTime(@ApnType int apnTypes, long retryElapsedTime,
-            @DataCallResponse.HandoverFailureMode int handoverFailureMode) {
+            @DcTracker.RequestNetworkType int newRequestType) {
         if (retryElapsedTime < 0) {
             retryElapsedTime = RetryManager.NO_SUGGESTED_RETRY_DELAY;
         }
@@ -79,8 +78,7 @@ public class DataThrottler {
             int apnType = apnTypes & -apnTypes;
 
             //Update the apn throttle status
-            ApnThrottleStatus newStatus =
-                    createStatus(apnType, retryElapsedTime, handoverFailureMode);
+            ApnThrottleStatus newStatus = createStatus(apnType, retryElapsedTime, newRequestType);
 
             ApnThrottleStatus oldStatus = mApnThrottleStatus.get(apnType);
 
@@ -130,13 +128,13 @@ public class DataThrottler {
     }
 
     private ApnThrottleStatus createStatus(@Annotation.ApnType int apnType, long retryElapsedTime,
-            @DataCallResponse.HandoverFailureMode int handoverFailureMode) {
+            @DcTracker.RequestNetworkType int newRequestType) {
         ApnThrottleStatus.Builder builder = new ApnThrottleStatus.Builder();
 
         if (retryElapsedTime == RetryManager.NO_SUGGESTED_RETRY_DELAY) {
             builder
                     .setNoThrottle()
-                    .setRetryType(getRetryType(handoverFailureMode));
+                    .setRetryType(getRetryType(newRequestType));
         } else if (retryElapsedTime == RetryManager.NO_RETRY) {
             builder
                     .setThrottleExpiryTimeMillis(RetryManager.NO_RETRY)
@@ -144,7 +142,7 @@ public class DataThrottler {
         } else {
             builder
                     .setThrottleExpiryTimeMillis(retryElapsedTime)
-                    .setRetryType(getRetryType(handoverFailureMode));
+                    .setRetryType(getRetryType(newRequestType));
         }
         return builder
                 .setSlotIndex(mSlotIndex)
@@ -153,18 +151,17 @@ public class DataThrottler {
                 .build();
     }
 
-    private static int getRetryType(@DataCallResponse.HandoverFailureMode int handoverFailureMode) {
-        int retryType;
-        int requestType = DcTracker.calcRequestType(handoverFailureMode);
-        if (requestType == DcTracker.REQUEST_TYPE_NORMAL) {
-            retryType = ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION;
-        } else if (requestType == DcTracker.REQUEST_TYPE_HANDOVER) {
-            retryType = ApnThrottleStatus.RETRY_TYPE_HANDOVER;
-        } else {
-            loge("createStatus: Unknown requestType=" + requestType);
-            retryType = ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION;
+    private static int getRetryType(@DcTracker.RequestNetworkType int newRequestType) {
+        if (newRequestType == DcTracker.REQUEST_TYPE_NORMAL) {
+            return ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION;
         }
-        return retryType;
+
+        if (newRequestType == DcTracker.REQUEST_TYPE_HANDOVER) {
+            return  ApnThrottleStatus.RETRY_TYPE_HANDOVER;
+        }
+
+        loge("createStatus: Unknown requestType=" + newRequestType);
+        return ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION;
     }
 
     private void sendApnThrottleStatusChanged(List<ApnThrottleStatus> statuses) {

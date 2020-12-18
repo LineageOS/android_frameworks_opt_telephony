@@ -2422,8 +2422,10 @@ public class DataConnection extends StateMachine {
                             } else if (delay >= 0) {
                                 retryTime = SystemClock.elapsedRealtime() + delay;
                             }
+                            int newRequestType = DcTracker.calculateNewRetryRequestType(
+                                    mHandoverFailureMode, cp.mRequestType, mDcFailCause);
                             mDct.getDataThrottler().setRetryTime(mApnSetting.getApnTypeBitmask(),
-                                    retryTime, dataCallResponse.getHandoverFailureMode());
+                                    retryTime, newRequestType);
 
                             String str = "DcActivatingState: ERROR_DATA_SERVICE_SPECIFIC_ERROR "
                                     + " delay=" + delay

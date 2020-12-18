@@ -148,7 +148,7 @@ public class VendorDcTracker extends DcTracker {
 
     @Override
     protected void onDataSetupCompleteError(ApnContext apnContext,
-            @RequestNetworkType int requestType, boolean fallback) {
+            @RequestNetworkType int requestType, boolean fallbackOnFailedHandover) {
         long delay = apnContext.getDelayForNextApn(mFailFast);
         if (mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_pdp_reject_enable_retry)) {
@@ -275,7 +275,8 @@ public class VendorDcTracker extends DcTracker {
                     cancelReconnect(apnContext);
                     if (retry) {
                         if (DBG) log("onResetEvent: retry data call on apnContext=" + apnContext);
-                        sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
+                        sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA,
+                                REQUEST_TYPE_NORMAL, 0, apnContext));
                     }
                 }
             }
