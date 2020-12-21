@@ -24,12 +24,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
+import android.telephony.PhoneStateListener;
+import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
@@ -71,9 +73,32 @@ public class CarrierServiceStateTracker extends Handler {
     @VisibleForTesting
     public static final String PREF_NETWORK_NOTIFICATION_TAG = "PrefNetworkNotification";
 
+    private long mAllowedNetworkType = -1;
+    private AllowedNetworkTypesChangedListener mAllowedNetworkTypesChangedListenerListener;
+    private TelephonyManager mTelephonyManager;
+
+    /**
+     * The listener for allowed network types changed
+     */
+    @VisibleForTesting
+    public class AllowedNetworkTypesChangedListener extends PhoneStateListener
+            implements PhoneStateListener.AllowedNetworkTypesChangedListener {
+        @Override
+        public void onAllowedNetworkTypesChanged(Map<Integer, Long> allowedNetworkTypesList) {
+            long newAllowedNetworkType = allowedNetworkTypesList.get(
+                    TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
+            if (mAllowedNetworkType != newAllowedNetworkType) {
+                mAllowedNetworkType = newAllowedNetworkType;
+                handlePrefNetworkModeChanged();
+            }
+        }
+    }
+
     public CarrierServiceStateTracker(Phone phone, ServiceStateTracker sst) {
         this.mPhone = phone;
         this.mSST = sst;
+        mTelephonyManager = mPhone.getContext().getSystemService(
+                TelephonyManager.class).createForSubscriptionId(mPhone.getSubId());
         phone.getContext().registerReceiver(mBroadcastReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
         // Listen for subscriber changes
@@ -84,44 +109,42 @@ public class CarrierServiceStateTracker extends Handler {
                         int subId = mPhone.getSubId();
                         if (mPreviousSubId != subId) {
                             mPreviousSubId = subId;
-                            registerPrefNetworkModeObserver();
+                            mTelephonyManager = mTelephonyManager.createForSubscriptionId(
+                                    mPhone.getSubId());
+                            registerAllowedNetworkTypesListener();
                         }
                     }
                 });
 
         registerNotificationTypes();
-        registerPrefNetworkModeObserver();
+        mAllowedNetworkType = RadioAccessFamily.getNetworkTypeFromRaf(
+                (int) mPhone.getAllowedNetworkTypes(
+                        TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER));
+        mAllowedNetworkTypesChangedListenerListener = new AllowedNetworkTypesChangedListener();
+        registerAllowedNetworkTypesListener();
     }
-
-    private ContentObserver mPrefNetworkModeObserver = new ContentObserver(this) {
-        @Override
-        public void onChange(boolean selfChange) {
-            handlePrefNetworkModeChanged();
-        }
-    };
 
     /**
-     * Return preferred network mode observer
+     * Return preferred network mode listener
      */
     @VisibleForTesting
-    public ContentObserver getContentObserver() {
-        return mPrefNetworkModeObserver;
+    public AllowedNetworkTypesChangedListener getAllowedNetworkTypesChangedListener() {
+        return mAllowedNetworkTypesChangedListenerListener;
     }
 
-    private void registerPrefNetworkModeObserver() {
+    private void registerAllowedNetworkTypesListener() {
         int subId = mPhone.getSubId();
-        unregisterPrefNetworkModeObserver();
+        unregisterAllowedNetworkTypesListener();
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            mPhone.getContext().getContentResolver().registerContentObserver(
-                    Settings.Global.getUriFor(Settings.Global.PREFERRED_NETWORK_MODE + subId),
-                    true,
-                    mPrefNetworkModeObserver);
+            if (mTelephonyManager != null) {
+                mTelephonyManager.registerPhoneStateListener(new HandlerExecutor(this),
+                        mAllowedNetworkTypesChangedListenerListener);
+            }
         }
     }
 
-    private void unregisterPrefNetworkModeObserver() {
-        mPhone.getContext().getContentResolver().unregisterContentObserver(
-                mPrefNetworkModeObserver);
+    private void unregisterAllowedNetworkTypesListener() {
+        mTelephonyManager.unregisterPhoneStateListener(mAllowedNetworkTypesChangedListenerListener);
     }
 
     /**
@@ -196,13 +219,10 @@ public class CarrierServiceStateTracker extends Handler {
      * Returns true if the preferred network is set to 'Global'.
      */
     private boolean isGlobalMode() {
-        Context context = mPhone.getContext();
         int preferredNetworkSetting = -1;
         try {
-            preferredNetworkSetting =
-                    android.provider.Settings.Global.getInt(context.getContentResolver(),
-                            android.provider.Settings.Global.PREFERRED_NETWORK_MODE
-                                    + mPhone.getSubId(), Phone.PREFERRED_NT_MODE);
+            preferredNetworkSetting = PhoneFactory.calculatePreferredNetworkType(
+                    mPhone.getPhoneId());
         } catch (Exception e) {
             Rlog.e(LOG_TAG, "Unable to get PREFERRED_NETWORK_MODE.");
             return true;
@@ -210,9 +230,11 @@ public class CarrierServiceStateTracker extends Handler {
 
         if (isNrSupported()) {
             return (preferredNetworkSetting
-                    == RILConstants.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA);
+                    == RadioAccessFamily.getRafFromNetworkType(
+                    RILConstants.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA));
         } else {
-            return (preferredNetworkSetting == RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA);
+            return (preferredNetworkSetting == RadioAccessFamily.getRafFromNetworkType(
+                    RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA));
         }
     }
 
@@ -225,7 +247,9 @@ public class CarrierServiceStateTracker extends Handler {
         boolean isRadioAccessFamilySupported = checkSupportedBitmask(
                 tm.getSupportedRadioAccessFamily(), TelephonyManager.NETWORK_TYPE_BITMASK_NR);
         boolean isNrNetworkTypeAllowed = checkSupportedBitmask(
-                tm.getAllowedNetworkTypes(), TelephonyManager.NETWORK_TYPE_BITMASK_NR);
+                tm.getAllowedNetworkTypesForReason(
+                        TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_CARRIER),
+                TelephonyManager.NETWORK_TYPE_BITMASK_NR);
 
         Rlog.i(LOG_TAG, "isNrSupported: " + " carrierConfigEnabled: " + isCarrierConfigEnabled
                 + ", AccessFamilySupported: " + isRadioAccessFamilySupported
@@ -246,7 +270,8 @@ public class CarrierServiceStateTracker extends Handler {
             Rlog.e(LOG_TAG, "isCarrierConfigEnableNr: Cannot get config " + mPhone.getSubId());
             return false;
         }
-        return config.getBoolean(CarrierConfigManager.KEY_NR_ENABLED_BOOL);
+        return config.getInt(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITY_INT)
+                != CarrierConfigManager.CARRIER_NR_AVAILABILITY_NONE;
     }
 
     private boolean checkSupportedBitmask(@NetworkTypeBitMask long supportedBitmask,
@@ -369,7 +394,7 @@ public class CarrierServiceStateTracker extends Handler {
      * Dispose the CarrierServiceStateTracker.
      */
     public void dispose() {
-        unregisterPrefNetworkModeObserver();
+        unregisterAllowedNetworkTypesListener();
     }
 
     /**
