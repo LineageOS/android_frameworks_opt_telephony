@@ -3479,16 +3479,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setAllowedNetworkTypeBitmask(
+    public void setAllowedNetworkTypesBitmap(
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
-                if (result != null) {
-                    AsyncResult.forMessage(result, null,
-                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                    result.sendToTarget();
-                }
+                // For older HAL, redirects the call to setPreferredNetworkType.
+                setPreferredNetworkType(
+                        RadioAccessFamily.getNetworkTypeFromRaf(networkTypeBitmask), result);
                 return;
             }
 
@@ -3510,7 +3508,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void getAllowedNetworkTypeBitmask(Message result) {
+    public void getAllowedNetworkTypesBitmap(Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
@@ -6913,6 +6911,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_CANCEL_HANDOVER";
             case RIL_REQUEST_SET_DATA_THROTTLING:
                 return "RIL_REQUEST_SET_DATA_THROTTLING";
+            case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP:
+                return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP";
+            case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP:
+                return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP";
             default: return "<unknown request>";
         }
     }
