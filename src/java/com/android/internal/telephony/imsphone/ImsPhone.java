@@ -49,6 +49,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -62,6 +63,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.ResultReceiver;
 import android.os.UserHandle;
+import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
@@ -148,6 +150,9 @@ public class ImsPhone extends ImsPhoneBase {
 
     // Default Emergency Callback Mode exit timer
     private static final long DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
+
+    // String to Call Composer Option Prefix set by user
+    private static final String PREF_USER_SET_CALL_COMPOSER_PREFIX = "userset_callcomposer_prefix";
 
     /**
      * Used to create ImsManager instances, which may be injected during testing.
@@ -237,6 +242,8 @@ public class ImsPhone extends ImsPhoneBase {
 
     private final ImsManagerFactory mImsManagerFactory;
 
+    private SharedPreferences mImsPhoneSharedPreferences;
+
     // To redial silently through GSM or CDMA when dialing through IMS fails
     private String mLastDialString;
 
@@ -281,6 +288,18 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public Uri[] getCurrentSubscriberUris() {
         return mCurrentSubscriberUris;
+    }
+
+    /** Set call composer status from users for the current subscription */
+    public void setCallComposerStatus(int status) {
+        mImsPhoneSharedPreferences.edit().putInt(
+                PREF_USER_SET_CALL_COMPOSER_PREFIX + getSubId(), status).commit();
+    }
+
+    /** Get call composer status from users for the current subscription */
+    public int getCallComposerStatus() {
+        return mImsPhoneSharedPreferences.getInt(PREF_USER_SET_CALL_COMPOSER_PREFIX + getSubId(),
+                TelephonyManager.CALL_COMPOSER_STATUS_OFF);
     }
 
     @Override
@@ -406,6 +425,7 @@ public class ImsPhone extends ImsPhoneBase {
 
         mDefaultPhone = defaultPhone;
         mImsManagerFactory = imsManagerFactory;
+        mImsPhoneSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         mImsStats = new ImsStats(this);
         // The ImsExternalCallTracker needs to be defined before the ImsPhoneCallTracker, as the
         // ImsPhoneCallTracker uses a thread to spool up the ImsManager.  Part of this involves
