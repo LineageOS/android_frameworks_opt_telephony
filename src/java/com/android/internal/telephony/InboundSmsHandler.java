@@ -91,24 +91,22 @@ import java.util.ListIterator;
 import java.util.Map;
 
 /**
- * This class broadcasts incoming SMS messages to interested apps after storing them in
- * the SmsProvider "raw" table and ACKing them to the SMSC. After each message has been
- * broadcast, its parts are removed from the raw table. If the device crashes after ACKing
- * but before the broadcast completes, the pending messages will be rebroadcast on the next boot.
+ * This class broadcasts incoming SMS messages to interested apps after storing them in the
+ * SmsProvider "raw" table and ACKing them to the SMSC. After each message has been broadcast, its
+ * parts are removed from the raw table. If the device crashes after ACKing but before the broadcast
+ * completes, the pending messages will be rebroadcast on the next boot.
  *
- * <p>The state machine starts in {@link IdleState} state. When the {@link SMSDispatcher} receives a
- * new SMS from the radio, it calls {@link #dispatchNormalMessage},
- * which sends a message to the state machine, causing the wakelock to be acquired in
- * {@link #haltedProcessMessage}, which transitions to {@link DeliveringState} state, where the message
- * is saved to the raw table, then acknowledged via the {@link SMSDispatcher} which called us.
+ * <p>The state machine starts in {@link IdleState} state. When we receive a new SMS from the radio,
+ * the wakelock is acquired, then transition to {@link DeliveringState} state, where the message is
+ * saved to the raw table, then acknowledged to the modem which in turn acknowledges it to the SMSC.
  *
- * <p>After saving the SMS, if the message is complete (either single-part or the final segment
- * of a multi-part SMS), we broadcast the completed PDUs as an ordered broadcast, then transition to
+ * <p>After saving the SMS, if the message is complete (either single-part or the final segment of a
+ * multi-part SMS), we broadcast the completed PDUs as an ordered broadcast, then transition to
  * {@link WaitingState} state to wait for the broadcast to complete. When the local
  * {@link BroadcastReceiver} is called with the result, it sends {@link #EVENT_BROADCAST_COMPLETE}
- * to the state machine, causing us to either broadcast the next pending message (if one has
- * arrived while waiting for the broadcast to complete), or to transition back to the halted state
- * after all messages are processed. Then the wakelock is released and we wait for the next SMS.
+ * to the state machine, causing us to either broadcast the next pending message (if one has arrived
+ * while waiting for the broadcast to complete), or to transition back to the halted state after all
+ * messages are processed. Then the wakelock is released and we wait for the next SMS.
  */
 public abstract class InboundSmsHandler extends StateMachine {
     protected static final boolean DBG = true;
