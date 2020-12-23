@@ -56,6 +56,7 @@ import android.hardware.radio.V1_5.AccessNetwork;
 import android.hardware.radio.V1_5.IndicationFilter;
 import android.hardware.radio.V1_5.PersoSubstate;
 import android.hardware.radio.V1_5.RadioAccessNetworks;
+import android.hardware.radio.V1_6.OptionalSliceInfo;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
@@ -106,6 +107,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.Qos;
 import android.telephony.data.QosSession;
+import android.telephony.data.SliceInfo;
 import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
 import android.util.Log;
@@ -1883,6 +1885,38 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return dpi;
     }
 
+    private OptionalSliceInfo convertToHalSliceInfo16(@Nullable SliceInfo sliceInfo) {
+        OptionalSliceInfo optionalSliceInfo = new OptionalSliceInfo();
+        if (sliceInfo == null) {
+            return optionalSliceInfo;
+        }
+
+        android.hardware.radio.V1_6.SliceInfo si = new android.hardware.radio.V1_6.SliceInfo();
+        si.sst = (byte) sliceInfo.getSliceServiceType();
+        si.mappedHplmnSst = (byte) sliceInfo.getMappedHplmnSliceServiceType();
+        si.sliceDifferentiator = sliceInfo.getSliceDifferentiator();
+        si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
+        optionalSliceInfo.value(si);
+        return optionalSliceInfo;
+    }
+
+    private ArrayList<android.hardware.radio.V1_5.LinkAddress> convertToHalLinkProperties15(
+            LinkProperties linkProperties) {
+        ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 = new ArrayList<>();
+        if (linkProperties != null) {
+            for (LinkAddress la : linkProperties.getAllLinkAddresses()) {
+                android.hardware.radio.V1_5.LinkAddress linkAddress =
+                        new android.hardware.radio.V1_5.LinkAddress();
+                linkAddress.address = la.getAddress().getHostAddress();
+                linkAddress.properties = la.getFlags();
+                linkAddress.deprecationTime = la.getDeprecationTime();
+                linkAddress.expirationTime = la.getExpirationTime();
+                addresses15.add(linkAddress);
+            }
+        }
+        return addresses15;
+    }
+
     /**
      * Convert to DataProfileInfo defined in radio/1.5/types.hal
      * @param dp Data profile
@@ -1944,7 +1978,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                               boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              int pduSessionId, Message result) {
+                              int pduSessionId, SliceInfo sliceInfo, Message result) {
         IRadio radioProxy = getRadioProxy(result);
 
         if (radioProxy != null) {
@@ -1973,19 +2007,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     android.hardware.radio.V1_5.DataProfileInfo dpi =
                             convertToHalDataProfile15(dataProfile);
 
+                    android.hardware.radio.V1_6.OptionalSliceInfo sliceInfo16 =
+                            convertToHalSliceInfo16(sliceInfo);
+
                     ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 =
-                            new ArrayList<>();
-                    if (linkProperties != null) {
-                        for (LinkAddress la : linkProperties.getAllLinkAddresses()) {
-                            android.hardware.radio.V1_5.LinkAddress linkAddress =
-                                    new android.hardware.radio.V1_5.LinkAddress();
-                            linkAddress.address = la.getAddress().getHostAddress();
-                            linkAddress.properties = la.getFlags();
-                            linkAddress.deprecationTime = la.getDeprecationTime();
-                            linkAddress.expirationTime = la.getExpirationTime();
-                            addresses15.add(linkAddress);
-                        }
-                    }
+                            convertToHalLinkProperties15(linkProperties);
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -1993,11 +2019,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
                                 + ",addresses=" + addresses15 + ",dnses=" + dnses
-                                + ",pduSessionId=" + pduSessionId);
+                                + ",pduSessionId=" + pduSessionId + ",sliceInfo=" + sliceInfo16);
                     }
 
                     radioProxy16.setupDataCall_1_6(rr.mSerial, accessNetworkType, dpi, allowRoaming,
-                            reason, addresses15, dnses, pduSessionId);
+                            reason, addresses15, dnses, pduSessionId, sliceInfo16);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     // IRadio V1.5
                     android.hardware.radio.V1_5.IRadio radioProxy15 =
@@ -2008,18 +2034,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             convertToHalDataProfile15(dataProfile);
 
                     ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 =
-                            new ArrayList<>();
-                    if (linkProperties != null) {
-                        for (LinkAddress la : linkProperties.getAllLinkAddresses()) {
-                            android.hardware.radio.V1_5.LinkAddress linkAddress =
-                                    new android.hardware.radio.V1_5.LinkAddress();
-                            linkAddress.address = la.getAddress().getHostAddress();
-                            linkAddress.properties = la.getFlags();
-                            linkAddress.deprecationTime = la.getDeprecationTime();
-                            linkAddress.expirationTime = la.getExpirationTime();
-                            addresses15.add(linkAddress);
-                        }
-                    }
+                            convertToHalLinkProperties15(linkProperties);
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -7366,6 +7381,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         List<LinkAddress> laList = new ArrayList<>();
         List<QosSession> qosSessions = new ArrayList<>();
+        SliceInfo sliceInfo = null;
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
@@ -7444,7 +7460,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
             laList = result.addresses.stream().map(la -> createLinkAddressFromString(
                     la.address, la.properties, la.deprecationTime, la.expirationTime))
                     .collect(Collectors.toList());
-
             dnses = result.dnses.stream().toArray(String[]::new);
             gateways = result.gateways.stream().toArray(String[]::new);
             pcscfs = result.pcscf.stream().toArray(String[]::new);
@@ -7456,6 +7471,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             defaultQos = Qos.create(result.defaultQos);
             qosSessions = result.qosSessions.stream().map(session ->
                     QosSession.create(session)).collect(Collectors.toList());
+            sliceInfo = convertToSliceInfo(result.sliceInfo);
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
@@ -7524,7 +7540,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setPduSessionId(pduSessionId)
                 .setDefaultQos(defaultQos)
                 .setQosSessions(qosSessions)
+                .setSliceInfo(sliceInfo)
                 .build();
+    }
+
+    private static SliceInfo convertToSliceInfo(OptionalSliceInfo optionalSliceInfo) {
+        if (optionalSliceInfo.getDiscriminator() == OptionalSliceInfo.hidl_discriminator.noinit) {
+            return null;
+        }
+
+        android.hardware.radio.V1_6.SliceInfo si = optionalSliceInfo.value();
+        SliceInfo.Builder builder =
+                new SliceInfo.Builder()
+                .setSliceServiceType(si.sst)
+                .setMappedHplmnSliceServiceType(si.mappedHplmnSst);
+        if (si.sliceDifferentiator != SliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
+            builder
+                .setSliceDifferentiator(si.sliceDifferentiator)
+                .setMappedHplmnSliceDifferentiator(si.mappedHplmnSD);
+        }
+        return builder.build();
     }
 
     /**

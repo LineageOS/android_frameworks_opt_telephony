@@ -68,6 +68,7 @@ import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.Qos;
 import android.telephony.data.QosSession;
+import android.telephony.data.SliceInfo;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -304,6 +305,7 @@ public class DataConnection extends StateMachine {
     private int mUplinkBandwidth = 14;
     private Qos mDefaultQos = null;
     private List<QosSession> mQosSessions = new ArrayList<>();
+    private SliceInfo mSliceInfo;
 
     /** The corresponding network agent for this data connection. */
     private DcNetworkAgent mNetworkAgent;
@@ -611,9 +613,21 @@ public class DataConnection extends StateMachine {
         return mPduSessionId;
     }
 
+    public SliceInfo getSliceInfo() {
+        return mSliceInfo;
+    }
+
     public void updateQosParameters(DataCallResponse response) {
         mDefaultQos = response.getDefaultQos();
         mQosSessions = response.getQosSessions();
+    }
+
+    /**
+     * Update the latest slice info on this data connection with
+     * {@link DataCallResponse#getSliceInfo}.
+     */
+    public void updateSliceInfo(DataCallResponse response) {
+        mSliceInfo = response.getSliceInfo();
     }
 
     @VisibleForTesting
@@ -873,6 +887,7 @@ public class DataConnection extends StateMachine {
             return DataFailCause.NONE;
         }
 
+        // setup data call for REQUEST_TYPE_NORMAL
         allocatePduSessionId(psi -> {
             this.setPduSessionId(psi);
             mDataServiceManager.setupDataCall(
@@ -883,6 +898,7 @@ public class DataConnection extends StateMachine {
                     reason,
                     linkProperties,
                     psi,
+                    null, //slice info is null since this is not a handover
                     msg);
             TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
                     dp.getProfileId(), dp.getApn(), dp.getProtocolType());
@@ -970,6 +986,7 @@ public class DataConnection extends StateMachine {
                 reason,
                 linkProperties,
                 srcDc.getPduSessionId(),
+                srcDc.getSliceInfo(),
                 msg);
         TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
                 dp.getProfileId(), dp.getApn(), dp.getProtocolType());
@@ -1282,6 +1299,7 @@ public class DataConnection extends StateMachine {
 
             updatePcscfAddr(response);
             updateQosParameters(response);
+            updateSliceInfo(response);
             result = updateLinkProperty(response).setupResult;
         }
 

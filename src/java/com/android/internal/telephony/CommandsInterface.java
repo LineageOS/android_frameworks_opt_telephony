@@ -32,7 +32,9 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.SliceInfo;
 import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -1848,10 +1850,16 @@ public interface CommandsInterface {
      *            data connection
      * @param result
      *            Callback message
+     * @param sliceInfo used within the data connection when a handover occurs from EPDG to 5G.
+     *            The value is null unless the access network is
+     *            {@link android.telephony.AccessNetworkConstants.AccessNetworkType#NGRAN} and a
+     *            handover is occurring from EPDG to 5G.  If the slice passed is rejected, then
+     *            {@link DataCallResponse#getCause()} is
+     *            {@link android.telephony.DataFailCause#SLICE_REJECTED}.
      */
     void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
                        boolean allowRoaming, int reason, LinkProperties linkProperties,
-                       int pduSessionId, Message result);
+                       int pduSessionId, SliceInfo sliceInfo, Message result);
 
     /**
      * Deactivate packet data connection

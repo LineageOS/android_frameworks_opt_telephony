@@ -391,7 +391,7 @@ public class DataConnectionTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(AccessNetworkType.UTRAN), dpCaptor.capture(), eq(false),
                 eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
-                anyInt(), any(Message.class));
+                anyInt(), any(), any(Message.class));
 
         verify(mSimulatedCommandsVerifier, times(1))
                 .allocatePduSessionId(any());
