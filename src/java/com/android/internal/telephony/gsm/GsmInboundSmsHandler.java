@@ -39,8 +39,7 @@ import com.android.internal.telephony.VisualVoicemailSmsFilter;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 
 /**
- * This class broadcasts incoming SMS messages to interested apps after storing them in
- * the SmsProvider "raw" table and ACKing them to the SMSC. After each message has been
+ * Subclass of {@link InboundSmsHandler} for 3GPP type messages.
  */
 public class GsmInboundSmsHandler extends InboundSmsHandler {
 
