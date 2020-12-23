@@ -51,6 +51,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
+import android.telephony.AnomalyReporter;
 import android.telephony.Annotation.DataState;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
@@ -111,6 +112,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -1738,6 +1740,16 @@ public class DataConnection extends StateMachine {
         if ((mUnmeteredUseOnly && !mRestrictedNetworkOverride) || mUnmeteredOverride
                 || (mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_UNMETERED) != 0) {
             result.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
+            if (result.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR)
+                    == 0) {
+                String message = "Unexpected TEMPORARILY_NOT_METERED on devices not supporting NR.";
+                loge(message);
+                // Using fixed UUID to avoid duplicate bugreport notification
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055248"),
+                        message);
+            }
         } else {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         }
