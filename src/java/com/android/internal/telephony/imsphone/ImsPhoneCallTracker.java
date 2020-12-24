@@ -1525,6 +1525,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsCallProfile profile = mImsManager.createCallProfile(serviceType, callType);
             if (conn.isAdhocConference()) {
                 profile.setCallExtraBoolean(ImsCallProfile.EXTRA_CONFERENCE, true);
+                // Also set value for EXTRA_CONFERENCE_DEPRECATED in case receivers are using old
+                // values.
+                profile.setCallExtraBoolean(ImsCallProfile.EXTRA_CONFERENCE_DEPRECATED, true);
             }
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_RETRY_CALL_FAIL_REASON,
