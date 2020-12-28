@@ -42,6 +42,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
@@ -66,6 +67,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class RadioResponse extends IRadioResponse.Stub {
     // The number of the required config values for broadcast SMS stored in the C struct
@@ -73,6 +75,13 @@ public class RadioResponse extends IRadioResponse.Stub {
     private static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
 
     private static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
+
+    private static final String RADIO_POWER_FAILURE_BUGREPORT_UUID =
+            "316f3801-fa21-4954-a42f-0041eada3b31";
+    private static final String RADIO_POWER_FAILURE_RF_HARDWARE_ISSUE_UUID =
+            "316f3801-fa21-4954-a42f-0041eada3b32";
+    private static final String RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID =
+            "316f3801-fa21-4954-a42f-0041eada3b33";
 
     RIL mRil;
 
@@ -2955,6 +2964,10 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void setRadioPowerResponse_1_5(RadioResponseInfo info) {
         responseVoid(info);
         mRil.mLastRadioPowerResult = info.error;
+        if (info.error != RadioError.RADIO_NOT_AVAILABLE && info.error != RadioError.NONE) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString(RADIO_POWER_FAILURE_BUGREPORT_UUID), "Radio power failure");
+        }
     }
 
     /**
@@ -2963,6 +2976,18 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void setRadioPowerResponse_1_6(android.hardware.radio.V1_6.RadioResponseInfo info) {
         responseVoid_1_6(info);
         mRil.mLastRadioPowerResult = info.error;
+        if (info.error == android.hardware.radio.V1_6.RadioError.RF_HARDWARE_ISSUE) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString(RADIO_POWER_FAILURE_RF_HARDWARE_ISSUE_UUID), "RF HW damaged");
+        } else if (info.error == android.hardware.radio.V1_6.RadioError.NO_RF_CALIBRATION_INFO) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString(RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID),
+                    "No RF calibration data");
+        } else if (info.error != android.hardware.radio.V1_6.RadioError.RADIO_NOT_AVAILABLE
+                && info.error != android.hardware.radio.V1_6.RadioError.NONE) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString(RADIO_POWER_FAILURE_BUGREPORT_UUID), "Radio power failure");
+        }
     }
 
     /**
