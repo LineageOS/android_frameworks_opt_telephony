@@ -2352,7 +2352,7 @@ public class DataConnection extends StateMachine {
                     .registerCarrierPrivilegesListener(
                             getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
             notifyDataConnectionState();
-            mDataCallSessionStats.onSetupDataCall();
+            mDataCallSessionStats.onSetupDataCall(mApnSetting.getApnTypeBitmask());
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2451,8 +2451,9 @@ public class DataConnection extends StateMachine {
                     }
                     retVal = HANDLED;
                     mDataCallSessionStats
-                            .onSetupDataCallResponse(dataCallResponse, cp.mRilRat, cp.mProfileId,
-                                    mApnSetting.getApnTypeBitmask(), mApnSetting.getProtocol());
+                            .onSetupDataCallResponse(dataCallResponse, cp.mRilRat,
+                                    mApnSetting.getApnTypeBitmask(), mApnSetting.getProtocol(),
+                                    result.mFailCause);
                     break;
                 case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
                     AsyncResult asyncResult = (AsyncResult) msg.obj;
