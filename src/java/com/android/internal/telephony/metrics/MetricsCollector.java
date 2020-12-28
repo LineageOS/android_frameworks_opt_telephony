@@ -504,7 +504,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 .writeInt(dataCallSession.dimension)
                 .writeBoolean(dataCallSession.isMultiSim)
                 .writeBoolean(dataCallSession.isEsim)
-                .writeInt(dataCallSession.profile)
+                .writeInt(0) // profile is deprecated, so we default to 0
                 .writeInt(dataCallSession.apnTypeBitmask)
                 .writeInt(dataCallSession.carrierId)
                 .writeBoolean(dataCallSession.isRoaming)
