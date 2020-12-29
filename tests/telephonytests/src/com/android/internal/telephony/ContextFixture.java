@@ -81,6 +81,7 @@ import android.telephony.euicc.EuiccManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.mock.MockContext;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -649,6 +650,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
     private final Configuration mConfiguration = new Configuration();
+    private final DisplayMetrics mDisplayMetrics = new DisplayMetrics();
     private final SharedPreferences mSharedPreferences = PreferenceManager
             .getDefaultSharedPreferences(TestApplication.getAppContext());
     private final MockContentResolver mContentResolver = new MockContentResolver();
@@ -702,6 +704,9 @@ public class ContextFixture implements TestFixture<Context> {
 
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();
+
+        mDisplayMetrics.density = 2.25f;
+        doReturn(mDisplayMetrics).when(mResources).getDisplayMetrics();
 
         mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
         // Settings caches the provider after first get/set call, this is needed to make sure
