@@ -3008,7 +3008,7 @@ public class DcTracker extends Handler {
                     // While radio is up, grab provisioning URL.  The URL contains ICCID which
                     // disappears when radio is off.
                     mProvisionBroadcastReceiver = new ProvisionNotificationBroadcastReceiver(
-                            cm.getMobileProvisioningUrl(),
+                            mPhone.getMobileProvisioningUrl(),
                             mTelephonyManager.getNetworkOperatorName());
                     mPhone.getContext().registerReceiver(mProvisionBroadcastReceiver,
                             new IntentFilter(INTENT_PROVISION));
