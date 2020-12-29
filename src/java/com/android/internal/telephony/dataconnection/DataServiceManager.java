@@ -112,6 +112,9 @@ public class DataServiceManager extends Handler {
 
     private CellularDataServiceConnection mServiceConnection;
 
+    private final UUID mAnomalyUUID = UUID.fromString("fc1956de-c080-45de-8431-a1faab687110");
+    private String mLastBoundPackageName;
+
     /**
      * Helpful for logging
      * @return the tag name
@@ -142,8 +145,10 @@ public class DataServiceManager extends Handler {
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
-            loge("DataService " + mTargetBindingPackageName +  ", transport type " + mTransportType
+            loge("DataService " + mLastBoundPackageName +  ", transport type " + mTransportType
                     + " died.");
+            String message = "Iwlan Data Service Crashed," + mLastBoundPackageName;
+            AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
         }
     }
 
@@ -215,6 +220,7 @@ public class DataServiceManager extends Handler {
             mIDataService = IDataService.Stub.asInterface(service);
             mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
+            mLastBoundPackageName = getDataServicePackageName();
 
             try {
                 service.linkToDeath(mDeathRecipient, 0);
