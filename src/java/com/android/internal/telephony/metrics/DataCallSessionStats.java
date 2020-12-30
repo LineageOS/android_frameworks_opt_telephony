@@ -21,13 +21,11 @@ import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_RADIO_OFF;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__IP_TYPE__APN_PROTOCOL_IPV4;
-import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__PROFILE__DATA_PROFILE_DEFAULT;
 
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
 import android.telephony.ServiceState;
-import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ProtocolType;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
@@ -48,6 +46,7 @@ public class DataCallSessionStats {
 
     private final Phone mPhone;
     private long mStartTime;
+    private boolean mOnRatChangedCalledBeforeSetup = false;
     DataCallSession mOngoingDataCall;
 
     private final PersistAtomsStorage mAtomsStorage =
@@ -60,35 +59,43 @@ public class DataCallSessionStats {
     }
 
     /** create a new ongoing atom when data cal is set up */
-    public synchronized void onSetupDataCall() {
-        // there shouldn't be an ongoing dataCall here, if that's the case, it means that
-        // deactivateDataCall hasn't been processed properly, so we save the previous atom here
-        // and move on.
-        if (mOngoingDataCall != null && mOngoingDataCall.ongoing) {
-            mOngoingDataCall.failureCause = DataFailCause.UNKNOWN;
-            mOngoingDataCall.durationMinutes =
-                    convertMillisToMinutes(System.currentTimeMillis() - mStartTime);
-            mOngoingDataCall.ongoing = false;
-            mAtomsStorage.addDataCallSession(mOngoingDataCall);
+    public synchronized void onSetupDataCall(@ApnType int apnTypeBitMask) {
+        if (!mOnRatChangedCalledBeforeSetup) {
+            // there shouldn't be an ongoing dataCall here, if that's the case, it means that
+            // deactivateDataCall hasn't been processed properly, so we save the previous atom here
+            // and move on to create a new atom.
+            if (mOngoingDataCall != null) {
+                mOngoingDataCall.failureCause = DataFailCause.UNKNOWN;
+                mOngoingDataCall.durationMinutes =
+                        convertMillisToMinutes(System.currentTimeMillis() - mStartTime);
+                mOngoingDataCall.ongoing = false;
+                mAtomsStorage.addDataCallSession(mOngoingDataCall);
+                mOngoingDataCall = null;
+            }
+            mOngoingDataCall = getDefaultProto(apnTypeBitMask);
+            mStartTime = System.currentTimeMillis();
+        } else {
+            // if onRatChanged was called before onSetupDataCall, the atom is already initialized
+            // but apnTypeBitMask is initialized to 0, so we need to update it
+            mOngoingDataCall.apnTypeBitmask = apnTypeBitMask;
         }
-        mOngoingDataCall = getDefaultProto();
+        mOnRatChangedCalledBeforeSetup = false;
     }
 
     /**
      * update the ongoing dataCall's atom for data call response event
-     *
      * @param response setup Data call response
      * @param radioTechnology The data call RAT
-     * @param profileId Data profile id
      * @param apnTypeBitmask APN type bitmask
      * @param protocol Data connection protocol
+     * @param failureCause failure cause as per android.telephony.DataFailCause
      */
     public synchronized void onSetupDataCallResponse(
             DataCallResponse response,
-            @NetworkType int radioTechnology,
-            int profileId,
+            @ServiceState.RilRadioTechnology int radioTechnology,
             @ApnType int apnTypeBitmask,
-            @ProtocolType int protocol) {
+            @ProtocolType int protocol,
+            int failureCause) {
         // there should've been another call to initiate the atom,
         // so this method is being called out of order -> no metric will be logged
         if (mOngoingDataCall == null) {
@@ -96,23 +103,27 @@ public class DataCallSessionStats {
             return;
         }
         mOngoingDataCall.ratAtEnd =
-                ServiceState.rilRadioTechnologyToAccessNetworkType(radioTechnology);
-        mOngoingDataCall.profile = profileId;
-        mOngoingDataCall.apnTypeBitmask = apnTypeBitmask;
+                ServiceState.rilRadioTechnologyToNetworkType(radioTechnology);
+
+        // only set if apn hasn't been set during setup
+        if (mOngoingDataCall.apnTypeBitmask == 0) {
+            mOngoingDataCall.apnTypeBitmask = apnTypeBitmask;
+        }
+
         mOngoingDataCall.ipType = protocol;
-        mStartTime = System.currentTimeMillis();
+        mOngoingDataCall.failureCause = failureCause;
         if (response != null) {
-            if (response.getCause() == 0) {
-                mOngoingDataCall.failureCause = DataFailCause.NONE;
-            } else {
-                mOngoingDataCall.failureCause = response.getCause();
+            mOngoingDataCall.suggestedRetryMillis =
+                    (int) Math.min(response.getRetryDurationMillis(), Integer.MAX_VALUE);
+            if (failureCause != DataFailCause.NONE) {
+                mOngoingDataCall.failureCause = failureCause;
                 mOngoingDataCall.setupFailed = true;
                 // set dataCall as inactive
                 mOngoingDataCall.ongoing = false;
                 // store it only if setup has failed
                 mAtomsStorage.addDataCallSession(mOngoingDataCall);
+                mOngoingDataCall = null;
             }
-            mOngoingDataCall.suggestedRetryMillis = response.getSuggestedRetryTime();
         }
     }
 
@@ -144,8 +155,10 @@ public class DataCallSessionStats {
             default:
                 mOngoingDataCall.deactivateReason =
                         DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_UNKNOWN;
-                mOngoingDataCall.oosAtEnd = true;
+                break;
         }
+
+        mOngoingDataCall.oosAtEnd = getIsOos();
     }
 
     /**
@@ -167,15 +180,19 @@ public class DataCallSessionStats {
         // store for the data call list event, after DataCall is disconnected and entered into
         // inactive mode
         mAtomsStorage.addDataCallSession(mOngoingDataCall);
+        mOngoingDataCall = null;
     }
 
     /** Updates this RAT when it changes. */
-    public synchronized void onRatChanged(@NetworkType int rat) {
+    public synchronized void onRatChanged(@ServiceState.RilRadioTechnology int radioTechnology) {
         // if no data call is initiated, or we have a new data call while the last one has ended
         // because onRatChanged might be called before onSetupDataCall
-        if (mOngoingDataCall == null || !mOngoingDataCall.ongoing) {
-            mOngoingDataCall = getDefaultProto();
+        if (mOngoingDataCall == null) {
+            mOngoingDataCall = getDefaultProto(0);
+            mStartTime = System.currentTimeMillis();
+            mOnRatChangedCalledBeforeSetup = true;
         }
+        @NetworkType int rat = ServiceState.rilRadioTechnologyToNetworkType(radioTechnology);
         if (mOngoingDataCall.ratAtEnd != rat) {
             mOngoingDataCall.ratSwitchCount++;
             mOngoingDataCall.ratAtEnd = rat;
@@ -187,13 +204,12 @@ public class DataCallSessionStats {
     }
 
     /** Creates a proto for a normal {@code DataCallSession} with default values. */
-    private DataCallSession getDefaultProto() {
+    private DataCallSession getDefaultProto(@ApnType int apnTypeBitmask) {
         DataCallSession proto = new DataCallSession();
         proto.dimension = RANDOM.nextInt();
         proto.isMultiSim = SimSlotState.isMultiSim();
         proto.isEsim = SimSlotState.isEsim(mPhone.getPhoneId());
-        proto.profile = DATA_CALL_SESSION__PROFILE__DATA_PROFILE_DEFAULT;
-        proto.apnTypeBitmask = ApnSetting.TYPE_NONE;
+        proto.apnTypeBitmask = apnTypeBitmask;
         proto.carrierId = mPhone.getCarrierId();
         proto.isRoaming = getIsRoaming();
         proto.oosAtEnd = false;
@@ -219,6 +235,15 @@ public class DataCallSessionStats {
     private boolean getIsOpportunistic() {
         SubscriptionController subController = SubscriptionController.getInstance();
         return subController != null ? subController.isOpportunistic(mPhone.getSubId()) : false;
+    }
+
+    private boolean getIsOos() {
+        ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
+        ServiceState serviceState =
+                serviceStateTracker != null ? serviceStateTracker.getServiceState() : null;
+        return serviceState != null
+                ? serviceState.getDataRegistrationState() == ServiceState.STATE_OUT_OF_SERVICE
+                : false;
     }
 
     private void loge(String format, Object... args) {
