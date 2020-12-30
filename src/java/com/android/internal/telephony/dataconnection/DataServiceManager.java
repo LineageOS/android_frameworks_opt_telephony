@@ -228,6 +228,8 @@ public class DataServiceManager extends Handler {
                 mIDataService.createDataServiceProvider(mPhone.getPhoneId());
                 mIDataService.registerForDataCallListChanged(mPhone.getPhoneId(),
                         new CellularDataServiceCallback("dataCallListChanged"));
+                mIDataService.registerForUnthrottleApn(mPhone.getPhoneId(),
+                        new CellularDataServiceCallback("unthrottleApn"));
             } catch (RemoteException e) {
                 mDeathRecipient.binderDied();
                 loge("Remote exception. " + e);
