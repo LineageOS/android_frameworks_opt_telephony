@@ -447,7 +447,7 @@ public abstract class SMSDispatcher extends Handler {
                             mSenderCallback);
                 } catch (RuntimeException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e
-                            + " id: " + mTracker.mMessageId);
+                            + " " + SmsController.formatCrossStackMessageId(mTracker.mMessageId));
                     mSenderCallback.onSendSmsComplete(
                             CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK,
                             0 /* messageRef */);
@@ -520,7 +520,8 @@ public abstract class SMSDispatcher extends Handler {
         switch (result) {
             case CarrierMessagingService.SEND_STATUS_OK:
                 Rlog.d(TAG, "processSendSmsResponse: Sending SMS by CarrierMessagingService "
-                        + "succeeded. id: " + tracker.mMessageId);
+                        + "succeeded. "
+                        + SmsController.formatCrossStackMessageId(tracker.mMessageId));
                 sendMessage(obtainMessage(EVENT_SEND_SMS_COMPLETE,
                                           new AsyncResult(tracker,
                                                           smsResponse,
@@ -528,19 +529,21 @@ public abstract class SMSDispatcher extends Handler {
                 break;
             case CarrierMessagingService.SEND_STATUS_ERROR:
                 Rlog.d(TAG, "processSendSmsResponse: Sending SMS by CarrierMessagingService failed."
-                        + " id: " + tracker.mMessageId);
+                        + " " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
                 sendMessage(obtainMessage(EVENT_SEND_SMS_COMPLETE,
                         new AsyncResult(tracker, smsResponse,
                                 new CommandException(CommandException.Error.GENERIC_FAILURE))));
                 break;
             case CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK:
                 Rlog.d(TAG, "processSendSmsResponse: Sending SMS by CarrierMessagingService failed."
-                        + " Retry on carrier network. id: " + tracker.mMessageId);
+                        + " Retry on carrier network. "
+                        + SmsController.formatCrossStackMessageId(tracker.mMessageId));
                 sendSubmitPdu(tracker);
                 break;
             default:
                 Rlog.d(TAG, "processSendSmsResponse: Unknown result " + result + " Retry on carrier"
-                        + " network. id: " + tracker.mMessageId);
+                        + " network. "
+                        + SmsController.formatCrossStackMessageId(tracker.mMessageId));
                 sendSubmitPdu(tracker);
         }
     }
@@ -668,7 +671,8 @@ public abstract class SMSDispatcher extends Handler {
         switch (result) {
             case CarrierMessagingService.SEND_STATUS_OK:
                 Rlog.d(TAG, "processSendMultipartSmsResponse: Sending SMS by "
-                        + "CarrierMessagingService succeeded. id: " + trackers[0].mMessageId);
+                        + "CarrierMessagingService succeeded. "
+                        + SmsController.formatCrossStackMessageId(trackers[0].mMessageId));
                 // Sending a multi-part SMS by CarrierMessagingService successfully completed.
                 // Send EVENT_SEND_SMS_COMPLETE for all the parts one by one.
                 for (int i = 0; i < trackers.length; i++) {
@@ -688,7 +692,8 @@ public abstract class SMSDispatcher extends Handler {
                 break;
             case CarrierMessagingService.SEND_STATUS_ERROR:
                 Rlog.d(TAG, "processSendMultipartSmsResponse: Sending SMS by "
-                        + "CarrierMessagingService failed. id: " + trackers[0].mMessageId);
+                        + "CarrierMessagingService failed. "
+                        + SmsController.formatCrossStackMessageId(trackers[0].mMessageId));
                 // Sending a multi-part SMS by CarrierMessagingService failed.
                 // Send EVENT_SEND_SMS_COMPLETE with GENERIC_FAILURE for all the parts one by one.
                 for (int i = 0; i < trackers.length; i++) {
@@ -709,15 +714,16 @@ public abstract class SMSDispatcher extends Handler {
                 break;
             case CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK:
                 Rlog.d(TAG, "processSendMultipartSmsResponse: Sending SMS by "
-                        + "CarrierMessagingService failed. Retry on carrier network. id: "
-                        + trackers[0].mMessageId);
+                        + "CarrierMessagingService failed. Retry on carrier network. "
+                        + SmsController.formatCrossStackMessageId(trackers[0].mMessageId));
                 // All the parts for a multi-part SMS are handled together for retry. It helps to
                 // check user confirmation once also if needed.
                 sendSubmitPdu(trackers);
                 break;
             default:
                 Rlog.d(TAG, "processSendMultipartSmsResponse: Unknown result " + result
-                        + ". Retry on carrier network. id: " + trackers[0].mMessageId);
+                        + ". Retry on carrier network. "
+                        + SmsController.formatCrossStackMessageId(trackers[0].mMessageId));
                 sendSubmitPdu(trackers);
         }
     }
@@ -767,7 +773,7 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) {
                 Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent
-                        + " id: " + tracker.mMessageId);
+                        + " " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
             }
 
             if (tracker.mDeliveryIntent != null) {
@@ -786,7 +792,8 @@ public abstract class SMSDispatcher extends Handler {
                     tracker.isFromDefaultSmsApplication(mContext));
         } else {
             if (DBG) {
-                Rlog.d(TAG, "SMS send failed id: " + tracker.mMessageId);
+                Rlog.d(TAG, "SMS send failed "
+                        + SmsController.formatCrossStackMessageId(tracker.mMessageId));
             }
 
             int ss = mPhone.getServiceState().getState();
@@ -803,7 +810,7 @@ public abstract class SMSDispatcher extends Handler {
                         + " mImsRetry=" + tracker.mImsRetry
                         + " mMessageRef=" + tracker.mMessageRef
                         + " SS= " + mPhone.getServiceState().getState()
-                        + " id=" + tracker.mMessageId);
+                        + " " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
             }
 
             // if sms over IMS is not supported on data and voice is not available...
@@ -1642,7 +1649,7 @@ public abstract class SMSDispatcher extends Handler {
             mSmsDispatchersController.sendRetrySms(tracker);
         } else {
             Rlog.e(TAG, mSmsDispatchersController + " is null. Retry failed"
-                    + " id: " + tracker.mMessageId);
+                    + " " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
         }
     }
 
@@ -1938,7 +1945,7 @@ public abstract class SMSDispatcher extends Handler {
                     mSentIntent.send(context, error, fillIn);
                 } catch (CanceledException ex) {
                     Rlog.e(TAG, "Failed to send result"
-                            + " id: " + mMessageId);
+                            + " " + SmsController.formatCrossStackMessageId(mMessageId));
                 }
             }
             reportAnomaly(error, errorCode);
