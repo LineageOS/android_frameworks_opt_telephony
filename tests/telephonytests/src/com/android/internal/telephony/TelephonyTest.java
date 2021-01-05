@@ -42,6 +42,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.net.vcn.VcnManager;
+import android.net.vcn.VcnUnderlyingNetworkPolicy;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -336,6 +339,7 @@ public abstract class TelephonyTest {
     protected CarrierConfigManager mCarrierConfigManager;
     protected UserManager mUserManager;
     protected KeyguardManager mKeyguardManager;
+    protected VcnManager mVcnManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -477,6 +481,7 @@ public abstract class TelephonyTest {
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mKeyguardManager = (KeyguardManager) mContext.getSystemService(Context.KEYGUARD_SERVICE);
+        mVcnManager = mContext.getSystemService(VcnManager.class);
 
         //mTelephonyComponentFactory
         doReturn(mTelephonyComponentFactory).when(mTelephonyComponentFactory).inject(anyString());
@@ -657,6 +662,12 @@ public abstract class TelephonyTest {
         doReturn(mWifiInfo).when(mWifiManager).getConnectionInfo();
         doReturn(2).when(mWifiManager).calculateSignalLevel(anyInt());
         doReturn(4).when(mWifiManager).getMaxSignalLevel();
+
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+            return new VcnUnderlyingNetworkPolicy(
+                    false /* isTearDownRequested */, nc);
+        }).when(mVcnManager).getUnderlyingNetworkPolicy(any(), any());
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
