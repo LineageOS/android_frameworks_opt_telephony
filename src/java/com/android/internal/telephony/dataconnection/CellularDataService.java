@@ -56,6 +56,7 @@ public class CellularDataService extends DataService {
     private static final int DATA_CALL_LIST_CHANGED                 = 6;
     private static final int START_HANDOVER                         = 7;
     private static final int CANCEL_HANDOVER                        = 8;
+    private static final int APN_UNTHROTTLED                        = 9;
 
     private class CellularDataServiceProvider extends DataService.DataServiceProvider {
 
@@ -117,6 +118,9 @@ public class CellularDataService extends DataService {
                         case CANCEL_HANDOVER:
                             callback.onHandoverCancelled(toResultCode(ar.exception));
                             break;
+                        case APN_UNTHROTTLED:
+                            notifyApnUnthrottled((String) ar.result);
+                            break;
                         default:
                             loge("Unexpected event: " + message.what);
                     }
@@ -125,6 +129,9 @@ public class CellularDataService extends DataService {
 
             if (DBG) log("Register for data call list changed.");
             mPhone.mCi.registerForDataCallListChanged(mHandler, DATA_CALL_LIST_CHANGED, null);
+
+            if (DBG) log("Register for apn unthrottled.");
+            mPhone.mCi.registerForApnUnthrottled(mHandler, APN_UNTHROTTLED, null);
         }
 
 
