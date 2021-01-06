@@ -130,7 +130,7 @@ public class RetryManager {
     /**
      * The value indicating network did not suggest any retry delay
      */
-    public static final long NO_SUGGESTED_RETRY_DELAY = DataCallResponse.RETRY_INTERVAL_UNDEFINED;
+    public static final long NO_SUGGESTED_RETRY_DELAY = DataCallResponse.RETRY_DURATION_UNDEFINED;
 
     /**
      * If the network suggests a retry delay in the data call setup response, we will retry

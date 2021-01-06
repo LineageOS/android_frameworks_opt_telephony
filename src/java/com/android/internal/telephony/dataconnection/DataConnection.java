@@ -747,7 +747,7 @@ public class DataConnection extends StateMachine {
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
             DataCallResponse response = new DataCallResponse.Builder()
                     .setCause(mDcTesterFailBringUpAll.getDcFailBringUp().mFailCause)
-                    .setRetryIntervalMillis(
+                    .setRetryDurationMillis(
                             mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime)
                     .setMtuV4(PhoneConstants.UNSET_MTU)
                     .setMtuV6(PhoneConstants.UNSET_MTU)
@@ -2304,7 +2304,7 @@ public class DataConnection extends StateMachine {
                                 retryTime = SystemClock.elapsedRealtime() + delay;
                             }
                             mDct.getDataThrottler().setRetryTime(mApnSetting.getApnTypeBitmask(),
-                                    retryTime);
+                                    retryTime, dataCallResponse.getHandoverFailureMode());
 
                             String str = "DcActivatingState: ERROR_DATA_SERVICE_SPECIFIC_ERROR "
                                     + " delay=" + delay
@@ -3122,7 +3122,7 @@ public class DataConnection extends StateMachine {
          * The value of Long.MAX_VALUE(0x7fffffffffffffff) means no retry.
          */
 
-        long suggestedRetryTime = response.getRetryIntervalMillis();
+        long suggestedRetryTime = response.getRetryDurationMillis();
 
         // The value < 0 means no value is suggested
         if (suggestedRetryTime < 0) {
