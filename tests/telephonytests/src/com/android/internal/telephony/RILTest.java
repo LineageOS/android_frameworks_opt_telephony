@@ -2161,7 +2161,7 @@ public class RILTest extends TelephonyTest {
 
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(0)
-                .setRetryIntervalMillis(-1L)
+                .setRetryDurationMillis(-1L)
                 .setId(0)
                 .setLinkStatus(2)
                 .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
@@ -2235,7 +2235,7 @@ public class RILTest extends TelephonyTest {
 
         response = new DataCallResponse.Builder()
                 .setCause(0)
-                .setRetryIntervalMillis(-1L)
+                .setRetryDurationMillis(-1L)
                 .setId(0)
                 .setLinkStatus(2)
                 .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)

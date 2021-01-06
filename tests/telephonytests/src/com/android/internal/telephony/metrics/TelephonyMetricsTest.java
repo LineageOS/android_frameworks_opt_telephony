@@ -506,7 +506,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
     public void testWriteOnSetupDataCallResponse() throws Exception {
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(5)
-                .setRetryIntervalMillis(6)
+                .setRetryDurationMillis(6)
                 .setId(7)
                 .setLinkStatus(8)
                 .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
