@@ -2793,9 +2793,32 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ImsCall.Listener mImsCallListener = new ImsCall.Listener() {
+        boolean mOnCallInitiatingCalled = false;
+        boolean mOnCallProgressingCalled = false;
+
+        @Override
+        public void onCallInitiating(ImsCall imsCall) {
+            if (DBG) log("onCallInitiating");
+
+            if (mOnCallInitiatingCalled) {
+                throw new IllegalStateException("onCallInitiating cannot be called twice.");
+            } else if (mOnCallProgressingCalled) {
+                throw new IllegalStateException("onCallInitiating cannot be called after "
+                        + "onCallProgressing has been called.");
+            }
+            mOnCallInitiatingCalled = true;
+
+            mPendingMO = null;
+            processCallStateChange(imsCall, ImsPhoneCall.State.DIALING,
+                    DisconnectCause.NOT_DISCONNECTED, true);
+            mMetrics.writeOnImsCallInitiating(mPhone.getPhoneId(), imsCall.getCallSession());
+        }
+
         @Override
         public void onCallProgressing(ImsCall imsCall) {
             if (DBG) log("onCallProgressing");
+
+            mOnCallProgressingCalled = true;
 
             mPendingMO = null;
             processCallStateChange(imsCall, ImsPhoneCall.State.ALERTING,
@@ -4219,6 +4242,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void loge(String msg) {
         Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
+    }
+
+    void logw(String msg) {
+        Rlog.w(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 
     void logi(String msg) {

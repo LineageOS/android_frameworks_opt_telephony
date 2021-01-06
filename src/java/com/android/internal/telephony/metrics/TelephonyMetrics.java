@@ -2788,6 +2788,7 @@ public class TelephonyMetrics {
     }
 
     //TODO: Expand the proto in the future
+    public void writeOnImsCallInitiating(int phoneId, ImsCallSession session) {}
     public void writeOnImsCallProgressing(int phoneId, ImsCallSession session) {}
     public void writeOnImsCallStarted(int phoneId, ImsCallSession session) {}
     public void writeOnImsCallStartFailed(int phoneId, ImsCallSession session,
