@@ -58,6 +58,7 @@ import com.android.ims.internal.IImsServiceFeatureCallback;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -262,6 +263,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
      * Tests ImsServiceController loses SIP delegate creation flag if MMTEL and RCS are not both
      * supported.
      */
+    @Ignore("Disabling for integration b/175766573")
     @SmallTest
     @Test
     public void testBindServiceSipDelegateCapabilityLost() throws RemoteException {
@@ -279,7 +281,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
         verify(mMockCallbacks).imsServiceFeatureCreated(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         // verify CAPABILITY_SIP_DELEGATE_CREATION is not set because MMTEL and RCS are not set.
-        validateMmTelFeatureContainerExists(SLOT_0);
+        validateFeatureContainerDoesNotHaveSipDelegate(ImsFeature.FEATURE_MMTEL, SLOT_0);
     }
 
     /**
@@ -950,6 +952,14 @@ public class ImsServiceControllerTest extends ImsTestBase {
         assertNotNull("FeatureContainer should not be null", fc);
         assertTrue((ImsService.CAPABILITY_SIP_DELEGATE_CREATION | fc.getCapabilities()) > 0);
     }
+
+    private void validateFeatureContainerDoesNotHaveSipDelegate(int featureType, int slotId) {
+        ImsFeatureContainer fc =
+                mRepo.getIfExists(slotId, featureType).orElse(null);
+        assertNotNull("FeatureContainer should not be null", fc);
+        assertEquals(0, (ImsService.CAPABILITY_SIP_DELEGATE_CREATION & fc.getCapabilities()));
+    }
+
 
     private void validateMmTelFeatureExistsInCallback(int slotId, long expectedCaps) {
         TestCallback cb = new TestCallback();
