@@ -77,6 +77,7 @@ import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.SmsController;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
@@ -2423,7 +2424,7 @@ public class TelephonyMetrics {
                 + " parts, source = " + smsSource
                 + " blocked = " + blocked
                 + " type = " + type
-                + " messageId = " + messageId);
+                + " " + SmsController.formatCrossStackMessageId(messageId));
 
         InProgressSmsSession smsSession = startNewSmsSession(phoneId);
         for (long time : timestamps) {
@@ -2787,6 +2788,7 @@ public class TelephonyMetrics {
     }
 
     //TODO: Expand the proto in the future
+    public void writeOnImsCallInitiating(int phoneId, ImsCallSession session) {}
     public void writeOnImsCallProgressing(int phoneId, ImsCallSession session) {}
     public void writeOnImsCallStarted(int phoneId, ImsCallSession session) {}
     public void writeOnImsCallStartFailed(int phoneId, ImsCallSession session,

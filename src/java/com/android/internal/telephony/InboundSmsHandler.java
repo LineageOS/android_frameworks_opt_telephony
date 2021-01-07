@@ -989,8 +989,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                 log("processMessagePart: all " + messageCount + " segments "
                         + " received. refNumber: " + refNumber, tracker.getMessageId());
             } catch (SQLException e) {
-                loge("processMessagePart: Can't access multipart SMS database, id: "
-                        + tracker.getMessageId(), e);
+                loge("processMessagePart: Can't access multipart SMS database, "
+                        + SmsController.formatCrossStackMessageId(tracker.getMessageId()), e);
                 return false;
             } finally {
                 if (cursor != null) {
@@ -1564,8 +1564,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                     return Intents.RESULT_SMS_DUPLICATED;   // reject message
                 }
             } catch (SQLException e) {
-                loge("addTrackerToRawTable: Can't access SMS database, id: "
-                        + tracker.getMessageId(), e);
+                loge("addTrackerToRawTable: Can't access SMS database, "
+                        + SmsController.formatCrossStackMessageId(tracker.getMessageId()), e);
                 return RESULT_SMS_DATABASE_ERROR;    // reject message
             }
         } else {
@@ -1596,8 +1596,8 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
             return Intents.RESULT_SMS_HANDLED;
         } catch (Exception e) {
-            loge("addTrackerToRawTable: error parsing URI for new row: " + newUri + " id: "
-                    + tracker.getMessageId(), e);
+            loge("addTrackerToRawTable: error parsing URI for new row: " + newUri
+                    + " " + SmsController.formatCrossStackMessageId(tracker.getMessageId()), e);
             return RESULT_SMS_INVALID_URI;
         }
     }
@@ -1812,7 +1812,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     protected void logWithLocalLog(String logMsg, long id) {
         log(logMsg, id);
-        mLocalLog.log(logMsg + ", id: " + id);
+        mLocalLog.log(logMsg + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**
@@ -1831,7 +1831,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     protected void logeWithLocalLog(String logMsg, long id) {
         loge(logMsg, id);
-        mLocalLog.log(logMsg + ", id: " + id);
+        mLocalLog.log(logMsg + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**
@@ -1850,7 +1850,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param id unique message id
      */
     protected void log(String s, long id) {
-        log(s + ", id: " + id);
+        log(s + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**
@@ -1869,7 +1869,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param id unique message id
      */
     protected void loge(String s, long id) {
-        loge(s + ", id: " + id);
+        loge(s + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**

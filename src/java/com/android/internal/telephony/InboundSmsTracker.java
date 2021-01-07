@@ -326,9 +326,9 @@ public class InboundSmsTracker {
             builder.append(") deleteArgs=(").append(Arrays.toString(mDeleteWhereArgs));
             builder.append(')');
         }
-        builder.append(" id=");
-        builder.append(mMessageId);
-        builder.append('}');
+        builder.append(" ");
+        builder.append(SmsController.formatCrossStackMessageId(mMessageId));
+        builder.append("}");
         return builder.toString();
     }
 

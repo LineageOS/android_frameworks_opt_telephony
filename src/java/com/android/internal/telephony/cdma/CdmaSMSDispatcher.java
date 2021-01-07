@@ -30,6 +30,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
+import com.android.internal.telephony.SmsController;
 import com.android.internal.telephony.SmsDispatchersController;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
@@ -109,7 +110,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 + " mMessageRef=" + tracker.mMessageRef
                 + " mUsesImsServiceForIms=" + tracker.mUsesImsServiceForIms
                 + " SS=" + ss
-                + " id=" + tracker.mMessageId);
+                + " " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
 
         // if sms over IMS is not supported on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {

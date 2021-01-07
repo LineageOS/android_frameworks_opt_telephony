@@ -841,4 +841,11 @@ public class SmsController extends ISmsImplBase {
             return false;
         }
     }
+
+    /**
+     * Internal API to consistently format the debug log output of the cross-stack message id.
+     */
+    public static String formatCrossStackMessageId(long id) {
+        return "{x-message-id:" + id + "}";
+    }
 }

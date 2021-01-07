@@ -822,6 +822,7 @@ public class DcTracker extends Handler {
         registerServiceStateTrackerEvents();
         mDataServiceManager.registerForServiceBindingChanged(this,
                 DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED, null);
+        mDataServiceManager.registerForApnUnthrottled(this, DctConstants.EVENT_APN_UNTHROTTLED);
     }
 
     public void dispose() {
@@ -880,6 +881,7 @@ public class DcTracker extends Handler {
         mDataServiceManager.unregisterForServiceBindingChanged(this);
         mDataEnabledSettings.unregisterForDataEnabledChanged(this);
         mDataEnabledSettings.unregisterForDataEnabledOverrideChanged(this);
+        mDataServiceManager.unregisterForApnUnthrottled(this);
     }
 
     /**
@@ -2424,8 +2426,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void onApnUnthrottled(Message msg) {
-        String apn = (String) msg.obj;
+    private void onApnUnthrottled(String apn) {
         if (apn != null) {
             ApnContext ac = mApnContexts.get(apn);
             if (ac != null) {
@@ -3974,7 +3975,9 @@ public class DcTracker extends Handler {
                 onSimStateUpdated(simState);
                 break;
             case DctConstants.EVENT_APN_UNTHROTTLED:
-                onApnUnthrottled(msg);
+                ar = (AsyncResult) msg.obj;
+                String apn = (String) ar.result;
+                onApnUnthrottled(apn);
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);

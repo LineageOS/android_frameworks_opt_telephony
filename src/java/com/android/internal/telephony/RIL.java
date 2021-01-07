@@ -1759,7 +1759,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
         long messageId = ((SMSDispatcher.SmsTracker) result.obj).mMessageId;
         if (RILJ_LOGV) {
-            Rlog.d(RILJ_LOG_TAG, "getOutgoingSmsMessageId messageId: " + messageId);
+            Rlog.d(RILJ_LOG_TAG, "getOutgoingSmsMessageId "
+                    + SmsController.formatCrossStackMessageId(messageId));
         }
         return messageId;
     }
