@@ -36,10 +36,10 @@ import android.telephony.Annotation.ApnType;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnThrottleStatus;
 import android.telephony.data.IQualifiedNetworksService;
 import android.telephony.data.IQualifiedNetworksServiceCallback;
 import android.telephony.data.QualifiedNetworksService;
+import android.telephony.data.ThrottleStatus;
 import android.text.TextUtils;
 import android.util.SparseArray;
 
@@ -173,10 +173,10 @@ public class AccessNetworksManager extends Handler {
          * the same life cycle.
          */
         @NonNull
-        private final ApnThrottleStatusChangedCallback mThrottleStatusCallback;
+        private final ThrottleStatusChangedCallback mThrottleStatusCallback;
 
         QualifiedNetworksServiceConnection() {
-            mThrottleStatusCallback = new ApnThrottleStatusChangedCallback();
+            mThrottleStatusCallback = new ThrottleStatusChangedCallback();
         }
 
         @Override
@@ -212,41 +212,41 @@ public class AccessNetworksManager extends Handler {
         private void registerDataThrottlersFirstTime() {
             post(() -> {
                 for (DataThrottler dataThrottler : mDataThrottlers) {
-                    dataThrottler.registerForApnThrottleStatusChanges(mThrottleStatusCallback);
+                    dataThrottler.registerForThrottleStatusChanges(mThrottleStatusCallback);
                 }
             });
         }
 
         private void registerDataThrottler(DataThrottler dataThrottler) {
             post(() -> {
-                dataThrottler.registerForApnThrottleStatusChanges(mThrottleStatusCallback);
+                dataThrottler.registerForThrottleStatusChanges(mThrottleStatusCallback);
             });
         }
 
         private void unregisterForThrottleCallbacks() {
             post(() -> {
                 for (DataThrottler dataThrottler : mDataThrottlers) {
-                    dataThrottler.unregisterForApnThrottleStatusChanges(mThrottleStatusCallback);
+                    dataThrottler.unregisterForThrottleStatusChanges(mThrottleStatusCallback);
                 }
             });
         }
     }
 
-    private class ApnThrottleStatusChangedCallback implements DataThrottler.Callback {
+    private class ThrottleStatusChangedCallback implements DataThrottler.Callback {
         @Override
-        public void onApnThrottleStatusChanged(List<ApnThrottleStatus> apnThrottleStatuses) {
+        public void onThrottleStatusChanged(List<ThrottleStatus> throttleStatuses) {
             post(() -> {
                 try {
-                    List<ApnThrottleStatus> apnThrottleStatusesBySlot =
-                            apnThrottleStatuses
+                    List<ThrottleStatus> throttleStatusesBySlot =
+                            throttleStatuses
                                     .stream()
                                     .filter(x -> x.getSlotIndex() == mPhone.getPhoneId())
                                     .collect(Collectors.toList());
 
-                    mIQualifiedNetworksService.reportApnThrottleStatusChanged(mPhone.getPhoneId(),
-                            apnThrottleStatusesBySlot);
+                    mIQualifiedNetworksService.reportThrottleStatusChanged(mPhone.getPhoneId(),
+                            throttleStatusesBySlot);
                 } catch (Exception ex) {
-                    loge("onApnThrottleStatusChanged", ex);
+                    loge("onThrottleStatusChanged", ex);
                 }
             });
         }
