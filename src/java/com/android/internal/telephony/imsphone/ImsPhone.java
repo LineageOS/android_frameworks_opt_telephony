@@ -108,7 +108,6 @@ import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
-import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
@@ -1767,7 +1766,7 @@ public class ImsPhone extends ImsPhoneBase {
         AsyncResult ar = (AsyncResult) msg.obj;
         Message onComplete;
         SS ss = null;
-        if (ar.userObj instanceof SS) {
+        if (ar != null && ar.userObj instanceof SS) {
             ss = (SS) ar.userObj;
         }
 
