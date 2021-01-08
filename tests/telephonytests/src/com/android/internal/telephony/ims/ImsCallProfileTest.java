@@ -131,9 +131,9 @@ public class ImsCallProfileTest {
         Location locationFromUnparceledData = unparceledData.getCallExtraParcelable(
                 ImsCallProfile.EXTRA_LOCATION);
         assertEquals("unparceled data for EXTRA_LOCATION latitude is not valid!",
-                locationFromData.getLatitude(), locationFromUnparceledData.getLatitude());
+                locationFromData.getLatitude(), locationFromUnparceledData.getLatitude(), 0);
         assertEquals("unparceled data for EXTRA_LOCATION Longitude is not valid!",
-                locationFromData.getLongitude(), locationFromUnparceledData.getLongitude());
+                locationFromData.getLongitude(), locationFromUnparceledData.getLongitude(), 0);
 
         assertEquals("unparceled data for EXTRA_PICTURE_URL is not valid!",
                 data.getCallExtra(ImsCallProfile.EXTRA_PICTURE_URL),
