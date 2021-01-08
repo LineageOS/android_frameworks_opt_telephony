@@ -398,7 +398,7 @@ public class DeviceStateMonitor extends Handler {
      *
      * @return True if the response update should be enabled.
      */
-    private boolean shouldEnableHighPowerConsumptionIndications() {
+    public boolean shouldEnableHighPowerConsumptionIndications() {
         // We should enable indications reports if one of the following condition is true.
         // 1. The device is charging.
         // 2. When the screen is on.
@@ -477,6 +477,7 @@ public class DeviceStateMonitor extends Handler {
      */
     private void onUpdateDeviceState(int eventType, boolean state) {
         final boolean shouldEnableBarringInfoReportsOld = shouldEnableBarringInfoReports();
+        final boolean wasHighPowerEnabled = shouldEnableHighPowerConsumptionIndications();
         switch (eventType) {
             case EVENT_SCREEN_STATE_CHANGED:
                 if (mIsScreenOn == state) return;
@@ -510,6 +511,11 @@ public class DeviceStateMonitor extends Handler {
                 break;
             default:
                 return;
+        }
+
+        final boolean isHighPowerEnabled = shouldEnableHighPowerConsumptionIndications();
+        if (wasHighPowerEnabled != isHighPowerEnabled) {
+            mPhone.notifyDeviceIdleStateChanged(!isHighPowerEnabled /*isIdle*/);
         }
 
         final int newCellInfoMinInterval = computeCellInfoMinInterval();
