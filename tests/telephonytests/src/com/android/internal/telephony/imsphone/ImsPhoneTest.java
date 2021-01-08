@@ -126,6 +126,7 @@ public class ImsPhoneTest extends TelephonyTest {
     private static final int EVENT_SUPP_SERVICE_FAILED = 2;
     private static final int EVENT_INCOMING_RING = 3;
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 4;
+    private static final int EVENT_CALL_RING_CONTINUE = 15;
 
     private boolean mIsPhoneUtInEcm = false;
 
@@ -948,6 +949,13 @@ public class ImsPhoneTest extends TelephonyTest {
 
         mImsPhoneUT.dial("*135#", new ImsPhone.ImsDialArgs.Builder().build());
         verify(mImsCT).sendUSSD(eq("*135#"), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testHandleMessageCallRingContinue() throws Exception {
+        Message m = Message.obtain(mImsPhoneUT.getHandler(), EVENT_CALL_RING_CONTINUE);
+        mImsPhoneUT.handleMessage(m);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {

@@ -1770,7 +1770,7 @@ public class ImsPhone extends ImsPhoneBase {
         AsyncResult ar = (AsyncResult) msg.obj;
         Message onComplete;
         SS ss = null;
-        if (ar.userObj instanceof SS) {
+        if (ar != null && ar.userObj instanceof SS) {
             ss = (SS) ar.userObj;
         }
 
