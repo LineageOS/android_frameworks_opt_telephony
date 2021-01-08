@@ -1838,6 +1838,24 @@ public class DcTrackerTest extends TelephonyTest {
         replaceInstance(DcTracker.class, "mSubscriptionPlans", mDct, null);
     }
 
+    private void setUpSubscriptionOverride(int[] networkTypes, boolean isUnmetered)
+            throws Exception {
+        List<Integer> networkTypesList = null;
+        if (networkTypes != null) {
+            networkTypesList = new ArrayList<>();
+            for (int networkType : networkTypes) {
+                networkTypesList.add(networkType);
+            }
+        }
+        replaceInstance(DcTracker.class, "mUnmeteredNetworkTypes", mDct, networkTypesList);
+        replaceInstance(DcTracker.class, "mUnmeteredOverride", mDct, isUnmetered);
+    }
+
+    private void resetSubscriptionOverride() throws Exception {
+        replaceInstance(DcTracker.class, "mUnmeteredNetworkTypes", mDct, null);
+        replaceInstance(DcTracker.class, "mUnmeteredOverride", mDct, false);
+    }
+
     private boolean isNetworkTypeUnmetered(int networkType) throws Exception {
         Method method = DcTracker.class.getDeclaredMethod(
                 "isNetworkTypeUnmetered", int.class);
@@ -1879,6 +1897,34 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Test
     public void testIsNetworkTypeUnmetered() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+
+        // only 5G unmetered
+        setUpSubscriptionOverride(new int[]{TelephonyManager.NETWORK_TYPE_NR}, true);
+
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        // all network types metered
+        setUpSubscriptionOverride(TelephonyManager.getAllNetworkTypes(), false);
+
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        // all network types unmetered
+        setUpSubscriptionOverride(TelephonyManager.getAllNetworkTypes(), true);
+
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        resetSubscriptionOverride();
+    }
+
+    @Test
+    public void testIsNetworkTypeUnmeteredViaSubscriptionPlans() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
 
         // only 5G unmetered
