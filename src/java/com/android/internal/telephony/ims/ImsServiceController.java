@@ -221,6 +221,9 @@ public class ImsServiceController {
     private static final int REBIND_START_DELAY_MS = 2 * 1000; // 2 seconds
     private static final int REBIND_MAXIMUM_DELAY_MS = 60 * 1000; // 1 minute
     private static final long CHANGE_PERMISSION_TIMEOUT_MS = 15 * 1000; // 15 seconds
+    // Enforce ImsService has both MMTEL and RCS supported in order to enable SIP transport API.
+    // Enable ImsServiceControllerTest and SipDelegateManagerTest cases if this is re-enabled.
+    private static final boolean ENFORCE_SINGLE_SERVICE_FOR_SIP_TRANSPORT = false;
     private final ComponentName mComponentName;
     private final HandlerThread mHandlerThread = new HandlerThread("ImsServiceControllerHandler");
     private final LegacyPermissionManager mPermissionManager;
@@ -643,11 +646,15 @@ public class ImsServiceController {
             caps |= ImsService.CAPABILITY_EMERGENCY_OVER_MMTEL;
         }
 
-        if (!featureTypes.contains(ImsFeature.FEATURE_MMTEL)
-                || !featureTypes.contains(ImsFeature.FEATURE_RCS)) {
-            // Only allow SipDelegate creation if this ImsService is providing both MMTEL and RCS
-            // features.
-            caps &= ~(ImsService.CAPABILITY_SIP_DELEGATE_CREATION);
+        if (ENFORCE_SINGLE_SERVICE_FOR_SIP_TRANSPORT) {
+            if (!featureTypes.contains(ImsFeature.FEATURE_MMTEL)
+                    || !featureTypes.contains(ImsFeature.FEATURE_RCS)) {
+                // Only allow SipDelegate creation if this ImsService is providing both MMTEL and
+                // RCS features.
+                caps &= ~(ImsService.CAPABILITY_SIP_DELEGATE_CREATION);
+            }
+        } else {
+            Log.i(LOG_TAG, "skipping single service enforce check...");
         }
         return caps;
     }

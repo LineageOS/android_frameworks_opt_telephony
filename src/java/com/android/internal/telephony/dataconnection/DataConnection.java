@@ -51,9 +51,9 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
-import android.telephony.AnomalyReporter;
 import android.telephony.Annotation.DataState;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
@@ -914,7 +914,7 @@ public class DataConnection extends StateMachine {
             msg.obj = allocateCallback;
             mPhone.mCi.allocatePduSessionId(msg);
         } else {
-            allocateCallback.accept(EVENT_ALLOCATE_PDU_SESSION_ID);
+            allocateCallback.accept(PDU_SESSION_ID_NOT_SET);
         }
     }
 
@@ -1703,11 +1703,15 @@ public class DataConnection extends StateMachine {
                 }
             }
 
-            // DataConnection has the immutable NOT_METERED capability only if all APNs in the
-            // APN setting are unmetered according to carrier config METERED_APN_TYPES_STRINGS.
-            // All other cases should use the dynamic TEMPORARILY_NOT_METERED capability instead.
-            result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED,
-                    !ApnSettingUtils.isMetered(mApnSetting, mPhone));
+            // Mark NOT_METERED in the following cases:
+            // 1. All APNs in the APN settings are unmetered.
+            // 2. The non-restricted data is intended for unmetered use only.
+            if ((mUnmeteredUseOnly && !mRestrictedNetworkOverride)
+                    || !ApnSettingUtils.isMetered(mApnSetting, mPhone)) {
+                result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+            } else {
+                result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+            }
 
             if (result.deduceRestrictedCapability()) {
                 result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
@@ -1729,29 +1733,27 @@ public class DataConnection extends StateMachine {
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
                 !mPhone.getServiceState().getDataRoaming());
 
-        if ((mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_CONGESTED) == 0) {
-            result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+
+        // Override values set above when requested by policy
+        if ((mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_UNMETERED) != 0) {
+            result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
+        if ((mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_CONGESTED) != 0) {
+            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
         }
 
-        // Mark TEMPORARILY_NOT_METERED in the following cases:
-        // 1. The non-restricted data is intended for unmetered use only.
-        // 2. DcTracker set an unmetered override due to network/location (eg. 5G).
-        // 3. SubscriptionManager set an unmetered override as requested by policy.
-        if ((mUnmeteredUseOnly && !mRestrictedNetworkOverride) || mUnmeteredOverride
-                || (mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_UNMETERED) != 0) {
-            result.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
-            if (result.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    && (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR)
-                    == 0) {
-                String message = "Unexpected TEMPORARILY_NOT_METERED on devices not supporting NR.";
-                loge(message);
-                // Using fixed UUID to avoid duplicate bugreport notification
-                AnomalyReporter.reportAnomaly(
-                        UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055248"),
-                        message);
-            }
-        } else {
-            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+                mUnmeteredOverride);
+
+        if (mUnmeteredOverride && result.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR)
+                == 0) {
+            String message = "Unexpected TEMPORARILY_NOT_METERED on devices not supporting NR.";
+            loge(message);
+            // Using fixed UUID to avoid duplicate bugreport notification
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055248"), message);
         }
 
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
