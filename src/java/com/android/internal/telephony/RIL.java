@@ -3526,14 +3526,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void isNrDualConnectivityEnabled(Message result, WorkSource workSource) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED, result,
-                    workSource == null ? mRILDefaultWorkSource : workSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> "
-                        + requestToString(rr.mRequest));
-            }
-
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
                 if (result != null) {
                     AsyncResult.forMessage(result, null,
@@ -3545,6 +3537,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             android.hardware.radio.V1_6.IRadio radioProxy16 =
                     (android.hardware.radio.V1_6.IRadio) radioProxy;
+
+            RILRequest rr = obtainRequest(RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED, result,
+                    workSource == null ? mRILDefaultWorkSource : workSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> "
+                        + requestToString(rr.mRequest));
+            }
+
             try {
                 radioProxy16.isNrDualConnectivityEnabled(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
