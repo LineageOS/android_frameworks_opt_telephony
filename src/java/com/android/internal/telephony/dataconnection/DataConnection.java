@@ -272,7 +272,7 @@ public class DataConnection extends StateMachine {
         }
     }
 
-    private ApnSetting mApnSetting;
+    private volatile ApnSetting mApnSetting;
     private ConnectionParams mConnectionParams;
     private DisconnectParams mDisconnectParams;
     @DataFailureCause
@@ -3048,6 +3048,11 @@ public class DataConnection extends StateMachine {
         if (DBG) {
             log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
         }
+
+        if (mApnSetting == null) {
+            mApnSetting = apnContext.getApnSetting();
+        }
+
         sendMessage(DataConnection.EVENT_CONNECT,
                 new ConnectionParams(apnContext, profileId, rilRadioTechnology, onCompletedMsg,
                         connectionGeneration, requestType, subId, isApnPreferred));
