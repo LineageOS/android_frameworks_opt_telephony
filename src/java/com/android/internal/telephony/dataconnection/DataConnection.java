@@ -3217,7 +3217,10 @@ public class DataConnection extends StateMachine {
      */
     public void tearDownAll(String reason, @ReleaseNetworkType int releaseType,
                             Message onCompletedMsg) {
-        if (DBG) log("tearDownAll: reason=" + reason + ", releaseType=" + releaseType);
+        if (DBG) {
+            log("tearDownAll: reason=" + reason + ", releaseType="
+                    + DcTracker.releaseTypeToString(releaseType));
+        }
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
                 new DisconnectParams(null, reason, releaseType, onCompletedMsg));
     }
