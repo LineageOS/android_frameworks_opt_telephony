@@ -24,6 +24,7 @@ import android.hardware.radio.config.V1_3.IRadioConfigResponse;
 import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.RadioInterfaceCapabilities;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.telephony.Rlog;
@@ -240,14 +241,14 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
 
         RILRequest rr = mRadioConfig.processResponse_1_6(responseInfo);
         if (rr != null) {
-
             RadioInterfaceCapabilities ret = new RadioInterfaceCapabilities();
-            /*
-             Code actual capabilities aren't ready yet, but it will look like this:
-             if (halDeviceCapability.cap1 == true) {
-                ret.addAvailableCapability(TelephonyManager.RADIO_INTERFACE_CAPABILITY_CAP1);
-             }
-             */
+            if (!halDeviceCapabilities.modemReducedFeatureSet1) {
+                Rlog.d(TAG, "getHalDeviceCapabilitiesResponse: modemReducedFeatureSet1=false");
+                ret.addSupportedCapability(
+                        TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE);
+            } else {
+                Rlog.d(TAG, "getHalDeviceCapabilitiesResponse: modemReducedFeatureSet1=true");
+            }
 
             if (responseInfo.error == RadioError.NONE) {
                 // send response
