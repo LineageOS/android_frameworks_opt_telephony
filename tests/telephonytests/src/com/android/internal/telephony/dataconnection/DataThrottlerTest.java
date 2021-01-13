@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_HANDOVER;
+import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_NORMAL;
+
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,7 +26,6 @@ import static org.mockito.Mockito.verify;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnThrottleStatus;
-import android.telephony.data.DataCallResponse;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -87,7 +89,7 @@ public class DataThrottlerTest extends TelephonyTest {
 
 
         mDataThrottler.setRetryTime(ApnSetting.TYPE_DEFAULT, 1234567890L,
-                DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
+                REQUEST_TYPE_NORMAL);
         assertEquals(1234567890L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DEFAULT));
         assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY,
                 mDataThrottler.getRetryTime(ApnSetting.TYPE_MMS));
@@ -112,7 +114,7 @@ public class DataThrottlerTest extends TelephonyTest {
 
 
         mDataThrottler.setRetryTime(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_DUN, 13579L,
-                DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER);
+                REQUEST_TYPE_HANDOVER);
         assertEquals(13579L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DEFAULT));
         assertEquals(13579L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DUN));
 
@@ -143,7 +145,7 @@ public class DataThrottlerTest extends TelephonyTest {
 
 
         mDataThrottler.setRetryTime(ApnSetting.TYPE_MMS, -10,
-                DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
+                REQUEST_TYPE_NORMAL);
         assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY,
                 mDataThrottler.getRetryTime(ApnSetting.TYPE_MMS));
         processAllMessages();
@@ -158,8 +160,7 @@ public class DataThrottlerTest extends TelephonyTest {
         ));
 
         mDataThrottler.setRetryTime(ApnSetting.TYPE_FOTA | ApnSetting.TYPE_EMERGENCY,
-                RetryManager.NO_RETRY,
-                DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER);
+                RetryManager.NO_RETRY, REQUEST_TYPE_HANDOVER);
 
         processAllMessages();
         expectedStatuses.add(List.of(
