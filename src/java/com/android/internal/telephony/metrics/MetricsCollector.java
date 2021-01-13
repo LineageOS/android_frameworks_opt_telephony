@@ -20,6 +20,7 @@ import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
+import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
@@ -33,6 +34,7 @@ import android.util.StatsEvent;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ConcurrentUtils;
@@ -92,6 +94,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(SUPPORTED_RADIO_ACCESS_FAMILY, null);
             registerAtom(VOICE_CALL_RAT_USAGE, POLICY_PULL_DAILY);
             registerAtom(VOICE_CALL_SESSION, POLICY_PULL_DAILY);
+            registerAtom(INCOMING_SMS, POLICY_PULL_DAILY);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -122,6 +125,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullVoiceCallRatUsages(data);
             case VOICE_CALL_SESSION:
                 return pullVoiceCallSessions(data);
+            case INCOMING_SMS:
+                return pullIncomingSms(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -199,11 +204,23 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private int pullVoiceCallSessions(List<StatsEvent> data) {
         VoiceCallSession[] calls = mStorage.getVoiceCallSessions(MIN_COOLDOWN_MILLIS);
         if (calls != null) {
-            // call session list is already shuffled when calls inserted
+            // call session list is already shuffled when calls were inserted
             Arrays.stream(calls).forEach(call -> data.add(buildStatsEvent(call)));
             return StatsManager.PULL_SUCCESS;
         } else {
             Rlog.w(TAG, "VOICE_CALL_SESSION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullIncomingSms(List<StatsEvent> data) {
+        IncomingSms[] smsList = mStorage.getIncomingSms(MIN_COOLDOWN_MILLIS);
+        if (smsList != null) {
+            // SMS list is already shuffled when SMS were inserted
+            Arrays.stream(smsList).forEach(sms -> data.add(buildStatsEvent(sms)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "INCOMING_SMS pull too frequent, skipping");
             return StatsManager.PULL_SKIP;
         }
     }
@@ -253,6 +270,26 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 .writeBoolean(session.isRoaming)
                 // workaround: dimension required for keeping multiple pulled atoms
                 .writeInt(sRandom.nextInt())
+                .build();
+    }
+
+    private static StatsEvent buildStatsEvent(IncomingSms sms) {
+        return StatsEvent.newBuilder()
+                .setAtomId(INCOMING_SMS)
+                .writeInt(sms.smsFormat)
+                .writeInt(sms.smsTech)
+                .writeInt(sms.rat)
+                .writeInt(sms.smsType)
+                .writeInt(sms.totalParts)
+                .writeInt(sms.receivedParts)
+                .writeBoolean(sms.blocked)
+                .writeInt(sms.error)
+                .writeBoolean(sms.isRoaming)
+                .writeInt(sms.simSlotIndex)
+                .writeBoolean(sms.isMultiSim)
+                .writeBoolean(sms.isEsim)
+                .writeInt(sms.carrierId)
+                .writeLong(sms.messageId)
                 .build();
     }
 

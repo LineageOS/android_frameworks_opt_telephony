@@ -245,7 +245,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     } catch (ImsException e) {
                         loge("Failed to acknowledgeSms(). Error: " + e.getMessage());
                     }
-                }, true);
+                }, true /* ignoreClass */, true /* isOverIms */);
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }

@@ -167,7 +167,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
 
         // inject null sms pdu. This should cause intent to be received since pdu is null.
-        mSmsDispatchersController.injectSmsPdu(null, SmsConstants.FORMAT_3GPP,
+        mSmsDispatchersController.injectSmsPdu(null, SmsConstants.FORMAT_3GPP, true,
                 (SmsDispatchersController.SmsInjectionCallback) result -> {
                     mInjectionCallbackTriggered = true;
                    assertEquals(Intents.RESULT_SMS_GENERIC_ERROR, result);
