@@ -36,6 +36,12 @@ message PersistAtoms {
 
     /* Timestamp of last voice_call_sessions pull. */
     optional int64 voice_call_session_pull_timestamp_millis = 4;
+
+    /* Incoming SMS statistics and information. */
+    repeated IncomingSms incoming_sms = 5;
+
+    /* Timestamp of last incoming_sms pull. */
+    optional int64 incoming_sms_pull_timestamp_millis = 6;
 }
 
 // The canonical versions of the following enums live in:
@@ -81,4 +87,21 @@ message RawVoiceCallRatUsage {
     optional int32 rat = 2;
     optional int64 total_duration_millis = 3;
     optional int64 call_count = 4;
+}
+
+message IncomingSms {
+    optional int32 sms_format = 1;
+    optional int32 sms_tech = 2;
+    optional int32 rat = 3;
+    optional int32 sms_type = 4;
+    optional int32 total_parts = 5;
+    optional int32 received_parts = 6;
+    optional bool blocked = 7;
+    optional int32 error = 8;
+    optional bool is_roaming = 9;
+    optional int32 sim_slot_index = 10;
+    optional bool is_multi_sim = 11;
+    optional bool is_esim = 12;
+    optional int32 carrier_id = 13;
+    optional int64 message_id = 14;
 }
