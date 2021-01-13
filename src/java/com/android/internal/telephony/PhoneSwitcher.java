@@ -24,6 +24,7 @@ import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 
 import static java.util.Arrays.copyOf;
@@ -356,7 +357,8 @@ public class PhoneSwitcher extends Handler {
 
         int imsRegTech = mImsRegTechProvider.get(mContext, phoneId);
         // If IMS is registered on IWLAN or cross SIM, return false.
-        boolean isOnOriginalNetwork = imsRegTech != REGISTRATION_TECH_IWLAN;
+        boolean isOnOriginalNetwork = (imsRegTech != REGISTRATION_TECH_IWLAN)
+                && (imsRegTech != REGISTRATION_TECH_CROSS_SIM);
         if (!isOnOriginalNetwork) {
             log("IMS call on IWLAN or cross SIM. Call will be ignored for DDS switch");
         }

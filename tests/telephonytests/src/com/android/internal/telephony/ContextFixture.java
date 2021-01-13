@@ -324,6 +324,11 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public Context createConfigurationContext(Configuration overrideConfiguration) {
+            return spy(new FakeContext());
+        }
+
+        @Override
         public ApplicationInfo getApplicationInfo() {
             return mApplicationInfo;
         }
@@ -617,7 +622,6 @@ public class ContextFixture implements TestFixture<Context> {
     // The application context is the most important object this class provides to the system
     // under test.
     private final Context mContext = spy(new FakeContext());
-
     // We then create a spy on the application context allowing standard Mockito-style
     // when(...) logic to be used to add specific little responses where needed.
 
@@ -707,7 +711,6 @@ public class ContextFixture implements TestFixture<Context> {
 
         mDisplayMetrics.density = 2.25f;
         doReturn(mDisplayMetrics).when(mResources).getDisplayMetrics();
-
         mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
         // Settings caches the provider after first get/set call, this is needed to make sure
         // Settings is using mContentProvider as the cached provider across all tests.
