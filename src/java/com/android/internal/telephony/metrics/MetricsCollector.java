@@ -498,7 +498,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.suggestedRetryMillis,
                 dataCallSession.deactivateReason,
                 dataCallSession.durationMinutes,
-                dataCallSession.ongoing);
+                dataCallSession.ongoing,
+                dataCallSession.bandAtEnd);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {

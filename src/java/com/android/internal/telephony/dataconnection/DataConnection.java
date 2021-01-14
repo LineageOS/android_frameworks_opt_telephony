@@ -2093,10 +2093,7 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    // this is for DRS or RAT changes, so only call onRatChanged if RAT is changed
-                    if (mRilRat != 0) {
-                        mDataCallSessionStats.onRatChanged(mRilRat);
-                    }
+                    mDataCallSessionStats.onDrsOrRatChanged(mRilRat);
                     break;
 
                 case EVENT_START_HANDOVER:  //calls startHandover()
@@ -2787,10 +2784,7 @@ public class DataConnection extends StateMachine {
                         mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
                     }
                     retVal = HANDLED;
-                    // this is for DRS or RAT changes, so only call onRatChanged if RAT is changed
-                    if (mRilRat != 0) {
-                        mDataCallSessionStats.onRatChanged(mRilRat);
-                    }
+                    mDataCallSessionStats.onDrsOrRatChanged(mRilRat);
                     break;
                 }
                 case EVENT_NR_FREQUENCY_CHANGED:
