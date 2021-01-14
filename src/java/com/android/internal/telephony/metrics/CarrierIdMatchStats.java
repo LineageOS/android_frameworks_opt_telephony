@@ -31,19 +31,21 @@ public class CarrierIdMatchStats {
     private CarrierIdMatchStats() { }
 
     /** Generate metrics when carrier ID mismatch occurs. */
-    public static void onCarrierIdMismatch(int cid, String mccMnc, String gid1, String spn) {
+    public static void onCarrierIdMismatch(
+            int cid, String mccMnc, String gid1, String spn, String pnn) {
         PersistAtomsStorage storage = PhoneFactory.getMetricsCollector().getAtomsStorage();
 
         CarrierIdMismatch carrierIdMismatch = new CarrierIdMismatch();
         carrierIdMismatch.mccMnc = nullToEmpty(mccMnc);
         carrierIdMismatch.gid1 = nullToEmpty(gid1);
         carrierIdMismatch.spn = nullToEmpty(spn);
+        carrierIdMismatch.pnn = carrierIdMismatch.spn.isEmpty() ? nullToEmpty(pnn) : "";
 
         // Add to storage and generate atom only if it was added (new SIM card).
         boolean isAdded = storage.addCarrierIdMismatch(carrierIdMismatch);
         if (isAdded) {
             Rlog.d(TAG, "New carrier ID mismatch event: " + carrierIdMismatch.toString());
-            TelephonyStatsLog.write(CARRIER_ID_MISMATCH_EVENT, cid, mccMnc, gid1, spn);
+            TelephonyStatsLog.write(CARRIER_ID_MISMATCH_EVENT, cid, mccMnc, gid1, spn, pnn);
         }
     }
 
