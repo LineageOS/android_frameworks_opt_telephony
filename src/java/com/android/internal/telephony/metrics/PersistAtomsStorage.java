@@ -22,6 +22,8 @@ import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
+import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
+import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
@@ -35,6 +37,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * Stores and aggregates metrics that should not be pulled at arbitrary frequency.
@@ -48,22 +51,29 @@ public class PersistAtomsStorage {
     /** Name of the file where cached statistics are saved to. */
     private static final String FILENAME = "persist_atoms.pb";
 
-    /** Maximum number of call sessions to store during pulls. */
+    /** Maximum number of call sessions to store between pulls. */
     private static final int MAX_NUM_CALL_SESSIONS = 50;
 
     /**
-     * Maximum number of SMS to store during pulls. Incoming messages and outgoing messages are
+     * Maximum number of SMS to store between pulls. Incoming messages and outgoing messages are
      * counted separately.
      */
     private static final int MAX_NUM_SMS = 25;
 
     /**
-     * Maximum number of carrier ID mismatch events stored on the device to avoid sending
-     * duplicated metrics.
+     * Maximum number of carrier ID mismatch events stored on the device to avoid sending duplicated
+     * metrics.
      */
     private static final int MAX_CARRIER_ID_MISMATCH = 40;
+
     /** Maximum number of data call sessions to store during pulls. */
     private static final int MAX_NUM_DATA_CALL_SESSIONS = 15;
+
+    /** Maximum number of service states to store between pulls. */
+    private static final int MAX_NUM_CELLULAR_SERVICE_STATES = 50;
+
+    /** Maximum number of data service switches to store between pulls. */
+    private static final int MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES = 50;
 
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected final PersistAtoms mAtoms;
@@ -109,8 +119,7 @@ public class PersistAtomsStorage {
         // previous ones. (this algorithm ignores the fact that some SMS atoms might
         // be dropped due to limit in size of the array).
         for (OutgoingSms storedSms : mAtoms.outgoingSms) {
-            if (storedSms.messageId == sms.messageId
-                    && storedSms.retryId >= sms.retryId) {
+            if (storedSms.messageId == sms.messageId && storedSms.retryId >= sms.retryId) {
                 sms.retryId = storedSms.retryId + 1;
             }
         }
@@ -122,26 +131,36 @@ public class PersistAtomsStorage {
         Rlog.d(TAG, "Add new outgoing SMS atom: " + sms.toString());
     }
 
-    /** Inserts a new element in a random position in an array with a maximum size. */
-    private static <T> T[] insertAtRandomPlace(T[] storage, T instance, int maxLength) {
-        T[] result;
-        int newLength = storage.length + 1;
-        if (newLength > maxLength) {
-            // will evict one previous call randomly instead of making the array larger
-            newLength = maxLength;
-            result = storage;
+    /** Adds a service state to the storage, together with data service switch if any. */
+    public synchronized void addCellularServiceStateAndCellularDataServiceSwitch(
+            CellularServiceState state, @Nullable CellularDataServiceSwitch serviceSwitch) {
+        CellularServiceState existingState = find(state);
+        if (existingState != null) {
+            existingState.totalTimeMillis += state.totalTimeMillis;
+            existingState.lastUsedMillis = getWallTimeMillis();
         } else {
-            result = Arrays.copyOf(storage, newLength);
+            state.lastUsedMillis = getWallTimeMillis();
+            mAtoms.cellularServiceState =
+                    insertAtRandomPlace(
+                            mAtoms.cellularServiceState, state, MAX_NUM_CELLULAR_SERVICE_STATES);
         }
-        int insertAt = 0;
-        if (newLength > 1) {
-            // shuffle when each element is added, or randomly replace a previous element instead
-            // if maxLength is reached (entry at the last index is evicted).
-            insertAt = sRandom.nextInt(newLength);
-            result[newLength - 1] = result[insertAt];
+
+        if (serviceSwitch != null) {
+            CellularDataServiceSwitch existingSwitch = find(serviceSwitch);
+            if (existingSwitch != null) {
+                existingSwitch.switchCount += serviceSwitch.switchCount;
+                existingSwitch.lastUsedMillis = getWallTimeMillis();
+            } else {
+                serviceSwitch.lastUsedMillis = getWallTimeMillis();
+                mAtoms.cellularDataServiceSwitch =
+                        insertAtRandomPlace(
+                                mAtoms.cellularDataServiceSwitch,
+                                serviceSwitch,
+                                MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
+            }
         }
-        result[insertAt] = instance;
-        return result;
+
+        saveAtomsToFile();
     }
 
     /** Adds a data call session to the storage. */
@@ -155,16 +174,12 @@ public class PersistAtomsStorage {
      * Adds a new carrier ID mismatch event to the storage.
      *
      * @return true if the item was not present and was added to the persistent storage, false
-     * otherwise.
+     *     otherwise.
      */
     public synchronized boolean addCarrierIdMismatch(CarrierIdMismatch carrierIdMismatch) {
         // Check if the details of the SIM cards are already present and in case return.
-        for (int i = 0; i < mAtoms.carrierIdMismatch.length; i++) {
-            if (mAtoms.carrierIdMismatch[i].mccMnc.equals(carrierIdMismatch.mccMnc)
-                    && mAtoms.carrierIdMismatch[i].gid1.equals(carrierIdMismatch.gid1)
-                    && mAtoms.carrierIdMismatch[i].spn.equals(carrierIdMismatch.spn)) {
-                return false;
-            }
+        if (find(carrierIdMismatch) != null) {
+            return false;
         }
         // Add the new CarrierIdMismatch at the end of the array, so that the same atom will not be
         // sent again in future.
@@ -235,8 +250,8 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns and clears the incoming SMS if last pulled longer than {@code
-     * minIntervalMillis} ago, otherwise returns {@code null}.
+     * Returns and clears the incoming SMS if last pulled longer than {@code minIntervalMillis} ago,
+     * otherwise returns {@code null}.
      */
     @Nullable
     public synchronized IncomingSms[] getIncomingSms(long minIntervalMillis) {
@@ -252,8 +267,8 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns and clears the outgoing SMS if last pulled longer than {@code
-     * minIntervalMillis} ago, otherwise returns {@code null}.
+     * Returns and clears the outgoing SMS if last pulled longer than {@code minIntervalMillis} ago,
+     * otherwise returns {@code null}.
      */
     @Nullable
     public synchronized OutgoingSms[] getOutgoingSms(long minIntervalMillis) {
@@ -269,8 +284,8 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns and clears the data call session if last pulled longer than {@code
-     * minIntervalMillis} ago, otherwise returns {@code null}.
+     * Returns and clears the data call session if last pulled longer than {@code minIntervalMillis}
+     * ago, otherwise returns {@code null}.
      */
     @Nullable
     public synchronized DataCallSession[] getDataCallSessions(long minIntervalMillis) {
@@ -280,6 +295,46 @@ public class PersistAtomsStorage {
             mAtoms.dataCallSession = new DataCallSession[0];
             saveAtomsToFile();
             return previousDataCallSession;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the service state durations if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized CellularServiceState[] getCellularServiceStates(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.cellularServiceStatePullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.cellularServiceStatePullTimestampMillis = getWallTimeMillis();
+            CellularServiceState[] previousStates = mAtoms.cellularServiceState;
+            Arrays.stream(previousStates).forEach(state -> state.lastUsedMillis = 0L);
+            mAtoms.cellularServiceState = new CellularServiceState[0];
+            saveAtomsToFile();
+            return previousStates;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the service state durations if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized CellularDataServiceSwitch[] getCellularDataServiceSwitches(
+            long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.cellularDataServiceSwitchPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.cellularDataServiceSwitchPullTimestampMillis = getWallTimeMillis();
+            CellularDataServiceSwitch[] previousSwitches = mAtoms.cellularDataServiceSwitch;
+            Arrays.stream(previousSwitches)
+                    .forEach(serviceSwitch -> serviceSwitch.lastUsedMillis = 0L);
+            mAtoms.cellularDataServiceSwitch = new CellularDataServiceSwitch[0];
+            saveAtomsToFile();
+            return previousSwitches;
         } else {
             return null;
         }
@@ -306,15 +361,13 @@ public class PersistAtomsStorage {
                 atomsFromFile.incomingSms = new IncomingSms[0];
             }
             if (atomsFromFile.incomingSms.length > MAX_NUM_SMS) {
-                atomsFromFile.incomingSms =
-                        Arrays.copyOf(atomsFromFile.incomingSms, MAX_NUM_SMS);
+                atomsFromFile.incomingSms = Arrays.copyOf(atomsFromFile.incomingSms, MAX_NUM_SMS);
             }
             if (atomsFromFile.outgoingSms == null) {
                 atomsFromFile.outgoingSms = new OutgoingSms[0];
             }
             if (atomsFromFile.outgoingSms.length > MAX_NUM_SMS) {
-                atomsFromFile.outgoingSms =
-                        Arrays.copyOf(atomsFromFile.outgoingSms, MAX_NUM_SMS);
+                atomsFromFile.outgoingSms = Arrays.copyOf(atomsFromFile.outgoingSms, MAX_NUM_SMS);
             }
             if (atomsFromFile.carrierIdMismatch == null) {
                 atomsFromFile.carrierIdMismatch = new CarrierIdMismatch[0];
@@ -346,6 +399,12 @@ public class PersistAtomsStorage {
             if (atomsFromFile.dataCallSessionPullTimestampMillis == 0L) {
                 atomsFromFile.dataCallSessionPullTimestampMillis = getWallTimeMillis();
             }
+            if (atomsFromFile.cellularServiceStatePullTimestampMillis == 0L) {
+                atomsFromFile.cellularServiceStatePullTimestampMillis = getWallTimeMillis();
+            }
+            if (atomsFromFile.cellularDataServiceSwitchPullTimestampMillis == 0L) {
+                atomsFromFile.cellularDataServiceSwitchPullTimestampMillis = getWallTimeMillis();
+            }
             return atomsFromFile;
         } catch (IOException | NullPointerException e) {
             Rlog.e(TAG, "cannot load/parse PersistAtoms", e);
@@ -362,6 +421,98 @@ public class PersistAtomsStorage {
         }
     }
 
+    /**
+     * Returns the service state that has the same dimension values with the given one, or {@code
+     * null} if it does not exist.
+     */
+    private @Nullable CellularServiceState find(CellularServiceState key) {
+        for (CellularServiceState state : mAtoms.cellularServiceState) {
+            if (state.voiceRat == key.voiceRat
+                    && state.dataRat == key.dataRat
+                    && state.voiceRoamingType == key.voiceRoamingType
+                    && state.dataRoamingType == key.dataRoamingType
+                    && state.isEndc == key.isEndc
+                    && state.simSlotIndex == key.simSlotIndex
+                    && state.isMultiSim == key.isMultiSim
+                    && state.carrierId == key.carrierId) {
+                return state;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the data service switch that has the same dimension values with the given one, or
+     * {@code null} if it does not exist.
+     */
+    private @Nullable CellularDataServiceSwitch find(CellularDataServiceSwitch key) {
+        for (CellularDataServiceSwitch serviceSwitch : mAtoms.cellularDataServiceSwitch) {
+            if (serviceSwitch.ratFrom == key.ratFrom
+                    && serviceSwitch.ratTo == key.ratTo
+                    && serviceSwitch.simSlotIndex == key.simSlotIndex
+                    && serviceSwitch.isMultiSim == key.isMultiSim
+                    && serviceSwitch.carrierId == key.carrierId) {
+                return serviceSwitch;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the carrier ID mismatch event that has the same dimension values with the given one,
+     * or {@code null} if it does not exist.
+     */
+    private @Nullable CarrierIdMismatch find(CarrierIdMismatch key) {
+        for (CarrierIdMismatch mismatch : mAtoms.carrierIdMismatch) {
+            if (mismatch.mccMnc.equals(key.mccMnc)
+                    && mismatch.gid1.equals(key.gid1)
+                    && mismatch.spn.equals(key.spn)) {
+                return mismatch;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Inserts a new element in a random position in an array with a maximum size, replacing the
+     * least recent item if possible.
+     */
+    private static <T> T[] insertAtRandomPlace(T[] storage, T instance, int maxLength) {
+        final int newLength = storage.length + 1;
+        final boolean arrayFull = (newLength > maxLength);
+        T[] result = Arrays.copyOf(storage, arrayFull ? maxLength : newLength);
+        if (newLength == 1) {
+            result[0] = instance;
+        } else if (arrayFull) {
+            result[findItemToEvict(storage)] = instance;
+        } else {
+            // insert at random place (by moving the item at the random place to the end)
+            int insertAt = sRandom.nextInt(newLength);
+            result[newLength - 1] = result[insertAt];
+            result[insertAt] = instance;
+        }
+        return result;
+    }
+
+    /** Returns index of the item suitable for eviction when the array is full. */
+    private static <T> int findItemToEvict(T[] array) {
+        if (array instanceof CellularServiceState[]) {
+            CellularServiceState[] arr = (CellularServiceState[]) array;
+            return IntStream.range(0, arr.length)
+                    .reduce((i, j) -> arr[i].lastUsedMillis < arr[j].lastUsedMillis ? i : j)
+                    .getAsInt();
+        }
+
+        if (array instanceof CellularDataServiceSwitch[]) {
+            CellularDataServiceSwitch[] arr = (CellularDataServiceSwitch[]) array;
+            return IntStream.range(0, arr.length)
+                    .reduce((i, j) -> arr[i].lastUsedMillis < arr[j].lastUsedMillis ? i : j)
+                    .getAsInt();
+        }
+
+        return sRandom.nextInt(array.length);
+    }
+
     /** Returns an empty PersistAtoms with pull timestamp set to current time. */
     private PersistAtoms makeNewPersistAtoms() {
         PersistAtoms atoms = new PersistAtoms();
@@ -373,6 +524,8 @@ public class PersistAtomsStorage {
         atoms.outgoingSmsPullTimestampMillis = currentTime;
         atoms.carrierIdTableVersion = TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
         atoms.dataCallSessionPullTimestampMillis = currentTime;
+        atoms.cellularServiceStatePullTimestampMillis = currentTime;
+        atoms.cellularDataServiceSwitchPullTimestampMillis = currentTime;
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;
     }
