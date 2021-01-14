@@ -185,7 +185,7 @@ public class CarrierKeyDownloadManager extends Handler {
         if (carrierUsesKeys()) {
             if (areCarrierKeysAbsentOrExpiring()) {
                 boolean downloadStartedSuccessfully = downloadKey();
-                // if the download was attemped, but not started successfully, and if carriers uses
+                // if the download was attempted, but not started successfully, and if carriers uses
                 // keys, we'll still want to renew the alarms, and try downloading the key a day
                 // later.
                 if (!downloadStartedSuccessfully) {
@@ -231,7 +231,7 @@ public class CarrierKeyDownloadManager extends Handler {
                 continue;
             }
             ImsiEncryptionInfo imsiEncryptionInfo =
-                    mPhone.getCarrierInfoForImsiEncryption(key_type);
+                    mPhone.getCarrierInfoForImsiEncryption(key_type, false);
             if (imsiEncryptionInfo != null && imsiEncryptionInfo.getExpirationTime() != null) {
                 if (minExpirationDate > imsiEncryptionInfo.getExpirationTime().getTime()) {
                     minExpirationDate = imsiEncryptionInfo.getExpirationTime().getTime();
@@ -275,7 +275,7 @@ public class CarrierKeyDownloadManager extends Handler {
         PendingIntent carrierKeyDownloadIntent = PendingIntent.getBroadcast(mContext, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarmManager.set(AlarmManager.RTC_WAKEUP, minExpirationDate, carrierKeyDownloadIntent);
-        Log.d(LOG_TAG, "setRenewelAlarm: action=" + intent.getAction() + " time="
+        Log.d(LOG_TAG, "setRenewalAlarm: action=" + intent.getAction() + " time="
                 + new Date(minExpirationDate));
     }
 
@@ -387,8 +387,10 @@ public class CarrierKeyDownloadManager extends Handler {
         mURL = b.getString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING);
         mAllowedOverMeteredNetwork = b.getBoolean(
                 KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL);
-        if (TextUtils.isEmpty(mURL) || mKeyAvailability == 0) {
-            Log.d(LOG_TAG, "Carrier not enabled or invalid values");
+        if (mKeyAvailability == 0 || TextUtils.isEmpty(mURL)) {
+            Log.d(LOG_TAG,
+                    "Carrier not enabled or invalid values. mKeyAvailability=" + mKeyAvailability
+                            + " mURL=" + mURL);
             return false;
         }
         for (int key_type : CARRIER_KEY_TYPES) {
@@ -504,8 +506,17 @@ public class CarrierKeyDownloadManager extends Handler {
      */
     @VisibleForTesting
     public boolean isKeyEnabled(int keyType) {
-        //since keytype has values of 1, 2.... we need to subtract 1 from the keytype.
-        int returnValue = (mKeyAvailability >> (keyType - 1)) & 1;
+        // since keytype has values of 1, 2.... we need to subtract 1 from the keytype.
+        return isKeyEnabled(keyType, mKeyAvailability);
+    }
+
+    /**
+     * introspects the mKeyAvailability bitmask
+     * @return true if the digit at position k is 1, else false.
+     */
+    public static boolean isKeyEnabled(int keyType, int keyAvailability) {
+        // since keytype has values of 1, 2.... we need to subtract 1 from the keytype.
+        int returnValue = (keyAvailability >> (keyType - 1)) & 1;
         return (returnValue == 1) ? true : false;
     }
 
@@ -520,8 +531,10 @@ public class CarrierKeyDownloadManager extends Handler {
             if (!isKeyEnabled(key_type)) {
                 continue;
             }
+            // get encryption info with fallback=false so that we attempt a download even if there's
+            // backup info stored in carrier config
             ImsiEncryptionInfo imsiEncryptionInfo =
-                    mPhone.getCarrierInfoForImsiEncryption(key_type);
+                    mPhone.getCarrierInfoForImsiEncryption(key_type, false);
             if (imsiEncryptionInfo == null) {
                 Log.d(LOG_TAG, "Key not found for: " + key_type);
                 return true;
@@ -553,7 +566,6 @@ public class CarrierKeyDownloadManager extends Handler {
             // TODO(b/128550341): Implement the logic to minimize using metered network such as
             // LTE for downloading a certificate.
             request.setAllowedOverMetered(mAllowedOverMeteredNetwork);
-            request.setVisibleInDownloadsUi(false);
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
             request.addRequestHeader("Accept-Encoding", "gzip");
             Long carrierKeyDownloadRequestId = mDownloadManager.enqueue(request);
@@ -566,7 +578,7 @@ public class CarrierKeyDownloadManager extends Handler {
             editor.putString(MCC_MNC_PREF_TAG + slotId, mccMnc);
             editor.commit();
         } catch (Exception e) {
-            Log.e(LOG_TAG, "exception trying to dowload key from url: " + mURL);
+            Log.e(LOG_TAG, "exception trying to download key from url: " + mURL);
             return false;
         }
         return true;
