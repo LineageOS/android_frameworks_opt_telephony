@@ -22,6 +22,7 @@ import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 
 import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_VERSION;
+import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
@@ -37,6 +38,7 @@ import android.util.StatsEvent;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
@@ -102,6 +104,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(INCOMING_SMS, POLICY_PULL_DAILY);
             registerAtom(OUTGOING_SMS, POLICY_PULL_DAILY);
             registerAtom(CARRIER_ID_TABLE_VERSION, null);
+            registerAtom(DATA_CALL_SESSION, POLICY_PULL_DAILY);
+
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -140,6 +144,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullOutgoingSms(data);
             case CARRIER_ID_TABLE_VERSION:
                 return pullCarrierIdTableVersion(data);
+            case DATA_CALL_SESSION:
+                return pullDataCallSession(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -273,6 +279,18 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
+    private int pullDataCallSession(List<StatsEvent> data) {
+        DataCallSession[] dataCallSessions = mStorage.getDataCallSessions(MIN_COOLDOWN_MILLIS);
+        if (dataCallSessions != null) {
+            Arrays.stream(dataCallSessions)
+                    .forEach(dataCall -> data.add(buildStatsEvent(dataCall)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "DATA_CALL_SESSION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */
     private void registerAtom(int atomId, @Nullable StatsManager.PullAtomMetadata policy) {
         mStatsManager.setPullAtomCallback(atomId, policy, ConcurrentUtils.DIRECT_EXECUTOR, this);
@@ -357,6 +375,30 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 .writeInt(sms.carrierId)
                 .writeLong(sms.messageId)
                 .writeInt(sms.retryId)
+                .build();
+    }
+
+    private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {
+        return StatsEvent.newBuilder()
+                .setAtomId(DATA_CALL_SESSION)
+                .writeInt(dataCallSession.dimension)
+                .writeBoolean(dataCallSession.isMultiSim)
+                .writeBoolean(dataCallSession.isEsim)
+                .writeInt(dataCallSession.profile)
+                .writeInt(dataCallSession.apnTypeBitmask)
+                .writeInt(dataCallSession.carrierId)
+                .writeBoolean(dataCallSession.isRoaming)
+                .writeInt(dataCallSession.ratAtEnd)
+                .writeBoolean(dataCallSession.oosAtEnd)
+                .writeLong(dataCallSession.ratSwitchCount)
+                .writeBoolean(dataCallSession.isOpportunistic)
+                .writeInt(dataCallSession.ipType)
+                .writeBoolean(dataCallSession.setupFailed)
+                .writeInt(dataCallSession.failureCause)
+                .writeInt(dataCallSession.suggestedRetryMillis)
+                .writeInt(dataCallSession.deactivateReason)
+                .writeLong(dataCallSession.durationMinutes)
+                .writeBoolean(dataCallSession.ongoing)
                 .build();
     }
 

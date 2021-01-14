@@ -22,6 +22,7 @@ import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
+import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
@@ -61,6 +62,8 @@ public class PersistAtomsStorage {
      * duplicated metrics.
      */
     private static final int MAX_CARRIER_ID_MISMATCH = 40;
+    /** Maximum number of data call sessions to store during pulls. */
+    private static final int MAX_NUM_DATA_CALL_SESSIONS = 15;
 
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected final PersistAtoms mAtoms;
@@ -139,6 +142,13 @@ public class PersistAtomsStorage {
         }
         result[insertAt] = instance;
         return result;
+    }
+
+    /** Adds a data call session to the storage. */
+    public synchronized void addDataCallSession(DataCallSession dataCall) {
+        mAtoms.dataCallSession =
+                insertAtRandomPlace(mAtoms.dataCallSession, dataCall, MAX_NUM_DATA_CALL_SESSIONS);
+        saveAtomsToFile();
     }
 
     /**
@@ -258,6 +268,23 @@ public class PersistAtomsStorage {
         }
     }
 
+    /**
+     * Returns and clears the data call session if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized DataCallSession[] getDataCallSessions(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.dataCallSessionPullTimestampMillis > minIntervalMillis) {
+            mAtoms.dataCallSessionPullTimestampMillis = getWallTimeMillis();
+            DataCallSession[] previousDataCallSession = mAtoms.dataCallSession;
+            mAtoms.dataCallSession = new DataCallSession[0];
+            saveAtomsToFile();
+            return previousDataCallSession;
+        } else {
+            return null;
+        }
+    }
+
     /** Loads {@link PersistAtoms} from a file in private storage. */
     private PersistAtoms loadAtomsFromFile() {
         try {
@@ -296,6 +323,13 @@ public class PersistAtomsStorage {
                 atomsFromFile.carrierIdMismatch =
                         Arrays.copyOf(atomsFromFile.carrierIdMismatch, MAX_CARRIER_ID_MISMATCH);
             }
+            if (atomsFromFile.dataCallSession == null) {
+                atomsFromFile.dataCallSession = new DataCallSession[0];
+            }
+            if (atomsFromFile.dataCallSession.length > MAX_NUM_DATA_CALL_SESSIONS) {
+                atomsFromFile.dataCallSession =
+                        Arrays.copyOf(atomsFromFile.dataCallSession, MAX_NUM_DATA_CALL_SESSIONS);
+            }
             // out of caution, set timestamps to now if they are missing
             if (atomsFromFile.rawVoiceCallRatUsagePullTimestampMillis == 0L) {
                 atomsFromFile.rawVoiceCallRatUsagePullTimestampMillis = getWallTimeMillis();
@@ -308,6 +342,9 @@ public class PersistAtomsStorage {
             }
             if (atomsFromFile.outgoingSmsPullTimestampMillis == 0L) {
                 atomsFromFile.outgoingSmsPullTimestampMillis = getWallTimeMillis();
+            }
+            if (atomsFromFile.dataCallSessionPullTimestampMillis == 0L) {
+                atomsFromFile.dataCallSessionPullTimestampMillis = getWallTimeMillis();
             }
             return atomsFromFile;
         } catch (IOException | NullPointerException e) {
@@ -335,6 +372,7 @@ public class PersistAtomsStorage {
         atoms.incomingSmsPullTimestampMillis = currentTime;
         atoms.outgoingSmsPullTimestampMillis = currentTime;
         atoms.carrierIdTableVersion = TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
+        atoms.dataCallSessionPullTimestampMillis = currentTime;
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;
     }

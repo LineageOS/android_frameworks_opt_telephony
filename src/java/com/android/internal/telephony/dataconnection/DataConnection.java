@@ -87,6 +87,7 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
+import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.util.AsyncChannel;
@@ -197,6 +198,9 @@ public class DataConnection extends StateMachine {
     private final LocalLog mHandoverLocalLog = new LocalLog(100);
 
     private int[] mAdministratorUids = new int[0];
+
+    // stats per data call
+    private DataCallSessionStats mDataCallSessionStats;
 
     /**
      * Used internally for saving connecting parameters.
@@ -692,6 +696,7 @@ public class DataConnection extends StateMachine {
         mCid = -1;
         mDataRegState = mPhone.getServiceState().getDataRegistrationState();
         mIsSuspended = false;
+        mDataCallSessionStats = new DataCallSessionStats(mPhone);
 
         int networkType = getNetworkType();
         mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
@@ -1017,6 +1022,7 @@ public class DataConnection extends StateMachine {
         if (apnContext != null) apnContext.requestLog(str);
         mDataServiceManager.deactivateDataCall(mCid, discReason,
                 obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, o));
+        mDataCallSessionStats.setDeactivateDataCallReason(discReason);
     }
 
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
@@ -1975,6 +1981,8 @@ public class DataConnection extends StateMachine {
                     if (DBG) log("DcDefaultState EVENT_TEAR_DOWN_NOW");
                     mDataServiceManager.deactivateDataCall(mCid, DataService.REQUEST_REASON_NORMAL,
                             null);
+                    mDataCallSessionStats.setDeactivateDataCallReason(
+                            DataService.REQUEST_REASON_NORMAL);
                     break;
                 case EVENT_LOST_CONNECTION:
                     if (DBG) {
@@ -1996,6 +2004,10 @@ public class DataConnection extends StateMachine {
                         log("DcDefaultState: EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
+                    }
+                    // this is for DRS or RAT changes, so only call onRatChanged if RAT is changed
+                    if (mRilRat != 0) {
+                        mDataCallSessionStats.onRatChanged(mRilRat);
                     }
                     break;
 
@@ -2249,6 +2261,7 @@ public class DataConnection extends StateMachine {
                     .registerCarrierPrivilegesListener(
                             getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
             notifyDataConnectionState();
+            mDataCallSessionStats.onSetupDataCall();
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2348,6 +2361,9 @@ public class DataConnection extends StateMachine {
                             throw new RuntimeException("Unknown SetupResult, should not happen");
                     }
                     retVal = HANDLED;
+                    mDataCallSessionStats
+                            .onSetupDataCallResponse(dataCallResponse, cp.mRilRat, cp.mProfileId,
+                                    mApnSetting.getApnTypeBitmask(), mApnSetting.getProtocol());
                     break;
                 case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
                     AsyncResult asyncResult = (AsyncResult) msg.obj;
@@ -2500,8 +2516,9 @@ public class DataConnection extends StateMachine {
                         getHandler(), DataConnection.EVENT_LINK_CAPACITY_CHANGED, null);
             }
             notifyDataConnectionState();
+            int apnBitMask = mApnSetting.getApnTypeBitmask();
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
-                    mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.CONNECTED);
+                    mCid, apnBitMask, RilDataCall.State.CONNECTED);
         }
 
         @Override
@@ -2529,6 +2546,7 @@ public class DataConnection extends StateMachine {
 
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
+            mDataCallSessionStats.onDataCallDisconnected(mCid);
 
             mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
         }
@@ -2640,6 +2658,10 @@ public class DataConnection extends StateMachine {
                         mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
                     }
                     retVal = HANDLED;
+                    // this is for DRS or RAT changes, so only call onRatChanged if RAT is changed
+                    if (mRilRat != 0) {
+                        mDataCallSessionStats.onRatChanged(mRilRat);
+                    }
                     break;
                 }
                 case EVENT_NR_FREQUENCY_CHANGED:
@@ -3175,6 +3197,12 @@ public class DataConnection extends StateMachine {
             logd(logStr);
             mHandoverState = state;
         }
+    }
+
+    /** Sets the {@link DataCallSessionStats} mock for this phone ID during unit testing. */
+    @VisibleForTesting
+    public void setDataCallSessionStats(DataCallSessionStats dataCallSessionStats) {
+        mDataCallSessionStats = dataCallSessionStats;
     }
 
     /**
