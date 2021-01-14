@@ -94,6 +94,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         doReturn(false).when(mPhysicalSlot0).isEuicc();
         doReturn(new UiccSlot[] {mPhysicalSlot0}).when(mUiccController).getUiccSlots();
         doReturn(mPhysicalSlot0).when(mUiccController).getUiccSlot(0);
+        doReturn(mPhysicalSlot0).when(mUiccController).getUiccSlotForPhone(0);
 
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getVoiceNetworkType();
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
@@ -834,5 +835,6 @@ public class ServiceStateStatsTest extends TelephonyTest {
                 .when(mUiccController)
                 .getUiccSlots();
         doReturn(mPhysicalSlot1).when(mUiccController).getUiccSlot(1);
+        doReturn(mPhysicalSlot1).when(mUiccController).getUiccSlotForPhone(1);
     }
 }

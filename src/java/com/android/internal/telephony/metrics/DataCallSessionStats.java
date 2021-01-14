@@ -34,13 +34,10 @@ import android.telephony.data.DataService;
 import android.telephony.data.DataService.DeactivateDataReason;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
-import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.telephony.Rlog;
 
 import java.util.Random;
@@ -59,16 +56,10 @@ public class DataCallSessionStats {
     private static final Random RANDOM = new Random();
 
     public DataCallSessionStats(Phone phone) {
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            mPhone = phone.getDefaultPhone();
-        } else {
-            mPhone = phone;
-        }
+        mPhone = phone;
     }
 
-    /**
-     * create a new ongoing atom when data cal is set up
-     */
+    /** create a new ongoing atom when data cal is set up */
     public synchronized void onSetupDataCall() {
         // there shouldn't be an ongoing dataCall here, if that's the case, it means that
         // deactivateDataCall hasn't been processed properly, so we save the previous atom here
@@ -92,9 +83,12 @@ public class DataCallSessionStats {
      * @param apnTypeBitmask APN type bitmask
      * @param protocol Data connection protocol
      */
-    public synchronized void onSetupDataCallResponse(DataCallResponse response,
-            @NetworkType int radioTechnology, int profileId,
-            @ApnType int apnTypeBitmask, @ProtocolType int protocol) {
+    public synchronized void onSetupDataCallResponse(
+            DataCallResponse response,
+            @NetworkType int radioTechnology,
+            int profileId,
+            @ApnType int apnTypeBitmask,
+            @ProtocolType int protocol) {
         // there should've been another call to initiate the atom,
         // so this method is being called out of order -> no metric will be logged
         if (mOngoingDataCall == null) {
@@ -156,7 +150,8 @@ public class DataCallSessionStats {
 
     /**
      * store the atom, when DataConnection reaches DISCONNECTED state
-     * @param cid              Context Id, uniquely identifies the call
+     *
+     * @param cid Context Id, uniquely identifies the call
      */
     public void onDataCallDisconnected(int cid) {
         // there should've been another call to initiate the atom,
@@ -195,11 +190,11 @@ public class DataCallSessionStats {
     private DataCallSession getDefaultProto() {
         DataCallSession proto = new DataCallSession();
         proto.dimension = RANDOM.nextInt();
-        proto.isMultiSim = isMultiSim();
-        proto.isEsim = isEsim();
+        proto.isMultiSim = SimSlotState.isMultiSim();
+        proto.isEsim = SimSlotState.isEsim(mPhone.getPhoneId());
         proto.profile = DATA_CALL_SESSION__PROFILE__DATA_PROFILE_DEFAULT;
         proto.apnTypeBitmask = ApnSetting.TYPE_NONE;
-        proto.carrierId = getCarrierId();
+        proto.carrierId = mPhone.getCarrierId();
         proto.isRoaming = getIsRoaming();
         proto.oosAtEnd = false;
         proto.ratSwitchCount = 0L;
@@ -214,23 +209,6 @@ public class DataCallSessionStats {
         return proto;
     }
 
-    private boolean isMultiSim() {
-        return SimSlotState.getCurrentState().numActiveSims > 1;
-    }
-
-    private boolean isEsim() {
-        UiccController uiccController = UiccController.getInstance();
-        int slotId = uiccController.getSlotIdFromPhoneId(mPhone.getPhoneId());
-        UiccSlot slot = uiccController.getUiccSlot(slotId);
-        if (slot != null) {
-            return slot.isEuicc();
-        } else {
-            // should not happen, but assume we are not using eSIM
-            loge("isEsim: slot %d is null", slotId);
-            return false;
-        }
-    }
-
     private boolean getIsRoaming() {
         ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
         ServiceState serviceState =
@@ -241,10 +219,6 @@ public class DataCallSessionStats {
     private boolean getIsOpportunistic() {
         SubscriptionController subController = SubscriptionController.getInstance();
         return subController != null ? subController.isOpportunistic(mPhone.getSubId()) : false;
-    }
-
-    private int getCarrierId() {
-        return mPhone.getCarrierId();
     }
 
     private void loge(String format, Object... args) {

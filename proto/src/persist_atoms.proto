@@ -26,10 +26,10 @@ option java_outer_classname = "PersistAtomsProto";
 // Next id: 17
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
-    repeated RawVoiceCallRatUsage raw_voice_call_rat_usage = 1;
+    repeated VoiceCallRatUsage voice_call_rat_usage = 1;
 
     /* Timestamp of last voice_call_rat_usages pull. */
-    optional int64 raw_voice_call_rat_usage_pull_timestamp_millis = 2;
+    optional int64 voice_call_rat_usage_pull_timestamp_millis = 2;
 
     /* Per call statistics and information. */
     repeated VoiceCallSession voice_call_session = 3;
@@ -111,7 +111,7 @@ message VoiceCallSession {
     optional int64 setup_begin_millis = 10001;
 }
 
-message RawVoiceCallRatUsage {
+message VoiceCallRatUsage {
     optional int32 carrier_id = 1;
     optional int32 rat = 2;
     optional int64 total_duration_millis = 3; // Duration needs to be rounded when pulled
