@@ -18,8 +18,10 @@ package com.android.internal.telephony.metrics;
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
@@ -53,6 +55,12 @@ public class PersistAtomsStorage {
      * counted separately.
      */
     private static final int MAX_NUM_SMS = 25;
+
+    /**
+     * Maximum number of carrier ID mismatch events stored on the device to avoid sending
+     * duplicated metrics.
+     */
+    private static final int MAX_CARRIER_ID_MISMATCH = 40;
 
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected final PersistAtoms mAtoms;
@@ -131,6 +139,53 @@ public class PersistAtomsStorage {
         }
         result[insertAt] = instance;
         return result;
+    }
+
+    /**
+     * Adds a new carrier ID mismatch event to the storage.
+     *
+     * @return true if the item was not present and was added to the persistent storage, false
+     * otherwise.
+     */
+    public synchronized boolean addCarrierIdMismatch(CarrierIdMismatch carrierIdMismatch) {
+        // Check if the details of the SIM cards are already present and in case return.
+        for (int i = 0; i < mAtoms.carrierIdMismatch.length; i++) {
+            if (mAtoms.carrierIdMismatch[i].mccMnc.equals(carrierIdMismatch.mccMnc)
+                    && mAtoms.carrierIdMismatch[i].gid1.equals(carrierIdMismatch.gid1)
+                    && mAtoms.carrierIdMismatch[i].spn.equals(carrierIdMismatch.spn)) {
+                return false;
+            }
+        }
+        // Add the new CarrierIdMismatch at the end of the array, so that the same atom will not be
+        // sent again in future.
+        if (mAtoms.carrierIdMismatch.length == MAX_CARRIER_ID_MISMATCH) {
+            System.arraycopy(
+                    mAtoms.carrierIdMismatch, 1,
+                    mAtoms.carrierIdMismatch, 0,
+                    MAX_CARRIER_ID_MISMATCH - 1);
+            mAtoms.carrierIdMismatch[MAX_CARRIER_ID_MISMATCH - 1] = carrierIdMismatch;
+        } else {
+            int newLength = mAtoms.carrierIdMismatch.length + 1;
+            mAtoms.carrierIdMismatch = Arrays.copyOf(mAtoms.carrierIdMismatch, newLength);
+            mAtoms.carrierIdMismatch[newLength - 1] = carrierIdMismatch;
+        }
+        saveAtomsToFile();
+        return true;
+    }
+
+    /**
+     * Stores the version of the carrier ID matching table.
+     *
+     * @return true if the version is newer than last available version, false otherwise.
+     */
+    public synchronized boolean setCarrierIdTableVersion(int carrierIdTableVersion) {
+        if (mAtoms.carrierIdTableVersion < carrierIdTableVersion) {
+            mAtoms.carrierIdTableVersion = carrierIdTableVersion;
+            saveAtomsToFile();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -234,6 +289,13 @@ public class PersistAtomsStorage {
                 atomsFromFile.outgoingSms =
                         Arrays.copyOf(atomsFromFile.outgoingSms, MAX_NUM_SMS);
             }
+            if (atomsFromFile.carrierIdMismatch == null) {
+                atomsFromFile.carrierIdMismatch = new CarrierIdMismatch[0];
+            }
+            if (atomsFromFile.carrierIdMismatch.length > MAX_CARRIER_ID_MISMATCH) {
+                atomsFromFile.carrierIdMismatch =
+                        Arrays.copyOf(atomsFromFile.carrierIdMismatch, MAX_CARRIER_ID_MISMATCH);
+            }
             // out of caution, set timestamps to now if they are missing
             if (atomsFromFile.rawVoiceCallRatUsagePullTimestampMillis == 0L) {
                 atomsFromFile.rawVoiceCallRatUsagePullTimestampMillis = getWallTimeMillis();
@@ -272,6 +334,7 @@ public class PersistAtomsStorage {
         atoms.voiceCallSessionPullTimestampMillis = currentTime;
         atoms.incomingSmsPullTimestampMillis = currentTime;
         atoms.outgoingSmsPullTimestampMillis = currentTime;
+        atoms.carrierIdTableVersion = TelephonyManager.UNKNOWN_CARRIER_ID_LIST_VERSION;
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;
     }
