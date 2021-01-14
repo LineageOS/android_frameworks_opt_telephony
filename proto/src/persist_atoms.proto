@@ -178,10 +178,10 @@ message CarrierIdMismatch {
 }
 
 message DataCallSession {
+    reserved 4;
     optional int32 dimension = 1;
     optional bool is_multi_sim = 2;
     optional bool is_esim = 3;
-    optional int32 profile = 4;
     optional int32 apn_type_bitmask = 5;
     optional int32 carrier_id = 6;
     optional bool is_roaming = 7;
