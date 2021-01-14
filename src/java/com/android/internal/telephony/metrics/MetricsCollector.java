@@ -399,6 +399,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 .writeBoolean(session.isRoaming)
                 // workaround: dimension required for keeping multiple pulled atoms
                 .writeInt(sRandom.nextInt())
+                // New fields introduced in Android S
+                .writeInt(session.signalStrengthAtEnd)
+                .writeInt(session.bandAtEnd)
+                .writeInt(session.setupDurationMillis)
+                .writeInt(session.mainCodecQuality)
+                .writeBoolean(session.videoEnabled)
+                .writeInt(session.ratAtConnected)
+                .writeBoolean(session.isMultiparty)
                 .build();
     }
 
