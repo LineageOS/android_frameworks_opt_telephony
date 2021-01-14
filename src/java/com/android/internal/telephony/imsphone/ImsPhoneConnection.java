@@ -1406,6 +1406,14 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     /**
+     * Indicates whether current phone connection is cross sim calling or not
+     * @return boolean: true if cross sim calling, false otherwise
+     */
+    public boolean isCrossSimCall() {
+        return mImsCall != null && mImsCall.isCrossSimCall();
+    }
+
+    /**
      * Handles notifications from the {@link ImsVideoCallProviderWrapper} of session modification
      * responses received.
      *

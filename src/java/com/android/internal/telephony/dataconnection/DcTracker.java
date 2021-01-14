@@ -1371,6 +1371,9 @@ public class DcTracker extends Handler {
         if (!radioStateFromCarrier) {
             reasons.add(DataDisallowedReasonType.RADIO_DISABLED_BY_CARRIER);
         }
+        if (!mDataServiceBound) {
+            reasons.add(DataDisallowedReasonType.DATA_SERVICE_NOT_READY);
+        }
 
         if (apnContext != null) {
             // If the transport has been already switched to the other transport, we should not

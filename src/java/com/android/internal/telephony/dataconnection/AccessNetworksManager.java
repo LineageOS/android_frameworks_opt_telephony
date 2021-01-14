@@ -160,8 +160,8 @@ public class AccessNetworksManager extends Handler {
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
-            loge("QualifiedNetworksService(" + mLastBoundPackageName + ") died.");
-            String message = "Qualified Network Service Crashed," + mLastBoundPackageName;
+            String message = "Qualified network service " + mLastBoundPackageName + " died.";
+            loge(message);
             AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
         }
     }

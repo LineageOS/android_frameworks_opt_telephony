@@ -2145,7 +2145,11 @@ public class DataConnection extends StateMachine {
                         loge("EVENT_ALLOCATE_PDU_SESSION_ID: asyncResult is null!");
                     } else {
                         Consumer<Integer> onAllocated = (Consumer<Integer>) asyncResult.userObj;
-                        if (asyncResult.result == null) {
+                        if (asyncResult.exception != null) {
+                            loge("EVENT_ALLOCATE_PDU_SESSION_ID: exception",
+                                    asyncResult.exception);
+                            onAllocated.accept(PDU_SESSION_ID_NOT_SET);
+                        } else if (asyncResult.result == null) {
                             loge("EVENT_ALLOCATE_PDU_SESSION_ID: result null, no id");
                             onAllocated.accept(PDU_SESSION_ID_NOT_SET);
                         } else {
@@ -3217,7 +3221,10 @@ public class DataConnection extends StateMachine {
      */
     public void tearDownAll(String reason, @ReleaseNetworkType int releaseType,
                             Message onCompletedMsg) {
-        if (DBG) log("tearDownAll: reason=" + reason + ", releaseType=" + releaseType);
+        if (DBG) {
+            log("tearDownAll: reason=" + reason + ", releaseType="
+                    + DcTracker.releaseTypeToString(releaseType));
+        }
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
                 new DisconnectParams(null, reason, releaseType, onCompletedMsg));
     }
