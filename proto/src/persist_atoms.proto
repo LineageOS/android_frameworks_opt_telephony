@@ -23,13 +23,13 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 9
+// Next id: 21
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
-    repeated RawVoiceCallRatUsage raw_voice_call_rat_usage = 1;
+    repeated VoiceCallRatUsage voice_call_rat_usage = 1;
 
     /* Timestamp of last voice_call_rat_usages pull. */
-    optional int64 raw_voice_call_rat_usage_pull_timestamp_millis = 2;
+    optional int64 voice_call_rat_usage_pull_timestamp_millis = 2;
 
     /* Per call statistics and information. */
     repeated VoiceCallSession voice_call_session = 3;
@@ -48,6 +48,42 @@ message PersistAtoms {
 
     /* Timestamp of last incoming_sms pull. */
     optional int64 outgoing_sms_pull_timestamp_millis = 8;
+
+    /* List of carrier ID mismatch events already sent. */
+    repeated CarrierIdMismatch carrier_id_mismatch = 9;
+
+    /* Last version of carrier ID table sent. */
+    optional int32 carrier_id_table_version = 10;
+
+    /* Data Call session statistics and information. */
+    repeated DataCallSession data_call_session = 11;
+
+    /* Timestamp of last data_call_session pull. */
+    optional int64 data_call_session_pull_timestamp_millis = 12;
+
+    /* Duration spent in each possible service state. */
+    repeated CellularServiceState cellular_service_state = 13;
+
+    /* Timestamp of last cellular_service_state pull. */
+    optional int64 cellular_service_state_pull_timestamp_millis = 14;
+
+    /* Switch count between data RATs. */
+    repeated CellularDataServiceSwitch cellular_data_service_switch = 15;
+
+    /* Timestamp of last cellular_data_service_switch pull. */
+    optional int64 cellular_data_service_switch_pull_timestamp_millis = 16;
+
+    /* List of IMS registration terminations. */
+    repeated ImsRegistrationTermination ims_registration_termination = 17;
+
+    /* Timestamp of last ims_registration_termination pull. */
+    optional int64 ims_registration_termination_pull_timestamp_millis = 18;
+
+    /* Durations of IMS registrations and capabilities. */
+    repeated ImsRegistrationStats ims_registration_stats = 19;
+
+    /* Timestamp of last ims_registration_stats pull. */
+    optional int64 ims_registration_stats_pull_timestamp_millis = 20;
 }
 
 // The canonical versions of the following enums live in:
@@ -82,16 +118,22 @@ message VoiceCallSession {
     optional bool rtt_enabled = 22;
     optional bool is_emergency = 23;
     optional bool is_roaming = 24;
+    optional int32 signal_strength_at_end = 25;
+    optional int32 band_at_end = 26;
+    optional int32 setup_duration_millis = 27;
+    optional int32 main_codec_quality = 28;
+    optional bool video_enabled = 29;
+    optional int32 rat_at_connected = 30;
+    optional bool is_multiparty = 31;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;
 }
 
-// Internal use only
-message RawVoiceCallRatUsage {
+message VoiceCallRatUsage {
     optional int32 carrier_id = 1;
     optional int32 rat = 2;
-    optional int64 total_duration_millis = 3;
+    optional int64 total_duration_millis = 3; // Duration needs to be rounded when pulled
     optional int64 call_count = 4;
 }
 
@@ -126,4 +168,92 @@ message OutgoingSms {
     optional int32 carrier_id = 11;
     optional int64 message_id = 12;
     optional int32 retry_id = 13;
+}
+
+message CarrierIdMismatch {
+    optional string mcc_mnc = 1;
+    optional string gid1 = 2;
+    optional string spn = 3;
+    optional string pnn = 4;
+}
+
+message DataCallSession {
+    reserved 4;
+    optional int32 dimension = 1;
+    optional bool is_multi_sim = 2;
+    optional bool is_esim = 3;
+    optional int32 apn_type_bitmask = 5;
+    optional int32 carrier_id = 6;
+    optional bool is_roaming = 7;
+    optional int32 rat_at_end = 8;
+    optional bool oos_at_end = 9;
+    optional int64 rat_switch_count = 10;
+    optional bool is_opportunistic = 11;
+    optional int32 ip_type = 12;
+    optional bool setup_failed = 13;
+    optional int32 failure_cause = 14;
+    optional int32 suggested_retry_millis = 15;
+    optional int32 deactivate_reason = 16;
+    optional int64 duration_minutes = 17;
+    optional bool ongoing = 18;
+}
+
+message CellularServiceState {
+    optional int32 voice_rat = 1;
+    optional int32 data_rat = 2;
+    optional int32 voice_roaming_type = 3;
+    optional int32 data_roaming_type = 4;
+    optional bool is_endc = 5;
+    optional int32 sim_slot_index = 6;
+    optional bool is_multi_sim = 7;
+    optional int32 carrier_id = 8;
+    optional int64 total_time_millis = 9; // Duration needs to be rounded when pulled
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
+}
+
+message CellularDataServiceSwitch {
+    optional int32 rat_from = 1;
+    optional int32 rat_to = 2;
+    optional int32 sim_slot_index = 3;
+    optional bool is_multi_sim = 4;
+    optional int32 carrier_id = 5;
+    optional int32 switch_count = 6;
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
+}
+
+message ImsRegistrationTermination {
+    optional int32 carrier_id = 1;
+    optional bool is_multi_sim = 2;
+    optional int32 rat_at_end = 3;
+    optional bool setup_failed = 4;
+    optional int32 reason_code = 5;
+    optional int32 extra_code = 6;
+    optional string extra_message = 7;
+    optional int32 count = 8;
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
+}
+
+message ImsRegistrationStats {
+    optional int32 carrier_id = 1;
+    optional int32 sim_slot_index = 2;
+    optional int32 rat = 3;
+    // Durations need to be rounded when pulled
+    optional int64 registered_millis = 4;
+    optional int64 voice_capable_millis = 5;
+    optional int64 voice_available_millis = 6;
+    optional int64 sms_capable_millis = 7;
+    optional int64 sms_available_millis = 8;
+    optional int64 video_capable_millis = 9;
+    optional int64 video_available_millis = 10;
+    optional int64 ut_capable_millis = 11;
+    optional int64 ut_available_millis = 12;
+
+    // Internal use only
+    optional int64 last_used_millis = 10001;
 }

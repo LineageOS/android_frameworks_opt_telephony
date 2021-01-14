@@ -3684,6 +3684,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
                 conn.updateMultipartyState(isMultiParty);
+                mPhone.getVoiceCallSessionStats().onMultipartyChange(conn, isMultiParty);
             }
         }
 
@@ -3823,6 +3824,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onSetFeatureResponse(int feature, int network, int value, int status) {
             mMetrics.writeImsSetFeatureValue(mPhone.getPhoneId(), feature, network, value);
+            mPhone.getImsStats().onSetFeatureResponse(feature, network, value);
         }
 
         @Override
@@ -4939,8 +4941,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         mPhone.onFeatureCapabilityChanged();
 
-        mMetrics.writeOnImsCapabilities(mPhone.getPhoneId(), getImsRegistrationTech(),
-                mMmTelCapabilities);
+        int regTech = getImsRegistrationTech();
+        mMetrics.writeOnImsCapabilities(mPhone.getPhoneId(), regTech, mMmTelCapabilities);
+        mPhone.getImsStats().onImsCapabilitiesChanged(regTech, mMmTelCapabilities);
     }
 
     @VisibleForTesting

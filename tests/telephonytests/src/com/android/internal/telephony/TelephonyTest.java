@@ -41,6 +41,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -59,6 +61,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
@@ -85,6 +88,7 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
+import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.MetricsCollector;
 import com.android.internal.telephony.metrics.PersistAtomsStorage;
 import com.android.internal.telephony.metrics.SmsStats;
@@ -100,6 +104,7 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
+import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.server.pm.PackageManagerService;
 import com.android.server.pm.permission.PermissionManagerService;
 
@@ -300,6 +305,14 @@ public abstract class TelephonyTest {
     protected SmsStats mSmsStats;
     @Mock
     protected DataThrottler mDataThrottler;
+    @Mock
+    protected SignalStrength mSignalStrength;
+    @Mock
+    protected WifiManager mWifiManager;
+    @Mock
+    protected WifiInfo mWifiInfo;
+    @Mock
+    protected ImsStats mImsStats;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -528,9 +541,11 @@ public abstract class TelephonyTest {
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(mVoiceCallSessionStats).when(mPhone).getVoiceCallSessionStats();
         doReturn(mVoiceCallSessionStats).when(mImsPhone).getVoiceCallSessionStats();
         doReturn(mSmsStats).when(mPhone).getSmsStats();
+        doReturn(mImsStats).when(mImsPhone).getImsStats();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
 
         //mUiccController
@@ -556,6 +571,7 @@ public abstract class TelephonyTest {
                 }
             }
         }).when(mUiccController).getIccRecords(anyInt(), anyInt());
+        doReturn(new UiccSlot[] {}).when(mUiccController).getUiccSlots();
 
         //UiccCardApplication
         doReturn(mSimRecords).when(mUiccCardApplication3gpp).getIccRecords();
@@ -619,6 +635,12 @@ public abstract class TelephonyTest {
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
         doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+        doReturn(2).when(mSignalStrength).getLevel();
+
+        // WiFi
+        doReturn(mWifiInfo).when(mWifiManager).getConnectionInfo();
+        doReturn(2).when(mWifiManager).calculateSignalLevel(anyInt());
+        doReturn(4).when(mWifiManager).getMaxSignalLevel();
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();
@@ -648,6 +670,7 @@ public abstract class TelephonyTest {
         // Metrics
         doReturn(null).when(mContext).getFileStreamPath(anyString());
         doReturn(mPersistAtomsStorage).when(mMetricsCollector).getAtomsStorage();
+        doReturn(mWifiManager).when(mContext).getSystemService(eq(Context.WIFI_SERVICE));
 
         //Use reflection to mock singletons
         replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);

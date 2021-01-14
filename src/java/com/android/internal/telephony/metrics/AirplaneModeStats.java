@@ -108,7 +108,7 @@ public class AirplaneModeStats extends ContentObserver {
      * Returns the carrier ID of the active data subscription. If this is not available,
      * it returns the carrier ID of the first phone.
      */
-    private int getCarrierId() {
+    private static int getCarrierId() {
         int dataSubId = SubscriptionManager.getActiveDataSubscriptionId();
         int phoneId = dataSubId != INVALID_SUBSCRIPTION_ID
                 ? SubscriptionManager.getPhoneId(dataSubId) : 0;

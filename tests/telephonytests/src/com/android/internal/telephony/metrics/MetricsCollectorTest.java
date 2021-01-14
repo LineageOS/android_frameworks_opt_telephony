@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
+import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
@@ -38,7 +40,9 @@ import android.util.StatsEvent;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.nano.PersistAtomsProto.RawVoiceCallRatUsage;
+import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
+import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
+import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -82,6 +86,8 @@ public class MetricsCollectorTest extends TelephonyTest {
     @Mock private UiccSlot mEsimSlot;
     @Mock private UiccCard mActiveCard;
 
+    @Mock private ServiceStateStats mServiceStateStats;
+
     private MetricsCollector mMetricsCollector;
 
     @Before
@@ -89,6 +95,8 @@ public class MetricsCollectorTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mMetricsCollector = new MetricsCollector(mContext);
         mMetricsCollector.setPersistAtomsStorage(mPersistAtomsStorage);
+        doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
+        doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }
 
     @After
@@ -216,7 +224,7 @@ public class MetricsCollectorTest extends TelephonyTest {
     @Test
     @SmallTest
     public void onPullAtom_voiceCallRatUsage_empty() throws Exception {
-        doReturn(new RawVoiceCallRatUsage[0])
+        doReturn(new VoiceCallRatUsage[0])
                 .when(mPersistAtomsStorage)
                 .getVoiceCallRatUsages(anyLong());
         List<StatsEvent> actualAtoms = new ArrayList<>();
@@ -244,11 +252,11 @@ public class MetricsCollectorTest extends TelephonyTest {
     @Test
     @SmallTest
     public void onPullAtom_voiceCallRatUsage_bucketWithTooFewCalls() throws Exception {
-        RawVoiceCallRatUsage usage1 = new RawVoiceCallRatUsage();
+        VoiceCallRatUsage usage1 = new VoiceCallRatUsage();
         usage1.callCount = MIN_CALLS_PER_BUCKET;
-        RawVoiceCallRatUsage usage2 = new RawVoiceCallRatUsage();
+        VoiceCallRatUsage usage2 = new VoiceCallRatUsage();
         usage2.callCount = MIN_CALLS_PER_BUCKET - 1L;
-        doReturn(new RawVoiceCallRatUsage[] {usage1, usage1, usage1, usage2})
+        doReturn(new VoiceCallRatUsage[] {usage1, usage1, usage1, usage2})
                 .when(mPersistAtomsStorage)
                 .getVoiceCallRatUsages(anyLong());
         List<StatsEvent> actualAtoms = new ArrayList<>();
@@ -300,6 +308,97 @@ public class MetricsCollectorTest extends TelephonyTest {
         int result = mMetricsCollector.onPullAtom(VOICE_CALL_SESSION, actualAtoms);
 
         assertThat(actualAtoms).hasSize(4);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+        // TODO(b/153196254): verify atom contents
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_cellularDataServiceSwitch_empty() throws Exception {
+        doReturn(new CellularDataServiceSwitch[0])
+                .when(mPersistAtomsStorage)
+                .getCellularDataServiceSwitches(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CELLULAR_DATA_SERVICE_SWITCH, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+        // TODO(b/153196254): verify atom contents
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_cellularDataServiceSwitch_tooFrequent() throws Exception {
+        doReturn(null).when(mPersistAtomsStorage).getCellularDataServiceSwitches(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CELLULAR_DATA_SERVICE_SWITCH, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1))
+                .getCellularDataServiceSwitches(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_cellularDataServiceSwitch_multipleSwitches() throws Exception {
+        CellularDataServiceSwitch serviceSwitch = new CellularDataServiceSwitch();
+        doReturn(new CellularDataServiceSwitch[] {serviceSwitch, serviceSwitch, serviceSwitch})
+                .when(mPersistAtomsStorage)
+                .getCellularDataServiceSwitches(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CELLULAR_DATA_SERVICE_SWITCH, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(3);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+        // TODO(b/153196254): verify atom contents
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_cellularServiceState_empty() throws Exception {
+        doReturn(new CellularServiceState[0])
+                .when(mPersistAtomsStorage)
+                .getCellularServiceStates(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CELLULAR_SERVICE_STATE, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
+        // TODO(b/153196254): verify atom contents
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_cellularServiceState_tooFrequent() throws Exception {
+        doReturn(null).when(mPersistAtomsStorage).getCellularServiceStates(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CELLULAR_SERVICE_STATE, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(0);
+        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
+        verify(mPersistAtomsStorage, times(1)).getCellularServiceStates(eq(MIN_COOLDOWN_MILLIS));
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_cellularServiceState_multipleStates() throws Exception {
+        CellularServiceState state = new CellularServiceState();
+        doReturn(new CellularServiceState[] {state, state, state})
+                .when(mPersistAtomsStorage)
+                .getCellularServiceStates(anyLong());
+        List<StatsEvent> actualAtoms = new ArrayList<>();
+
+        int result = mMetricsCollector.onPullAtom(CELLULAR_SERVICE_STATE, actualAtoms);
+
+        assertThat(actualAtoms).hasSize(3);
         assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
         // TODO(b/153196254): verify atom contents
     }
