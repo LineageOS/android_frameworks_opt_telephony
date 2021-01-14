@@ -115,6 +115,7 @@ import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataAllowedReasonType;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataDisallowedReasonType;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
+import com.android.internal.telephony.metrics.DataStallRecoveryStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -340,6 +341,9 @@ public class DcTracker extends Handler {
     private boolean mNrSaMmwaveUnmetered = false;
     private boolean mNrSaSub6Unmetered = false;
     private boolean mRoamingUnmetered = false;
+
+    // stats per data call recovery event
+    private DataStallRecoveryStats mDataStallRecoveryStats;
 
     /* List of SubscriptionPlans, updated when initialized and when plans are changed. */
     private List<SubscriptionPlan> mSubscriptionPlans = null;
@@ -4722,7 +4726,7 @@ public class DcTracker extends Handler {
             RECOVERY_ACTION_RADIO_RESTART
         })
     @Retention(RetentionPolicy.SOURCE)
-    private @interface RecoveryAction {};
+    public @interface RecoveryAction {};
     private static final int RECOVERY_ACTION_GET_DATA_CALL_LIST      = 0;
     private static final int RECOVERY_ACTION_CLEANUP                 = 1;
     private static final int RECOVERY_ACTION_REREGISTER              = 2;
@@ -4824,6 +4828,7 @@ public class DcTracker extends Handler {
                         mPhone.getPhoneId(), signalStrength);
                 TelephonyMetrics.getInstance().writeDataStallEvent(
                         mPhone.getPhoneId(), recoveryAction);
+                DataStallRecoveryStats.onDataStallEvent(recoveryAction, mPhone);
                 broadcastDataStallDetected(recoveryAction);
 
                 switch (recoveryAction) {
