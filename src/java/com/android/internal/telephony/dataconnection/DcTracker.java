@@ -2507,6 +2507,19 @@ public class DcTracker extends Handler {
         }
     }
 
+    private void sendRequestNetworkCompleteMessages(@ApnType int apnType,
+            @RequestNetworkType int requestType, boolean success,
+            boolean fallbackOnFailedHandover) {
+        List<Message> messageList = mRequestNetworkCompletionMsgs.get(apnType);
+        if (messageList != null) {
+            for (Message msg : messageList) {
+                sendRequestNetworkCompleteMsg(msg, success, mTransportType, requestType,
+                        fallbackOnFailedHandover);
+            }
+            messageList.clear();
+        }
+    }
+
     private void sendRequestNetworkCompleteMsg(Message message, boolean success,
                                                @TransportType int transport,
                                                @RequestNetworkType int requestType,
@@ -2925,15 +2938,8 @@ public class DcTracker extends Handler {
                     + DataCallResponse.failureModeToString(handoverFailureMode));
         } else if (handoverFailureMode
                 != DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER) {
-            int apnType = ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType());
-            List<Message> messageList = mRequestNetworkCompletionMsgs.get(apnType);
-            if (messageList != null) {
-                for (Message msg : messageList) {
-                    sendRequestNetworkCompleteMsg(msg, success, mTransportType, requestType,
-                            fallbackOnFailedHandover);
-                }
-                messageList.clear();
-            }
+            sendRequestNetworkCompleteMessages(apnContext.getApnTypeBitmask(), requestType, success,
+                    fallbackOnFailedHandover);
         }
 
         if (success) {
@@ -3681,9 +3687,16 @@ public class DcTracker extends Handler {
                 break;
 
             case DctConstants.EVENT_TRY_SETUP_DATA:
-                trySetupData((ApnContext) msg.obj, msg.arg1);
+                apnContext = (ApnContext) msg.obj;
+                requestType = msg.arg1;
+                if (!trySetupData(apnContext, requestType)) {
+                    // Note that this might be a retry handover request that we need to notify
+                    // handover completion. Note if it fails, we will not retry anymore (because
+                    // it's due to pre-condition not met) and will not fallback.
+                    sendRequestNetworkCompleteMessages(apnContext.getApnTypeBitmask(), requestType,
+                            false, false);
+                }
                 break;
-
             case DctConstants.EVENT_CLEAN_UP_CONNECTION:
                 if (DBG) log("EVENT_CLEAN_UP_CONNECTION");
                 cleanUpConnectionInternal(true, RELEASE_TYPE_DETACH, (ApnContext) msg.obj);
