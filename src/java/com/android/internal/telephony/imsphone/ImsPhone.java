@@ -109,6 +109,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
@@ -268,6 +269,8 @@ public class ImsPhone extends ImsPhoneBase {
     // List of Registrants to send supplementary service notifications to.
     private RegistrantList mSsnRegistrants = new RegistrantList();
 
+    private ImsStats mImsStats;
+
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -423,6 +426,7 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone = defaultPhone;
         mImsManagerFactory = imsManagerFactory;
         mImsPhoneSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        mImsStats = new ImsStats(this);
         // The ImsExternalCallTracker needs to be defined before the ImsPhoneCallTracker, as the
         // ImsPhoneCallTracker uses a thread to spool up the ImsManager.  Part of this involves
         // setting the multiendpoint listener on the external call tracker.  So we need to ensure
@@ -2390,6 +2394,7 @@ public class ImsPhone extends ImsPhoneBase {
                     + AccessNetworkConstants.transportTypeToString(imsRadioTech));
             setServiceState(ServiceState.STATE_IN_SERVICE);
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.CONNECTED, null);
+            mImsStats.onImsRegistered(imsRadioTech);
         }
 
         @Override
@@ -2403,6 +2408,7 @@ public class ImsPhone extends ImsPhoneBase {
             setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.PROGRESSING,
                     null);
+            mImsStats.onImsRegistering(imsRadioTech);
         }
 
         @Override
@@ -2413,6 +2419,7 @@ public class ImsPhone extends ImsPhoneBase {
             processDisconnectReason(imsReasonInfo);
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.DISCONNECTED,
                     imsReasonInfo);
+            mImsStats.onImsUnregistered(imsReasonInfo);
         }
 
         @Override
@@ -2448,6 +2455,17 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public VoiceCallSessionStats getVoiceCallSessionStats() {
         return mDefaultPhone.getVoiceCallSessionStats();
+    }
+
+    /** Returns the {@link ImsStats} for this IMS phone. */
+    public ImsStats getImsStats() {
+        return mImsStats;
+    }
+
+    /** Sets the {@link ImsStats} mock for this IMS phone during unit testing. */
+    @VisibleForTesting
+    public void setImsStats(ImsStats imsStats) {
+        mImsStats = imsStats;
     }
 
     public boolean hasAliveCall() {
