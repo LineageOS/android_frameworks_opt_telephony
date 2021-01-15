@@ -4982,38 +4982,43 @@ public class ServiceStateTracker extends Handler {
     private void updateReportingCriteria(PersistableBundle config) {
         int lteMeasurementEnabled = config.getInt(CarrierConfigManager
                 .KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT, CellSignalStrengthLte.USE_RSRP);
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSRP,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP,
                 config.getIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY),
                 AccessNetworkType.EUTRAN,
                 (lteMeasurementEnabled & CellSignalStrengthLte.USE_RSRP) != 0);
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSCP,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSCP,
                 config.getIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY),
                 AccessNetworkType.UTRAN, true);
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSI,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
                 config.getIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY),
                 AccessNetworkType.GERAN, true);
 
         if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSRQ,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRQ,
                     config.getIntArray(CarrierConfigManager.KEY_LTE_RSRQ_THRESHOLDS_INT_ARRAY),
                     AccessNetworkType.EUTRAN,
                     (lteMeasurementEnabled & CellSignalStrengthLte.USE_RSRQ) != 0);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSNR,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSNR,
                     config.getIntArray(CarrierConfigManager.KEY_LTE_RSSNR_THRESHOLDS_INT_ARRAY),
                     AccessNetworkType.EUTRAN,
                     (lteMeasurementEnabled & CellSignalStrengthLte.USE_RSSNR) != 0);
 
             int measurementEnabled = config.getInt(CarrierConfigManager
                     .KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT, CellSignalStrengthNr.USE_SSRSRP);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRP,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSRSRP,
                     config.getIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY),
                     AccessNetworkType.NGRAN,
                     (measurementEnabled & CellSignalStrengthNr.USE_SSRSRP) != 0);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRQ,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSRSRQ,
                     config.getIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY),
                     AccessNetworkType.NGRAN,
                     (measurementEnabled & CellSignalStrengthNr.USE_SSRSRQ) != 0);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSSINR,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSSINR,
                     config.getIntArray(CarrierConfigManager.KEY_5G_NR_SSSINR_THRESHOLDS_INT_ARRAY),
                     AccessNetworkType.NGRAN,
                     (measurementEnabled & CellSignalStrengthNr.USE_SSSINR) != 0);
