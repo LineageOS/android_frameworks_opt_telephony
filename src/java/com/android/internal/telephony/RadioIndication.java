@@ -343,6 +343,15 @@ public class RadioIndication extends IRadioIndication.Stub {
     /**
      * Indicates current physical channel configuration.
      */
+    public void currentPhysicalChannelConfigs_1_6(int indicationType,
+            ArrayList<android.hardware.radio.V1_6.PhysicalChannelConfig> configs) {
+        mRil.processIndication(indicationType);
+        physicalChannelConfigsIndication(configs);
+    }
+
+    /**
+     * Indicates current physical channel configuration.
+     */
     public void currentPhysicalChannelConfigs(int indicationType,
             ArrayList<android.hardware.radio.V1_2.PhysicalChannelConfig> configs) {
         mRil.processIndication(indicationType);
