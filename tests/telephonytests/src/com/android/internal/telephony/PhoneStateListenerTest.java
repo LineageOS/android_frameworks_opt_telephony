@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 
 import android.telephony.PhoneStateListener;
-import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.emergency.EmergencyNumber;

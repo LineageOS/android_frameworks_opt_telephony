@@ -1775,7 +1775,7 @@ public class ServiceStateTracker extends Handler {
 
     private int[] getBandwidthsFromConfigs(List<PhysicalChannelConfig> list) {
         return list.stream()
-                .map(PhysicalChannelConfig::getCellBandwidthDownlink)
+                .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
                 .mapToInt(Integer::intValue)
                 .toArray();
     }
