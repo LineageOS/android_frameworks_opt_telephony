@@ -25,6 +25,7 @@ import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.PhoneCapability;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseCallState;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
@@ -233,6 +234,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyBarringInfoChanged(Phone sender, BarringInfo barringInfo) {
         mTelephonyRegistryMgr.notifyBarringInfoChanged(sender.getPhoneId(), sender.getSubId(),
                 barringInfo);
+    }
+
+    @Override
+    public void notifyPhysicalChannelConfig(Phone sender,
+                                                   List<PhysicalChannelConfig> configs) {
+        int subId = sender.getSubId();
+        mTelephonyRegistryMgr.notifyPhysicalChannelConfigForSubscriber(subId, configs);
     }
 
     /**
