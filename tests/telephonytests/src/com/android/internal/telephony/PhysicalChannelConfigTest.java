@@ -47,7 +47,7 @@ public class PhysicalChannelConfigTest {
                 .setPhysicalCellId(PHYSICAL_CELL_ID)
                 .build();
 
-        assertThat(config.getRat()).isEqualTo(RAT);
+        assertThat(config.getNetworkType()).isEqualTo(RAT);
         assertThat(config.getConnectionStatus()).isEqualTo(CONNECTION_STATUS);
         assertThat(config.getCellBandwidthDownlink()).isEqualTo(CELL_BANDWIDTH);
         assertThat(config.getFrequencyRange()).isEqualTo(FREQUENCY_RANGE);
