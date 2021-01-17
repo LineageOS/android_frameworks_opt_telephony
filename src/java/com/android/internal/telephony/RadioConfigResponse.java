@@ -123,7 +123,6 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
         // TODO b/121394331: clean up V1_1.PhoneCapability fields.
         int maxActiveVoiceCalls = 0;
         int maxActiveData = phoneCapability.maxActiveData;
-        int max5G = 0;
         boolean validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
         List<ModemInfo> logicalModemList = new ArrayList();
 
@@ -132,8 +131,8 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             logicalModemList.add(new ModemInfo(modemInfo.modemId));
         }
 
-        return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G, logicalModemList,
-                validationBeforeSwitchSupported);
+        return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
+                validationBeforeSwitchSupported, mRadioConfig.getDeviceNrCapability());
     }
     /**
      * Response function for IRadioConfig.getPhoneCapability().
