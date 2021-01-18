@@ -89,6 +89,7 @@ import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
@@ -322,6 +323,10 @@ public class GsmCdmaPhone extends Phone {
 
         SubscriptionController.getInstance().registerForUiccAppsEnabled(this,
                 EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED, null, false);
+
+        mLinkBandwidthEstimator = mTelephonyComponentFactory
+                .inject(LinkBandwidthEstimator.class.getName())
+                .makeLinkBandwidthEstimator(this);
 
         loadTtyMode();
 

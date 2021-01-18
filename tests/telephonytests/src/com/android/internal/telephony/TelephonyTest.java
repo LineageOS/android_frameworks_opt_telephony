@@ -83,6 +83,7 @@ import com.android.internal.telephony.dataconnection.DataEnabledOverride;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataThrottler;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
@@ -316,6 +317,8 @@ public abstract class TelephonyTest {
     protected WifiInfo mWifiInfo;
     @Mock
     protected ImsStats mImsStats;
+    @Mock
+    protected LinkBandwidthEstimator mLinkBandwidthEstimator;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -520,6 +523,8 @@ public abstract class TelephonyTest {
                 .makeDataEnabledSettings(nullable(Phone.class));
         doReturn(mEriManager).when(mTelephonyComponentFactory)
                 .makeEriManager(nullable(Phone.class), anyInt());
+        doReturn(mLinkBandwidthEstimator).when(mTelephonyComponentFactory)
+                .makeLinkBandwidthEstimator(nullable(Phone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
