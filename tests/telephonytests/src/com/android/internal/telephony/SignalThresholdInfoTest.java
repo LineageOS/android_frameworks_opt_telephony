@@ -165,7 +165,7 @@ public class SignalThresholdInfoTest extends TestCase {
                 .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
                 .setHysteresisMs(0)
                 .setHysteresisDb(0)
-                .setThresholds(new int[]{})
+                .setThresholdsUnlimited(new int[]{})
                 .setIsEnabled(false)
                 .build());
         stList.add(new SignalThresholdInfo.Builder()
@@ -248,6 +248,16 @@ public class SignalThresholdInfoTest extends TestCase {
         // Null thresholds array
         buildWithInvalidParameterThrowException(AccessNetworkConstants.AccessNetworkType.GERAN,
                 SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI, null);
+
+        // Empty thresholds
+        buildWithInvalidParameterThrowException(AccessNetworkConstants.AccessNetworkType.GERAN,
+                SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI, new int[]{});
+
+
+        // Too long thresholds array
+        buildWithInvalidParameterThrowException(AccessNetworkConstants.AccessNetworkType.GERAN,
+                SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
+                new int[]{-100, -90, -70, -60, -58});
 
         // Thresholds value out of range
         for (int signalMeasurementType : INVALID_THRESHOLDS_MAP.keySet()) {
