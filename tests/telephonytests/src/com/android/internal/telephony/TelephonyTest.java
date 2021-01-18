@@ -41,6 +41,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.vcn.VcnManager;
@@ -326,6 +327,8 @@ public abstract class TelephonyTest {
     protected LinkBandwidthEstimator mLinkBandwidthEstimator;
     @Mock
     protected PinStorage mPinStorage;
+    @Mock
+    protected LocationManager mLocationManager;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -484,6 +487,7 @@ public abstract class TelephonyTest {
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mKeyguardManager = (KeyguardManager) mContext.getSystemService(Context.KEYGUARD_SERVICE);
         mVcnManager = mContext.getSystemService(VcnManager.class);
+        mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
 
         //mTelephonyComponentFactory
         doReturn(mTelephonyComponentFactory).when(mTelephonyComponentFactory).inject(anyString());
