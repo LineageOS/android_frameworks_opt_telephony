@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.Uri;
@@ -39,6 +40,8 @@ import android.telephony.TelephonyManager;
 import android.telephony.ims.AudioCodecAttributes;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.RtpHeaderExtension;
+import android.telephony.ims.RtpHeaderExtensionType;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCall;
@@ -53,7 +56,9 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
 
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * {@hide}
@@ -1536,6 +1541,28 @@ public class ImsPhoneConnection extends Connection implements
         Rlog.i(LOG_TAG, "setLocalVideoCapable: mIsLocalVideoCapable = " + mIsLocalVideoCapable
                 + "; updating local video availability.");
         updateMediaCapabilities(getImsCall());
+    }
+
+    /**
+     * Sends RTP header extension data.
+     * @param rtpHeaderExtensions the RTP header extension data to send.
+     */
+    public void sendRtpHeaderExtensions(@NonNull Set<RtpHeaderExtension> rtpHeaderExtensions) {
+        if (mImsCall == null) {
+            return;
+        }
+        Rlog.i(LOG_TAG, "sendRtpHeaderExtensions: numExtensions = " + rtpHeaderExtensions.size());
+        mImsCall.sendRtpHeaderExtensions(rtpHeaderExtensions);
+    }
+
+    /**
+     * @return the RTP header extensions accepted for this call.
+     */
+    public Set<RtpHeaderExtensionType> getAcceptedRtpHeaderExtensions() {
+        if (mImsCall == null || mImsCall.getCallProfile() == null) {
+            return Collections.EMPTY_SET;
+        }
+        return mImsCall.getCallProfile().getAcceptedRtpHeaderExtensionTypes();
     }
 
     /**

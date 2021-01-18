@@ -5336,7 +5336,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             SignalThresholdInfo signalThresholdInfo) {
         android.hardware.radio.V1_5.SignalThresholdInfo signalThresholdInfoHal =
                 new android.hardware.radio.V1_5.SignalThresholdInfo();
-        signalThresholdInfoHal.signalMeasurement = signalThresholdInfo.getSignalMeasurement();
+        signalThresholdInfoHal.signalMeasurement = signalThresholdInfo.getSignalMeasurementType();
         signalThresholdInfoHal.hysteresisMs = signalThresholdInfo.getHysteresisMs();
         signalThresholdInfoHal.hysteresisDb = signalThresholdInfo.getHysteresisDb();
         signalThresholdInfoHal.thresholds = primitiveArrayToArrayList(

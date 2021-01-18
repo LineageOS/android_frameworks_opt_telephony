@@ -628,26 +628,31 @@ public class DeviceStateMonitor extends Handler {
     }
 
     private void setSignalStrengthReportingCriteria() {
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSI,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
                 AccessNetworkThresholds.GERAN, AccessNetworkType.GERAN, true);
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSCP,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSCP,
                 AccessNetworkThresholds.UTRAN, AccessNetworkType.UTRAN, true);
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSRP,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP,
                 AccessNetworkThresholds.EUTRAN_RSRP, AccessNetworkType.EUTRAN, true);
-        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSI,
+        mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
                 AccessNetworkThresholds.CDMA2000, AccessNetworkType.CDMA2000, true);
         if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSRQ,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRQ,
                     AccessNetworkThresholds.EUTRAN_RSRQ, AccessNetworkType.EUTRAN, false);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_RSSNR,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSNR,
                     AccessNetworkThresholds.EUTRAN_RSSNR, AccessNetworkType.EUTRAN, true);
 
             // Defaultly we only need SSRSRP for NGRAN signal criteria reporting
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRP,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSRSRP,
                     AccessNetworkThresholds.NGRAN_RSRSRP, AccessNetworkType.NGRAN, true);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSRSRQ,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSRSRQ,
                     AccessNetworkThresholds.NGRAN_RSRSRQ, AccessNetworkType.NGRAN, false);
-            mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_SSSINR,
+            mPhone.setSignalStrengthReportingCriteria(
+                    SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSSINR,
                     AccessNetworkThresholds.NGRAN_SSSINR, AccessNetworkType.NGRAN, false);
         }
     }
