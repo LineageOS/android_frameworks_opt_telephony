@@ -2428,8 +2428,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         Rlog.d(LOG_TAG, "setAllowedNetworkTypes: modemRaf = " + modemRaf
                 + " filteredRaf = " + filteredRaf);
-        //TODO: Change to setAllowedNetworkTypesBitmap after 1.6 HAL is ready.
-        mCi.setPreferredNetworkType(RadioAccessFamily.getNetworkTypeFromRaf(filteredRaf), response);
+        mCi.setAllowedNetworkTypesBitmap(filteredRaf, response);
         mPreferredNetworkTypeRegistrants.notifyRegistrants();
     }
 
