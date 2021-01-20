@@ -63,7 +63,7 @@ import com.android.telephony.Rlog;
 
 import java.util.Random;
 
-/** Collects voice call events per phone ID for the pulled atom. */
+/** Collects sms events per phone ID for the pulled atom. */
 public class SmsStats {
     private static final String TAG = SmsStats.class.getSimpleName();
 
