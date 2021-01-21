@@ -4062,13 +4062,18 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void setSignalStrengthReportingCriteria(
             int signalStrengthMeasure, int[] thresholds, int ran, boolean isEnabled) {
+        int[] consolidatedThresholds = mSST.getConsolidatedSignalThresholds(
+                ran,
+                signalStrengthMeasure,
+                mSST.shouldHonorSystemThresholds() ? thresholds : new int[]{},
+                REPORTING_HYSTERESIS_DB);
         mCi.setSignalStrengthReportingCriteria(
                 new SignalThresholdInfo.Builder()
                         .setRadioAccessNetworkType(ran)
                         .setSignalMeasurementType(signalStrengthMeasure)
                         .setHysteresisMs(REPORTING_HYSTERESIS_MILLIS)
                         .setHysteresisDb(REPORTING_HYSTERESIS_DB)
-                        .setThresholds(thresholds)
+                        .setThresholdsUnlimited(consolidatedThresholds)
                         .setIsEnabled(isEnabled)
                         .build(),
                 ran, null);
