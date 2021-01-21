@@ -2426,10 +2426,10 @@ public class DataConnection extends StateMachine {
     private class DcActivatingState extends State {
         @Override
         public void enter() {
+            int apnTypeBitmask = mApnSetting != null ? mApnSetting.getApnTypeBitmask() : 0;
             TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVATING,
-                    mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
+                    mPhone.getPhoneId(), mId, (long) apnTypeBitmask,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
             setHandoverState(HANDOVER_STATE_IDLE);
@@ -2446,7 +2446,7 @@ public class DataConnection extends StateMachine {
                     .registerCarrierPrivilegesListener(
                             getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
             notifyDataConnectionState();
-            mDataCallSessionStats.onSetupDataCall(mApnSetting.getApnTypeBitmask());
+            mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2732,7 +2732,7 @@ public class DataConnection extends StateMachine {
 
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
-            mDataCallSessionStats.onDataCallDisconnected(mCid);
+            mDataCallSessionStats.onDataCallDisconnected();
 
             mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
         }
