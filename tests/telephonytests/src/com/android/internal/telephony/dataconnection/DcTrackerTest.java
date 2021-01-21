@@ -1814,9 +1814,9 @@ public class DcTrackerTest extends TelephonyTest {
         clearInvocations(mHandler);
     }
 
-    private void setUpSubscriptionPlans(boolean is5GUnmetered) throws Exception {
+    private void setUpSubscriptionPlans(boolean isNrUnmetered) throws Exception {
         List<SubscriptionPlan> plans = new ArrayList<>();
-        if (is5GUnmetered) {
+        if (isNrUnmetered) {
             plans.add(SubscriptionPlan.Builder
                     .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
                             Period.ofMonths(1))
@@ -1832,6 +1832,28 @@ public class DcTrackerTest extends TelephonyTest {
                 .setDataUsage(500_000_000, System.currentTimeMillis())
                 .build());
         replaceInstance(DcTracker.class, "mSubscriptionPlans", mDct, plans);
+    }
+
+    private void resetSubscriptionPlans() throws Exception {
+        replaceInstance(DcTracker.class, "mSubscriptionPlans", mDct, null);
+    }
+
+    private void setUpSubscriptionOverride(int[] networkTypes, boolean isUnmetered)
+            throws Exception {
+        List<Integer> networkTypesList = null;
+        if (networkTypes != null) {
+            networkTypesList = new ArrayList<>();
+            for (int networkType : networkTypes) {
+                networkTypesList.add(networkType);
+            }
+        }
+        replaceInstance(DcTracker.class, "mUnmeteredNetworkTypes", mDct, networkTypesList);
+        replaceInstance(DcTracker.class, "mUnmeteredOverride", mDct, isUnmetered);
+    }
+
+    private void resetSubscriptionOverride() throws Exception {
+        replaceInstance(DcTracker.class, "mUnmeteredNetworkTypes", mDct, null);
+        replaceInstance(DcTracker.class, "mUnmeteredOverride", mDct, false);
     }
 
     private boolean isNetworkTypeUnmetered(int networkType) throws Exception {
@@ -1878,6 +1900,34 @@ public class DcTrackerTest extends TelephonyTest {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
 
         // only 5G unmetered
+        setUpSubscriptionOverride(new int[]{TelephonyManager.NETWORK_TYPE_NR}, true);
+
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        // all network types metered
+        setUpSubscriptionOverride(TelephonyManager.getAllNetworkTypes(), false);
+
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
+        assertFalse(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        // all network types unmetered
+        setUpSubscriptionOverride(TelephonyManager.getAllNetworkTypes(), true);
+
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
+        assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        resetSubscriptionOverride();
+    }
+
+    @Test
+    public void testIsNetworkTypeUnmeteredViaSubscriptionPlans() throws Exception {
+        initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
+
+        // only 5G unmetered
         setUpSubscriptionPlans(true);
 
         assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
@@ -1896,7 +1946,6 @@ public class DcTrackerTest extends TelephonyTest {
         plans.add(SubscriptionPlan.Builder
                 .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
                         Period.ofMonths(1))
-                .setTitle("Some 5GB Plan")
                 .setDataLimit(SubscriptionPlan.BYTES_UNLIMITED,
                         SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED)
                 .build());
@@ -1905,6 +1954,8 @@ public class DcTrackerTest extends TelephonyTest {
         assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_NR));
         assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_LTE));
         assertTrue(isNetworkTypeUnmetered(TelephonyManager.NETWORK_TYPE_UNKNOWN));
+
+        resetSubscriptionPlans();
     }
 
     @Test
@@ -1953,6 +2004,7 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mDataConnection, times(2)).onMeterednessChanged(true);
 
         resetDataConnection(id);
+        resetSubscriptionPlans();
     }
 
     @Test
@@ -2014,6 +2066,7 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mDataConnection, times(2)).onMeterednessChanged(true);
 
         resetDataConnection(id);
+        resetSubscriptionPlans();
     }
 
     @Test
@@ -2042,6 +2095,7 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mDataConnection, times(1)).onMeterednessChanged(false);
 
         resetDataConnection(id);
+        resetSubscriptionPlans();
     }
 
     @Test
@@ -2074,6 +2128,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertFalse(getWatchdogStatus());
 
         resetDataConnection(id);
+        resetSubscriptionPlans();
     }
 
     /**

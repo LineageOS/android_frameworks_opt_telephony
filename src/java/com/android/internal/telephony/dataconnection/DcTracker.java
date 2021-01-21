@@ -17,6 +17,8 @@
 package com.android.internal.telephony.dataconnection;
 
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
+import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED;
+import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_LTE;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_NR;
 import static android.telephony.data.ApnSetting.PROTOCOL_IPV4V6;
@@ -340,13 +342,23 @@ public class DcTracker extends Handler {
     private boolean mNrSaAllUnmetered = false;
     private boolean mNrSaMmwaveUnmetered = false;
     private boolean mNrSaSub6Unmetered = false;
-    private boolean mRoamingUnmetered = false;
+    private boolean mNrNsaRoamingUnmetered = false;
 
     // stats per data call recovery event
     private DataStallRecoveryStats mDataStallRecoveryStats;
 
     /* List of SubscriptionPlans, updated when initialized and when plans are changed. */
     private List<SubscriptionPlan> mSubscriptionPlans = null;
+    /* List of network types an unmetered override applies to, set by onSubscriptionOverride
+     * and cleared when the device is rebooted or the override expires. */
+    private List<Integer> mUnmeteredNetworkTypes = null;
+    /* List of network types a congested override applies to, set by onSubscriptionOverride
+     * and cleared when the device is rebooted or the override expires. */
+    private List<Integer> mCongestedNetworkTypes = null;
+    /* Whether an unmetered override is currently active. */
+    private boolean mUnmeteredOverride = false;
+    /* Whether a congested override is currently active. */
+    private boolean mCongestedOverride = false;
 
     @SimState
     private int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
@@ -427,11 +439,26 @@ public class DcTracker extends Handler {
     private final NetworkPolicyManager.SubscriptionCallback mSubscriptionCallback =
             new NetworkPolicyManager.SubscriptionCallback() {
         @Override
-        public void onSubscriptionOverride(int subId, int overrideMask, int overrideValue) {
+        public void onSubscriptionOverride(int subId, int overrideMask, int overrideValue,
+                int[] networkTypes) {
             if (mPhone == null || mPhone.getSubId() != subId) return;
 
-            for (DataConnection dataConnection : mDataConnections.values()) {
-                dataConnection.onSubscriptionOverride(overrideMask, overrideValue);
+            List<Integer> tempList = new ArrayList<>();
+            for (int networkType : networkTypes) {
+                tempList.add(networkType);
+            }
+
+            log("Subscription override: overrideMask=" + overrideMask
+                    + ", overrideValue=" + overrideValue + ", networkTypes=" + tempList);
+
+            if (overrideMask == SUBSCRIPTION_OVERRIDE_UNMETERED) {
+                mUnmeteredNetworkTypes = tempList;
+                mUnmeteredOverride = overrideValue != 0;
+                reevaluateUnmeteredConnections();
+            } else if (overrideMask == SUBSCRIPTION_OVERRIDE_CONGESTED) {
+                mCongestedNetworkTypes = tempList;
+                mCongestedOverride = overrideValue != 0;
+                reevaluateCongestedConnections();
             }
         }
 
@@ -3981,6 +4008,7 @@ public class DcTracker extends Handler {
                 reevaluateUnmeteredConnections();
                 break;
             case DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED:
+                reevaluateCongestedConnections();
                 reevaluateUnmeteredConnections();
                 break;
             case DctConstants.EVENT_CARRIER_CONFIG_CHANGED:
@@ -4157,10 +4185,22 @@ public class DcTracker extends Handler {
         }
     }
 
+    private void reevaluateCongestedConnections() {
+        log("reevaluateCongestedConnections");
+        int rat = mPhone.getDisplayInfoController().getTelephonyDisplayInfo().getNetworkType();
+        // congested override and either network is specified or unknown and all networks specified
+        boolean isCongested = mCongestedOverride && (mCongestedNetworkTypes.contains(rat)
+                || mUnmeteredNetworkTypes.containsAll(Arrays.stream(
+                TelephonyManager.getAllNetworkTypes()).boxed().collect(Collectors.toSet())));
+        for (DataConnection dataConnection : mDataConnections.values()) {
+            dataConnection.onCongestednessChanged(isCongested);
+        }
+    }
+
     private void reevaluateUnmeteredConnections() {
         log("reevaluateUnmeteredConnections");
         int rat = mPhone.getDisplayInfoController().getTelephonyDisplayInfo().getNetworkType();
-        if (isNrUnmetered() && !mPhone.getServiceState().getRoaming() || mRoamingUnmetered) {
+        if (isNrUnmetered() && (!mPhone.getServiceState().getRoaming() || mNrNsaRoamingUnmetered)) {
             setDataConnectionUnmetered(true);
             if (!mWatchdog) {
                 startWatchdogAlarm();
@@ -4178,6 +4218,26 @@ public class DcTracker extends Handler {
     }
 
     private boolean isNetworkTypeUnmetered(@NetworkType int networkType) {
+        boolean isUnmetered;
+        if (mUnmeteredNetworkTypes == null || !mUnmeteredOverride) {
+            // check SubscriptionPlans if override is not defined
+            isUnmetered = isNetworkTypeUnmeteredViaSubscriptionPlan(networkType);
+            log("isNetworkTypeUnmeteredViaSubscriptionPlan: networkType=" + networkType
+                    + ", isUnmetered=" + isUnmetered);
+            return isUnmetered;
+        }
+        // unmetered override and either network is specified or unknown and all networks specified
+        isUnmetered = mUnmeteredNetworkTypes.contains(networkType)
+                || mUnmeteredNetworkTypes.containsAll(Arrays.stream(
+                TelephonyManager.getAllNetworkTypes()).boxed().collect(Collectors.toSet()));
+        if (DBG) {
+            log("isNetworkTypeUnmetered: networkType=" + networkType
+                    + ", isUnmetered=" + isUnmetered);
+        }
+        return isUnmetered;
+    }
+
+    private boolean isNetworkTypeUnmeteredViaSubscriptionPlan(@NetworkType int networkType) {
         if (mSubscriptionPlans == null || mSubscriptionPlans.size() == 0) {
             // safe return false if unable to get subscription plans or plans don't exist
             return false;
@@ -4209,9 +4269,7 @@ public class DcTracker extends Handler {
     }
 
     private boolean isPlanUnmetered(SubscriptionPlan plan) {
-        return plan.getDataLimitBytes() == SubscriptionPlan.BYTES_UNLIMITED
-                && (plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_UNKNOWN
-                || plan.getDataLimitBehavior() == SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED);
+        return plan.getDataLimitBytes() == SubscriptionPlan.BYTES_UNLIMITED;
     }
 
     private boolean isNrUnmetered() {
@@ -4222,13 +4280,13 @@ public class DcTracker extends Handler {
         if (isNetworkTypeUnmetered(NETWORK_TYPE_NR)) {
             if (mNrNsaMmwaveUnmetered) {
                 if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
-                    if (DBG) log("NR unmetered for mmwave only via SubscriptionPlans");
+                    if (DBG) log("NR unmetered for mmwave only");
                     return true;
                 }
                 return false;
             } else if (mNrNsaSub6Unmetered) {
                 if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA) {
-                    if (DBG) log("NR unmetered for sub6 only via SubscriptionPlans");
+                    if (DBG) log("NR unmetered for sub6 only");
                     return true;
                 }
                 return false;
@@ -4236,7 +4294,7 @@ public class DcTracker extends Handler {
             if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
                     || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
                     || rat == NETWORK_TYPE_NR) {
-                if (DBG) log("NR unmetered for all frequencies via SubscriptionPlans");
+                if (DBG) log("NR unmetered for all frequencies");
                 return true;
             }
             return false;
@@ -5258,7 +5316,7 @@ public class DcTracker extends Handler {
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_MMWAVE_BOOL);
                 mNrSaSub6Unmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_SUB6_BOOL);
-                mRoamingUnmetered = b.getBoolean(
+                mNrNsaRoamingUnmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
             }
         }
