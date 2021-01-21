@@ -17,14 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.Manifest.permission.SEND_SMS_NO_CONFIRMATION;
-import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-import static android.telephony.SmsManager.RESULT_ERROR_LIMIT_EXCEEDED;
-import static android.telephony.SmsManager.RESULT_ERROR_NONE;
-import static android.telephony.SmsManager.RESULT_ERROR_NO_SERVICE;
-import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
-import static android.telephony.SmsManager.RESULT_ERROR_RADIO_OFF;
-import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED;
-import static android.telephony.SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED;
 
 import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PERIOD_NOT_SPECIFIED;
 import static com.android.internal.telephony.IccSmsInterfaceManager.SMS_MESSAGE_PRIORITY_NOT_SPECIFIED;
@@ -308,7 +300,7 @@ public abstract class SMSDispatcher extends Handler {
             Rlog.d(TAG, "SMSDispatcher: EVENT_SENDING_NOT_ALLOWED - "
                     + "sending SHORT_CODE_NEVER_ALLOWED error code.");
             handleSmsTrackersFailure(
-                    trackers, RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, NO_ERROR_CODE);
+                    trackers, SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED, NO_ERROR_CODE);
             break;
         }
 
@@ -318,21 +310,21 @@ public abstract class SMSDispatcher extends Handler {
             int error;
             if (msg.arg1 == ConfirmDialogListener.SHORT_CODE_MSG) {
                 if (msg.arg2 == ConfirmDialogListener.NEVER_ALLOW) {
-                    error = RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED;
+                    error = SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED;
                     Rlog.d(TAG, "SMSDispatcher: EVENT_STOP_SENDING - "
                             + "sending SHORT_CODE_NEVER_ALLOWED error code.");
                 } else {
-                    error = RESULT_ERROR_SHORT_CODE_NOT_ALLOWED;
+                    error = SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED;
                     Rlog.d(TAG, "SMSDispatcher: EVENT_STOP_SENDING - "
                             + "sending SHORT_CODE_NOT_ALLOWED error code.");
                 }
             } else if (msg.arg1 == ConfirmDialogListener.RATE_LIMIT) {
-                error = RESULT_ERROR_LIMIT_EXCEEDED;
+                error = SmsManager.RESULT_ERROR_LIMIT_EXCEEDED;
                 Rlog.d(TAG, "SMSDispatcher: EVENT_STOP_SENDING - "
                         + "sending LIMIT_EXCEEDED error code.");
             } else {
-                    error = SmsManager.RESULT_UNEXPECTED_EVENT_STOP_SENDING;
-                    Rlog.e(TAG, "SMSDispatcher: EVENT_STOP_SENDING - unexpected cases.");
+                error = SmsManager.RESULT_UNEXPECTED_EVENT_STOP_SENDING;
+                Rlog.e(TAG, "SMSDispatcher: EVENT_STOP_SENDING - unexpected cases.");
             }
 
             handleSmsTrackersFailure(trackers, error, NO_ERROR_CODE);
@@ -797,11 +789,13 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             int ss = mPhone.getServiceState().getState();
+            int error = rilErrorToSmsManagerResult(
+                    ((CommandException) (ar.exception)).getCommandError());
 
             if (tracker.mImsRetry > 0 && ss != ServiceState.STATE_IN_SERVICE) {
                 // This is retry after failure over IMS but voice is not available.
-                // Set retry to max allowed, so no retry is sent and
-                //   cause RESULT_ERROR_GENERIC_FAILURE to be returned to app.
+                // Set retry to max allowed, so no retry is sent and cause
+                // SmsManager.RESULT_ERROR_GENERIC_FAILURE to be returned to app.
                 tracker.mRetryCount = MAX_SEND_RETRIES;
 
                 Rlog.d(TAG, "handleSendComplete: Skipping retry: "
@@ -823,9 +817,8 @@ public abstract class SMSDispatcher extends Handler {
                         getNotInServiceError(ss),
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext));
-            } else if ((((CommandException)(ar.exception)).getCommandError()
-                    == CommandException.Error.SMS_FAIL_RETRY) &&
-                   tracker.mRetryCount < MAX_SEND_RETRIES) {
+            } else if (error == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY
+                    && tracker.mRetryCount < MAX_SEND_RETRIES) {
                 // Retry after a delay if needed.
                 // TODO: According to TS 23.040, 9.2.3.6, we should resend
                 //       with the same TP-MR as the failed message, and
@@ -848,8 +841,6 @@ public abstract class SMSDispatcher extends Handler {
                         tracker.isFromDefaultSmsApplication(mContext));
             } else {
                 int errorCode = (smsResponse != null) ? smsResponse.mErrorCode : NO_ERROR_CODE;
-                int error = rilErrorToSmsManagerResult(((CommandException) (ar.exception))
-                        .getCommandError());
                 tracker.onFailed(mContext, error, errorCode);
                 mPhone.getSmsStats().onOutgoingSms(
                         tracker.mImsRetry > 0 /* isOverIms */,
@@ -915,7 +906,7 @@ public abstract class SMSDispatcher extends Handler {
             case BLOCKED_DUE_TO_CALL:
                 return SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL;
             default:
-                return RESULT_ERROR_GENERIC_FAILURE;
+                return SmsManager.RESULT_ERROR_GENERIC_FAILURE;
         }
     }
 
@@ -926,9 +917,9 @@ public abstract class SMSDispatcher extends Handler {
     @SmsManager.Result
     protected static int getNotInServiceError(int ss) {
         if (ss == ServiceState.STATE_POWER_OFF) {
-            return RESULT_ERROR_RADIO_OFF;
+            return SmsManager.RESULT_ERROR_RADIO_OFF;
         }
-        return RESULT_ERROR_NO_SERVICE;
+        return SmsManager.RESULT_ERROR_NO_SERVICE;
     }
 
     /**
@@ -944,13 +935,65 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is successfully sent, or failed.
      *  The result code will be <code>Activity.RESULT_OK<code> for success,
      *  or one of these errors:<br>
-     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *  <code>RESULT_ERROR_NULL_PDU</code><br>
-     *  <code>RESULT_ERROR_NO_SERVICE</code><br>.
-     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
-     *  the extra "errorCode" containing a radio technology specific value,
-     *  generally only useful for troubleshooting.<br>
+     *  <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NULL_PDU</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NO_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_LIMIT_EXCEEDED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_SYSTEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_MODEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_ERROR</code><br>
+     *  <code>SmsManager.RESULT_ENCODING_ERROR</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_INTERNAL_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_NO_BLUETOOTH_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_BLUETOOTH_DISCONNECTED</code><br>
+     *  <code>SmsManager.RESULT_UNEXPECTED_EVENT_STOP_SENDING</code><br>
+     *  <code>SmsManager.RESULT_SMS_BLOCKED_DURING_EMERGENCY</code><br>
+     *  <code>SmsManager.RESULT_SMS_SEND_RETRY_FAILED</code><br>
+     *  <code>SmsManager.RESULT_REMOTE_EXCEPTION</code><br>
+     *  <code>SmsManager.RESULT_NO_DEFAULT_SMS_APP</code><br>
+     *  <code>SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_RATE_LIMITED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SYSTEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_ENCODING_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_RIL_MODEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INTERNAL_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_MODEM_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_NOT_READY</code><br>
+     *  <code>SmsManager.RESULT_RIL_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_RIL_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIM_ABSENT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_ACCESS_BARRED</code><br>
+     *  <code>SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL</code><br>
+     *  For <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code> or any of the RESULT_RIL errors,
+     *  the sentIntent may include the extra "errorCode" containing a radio technology specific
+     *  value, generally only useful for troubleshooting.<br>
      *  The per-application based SMS control checks sentIntent. If sentIntent
      *  is NULL the caller will be checked against all unknown applications,
      *  which cause smaller number of SMS to be sent in checking period.
@@ -981,7 +1024,8 @@ public abstract class SMSDispatcher extends Handler {
 
     /**
      * Send a text based SMS.
-     *  @param destAddr the address to send the message to
+     *
+     * @param destAddr the address to send the message to
      * @param scAddr is the service center address or null to use
      *  the current default SMSC
      * @param text the body of the message to send
@@ -989,13 +1033,65 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is successfully sent, or failed.
      *  The result code will be <code>Activity.RESULT_OK<code> for success,
      *  or one of these errors:<br>
-     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *  <code>RESULT_ERROR_NULL_PDU</code><br>
-     *  <code>RESULT_ERROR_NO_SERVICE</code><br>.
-     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
-     *  the extra "errorCode" containing a radio technology specific value,
-     *  generally only useful for troubleshooting.<br>
+     *  <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NULL_PDU</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NO_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_LIMIT_EXCEEDED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_SYSTEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_MODEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_ERROR</code><br>
+     *  <code>SmsManager.RESULT_ENCODING_ERROR</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_INTERNAL_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_NO_BLUETOOTH_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_BLUETOOTH_DISCONNECTED</code><br>
+     *  <code>SmsManager.RESULT_UNEXPECTED_EVENT_STOP_SENDING</code><br>
+     *  <code>SmsManager.RESULT_SMS_BLOCKED_DURING_EMERGENCY</code><br>
+     *  <code>SmsManager.RESULT_SMS_SEND_RETRY_FAILED</code><br>
+     *  <code>SmsManager.RESULT_REMOTE_EXCEPTION</code><br>
+     *  <code>SmsManager.RESULT_NO_DEFAULT_SMS_APP</code><br>
+     *  <code>SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_RATE_LIMITED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SYSTEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_ENCODING_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_RIL_MODEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INTERNAL_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_MODEM_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_NOT_READY</code><br>
+     *  <code>SmsManager.RESULT_RIL_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_RIL_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIM_ABSENT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_ACCESS_BARRED</code><br>
+     *  <code>SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL</code><br>
+     *  For <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code> or any of the RESULT_RIL errors,
+     *  the sentIntent may include the extra "errorCode" containing a radio technology specific
+     *  value, generally only useful for troubleshooting.<br>
      *  The per-application based SMS control checks sentIntent. If sentIntent
      *  is NULL the caller will be checked against all unknown applications,
      *  which cause smaller number of SMS to be sent in checking period.
@@ -1004,7 +1100,7 @@ public abstract class SMSDispatcher extends Handler {
      * @param messageUri optional URI of the message if it is already stored in the system
      * @param callingPkg the calling package name
      * @param persistMessage whether to save the sent message into SMS DB for a
-     *   non-default SMS app.
+     *  non-default SMS app.
      *
      * @param priority Priority level of the message
      *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
@@ -1053,7 +1149,7 @@ public abstract class SMSDispatcher extends Handler {
     private void triggerSentIntentForFailure(PendingIntent sentIntent) {
         if (sentIntent != null) {
             try {
-                sentIntent.send(RESULT_ERROR_GENERIC_FAILURE);
+                sentIntent.send(SmsManager.RESULT_ERROR_GENERIC_FAILURE);
             } catch (CanceledException ex) {
                 Rlog.e(TAG, "Intent has been canceled!");
             }
@@ -1108,27 +1204,83 @@ public abstract class SMSDispatcher extends Handler {
 
     /**
      * Send a multi-part text based SMS.
-     *  @param destAddr the address to send the message to
+     *
+     * @param destAddr the address to send the message to
      * @param scAddr is the service center address or null to use
-     *   the current default SMSC
+     *  the current default SMSC
      * @param parts an <code>ArrayList</code> of strings that, in order,
-     *   comprise the original message
+     *  comprise the original message
      * @param sentIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been sent.
-     *   The result code will be <code>Activity.RESULT_OK<code> for success,
-     *   or one of these errors:
-     *   <code>RESULT_ERROR_GENERIC_FAILURE</code>
-     *   <code>RESULT_ERROR_RADIO_OFF</code>
-     *   <code>RESULT_ERROR_NULL_PDU</code>
-     *   <code>RESULT_ERROR_NO_SERVICE</code>.
+     *  <code>PendingIntent</code>s (one for each message part) that is
+     *  broadcast when the corresponding message part has been sent.
+     *  The result code will be <code>Activity.RESULT_OK<code> for success,
+     *  or one of these errors:
+     *  <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NULL_PDU</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NO_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_LIMIT_EXCEEDED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_SYSTEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_MODEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_ERROR</code><br>
+     *  <code>SmsManager.RESULT_ENCODING_ERROR</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_INTERNAL_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_NO_BLUETOOTH_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_BLUETOOTH_DISCONNECTED</code><br>
+     *  <code>SmsManager.RESULT_UNEXPECTED_EVENT_STOP_SENDING</code><br>
+     *  <code>SmsManager.RESULT_SMS_BLOCKED_DURING_EMERGENCY</code><br>
+     *  <code>SmsManager.RESULT_SMS_SEND_RETRY_FAILED</code><br>
+     *  <code>SmsManager.RESULT_REMOTE_EXCEPTION</code><br>
+     *  <code>SmsManager.RESULT_NO_DEFAULT_SMS_APP</code><br>
+     *  <code>SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_RATE_LIMITED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SYSTEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_ENCODING_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_RIL_MODEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INTERNAL_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_MODEM_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_NOT_READY</code><br>
+     *  <code>SmsManager.RESULT_RIL_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_RIL_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIM_ABSENT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_ACCESS_BARRED</code><br>
+     *  <code>SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL</code><br>
+     *  For <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code> or any of the RESULT_RIL errors,
+     *  the sentIntent may include the extra "errorCode" containing a radio technology specific
+     *  value, generally only useful for troubleshooting.<br>
      *  The per-application based SMS control checks sentIntent. If sentIntent
      *  is NULL the caller will be checked against all unknown applications,
      *  which cause smaller number of SMS to be sent in checking period.
      * @param deliveryIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been delivered
-     *   to the recipient.  The raw pdu of the status report is in the
+     *  <code>PendingIntent</code>s (one for each message part) that is
+     *  broadcast when the corresponding message part has been delivered
+     *  to the recipient.  The raw pdu of the status report is in the
      * @param messageUri optional URI of the message if it is already stored in the system
      * @param callingPkg the calling package name
      * @param persistMessage whether to save the sent message into SMS DB for a
@@ -1315,6 +1467,7 @@ public abstract class SMSDispatcher extends Handler {
 
     /**
      * Send a single or a multi-part SMS
+     *
      * @param trackers each tracker will contain:
      * -smsc the SMSC to send the message through, or NULL for the
      *  default SMSC
@@ -1323,10 +1476,65 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is successfully sent, or failed.
      *  The result code will be <code>Activity.RESULT_OK<code> for success,
      *  or one of these errors:
-     *  <code>RESULT_ERROR_GENERIC_FAILURE</code>
-     *  <code>RESULT_ERROR_RADIO_OFF</code>
-     *  <code>RESULT_ERROR_NULL_PDU</code>
-     *  <code>RESULT_ERROR_NO_SERVICE</code>.
+     *  <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NULL_PDU</code><br>
+     *  <code>SmsManager.RESULT_ERROR_NO_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_LIMIT_EXCEEDED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_SYSTEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_MODEM_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NETWORK_ERROR</code><br>
+     *  <code>SmsManager.RESULT_ENCODING_ERROR</code><br>
+     *  <code>SmsManager.RESULT_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_INTERNAL_ERROR</code><br>
+     *  <code>SmsManager.RESULT_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_NO_BLUETOOTH_SERVICE</code><br>
+     *  <code>SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_BLUETOOTH_DISCONNECTED</code><br>
+     *  <code>SmsManager.RESULT_UNEXPECTED_EVENT_STOP_SENDING</code><br>
+     *  <code>SmsManager.RESULT_SMS_BLOCKED_DURING_EMERGENCY</code><br>
+     *  <code>SmsManager.RESULT_SMS_SEND_RETRY_FAILED</code><br>
+     *  <code>SmsManager.RESULT_REMOTE_EXCEPTION</code><br>
+     *  <code>SmsManager.RESULT_NO_DEFAULT_SMS_APP</code><br>
+     *  <code>SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE</code><br>
+     *  <code>SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_REJECT</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_ARGUMENTS</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_MEMORY</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_RATE_LIMITED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMS_FORMAT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SYSTEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_ENCODING_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_SMSC_ADDRESS</code><br>
+     *  <code>SmsManager.RESULT_RIL_MODEM_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_INTERNAL_ERR</code><br>
+     *  <code>SmsManager.RESULT_RIL_REQUEST_NOT_SUPPORTED</code><br>
+     *  <code>SmsManager.RESULT_RIL_INVALID_MODEM_STATE</code><br>
+     *  <code>SmsManager.RESULT_RIL_NETWORK_NOT_READY</code><br>
+     *  <code>SmsManager.RESULT_RIL_OPERATION_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_NO_RESOURCES</code><br>
+     *  <code>SmsManager.RESULT_RIL_CANCELLED</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIM_ABSENT</code><br>
+     *  <code>SmsManager.RESULT_RIL_SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED</code><br>
+     *  <code>SmsManager.RESULT_RIL_ACCESS_BARRED</code><br>
+     *  <code>SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL</code><br>
+     *  For <code>SmsManager.RESULT_ERROR_GENERIC_FAILURE</code> or any of the RESULT_RIL errors,
+     *  the sentIntent may include the extra "errorCode" containing a radio technology specific
+     *  value, generally only useful for troubleshooting.<br>
      *  The per-application based SMS control checks sentIntent. If sentIntent
      *  is NULL the caller will be checked against all unknown applications,
      *  which cause smaller number of SMS to be sent in checking period.
@@ -1337,21 +1545,21 @@ public abstract class SMSDispatcher extends Handler {
      */
     @VisibleForTesting
     public void sendRawPdu(SmsTracker[] trackers) {
-        @SmsManager.Result int error = RESULT_ERROR_NONE;
+        @SmsManager.Result int error = SmsManager.RESULT_ERROR_NONE;
         PackageInfo appInfo = null;
         if (mSmsSendDisabled) {
             Rlog.e(TAG, "Device does not support sending sms.");
-            error = RESULT_ERROR_NO_SERVICE;
+            error = SmsManager.RESULT_ERROR_NO_SERVICE;
         } else {
             for (SmsTracker tracker : trackers) {
                 if (tracker.getData().get(MAP_KEY_PDU) == null) {
                     Rlog.e(TAG, "Empty PDU");
-                    error = RESULT_ERROR_NULL_PDU;
+                    error = SmsManager.RESULT_ERROR_NULL_PDU;
                     break;
                 }
             }
 
-            if (error == RESULT_ERROR_NONE) {
+            if (error == SmsManager.RESULT_ERROR_NONE) {
                 UserHandle userHandle = UserHandle.of(trackers[0].mUserId);
                 PackageManager pm = mContext.createContextAsUser(userHandle, 0).getPackageManager();
 
@@ -1364,12 +1572,12 @@ public abstract class SMSDispatcher extends Handler {
                 } catch (PackageManager.NameNotFoundException e) {
                     Rlog.e(TAG, "Can't get calling app package info: refusing to send SMS"
                             + " id: " + getMultiTrackermessageId(trackers));
-                    error = RESULT_ERROR_GENERIC_FAILURE;
+                    error = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
                 }
             }
         }
 
-        if (error != RESULT_ERROR_NONE) {
+        if (error != SmsManager.RESULT_ERROR_NONE) {
             handleSmsTrackersFailure(trackers, error, NO_ERROR_CODE);
             return;
         }
@@ -1508,7 +1716,8 @@ public abstract class SMSDispatcher extends Handler {
             // Deny sending message when the queue limit is reached.
             Rlog.e(TAG, "Denied because queue limit reached"
                     + " id: " + getMultiTrackermessageId(trackers));
-            handleSmsTrackersFailure(trackers, RESULT_ERROR_LIMIT_EXCEEDED, NO_ERROR_CODE);
+            handleSmsTrackersFailure(
+                    trackers, SmsManager.RESULT_ERROR_LIMIT_EXCEEDED, NO_ERROR_CODE);
             return true;
         }
         mPendingTrackerCount++;
@@ -1954,11 +2163,11 @@ public abstract class SMSDispatcher extends Handler {
         private void reportAnomaly(int error, int errorCode) {
             switch (error) {
                 // Exclude known failed reason
-                case RESULT_ERROR_NO_SERVICE:
-                case RESULT_ERROR_RADIO_OFF:
-                case RESULT_ERROR_LIMIT_EXCEEDED:
-                case RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED:
-                case RESULT_ERROR_SHORT_CODE_NOT_ALLOWED:
+                case SmsManager.RESULT_ERROR_NO_SERVICE:
+                case SmsManager.RESULT_ERROR_RADIO_OFF:
+                case SmsManager.RESULT_ERROR_LIMIT_EXCEEDED:
+                case SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED:
+                case SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED:
                 case SmsManager.RESULT_SMS_BLOCKED_DURING_EMERGENCY:
                     break;
                 // Dump bugreport for analysis
