@@ -36,9 +36,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import android.app.IAlarmManager;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -126,7 +127,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Mock
     private Handler mTestHandler;
     @Mock
-    protected IAlarmManager mAlarmManager;
+    protected AlarmManager mAlarmManager;
 
     private CellularNetworkService mCellularNetworkService;
 
@@ -232,6 +233,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         logd("ServiceStateTrackerTest +Setup!");
         super.setUp("ServiceStateTrackerTest");
+
+        doReturn(mAlarmManager).when(mContext).getSystemService(eq(Context.ALARM_SERVICE));
 
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
@@ -1917,6 +1920,25 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertFalse(mSimulatedCommands.getRadioState()
                 != TelephonyManager.RADIO_POWER_UNAVAILABLE);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetImsRegisteredStateRunsShutdownImmediately() throws Exception {
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        sst.setImsRegistrationState(true);
+        mSimulatedCommands.setRadioPowerFailResponse(false);
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        sst.requestShutdown();
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        sst.setImsRegistrationState(false);
+        verify(mAlarmManager).cancel(any(PendingIntent.class));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_UNAVAILABLE, mSimulatedCommands.getRadioState());
     }
 
     @Test
