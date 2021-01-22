@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -104,7 +105,8 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         String dateExpected = dt.format(expectedCal.getTime());
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("mcc", "mnc", 1,
                 "keyIdentifier", publicKey, date);
-        when(mPhone.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(imsiEncryptionInfo);
+        when(mPhone.getCarrierInfoForImsiEncryption(anyInt(), anyBoolean()))
+                .thenReturn(imsiEncryptionInfo);
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
         assertTrue(dt.format(expirationDate).equals(dateExpected));
     }
@@ -130,7 +132,8 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         Date maxExpirationDate = maxExpirationCal.getTime();
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("mcc", "mnc", 1,
                 "keyIdentifier", publicKey, date);
-        when(mPhone.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(imsiEncryptionInfo);
+        when(mPhone.getCarrierInfoForImsiEncryption(anyInt(), anyBoolean()))
+                .thenReturn(imsiEncryptionInfo);
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
         assertTrue(expirationDate.before(minExpirationDate));
         assertTrue(expirationDate.after(maxExpirationDate));

@@ -1865,11 +1865,11 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType) {
+    public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType, boolean fallback) {
         String operatorNumeric = TelephonyManager.from(mContext)
                 .getSimOperatorNumericForPhone(mPhoneId);
         return CarrierInfoManager.getCarrierInfoForImsiEncryption(keyType,
-                mContext, operatorNumeric);
+                mContext, operatorNumeric, fallback, getSubId());
     }
 
     @Override
