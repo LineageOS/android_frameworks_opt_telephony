@@ -76,6 +76,7 @@ import android.telephony.CellSignalStrengthNr;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SignalStrength;
@@ -267,9 +268,9 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_SIM_RECORDS_LOADED                     = 16;
     protected static final int EVENT_SIM_READY                              = 17;
     protected static final int EVENT_LOCATION_UPDATES_ENABLED               = 18;
-    protected static final int EVENT_GET_PREFERRED_NETWORK_TYPE             = 19;
-    protected static final int EVENT_SET_PREFERRED_NETWORK_TYPE             = 20;
-    protected static final int EVENT_RESET_PREFERRED_NETWORK_TYPE           = 21;
+    protected static final int EVENT_GET_ALLOWED_NETWORK_TYPE               = 19;
+    protected static final int EVENT_SET_ALLOWED_NETWORK_TYPE               = 20;
+    protected static final int EVENT_RESET_ALLOWED_NETWORK_TYPE             = 21;
     protected static final int EVENT_CHECK_REPORT_GPRS                      = 22;
     protected static final int EVENT_RESTRICTED_STATE_CHANGED               = 23;
 
@@ -1080,8 +1081,8 @@ public class ServiceStateTracker extends Handler {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void reRegisterNetwork(Message onComplete) {
-        mCi.getPreferredNetworkType(
-                obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
+        mCi.getAllowedNetworkTypesBitmap(
+                obtainMessage(EVENT_GET_ALLOWED_NETWORK_TYPE, onComplete));
     }
 
     /**
@@ -1480,14 +1481,14 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            case EVENT_SET_PREFERRED_NETWORK_TYPE:
+            case EVENT_SET_ALLOWED_NETWORK_TYPE:
                 ar = (AsyncResult) msg.obj;
                 // Don't care the result, only use for dereg network (COPS=2)
-                message = obtainMessage(EVENT_RESET_PREFERRED_NETWORK_TYPE, ar.userObj);
-                mCi.setPreferredNetworkType(mPreferredNetworkType, message);
+                message = obtainMessage(EVENT_RESET_ALLOWED_NETWORK_TYPE, ar.userObj);
+                mCi.setAllowedNetworkTypesBitmap(mPreferredNetworkType, message);
                 break;
 
-            case EVENT_RESET_PREFERRED_NETWORK_TYPE:
+            case EVENT_RESET_ALLOWED_NETWORK_TYPE:
                 ar = (AsyncResult) msg.obj;
                 if (ar.userObj != null) {
                     AsyncResult.forMessage(((Message) ar.userObj)).exception
@@ -1496,19 +1497,21 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            case EVENT_GET_PREFERRED_NETWORK_TYPE:
+            case EVENT_GET_ALLOWED_NETWORK_TYPE:
                 ar = (AsyncResult) msg.obj;
 
                 if (ar.exception == null) {
                     mPreferredNetworkType = ((int[])ar.result)[0];
                 } else {
-                    mPreferredNetworkType = RILConstants.NETWORK_MODE_GLOBAL;
+                    mPreferredNetworkType = RadioAccessFamily.getRafFromNetworkType(
+                            RILConstants.NETWORK_MODE_GLOBAL);
                 }
 
-                message = obtainMessage(EVENT_SET_PREFERRED_NETWORK_TYPE, ar.userObj);
-                int toggledNetworkType = RILConstants.NETWORK_MODE_GLOBAL;
+                message = obtainMessage(EVENT_SET_ALLOWED_NETWORK_TYPE, ar.userObj);
+                int toggledNetworkType = RadioAccessFamily.getRafFromNetworkType(
+                        RILConstants.NETWORK_MODE_GLOBAL);
 
-                mCi.setPreferredNetworkType(toggledNetworkType, message);
+                mCi.setAllowedNetworkTypesBitmap(toggledNetworkType, message);
                 break;
 
             case EVENT_CHECK_REPORT_GPRS:

@@ -3012,7 +3012,7 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
-                value.put(propKey, Long.parseLong(propValue));
+                value.put(propKey, propValue);
                 break;
             default:
                 if (DBG) logd("Invalid column name");
