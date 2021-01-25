@@ -497,8 +497,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.failureCause,
                 dataCallSession.suggestedRetryMillis,
                 dataCallSession.deactivateReason,
-                dataCallSession.durationMinutes,
-                dataCallSession.ongoing);
+                round(dataCallSession.durationMinutes, DURATION_BUCKET_MILLIS / MINUTE_IN_MILLIS),
+                dataCallSession.ongoing,
+                dataCallSession.bandAtEnd);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {
@@ -547,6 +548,6 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     /** Returns the value rounded to the bucket. */
     private static long round(long value, long bucket) {
-        return ((value + bucket / 2) / bucket) * bucket;
+        return bucket == 0 ? value : ((value + bucket / 2) / bucket) * bucket;
     }
 }

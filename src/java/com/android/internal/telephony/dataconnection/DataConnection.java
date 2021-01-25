@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED;
-import static android.net.NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED;
 import static android.telephony.data.DataCallResponse.PDU_SESSION_ID_NOT_SET;
 
 import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_HANDOVER;
@@ -60,6 +58,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -298,7 +297,7 @@ public class DataConnection extends StateMachine {
     private int mLastFailCause;
     private static final String NULL_IP = "0.0.0.0";
     private Object mUserData;
-    private int mSubscriptionOverride;
+    private boolean mCongestedOverride;
     private boolean mUnmeteredOverride;
     private int mRilRat = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
     private int mDataRegState = Integer.MAX_VALUE;
@@ -348,7 +347,7 @@ public class DataConnection extends StateMachine {
     static final int EVENT_BW_REFRESH_RESPONSE = BASE + 14;
     static final int EVENT_DATA_CONNECTION_VOICE_CALL_STARTED = BASE + 15;
     static final int EVENT_DATA_CONNECTION_VOICE_CALL_ENDED = BASE + 16;
-    static final int EVENT_DATA_CONNECTION_OVERRIDE_CHANGED = BASE + 17;
+    static final int EVENT_DATA_CONNECTION_CONGESTEDNESS_CHANGED = BASE + 17;
     static final int EVENT_KEEPALIVE_STATUS = BASE + 18;
     static final int EVENT_KEEPALIVE_STARTED = BASE + 19;
     static final int EVENT_KEEPALIVE_STOPPED = BASE + 20;
@@ -393,8 +392,8 @@ public class DataConnection extends StateMachine {
                 "EVENT_DATA_CONNECTION_VOICE_CALL_STARTED";
         sCmdToString[EVENT_DATA_CONNECTION_VOICE_CALL_ENDED - BASE] =
                 "EVENT_DATA_CONNECTION_VOICE_CALL_ENDED";
-        sCmdToString[EVENT_DATA_CONNECTION_OVERRIDE_CHANGED - BASE] =
-                "EVENT_DATA_CONNECTION_OVERRIDE_CHANGED";
+        sCmdToString[EVENT_DATA_CONNECTION_CONGESTEDNESS_CHANGED - BASE] =
+                "EVENT_DATA_CONNECTION_CONGESTEDNESS_CHANGED";
         sCmdToString[EVENT_KEEPALIVE_STATUS - BASE] = "EVENT_KEEPALIVE_STATUS";
         sCmdToString[EVENT_KEEPALIVE_STARTED - BASE] = "EVENT_KEEPALIVE_STARTED";
         sCmdToString[EVENT_KEEPALIVE_STOPPED - BASE] = "EVENT_KEEPALIVE_STOPPED";
@@ -1035,14 +1034,16 @@ public class DataConnection extends StateMachine {
         setHandoverState(HANDOVER_STATE_IDLE);
     }
 
-    public void onSubscriptionOverride(int overrideMask, int overrideValue) {
-        mSubscriptionOverride = (mSubscriptionOverride & ~overrideMask)
-                | (overrideValue & overrideMask);
-        sendMessage(obtainMessage(EVENT_DATA_CONNECTION_OVERRIDE_CHANGED));
+    /**
+     * Update NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED based on congested override
+     * @param isCongested whether this DC should be set to congested or not
+     */
+    public void onCongestednessChanged(boolean isCongested) {
+        sendMessage(obtainMessage(EVENT_DATA_CONNECTION_CONGESTEDNESS_CHANGED, isCongested));
     }
 
     /**
-     * Update NetworkCapabilities.NET_CAPABILITY_NOT_METERED based on meteredness
+     * Update NetworkCapabilities.NET_CAPABILITY_NOT_METERED based on metered override
      * @param isUnmetered whether this DC should be set to unmetered or not
      */
     public void onMeterednessChanged(boolean isUnmetered) {
@@ -1246,7 +1247,7 @@ public class DataConnection extends StateMachine {
         mDcFailCause = DataFailCause.NONE;
         mDisabledApnTypeBitMask = 0;
         mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        mSubscriptionOverride = 0;
+        mCongestedOverride = false;
         mUnmeteredOverride = false;
         mDownlinkBandwidth = 14;
         mUplinkBandwidth = 14;
@@ -1624,6 +1625,57 @@ public class DataConnection extends StateMachine {
         return true;
     }
 
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean isDevice5GCapable() {
+        return (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean isTempNotMeteredSupportedByCarrier() {
+        CarrierConfigManager configManager =
+                mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        if (configManager != null) {
+            PersistableBundle bundle = configManager.getConfigForSubId(mSubId);
+            if (bundle != null) {
+                return bundle.getBoolean(
+                        CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL);
+            }
+        }
+
+        return false;
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean isCampedOn5G() {
+        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
+                .getTelephonyDisplayInfo();
+        int overrideNetworkType = displayInfo.getOverrideNetworkType();
+        int networkType = mPhone.getServiceState().getDataNetworkType();
+        return networkType == TelephonyManager.NETWORK_TYPE_NR
+                || ((networkType == TelephonyManager.NETWORK_TYPE_LTE
+                || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
+                && (overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
+                || overrideNetworkType
+                == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE));
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean tempNotMeteredPossible() {
+        return isDevice5GCapable() && isTempNotMeteredSupportedByCarrier() && isCampedOn5G();
+    }
+
     /**
      * Get the network capabilities for this data connection.
      *
@@ -1733,25 +1785,29 @@ public class DataConnection extends StateMachine {
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
                 !mPhone.getServiceState().getDataRoaming());
 
-        result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED, !mCongestedOverride);
+        //result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+        //        mUnmeteredOverride);
 
-        // Override values set above when requested by policy
-        if ((mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_UNMETERED) != 0) {
-            result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-        }
-        if ((mSubscriptionOverride & SUBSCRIPTION_OVERRIDE_CONGESTED) != 0) {
-            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
-        }
-
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
-                mUnmeteredOverride);
-
-        if (mUnmeteredOverride && result.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                && (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR)
-                == 0) {
-            String message = "Unexpected TEMPORARILY_NOT_METERED on devices not supporting NR.";
+        // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+        // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+        // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few
+        // devices and carriers.
+        if (tempNotMeteredPossible()) {
+            result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+                    mUnmeteredOverride);
+        } else if (mUnmeteredOverride) {
+            // If temp not metered is not possible, but mUnmeteredOverride got set, that means we
+            // hit the bug.
+            SubscriptionManager subscriptionManager = mPhone.getContext()
+                    .getSystemService(SubscriptionManager.class);
+            String message = "Unexpected temp not metered detected. carrier supported="
+                    + isTempNotMeteredSupportedByCarrier() + ", device 5G capable="
+                    + isDevice5GCapable() + ", display info="
+                    + mPhone.getDisplayInfoController().getTelephonyDisplayInfo()
+                    + ", subscription plans=" + subscriptionManager.getSubscriptionPlans(mSubId);
             loge(message);
-            // Using fixed UUID to avoid duplicate bugreport notification
+            loge("Service state=" + mPhone.getServiceState());
             AnomalyReporter.reportAnomaly(
                     UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055248"), message);
         }
@@ -2093,10 +2149,7 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    // this is for DRS or RAT changes, so only call onRatChanged if RAT is changed
-                    if (mRilRat != 0) {
-                        mDataCallSessionStats.onRatChanged(mRilRat);
-                    }
+                    mDataCallSessionStats.onDrsOrRatChanged(mRilRat);
                     break;
 
                 case EVENT_START_HANDOVER:  //calls startHandover()
@@ -2145,7 +2198,11 @@ public class DataConnection extends StateMachine {
                         loge("EVENT_ALLOCATE_PDU_SESSION_ID: asyncResult is null!");
                     } else {
                         Consumer<Integer> onAllocated = (Consumer<Integer>) asyncResult.userObj;
-                        if (asyncResult.result == null) {
+                        if (asyncResult.exception != null) {
+                            loge("EVENT_ALLOCATE_PDU_SESSION_ID: exception",
+                                    asyncResult.exception);
+                            onAllocated.accept(PDU_SESSION_ID_NOT_SET);
+                        } else if (asyncResult.result == null) {
                             loge("EVENT_ALLOCATE_PDU_SESSION_ID: result null, no id");
                             onAllocated.accept(PDU_SESSION_ID_NOT_SET);
                         } else {
@@ -2365,10 +2422,10 @@ public class DataConnection extends StateMachine {
     private class DcActivatingState extends State {
         @Override
         public void enter() {
+            int apnTypeBitmask = mApnSetting != null ? mApnSetting.getApnTypeBitmask() : 0;
             TelephonyStatsLog.write(TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED,
                     TelephonyStatsLog.MOBILE_CONNECTION_STATE_CHANGED__STATE__ACTIVATING,
-                    mPhone.getPhoneId(), mId,
-                    mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
+                    mPhone.getPhoneId(), mId, (long) apnTypeBitmask,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
             setHandoverState(HANDOVER_STATE_IDLE);
@@ -2385,7 +2442,7 @@ public class DataConnection extends StateMachine {
                     .registerCarrierPrivilegesListener(
                             getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
             notifyDataConnectionState();
-            mDataCallSessionStats.onSetupDataCall(mApnSetting.getApnTypeBitmask());
+            mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
         }
         @Override
         public boolean processMessage(Message msg) {
@@ -2671,7 +2728,7 @@ public class DataConnection extends StateMachine {
 
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
-            mDataCallSessionStats.onDataCallDisconnected(mCid);
+            mDataCallSessionStats.onDataCallDisconnected();
 
             mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
         }
@@ -2783,10 +2840,7 @@ public class DataConnection extends StateMachine {
                         mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
                     }
                     retVal = HANDLED;
-                    // this is for DRS or RAT changes, so only call onRatChanged if RAT is changed
-                    if (mRilRat != 0) {
-                        mDataCallSessionStats.onRatChanged(mRilRat);
-                    }
+                    mDataCallSessionStats.onDrsOrRatChanged(mRilRat);
                     break;
                 }
                 case EVENT_NR_FREQUENCY_CHANGED:
@@ -2808,10 +2862,29 @@ public class DataConnection extends StateMachine {
                         break;
                     }
                     mUnmeteredOverride = isUnmetered;
-                    // fallthrough
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.updateLegacySubtype(DataConnection.this);
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
+                                DataConnection.this);
+                    }
+                    retVal = HANDLED;
+                    break;
+                case EVENT_DATA_CONNECTION_CONGESTEDNESS_CHANGED:
+                    boolean isCongested = (boolean) msg.obj;
+                    if (isCongested == mCongestedOverride) {
+                        retVal = HANDLED;
+                        break;
+                    }
+                    mCongestedOverride = isCongested;
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.updateLegacySubtype(DataConnection.this);
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
+                                DataConnection.this);
+                    }
+                    retVal = HANDLED;
+                    break;
                 case EVENT_DATA_CONNECTION_ROAM_ON:
-                case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
+                case EVENT_DATA_CONNECTION_ROAM_OFF: {
                     if (mNetworkAgent != null) {
                         mNetworkAgent.updateLegacySubtype(DataConnection.this);
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
@@ -3217,7 +3290,10 @@ public class DataConnection extends StateMachine {
      */
     public void tearDownAll(String reason, @ReleaseNetworkType int releaseType,
                             Message onCompletedMsg) {
-        if (DBG) log("tearDownAll: reason=" + reason + ", releaseType=" + releaseType);
+        if (DBG) {
+            log("tearDownAll: reason=" + reason + ", releaseType="
+                    + DcTracker.releaseTypeToString(releaseType));
+        }
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
                 new DisconnectParams(null, reason, releaseType, onCompletedMsg));
     }
@@ -3600,7 +3676,7 @@ public class DataConnection extends StateMachine {
      * Dump the current state.
      *
      * @param fd
-     * @param pw
+     * @param printWriter
      * @param args
      */
     @Override
@@ -3632,10 +3708,10 @@ public class DataConnection extends StateMachine {
         pw.println("mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println("mLastFailCause=" + DataFailCause.toString(mLastFailCause));
         pw.println("mUserData=" + mUserData);
-        pw.println("mSubscriptionOverride=" + Integer.toHexString(mSubscriptionOverride));
         pw.println("mRestrictedNetworkOverride=" + mRestrictedNetworkOverride);
         pw.println("mUnmeteredUseOnly=" + mUnmeteredUseOnly);
         pw.println("mUnmeteredOverride=" + mUnmeteredOverride);
+        pw.println("mCongestedOverride=" + mCongestedOverride);
         pw.println("mDownlinkBandwidth" + mDownlinkBandwidth);
         pw.println("mUplinkBandwidth=" + mUplinkBandwidth);
         pw.println("mDefaultQos=" + mDefaultQos);

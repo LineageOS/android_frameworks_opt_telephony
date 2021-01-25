@@ -196,6 +196,7 @@ message DataCallSession {
     optional int32 deactivate_reason = 16;
     optional int64 duration_minutes = 17;
     optional bool ongoing = 18;
+    optional int32 band_at_end = 19;
 }
 
 message CellularServiceState {

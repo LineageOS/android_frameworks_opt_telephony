@@ -457,12 +457,12 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     }
 
     @Override
-    public void setAllowedNetworkTypeBitmask(
+    public void setAllowedNetworkTypesBitmap(
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message response) {
     }
 
     @Override
-    public void getAllowedNetworkTypeBitmask(Message response) {
+    public void getAllowedNetworkTypesBitmap(Message response) {
     }
 
     @Override

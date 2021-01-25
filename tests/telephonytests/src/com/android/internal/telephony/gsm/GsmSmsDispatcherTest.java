@@ -279,7 +279,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         ArrayList<PendingIntent> sentIntents = new ArrayList<>();
         PendingIntent sentIntent = PendingIntent.getBroadcast(realContext, 0,
-                new Intent(TEST_INTENT), 0);
+                new Intent(TEST_INTENT), PendingIntent.FLAG_IMMUTABLE);
         sentIntents.add(sentIntent);
         sentIntents.add(sentIntent);
 

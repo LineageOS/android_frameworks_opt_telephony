@@ -1243,17 +1243,17 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setAllowedNetworkTypeBitmask(
+    public void setAllowedNetworkTypesBitmap(
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message response) {
         SimulatedCommandsVerifier.getInstance()
-            .setAllowedNetworkTypeBitmask(networkTypeBitmask, response);
+            .setAllowedNetworkTypesBitmap(networkTypeBitmask, response);
         mAllowedNetworkType = networkTypeBitmask;
         resultSuccess(response, null);
     }
 
     @Override
-    public void getAllowedNetworkTypeBitmask(Message response) {
-        SimulatedCommandsVerifier.getInstance().getAllowedNetworkTypeBitmask(response);
+    public void getAllowedNetworkTypesBitmap(Message response) {
+        SimulatedCommandsVerifier.getInstance().getAllowedNetworkTypesBitmap(response);
         int[] ret = new int[1];
 
         ret[0] = mAllowedNetworkType;

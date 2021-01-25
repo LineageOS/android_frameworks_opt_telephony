@@ -65,6 +65,8 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
                 TelephonyManager.NETWORK_TYPE_LTE);
         REG_TECH_TO_NET_TYPE.put(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN,
                 TelephonyManager.NETWORK_TYPE_IWLAN);
+        REG_TECH_TO_NET_TYPE.put(ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM,
+                TelephonyManager.NETWORK_TYPE_IWLAN);
     }
 
     // Feature Type for compatibility with old "feature" updates

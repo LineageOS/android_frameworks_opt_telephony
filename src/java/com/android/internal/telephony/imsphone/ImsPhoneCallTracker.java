@@ -4412,7 +4412,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     public boolean isVowifiEnabled() {
         return isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
-                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
+                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN)
+                || isImsCapabilityInCacheAvailable(
+                        MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+                        ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM);
     }
 
     public boolean isVideoCallEnabled() {

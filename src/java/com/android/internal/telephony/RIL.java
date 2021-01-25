@@ -3456,16 +3456,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setAllowedNetworkTypeBitmask(
+    public void setAllowedNetworkTypesBitmap(
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
-                if (result != null) {
-                    AsyncResult.forMessage(result, null,
-                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                    result.sendToTarget();
-                }
+                // For older HAL, redirects the call to setPreferredNetworkType.
+                setPreferredNetworkType(
+                        RadioAccessFamily.getNetworkTypeFromRaf(networkTypeBitmask), result);
                 return;
             }
 
@@ -3487,7 +3485,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void getAllowedNetworkTypeBitmask(Message result) {
+    public void getAllowedNetworkTypesBitmap(Message result) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
@@ -3543,14 +3541,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void isNrDualConnectivityEnabled(Message result, WorkSource workSource) {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED, result,
-                    workSource == null ? mRILDefaultWorkSource : workSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> "
-                        + requestToString(rr.mRequest));
-            }
-
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
                 if (result != null) {
                     AsyncResult.forMessage(result, null,
@@ -3562,6 +3552,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             android.hardware.radio.V1_6.IRadio radioProxy16 =
                     (android.hardware.radio.V1_6.IRadio) radioProxy;
+
+            RILRequest rr = obtainRequest(RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED, result,
+                    workSource == null ? mRILDefaultWorkSource : workSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> "
+                        + requestToString(rr.mRequest));
+            }
+
             try {
                 radioProxy16.isNrDualConnectivityEnabled(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
@@ -5335,7 +5334,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             SignalThresholdInfo signalThresholdInfo) {
         android.hardware.radio.V1_5.SignalThresholdInfo signalThresholdInfoHal =
                 new android.hardware.radio.V1_5.SignalThresholdInfo();
-        signalThresholdInfoHal.signalMeasurement = signalThresholdInfo.getSignalMeasurement();
+        signalThresholdInfoHal.signalMeasurement = signalThresholdInfo.getSignalMeasurementType();
         signalThresholdInfoHal.hysteresisMs = signalThresholdInfo.getHysteresisMs();
         signalThresholdInfoHal.hysteresisDb = signalThresholdInfo.getHysteresisDb();
         signalThresholdInfoHal.thresholds = primitiveArrayToArrayList(
@@ -6860,6 +6859,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_CANCEL_HANDOVER";
             case RIL_REQUEST_SET_DATA_THROTTLING:
                 return "RIL_REQUEST_SET_DATA_THROTTLING";
+            case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP:
+                return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP";
+            case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP:
+                return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP";
             default: return "<unknown request>";
         }
     }
