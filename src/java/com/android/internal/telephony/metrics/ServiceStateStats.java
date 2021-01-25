@@ -19,6 +19,7 @@ package com.android.internal.telephony.metrics;
 import android.annotation.Nullable;
 import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkUtils;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
@@ -27,6 +28,7 @@ import android.telephony.TelephonyManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.telephony.Rlog;
@@ -120,6 +122,56 @@ public class ServiceStateStats {
         } else {
             return null;
         }
+    }
+
+    /** Returns the service state for the given phone, or {@code null} if it cannot be obtained. */
+    @Nullable
+    private static ServiceState getServiceStateForPhone(Phone phone) {
+        ServiceStateTracker serviceStateTracker = phone.getServiceStateTracker();
+        return serviceStateTracker != null ? serviceStateTracker.getServiceState() : null;
+    }
+
+    /**
+     * Returns the band used from the given phone and RAT, or {@code 0} if it is invalid or cannot
+     * be determined.
+     */
+    static int getBand(Phone phone, @NetworkType int rat) {
+        ServiceState serviceState = getServiceStateForPhone(phone);
+        return getBand(serviceState, rat);
+    }
+
+    /**
+     * Returns the band used from the given service state and RAT, or {@code 0} if it is invalid or
+     * cannot be determined.
+     */
+    static int getBand(@Nullable ServiceState serviceState, @NetworkType int rat) {
+        if (serviceState == null) {
+            return 0; // Band unknown
+        }
+        int chNumber = serviceState.getChannelNumber();
+        int band;
+        switch (rat) {
+            case TelephonyManager.NETWORK_TYPE_GSM:
+            case TelephonyManager.NETWORK_TYPE_GPRS:
+            case TelephonyManager.NETWORK_TYPE_EDGE:
+                band = AccessNetworkUtils.getOperatingBandForArfcn(chNumber);
+                break;
+            case TelephonyManager.NETWORK_TYPE_UMTS:
+            case TelephonyManager.NETWORK_TYPE_HSDPA:
+            case TelephonyManager.NETWORK_TYPE_HSUPA:
+            case TelephonyManager.NETWORK_TYPE_HSPA:
+            case TelephonyManager.NETWORK_TYPE_HSPAP:
+                band = AccessNetworkUtils.getOperatingBandForUarfcn(chNumber);
+                break;
+            case TelephonyManager.NETWORK_TYPE_LTE:
+            case TelephonyManager.NETWORK_TYPE_LTE_CA:
+                band = AccessNetworkUtils.getOperatingBandForEarfcn(chNumber);
+                break;
+            default:
+                band = 0;
+                break;
+        }
+        return band == AccessNetworkUtils.INVALID_BAND ? 0 : band;
     }
 
     private static CellularServiceState copyOf(CellularServiceState state) {

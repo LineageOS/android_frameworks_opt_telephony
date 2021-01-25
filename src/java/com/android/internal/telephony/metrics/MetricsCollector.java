@@ -519,6 +519,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 .writeInt(dataCallSession.deactivateReason)
                 .writeLong(dataCallSession.durationMinutes)
                 .writeBoolean(dataCallSession.ongoing)
+                .writeInt(dataCallSession.bandAtEnd)
                 .build();
     }
 

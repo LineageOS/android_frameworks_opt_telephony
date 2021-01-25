@@ -43,13 +43,14 @@ public class DataStallRecoveryStats {
 
         int carrierId = phone.getCarrierId();
         int rat = getRat(phone);
+        int band = ServiceStateStats.getBand(phone, rat);
         // the number returned here matches the SignalStrength enum we have
         int signalStrength = phone.getSignalStrength().getLevel();
         boolean isOpportunistic = getIsOpportunistic(phone);
         boolean isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
 
         TelephonyStatsLog.write(TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED, carrierId, rat,
-                signalStrength, recoveryAction, isOpportunistic, isMultiSim);
+                signalStrength, recoveryAction, isOpportunistic, isMultiSim, band);
     }
 
     private static @NetworkType int getRat(Phone phone) {

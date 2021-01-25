@@ -46,7 +46,6 @@ import android.net.wifi.WifiManager;
 import android.os.SystemClock;
 import android.telecom.VideoProfile;
 import android.telecom.VideoProfile.VideoState;
-import android.telephony.AccessNetworkUtils;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DisconnectCause;
 import android.telephony.ServiceState;
@@ -515,7 +514,7 @@ public class VoiceCallSessionStats {
 
     private void updateRatTracker(ServiceState state) {
         @NetworkType int rat = getRat(state);
-        int band = getBand(rat, state.getChannelNumber());
+        int band = ServiceStateStats.getBand(state, rat);
 
         mRatUsage.add(mPhone.getCarrierId(), rat, getTimeMillis(), getConnectionIds());
         for (int i = 0; i < mCallProtos.size(); i++) {
@@ -572,33 +571,6 @@ public class VoiceCallSessionStats {
                         && mPhone.getImsPhone().isWifiCallingEnabled()
                         && state.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN;
         return isWifiCall ? TelephonyManager.NETWORK_TYPE_IWLAN : state.getVoiceNetworkType();
-    }
-
-    /** Returns the band associated with a given rat and channel number. */
-    private int getBand(@NetworkType int rat, int chNumber) {
-        int band;
-        switch (rat) {
-            case TelephonyManager.NETWORK_TYPE_GSM:
-            case TelephonyManager.NETWORK_TYPE_GPRS:
-            case TelephonyManager.NETWORK_TYPE_EDGE:
-                band = AccessNetworkUtils.getOperatingBandForArfcn(chNumber);
-                break;
-            case TelephonyManager.NETWORK_TYPE_UMTS:
-            case TelephonyManager.NETWORK_TYPE_HSDPA:
-            case TelephonyManager.NETWORK_TYPE_HSUPA:
-            case TelephonyManager.NETWORK_TYPE_HSPA:
-            case TelephonyManager.NETWORK_TYPE_HSPAP:
-                band = AccessNetworkUtils.getOperatingBandForUarfcn(chNumber);
-                break;
-            case TelephonyManager.NETWORK_TYPE_LTE:
-            case TelephonyManager.NETWORK_TYPE_LTE_CA:
-                band = AccessNetworkUtils.getOperatingBandForEarfcn(chNumber);
-                break;
-            default:
-                band = 0;
-                break;
-        }
-        return band == AccessNetworkUtils.INVALID_BAND ? 0 : band;
     }
 
     /** Returns the signal strength. */
