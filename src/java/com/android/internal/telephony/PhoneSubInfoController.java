@@ -92,7 +92,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                                                               String callingPackage) {
         return callPhoneMethodForSubIdWithPrivilegedCheck(subId,
                 "getCarrierInfoForImsiEncryption",
-                (phone)-> phone.getCarrierInfoForImsiEncryption(keyType));
+                (phone)-> phone.getCarrierInfoForImsiEncryption(keyType, true));
     }
 
     public void setCarrierInfoForImsiEncryption(int subId, String callingPackage,
