@@ -301,7 +301,7 @@ public class CarrierServicesSmsFilter {
             // is run afterwards, we should not follow through
             if (!mIsOnFilterCompleteCalled) {
                 mIsOnFilterCompleteCalled = true;
-                mCarrierMessagingServiceWrapper.disposeConnection(mContext);
+                mCarrierMessagingServiceWrapper.disconnect();
                 mFilterAggregator.onFilterComplete(result);
             }
         }
