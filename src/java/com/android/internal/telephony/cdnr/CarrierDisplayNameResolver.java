@@ -403,16 +403,17 @@ public class CarrierDisplayNameResolver {
         List<PlmnNetworkName> efPnn = getEfPnn();
         String plmn = efPnn.isEmpty() ? "" : getPlmnNetworkName(efPnn.get(0));
         CarrierDisplayNameData result = rawCarrierDisplayNameData;
-        String crossSimSpn = String.format(crossSimSpnFormat, rawCarrierDisplayNameData.getSpn());
-        String crossSimPlmn = String.format(crossSimSpnFormat,
-                TextUtils.isEmpty(plmn) ? rawCarrierDisplayNameData.getPlmn() : plmn);
-        if (!TextUtils.isEmpty(crossSimSpn)) {
+        String rawSpn = rawCarrierDisplayNameData.getSpn();
+        String rawPlmn = TextUtils.isEmpty(plmn) ? rawCarrierDisplayNameData.getPlmn() : plmn;
+        String crossSimSpn = String.format(crossSimSpnFormat, rawSpn);
+        String crossSimPlmn = String.format(crossSimSpnFormat, plmn);
+        if (!TextUtils.isEmpty(rawSpn) && !TextUtils.isEmpty(crossSimSpn)) {
             result = new CarrierDisplayNameData.Builder()
                     .setSpn(crossSimSpn)
                     .setDataSpn(crossSimSpn)
                     .setShowSpn(true)
                     .build();
-        } else if (!TextUtils.isEmpty(crossSimPlmn)) {
+        } else if (!TextUtils.isEmpty(rawPlmn) && !TextUtils.isEmpty(crossSimPlmn)) {
             result = new CarrierDisplayNameData.Builder()
                     .setPlmn(crossSimPlmn)
                     .setShowPlmn(true)
