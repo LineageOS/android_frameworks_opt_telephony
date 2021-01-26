@@ -26,6 +26,7 @@ import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting.ProtocolType;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
@@ -183,20 +184,28 @@ public class DataCallSessionStats {
         mOngoingDataCall = null;
     }
 
-    /** Updates this RAT when it changes. */
-    public synchronized void onRatChanged(@ServiceState.RilRadioTechnology int radioTechnology) {
+    /**
+     * Updates the atom when data registration state or RAT changes.
+     *
+     * <p>NOTE: in {@link ServiceStateTracker}, change of channel number will trigger data
+     * registration state change.
+     */
+    public synchronized void onDrsOrRatChanged(
+            @ServiceState.RilRadioTechnology int radioTechnology) {
+        @NetworkType int rat = ServiceState.rilRadioTechnologyToNetworkType(radioTechnology);
         // if no data call is initiated, or we have a new data call while the last one has ended
         // because onRatChanged might be called before onSetupDataCall
         if (mOngoingDataCall == null) {
             mOngoingDataCall = getDefaultProto(0);
+            mOngoingDataCall.ratAtEnd = rat;
             mStartTime = System.currentTimeMillis();
             mOnRatChangedCalledBeforeSetup = true;
         }
-        @NetworkType int rat = ServiceState.rilRadioTechnologyToNetworkType(radioTechnology);
-        if (mOngoingDataCall.ratAtEnd != rat) {
+        if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN && mOngoingDataCall.ratAtEnd != rat) {
             mOngoingDataCall.ratSwitchCount++;
             mOngoingDataCall.ratAtEnd = rat;
         }
+        mOngoingDataCall.bandAtEnd = ServiceStateStats.getBand(mPhone, rat);
     }
 
     private static long convertMillisToMinutes(long millis) {
