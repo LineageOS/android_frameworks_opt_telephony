@@ -2427,7 +2427,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         Rlog.d(LOG_TAG, "setAllowedNetworkTypes: modemRaf = " + modemRaf
                 + " filteredRaf = " + filteredRaf);
-        //TODO: Change to setAllowedNetworkTypeBitmap after 1.6 HAL is ready.
+        //TODO: Change to setAllowedNetworkTypesBitmap after 1.6 HAL is ready.
         mCi.setPreferredNetworkType(RadioAccessFamily.getNetworkTypeFromRaf(filteredRaf), response);
         mPreferredNetworkTypeRegistrants.notifyRegistrants();
     }
@@ -2466,11 +2466,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Get the cached value of the preferred network type setting
      */
-    public int getCachedPreferredNetworkType() {
+    public int getCachedAllowedNetworkTypesBitmask() {
         if (mCi != null && mCi instanceof BaseCommands) {
-            return ((BaseCommands) mCi).mPreferredNetworkType;
+            return ((BaseCommands) mCi).mAllowedNetworkTypesBitmask;
         } else {
-            return RILConstants.PREFERRED_NETWORK_MODE;
+            return RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE);
         }
     }
 

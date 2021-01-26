@@ -148,6 +148,7 @@ import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.NetworkScanRequest;
+import android.telephony.RadioAccessFamily;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -308,7 +309,8 @@ public class RILTest extends TelephonyTest {
         doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
         doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
 
-        mRILInstance = new RIL(context, RILConstants.PREFERRED_NETWORK_MODE,
+        mRILInstance = new RIL(context,
+                RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
             Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
         mRILUnderTest = spy(mRILInstance);
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
