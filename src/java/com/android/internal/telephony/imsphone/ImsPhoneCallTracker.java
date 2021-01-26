@@ -2687,6 +2687,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.TIMED_OUT;
 
             case ImsReasonInfo.CODE_LOCAL_POWER_OFF:
+            case ImsReasonInfo.CODE_RADIO_OFF:
                 return DisconnectCause.POWER_OFF;
 
             case ImsReasonInfo.CODE_LOCAL_LOW_BATTERY:
