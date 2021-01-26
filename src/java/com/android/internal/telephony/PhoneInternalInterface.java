@@ -1046,12 +1046,13 @@ public interface PhoneInternalInterface {
     /**
      * Returns Carrier specific information that will be used to encrypt the IMSI and IMPI.
      * @param keyType whether the key is being used for WLAN or ePDG.
+     * @param fallback whether to fall back to the encryption key stored in carrier config
      * @return ImsiEncryptionInfo which includes the Key Type, the Public Key
      *        {@link java.security.PublicKey} and the Key Identifier.
      *        The keyIdentifier This is used by the server to help it locate the private key to
      *        decrypt the permanent identity.
      */
-    public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType);
+    ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType, boolean fallback);
 
     /**
      * Resets the Carrier Keys, by deleting them from the database and sending a download intent.
