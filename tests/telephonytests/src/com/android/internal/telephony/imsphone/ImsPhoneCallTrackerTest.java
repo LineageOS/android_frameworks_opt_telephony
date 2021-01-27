@@ -70,6 +70,7 @@ import android.telephony.ims.ImsConferenceState;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.telephony.ims.RtpHeaderExtensionType;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -91,6 +92,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker.VtDataUsageProvider;
 
 import org.junit.After;
@@ -100,9 +102,12 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -132,6 +137,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
     @Mock
     private FeatureConnector<ImsManager> mMockConnector;
+    @Captor
+    private ArgumentCaptor<Set<RtpHeaderExtensionType>> mRtpHeaderExtensionTypeCaptor;
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -1273,6 +1280,45 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         // Make sure the tracker states it's idle.
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+    }
+
+    /**
+     * Ensures when D2D communication is supported that we register the expected D2D RTP header
+     * extension types.
+     * @throws Exception
+     */
+    @Test
+    @SmallTest
+    public void testConfigureRtpHeaderExtensionTypes() throws Exception {
+        ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
+        config.isD2DCommunicationSupported = true;
+        mCTUT.setConfig(config);
+        mConnectorListener.connectionReady(mImsManager);
+
+        // Expect to get offered header extensions since d2d is supported.
+        verify(mImsManager).setOfferedRtpHeaderExtensionTypes(
+                mRtpHeaderExtensionTypeCaptor.capture());
+        Set<RtpHeaderExtensionType> types = mRtpHeaderExtensionTypeCaptor.getValue();
+        assertEquals(2, types.size());
+        assertTrue(types.contains(RtpTransport.CALL_STATE_RTP_HEADER_EXTENSION_TYPE));
+        assertTrue(types.contains(RtpTransport.DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE));
+    }
+
+    /**
+     * Ensures when D2D communication is not supported that we don't register the D2D RTP header
+     * extension types.
+     * @throws Exception
+     */
+    @Test
+    @SmallTest
+    public void testDontConfigureRtpHeaderExtensionTypes() throws Exception {
+        ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
+        config.isD2DCommunicationSupported = false;
+        mCTUT.setConfig(config);
+        mConnectorListener.connectionReady(mImsManager);
+
+        // Expect no offered header extensions since d2d is not supported.
+        verify(mImsManager, never()).setOfferedRtpHeaderExtensionTypes(any());
     }
 
     private void assertVtDataUsageUpdated(int expectedToken, long rxBytes, long txBytes)
