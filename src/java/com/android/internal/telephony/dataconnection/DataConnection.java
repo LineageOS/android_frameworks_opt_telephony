@@ -1659,7 +1659,10 @@ public class DataConnection extends StateMachine {
         TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
                 .getTelephonyDisplayInfo();
         int overrideNetworkType = displayInfo.getOverrideNetworkType();
-        int networkType = mPhone.getServiceState().getDataNetworkType();
+        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int networkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
+                : nri.getAccessNetworkTechnology();
         return networkType == TelephonyManager.NETWORK_TYPE_NR
                 || ((networkType == TelephonyManager.NETWORK_TYPE_LTE
                 || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
