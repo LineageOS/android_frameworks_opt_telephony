@@ -1690,6 +1690,7 @@ public class DataConnection extends StateMachine {
         }
 
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
+        result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
 
         result.setAdministratorUids(mAdministratorUids);
 
