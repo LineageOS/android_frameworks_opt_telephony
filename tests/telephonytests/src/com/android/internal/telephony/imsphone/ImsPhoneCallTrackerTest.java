@@ -210,7 +210,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doAnswer(invocation -> {
             mMmTelListener = (MmTelFeature.Listener) invocation.getArguments()[0];
             return null;
-        }).when(mImsManager).open(any(MmTelFeature.Listener.class));
+        }).when(mImsManager).open(any(), any(), any());
 
         doAnswer(new Answer<ImsCall>() {
             @Override
@@ -770,8 +770,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 eq(new String[]{"+17005554141"}), nullable(ImsCall.Listener.class));
         // Make sure that open is called in ImsPhoneCallTracker when it was first connected and
         // again after retry.
-        verify(mImsManager, times(2)).open(
-                nullable(MmTelFeature.Listener.class));
+        verify(mImsManager, times(2)).open(any(), any(), any());
     }
 
     @FlakyTest
@@ -788,8 +787,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         processAllMessages();
         // Make sure that open is called in ImsPhoneCallTracker to re-establish connection to
         // ImsService
-        verify(mImsManager, times(2)).open(
-                nullable(MmTelFeature.Listener.class));
+        verify(mImsManager, times(2)).open(any(), any(), any());
     }
 
     @Test
