@@ -43,6 +43,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -61,6 +62,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyLocalConnection;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
@@ -1596,7 +1598,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 if (intentExtras.containsKey(
                         android.telecom.TelecomManager.EXTRA_OUTGOING_PICTURE)) {
-                    // TODO(hallliu) Set ImsCallProfile.EXTRA_PICTURE_URL with cached URL string
+                    String url = TelephonyLocalConnection.getCallComposerServerUrlForHandle(
+                            mPhone.getSubId(), ((ParcelUuid) intentExtras.getParcelable(
+                                    TelecomManager.EXTRA_OUTGOING_PICTURE)).getUuid());
+                    profile.setCallExtra(ImsCallProfile.EXTRA_PICTURE_URL, url);
                 }
 
                 if (conn.hasRttTextStream()) {
