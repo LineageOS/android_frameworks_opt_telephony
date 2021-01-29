@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 
 import android.content.Intent;
@@ -107,8 +108,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testUpdateOverrideNetworkTypeNrNsa() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
-
         // not NR
         doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
         updateOverrideNetworkType();
@@ -143,8 +142,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testUpdateOverrideNetworkTypeLte() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
-
         // normal LTE
         updateOverrideNetworkType();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
@@ -170,6 +167,22 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
         updateOverrideNetworkType();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testUpdateOverrideNetworkType() throws Exception {
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_LOW).when(mServiceState).getNrFrequencyRange();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_HSPAP)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(nri).when(mServiceState).getNetworkRegistrationInfo(anyInt(), anyInt());
+        updateOverrideNetworkType();
+
+        // override shouldn't be NR if not on LTE despite NR_STATE_CONNECTED
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
     }
 
