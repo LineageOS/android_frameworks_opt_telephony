@@ -1549,6 +1549,7 @@ public class ImsPhoneConnection extends Connection implements
      */
     public void sendRtpHeaderExtensions(@NonNull Set<RtpHeaderExtension> rtpHeaderExtensions) {
         if (mImsCall == null) {
+            Rlog.w(LOG_TAG, "sendRtpHeaderExtensions: Not an IMS call");
             return;
         }
         Rlog.i(LOG_TAG, "sendRtpHeaderExtensions: numExtensions = " + rtpHeaderExtensions.size());

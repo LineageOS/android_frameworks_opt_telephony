@@ -655,22 +655,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
     //***** Constructors
 
     @UnsupportedAppUsage
-    public RIL(Context context, int preferredNetworkType, int cdmaSubscription) {
-        this(context, preferredNetworkType, cdmaSubscription, null);
+    public RIL(Context context, int allowedNetworkTypes, int cdmaSubscription) {
+        this(context, allowedNetworkTypes, cdmaSubscription, null);
     }
 
     @UnsupportedAppUsage
-    public RIL(Context context, int preferredNetworkType,
+    public RIL(Context context, int allowedNetworkTypes,
             int cdmaSubscription, Integer instanceId) {
         super(context);
         if (RILJ_LOGD) {
-            riljLog("RIL: init preferredNetworkType=" + preferredNetworkType
+            riljLog("RIL: init allowedNetworkTypes=" + allowedNetworkTypes
                     + " cdmaSubscription=" + cdmaSubscription + ")");
         }
 
         mContext = context;
         mCdmaSubscription  = cdmaSubscription;
-        mPreferredNetworkType = preferredNetworkType;
+        mAllowedNetworkTypesBitmask = allowedNetworkTypes;
         mPhoneType = RILConstants.NO_PHONE;
         mPhoneId = instanceId == null ? 0 : instanceId;
         if (isRadioBugDetectionEnabled()) {
@@ -3266,7 +3266,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                         + " networkType = " + networkType);
             }
-            mPreferredNetworkType = networkType;
+            mAllowedNetworkTypesBitmask = RadioAccessFamily.getRafFromNetworkType(networkType);
             mMetrics.writeSetPreferredNetworkType(mPhoneId, networkType);
 
             if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
@@ -3274,8 +3274,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         (android.hardware.radio.V1_4.IRadio) radioProxy;
                 try {
                     radioProxy14.setPreferredNetworkTypeBitmap(
-                            rr.mSerial, convertToHalRadioAccessFamily(
-                                    RadioAccessFamily.getRafFromNetworkType(networkType)));
+                            rr.mSerial, convertToHalRadioAccessFamily(mAllowedNetworkTypesBitmask));
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setPreferredNetworkTypeBitmap", e);
                 }
@@ -3469,15 +3468,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             android.hardware.radio.V1_6.IRadio radioProxy16 =
                     (android.hardware.radio.V1_6.IRadio) radioProxy;
-            RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP, result,
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
             }
-
+            mAllowedNetworkTypesBitmask = networkTypeBitmask;
             try {
-                radioProxy16.setAllowedNetworkTypeBitmap(rr.mSerial, networkTypeBitmask);
+                radioProxy16.setAllowedNetworkTypesBitmap(rr.mSerial, networkTypeBitmask);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setAllowedNetworkTypeBitmask", e);
             }
@@ -3499,7 +3498,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             android.hardware.radio.V1_6.IRadio radioProxy16 =
                     (android.hardware.radio.V1_6.IRadio) radioProxy;
-            RILRequest rr = obtainRequest(RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP, result,
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -3507,7 +3506,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.getAllowedNetworkTypeBitmap(rr.mSerial);
+                radioProxy16.getAllowedNetworkTypesBitmap(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getAllowedNetworkTypeBitmask", e);
             }
@@ -6859,9 +6858,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_CANCEL_HANDOVER";
             case RIL_REQUEST_SET_DATA_THROTTLING:
                 return "RIL_REQUEST_SET_DATA_THROTTLING";
-            case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP:
+            case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP:
                 return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP";
-            case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP:
+            case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
                 return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP";
             default: return "<unknown request>";
         }

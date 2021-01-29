@@ -43,6 +43,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -61,6 +62,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyLocalConnection;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
@@ -71,11 +73,13 @@ import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.RtpHeaderExtension;
+import android.telephony.ims.RtpHeaderExtensionType;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.LocalLog;
 import android.util.Log;
 import android.util.Pair;
@@ -109,6 +113,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
@@ -143,6 +148,20 @@ import java.util.regex.Pattern;
 public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     static final String LOG_TAG = "ImsPhoneCallTracker";
     static final String VERBOSE_STATE_TAG = "IPCTState";
+
+    /**
+     * Class which contains configuration items obtained from the config.xml in
+     * packages/services/Telephony which are injected in the ImsPhoneCallTracker at phone creation
+     * time.
+     */
+    public static class Config {
+        /**
+         * The value for config.xml/config_use_device_to_device_communication.
+         * When {@code true}, the device supports device to device communication using both DTMF
+         * and RTP header extensions.
+         */
+        public boolean isD2DCommunicationSupported;
+    }
 
     public interface PhoneStateListener {
         void onPhoneStateChanged(PhoneConstants.State oldState, PhoneConstants.State newState);
@@ -356,6 +375,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * received from the network.
      */
     private boolean mIsConferenceEventPackageEnabled = true;
+
+    /**
+     * The Telephony config.xml values pertinent to ImsPhoneCallTracker.
+     */
+    private Config mConfig = null;
 
     /**
      * Network callback used to schedule the handover check when a wireless network connects.
@@ -1004,6 +1028,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     EVENT_SUPP_SERVICE_INDICATION, null);
         }
 
+        // Where device to device communication is available, ensure that the
+        // supported RTP header extension types defined in {@link RtpTransport} are
+        // set as the offered RTP header extensions for this device.
+        if (mConfig != null && mConfig.isD2DCommunicationSupported) {
+            ArraySet<RtpHeaderExtensionType> types = new ArraySet<>();
+            types.add(RtpTransport.CALL_STATE_RTP_HEADER_EXTENSION_TYPE);
+            types.add(RtpTransport.DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE);
+            logi("connectionReady: set offered RTP header extension types");
+            mImsManager.setOfferedRtpHeaderExtensionTypes(types);
+        }
+
         if (mCarrierConfigLoaded) {
             mImsManager.updateImsServiceConfig();
         }
@@ -1563,7 +1598,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 if (intentExtras.containsKey(
                         android.telecom.TelecomManager.EXTRA_OUTGOING_PICTURE)) {
-                    // TODO(hallliu) Set ImsCallProfile.EXTRA_PICTURE_URL with cached URL string
+                    String url = TelephonyLocalConnection.getCallComposerServerUrlForHandle(
+                            mPhone.getSubId(), ((ParcelUuid) intentExtras.getParcelable(
+                                    TelecomManager.EXTRA_OUTGOING_PICTURE)).getUuid());
+                    profile.setCallExtra(ImsCallProfile.EXTRA_PICTURE_URL, url);
                 }
 
                 if (conn.hasRttTextStream()) {
@@ -2654,6 +2692,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 return DisconnectCause.TIMED_OUT;
 
             case ImsReasonInfo.CODE_LOCAL_POWER_OFF:
+            case ImsReasonInfo.CODE_RADIO_OFF:
                 return DisconnectCause.POWER_OFF;
 
             case ImsReasonInfo.CODE_LOCAL_LOW_BATTERY:
@@ -4332,6 +4371,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mCallQualityMetricsHistory=" + mCallQualityMetricsHistory);
         pw.println(" mIsConferenceEventPackageHandlingEnabled=" + mIsConferenceEventPackageEnabled);
         pw.println(" mSupportCepOnPeer=" + mSupportCepOnPeer);
+        if (mConfig != null) {
+            pw.println(" isDeviceToDeviceCommsSupported= " + mConfig.isD2DCommunicationSupported);
+        }
         pw.println(" Event Log:");
         pw.increaseIndent();
         mOperationLocalLog.dump(pw);
@@ -5052,6 +5094,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public ArrayList<ImsPhoneConnection> getConnections() {
         return mConnections;
+    }
+
+    /**
+     * Set up static configuration from package/services/Telephony's config.xml.
+     * @param config the config.
+     */
+    public void setConfig(@NonNull Config config) {
+        mConfig = config;
     }
 
     private void handleConferenceFailed(ImsPhoneConnection fgConnection,

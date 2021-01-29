@@ -19,6 +19,7 @@ package com.android.internal.telephony.d2d;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.telecom.Connection;
+import android.telecom.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -175,6 +176,7 @@ public class Communicator implements TransportProtocol.Callback {
      */
     public void sendMessages(@NonNull Set<Message> messages) {
         if (mActiveTransport == null || !mIsNegotiated) {
+            Log.w(this, "sendMessages: no active transport");
             return;
         }
 

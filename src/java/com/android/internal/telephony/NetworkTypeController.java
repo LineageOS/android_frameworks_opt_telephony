@@ -27,7 +27,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
@@ -352,11 +351,16 @@ public class NetworkTypeController extends StateMachine {
 
     private @Annotation.OverrideNetworkType int getCurrentOverrideNetworkType() {
         int displayNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-        int dataNetworkType = mPhone.getServiceState().getDataNetworkType();
+        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int dataNetworkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
+                : nri.getAccessNetworkTechnology();
+        boolean nrNsa = isLte(dataNetworkType)
+                && mPhone.getServiceState().getNrState() != NetworkRegistrationInfo.NR_STATE_NONE;
+        boolean nrSa = dataNetworkType == TelephonyManager.NETWORK_TYPE_NR;
+
         // NR display is not accurate when physical channel config notifications are off
-        if (mIsPhysicalChannelConfigOn
-                && (mPhone.getServiceState().getNrState() != NetworkRegistrationInfo.NR_STATE_NONE
-                || dataNetworkType == TelephonyManager.NETWORK_TYPE_NR)) {
+        if (mIsPhysicalChannelConfigOn && (nrNsa || nrSa)) {
             // Process NR display network type
             displayNetworkType = getNrDisplayType();
             if (displayNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
@@ -372,7 +376,7 @@ public class NetworkTypeController extends StateMachine {
 
     private @Annotation.OverrideNetworkType int getNrDisplayType() {
         // Don't show 5G icon if preferred network type does not include 5G
-        if ((RadioAccessFamily.getRafFromNetworkType(mPhone.getCachedPreferredNetworkType())
+        if ((mPhone.getCachedAllowedNetworkTypesBitmask()
                 & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
             return TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         }

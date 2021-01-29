@@ -71,6 +71,31 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
             Uri.parse("http://develop.android.com/122020/d2dcomm#call-state");
 
     /**
+     * Default local identifier for device state RTP header extensions.
+     */
+    public static int DEVICE_STATE_LOCAL_IDENTIFIER = 10;
+
+    /**
+     * Default local identifier for call state RTP header extensions.
+     */
+    public static int CALL_STATE_LOCAL_IDENTIFIER = 11;
+
+    /**
+     * {@link RtpHeaderExtensionType} for device state communication.
+     */
+    public static RtpHeaderExtensionType DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE =
+            new RtpHeaderExtensionType(DEVICE_STATE_LOCAL_IDENTIFIER,
+                    DEVICE_STATE_RTP_HEADER_EXTENSION);
+
+    /**
+     * {@link RtpHeaderExtensionType} for call state communication.
+     */
+    public static RtpHeaderExtensionType CALL_STATE_RTP_HEADER_EXTENSION_TYPE =
+            new RtpHeaderExtensionType(CALL_STATE_LOCAL_IDENTIFIER,
+                    CALL_STATE_RTP_HEADER_EXTENSION);
+
+
+    /**
      * See {@link #generateRtpHeaderExtension(Communicator.Message)} for more information; indicates
      * the offset of the parameter value in the RTP header extension payload.
      */

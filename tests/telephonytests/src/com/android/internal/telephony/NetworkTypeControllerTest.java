@@ -26,6 +26,7 @@ import android.os.Looper;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -92,8 +93,9 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         replaceInstance(Handler.class, "mLooper", mDisplayInfoController, Looper.myLooper());
-        doReturn(TelephonyManager.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA).when(mPhone)
-                .getCachedPreferredNetworkType();
+        doReturn(RadioAccessFamily.getRafFromNetworkType(
+                TelephonyManager.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA)).when(
+                mPhone).getCachedAllowedNetworkTypesBitmask();
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
         processAllMessages();
     }
@@ -345,8 +347,9 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 mNetworkTypeController.getOverrideNetworkType());
 
         // remove NR from preferred network types
-        doReturn(TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA).when(mPhone)
-                .getCachedPreferredNetworkType();
+        doReturn(RadioAccessFamily.getRafFromNetworkType(
+                TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA)).when(
+                mPhone).getCachedAllowedNetworkTypesBitmask();
 
         mNetworkTypeController.sendMessage(EVENT_PREFERRED_NETWORK_MODE_CHANGED);
         processAllMessages();

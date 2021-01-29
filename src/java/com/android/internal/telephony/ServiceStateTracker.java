@@ -268,9 +268,9 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_SIM_RECORDS_LOADED                     = 16;
     protected static final int EVENT_SIM_READY                              = 17;
     protected static final int EVENT_LOCATION_UPDATES_ENABLED               = 18;
-    protected static final int EVENT_GET_ALLOWED_NETWORK_TYPE               = 19;
-    protected static final int EVENT_SET_ALLOWED_NETWORK_TYPE               = 20;
-    protected static final int EVENT_RESET_ALLOWED_NETWORK_TYPE             = 21;
+    protected static final int EVENT_GET_ALLOWED_NETWORK_TYPES              = 19;
+    protected static final int EVENT_SET_ALLOWED_NETWORK_TYPES              = 20;
+    protected static final int EVENT_RESET_ALLOWED_NETWORK_TYPES            = 21;
     protected static final int EVENT_CHECK_REPORT_GPRS                      = 22;
     protected static final int EVENT_RESTRICTED_STATE_CHANGED               = 23;
 
@@ -508,7 +508,7 @@ public class ServiceStateTracker extends Handler {
 
     //GSM
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private int mPreferredNetworkType;
+    private int mAllowedNetworkTypes;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mMaxDataCalls = 1;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -1082,7 +1082,7 @@ public class ServiceStateTracker extends Handler {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void reRegisterNetwork(Message onComplete) {
         mCi.getAllowedNetworkTypesBitmap(
-                obtainMessage(EVENT_GET_ALLOWED_NETWORK_TYPE, onComplete));
+                obtainMessage(EVENT_GET_ALLOWED_NETWORK_TYPES, onComplete));
     }
 
     /**
@@ -1481,14 +1481,14 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            case EVENT_SET_ALLOWED_NETWORK_TYPE:
+            case EVENT_SET_ALLOWED_NETWORK_TYPES:
                 ar = (AsyncResult) msg.obj;
                 // Don't care the result, only use for dereg network (COPS=2)
-                message = obtainMessage(EVENT_RESET_ALLOWED_NETWORK_TYPE, ar.userObj);
-                mCi.setAllowedNetworkTypesBitmap(mPreferredNetworkType, message);
+                message = obtainMessage(EVENT_RESET_ALLOWED_NETWORK_TYPES, ar.userObj);
+                mCi.setAllowedNetworkTypesBitmap(mAllowedNetworkTypes, message);
                 break;
 
-            case EVENT_RESET_ALLOWED_NETWORK_TYPE:
+            case EVENT_RESET_ALLOWED_NETWORK_TYPES:
                 ar = (AsyncResult) msg.obj;
                 if (ar.userObj != null) {
                     AsyncResult.forMessage(((Message) ar.userObj)).exception
@@ -1497,17 +1497,17 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            case EVENT_GET_ALLOWED_NETWORK_TYPE:
+            case EVENT_GET_ALLOWED_NETWORK_TYPES:
                 ar = (AsyncResult) msg.obj;
 
                 if (ar.exception == null) {
-                    mPreferredNetworkType = ((int[])ar.result)[0];
+                    mAllowedNetworkTypes = ((int[]) ar.result)[0];
                 } else {
-                    mPreferredNetworkType = RadioAccessFamily.getRafFromNetworkType(
+                    mAllowedNetworkTypes = RadioAccessFamily.getRafFromNetworkType(
                             RILConstants.NETWORK_MODE_GLOBAL);
                 }
 
-                message = obtainMessage(EVENT_SET_ALLOWED_NETWORK_TYPE, ar.userObj);
+                message = obtainMessage(EVENT_SET_ALLOWED_NETWORK_TYPES, ar.userObj);
                 int toggledNetworkType = RadioAccessFamily.getRafFromNetworkType(
                         RILConstants.NETWORK_MODE_GLOBAL);
 
@@ -5429,7 +5429,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mLastCellInfoReqTime=" + mLastCellInfoReqTime);
         dumpCellInfoList(pw);
         pw.flush();
-        pw.println(" mPreferredNetworkType=" + mPreferredNetworkType);
+        pw.println(" mAllowedNetworkTypes=" + mAllowedNetworkTypes);
         pw.println(" mMaxDataCalls=" + mMaxDataCalls);
         pw.println(" mNewMaxDataCalls=" + mNewMaxDataCalls);
         pw.println(" mReasonDataDenied=" + mReasonDataDenied);
