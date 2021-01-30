@@ -1733,7 +1733,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @UnsupportedAppUsage
-    private void resultSuccess(Message result, Object ret) {
+    protected void resultSuccess(Message result, Object ret) {
         if (result != null) {
             AsyncResult.forMessage(result).result = ret;
             if (mPausedResponseCount > 0) {
