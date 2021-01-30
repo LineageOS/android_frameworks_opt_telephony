@@ -2786,6 +2786,11 @@ public class GsmCdmaPhone extends Phone {
                 mImeiSv = respId[1];
                 mEsn  =  respId[2];
                 mMeid =  respId[3];
+                // some modems return all 0's instead of null/empty string when MEID is unavailable
+                if (!TextUtils.isEmpty(mMeid) && mMeid.matches("^0*$")) {
+                    logd("EVENT_GET_DEVICE_IDENTITY_DONE: set mMeid to null");
+                    mMeid = null;
+                }
             }
             break;
 
