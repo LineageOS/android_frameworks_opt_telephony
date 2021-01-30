@@ -237,7 +237,7 @@ public class IccPhoneBookInterfaceManager {
         Request updateRequest = new Request();
         synchronized (updateRequest) {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
-            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
+            AdnRecord newAdn = new AdnRecord(efid, index, newTag, newPhoneNumber);
             if (mAdnCache != null) {
                 mAdnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
                 waitForResult(updateRequest);
