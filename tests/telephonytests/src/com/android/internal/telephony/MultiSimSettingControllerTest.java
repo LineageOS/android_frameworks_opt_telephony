@@ -39,6 +39,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
+import android.content.res.Resources;
 import android.os.HandlerThread;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
@@ -50,6 +51,7 @@ import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 
@@ -85,6 +87,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     @Mock
     private DataEnabledSettings mDataEnabledSettingsMock2;
     private Phone[] mPhones;
+    @Mock
+    private CommandsInterface mMockCi;
 
     ParcelUuid mGroupUuid1 = new ParcelUuid(UUID.randomUUID());
 
@@ -785,5 +789,34 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         } catch (InterruptedException ie) {
             Assert.fail("InterruptedException during latch.await");
         }
+    }
+
+    @Test
+    @SmallTest
+    public void testVoiceDataSmsAutoFallback() throws Exception {
+        doReturn(1).when(mSubControllerMock).getDefaultDataSubId();
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0,1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(2, 3);
+        processAllMessages();
+        verify(mSubControllerMock, never()).setDefaultDataSubId(anyInt());
+        verify(mSubControllerMock, never()).getActiveSubInfoCountMax();
+        doReturn(2).when(mSubControllerMock).getActiveSubInfoCountMax();
+        mPhoneMock1.mCi = mMockCi;
+        mPhoneMock2.mCi = mMockCi;
+        doReturn(TelephonyManager.RADIO_POWER_ON).when(mMockCi).getRadioState();
+        doReturn(false).when(mPhoneMock1).isShuttingDown();
+        doReturn(false).when(mPhoneMock2).isShuttingDown();
+        android.provider.Settings.Global.putInt(InstrumentationRegistry.getTargetContext().
+                 getContentResolver(), "user_preferred_data_sub", 2);
+        Resources resources = mContext.getResources();
+        doReturn(true).when(resources).getBoolean(
+                com.android.internal.R.bool.config_voice_data_sms_auto_fallback);
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0,1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 2);
+        processAllMessages();
+        verify(mSubControllerMock).getActiveSubInfoCountMax();
+        verify(mSubControllerMock).setDefaultDataSubId(anyInt());
     }
 }
