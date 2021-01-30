@@ -172,6 +172,14 @@ public class NetworkTypeController extends StateMachine {
         return mOverrideNetworkType;
     }
 
+    /**
+     * @return True if either the primary or secondary 5G hysteresis timer is active,
+     * and false if neither are.
+     */
+    public boolean is5GHysteresisActive() {
+        return mIsPrimaryTimerActive || mIsSecondaryTimerActive;
+    }
+
     private void registerForAllEvents() {
         mPhone.registerForRadioOffOrNotAvailable(getHandler(),
                 EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
