@@ -152,6 +152,16 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testUpdateCodec() {
+        // MO Foreground Connection dailing -> active
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, "+1 (700).555-41NN1234", mImsCT,
+                mForeGroundCall, false);
+        doReturn(Call.State.ACTIVE).when(mForeGroundCall).getState();
+        assertTrue(mConnectionUT.updateMediaCapabilities(mImsCall));
+    }
+
+    @Test
+    @SmallTest
     public void testImsUpdateStateBackGround() {
         // MT background Connection dialing -> active
         mConnectionUT = new ImsPhoneConnection(mImsPhone, mImsCall, mImsCT, mBackGroundCall, false);
