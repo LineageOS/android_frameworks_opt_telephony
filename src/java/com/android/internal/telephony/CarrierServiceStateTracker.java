@@ -85,6 +85,11 @@ public class CarrierServiceStateTracker extends Handler {
             implements PhoneStateListener.AllowedNetworkTypesChangedListener {
         @Override
         public void onAllowedNetworkTypesChanged(Map<Integer, Long> allowedNetworkTypesList) {
+            if (!allowedNetworkTypesList.containsKey(
+                    TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER)) {
+                return;
+            }
+
             long newAllowedNetworkType = allowedNetworkTypesList.get(
                     TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
             if (mAllowedNetworkType != newAllowedNetworkType) {
