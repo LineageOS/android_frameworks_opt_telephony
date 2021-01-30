@@ -124,7 +124,9 @@ public class AdnRecordCache extends Handler implements IccConstants {
             case EF_FDN: return EF_EXT2;
             case EF_MSISDN: return EF_EXT1;
             case EF_PBR: return 0; // The EF PBR doesn't have an extension record
-            default: return -1;
+            default:
+                // See TS 131.102 4.4.2.1 '4FXX' are entity files from EF PBR
+                return (0x4FFF & efid) == efid ? 0 : -1;
         }
     }
 
