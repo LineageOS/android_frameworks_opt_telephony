@@ -1,0 +1,23 @@
+android_library {
+    name: "telephony-common-testing",
+
+    srcs: ["**/*.java"],
+
+    static_libs: [
+        "androidx.annotation_annotation",
+        "guava",
+        "junit",
+        "mockito-target-minus-junit4",
+        "telephony-common",
+        "truth-prebuilt",
+    ],
+
+    sdk_version: "test_current",
+
+    visibility: [
+        "//cts/tests/tests/simphonebookprovider",
+        "//cts/tests/tests/simphonebookprovider/nosim",
+        "//frameworks/opt/telephony/tests",
+        "//packages/services/Telephony/tests",
+    ],
+}
