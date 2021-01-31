@@ -5311,8 +5311,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public boolean canToggleUiccApplicationsEnablement() {
-        return getRadioProxy(null) != null && mRadioVersion
-                .greaterOrEqual(RADIO_HAL_VERSION_1_5);
+        return (getRadioProxy(null) != null && mRadioVersion
+                .greaterOrEqual(RADIO_HAL_VERSION_1_5)) || needsOldRilFeature("simdisable");
     }
 
     /**
