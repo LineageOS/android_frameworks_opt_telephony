@@ -16,19 +16,23 @@
 
 package com.android.internal.telephony;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import android.os.Parcel;
-import java.util.Arrays;
-import junit.framework.TestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccUtils;
 
+import junit.framework.TestCase;
+
+import java.util.Arrays;
+
 /**
  * {@hide}
  */
 public class AdnRecordTest extends TestCase {
-    
+
     @SmallTest
     public void testBasic() throws Exception {
         AdnRecord adn;
@@ -188,6 +192,20 @@ public class AdnRecordTest extends TestCase {
         assertEquals(adn.getAlphaTag(), copy.getAlphaTag());
         assertEquals(adn.getNumber(), copy.getNumber());
         assertTrue(Arrays.equals(adn.getEmails(), copy.getEmails()));
+    }
+
+    public void testGetMaxAlphaTagBytes() {
+        assertThat(AdnRecord.getMaxAlphaTagBytes(-1)).isEqualTo(0);
+        assertThat(AdnRecord.getMaxAlphaTagBytes(0)).isEqualTo(0);
+        assertThat(AdnRecord.getMaxAlphaTagBytes(5)).isEqualTo(0);
+        assertThat(AdnRecord.getMaxAlphaTagBytes(14)).isEqualTo(0);
+        assertThat(AdnRecord.getMaxAlphaTagBytes(15)).isEqualTo(1);
+        assertThat(AdnRecord.getMaxAlphaTagBytes(25)).isEqualTo(11);
+        assertThat(AdnRecord.getMaxAlphaTagBytes(30)).isEqualTo(16);
+    }
+
+    public void testGetMaxPhoneNumberDigits() {
+        assertThat(AdnRecord.getMaxPhoneNumberDigits()).isEqualTo(20);
     }
 }
 
