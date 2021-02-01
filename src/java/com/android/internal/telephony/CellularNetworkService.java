@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.hardware.radio.V1_0.RegState;
 import android.hardware.radio.V1_4.DataRegStateResult.VopsInfo.hidl_discriminator;
+import android.hardware.radio.V1_6.RegStateResult.AccessTechnologySpecificInfo;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -217,8 +218,14 @@ public class CellularNetworkService extends NetworkService {
             final int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
             final int domain = NetworkRegistrationInfo.DOMAIN_CS;
 
+            if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
+                return getNetworkRegistrationInfo1_6(
+                        domain,
+                        transportType,
+                        (android.hardware.radio.V1_6.RegStateResult) result);
+            }
             // 1.5 at the top so that we can do an "early exit" from the method
-            if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
+            else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
                 return getNetworkRegistrationInfo(
                         domain,
                         transportType,
@@ -286,8 +293,14 @@ public class CellularNetworkService extends NetworkService {
                     new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                             LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
 
+            if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
+                return getNetworkRegistrationInfo1_6(
+                        domain,
+                        transportType,
+                        (android.hardware.radio.V1_6.RegStateResult) result);
+            }
             // 1.5 at the top so that we can do an "early exit" from the method
-            if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
+            else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
                 return getNetworkRegistrationInfo(
                         domain,
                         transportType,
@@ -410,6 +423,86 @@ public class CellularNetworkService extends NetworkService {
                     vopsInfo = convertHalLteVopsSupportInfo(
                             eutranInfo.lteVopsInfo.isVopsSupported,
                             eutranInfo.lteVopsInfo.isEmcBearerSupported);
+                    break;
+                default:
+                    log("No access tech specific info passes for RegStateResult");
+                    break;
+            }
+
+            // build the result based on the domain for the request
+            switch(domain) {
+                case NetworkRegistrationInfo.DOMAIN_CS:
+                    return new NetworkRegistrationInfo(domain, transportType, regState,
+                            networkType, reasonForDenial, isEmergencyOnly, availableServices,
+                            cellIdentity, rplmn, cssSupported, roamingIndicator, systemIsInPrl,
+                            defaultRoamingIndicator);
+                default:
+                    loge("Unknown domain passed to CellularNetworkService= " + domain);
+                    // fall through
+                case NetworkRegistrationInfo.DOMAIN_PS:
+                    return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
+                            reasonForDenial, isEmergencyOnly, availableServices, cellIdentity,
+                            rplmn, MAX_DATA_CALLS, isDcNrRestricted, isNrAvailable, isEndcAvailable,
+                            vopsInfo);
+            }
+        }
+
+        private @NonNull NetworkRegistrationInfo getNetworkRegistrationInfo1_6(
+                int domain, int transportType,
+                android.hardware.radio.V1_6.RegStateResult regResult) {
+
+            // Perform common conversions that aren't domain specific
+            final int regState = getRegStateFromHalRegState(regResult.regState);
+            final boolean isEmergencyOnly = isEmergencyOnly(regResult.regState);
+            final List<Integer> availableServices = getAvailableServices(
+                    regState, domain, isEmergencyOnly);
+            final int rejectCause = regResult.reasonForDenial;
+            final CellIdentity cellIdentity = CellIdentity.create(regResult.cellIdentity);
+            final String rplmn = regResult.registeredPlmn;
+            final int reasonForDenial = regResult.reasonForDenial;
+
+            int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
+            if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+                // In Radio HAL v1.5, NETWORK_TYPE_LTE_CA is ignored. Callers should use
+                // PhysicalChannelConfig.
+                networkType = TelephonyManager.NETWORK_TYPE_LTE;
+            }
+
+            // Conditional parameters for specific RANs
+            boolean cssSupported = false;
+            int roamingIndicator = 0;
+            int systemIsInPrl = 0;
+            int defaultRoamingIndicator = 0;
+            boolean isEndcAvailable = false;
+            boolean isNrAvailable = false;
+            boolean isDcNrRestricted = false;
+            LteVopsSupportInfo vopsInfo = new LteVopsSupportInfo(
+                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+
+            android.hardware.radio.V1_6.RegStateResult.AccessTechnologySpecificInfo info =
+                    regResult.accessTechnologySpecificInfo;
+
+            switch (info.getDiscriminator()) {
+                case AccessTechnologySpecificInfo.hidl_discriminator.cdmaInfo:
+                    cssSupported = info.cdmaInfo().cssSupported;
+                    roamingIndicator = info.cdmaInfo().roamingIndicator;
+                    systemIsInPrl = info.cdmaInfo().systemIsInPrl;
+                    defaultRoamingIndicator = info.cdmaInfo().defaultRoamingIndicator;
+                    break;
+                case AccessTechnologySpecificInfo.hidl_discriminator.eutranInfo:
+                    isDcNrRestricted = info.eutranInfo().nrIndicators.isDcNrRestricted;
+                    isNrAvailable = info.eutranInfo().nrIndicators.isNrAvailable;
+                    isEndcAvailable = info.eutranInfo().nrIndicators.isEndcAvailable;
+                    vopsInfo = convertHalLteVopsSupportInfo(
+                            info.eutranInfo().lteVopsInfo.isVopsSupported,
+                            info.eutranInfo().lteVopsInfo.isEmcBearerSupported);
+                    break;
+                case AccessTechnologySpecificInfo.hidl_discriminator.geranInfo:
+                    android.hardware.radio.V1_6.RegStateResult
+                            .AccessTechnologySpecificInfo.GeranRegistrationInfo geranInfo =
+                            regResult.accessTechnologySpecificInfo.geranInfo();
+                    cssSupported = geranInfo.dtmSupported;
                     break;
                 default:
                     log("No access tech specific info passes for RegStateResult");
