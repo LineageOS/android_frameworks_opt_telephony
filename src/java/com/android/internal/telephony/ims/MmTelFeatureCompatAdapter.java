@@ -518,7 +518,8 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
         Intent intent = new Intent(ImsManager.ACTION_IMS_INCOMING_CALL);
         intent.setPackage(TelephonyManager.PHONE_PROCESS_NAME);
         return PendingIntent.getBroadcast(mContext, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                // Mutable because information associated with the call is passed back here.
+                PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private int convertCapability(int capability, int radioTech) {
