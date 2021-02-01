@@ -57,7 +57,6 @@ import android.hardware.radio.V1_5.IndicationFilter;
 import android.hardware.radio.V1_5.PersoSubstate;
 import android.hardware.radio.V1_5.RadioAccessNetworks;
 import android.hardware.radio.V1_6.OptionalSliceInfo;
-import android.hardware.radio.V1_6.OptionalTrafficDescriptor;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
@@ -2015,10 +2014,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 =
                             convertToHalLinkProperties15(linkProperties);
 
-                    OptionalTrafficDescriptor trafficDescriptor16 =
-                            new OptionalTrafficDescriptor();
-                    boolean matchAllRuleAllowed = true;
-
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                                 + ",accessNetworkType="
@@ -2029,8 +2024,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
 
                     radioProxy16.setupDataCall_1_6(rr.mSerial, accessNetworkType, dpi, allowRoaming,
-                            reason, addresses15, dnses, pduSessionId, sliceInfo16,
-                            trafficDescriptor16, matchAllRuleAllowed);
+                            reason, addresses15, dnses, pduSessionId, sliceInfo16);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     // IRadio V1.5
                     android.hardware.radio.V1_5.IRadio radioProxy15 =
