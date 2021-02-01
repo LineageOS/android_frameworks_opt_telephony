@@ -340,7 +340,7 @@ public class DcTracker extends Handler {
     private boolean mNrSaAllUnmetered = false;
     private boolean mNrSaMmwaveUnmetered = false;
     private boolean mNrSaSub6Unmetered = false;
-    private boolean mRoamingUnmetered = false;
+    private boolean mNrNsaRoamingUnmetered = false;
 
     // stats per data call recovery event
     private DataStallRecoveryStats mDataStallRecoveryStats;
@@ -4138,7 +4138,7 @@ public class DcTracker extends Handler {
     private void reevaluateUnmeteredConnections() {
         log("reevaluateUnmeteredConnections");
         int rat = mPhone.getDisplayInfoController().getTelephonyDisplayInfo().getNetworkType();
-        if (isNrUnmetered() && !mPhone.getServiceState().getRoaming() || mRoamingUnmetered) {
+        if (isNrUnmetered() && (!mPhone.getServiceState().getRoaming() || mNrNsaRoamingUnmetered)) {
             setDataConnectionUnmetered(true);
             if (!mWatchdog) {
                 startWatchdogAlarm();
@@ -5234,7 +5234,7 @@ public class DcTracker extends Handler {
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_MMWAVE_BOOL);
                 mNrSaSub6Unmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_SUB6_BOOL);
-                mRoamingUnmetered = b.getBoolean(
+                mNrNsaRoamingUnmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
             }
         }
