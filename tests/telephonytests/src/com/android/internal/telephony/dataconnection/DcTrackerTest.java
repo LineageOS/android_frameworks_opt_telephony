@@ -1895,6 +1895,18 @@ public class DcTrackerTest extends TelephonyTest {
         return (boolean) field.get(mDct);
     }
 
+    private void setUpTempNotMetered() {
+        doReturn((int) TelephonyManager.NETWORK_TYPE_BITMASK_NR)
+                .when(mPhone).getRadioAccessFamily();
+        doReturn(1).when(mPhone).getSubId();
+        mBundle.putBoolean(CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL, true);
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
+        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
+        mContext.sendBroadcast(intent);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+    }
+
     @Test
     public void testIsNetworkTypeUnmetered() throws Exception {
         initApns(PhoneConstants.APN_TYPE_DEFAULT, new String[]{PhoneConstants.APN_TYPE_ALL});
@@ -1967,7 +1979,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
-        doReturn(1).when(mPhone).getSubId();
+        setUpTempNotMetered();
 
         // NetCapability should be metered when connected to 5G with no unmetered plan or frequency
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
@@ -2016,7 +2028,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
-        doReturn(1).when(mPhone).getSubId();
+        setUpTempNotMetered();
 
         // NetCapability should be metered when connected to 5G with no unmetered plan or frequency
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
@@ -2075,6 +2087,7 @@ public class DcTrackerTest extends TelephonyTest {
         int id = setUpDataConnection();
         setUpSubscriptionPlans(true);
         setUpWatchdogTimer();
+        setUpTempNotMetered();
 
         // NetCapability should be unmetered when connected to 5G
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
