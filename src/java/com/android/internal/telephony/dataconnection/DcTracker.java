@@ -778,8 +778,7 @@ public class DcTracker extends Handler {
 
         initApnContexts();
 
-        initEmergencyApnSetting();
-        addEmergencyApnSetting();
+        addDefaultApnSettingsAsNeeded();
 
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         registerSettingsObserver();
@@ -3365,8 +3364,6 @@ public class DcTracker extends Handler {
                     + operator);
         }
 
-        addEmergencyApnSetting();
-
         dedupeApnSettings();
 
         if (mAllApnSettings.isEmpty()) {
@@ -3382,6 +3379,8 @@ public class DcTracker extends Handler {
             }
             if (DBG) log("createAllApnList: mPreferredApn=" + mPreferredApn);
         }
+
+        addDefaultApnSettingsAsNeeded();
         if (DBG) log("createAllApnList: X mAllApnSettings=" + mAllApnSettings);
     }
 
@@ -4502,61 +4501,53 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * Read APN configuration from Telephony.db for Emergency APN
-     * All operators recognize the connection request for EPDN based on APN type
-     * PLMN name,APN name are not mandatory parameters
+     * Create default apn settings for the apn type like emergency, and ims
      */
-    private void initEmergencyApnSetting() {
-        // Operator Numeric is not available when SIM is not ready.
-        // Query Telephony.db with APN type as EPDN request does not
-        // require APN name, plmn and all operators support same APN config.
-        // DB will contain only one entry for Emergency APN
-        String selection = "type=\"emergency\"";
-        Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
-                null, selection, null, null);
-
-        if (cursor != null) {
-            if (cursor.getCount() > 0) {
-                if (cursor.moveToFirst()) {
-                    mEmergencyApn = ApnSetting.makeApnSetting(cursor);
-                }
-            }
-            cursor.close();
-        }
-        if (mEmergencyApn != null) return;
-
-        // If no emergency APN setting has been found, make one using reasonable defaults
-        mEmergencyApn = new ApnSetting.Builder()
-                .setEntryName("Emergency")
+    private ApnSetting buildDefaultApnSetting(@NonNull String entry,
+            @NonNull String apn, @ApnType int apnTypeBitmask) {
+        return new ApnSetting.Builder()
+                .setEntryName(entry)
                 .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
                 .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
-                .setApnName("sos")
-                .setApnTypeBitmask(ApnSetting.TYPE_EMERGENCY)
+                .setApnName(apn)
+                .setApnTypeBitmask(apnTypeBitmask)
                 .setCarrierEnabled(true)
                 .setApnSetId(Telephony.Carriers.MATCH_ALL_APN_SET_ID)
                 .build();
     }
 
     /**
-     * Add the Emergency APN settings to APN settings list
+     * Add default APN settings to APN settings list as needed
      */
-    private void addEmergencyApnSetting() {
-        if(mEmergencyApn != null) {
-            for (ApnSetting apn : mAllApnSettings) {
-                if (apn.canHandleType(ApnSetting.TYPE_EMERGENCY)) {
-                    log("addEmergencyApnSetting - E-APN setting is already present");
-                    return;
-                }
-            }
+    private void addDefaultApnSettingsAsNeeded() {
+        boolean isEmergencyApnConfigured = false;
+        boolean isImsApnConfigured = false;
 
-            // If all of the APN settings cannot handle emergency, we add the emergency APN to the
-            // list explicitly.
-            if (!mAllApnSettings.contains(mEmergencyApn)) {
-                mAllApnSettings.add(mEmergencyApn);
-                log("Adding emergency APN : " + mEmergencyApn);
+        for (ApnSetting apn : mAllApnSettings) {
+            if (apn.canHandleType(ApnSetting.TYPE_EMERGENCY)) {
+                isEmergencyApnConfigured = true;
+            }
+            if (apn.canHandleType(ApnSetting.TYPE_IMS)) {
+                isImsApnConfigured = true;
+            }
+            if (isEmergencyApnConfigured && isImsApnConfigured) {
+                log("Both emergency and ims apn setting are already present");
                 return;
             }
+        }
+
+        // Add default apn setting for emergency service if it is not present
+        if (!isEmergencyApnConfigured) {
+            mAllApnSettings.add(buildDefaultApnSetting(
+                    "DEFAULT EIMS", "sos", ApnSetting.TYPE_EMERGENCY));
+            log("default emergency apn is created");
+        }
+
+        // Only add default apn setting for ims when it is not present and sim is loaded
+        if (!isImsApnConfigured && mSimState == TelephonyManager.SIM_STATE_LOADED) {
+            mAllApnSettings.add(buildDefaultApnSetting(
+                    "DEFAULT IMS", "ims", ApnSetting.TYPE_IMS));
+            log("default ims apn is created");
         }
     }
 
