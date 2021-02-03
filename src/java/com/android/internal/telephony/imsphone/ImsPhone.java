@@ -2134,9 +2134,7 @@ public class ImsPhone extends ImsPhoneBase {
                                 mContext,
                                 0,
                                 resultIntent,
-                                // Note: Since resultIntent above specifies an explicit class name
-                                // we do not need to specify PendingIntent.FLAG_IMMUTABLE here.
-                                PendingIntent.FLAG_UPDATE_CURRENT
+                                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
                         );
 
                 final Notification notification = new Notification.Builder(mContext)
