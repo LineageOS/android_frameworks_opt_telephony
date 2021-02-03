@@ -70,6 +70,14 @@ public class DisplayInfoController extends Handler {
     }
 
     /**
+     * @return True if either the primary or secondary 5G hysteresis timer is active,
+     * and false if neither are.
+     */
+    public boolean is5GHysteresisActive() {
+        return mNetworkTypeController.is5GHysteresisActive();
+    }
+
+    /**
      * Register for TelephonyDisplayInfo changed.
      * @param h Handler to notify
      * @param what msg.what when the message is delivered

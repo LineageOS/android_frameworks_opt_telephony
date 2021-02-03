@@ -74,6 +74,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.DataFailCause;
@@ -136,6 +137,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -778,8 +780,7 @@ public class DcTracker extends Handler {
 
         initApnContexts();
 
-        initEmergencyApnSetting();
-        addEmergencyApnSetting();
+        addDefaultApnSettingsAsNeeded();
 
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         registerSettingsObserver();
@@ -3365,8 +3366,6 @@ public class DcTracker extends Handler {
                     + operator);
         }
 
-        addEmergencyApnSetting();
-
         dedupeApnSettings();
 
         if (mAllApnSettings.isEmpty()) {
@@ -3382,6 +3381,8 @@ public class DcTracker extends Handler {
             }
             if (DBG) log("createAllApnList: mPreferredApn=" + mPreferredApn);
         }
+
+        addDefaultApnSettingsAsNeeded();
         if (DBG) log("createAllApnList: X mAllApnSettings=" + mAllApnSettings);
     }
 
@@ -4212,8 +4213,27 @@ public class DcTracker extends Handler {
     }
 
     private void setDataConnectionUnmetered(boolean isUnmetered) {
-        for (DataConnection dataConnection : mDataConnections.values()) {
-            dataConnection.onMeterednessChanged(isUnmetered);
+        // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+        // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+        // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few
+        // devices and carriers.
+        if (!isUnmetered || (isUnmetered && tempNotMeteredPossible())) {
+            for (DataConnection dataConnection : mDataConnections.values()) {
+                dataConnection.onMeterednessChanged(isUnmetered);
+            }
+        } else {
+            // isUnmetered=true but TEMP_NOT_METERED is not possible
+            String message = "Unexpected temp not metered detected. carrier supported="
+                    + isTempNotMeteredSupportedByCarrier() + ", device 5G capable="
+                    + isDevice5GCapable() + ", camped on 5G=" + isCampedOn5G()
+                    + ", timer active=" + mPhone.getDisplayInfoController().is5GHysteresisActive()
+                    + ", display info="
+                    + mPhone.getDisplayInfoController().getTelephonyDisplayInfo()
+                    + ", subscription plans=" + mSubscriptionPlans
+                    + ", Service state=" + mPhone.getServiceState();
+            loge(message);
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055250"), message);
         }
     }
 
@@ -4333,6 +4353,64 @@ public class DcTracker extends Handler {
         }
 
         return false;
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean isDevice5GCapable() {
+        return (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean isTempNotMeteredSupportedByCarrier() {
+        CarrierConfigManager configManager =
+                mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        if (configManager != null) {
+            PersistableBundle bundle = configManager.getConfigForSubId(mPhone.getSubId());
+            if (bundle != null) {
+                return bundle.getBoolean(
+                        CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL);
+            }
+        }
+
+        return false;
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean isCampedOn5G() {
+        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
+                .getTelephonyDisplayInfo();
+        int overrideNetworkType = displayInfo.getOverrideNetworkType();
+        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int networkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
+                : nri.getAccessNetworkTechnology();
+
+        boolean isNrSa = networkType == TelephonyManager.NETWORK_TYPE_NR;
+        boolean isNrNsa = (networkType == TelephonyManager.NETWORK_TYPE_LTE
+                || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
+                && (overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
+                || overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE);
+        boolean is5GHysteresisActive = mPhone.getDisplayInfoController().is5GHysteresisActive();
+
+        // True if device is on NR SA or NR NSA, or neither but 5G hysteresis is active
+        return isNrSa || isNrNsa || is5GHysteresisActive;
+    }
+
+    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
+    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
+    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
+    // and carriers.
+    private boolean tempNotMeteredPossible() {
+        return isDevice5GCapable() && isTempNotMeteredSupportedByCarrier() && isCampedOn5G();
     }
 
     protected void log(String s) {
@@ -4502,61 +4580,53 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * Read APN configuration from Telephony.db for Emergency APN
-     * All operators recognize the connection request for EPDN based on APN type
-     * PLMN name,APN name are not mandatory parameters
+     * Create default apn settings for the apn type like emergency, and ims
      */
-    private void initEmergencyApnSetting() {
-        // Operator Numeric is not available when SIM is not ready.
-        // Query Telephony.db with APN type as EPDN request does not
-        // require APN name, plmn and all operators support same APN config.
-        // DB will contain only one entry for Emergency APN
-        String selection = "type=\"emergency\"";
-        Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "filtered"),
-                null, selection, null, null);
-
-        if (cursor != null) {
-            if (cursor.getCount() > 0) {
-                if (cursor.moveToFirst()) {
-                    mEmergencyApn = ApnSetting.makeApnSetting(cursor);
-                }
-            }
-            cursor.close();
-        }
-        if (mEmergencyApn != null) return;
-
-        // If no emergency APN setting has been found, make one using reasonable defaults
-        mEmergencyApn = new ApnSetting.Builder()
-                .setEntryName("Emergency")
+    private ApnSetting buildDefaultApnSetting(@NonNull String entry,
+            @NonNull String apn, @ApnType int apnTypeBitmask) {
+        return new ApnSetting.Builder()
+                .setEntryName(entry)
                 .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
                 .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
-                .setApnName("sos")
-                .setApnTypeBitmask(ApnSetting.TYPE_EMERGENCY)
+                .setApnName(apn)
+                .setApnTypeBitmask(apnTypeBitmask)
                 .setCarrierEnabled(true)
                 .setApnSetId(Telephony.Carriers.MATCH_ALL_APN_SET_ID)
                 .build();
     }
 
     /**
-     * Add the Emergency APN settings to APN settings list
+     * Add default APN settings to APN settings list as needed
      */
-    private void addEmergencyApnSetting() {
-        if(mEmergencyApn != null) {
-            for (ApnSetting apn : mAllApnSettings) {
-                if (apn.canHandleType(ApnSetting.TYPE_EMERGENCY)) {
-                    log("addEmergencyApnSetting - E-APN setting is already present");
-                    return;
-                }
-            }
+    private void addDefaultApnSettingsAsNeeded() {
+        boolean isEmergencyApnConfigured = false;
+        boolean isImsApnConfigured = false;
 
-            // If all of the APN settings cannot handle emergency, we add the emergency APN to the
-            // list explicitly.
-            if (!mAllApnSettings.contains(mEmergencyApn)) {
-                mAllApnSettings.add(mEmergencyApn);
-                log("Adding emergency APN : " + mEmergencyApn);
+        for (ApnSetting apn : mAllApnSettings) {
+            if (apn.canHandleType(ApnSetting.TYPE_EMERGENCY)) {
+                isEmergencyApnConfigured = true;
+            }
+            if (apn.canHandleType(ApnSetting.TYPE_IMS)) {
+                isImsApnConfigured = true;
+            }
+            if (isEmergencyApnConfigured && isImsApnConfigured) {
+                log("Both emergency and ims apn setting are already present");
                 return;
             }
+        }
+
+        // Add default apn setting for emergency service if it is not present
+        if (!isEmergencyApnConfigured) {
+            mAllApnSettings.add(buildDefaultApnSetting(
+                    "DEFAULT EIMS", "sos", ApnSetting.TYPE_EMERGENCY));
+            log("default emergency apn is created");
+        }
+
+        // Only add default apn setting for ims when it is not present and sim is loaded
+        if (!isImsApnConfigured && mSimState == TelephonyManager.SIM_STATE_LOADED) {
+            mAllApnSettings.add(buildDefaultApnSetting(
+                    "DEFAULT IMS", "ims", ApnSetting.TYPE_IMS));
+            log("default ims apn is created");
         }
     }
 
