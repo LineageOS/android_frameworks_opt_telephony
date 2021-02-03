@@ -27,6 +27,7 @@ import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TE
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
+import static android.util.Patterns.EMAIL_ADDRESS;
 
 import android.annotation.Nullable;
 import android.os.SystemClock;
@@ -51,6 +52,8 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.telephony.Rlog;
 
+import java.util.regex.Pattern;
+
 /** Tracks IMS registration metrics for each phone. */
 public class ImsStats {
     private static final String TAG = ImsStats.class.getSimpleName();
@@ -69,6 +72,123 @@ public class ImsStats {
      * <p>If the extra message is longer than this length, it will be truncated.
      */
     private static final int MAX_EXTRA_MESSAGE_LENGTH = 128;
+
+    /** Pattern used to match UUIDs in IMS extra messages for filtering. */
+    private static final Pattern PATTERN_UUID =
+            Pattern.compile(
+                    "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    /** Replacement for UUIDs. */
+    private static final String REPLACEMENT_UUID = "<UUID_REDACTED>";
+
+    /**
+     * Pattern used to match URI (e.g. sip, tel) in IMS extra messages for filtering.
+     *
+     * <p>NOTE: this simple pattern aims to catch the most common URI schemes. It is not meant to be
+     * RFC-complaint.
+     */
+    private static final Pattern PATTERN_URI =
+            Pattern.compile("([a-zA-Z]{2,}:)" + EMAIL_ADDRESS.pattern());
+
+    /** Replacement for URI. */
+    private static final String REPLACEMENT_URI = "$1<REDACTED>";
+
+    /**
+     * Pattern used to match IPv4 addresses in IMS extra messages for filtering.
+     *
+     * <p>This is a copy of {@code android.util.Patterns.IP_ADDRESS}, which is deprecated and might
+     * be removed in the future.
+     */
+    private static final Pattern PATTERN_IPV4 =
+            Pattern.compile(
+                    "((25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9])\\.(25[0-5]|2[0-4]"
+                            + "[0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9]|0)\\.(25[0-5]|2[0-4][0-9]|[0-1]"
+                            + "[0-9]{2}|[1-9][0-9]|[1-9]|0)\\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}"
+                            + "|[1-9][0-9]|[0-9]))");
+
+    /** Replacement for IPv4 addresses. */
+    private static final String REPLACEMENT_IPV4 = "<IPV4_REDACTED>";
+
+    /**
+     * Pattern used to match IPv6 addresses in IMS extra messages for filtering.
+     *
+     * <p>NOTE: this pattern aims to catch the most common IPv6 addresses. It is not meant to be
+     * RFC-complaint or free of false positives.
+     */
+    private static final Pattern PATTERN_IPV6 =
+            Pattern.compile(
+                    // Full address
+                    "([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}"
+                            // Abbreviated address, e.g. 2001:4860:4860::8888
+                            + "|([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4}){1,6}"
+                            // Abbreviated network address, e.g. 2607:F8B0::
+                            + "|([0-9a-fA-F]{1,4}:){1,7}:"
+                            // Abbreviated address, e.g. ::1
+                            + "|:(:[0-9a-fA-F]{1,4}){1,7}");
+
+    /** Replacement for IPv6 addresses. */
+    private static final String REPLACEMENT_IPV6 = "<IPV6_REDACTED>";
+
+    /**
+     * Pattern used to match potential IMEI values in IMS extra messages for filtering.
+     *
+     * <p>This includes segmented IMEI or IMEI/SV, as well as unsegmented IMEI/SV.
+     */
+    private static final Pattern PATTERN_IMEI =
+            Pattern.compile(
+                    "(^|[^0-9])(?:"
+                            // IMEI, AABBBBBB-CCCCCC-D format; IMEI/SV, AABBBBBB-CCCCCC-EE format
+                            + "[0-9]{8}-[0-9]{6}-[0-9][0-9]?"
+                            // IMEI, AA-BBBBBB-CCCCCC-D format; IMEI/SV, AA-BBBBBB-CCCCCC-EE format
+                            + "|[0-9]{2}-[0-9]{6}-[0-9]{6}-[0-9][0-9]?"
+                            // IMEI/SV, unsegmented
+                            + "|[0-9]{16}"
+                            + ")($|[^0-9])");
+
+    /** Replacement for IMEI. */
+    private static final String REPLACEMENT_IMEI = "$1<IMEI_REDACTED>$2";
+
+    /**
+     * Pattern used to match potential unsegmented IMEI/IMSI values in IMS extra messages for
+     * filtering.
+     */
+    private static final Pattern PATTERN_UNSEGMENTED_IMEI_IMSI =
+            Pattern.compile("(^|[^0-9])[0-9]{15}($|[^0-9])");
+
+    /** Replacement for unsegmented IMEI/IMSI. */
+    private static final String REPLACEMENT_UNSEGMENTED_IMEI_IMSI = "$1<IMEI_IMSI_REDACTED>$2";
+
+    /**
+     * Pattern used to match hostnames in IMS extra messages for filtering.
+     *
+     * <p>This pattern differs from {@link android.util.Patterns.DOMAIN_NAME} in a few ways: it
+     * requires the name to have at least 3 segments (shorter names are nearly always public or
+     * typos, i.e. missing space after period), does not check the validity of TLDs, and does not
+     * support punycodes in TLDs.
+     */
+    private static final Pattern PATTERN_HOSTNAME =
+            Pattern.compile("([0-9a-zA-Z][0-9a-zA-Z_\\-]{0,61}[0-9a-zA-Z]\\.){2,}[a-zA-Z]{2,}");
+
+    /** Replacement for hostnames. */
+    private static final String REPLACEMENT_HOSTNAME = "<HOSTNAME_REDACTED>";
+
+    /**
+     * Pattern used to match potential IDs in IMS extra messages for filtering.
+     *
+     * <p>This pattern target numbers that are potential IDs in unknown formats. It should be
+     * replaced after all other replacements are done to ensure complete and correct filtering.
+     *
+     * <p>Specifically, this pattern looks for any number (including hex) that is separated by dots
+     * or dashes has at least 6 significant digits, and any unsegmented numbers that has at least 5
+     * significant digits.
+     */
+    private static final Pattern PATTERN_UNKNOWN_ID =
+            Pattern.compile(
+                    "(^|[^0-9a-fA-F])(([-\\.]?0)*[1-9a-fA-F]([-\\.]?[0-9a-fA-F]){5,}"
+                            + "|0*[1-9a-fA-F]([0-9a-fA-F]){4,})");
+
+    /** Replacement for potential IDs. */
+    private static final String REPLACEMENT_UNKNOWN_ID = "$1<ID_REDACTED>";
 
     private final ImsPhone mPhone;
     private final PersistAtomsStorage mStorage;
@@ -204,7 +324,7 @@ public class ImsStats {
         termination.setupFailed = (mLastRegistrationState != REGISTRATION_STATE_REGISTERED);
         termination.reasonCode = reasonInfo.getCode();
         termination.extraCode = reasonInfo.getExtraCode();
-        termination.extraMessage = sanitizeExtraMessage(reasonInfo.getExtraMessage());
+        termination.extraMessage = filterExtraMessage(reasonInfo.getExtraMessage());
         termination.count = 1;
         mStorage.addImsRegistrationTermination(termination);
 
@@ -303,10 +423,22 @@ public class ImsStats {
         return SystemClock.elapsedRealtime();
     }
 
-    private static String sanitizeExtraMessage(@Nullable String str) {
+    /** Filters IMS extra messages to ensure length limit and remove IDs. */
+    public static String filterExtraMessage(@Nullable String str) {
         if (str == null) {
             return "";
         }
+
+        str = PATTERN_UUID.matcher(str).replaceAll(REPLACEMENT_UUID);
+        str = PATTERN_URI.matcher(str).replaceAll(REPLACEMENT_URI);
+        str = PATTERN_HOSTNAME.matcher(str).replaceAll(REPLACEMENT_HOSTNAME);
+        str = PATTERN_IPV4.matcher(str).replaceAll(REPLACEMENT_IPV4);
+        str = PATTERN_IPV6.matcher(str).replaceAll(REPLACEMENT_IPV6);
+        str = PATTERN_IMEI.matcher(str).replaceAll(REPLACEMENT_IMEI);
+        str = PATTERN_UNSEGMENTED_IMEI_IMSI.matcher(str)
+                .replaceAll(REPLACEMENT_UNSEGMENTED_IMEI_IMSI);
+        str = PATTERN_UNKNOWN_ID.matcher(str).replaceAll(REPLACEMENT_UNKNOWN_ID);
+
         return str.length() > MAX_EXTRA_MESSAGE_LENGTH
                 ? str.substring(0, MAX_EXTRA_MESSAGE_LENGTH)
                 : str;
