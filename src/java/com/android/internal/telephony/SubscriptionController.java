@@ -1941,7 +1941,8 @@ public class SubscriptionController extends ISub.Stub {
                         // we don't care about the result (hence 0 requestCode and no action
                         // specified on the intent).
                         PendingIntent.getService(
-                            mContext, 0 /* requestCode */, new Intent(), 0 /* flags */));
+                            mContext, 0 /* requestCode */, new Intent(),
+                                PendingIntent.FLAG_IMMUTABLE /* flags */));
             }
 
             int result = updateDatabase(value, subId, true);
