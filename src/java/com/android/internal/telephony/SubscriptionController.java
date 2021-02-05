@@ -31,6 +31,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -63,6 +64,7 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
 
+import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.dataconnection.DataEnabledOverride;
@@ -358,6 +360,29 @@ public class SubscriptionController extends ISub.Stub {
         invalidateDefaultSmsSubIdCaches();
         invalidateActiveDataSubIdCaches();
         invalidateSlotIndexCaches();
+
+        mContext.getContentResolver().registerContentObserver(
+                SubscriptionManager.SIM_INFO_SUW_RESTORE_CONTENT_URI, false,
+                new ContentObserver(new Handler()) {
+                    @Override
+                    public void onChange(boolean selfChange, Uri uri) {
+                        if (uri.equals(SubscriptionManager.SIM_INFO_SUW_RESTORE_CONTENT_URI)) {
+                            refreshCachedActiveSubscriptionInfoList();
+                            notifySubscriptionInfoChanged();
+
+                            SubscriptionManager subManager = SubscriptionManager.from(mContext);
+                            for (SubscriptionInfo subInfo : getActiveSubscriptionInfoList(
+                                    mContext.getOpPackageName(), mContext.getAttributionTag())) {
+                                if (SubscriptionController.getInstance()
+                                        .isActiveSubId(subInfo.getSubscriptionId())) {
+                                    ImsManager imsManager = ImsManager.getInstance(mContext,
+                                            subInfo.getSimSlotIndex());
+                                    imsManager.updateImsServiceConfig();
+                                }
+                            }
+                        }
+                    }
+                });
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
@@ -1327,6 +1352,8 @@ public class SubscriptionController extends ISub.Stub {
                         setDisplayName = true;
                         Uri uri = insertEmptySubInfoRecord(uniqueId, slotIndex);
                         if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
+                        SubscriptionManager subManager = SubscriptionManager.from(mContext);
+                        subManager.restoreSimSpecificSettingsForIccIdFromBackup(uniqueId);
                     } else { // there are matching records in the database for the given ICC_ID
                         int subId = cursor.getInt(0);
                         int oldSimInfoId = cursor.getInt(1);
