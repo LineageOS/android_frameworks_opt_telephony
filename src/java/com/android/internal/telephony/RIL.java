@@ -1336,12 +1336,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void emergencyDial(String address, EmergencyNumber emergencyNumberInfo,
-                               boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
-                               Message result) {
+            boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo, Message result) {
         IRadio radioProxy = getRadioProxy(result);
-        // IRadio V1.4
-        android.hardware.radio.V1_4.IRadio radioProxy14 =
-                (android.hardware.radio.V1_4.IRadio) radioProxy;
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_EMERGENCY_DIAL, result,
                     mRILDefaultWorkSource);
@@ -1361,18 +1357,40 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
             }
 
-            try {
-                radioProxy14.emergencyDial(rr.mSerial, dialInfo,
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                        (android.hardware.radio.V1_6.IRadio) radioProxy;
+                try {
+                    radioProxy16.emergencyDial_1_6(rr.mSerial, dialInfo,
                         emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
                         emergencyNumberInfo.getEmergencyUrns() != null
                                 ? new ArrayList(emergencyNumberInfo.getEmergencyUrns())
-                                : new ArrayList<>(),
+                                        : new ArrayList<>(),
                         emergencyNumberInfo.getEmergencyCallRouting(),
                         hasKnownUserIntentEmergency,
                         emergencyNumberInfo.getEmergencyNumberSourceBitmask()
                                 == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "emergencyDial_1_6", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+                android.hardware.radio.V1_4.IRadio radioProxy14 =
+                        (android.hardware.radio.V1_4.IRadio) radioProxy;
+                try {
+                    radioProxy14.emergencyDial(rr.mSerial, dialInfo,
+                            emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
+                            emergencyNumberInfo.getEmergencyUrns() != null
+                                    ? new ArrayList(emergencyNumberInfo.getEmergencyUrns())
+                                            : new ArrayList<>(),
+                            emergencyNumberInfo.getEmergencyCallRouting(),
+                            hasKnownUserIntentEmergency,
+                            emergencyNumberInfo.getEmergencyNumberSourceBitmask()
+                                    == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
+                }
+            } else {
+                riljLoge("emergencyDial is not supported with 1.4 below IRadio");
             }
         }
     }
