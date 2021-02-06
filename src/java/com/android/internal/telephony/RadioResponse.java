@@ -3064,4 +3064,20 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void cancelHandoverResponse(android.hardware.radio.V1_6.RadioResponseInfo info) {
         responseVoid_1_6(info);
     }
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error
+     * @param slicingConfig Current slicing configuration
+     */
+    public void getSlicingConfigResponse(android.hardware.radio.V1_6.RadioResponseInfo info,
+            android.hardware.radio.V1_6.SlicingConfig slicingConfig) {
+        RILRequest rr = mRil.processResponse_1_6(info);
+
+        if (rr != null) {
+            if (info.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, slicingConfig);
+            }
+            mRil.processResponseDone_1_6(rr, info, slicingConfig);
+        }
+    }
 }
