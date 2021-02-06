@@ -48,13 +48,11 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
-import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -103,7 +101,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -1317,60 +1314,6 @@ public class DataConnection extends StateMachine {
         return true;
     }
 
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean isDevice5GCapable() {
-        return (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
-    }
-
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean isTempNotMeteredSupportedByCarrier() {
-        CarrierConfigManager configManager =
-                mPhone.getContext().getSystemService(CarrierConfigManager.class);
-        if (configManager != null) {
-            PersistableBundle bundle = configManager.getConfigForSubId(mSubId);
-            if (bundle != null) {
-                return bundle.getBoolean(
-                        CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL);
-            }
-        }
-
-        return false;
-    }
-
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean isCampedOn5G() {
-        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
-                .getTelephonyDisplayInfo();
-        int overrideNetworkType = displayInfo.getOverrideNetworkType();
-        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        int networkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
-                : nri.getAccessNetworkTechnology();
-        return networkType == TelephonyManager.NETWORK_TYPE_NR
-                || ((networkType == TelephonyManager.NETWORK_TYPE_LTE
-                || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
-                && (overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
-                || overrideNetworkType
-                == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE));
-    }
-
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean tempNotMeteredPossible() {
-        return isDevice5GCapable() && isTempNotMeteredSupportedByCarrier() && isCampedOn5G();
-    }
-
     /**
      * Get the network capabilities for this data connection.
      *
@@ -1493,28 +1436,8 @@ public class DataConnection extends StateMachine {
             result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
         }
 
-        // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-        // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-        // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few
-        // devices and carriers.
-        if (tempNotMeteredPossible()) {
-            result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
-                    mUnmeteredOverride);
-        } else if (mUnmeteredOverride) {
-            // If temp not metered is not possible, but mUnmeteredOverride got set, that means we
-            // hit the bug.
-            SubscriptionManager subscriptionManager = mPhone.getContext()
-                    .getSystemService(SubscriptionManager.class);
-            String message = "Unexpected temp not metered detected. carrier supported="
-                    + isTempNotMeteredSupportedByCarrier() + ", device 5G capable="
-                    + isDevice5GCapable() + ", display info="
-                    + mPhone.getDisplayInfoController().getTelephonyDisplayInfo()
-                    + ", subscription plans=" + subscriptionManager.getSubscriptionPlans(mSubId)
-                    + ", Service state=" + mPhone.getServiceState();
-            loge(message);
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055249"), message);
-        }
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+                mUnmeteredOverride);
 
         final boolean suspended =
                 mNetworkInfo.getDetailedState() == NetworkInfo.DetailedState.SUSPENDED;
