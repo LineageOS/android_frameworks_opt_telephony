@@ -140,7 +140,54 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // NR NSA, millimeter wave frequency
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         updateOverrideNetworkType();
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testUpdateOverrideNetworkTypeNrSa() throws Exception {
+        // not NR
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        updateOverrideNetworkType();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // NR SA connected
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+
+        updateOverrideNetworkType();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testUpdateOverrideNetworkTypeNrSaMmwave() throws Exception {
+        // not NR
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        updateOverrideNetworkType();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // NR SA connected and millimeter wave frequency
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+
+        updateOverrideNetworkType();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
     }
 
@@ -456,7 +503,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
 
         // should trigger 10 second timer
@@ -465,7 +512,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
@@ -489,7 +536,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
 
         // trigger 10 second timer after disconnecting from NR
@@ -498,7 +545,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
@@ -512,7 +559,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         // timer should not have gone off
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertFalse(mNetworkTypeController.is5GHysteresisActive());
     }
@@ -622,7 +669,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
 
         // should trigger 10 second primary timer
@@ -631,7 +678,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
@@ -641,7 +688,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         // should trigger 30 second secondary timer
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
@@ -667,7 +714,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
 
         // should trigger 10 second primary timer
@@ -676,7 +723,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
@@ -686,7 +733,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         // should trigger 30 second secondary timer
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
@@ -700,7 +747,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         // timer should not have gone off
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertFalse(mNetworkTypeController.is5GHysteresisActive());
     }
@@ -717,7 +764,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         assertEquals("connected_mmwave", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
 
         // should trigger 10 second primary timer
@@ -726,7 +773,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("connected", getCurrentState().getName());
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE,
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
