@@ -158,8 +158,8 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.EpsQos;
-import android.telephony.data.QosFilter;
-import android.telephony.data.QosSession;
+import android.telephony.data.QosBearerFilter;
+import android.telephony.data.QosBearerSession;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -2180,7 +2180,7 @@ public class RILTest extends TelephonyTest {
                 .setMtu(1500)
                 .setMtuV4(1500)
                 .setMtuV6(1500)
-                .setQosSessions(new ArrayList<>())
+                .setQosBearerSessions(new ArrayList<>())
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result10));
@@ -2254,7 +2254,7 @@ public class RILTest extends TelephonyTest {
                 .setMtu(3000)
                 .setMtuV4(1500)
                 .setMtuV6(3000)
-                .setQosSessions(new ArrayList<>())
+                .setQosBearerSessions(new ArrayList<>())
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result15));
@@ -2322,18 +2322,18 @@ public class RILTest extends TelephonyTest {
         result16.qosSessions = new ArrayList<>(Arrays.asList(halQosSession));
 
         EpsQos epsQos = new EpsQos(halEpsQos);
-        QosFilter qosFilter = new QosFilter(
+        QosBearerFilter qosFilter = new QosBearerFilter(
                 Arrays.asList(
                         new LinkAddress(InetAddresses.parseNumericAddress("122.22.22.22"), 32)),
                 Arrays.asList(
                         new LinkAddress(InetAddresses.parseNumericAddress("144.44.44.44"), 32)),
-                new QosFilter.PortRange(123, 123), new QosFilter.PortRange(223, 223),
-                QosFilter.QOS_PROTOCOL_UDP, 7, 987, 678,
-                QosFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, 45);
-        ArrayList<QosFilter> qosFilters = new ArrayList<>();
-        ArrayList<QosSession> qosSessions = new ArrayList<>();
+                new QosBearerFilter.PortRange(123, 123), new QosBearerFilter.PortRange(223, 223),
+                QosBearerFilter.QOS_PROTOCOL_UDP, 7, 987, 678,
+                QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, 45);
+        ArrayList<QosBearerFilter> qosFilters = new ArrayList<>();
+        ArrayList<QosBearerSession> qosSessions = new ArrayList<>();
         qosFilters.add(qosFilter);
-        QosSession qosSession = new QosSession(1234, epsQos, qosFilters);
+        QosBearerSession qosSession = new QosBearerSession(1234, epsQos, qosFilters);
         qosSessions.add(qosSession);
 
         response = new DataCallResponse.Builder()
@@ -2359,7 +2359,7 @@ public class RILTest extends TelephonyTest {
                 .setMtuV6(3000)
                 .setHandoverFailureMode(DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY)
                 .setDefaultQos(epsQos)
-                .setQosSessions(qosSessions)
+                .setQosBearerSessions(qosSessions)
                 .build();
 
         assertEquals(response, RIL.convertDataCallResult(result16));
