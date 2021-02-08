@@ -67,7 +67,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.Qos;
-import android.telephony.data.QosSession;
+import android.telephony.data.QosBearerSession;
 import android.telephony.data.SliceInfo;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -305,7 +305,7 @@ public class DataConnection extends StateMachine {
     private int mDownlinkBandwidth = 14;
     private int mUplinkBandwidth = 14;
     private Qos mDefaultQos = null;
-    private List<QosSession> mQosSessions = new ArrayList<>();
+    private List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
     private SliceInfo mSliceInfo;
 
     /** The corresponding network agent for this data connection. */
@@ -618,9 +618,29 @@ public class DataConnection extends StateMachine {
         return mSliceInfo;
     }
 
-    public void updateQosParameters(DataCallResponse response) {
+    public void updateQosParameters(final @Nullable DataCallResponse response) {
+        if (response == null) {
+            mDefaultQos = null;
+            mQosBearerSessions = null;
+            return;
+        }
+
         mDefaultQos = response.getDefaultQos();
-        mQosSessions = response.getQosSessions();
+        mQosBearerSessions = response.getQosBearerSessions();
+
+        if (mNetworkAgent != null) {
+            syncQosToNetworkAgent();
+        }
+    }
+
+    private void syncQosToNetworkAgent() {
+        final DcNetworkAgent networkAgent = mNetworkAgent;
+        final List<QosBearerSession> qosBearerSessions = mQosBearerSessions;
+        if (qosBearerSessions == null) {
+            networkAgent.updateQosBearerSessions(new ArrayList<>());
+            return;
+        }
+        networkAgent.updateQosBearerSessions(qosBearerSessions);
     }
 
     /**
@@ -2695,6 +2715,9 @@ public class DataConnection extends StateMachine {
                 sendMessage(obtainMessage(EVENT_UPDATE_SUSPENDED_STATE));
             }
 
+            // The qos parameters are set when the call is connected
+            syncQosToNetworkAgent();
+
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.registerForNattKeepaliveStatus(
                         getHandler(), DataConnection.EVENT_KEEPALIVE_STATUS, null);
@@ -2723,6 +2746,7 @@ public class DataConnection extends StateMachine {
             // which is when IWLAN handover is ongoing. Instead of unregistering, the agent will
             // be transferred to the new data connection on the other transport.
             if (mNetworkAgent != null) {
+                syncQosToNetworkAgent();
                 if (mHandoverState == HANDOVER_STATE_IDLE) {
                     mNetworkAgent.unregister(DataConnection.this);
                 }
@@ -3145,6 +3169,9 @@ public class DataConnection extends StateMachine {
 
                     if (DBG) log(str);
                     if (dp.mApnContext != null) dp.mApnContext.requestLog(str);
+
+                    // Clear out existing qos sessions
+                    updateQosParameters(null);
 
                     if (dp.mTag == mTag) {
                         // Transition to inactive but send notifications after
@@ -3719,7 +3746,7 @@ public class DataConnection extends StateMachine {
         pw.println("mDownlinkBandwidth" + mDownlinkBandwidth);
         pw.println("mUplinkBandwidth=" + mUplinkBandwidth);
         pw.println("mDefaultQos=" + mDefaultQos);
-        pw.println("mQosSessions=" + mQosSessions);
+        pw.println("mQosBearerSessions=" + mQosBearerSessions);
         pw.println("disallowedApnTypes="
                 + ApnSetting.getApnTypesStringFromBitmask(getDisallowedApnTypes()));
         pw.println("mInstanceNumber=" + mInstanceNumber);

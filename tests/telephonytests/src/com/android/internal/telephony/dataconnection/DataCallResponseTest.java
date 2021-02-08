@@ -54,7 +54,7 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setMtuV4(1440)
                 .setMtuV6(1440)
                 .setDefaultQos(new EpsQos())
-                .setQosSessions(new ArrayList<>())
+                .setQosBearerSessions(new ArrayList<>())
                 .build();
 
         Parcel p = Parcel.obtain();
