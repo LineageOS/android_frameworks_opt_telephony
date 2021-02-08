@@ -2009,7 +2009,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         // NetCapability should switch to unmetered with fr=MMWAVE
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE))
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
@@ -2046,7 +2046,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         // NetCapability should switch to unmetered when fr=MMWAVE and MMWAVE unmetered
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE))
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
