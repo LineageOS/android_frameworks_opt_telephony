@@ -43,6 +43,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HARDWA
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMSI;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_RADIO_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_STATUS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLICING_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SMSC_ADDRESS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP;
@@ -2820,5 +2821,19 @@ public class RILTest extends TelephonyTest {
         // try to set a greater HalVersion will not success
         mRILUnderTest.setCompatVersion(testRequest, RIL.RADIO_HAL_VERSION_1_5);
         assertEquals(RIL.RADIO_HAL_VERSION_1_3, mRILUnderTest.getCompatVersion(testRequest));
+    }
+
+    @FlakyTest
+    @Test
+    public void testGetSlicingConfig() throws Exception {
+        // Use Radio HAL v1.6
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+        } catch (Exception e) {
+        }
+        mRILUnderTest.getSlicingConfig(obtainMessage());
+        verify(mRadioProxy).getSlicingConfig(mSerialNumberCaptor.capture());
+        verifyRILResponse_1_6(
+                mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_SLICING_CONFIG);
     }
 }
