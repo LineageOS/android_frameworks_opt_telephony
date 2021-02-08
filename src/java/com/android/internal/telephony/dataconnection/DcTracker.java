@@ -4381,7 +4381,7 @@ public class DcTracker extends Handler {
 
         if (isNetworkTypeUnmetered(NETWORK_TYPE_NR)) {
             if (mNrNsaMmwaveUnmetered) {
-                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED) {
                     if (DBG) log("NR unmetered for mmwave only");
                     return true;
                 }
@@ -4393,7 +4393,7 @@ public class DcTracker extends Handler {
                 }
                 return false;
             }
-            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
+            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
                     || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
                     || rat == NETWORK_TYPE_NR) {
                 if (DBG) log("NR unmetered for all frequencies");
@@ -4404,7 +4404,7 @@ public class DcTracker extends Handler {
 
         if (mNrNsaAllUnmetered) {
             if (mNrNsaMmwaveUnmetered) {
-                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED) {
                     if (DBG) log("NR NSA unmetered for mmwave only via carrier configs");
                     return true;
                 }
@@ -4416,7 +4416,7 @@ public class DcTracker extends Handler {
                 }
                 return false;
             }
-            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
+            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
                     || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA) {
                 if (DBG) log("NR NSA unmetered for all frequencies via carrier configs");
                 return true;
