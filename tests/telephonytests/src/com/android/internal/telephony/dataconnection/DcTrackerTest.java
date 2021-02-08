@@ -1336,7 +1336,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(FAKE_APN1, tdCaptor.getValue().getDnn());
+        assertEquals(FAKE_APN1, tdCaptor.getValue().getDataNetworkName());
         assertEquals(null, tdCaptor.getValue().getOsAppId());
 
         mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
@@ -1355,7 +1355,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(null, tdCaptor.getValue().getDnn());
+        assertEquals(null, tdCaptor.getValue().getDataNetworkName());
         assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
     }
 
@@ -1377,7 +1377,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(null, tdCaptor.getValue().getDnn());
+        assertEquals(null, tdCaptor.getValue().getDataNetworkName());
         assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
 
         // Check APN contexts with no DEFAULT set up
@@ -1401,7 +1401,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(FAKE_APN1, tdCaptor.getValue().getDnn());
+        assertEquals(FAKE_APN1, tdCaptor.getValue().getDataNetworkName());
         assertEquals(null, tdCaptor.getValue().getOsAppId());
 
         // Check APN contexts after DEFAULT is set up (and ENTERPRISE failure)
@@ -1429,7 +1429,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(null, tdCaptor.getValue().getDnn());
+        assertEquals(null, tdCaptor.getValue().getDataNetworkName());
         assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
 
         // Check APN contexts after DEFAULT is set up (and ENTERPRISE reenabled)
@@ -1466,9 +1466,9 @@ public class DcTrackerTest extends TelephonyTest {
                 anyBoolean(), any(Message.class));
         List<TrafficDescriptor> tds = tdCaptor.getAllValues();
         // [0] is default and [1] is enterprise, since default should be set up first
-        assertEquals(FAKE_APN1, tds.get(0).getDnn());
+        assertEquals(FAKE_APN1, tds.get(0).getDataNetworkName());
         assertEquals(null, tds.get(0).getOsAppId());
-        assertEquals(null, tds.get(1).getDnn());
+        assertEquals(null, tds.get(1).getDataNetworkName());
         assertEquals("ENTERPRISE", tds.get(1).getOsAppId());
 
         // Check APN contexts after DEFAULT and ENTERPRISE set up
@@ -1934,7 +1934,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(FAKE_APN1, tdCaptor.getValue().getDnn());
+        assertEquals(FAKE_APN1, tdCaptor.getValue().getDataNetworkName());
         assertEquals(null, tdCaptor.getValue().getOsAppId());
 
         // Check APN contexts after DEFAULT is set up
@@ -1962,7 +1962,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(null, tdCaptor.getValue().getDnn());
+        assertEquals(null, tdCaptor.getValue().getDataNetworkName());
         assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
 
         // Check APN contexts after ENTERPRISE is set up

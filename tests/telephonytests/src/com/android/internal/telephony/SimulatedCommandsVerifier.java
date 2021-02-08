@@ -1519,6 +1519,10 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void unregisterForSimPhonebookRecordsReceived(Handler h){
+    public void unregisterForSimPhonebookRecordsReceived(Handler h) {
+    }
+
+    @Override
+    public void getSlicingConfig(Message result) {
     }
 }
