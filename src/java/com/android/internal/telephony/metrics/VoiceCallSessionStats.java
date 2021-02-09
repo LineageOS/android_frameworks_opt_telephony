@@ -533,7 +533,7 @@ public class VoiceCallSessionStats {
         proto.bearerAtEnd = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
         proto.disconnectReasonCode = reasonInfo.mCode;
         proto.disconnectExtraCode = reasonInfo.mExtraCode;
-        proto.disconnectExtraMessage = reasonInfo.mExtraMessage;
+        proto.disconnectExtraMessage = ImsStats.filterExtraMessage(reasonInfo.mExtraMessage);
         finishCall(id);
     }
 
