@@ -236,10 +236,16 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testUpdateEmergencyCountryIso() throws Exception {
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
+
         mEmergencyNumberTrackerMock.updateEmergencyNumberDatabaseCountryChange("us");
         processAllMessages();
-
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("us"));
+        assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("us"));
+
+        mEmergencyNumberTrackerMock.updateEmergencyNumberDatabaseCountryChange("");
+        processAllMessages();
+        assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals(""));
+        assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("us"));
     }
 
     @Test
@@ -247,11 +253,20 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         setDsdsPhones();
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock2);
+
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("jp");
         processAllMessages();
-
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("jp"));
+        assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("jp"));
         assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("jp"));
+        assertTrue(mEmergencyNumberTrackerMock2.getLastKnownEmergencyCountryIso().equals("jp"));
+
+        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("");
+        processAllMessages();
+        assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals(""));
+        assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("jp"));
+        assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals(""));
+        assertTrue(mEmergencyNumberTrackerMock2.getLastKnownEmergencyCountryIso().equals("jp"));
     }
 
     @Test
