@@ -51,14 +51,12 @@ import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.DataState;
 import android.telephony.Annotation.NetworkType;
-import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -67,7 +65,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.Qos;
-import android.telephony.data.QosSession;
+import android.telephony.data.QosBearerSession;
 import android.telephony.data.SliceInfo;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -111,7 +109,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -305,7 +302,7 @@ public class DataConnection extends StateMachine {
     private int mDownlinkBandwidth = 14;
     private int mUplinkBandwidth = 14;
     private Qos mDefaultQos = null;
-    private List<QosSession> mQosSessions = new ArrayList<>();
+    private List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
     private SliceInfo mSliceInfo;
 
     /** The corresponding network agent for this data connection. */
@@ -336,7 +333,6 @@ public class DataConnection extends StateMachine {
     static final int EVENT_SETUP_DATA_CONNECTION_DONE = BASE + 1;
     static final int EVENT_DEACTIVATE_DONE = BASE + 3;
     static final int EVENT_DISCONNECT = BASE + 4;
-    static final int EVENT_RIL_CONNECTED = BASE + 5;
     static final int EVENT_DISCONNECT_ALL = BASE + 6;
     static final int EVENT_DATA_STATE_CHANGED = BASE + 7;
     static final int EVENT_TEAR_DOWN_NOW = BASE + 8;
@@ -378,7 +374,6 @@ public class DataConnection extends StateMachine {
                 "EVENT_SETUP_DATA_CONNECTION_DONE";
         sCmdToString[EVENT_DEACTIVATE_DONE - BASE] = "EVENT_DEACTIVATE_DONE";
         sCmdToString[EVENT_DISCONNECT - BASE] = "EVENT_DISCONNECT";
-        sCmdToString[EVENT_RIL_CONNECTED - BASE] = "EVENT_RIL_CONNECTED";
         sCmdToString[EVENT_DISCONNECT_ALL - BASE] = "EVENT_DISCONNECT_ALL";
         sCmdToString[EVENT_DATA_STATE_CHANGED - BASE] = "EVENT_DATA_STATE_CHANGED";
         sCmdToString[EVENT_TEAR_DOWN_NOW - BASE] = "EVENT_TEAR_DOWN_NOW";
@@ -618,9 +613,29 @@ public class DataConnection extends StateMachine {
         return mSliceInfo;
     }
 
-    public void updateQosParameters(DataCallResponse response) {
+    public void updateQosParameters(final @Nullable DataCallResponse response) {
+        if (response == null) {
+            mDefaultQos = null;
+            mQosBearerSessions = null;
+            return;
+        }
+
         mDefaultQos = response.getDefaultQos();
-        mQosSessions = response.getQosSessions();
+        mQosBearerSessions = response.getQosBearerSessions();
+
+        if (mNetworkAgent != null) {
+            syncQosToNetworkAgent();
+        }
+    }
+
+    private void syncQosToNetworkAgent() {
+        final DcNetworkAgent networkAgent = mNetworkAgent;
+        final List<QosBearerSession> qosBearerSessions = mQosBearerSessions;
+        if (qosBearerSessions == null) {
+            networkAgent.updateQosBearerSessions(new ArrayList<>());
+            return;
+        }
+        networkAgent.updateQosBearerSessions(qosBearerSessions);
     }
 
     /**
@@ -1625,60 +1640,6 @@ public class DataConnection extends StateMachine {
         return true;
     }
 
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean isDevice5GCapable() {
-        return (mPhone.getRadioAccessFamily() & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
-    }
-
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean isTempNotMeteredSupportedByCarrier() {
-        CarrierConfigManager configManager =
-                mPhone.getContext().getSystemService(CarrierConfigManager.class);
-        if (configManager != null) {
-            PersistableBundle bundle = configManager.getConfigForSubId(mSubId);
-            if (bundle != null) {
-                return bundle.getBoolean(
-                        CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL);
-            }
-        }
-
-        return false;
-    }
-
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean isCampedOn5G() {
-        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
-                .getTelephonyDisplayInfo();
-        int overrideNetworkType = displayInfo.getOverrideNetworkType();
-        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        int networkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
-                : nri.getAccessNetworkTechnology();
-        return networkType == TelephonyManager.NETWORK_TYPE_NR
-                || ((networkType == TelephonyManager.NETWORK_TYPE_LTE
-                || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
-                && (overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
-                || overrideNetworkType
-                == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE));
-    }
-
-    // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-    // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-    // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few devices
-    // and carriers.
-    private boolean tempNotMeteredPossible() {
-        return isDevice5GCapable() && isTempNotMeteredSupportedByCarrier() && isCampedOn5G();
-    }
-
     /**
      * Get the network capabilities for this data connection.
      *
@@ -1789,31 +1750,8 @@ public class DataConnection extends StateMachine {
                 !mPhone.getServiceState().getDataRoaming());
 
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED, !mCongestedOverride);
-        //result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
-        //        mUnmeteredOverride);
-
-        // TODO: Remove this after b/176119724 is fixed. This is just a workaround to prevent
-        // NET_CAPABILITY_TEMPORARILY_NOT_METERED incorrectly set on devices that are not supposed
-        // to use 5G unmetered network. Currently TEMPORARILY_NOT_METERED can only happen on few
-        // devices and carriers.
-        if (tempNotMeteredPossible()) {
-            result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
-                    mUnmeteredOverride);
-        } else if (mUnmeteredOverride) {
-            // If temp not metered is not possible, but mUnmeteredOverride got set, that means we
-            // hit the bug.
-            SubscriptionManager subscriptionManager = mPhone.getContext()
-                    .getSystemService(SubscriptionManager.class);
-            String message = "Unexpected temp not metered detected. carrier supported="
-                    + isTempNotMeteredSupportedByCarrier() + ", device 5G capable="
-                    + isDevice5GCapable() + ", display info="
-                    + mPhone.getDisplayInfoController().getTelephonyDisplayInfo()
-                    + ", subscription plans=" + subscriptionManager.getSubscriptionPlans(mSubId)
-                    + ", Service state=" + mPhone.getServiceState();
-            loge(message);
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("9151f0fc-01df-4afb-b744-9c4529055249"), message);
-        }
+        result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+                mUnmeteredOverride);
 
         result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
         result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
@@ -2695,6 +2633,9 @@ public class DataConnection extends StateMachine {
                 sendMessage(obtainMessage(EVENT_UPDATE_SUSPENDED_STATE));
             }
 
+            // The qos parameters are set when the call is connected
+            syncQosToNetworkAgent();
+
             if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.registerForNattKeepaliveStatus(
                         getHandler(), DataConnection.EVENT_KEEPALIVE_STATUS, null);
@@ -2723,6 +2664,7 @@ public class DataConnection extends StateMachine {
             // which is when IWLAN handover is ongoing. Instead of unregistering, the agent will
             // be transferred to the new data connection on the other transport.
             if (mNetworkAgent != null) {
+                syncQosToNetworkAgent();
                 if (mHandoverState == HANDOVER_STATE_IDLE) {
                     mNetworkAgent.unregister(DataConnection.this);
                 }
@@ -3145,6 +3087,9 @@ public class DataConnection extends StateMachine {
 
                     if (DBG) log(str);
                     if (dp.mApnContext != null) dp.mApnContext.requestLog(str);
+
+                    // Clear out existing qos sessions
+                    updateQosParameters(null);
 
                     if (dp.mTag == mTag) {
                         // Transition to inactive but send notifications after
@@ -3719,7 +3664,7 @@ public class DataConnection extends StateMachine {
         pw.println("mDownlinkBandwidth" + mDownlinkBandwidth);
         pw.println("mUplinkBandwidth=" + mUplinkBandwidth);
         pw.println("mDefaultQos=" + mDefaultQos);
-        pw.println("mQosSessions=" + mQosSessions);
+        pw.println("mQosBearerSessions=" + mQosBearerSessions);
         pw.println("disallowedApnTypes="
                 + ApnSetting.getApnTypesStringFromBitmask(getDisallowedApnTypes()));
         pw.println("mInstanceNumber=" + mInstanceNumber);
