@@ -182,8 +182,8 @@ public class NetworkRegistrationManager extends Handler {
         @Override
         public void binderDied() {
             // TODO: try to restart the service.
-            logd("NetworkService(" + mComponentName +  " transport type "
-                    + mTransportType + ") died.");
+            logd("Network service " + mComponentName + " for transport type "
+                    + AccessNetworkConstants.transportTypeToString(mTransportType) + " died.");
         }
     }
 

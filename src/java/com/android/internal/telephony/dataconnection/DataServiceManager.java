@@ -145,9 +145,9 @@ public class DataServiceManager extends Handler {
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
-            loge("DataService " + mLastBoundPackageName +  ", transport type " + mTransportType
-                    + " died.");
-            String message = "Iwlan Data Service Crashed," + mLastBoundPackageName;
+            String message = "Data service " + mLastBoundPackageName +  " for transport type "
+                    + AccessNetworkConstants.transportTypeToString(mTransportType) + " died.";
+            loge(message);
             AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
         }
     }
