@@ -121,9 +121,10 @@ public class DataConnectionReasons {
         DATA_ALREADY_CONNECTED(true),   // Data is already connected. No need to setup data again.
         ON_IWLAN(true),
         IN_ECBM(true),
-        ON_OTHER_TRANSPORT(true);   // When data retry occurs, the given APN type's preferred
+        ON_OTHER_TRANSPORT(true),   // When data retry occurs, the given APN type's preferred
                                     // transport might be already changed. In this case we
                                     // should disallow data retry.
+        DATA_SERVICE_NOT_READY(true);   // Underlying data service is not bound.
 
         private boolean mIsHardReason;
 
