@@ -114,13 +114,6 @@ public class DcController extends Handler {
         mDcTesterDeactivateAll = (TelephonyUtils.IS_DEBUGGABLE)
                 ? new DcTesterDeactivateAll(mPhone, DcController.this, this)
                 : null;
-
-        if (mPhone != null && mDataServiceManager.getTransportType()
-                == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-            mPhone.mCi.registerForRilConnected(this,
-                    DataConnection.EVENT_RIL_CONNECTED, null);
-        }
-
         mDataServiceManager.registerForDataCallListChanged(this,
                 DataConnection.EVENT_DATA_STATE_CHANGED);
     }
@@ -129,19 +122,6 @@ public class DcController extends Handler {
                                        DataServiceManager dataServiceManager, Looper looper,
                                        String tagSuffix) {
         return new DcController("Dcc" + tagSuffix, phone, dct, dataServiceManager, looper);
-    }
-
-    void dispose() {
-        log("dispose");
-        if (mPhone != null & mDataServiceManager.getTransportType()
-                == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-            mPhone.mCi.unregisterForRilConnected(this);
-        }
-        mDataServiceManager.unregisterForDataCallListChanged(this);
-
-        if (mDcTesterDeactivateAll != null) {
-            mDcTesterDeactivateAll.dispose();
-        }
     }
 
     void addDc(DataConnection dc) {
@@ -186,18 +166,6 @@ public class DcController extends Handler {
         AsyncResult ar;
 
         switch (msg.what) {
-            case DataConnection.EVENT_RIL_CONNECTED:
-                ar = (AsyncResult) msg.obj;
-                if (ar.exception == null) {
-                    if (DBG) {
-                        log("EVENT_RIL_CONNECTED mRilVersion="
-                                + ar.result);
-                    }
-                } else {
-                    log("Unexpected exception on EVENT_RIL_CONNECTED");
-                }
-                break;
-
             case DataConnection.EVENT_DATA_STATE_CHANGED:
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
@@ -205,6 +173,9 @@ public class DcController extends Handler {
                 } else {
                     log("EVENT_DATA_STATE_CHANGED: exception; likely radio not available, ignore");
                 }
+                break;
+            default:
+                loge("Unexpected event " + msg);
                 break;
         }
     }

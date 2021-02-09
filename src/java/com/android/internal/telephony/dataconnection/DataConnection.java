@@ -327,7 +327,6 @@ public class DataConnection extends StateMachine {
     static final int EVENT_SETUP_DATA_CONNECTION_DONE = BASE + 1;
     static final int EVENT_DEACTIVATE_DONE = BASE + 3;
     static final int EVENT_DISCONNECT = BASE + 4;
-    static final int EVENT_RIL_CONNECTED = BASE + 5;
     static final int EVENT_DISCONNECT_ALL = BASE + 6;
     static final int EVENT_DATA_STATE_CHANGED = BASE + 7;
     static final int EVENT_TEAR_DOWN_NOW = BASE + 8;
@@ -367,7 +366,6 @@ public class DataConnection extends StateMachine {
                 "EVENT_SETUP_DATA_CONNECTION_DONE";
         sCmdToString[EVENT_DEACTIVATE_DONE - BASE] = "EVENT_DEACTIVATE_DONE";
         sCmdToString[EVENT_DISCONNECT - BASE] = "EVENT_DISCONNECT";
-        sCmdToString[EVENT_RIL_CONNECTED - BASE] = "EVENT_RIL_CONNECTED";
         sCmdToString[EVENT_DISCONNECT_ALL - BASE] = "EVENT_DISCONNECT_ALL";
         sCmdToString[EVENT_DATA_STATE_CHANGED - BASE] = "EVENT_DATA_STATE_CHANGED";
         sCmdToString[EVENT_TEAR_DOWN_NOW - BASE] = "EVENT_TEAR_DOWN_NOW";
@@ -3100,7 +3098,10 @@ public class DataConnection extends StateMachine {
      */
     public void tearDownAll(String reason, @ReleaseNetworkType int releaseType,
                             Message onCompletedMsg) {
-        if (DBG) log("tearDownAll: reason=" + reason + ", releaseType=" + releaseType);
+        if (DBG) {
+            log("tearDownAll: reason=" + reason + ", releaseType="
+                    + DcTracker.releaseTypeToString(releaseType));
+        }
         sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
                 new DisconnectParams(null, reason, releaseType, onCompletedMsg));
     }
