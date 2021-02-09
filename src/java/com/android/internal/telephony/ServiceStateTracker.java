@@ -654,7 +654,6 @@ public class ServiceStateTracker extends Handler {
     private final Object mLteRsrpBoostLock = new Object();
     private static final int INVALID_LTE_EARFCN = -1;
 
-    // @GuardedBy("mSignalRequestRecords")
     private final List<SignalRequestRecord> mSignalRequestRecords = new ArrayList<>();
 
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
@@ -1795,10 +1794,7 @@ public class ServiceStateTracker extends Handler {
                     break;
                 }
 
-                synchronized (mSignalRequestRecords) {
-                    mSignalRequestRecords.add(record);
-                }
-
+                mSignalRequestRecords.add(record);
                 updateAlwaysReportSignalStrength();
                 updateReportingCriteria(getCarrierConfig());
 
@@ -1812,14 +1808,12 @@ public class ServiceStateTracker extends Handler {
                 SignalRequestRecord record = pair.first;
                 Message onCompleted = pair.second;
 
-                synchronized (mSignalRequestRecords) {
-                    // for loop with removal may cause ConcurrentModificationException
-                    Iterator<SignalRequestRecord> it = mSignalRequestRecords.iterator();
-                    while (it.hasNext()) {
-                        SignalRequestRecord srr = it.next();
-                        if (srr.mRequest.getLiveToken().equals(record.mRequest.getLiveToken())) {
-                            it.remove();
-                        }
+                // for loop with removal may cause ConcurrentModificationException
+                Iterator<SignalRequestRecord> it = mSignalRequestRecords.iterator();
+                while (it.hasNext()) {
+                    SignalRequestRecord srr = it.next();
+                    if (srr.mRequest.getLiveToken().equals(record.mRequest.getLiveToken())) {
+                        it.remove();
                     }
                 }
 
@@ -6136,21 +6130,19 @@ public class ServiceStateTracker extends Handler {
 
         final boolean isDeviceIdle = mPhone.isDeviceIdle();
         final int curSubId = mPhone.getSubId();
-        synchronized (mSignalRequestRecords) {
-            // The total number of record is small (10~15 tops). With each request has at most 5
-            // SignalThresholdInfo which has at most 8 thresholds arrays. So the nested loop should
-            // not be a concern here.
-            for (SignalRequestRecord record : mSignalRequestRecords) {
-                if (curSubId != record.mSubId
-                        || (isDeviceIdle && !record.mRequest.isReportingRequestedWhileIdle())) {
-                    continue;
-                }
-                for (SignalThresholdInfo info : record.mRequest.getSignalThresholdInfos()) {
-                    if (ran == info.getRadioAccessNetworkType()
-                            && measurement == info.getSignalMeasurementType()) {
-                        for (int appThreshold : info.getThresholds()) {
-                            target.add(appThreshold);
-                        }
+        // The total number of record is small (10~15 tops). With each request has at most 5
+        // SignalThresholdInfo which has at most 8 thresholds arrays. So the nested loop should
+        // not be a concern here.
+        for (SignalRequestRecord record : mSignalRequestRecords) {
+            if (curSubId != record.mSubId
+                    || (isDeviceIdle && !record.mRequest.isReportingRequestedWhileIdle())) {
+                continue;
+            }
+            for (SignalThresholdInfo info : record.mRequest.getSignalThresholdInfos()) {
+                if (ran == info.getRadioAccessNetworkType()
+                        && measurement == info.getSignalMeasurementType()) {
+                    for (int appThreshold : info.getThresholds()) {
+                        target.add(appThreshold);
                     }
                 }
             }
