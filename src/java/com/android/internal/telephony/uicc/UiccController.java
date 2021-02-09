@@ -193,6 +193,9 @@ public class UiccController extends Handler {
     private UiccStateChangedLauncher mLauncher;
     private RadioConfig mRadioConfig;
 
+    /* The storage for the PIN codes. */
+    private final PinStorage mPinStorage;
+
     // LocalLog buffer to hold important SIM related events for debugging
     private static LocalLog sLocalLog = new LocalLog(TelephonyUtils.IS_DEBUGGABLE ? 250 : 100);
 
@@ -254,6 +257,8 @@ public class UiccController extends Handler {
 
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
+
+        mPinStorage = new PinStorage(mContext);
     }
 
     /**
@@ -887,6 +892,11 @@ public class UiccController extends Handler {
         return mDefaultEuiccCardId;
     }
 
+    /** Get the {@link PinStorage}. */
+    public PinStorage getPinStorage() {
+        return mPinStorage;
+    }
+
     private ArrayList<String> loadCardStrings() {
         String cardStrings =
                 PreferenceManager.getDefaultSharedPreferences(mContext).getString(CARD_STRINGS, "");
@@ -1305,5 +1315,6 @@ public class UiccController extends Handler {
         }
         pw.println(" sLocalLog= ");
         sLocalLog.dump(fd, pw, args);
+        mPinStorage.dump(fd, pw, args);
     }
 }

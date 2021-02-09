@@ -1,0 +1,62 @@
+/*
+ * Copyright (C) 2020 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+package telephonyPinStorage;
+
+option java_package = "com.android.internal.telephony";
+option java_outer_classname = "StoredPinProto";
+
+// Stores information about PIN of a SIM card.
+message StoredPin {
+    // Status of the PIN.
+    enum PinStatus {
+        // The PIN code is stored, but cannot be used for automatic verification.
+        AVAILABLE = 1;
+
+        // The PIN code is stored and will be usable for automatic verification after the
+        // unattended reboot is completed.
+        REBOOT_READY = 2;
+
+        // The PIN code is stored and can be used for automatic verification.
+        VERIFICATION_READY = 3;
+    }
+
+    // ICCID of the SIM card
+    optional string iccid = 1;
+
+    // PIN code
+    optional string pin = 2;
+
+    // Slot number
+    optional int32 slot_id = 3;
+
+    // Status of the PIN code
+    optional PinStatus status = 4;
+
+    // Boot count when the proto was generated.
+    optional int32 boot_count = 5;
+}
+
+// Stores the encrypted version of StoredPin.
+message EncryptedPin {
+    // Encrypted StoredPin
+    optional bytes encrypted_stored_pin = 1;
+
+    // Initialization vector
+    optional bytes iv = 2;
+}
