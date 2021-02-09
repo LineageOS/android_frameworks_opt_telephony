@@ -33,6 +33,7 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.Annotation.ApnType;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnThrottleStatus;
@@ -52,6 +53,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -62,6 +64,8 @@ import java.util.stream.Collectors;
 public class AccessNetworksManager extends Handler {
     private static final String TAG = AccessNetworksManager.class.getSimpleName();
     private static final boolean DBG = false;
+    private final UUID mAnomalyUUID = UUID.fromString("c2d1a639-00e2-4561-9619-6acf37d90590");
+    private String mLastBoundPackageName;
 
     private static final int[] SUPPORTED_APN_TYPES = {
             ApnSetting.TYPE_DEFAULT,
@@ -156,7 +160,9 @@ public class AccessNetworksManager extends Handler {
         @Override
         public void binderDied() {
             // TODO: try to rebind the service.
-            loge("QualifiedNetworksService(" + mTargetBindingPackageName + ") died.");
+            loge("QualifiedNetworksService(" + mLastBoundPackageName + ") died.");
+            String message = "Qualified Network Service Crashed," + mLastBoundPackageName;
+            AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
         }
     }
 
@@ -178,6 +184,7 @@ public class AccessNetworksManager extends Handler {
             if (DBG) log("onServiceConnected " + name);
             mIQualifiedNetworksService = IQualifiedNetworksService.Stub.asInterface(service);
             mDeathRecipient = new AccessNetworksManagerDeathRecipient();
+            mLastBoundPackageName = getQualifiedNetworksServicePackageName();
 
             try {
                 service.linkToDeath(mDeathRecipient, 0 /* flags */);
