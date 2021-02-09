@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.telephony.data.DataCallResponse.PDU_SESSION_ID_NOT_SET;
+
 import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_HANDOVER;
 
 import android.annotation.IntDef;
@@ -152,6 +154,7 @@ public class DataConnection extends StateMachine {
      */
     private static final int HANDOVER_STATE_COMPLETED = 3;
 
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"HANDOVER_STATE_"}, value = {
@@ -180,6 +183,9 @@ public class DataConnection extends StateMachine {
 
     // The Tester for failing all bringup's
     private DcTesterFailBringUpAll mDcTesterFailBringUpAll;
+
+    // Whether or not the data connection should allocate its own pdu session id
+    private final boolean mDoAllocatePduSessionId;
 
     private static AtomicInteger mInstanceNumber = new AtomicInteger(0);
     private AsyncChannel mAc;
@@ -357,7 +363,9 @@ public class DataConnection extends StateMachine {
     static final int EVENT_START_HANDOVER = BASE + 34;
     static final int EVENT_CANCEL_HANDOVER = BASE + 35;
     static final int EVENT_START_HANDOVER_ON_TARGET = BASE + 36;
-    private static final int CMD_TO_STRING_COUNT = EVENT_START_HANDOVER_ON_TARGET - BASE + 1;
+    static final int EVENT_ALLOCATE_PDU_SESSION_ID = BASE + 37;
+    static final int EVENT_RELEASE_PDU_SESSION_ID = BASE + 38;
+    private static final int CMD_TO_STRING_COUNT = EVENT_RELEASE_PDU_SESSION_ID - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -405,6 +413,8 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_START_HANDOVER - BASE] = "EVENT_START_HANDOVER";
         sCmdToString[EVENT_CANCEL_HANDOVER - BASE] = "EVENT_CANCEL_HANDOVER";
         sCmdToString[EVENT_START_HANDOVER_ON_TARGET - BASE] = "EVENT_START_HANDOVER_ON_TARGET";
+        sCmdToString[EVENT_ALLOCATE_PDU_SESSION_ID - BASE] = "EVENT_ALLOCATE_PDU_SESSION_ID";
+        sCmdToString[EVENT_RELEASE_PDU_SESSION_ID - BASE] = "EVENT_RELEASE_PDU_SESSION_ID";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -429,14 +439,15 @@ public class DataConnection extends StateMachine {
     public static DataConnection makeDataConnection(Phone phone, int id, DcTracker dct,
                                                     DataServiceManager dataServiceManager,
                                                     DcTesterFailBringUpAll failBringUpAll,
-                                                    DcController dcc) {
+                                                    DcController dcc,
+                                                    boolean doAllocatePduSessionId) {
         String transportType = (dataServiceManager.getTransportType()
                 == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 ? "C"   // Cellular
                 : "I";  // IWLAN
         DataConnection dc = new DataConnection(phone, transportType + "-"
                 + mInstanceNumber.incrementAndGet(), id, dct, dataServiceManager, failBringUpAll,
-                dcc);
+                dcc, doAllocatePduSessionId);
         dc.start();
         if (DBG) dc.log("Made " + dc.getName());
         return dc;
@@ -646,7 +657,12 @@ public class DataConnection extends StateMachine {
         return result;
     }
 
-    void setPduSessionId(int pduSessionId) {
+    /**
+     * Sets the pdu session id of the data connection
+     * @param pduSessionId pdu session id to set
+     */
+    @VisibleForTesting
+    public void setPduSessionId(int pduSessionId) {
         if (mPduSessionId != pduSessionId) {
             logd("Changing pdu session id from: " + mPduSessionId + " to: " + pduSessionId + ", "
                     + "Handover state: " + handoverStateToString(this.mHandoverState));
@@ -686,7 +702,8 @@ public class DataConnection extends StateMachine {
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
     private DataConnection(Phone phone, String tagSuffix, int id,
                            DcTracker dct, DataServiceManager dataServiceManager,
-                           DcTesterFailBringUpAll failBringUpAll, DcController dcc) {
+                           DcTesterFailBringUpAll failBringUpAll, DcController dcc,
+                           boolean doAllocatePduSessionId) {
         super("DC-" + tagSuffix, dcc);
         mTagSuffix = tagSuffix;
         setLogRecSize(300);
@@ -704,6 +721,7 @@ public class DataConnection extends StateMachine {
         mDataRegState = mPhone.getServiceState().getDataRegistrationState();
         mIsSuspended = false;
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
+        mDoAllocatePduSessionId = doAllocatePduSessionId;
 
         int networkType = getNetworkType();
         mRilRat = ServiceState.networkTypeToRilRadioTechnology(networkType);
@@ -860,19 +878,32 @@ public class DataConnection extends StateMachine {
             return DataFailCause.NONE;
         }
 
-        mDataServiceManager.setupDataCall(
-                ServiceState.rilRadioTechnologyToAccessNetworkType(cp.mRilRat),
-                dp,
-                isModemRoaming,
-                allowRoaming,
-                reason,
-                linkProperties,
-                DataCallResponse.PDU_SESSION_ID_NOT_SET,
-                null,
-                msg);
-        TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
-                dp.getProfileId(), dp.getApn(), dp.getProtocolType());
+        allocatePduSessionId(psi -> {
+            this.setPduSessionId(psi);
+            mDataServiceManager.setupDataCall(
+                    ServiceState.rilRadioTechnologyToAccessNetworkType(cp.mRilRat),
+                    dp,
+                    isModemRoaming,
+                    allowRoaming,
+                    reason,
+                    linkProperties,
+                    psi,
+                    null,
+                    msg);
+            TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(), cp.mRilRat,
+                    dp.getProfileId(), dp.getApn(), dp.getProtocolType());
+        });
         return DataFailCause.NONE;
+    }
+
+    private void allocatePduSessionId(Consumer<Integer> allocateCallback) {
+        if (getDoAllocatePduSessionId()) {
+            Message msg = this.obtainMessage(EVENT_ALLOCATE_PDU_SESSION_ID);
+            msg.obj = allocateCallback;
+            mPhone.mCi.allocatePduSessionId(msg);
+        } else {
+            allocateCallback.accept(EVENT_ALLOCATE_PDU_SESSION_ID);
+        }
     }
 
     private void requestHandover(boolean inCorrectState, DataConnection srcDc,
@@ -1031,9 +1062,31 @@ public class DataConnection extends StateMachine {
         String str = "tearDownData. mCid=" + mCid + ", reason=" + discReason;
         if (DBG) log(str);
         if (apnContext != null) apnContext.requestLog(str);
-        mDataServiceManager.deactivateDataCall(mCid, discReason,
-                obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, o));
-        mDataCallSessionStats.setDeactivateDataCallReason(discReason);
+
+
+        //Needed to be final to work in a closure
+        final int fDiscReason = discReason;
+        releasePduSessionId(() -> {
+            // This is run after release pdu session id is complete
+            this.setPduSessionId(PDU_SESSION_ID_NOT_SET);
+            mDataServiceManager.deactivateDataCall(mCid, fDiscReason,
+                    obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, o));
+            mDataCallSessionStats.setDeactivateDataCallReason(fDiscReason);
+        });
+    }
+
+    private void releasePduSessionId(Runnable releaseCallback) {
+        // If we are not in the middle of a handover and have a real pdu session id, then we release
+        if (mHandoverState != HANDOVER_STATE_BEING_TRANSFERRED
+                && this.getPduSessionId() != PDU_SESSION_ID_NOT_SET) {
+            Message msg = this.obtainMessage(EVENT_RELEASE_PDU_SESSION_ID);
+            msg.obj = releaseCallback;
+            mPhone.mCi.releasePduSessionId(msg, this.getPduSessionId());
+        } else {
+            // Just go and run the callback since we either have no pdu session id to release
+            // or we are in the middle of a handover
+            releaseCallback.run();
+        }
     }
 
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
@@ -1225,12 +1278,21 @@ public class DataConnection extends StateMachine {
         } else {
             if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
             mCid = response.getId();
-            updatePcscfAddr(response);
             updateQosParameters(response);
             updateSliceInfo(response);
-            result = updateLinkProperty(response).setupResult;
 
-            setPduSessionId(response.getPduSessionId());
+            if (response.getPduSessionId() != getPduSessionId()) {
+                if (getDoAllocatePduSessionId()) {
+                    loge("The pdu session id on DataCallResponse is different than the one "
+                            + "allocated.  response psi=" + response.getPduSessionId()
+                            + ", allocated psi=" + getPduSessionId());
+                } else {
+                    setPduSessionId(response.getPduSessionId());
+                }
+            }
+
+            updatePcscfAddr(response);
+            result = updateLinkProperty(response).setupResult;
         }
 
         return result;
@@ -1843,6 +1905,10 @@ public class DataConnection extends StateMachine {
         return result;
     }
 
+    private boolean getDoAllocatePduSessionId() {
+        return mDoAllocatePduSessionId;
+    }
+
     /**
      * Initialize connection, this will fail if the
      * apnSettings are not compatible.
@@ -2024,6 +2090,46 @@ public class DataConnection extends StateMachine {
                                 + DataServiceCallback.resultCodeToString(msg.arg1));
                     }
                     break;
+                case EVENT_RELEASE_PDU_SESSION_ID: {
+                    // We do the same thing in all state in order to preserve the existing workflow
+                    final AsyncResult asyncResult = (AsyncResult) msg.obj;
+                    if (asyncResult == null) {
+                        loge("EVENT_RELEASE_PDU_SESSION_ID: asyncResult is null!");
+                    } else {
+                        if (msg.obj != null) {
+                            if (DBG) logd("EVENT_RELEASE_PDU_SESSION_ID: id released");
+                            Runnable runnable = (Runnable) asyncResult.userObj;
+                            runnable.run();
+                        } else {
+                            loge("EVENT_RELEASE_PDU_SESSION_ID: no runnable set");
+                        }
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_ALLOCATE_PDU_SESSION_ID: {
+                    // We do the same thing in all state in order to preserve the existing workflow
+                    final AsyncResult asyncResult = (AsyncResult) msg.obj;
+                    if (asyncResult == null) {
+                        loge("EVENT_ALLOCATE_PDU_SESSION_ID: asyncResult is null!");
+                    } else {
+                        Consumer<Integer> onAllocated = (Consumer<Integer>) asyncResult.userObj;
+                        if (asyncResult.exception != null) {
+                            loge("EVENT_ALLOCATE_PDU_SESSION_ID: exception",
+                                    asyncResult.exception);
+                            onAllocated.accept(PDU_SESSION_ID_NOT_SET);
+                        } else if (asyncResult.result == null) {
+                            loge("EVENT_ALLOCATE_PDU_SESSION_ID: result null, no id");
+                            onAllocated.accept(PDU_SESSION_ID_NOT_SET);
+                        } else {
+                            int psi = (int) asyncResult.result;
+                            if (DBG) logd("EVENT_ALLOCATE_PDU_SESSION_ID: psi=" + psi);
+                            onAllocated.accept(psi);
+                        }
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
                 default:
                     if (DBG) {
                         log("DcDefaultState: ignore msg.what=" + getWhatToString(msg.what));
@@ -2904,6 +3010,7 @@ public class DataConnection extends StateMachine {
                     r.accept(msg.arg1);
                     retVal = HANDLED;
                     break;
+
                 default:
                     if (VDBG) {
                         log("DcActiveState not handled msg.what=" + getWhatToString(msg.what));
@@ -2947,6 +3054,7 @@ public class DataConnection extends StateMachine {
 
                     String str = "DcDisconnectingState msg.what=EVENT_DEACTIVATE_DONE RefCount="
                             + mApnContexts.size();
+
                     if (DBG) log(str);
                     if (dp.mApnContext != null) dp.mApnContext.requestLog(str);
 
