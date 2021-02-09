@@ -107,7 +107,7 @@ import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.Qos;
-import android.telephony.data.QosSession;
+import android.telephony.data.QosBearerSession;
 import android.telephony.data.SliceInfo;
 import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
@@ -1336,12 +1336,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void emergencyDial(String address, EmergencyNumber emergencyNumberInfo,
-                               boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
-                               Message result) {
+            boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo, Message result) {
         IRadio radioProxy = getRadioProxy(result);
-        // IRadio V1.4
-        android.hardware.radio.V1_4.IRadio radioProxy14 =
-                (android.hardware.radio.V1_4.IRadio) radioProxy;
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_EMERGENCY_DIAL, result,
                     mRILDefaultWorkSource);
@@ -1361,18 +1357,40 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
             }
 
-            try {
-                radioProxy14.emergencyDial(rr.mSerial, dialInfo,
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                        (android.hardware.radio.V1_6.IRadio) radioProxy;
+                try {
+                    radioProxy16.emergencyDial_1_6(rr.mSerial, dialInfo,
                         emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
                         emergencyNumberInfo.getEmergencyUrns() != null
                                 ? new ArrayList(emergencyNumberInfo.getEmergencyUrns())
-                                : new ArrayList<>(),
+                                        : new ArrayList<>(),
                         emergencyNumberInfo.getEmergencyCallRouting(),
                         hasKnownUserIntentEmergency,
                         emergencyNumberInfo.getEmergencyNumberSourceBitmask()
                                 == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "emergencyDial_1_6", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)) {
+                android.hardware.radio.V1_4.IRadio radioProxy14 =
+                        (android.hardware.radio.V1_4.IRadio) radioProxy;
+                try {
+                    radioProxy14.emergencyDial(rr.mSerial, dialInfo,
+                            emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
+                            emergencyNumberInfo.getEmergencyUrns() != null
+                                    ? new ArrayList(emergencyNumberInfo.getEmergencyUrns())
+                                            : new ArrayList<>(),
+                            emergencyNumberInfo.getEmergencyCallRouting(),
+                            hasKnownUserIntentEmergency,
+                            emergencyNumberInfo.getEmergencyNumberSourceBitmask()
+                                    == EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "emergencyDial", e);
+                }
+            } else {
+                riljLoge("emergencyDial is not supported with 1.4 below IRadio");
             }
         }
     }
@@ -7389,7 +7407,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int pduSessionId = DataCallResponse.PDU_SESSION_ID_NOT_SET;
 
         List<LinkAddress> laList = new ArrayList<>();
-        List<QosSession> qosSessions = new ArrayList<>();
+        List<QosBearerSession> qosSessions = new ArrayList<>();
         SliceInfo sliceInfo = null;
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
@@ -7479,7 +7497,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             pduSessionId = result.pduSessionId;
             defaultQos = Qos.create(result.defaultQos);
             qosSessions = result.qosSessions.stream().map(session ->
-                    QosSession.create(session)).collect(Collectors.toList());
+                    QosBearerSession.create(session)).collect(Collectors.toList());
             sliceInfo = convertToSliceInfo(result.sliceInfo);
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
@@ -7548,7 +7566,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setHandoverFailureMode(handoverFailureMode)
                 .setPduSessionId(pduSessionId)
                 .setDefaultQos(defaultQos)
-                .setQosSessions(qosSessions)
+                .setQosBearerSessions(qosSessions)
                 .setSliceInfo(sliceInfo)
                 .build();
     }
