@@ -1071,6 +1071,23 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testGetActiveSubscriptionInfoListWithIdentifierAccessWithoutNumberAccess()
+            throws Exception {
+        // An app with access to device identifiers may not have access to the device phone number
+        // (ie an app that passes the device / profile owner check or an app that has been granted
+        // the device identifiers appop); this test verifies that an app with identifier access
+        // can read the ICC ID but does not receive the phone number.
+        testInsertSim();
+
+        List<SubscriptionInfo> subInfoList =
+                mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage);
+
+        assertEquals(1, subInfoList.size());
+        SubscriptionInfo subInfo = subInfoList.get(0);
+        assertEquals("test", subInfo.getIccId());
+    }
+
+    @Test
     public void testGetActiveSubscriptionInfoListWithPrivilegedPermission() throws Exception {
         // If the calling package has the READ_PRIVILEGED_PHONE_STATE permission or carrier
         // privileges the ICC ID should be available in the SubscriptionInfo objects in the List.
@@ -1144,9 +1161,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     private int getFirstSubId() throws Exception {
+        return getSubIdAtIndex(0);
+    }
+
+    private int getSubIdAtIndex(int index) throws Exception {
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
-        assertTrue(subIds != null && subIds.length != 0);
-        return subIds[0];
+        assertTrue(subIds != null && subIds.length > index);
+        return subIds[index];
     }
 
     @Test
