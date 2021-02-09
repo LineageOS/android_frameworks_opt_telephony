@@ -50,11 +50,15 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTerm
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccSlot;
 
+import com.google.common.collect.ImmutableMap;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+
+import java.util.Map;
 
 public class ImsStatsTest extends TelephonyTest {
     private static final long START_TIME_MILLIS = 2000L;
@@ -523,8 +527,8 @@ public class ImsStatsTest extends TelephonyTest {
     public void onImsUnregistered_longMessage() throws Exception {
         String longExtraMessage =
                 "This message is too long -- it has more than 128 characters: "
-                        + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                        + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                        + "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+                        + "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
                         + " This is the end of the message.";
         mImsStats.onImsUnregistered(
                 new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0, longExtraMessage));
@@ -543,6 +547,124 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(128, termination.extraMessage.length());
         assertTrue(longExtraMessage.startsWith(termination.extraMessage));
         verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void filterExtraMessage_noNeedToFilter() throws Exception {
+        final String[] messages = {
+            "Q.850;cause=16",
+            "SIP;cause=200",
+            "q.850",
+            "600",
+            "Call ended during conference merge process.",
+            "cc_term_noreply_tmr_expired",
+            "[e] user triggered",
+            "normal end of call",
+            "cc_q850_017_user_busy",
+            "service unavailable (1:223)",
+            "IP Change",
+            "rtp-rtcp timeout",
+            "0x0000030b",
+            "CD-021: ISP Problem",
+            "IP;cause=487;text=\"Originator canceled;Canceled(t),iCode=CC_SIP_REQUEST_TERMINATED\"",
+            "pt: asr: insufficient_bearer_resources",
+            "po: aaa: result_code=0 exp_result_code=5065",
+            "a peer released.total external peer:1. allowed:2. clear the remain parties(o),"
+                    + "icode=cc_sip_request_timeout"
+        };
+
+        for (String message : messages) {
+            assertEquals(message, ImsStats.filterExtraMessage(message));
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void filterExtraMessage_needToFilter() throws Exception {
+        Map<String, String> originalAndExpectedMessages = ImmutableMap.<String, String>builder()
+                // UUIDs
+                .put(
+                        "Q.850;cause=34;text=\"12345678-abcd-ef12-34ab-000000000012;"
+                                + "User is busy and currently active on another call.\"",
+                        "Q.850;cause=34;text=\"<UUID_REDACTED>;"
+                                + "User is busy and currently active on another call.\"")
+                .put(
+                        "Q.850;cause=34;text=\"12345678-ABCD-EF12-34AB-000000000012;"
+                                + "User is busy and currently active on another call.\"",
+                        "Q.850;cause=34;text=\"<UUID_REDACTED>;"
+                                + "User is busy and currently active on another call.\"")
+                // URIs
+                .put(
+                        "SIP;cause=500;text=\"sip:+1234567890@irps.voip.telefonica.de;user=phone"
+                                + " clear the call.;Canceled(t)\"",
+                        "SIP;cause=500;text=\"sip:<REDACTED>;user=phone"
+                                + " clear the call.;Canceled(t)\"")
+                .put(
+                        "SIP;cause=500;text=\"SIP:+1234567890@irps.voip.telefonica.de;user=phone"
+                                + " clear the call.;Canceled(t)\"",
+                        "SIP;cause=500;text=\"SIP:<REDACTED>;user=phone"
+                                + " clear the call.;Canceled(t)\"")
+                // IP addresses
+                .put(
+                        "dtls handshake error[timeout][2607:F8B0::1] and client disconnected",
+                        "dtls handshake error[timeout][<IPV6_REDACTED>] and client disconnected")
+                .put(
+                        "dtls handshake error[timeout][2607:f8b0::1] and client disconnected",
+                        "dtls handshake error[timeout][<IPV6_REDACTED>] and client disconnected")
+                .put(
+                        "dtls handshake error 2607:f8b0:1:2:3:4:56:789",
+                        "dtls handshake error <IPV6_REDACTED>")
+                .put(
+                        "dtls handshake error[timeout][8.8.8.8] and client disconnected",
+                        "dtls handshake error[timeout][<IPV4_REDACTED>] and client disconnected")
+                .put("8.8.8.8 client disconnected", "<IPV4_REDACTED> client disconnected")
+                // IMEIs/IMSIs
+                .put(
+                        "call completed elsewhere by instance 313460000000001",
+                        "call completed elsewhere by instance <IMEI_IMSI_REDACTED>")
+                .put(
+                        "call completed elsewhere by instance 31346000-000000-1",
+                        "call completed elsewhere by instance <IMEI_REDACTED>")
+                .put(
+                        "call completed elsewhere by instance 31-346000-000000-1",
+                        "call completed elsewhere by instance <IMEI_REDACTED>")
+                .put(
+                        "call completed elsewhere by instance 31-346000-000000-12",
+                        "call completed elsewhere by instance <IMEI_REDACTED>")
+                .put(
+                        "399 123.4567.89.ATS.blah.ims.mnc123.mcc456.3gppnetwork.org"
+                                + " \"Failure cause code is sip status code.\"",
+                        "399 <HOSTNAME_REDACTED> \"Failure cause code is sip status code.\"")
+                // Unknown IDs
+                .put(
+                        "01200.30004.a.560.789.123.0.0.00045.00000006"
+                                + " released the session because of netfail by no media",
+                        // "123.0.0.0" looks like IPv4
+                        "<ID_REDACTED><IPV4_REDACTED><ID_REDACTED>"
+                                + " released the session because of netfail by no media")
+                .put(
+                        "example.cpp,1234,12-300-450-67-89123456:-12345678,"
+                                + "tyringtimeout:timer b expired(t)",
+                        "example.cpp,1234,<ID_REDACTED>:-<ID_REDACTED>,"
+                                + "tyringtimeout:timer b expired(t)")
+                .put(
+                        "ss120000f123l1234 invite 2xx after cancel rsp has been received",
+                        "ss<ID_REDACTED>l1234 invite 2xx after cancel rsp has been received")
+                .put(
+                        "X.int;reasoncode=0x00000123;add-info=0123.00AB.0001",
+                        "X.int;reasoncode=0x00000123;add-info=<ID_REDACTED>")
+                .put(
+                        "X.int;reasoncode=0x00123abc;add-info=0123.00AB.0001",
+                        "X.int;reasoncode=0x<ID_REDACTED>;add-info=<ID_REDACTED>")
+                .put(
+                        "Cx Unable To Comply 1203045067D8009",
+                        "Cx Unable To Comply <ID_REDACTED>")
+                .build();
+
+        for (Map.Entry<String, String> entry : originalAndExpectedMessages.entrySet()) {
+            assertEquals(entry.getValue(), ImsStats.filterExtraMessage(entry.getKey()));
+        }
     }
 
     @Test
