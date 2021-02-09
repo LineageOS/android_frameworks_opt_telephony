@@ -165,7 +165,7 @@ public class SignalThresholdInfoTest extends TestCase {
                 .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
                 .setHysteresisMs(0)
                 .setHysteresisDb(0)
-                .setThresholdsUnlimited(new int[]{})
+                .setThresholds(new int[]{}, true /*isSystem*/)
                 .setIsEnabled(false)
                 .build());
         stList.add(new SignalThresholdInfo.Builder()
