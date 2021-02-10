@@ -23,16 +23,6 @@ import android.os.Message;
  */
 public interface DtmfAdapter {
     /**
-     * Called when a DTMF digit is received from the network.
-     * <p>
-     * In concrete implementations, should be linked to
-     * {@link android.telephony.ims.ImsCallSessionListener#callSessionDtmfReceived(char)}.
-     *
-     * @param digit The received DTMF digit.
-     */
-    void onDtmfReceived(char digit);
-
-    /**
      * Called when a DTMF digit should be sent to the network.
      * <p>
      * In concrete implementations, should be linked to
