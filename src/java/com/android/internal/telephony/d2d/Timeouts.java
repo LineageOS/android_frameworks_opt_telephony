@@ -25,12 +25,34 @@ import android.provider.Settings;
 public final class Timeouts {
 
     public static class Adapter {
-        public Adapter() {
+        private final ContentResolver mContentResolver;
 
+        public Adapter(ContentResolver cr) {
+            mContentResolver = cr;
         }
 
-        public long getRtpMessageAckDurationMillis(ContentResolver cr)  {
-            return Timeouts.getRtpMessageAckDurationMillis(cr);
+        public long getRtpMessageAckDurationMillis()  {
+            return Timeouts.getRtpMessageAckDurationMillis(mContentResolver);
+        }
+
+        /**
+         * The minimum interval between DTMF digits.
+         * @return minimum interval in millis.
+         */
+        public long getDtmfMinimumIntervalMillis() {
+            return Timeouts.getDtmfMinimumIntervalMillis(mContentResolver);
+        }
+
+        public long getMaxDurationOfDtmfMessageMillis() {
+            return Timeouts.getMaxDurationOfDtmfMessageMillis(mContentResolver);
+        }
+
+        public long getDtmfDurationFuzzMillis() {
+            return Timeouts.getDtmfDurationFuzzMillis(mContentResolver);
+        }
+
+        public long getDtmfNegotiationTimeoutMillis() {
+            return Timeouts.getDtmfNegotiationTimeoutMillis(mContentResolver);
         }
     }
 
@@ -59,4 +81,45 @@ public final class Timeouts {
     public static long getRtpMessageAckDurationMillis(ContentResolver cr) {
         return get(cr, "rtp_message_ack_duration_millis", 1000L);
     }
+
+    /**
+     * Determines the minimum duration between DTMF digits.  Digits are sent with this much spacing
+     * between them.
+     * @param cr
+     * @return
+     */
+    public static long getDtmfMinimumIntervalMillis(ContentResolver cr) {
+        return get(cr, "dtmf_minimum_interval_millis", 100L);
+    }
+
+    /**
+     * Determines the maximum amount of time to wait for a single DTMF sequence.
+     * @param cr
+     * @return
+     */
+    public static long getMaxDurationOfDtmfMessageMillis(ContentResolver cr) {
+        return get(cr, "dtmf_max_message_duration_millis", 1000L);
+    }
+
+    /**
+     * Determines the maximum amount of time to wait for negotiation of the DTMF protocol.
+     * @param cr
+     * @return
+     */
+    public static long getDtmfNegotiationTimeoutMillis(ContentResolver cr) {
+        return get(cr, "dtmf_negotiation_timeout_millis", 1000L);
+    }
+
+    /**
+     * A random amount of time up to this amount will be added to
+     * {@link #getMaxDurationOfDtmfMessageMillis(ContentResolver)} when determining how long to
+     * wait before sending a DTMF message.  This fuzz factor is used to account for timing
+     * discrepancies between devices.
+     * @param cr
+     * @return
+     */
+    public static long getDtmfDurationFuzzMillis(ContentResolver cr) {
+        return get(cr, "dtmf_duration_fuzz_millis", 10L);
+    }
+
 }

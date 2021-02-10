@@ -338,11 +338,13 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
             // Headers were negotiated during SDP, so we can assume negotiation is complete and
             // signal to the communicator that we can use this transport.
             mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_COMPLETE;
+            Log.i(this, "startNegotiation: header extensions available, negotiation success");
             notifyProtocolReady();
         } else {
             // Headers failed to be negotiated during SDP.   Assume protocol is not available.
             // TODO: Implement fallback logic where we still try an SDP probe/response.
             mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_FAILED;
+            Log.i(this, "startNegotiation: header extensions not available; negotiation failed");
             notifyProtocolUnavailable();
         }
     }
