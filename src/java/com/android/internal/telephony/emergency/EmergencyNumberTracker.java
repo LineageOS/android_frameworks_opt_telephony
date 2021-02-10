@@ -95,6 +95,7 @@ public class EmergencyNumberTracker extends Handler {
     private final CommandsInterface mCi;
     private final Phone mPhone;
     private String mCountryIso;
+    private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
     /**
      * Indicates if the country iso is set by another subscription.
@@ -150,16 +151,6 @@ public class EmergencyNumberTracker extends Handler {
                             TelephonyManager.EXTRA_NETWORK_COUNTRY);
                     logd("ACTION_NETWORK_COUNTRY_CHANGED: PhoneId: " + phoneId + " CountryIso: "
                             + countryIso);
-
-                    // Sometimes the country is updated as an empty string when the network signal
-                    // is lost; though we may not call emergency when there is no signal, we want
-                    // to keep the old country iso to provide country-related emergency numbers,
-                    // because they think they are still in that country. We don't need to update
-                    // country change in this case. We will still need to update the empty string
-                    // if device is in APM.
-                    if (TextUtils.isEmpty(countryIso) && !isAirplaneModeEnabled()) {
-                        return;
-                    }
 
                     // Update country iso change for available Phones
                     updateEmergencyCountryIsoAllPhones(countryIso == null ? "" : countryIso);
@@ -505,13 +496,14 @@ public class EmergencyNumberTracker extends Handler {
             inputStream = new BufferedInputStream(fileInputStream);
             allEccMessages = ProtobufEccData.AllInfo.parseFrom(readInputStreamToByteArray(
                     new GZIPInputStream(inputStream)));
-            logd(mCountryIso + " ota emergency database is loaded. Ver: " + otaDatabaseVersion);
+            String countryIso = getLastKnownEmergencyCountryIso();
+            logd(countryIso + " ota emergency database is loaded. Ver: " + otaDatabaseVersion);
             otaDatabaseVersion = allEccMessages.revision;
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
-                if (countryEccInfo.isoCode.equals(mCountryIso.toUpperCase())) {
+                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
                         updatedOtaEmergencyNumberList.add(convertEmergencyNumberFromEccInfo(
-                                eccInfo, mCountryIso));
+                                eccInfo, countryIso));
                     }
                 }
             }
@@ -720,8 +712,9 @@ public class EmergencyNumberTracker extends Handler {
                 // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
                 // these countries, if extra digits are added to an emergency number,
                 // it no longer connects to the emergency service.
-                if (mCountryIso.equals("br") || mCountryIso.equals("cl")
-                        || mCountryIso.equals("ni")) {
+                String countryIso = getLastKnownEmergencyCountryIso();
+                if (countryIso.equals("br") || countryIso.equals("cl")
+                        || countryIso.equals("ni")) {
                     exactMatch = true;
                 } else {
                     exactMatch = false || exactMatch;
@@ -804,6 +797,10 @@ public class EmergencyNumberTracker extends Handler {
         return mCountryIso;
     }
 
+    public String getLastKnownEmergencyCountryIso() {
+        return mLastKnownEmergencyCountryIso;
+    }
+
     private String getCountryIsoForCachingDatabase() {
         ServiceStateTracker sst = mPhone.getServiceStateTracker();
         if (sst != null) {
@@ -821,6 +818,9 @@ public class EmergencyNumberTracker extends Handler {
 
     private synchronized void updateEmergencyCountryIso(String countryIso) {
         mCountryIso = countryIso;
+        if (!TextUtils.isEmpty(mCountryIso)) {
+            mLastKnownEmergencyCountryIso = mCountryIso;
+        }
         mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
     }
 
@@ -912,8 +912,8 @@ public class EmergencyNumberTracker extends Handler {
         number = PhoneNumberUtils.stripSeparators(number);
         for (EmergencyNumber num : mEmergencyNumberListFromDatabase) {
             if (num.getNumber().equals(number)) {
-                return new EmergencyNumber(number, mCountryIso.toLowerCase(), "",
-                        num.getEmergencyServiceCategoryBitmask(),
+                return new EmergencyNumber(number, getLastKnownEmergencyCountryIso().toLowerCase(),
+                        "", num.getEmergencyServiceCategoryBitmask(),
                         new ArrayList<String>(), EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
                         EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
             }
@@ -956,7 +956,8 @@ public class EmergencyNumberTracker extends Handler {
 
         emergencyNumbers = SystemProperties.get(ecclist, "");
 
-        logd("slotId:" + slotId + " country:" + mCountryIso + " emergencyNumbers: "
+        String countryIso = getLastKnownEmergencyCountryIso();
+        logd("slotId:" + slotId + " country:" + countryIso + " emergencyNumbers: "
                 +  emergencyNumbers);
 
         if (TextUtils.isEmpty(emergencyNumbers)) {
@@ -971,8 +972,8 @@ public class EmergencyNumberTracker extends Handler {
                 // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
                 // these countries, if extra digits are added to an emergency number,
                 // it no longer connects to the emergency service.
-                if (useExactMatch || mCountryIso.equals("br") || mCountryIso.equals("cl")
-                        || mCountryIso.equals("ni")) {
+                if (useExactMatch || countryIso.equals("br") || countryIso.equals("cl")
+                        || countryIso.equals("ni")) {
                     if (number.equals(emergencyNum)) {
                         return true;
                     } else {
@@ -1031,26 +1032,26 @@ public class EmergencyNumberTracker extends Handler {
         }
 
         // No ecclist system property, so use our own list.
-        if (mCountryIso != null) {
+        if (countryIso != null) {
             ShortNumberInfo info = ShortNumberInfo.getInstance();
             if (useExactMatch) {
-                if (info.isEmergencyNumber(number, mCountryIso.toUpperCase())) {
+                if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
                     return true;
                 } else {
                     for (String prefix : mEmergencyNumberPrefix) {
-                        if (info.isEmergencyNumber(prefix + number, mCountryIso.toUpperCase())) {
+                        if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
                             return true;
                         }
                     }
                 }
                 return false;
             } else {
-                if (info.connectsToEmergencyNumber(number, mCountryIso.toUpperCase())) {
+                if (info.connectsToEmergencyNumber(number, countryIso.toUpperCase())) {
                     return true;
                 } else {
                     for (String prefix : mEmergencyNumberPrefix) {
                         if (info.connectsToEmergencyNumber(prefix + number,
-                                mCountryIso.toUpperCase())) {
+                                countryIso.toUpperCase())) {
                             return true;
                         }
                     }
