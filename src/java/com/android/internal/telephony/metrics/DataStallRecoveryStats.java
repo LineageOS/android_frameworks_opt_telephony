@@ -53,11 +53,12 @@ public class DataStallRecoveryStats {
                 signalStrength, recoveryAction, isOpportunistic, isMultiSim, band);
     }
 
+    /** Returns the RAT used for data (including IWLAN). */
     private static @NetworkType int getRat(Phone phone) {
         ServiceStateTracker serviceStateTracker = phone.getServiceStateTracker();
         ServiceState serviceState =
                 serviceStateTracker != null ? serviceStateTracker.getServiceState() : null;
-        return serviceState != null ? serviceState.getVoiceNetworkType()
+        return serviceState != null ? serviceState.getDataNetworkType()
                 : TelephonyManager.NETWORK_TYPE_UNKNOWN;
     }
 
