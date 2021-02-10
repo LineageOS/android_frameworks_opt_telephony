@@ -67,7 +67,7 @@ public class ImsMmTelManagerTests extends TelephonyTest {
      */
     @SmallTest
     @Test
-    public void testCallbackValues() throws Exception {
+    public void testDeprecatedCallbackValues() throws Exception {
         LocalCallback cb = new LocalCallback();
         ImsMmTelManager managerUT = new ImsMmTelManager(0, mBinderCache);
         managerUT.registerImsRegistrationCallback(Runnable::run, cb);
@@ -80,14 +80,17 @@ public class ImsMmTelManagerTests extends TelephonyTest {
 
         IImsRegistrationCallback cbBinder = callbackCaptor.getValue();
         // Ensure the transport types are correct
-        cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        cbBinder.onRegistered(new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE).build());
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, cb.mRegResult);
-        cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
+        cbBinder.onRegistered(new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).build());
         assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, cb.mRegResult);
-        cbBinder.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
+        cbBinder.onRegistered(new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_NONE).build());
         assertEquals(-1, cb.mRegResult);
         // Wacky value
-        cbBinder.onRegistered(0xDEADBEEF);
+        cbBinder.onRegistered(new ImsRegistrationAttributes.Builder(0xDEADBEEF).build());
         assertEquals(-1, cb.mRegResult);
     }
 }
