@@ -4297,7 +4297,7 @@ public class DcTracker extends Handler {
 
         if (isNetworkTypeUnmetered(NETWORK_TYPE_NR)) {
             if (mNrNsaMmwaveUnmetered) {
-                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED) {
                     if (DBG) log("NR unmetered for mmwave only");
                     return true;
                 }
@@ -4309,7 +4309,7 @@ public class DcTracker extends Handler {
                 }
                 return false;
             }
-            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
+            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
                     || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
                     || rat == NETWORK_TYPE_NR) {
                 if (DBG) log("NR unmetered for all frequencies");
@@ -4320,7 +4320,7 @@ public class DcTracker extends Handler {
 
         if (mNrNsaAllUnmetered) {
             if (mNrNsaMmwaveUnmetered) {
-                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE) {
+                if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED) {
                     if (DBG) log("NR NSA unmetered for mmwave only via carrier configs");
                     return true;
                 }
@@ -4332,7 +4332,7 @@ public class DcTracker extends Handler {
                 }
                 return false;
             }
-            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE
+            if (override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED
                     || override == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA) {
                 if (DBG) log("NR NSA unmetered for all frequencies via carrier configs");
                 return true;
@@ -4396,7 +4396,7 @@ public class DcTracker extends Handler {
         boolean isNrNsa = (networkType == TelephonyManager.NETWORK_TYPE_LTE
                 || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
                 && (overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
-                || overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE);
+                || overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED);
         boolean is5GHysteresisActive = mPhone.getDisplayInfoController().is5GHysteresisActive();
 
         // True if device is on NR SA or NR NSA, or neither but 5G hysteresis is active

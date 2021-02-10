@@ -275,7 +275,7 @@ public class NetworkTypeController extends StateMachine {
                 if (kv[1].equals(ICON_5G)) {
                     icon = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA;
                 } else if (kv[1].equals(ICON_5G_PLUS)) {
-                    icon = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE;
+                    icon = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED;
                 } else {
                     if (DBG) loge("Invalid 5G icon = " + kv[1]);
                 }
@@ -367,7 +367,7 @@ public class NetworkTypeController extends StateMachine {
         // NR display is not accurate when physical channel config notifications are off
         if (mIsPhysicalChannelConfigOn && (nrNsa || nrSa)) {
             // Process NR display network type
-            displayNetworkType = getNrDisplayType();
+            displayNetworkType = getNrDisplayType(nrSa);
             if (displayNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
                 // Use LTE values if 5G values aren't defined
                 displayNetworkType = getLteDisplayType();
@@ -379,7 +379,7 @@ public class NetworkTypeController extends StateMachine {
         return displayNetworkType;
     }
 
-    private @Annotation.OverrideNetworkType int getNrDisplayType() {
+    private @Annotation.OverrideNetworkType int getNrDisplayType(boolean isNrSa) {
         // Don't show 5G icon if preferred network type does not include 5G
         if ((mPhone.getCachedAllowedNetworkTypesBitmask()
                 & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
@@ -387,21 +387,24 @@ public class NetworkTypeController extends StateMachine {
         }
         // Icon display keys in order of priority
         List<String> keys = new ArrayList<>();
-        // TODO: Update for NR SA
-        switch (mPhone.getServiceState().getNrState()) {
-            case NetworkRegistrationInfo.NR_STATE_CONNECTED:
-                if (isNrMmwave()) {
-                    keys.add(STATE_CONNECTED_MMWAVE);
-                }
-                keys.add(STATE_CONNECTED);
-                break;
-            case NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED:
-                keys.add(isPhysicalLinkActive() ? STATE_NOT_RESTRICTED_RRC_CON
-                        : STATE_NOT_RESTRICTED_RRC_IDLE);
-                break;
-            case NetworkRegistrationInfo.NR_STATE_RESTRICTED:
-                keys.add(STATE_RESTRICTED);
-                break;
+        if (isNrSa && isNrMmwave()) {
+            keys.add(STATE_CONNECTED_MMWAVE);
+        } else {
+            switch (mPhone.getServiceState().getNrState()) {
+                case NetworkRegistrationInfo.NR_STATE_CONNECTED:
+                    if (isNrMmwave()) {
+                        keys.add(STATE_CONNECTED_MMWAVE);
+                    }
+                    keys.add(STATE_CONNECTED);
+                    break;
+                case NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED:
+                    keys.add(isPhysicalLinkActive() ? STATE_NOT_RESTRICTED_RRC_CON
+                            : STATE_NOT_RESTRICTED_RRC_IDLE);
+                    break;
+                case NetworkRegistrationInfo.NR_STATE_RESTRICTED:
+                    keys.add(STATE_RESTRICTED);
+                    break;
+            }
         }
 
         for (String key : keys) {
