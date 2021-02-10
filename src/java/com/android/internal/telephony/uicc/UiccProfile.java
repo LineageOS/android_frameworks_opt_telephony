@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony.uicc;
 
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SUCCESS;
+
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.usage.UsageStatsManager;
@@ -59,6 +63,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
@@ -133,6 +138,7 @@ public class UiccProfile extends IccCard {
     private static final int EVENT_CARRIER_PRIVILEGES_LOADED = 13;
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 14;
     private static final int EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET = 15;
+    private static final int EVENT_SUPPLY_ICC_PIN_DONE = 16;
     // NOTE: any new EVENT_* values must be added to eventToString.
 
     private TelephonyManager mTelephonyManager;
@@ -247,7 +253,7 @@ public class UiccProfile extends IccCard {
                 case EVENT_CLOSE_LOGICAL_CHANNEL_DONE:
                 case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE:
                 case EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE:
-                case EVENT_SIM_IO_DONE:
+                case EVENT_SIM_IO_DONE: {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     if (ar.exception != null) {
                         logWithLocalLog("handleMessage: Error in SIM access with exception "
@@ -256,6 +262,7 @@ public class UiccProfile extends IccCard {
                     AsyncResult.forMessage((Message) ar.userObj, ar.result, ar.exception);
                     ((Message) ar.userObj).sendToTarget();
                     break;
+                }
 
                 case EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET:
                     if (msg.obj == null) {
@@ -266,6 +273,28 @@ public class UiccProfile extends IccCard {
                     }
                     refresh();
                     break;
+
+                case EVENT_SUPPLY_ICC_PIN_DONE: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        // An error occurred during automatic PIN verification. At this point,
+                        // clear the cache and propagate the state.
+                        loge("An error occurred during internal PIN verification");
+                        UiccController.getInstance().getPinStorage().clearPin(mPhoneId);
+                        updateExternalState();
+                    } else {
+                        log("Internal PIN verification was successful!");
+                        // Nothing to do.
+                    }
+                    // Update metrics:
+                    TelephonyStatsLog.write(
+                            PIN_STORAGE_EVENT,
+                            ar.exception != null
+                                    ? PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE
+                                    : PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SUCCESS,
+                            /* number_of_pins= */ 1);
+                    break;
+                }
 
                 default:
                     loge("handleMessage: Unhandled message with number: " + msg.what);
@@ -593,6 +622,17 @@ public class UiccProfile extends IccCard {
                     log("updateExternalState: card locked and records loaded; "
                             + "setting state to locked");
                 }
+                // If the PIN code is required and an available cached PIN is available, intercept
+                // the update of external state and perform an internal PIN verification.
+                if (lockedState == IccCardConstants.State.PIN_REQUIRED) {
+                    String pin = UiccController.getInstance().getPinStorage().getPin(mPhoneId);
+                    if (!pin.isEmpty()) {
+                        log("PIN_REQUIRED[" + mPhoneId + "] - Cache present");
+                        mCi.supplyIccPin(pin, mHandler.obtainMessage(EVENT_SUPPLY_ICC_PIN_DONE));
+                        return;
+                    }
+                }
+
                 setExternalState(lockedState);
             } else {
                 if (VDBG) {
@@ -1804,6 +1844,7 @@ public class UiccProfile extends IccCard {
             case EVENT_CARRIER_CONFIG_CHANGED: return "CARRIER_CONFIG_CHANGED";
             case EVENT_CARRIER_PRIVILEGES_TEST_OVERRIDE_SET:
                 return "CARRIER_PRIVILEGES_TEST_OVERRIDE_SET";
+            case EVENT_SUPPLY_ICC_PIN_DONE: return "SUPPLY_ICC_PIN_DONE";
             default: return "UNKNOWN(" + event + ")";
         }
     }
