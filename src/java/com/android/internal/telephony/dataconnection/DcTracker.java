@@ -727,6 +727,7 @@ public class DcTracker extends Handler {
         mHandlerThread.start();
         Handler dcHandler = new Handler(mHandlerThread.getLooper());
         mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager, dcHandler, mLogTagSuffix);
+        mDcc.start();
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
         mDataConnectionTracker = this;
@@ -3940,7 +3941,7 @@ public class DcTracker extends Handler {
                 onDataReconnect((ApnContext) msg.obj, msg.arg1);
                 break;
             case DctConstants.EVENT_DATA_SERVICE_BINDING_CHANGED:
-                onDataServiceBindingChanged((Boolean) ((AsyncResult) msg.obj).result);
+                mDataServiceBound = (boolean) ((AsyncResult) msg.obj).result;
                 break;
             case DctConstants.EVENT_DATA_ENABLED_CHANGED:
                 ar = (AsyncResult) msg.obj;
@@ -5216,22 +5217,6 @@ public class DcTracker extends Handler {
                 .setPersistent(apn.isPersistent())
                 .setPreferred(isPreferred)
                 .build();
-    }
-
-    private void onDataServiceBindingChanged(boolean bound) {
-        if (bound) {
-            if (mDcc == null) {
-                mDcc = DcController.makeDcc(mPhone, this, mDataServiceManager,
-                        new Handler(mHandlerThread.getLooper()), mLogTagSuffix);
-            }
-            mDcc.start();
-        } else {
-            mDcc.dispose();
-            // dispose sets the associated Handler object (StateMachine#mSmHandler) to null, so mDcc
-            // needs to be created again (simply calling start() on it after dispose will not work)
-            mDcc = null;
-        }
-        mDataServiceBound = bound;
     }
 
     public static String requestTypeToString(@RequestNetworkType int type) {

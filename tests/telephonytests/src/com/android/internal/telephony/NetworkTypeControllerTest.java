@@ -723,7 +723,11 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertTrue(mNetworkTypeController.is5GHysteresisActive());
 
         // rat is UMTS, should stop timer
-        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mServiceState).getDataNetworkType();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(nri).when(mServiceState).getNetworkRegistrationInfo(anyInt(), anyInt());
         doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(EVENT_DATA_RAT_CHANGED);
         processAllMessages();
