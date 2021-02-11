@@ -265,7 +265,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         processAllMessages();
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals(""));
         assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("jp"));
-        assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals(""));
+        assertTrue(mEmergencyNumberTrackerMock2.getEmergencyCountryIso().equals("jp"));
         assertTrue(mEmergencyNumberTrackerMock2.getLastKnownEmergencyCountryIso().equals("jp"));
     }
 
