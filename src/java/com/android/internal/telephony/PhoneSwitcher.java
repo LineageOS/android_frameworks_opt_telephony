@@ -399,7 +399,7 @@ public class PhoneSwitcher extends Handler {
         mLocalLog = new LocalLog(MAX_LOCAL_LOG_LINES);
 
         mSubscriptionController = SubscriptionController.getInstance();
-        mRadioConfig = RadioConfig.getInstance(mContext);
+        mRadioConfig = RadioConfig.getInstance();
         mValidator = CellularNetworkValidator.getInstance();
 
         mActivePhoneRegistrants = new RegistrantList();
