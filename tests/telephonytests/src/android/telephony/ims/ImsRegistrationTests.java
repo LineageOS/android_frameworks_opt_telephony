@@ -26,13 +26,13 @@ import static org.mockito.Mockito.verify;
 import android.net.Uri;
 import android.os.Parcel;
 import android.os.RemoteException;
-import android.telephony.ServiceState;
 import android.telephony.ims.aidl.IImsRegistration;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.util.ArraySet;
 
 import androidx.test.runner.AndroidJUnit4;
 
@@ -121,17 +121,24 @@ public class ImsRegistrationTests {
     @SmallTest
     @Test
     public void testRegistrationCallbackOnRegistered() throws RemoteException {
-        mRegistration.onRegistered(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        final ArraySet<String> features = new ArraySet<>();
+        features.add("feature1");
+        features.add("feature2");
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE).setFeatureTags(features).build();
+        mRegistration.onRegistered(attr);
 
-        verify(mCallback).onRegistered(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        verify(mCallback).onRegistered(attr);
     }
 
     @SmallTest
     @Test
     public void testRegistrationCallbackOnRegistering() throws RemoteException {
-        mRegistration.onRegistering(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE).build();
+        mRegistration.onRegistering(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
 
-        verify(mCallback).onRegistering(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        verify(mCallback).onRegistering(attr);
     }
 
     @SmallTest
@@ -170,19 +177,26 @@ public class ImsRegistrationTests {
     public void testRegistrationCallbackAfterUnregistered() throws RemoteException {
         mRegBinder.removeRegistrationCallback(mCallback);
 
-        mRegistration.onRegistered(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE).build();
+        mRegistration.onRegistered(attr);
 
-        verify(mCallback, never()).onRegistered(ServiceState.RIL_RADIO_TECHNOLOGY_LTE);
+        verify(mCallback, never()).onRegistered(attr);
     }
 
     @SmallTest
     @Test
     public void testRegistrationCallbackSendCurrentState() throws RemoteException {
-        mRegistration.onRegistered(ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        final ArraySet<String> features = new ArraySet<>();
+        features.add("feature1");
+        features.add("feature2");
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE).setFeatureTags(features).build();
+        mRegistration.onRegistered(attr);
 
         mRegBinder.addRegistrationCallback(mCallback2);
 
-        verify(mCallback2).onRegistered(eq(ImsRegistrationImplBase.REGISTRATION_TECH_LTE));
+        verify(mCallback2).onRegistered(attr);
     }
 
     @SmallTest
