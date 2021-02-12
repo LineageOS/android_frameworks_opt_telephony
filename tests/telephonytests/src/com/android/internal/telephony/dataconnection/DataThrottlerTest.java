@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 
 import android.telephony.AccessNetworkConstants;
 import android.telephony.data.ApnSetting;
-import android.telephony.data.ApnThrottleStatus;
+import android.telephony.data.ThrottleStatus;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -66,7 +66,7 @@ public class DataThrottlerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mDataThrottler = new DataThrottler(1, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        mDataThrottler.registerForApnThrottleStatusChanges(mMockChangedCallback1);
+        mDataThrottler.registerForThrottleStatusChanges(mMockChangedCallback1);
     }
 
     @After
@@ -80,10 +80,10 @@ public class DataThrottlerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetRetryTime() throws Exception {
-        final ArgumentCaptor<List<ApnThrottleStatus>> statusCaptor =
+        final ArgumentCaptor<List<ThrottleStatus>> statusCaptor =
                 ArgumentCaptor.forClass((Class) List.class);
 
-        List<List<ApnThrottleStatus>> expectedStatuses = new ArrayList<>();
+        List<List<ThrottleStatus>> expectedStatuses = new ArrayList<>();
         processAllMessages();
         expectedStatuses.add(List.of());
 
@@ -96,19 +96,19 @@ public class DataThrottlerTest extends TelephonyTest {
 
         processAllMessages();
         expectedStatuses.add(List.of(
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_HIPRI)
                         .setThrottleExpiryTimeMillis(1234567890L)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
                         .build(),
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                     .setSlotIndex(1)
                     .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                     .setApnType(DEFAULT_APN_TYPE)
                     .setThrottleExpiryTimeMillis(1234567890L)
-                    .setRetryType(ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
+                    .setRetryType(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
                     .build())
         );
 
@@ -120,26 +120,26 @@ public class DataThrottlerTest extends TelephonyTest {
 
         processAllMessages();
         expectedStatuses.add(List.of(
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_HIPRI)
                         .setThrottleExpiryTimeMillis(13579L)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_HANDOVER)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
                         .build(),
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_DUN)
                         .setThrottleExpiryTimeMillis(13579L)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_HANDOVER)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
                         .build(),
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(DEFAULT_APN_TYPE)
                         .setThrottleExpiryTimeMillis(13579L)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_HANDOVER)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
                         .build())
         );
 
@@ -150,12 +150,12 @@ public class DataThrottlerTest extends TelephonyTest {
                 mDataThrottler.getRetryTime(ApnSetting.TYPE_MMS));
         processAllMessages();
         expectedStatuses.add(List.of(
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setNoThrottle()
                         .setApnType(ApnSetting.TYPE_MMS)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
                         .build()
         ));
 
@@ -164,19 +164,19 @@ public class DataThrottlerTest extends TelephonyTest {
 
         processAllMessages();
         expectedStatuses.add(List.of(
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_EMERGENCY)
                         .setThrottleExpiryTimeMillis(RetryManager.NO_RETRY)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_NONE)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_NONE)
                         .build(),
-                new ApnThrottleStatus.Builder()
+                new ThrottleStatus.Builder()
                         .setSlotIndex(1)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_FOTA)
                         .setThrottleExpiryTimeMillis(RetryManager.NO_RETRY)
-                        .setRetryType(ApnThrottleStatus.RETRY_TYPE_NONE)
+                        .setRetryType(ThrottleStatus.RETRY_TYPE_NONE)
                         .build()
         ));
 
@@ -186,11 +186,11 @@ public class DataThrottlerTest extends TelephonyTest {
 
         // Loop through statuses and test everything
         verify(mMockChangedCallback1, times(expectedStatuses.size()))
-                .onApnThrottleStatusChanged(statusCaptor.capture());
+                .onThrottleStatusChanged(statusCaptor.capture());
 
         // Check actual statuses
-        List<List<ApnThrottleStatus>> actualStatuses =
-                (List<List<ApnThrottleStatus>>) statusCaptor.getAllValues();
+        List<List<ThrottleStatus>> actualStatuses =
+                (List<List<ThrottleStatus>>) statusCaptor.getAllValues();
         assertEquals(expectedStatuses.size(), actualStatuses.size());
 
         if (DBG) {
@@ -198,12 +198,12 @@ public class DataThrottlerTest extends TelephonyTest {
             logd("actualStatuses.size() = " + actualStatuses.size());
         }
 
-        Comparator<ApnThrottleStatus> comparator = (o1, o2) ->
+        Comparator<ThrottleStatus> comparator = (o1, o2) ->
                 Integer.compare(o1.getApnType(), o2.getApnType());
 
         for (int i = 0; i < expectedStatuses.size(); i++) {
-            List<ApnThrottleStatus> atsExpected = new ArrayList<>(expectedStatuses.get(i));
-            List<ApnThrottleStatus> atsActual = new ArrayList<>(actualStatuses.get(i));
+            List<ThrottleStatus> atsExpected = new ArrayList<>(expectedStatuses.get(i));
+            List<ThrottleStatus> atsActual = new ArrayList<>(actualStatuses.get(i));
 
             atsExpected.sort(comparator);
             atsActual.sort(comparator);
@@ -211,6 +211,6 @@ public class DataThrottlerTest extends TelephonyTest {
                     atsExpected, atsActual);
         }
 
-        this.mDataThrottler.registerForApnThrottleStatusChanges(mMockChangedCallback2);
+        this.mDataThrottler.registerForThrottleStatusChanges(mMockChangedCallback2);
     }
 }
