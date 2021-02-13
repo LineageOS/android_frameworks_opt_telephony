@@ -232,7 +232,7 @@ public class UiccController extends Handler {
         mPhoneIdToSlotId = new int[mCis.length];
         Arrays.fill(mPhoneIdToSlotId, INVALID_SLOT_ID);
         if (VDBG) logPhoneIdToSlotIdMapping();
-        mRadioConfig = RadioConfig.getInstance(mContext);
+        mRadioConfig = RadioConfig.getInstance();
         mRadioConfig.registerForSimSlotStatusChanged(this, EVENT_SLOT_STATUS_CHANGED, null);
         for (int i = 0; i < mCis.length; i++) {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
