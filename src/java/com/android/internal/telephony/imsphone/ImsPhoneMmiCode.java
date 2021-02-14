@@ -1623,7 +1623,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 if (infos == null || infos.length == 0) {
                     sb.append(mContext.getText(com.android.internal.R.string.mmiError));
                 } else {
-                    if (infos[0] == 1) {
+                    if (infos[0] != 0) {
                         sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
                         mState = State.COMPLETE;
                     } else {
