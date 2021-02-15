@@ -123,6 +123,8 @@ public class DcTrackerTest extends TelephonyTest {
     public static final String FAKE_APN4 = "FAKE APN 4";
     public static final String FAKE_APN5 = "FAKE APN 5";
     public static final String FAKE_APN6 = "FAKE APN 6";
+    public static final String FAKE_APN7 = "FAKE APN 7";
+    public static final String FAKE_APN8 = "FAKE APN 8";
     public static final String FAKE_IFNAME = "FAKE IFNAME";
     public static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
     public static final String FAKE_GATEWAY = "11.22.33.44";
@@ -449,6 +451,72 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
                             0,                      // apn_set_id
+                            -1,                     // carrier_id
+                            -1                      // skip_464xlat
+                    });
+
+                    mc.addRow(new Object[]{
+                            2169,                   // id
+                            FAKE_PLMN,              // numeric
+                            "sp-mode",              // name
+                            FAKE_APN7,              // apn
+                            "",                     // proxy
+                            "",                     // port
+                            "",                     // mmsc
+                            "",                     // mmsproxy
+                            "",                     // mmsport
+                            "",                     // user
+                            "",                     // password
+                            -1,                     // authtype
+                            "default",              // types
+                            "IP",                   // protocol
+                            "IP",                   // roaming_protocol
+                            1,                      // carrier_enabled
+                            ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer
+                            0,                      // bearer_bitmask
+                            0,                      // profile_id
+                            1,                      // modem_cognitive
+                            0,                      // max_conns
+                            0,                      // wait_time
+                            0,                      // max_conns_time
+                            0,                      // mtu
+                            "",                     // mvno_type
+                            "",                     // mnvo_match_data
+                            NETWORK_TYPE_LTE_BITMASK,  // network_type_bitmask
+                            1,                      // apn_set_id
+                            -1,                     // carrier_id
+                            -1                      // skip_464xlat
+                    });
+
+                    mc.addRow(new Object[]{
+                            2170,                   // id
+                            FAKE_PLMN,              // numeric
+                            "IMS",                  // name
+                            FAKE_APN8,              // apn
+                            "",                     // proxy
+                            "",                     // port
+                            "",                     // mmsc
+                            "",                     // mmsproxy
+                            "",                     // mmsport
+                            "",                     // user
+                            "",                     // password
+                            -1,                     // authtype
+                            "ims",                  // types
+                            "IP",                   // protocol
+                            "IP",                   // roaming_protocol
+                            1,                      // carrier_enabled
+                            ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer
+                            0,                      // bearer_bitmask
+                            0,                      // profile_id
+                            1,                      // modem_cognitive
+                            0,                      // max_conns
+                            0,                      // wait_time
+                            0,                      // max_conns_time
+                            0,                      // mtu
+                            "",                     // mvno_type
+                            "",                     // mnvo_match_data
+                            NETWORK_TYPE_LTE_BITMASK,  // network_type_bitmask
+                            -1,                      // apn_set_id
                             -1,                     // carrier_id
                             -1                      // skip_464xlat
                     });
@@ -1491,6 +1559,45 @@ public class DcTrackerTest extends TelephonyTest {
         //Check that the DUN is using the same active data connection
         assertEquals(apnContexts.get(ApnSetting.TYPE_DEFAULT).getDataConnection(),
                 apnContextsAfterRowIdsChanged.get(ApnSetting.TYPE_DUN).getDataConnection());
+    }
+
+    // Test for Data setup with APN Set ID
+    @Test
+    @SmallTest
+    public void testDataSetupWithApnSetId() throws Exception {
+        // Set the prefer apn set id to "1"
+        ContentResolver cr = mContext.getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(Telephony.Carriers.APN_SET_ID, 1);
+        cr.update(PREFERAPN_URI, values, null, null);
+
+        mDct.enableApn(ApnSetting.TYPE_IMS, DcTracker.REQUEST_TYPE_NORMAL, null);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT, DcTracker.REQUEST_TYPE_NORMAL, null);
+
+        sendInitializationEvents();
+
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
+        verify(mSimulatedCommandsVerifier, times(2)).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
+                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                anyInt(), any(), any(Message.class));
+
+        List<DataProfile> dataProfiles = dpCaptor.getAllValues();
+        assertEquals(2, dataProfiles.size());
+
+        // Verify to use FAKE APN7 which is Default APN with apnSetId=1(Same as the pereferred
+        // APN's set id).
+        Optional<DataProfile> fakeApn7 = dataProfiles.stream()
+                .filter(dp -> dp.getApn().equals(FAKE_APN7)).findFirst();
+        assertTrue(fakeApn7.isPresent());
+        verifyDataProfile(fakeApn7.get(), FAKE_APN7, 0, 17, 1, NETWORK_TYPE_LTE_BITMASK);
+
+        // Verify to use FAKE APN8 which is IMS APN with apnSetId=-1
+        // (Telephony.Carriers.MATCH_ALL_APN_SET_ID).
+        Optional<DataProfile> fakeApn8 = dataProfiles.stream()
+                .filter(dp -> dp.getApn().equals(FAKE_APN8)).findFirst();
+        assertTrue(fakeApn8.isPresent());
+        verifyDataProfile(fakeApn8.get(), FAKE_APN8, 2, 64, 1, NETWORK_TYPE_LTE_BITMASK);
     }
 
     // Test oos
