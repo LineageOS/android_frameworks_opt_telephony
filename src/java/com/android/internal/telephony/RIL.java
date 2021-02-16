@@ -5505,7 +5505,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
         checkNotNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                        (android.hardware.radio.V1_6.IRadio ) radioProxy;
+
+                RILRequest rr = obtainRequest(RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION, result,
+                        mRILDefaultWorkSource);
+                if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+                try {
+                    android.hardware.radio.V1_6.ImsiEncryptionInfo halImsiInfo =
+                            new android.hardware.radio.V1_6.ImsiEncryptionInfo();
+                    halImsiInfo.base.mnc = imsiEncryptionInfo.getMnc();
+                    halImsiInfo.base.mcc = imsiEncryptionInfo.getMcc();
+                    halImsiInfo.base.keyIdentifier = imsiEncryptionInfo.getKeyIdentifier();
+                    if (imsiEncryptionInfo.getExpirationTime() != null) {
+                        halImsiInfo.base.expirationTime =
+                                imsiEncryptionInfo.getExpirationTime().getTime();
+                    }
+                    for (byte b : imsiEncryptionInfo.getPublicKey().getEncoded()) {
+                        halImsiInfo.base.carrierKey.add(new Byte(b));
+                    }
+                    halImsiInfo.keyType = imsiEncryptionInfo.getKeyType();
+
+                    radioProxy16.setCarrierInfoForImsiEncryption_1_6(
+                            rr.mSerial, halImsiInfo);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "setCarrierInfoForImsiEncryption", e);
+                }
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
                 android.hardware.radio.V1_1.IRadio radioProxy11 =
                         (android.hardware.radio.V1_1.IRadio ) radioProxy;
 
