@@ -200,6 +200,7 @@ public class PinStorage extends Handler {
             mRamStorage = null;
             onDeviceReady();
         } else {
+            logd("Device is locked - Postponing initialization");
             mRamStorage = new SparseArray<>();
         }
     }
@@ -282,6 +283,7 @@ public class PinStorage extends Handler {
     public synchronized int prepareUnattendedReboot() {
         // Unattended reboot should never occur before the device is unlocked.
         if (mIsDeviceLocked) {
+            loge("prepareUnattendedReboot - Device is locked");
             return TelephonyManager.PREPARE_UNATTENDED_REBOOT_ERROR;
         }
 
@@ -325,6 +327,7 @@ public class PinStorage extends Handler {
             }
         }
 
+        logd("prepareUnattendedReboot - Stored %d PINs", storedCount);
         // Write metrics about number of stored PINs
         TelephonyStatsLog.write(PIN_STORAGE_EVENT,
                 PIN_STORAGE_EVENT__EVENT__PIN_STORED_FOR_VERIFICATION, storedCount);
@@ -444,6 +447,7 @@ public class PinStorage extends Handler {
             // Delete all PINs in VERIFICATION_READY state. This happens when reboot occurred after
             // OTA, but the SIM card is not detected on the device.
             if (storedPin.status == PinStatus.VERIFICATION_READY) {
+                logd("onTimerExpiration - Discarding PIN in slot %d", slotId);
                 savePinInformation(slotId, null);
                 discardedPin++;
                 continue;
@@ -452,6 +456,7 @@ public class PinStorage extends Handler {
             // Move all PINs in REBOOT_READY to AVAILABLE. This happens when
             // prepareUnattendedReboot() is invoked, but the reboot does not occur.
             if (storedPin.status == PinStatus.REBOOT_READY) {
+                logd("onTimerExpiration - Moving PIN in slot %d back to AVAILABLE", slotId);
                 storedPin.status = PinStatus.AVAILABLE;
                 savePinInformation(slotId, storedPin);
                 continue;
@@ -674,7 +679,9 @@ public class PinStorage extends Handler {
         if (secretKey != null) {
             try {
                 byte[] decryptedPin = decrypt(secretKey, blob);
-                return StoredPin.parseFrom(decryptedPin);
+                if (decryptedPin.length > 0) {
+                    return StoredPin.parseFrom(decryptedPin);
+                }
             } catch (Exception e) {
                 loge("cannot decrypt/parse PIN information", e);
             }
@@ -716,6 +723,7 @@ public class PinStorage extends Handler {
         if (storedPin != null) {
             // Available PINs are stored with a long-term key, while the PINs in other states
             // are stored with a short-term key.
+            logd("Saving PIN for slot %d", slotId);
             if (storedPin.status == PinStatus.AVAILABLE) {
                 result = savePinInformation(editor, slotId, storedPin,
                         SHARED_PREFS_AVAILABLE_PIN_BASE_KEY, mLongTermSecretKey);
@@ -723,6 +731,8 @@ public class PinStorage extends Handler {
                 result = savePinInformation(editor, slotId, storedPin,
                         SHARED_PREFS_REBOOT_PIN_BASE_KEY, mShortTermSecretKey);
             }
+        } else {
+            logv("Deleting PIN for slot %d (if existed)", slotId);
         }
 
         mLastCommitResult = result && editor.commit();
@@ -775,6 +785,7 @@ public class PinStorage extends Handler {
         if (storedPin.status == PinStatus.AVAILABLE) {
             byte[] encryptedPin = encrypt(mLongTermSecretKey, StoredPin.toByteArray(storedPin));
             if (encryptedPin != null && encryptedPin.length > 0) {
+                logd("Saving PIN for slot %d in RAM", slotId);
                 mRamStorage.put(slotId, encryptedPin);
                 return true;
             }
@@ -992,8 +1003,10 @@ public class PinStorage extends Handler {
                 return secretKeyEntry.getSecretKey();
             }
         } catch (Exception e) {
-            // Nothing to do in case of exception.
-            logd("Exception with getting the key", e);
+            // In case of exception, it means that key exists, but cannot be retrieved
+            // We delete the old key, so that a new key can be created.
+            loge("Exception with getting the key " + alias, e);
+            deleteSecretKey(alias);
         }
         return null;
     }
@@ -1039,7 +1052,6 @@ public class PinStorage extends Handler {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(new Date());
             calendar.add(Calendar.MINUTE, mShortTermSecretKeyDurationMinutes);
-            logd("Expiration of short-lived key: %s", calendar.toString());
             return calendar.getTime();
         } else {
             return null;
@@ -1054,7 +1066,7 @@ public class PinStorage extends Handler {
                 mKeyStore.deleteEntry(alias);
             } catch (Exception e) {
                 // Nothing to do. Even if the key removal fails, it becomes unusable.
-                loge("Delete key exception", e);
+                loge("Delete key exception");
             }
         }
     }
