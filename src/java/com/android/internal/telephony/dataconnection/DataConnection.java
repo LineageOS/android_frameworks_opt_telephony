@@ -373,7 +373,8 @@ public class DataConnection extends StateMachine {
     static final int EVENT_START_HANDOVER_ON_TARGET = BASE + 36;
     static final int EVENT_ALLOCATE_PDU_SESSION_ID = BASE + 37;
     static final int EVENT_RELEASE_PDU_SESSION_ID = BASE + 38;
-    private static final int CMD_TO_STRING_COUNT = EVENT_RELEASE_PDU_SESSION_ID - BASE + 1;
+    static final int EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE = BASE + 39;
+    private static final int CMD_TO_STRING_COUNT = EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE - BASE + 1;
 
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
@@ -423,6 +424,8 @@ public class DataConnection extends StateMachine {
         sCmdToString[EVENT_START_HANDOVER_ON_TARGET - BASE] = "EVENT_START_HANDOVER_ON_TARGET";
         sCmdToString[EVENT_ALLOCATE_PDU_SESSION_ID - BASE] = "EVENT_ALLOCATE_PDU_SESSION_ID";
         sCmdToString[EVENT_RELEASE_PDU_SESSION_ID - BASE] = "EVENT_RELEASE_PDU_SESSION_ID";
+        sCmdToString[EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE - BASE] =
+                "EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1515,26 +1518,52 @@ public class DataConnection extends StateMachine {
                 uplinkUpdated = true;
             }
         }
+
         if (!downlinkUpdated || !uplinkUpdated) {
-            String ratName = ServiceState.rilRadioTechnologyToString(mRilRat);
-            if (mRilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
-                ratName = mPhone.getServiceState().getNrFrequencyRange()
-                        == ServiceState.FREQUENCY_RANGE_MMWAVE
-                        ? DctConstants.RAT_NAME_NR_NSA_MMWAVE : DctConstants.RAT_NAME_NR_NSA;
-            }
-            Pair<Integer, Integer> values = mDct.getLinkBandwidthsFromCarrierConfig(ratName);
-            if (values != null) {
-                if (!downlinkUpdated) {
-                    mDownlinkBandwidth = values.first;
-                }
-                if (!uplinkUpdated) {
-                    mUplinkBandwidth = values.second;
-                }
-            }
+            fallBackToCarrierConfigValues(downlinkUpdated, uplinkUpdated);
         }
+
         if (mNetworkAgent != null) {
             mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(), DataConnection.this);
         }
+    }
+
+    private void updateLinkBandwidthsFromBandwidthEstimator(int uplinkBandwidthKbps,
+            int downlinkBandwidthKbps) {
+        if (DBG) {
+            log("updateLinkBandwidthsFromBandwidthEstimator, UL= "
+                    + uplinkBandwidthKbps + " DL= " + downlinkBandwidthKbps);
+        }
+        mDownlinkBandwidth = downlinkBandwidthKbps;
+        mUplinkBandwidth = uplinkBandwidthKbps;
+
+        if (mNetworkAgent != null) {
+            mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(), DataConnection.this);
+        }
+    }
+
+    private void fallBackToCarrierConfigValues(boolean downlinkUpdated, boolean uplinkUpdated) {
+        String ratName = ServiceState.rilRadioTechnologyToString(mRilRat);
+        if (mRilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
+            ratName = mPhone.getServiceState().getNrFrequencyRange()
+                    == ServiceState.FREQUENCY_RANGE_MMWAVE
+                    ? DctConstants.RAT_NAME_NR_NSA_MMWAVE : DctConstants.RAT_NAME_NR_NSA;
+        }
+        Pair<Integer, Integer> values = mDct.getLinkBandwidthsFromCarrierConfig(ratName);
+        if (values != null) {
+            if (!downlinkUpdated) {
+                mDownlinkBandwidth = values.first;
+            }
+            if (!uplinkUpdated) {
+                mUplinkBandwidth = values.second;
+            }
+        }
+    }
+
+    /** Update Tx and Rx link bandwidth estimation values */
+    public void updateLinkBandwidthEstimation(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {
+        sendMessage(DataConnection.EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE,
+                new Pair<Integer, Integer>(uplinkBandwidthKbps, downlinkBandwidthKbps));
     }
 
     private boolean isBandwidthSourceKey(String source) {
@@ -3012,6 +3041,15 @@ public class DataConnection extends StateMachine {
                         if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_MODEM_KEY)) {
                             updateLinkBandwidthsFromModem((LinkCapacityEstimate) ar.result);
                         }
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE: {
+                    Pair<Integer, Integer> pair = (Pair<Integer, Integer>) msg.obj;
+                    if (isBandwidthSourceKey(
+                            DctConstants.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR_KEY)) {
+                        updateLinkBandwidthsFromBandwidthEstimator(pair.first, pair.second);
                     }
                     retVal = HANDLED;
                     break;
