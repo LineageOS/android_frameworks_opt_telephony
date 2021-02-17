@@ -4099,6 +4099,10 @@ public class DcTracker extends Handler {
         for (DataConnection dc : mDataConnections.values()) {
             dc.sendMessage(DataConnection.EVENT_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED);
         }
+        if (mPhone.getLinkBandwidthEstimator() != null) {
+            mPhone.getLinkBandwidthEstimator().sendMessage(obtainMessage(
+                    LinkBandwidthEstimator.MSG_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED));
+        }
     }
 
     /**
