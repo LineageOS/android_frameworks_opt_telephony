@@ -1245,7 +1245,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
-        RILRequest rr = obtainRequest(RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS, onComplete,
+        RILRequest rr = obtainRequest(RIL_REQUEST_GET_SYSTEM_SELECTION_CHANNELS, onComplete,
                 mRILDefaultWorkSource);
 
         android.hardware.radio.V1_6.IRadio radioProxy16 =
