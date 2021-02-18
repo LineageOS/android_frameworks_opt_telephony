@@ -3001,9 +3001,11 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
+     * @param specifiers List of RadioAccessSpecifiers that are scanned.
      */
     public void getSystemSelectionChannelsResponse(
-            android.hardware.radio.V1_6.RadioResponseInfo info) {
+            android.hardware.radio.V1_6.RadioResponseInfo info,
+            ArrayList<android.hardware.radio.V1_5.RadioAccessSpecifier> specifiers) {
         responseVoid_1_6(info);
     }
 
