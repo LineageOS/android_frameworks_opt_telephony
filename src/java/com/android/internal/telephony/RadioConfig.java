@@ -558,7 +558,7 @@ public class RadioConfig extends Handler {
                 AsyncResult.forMessage(result,
                         /* Send response such that all capabilities are supported (depending on
                            the hal version of course.) */
-                        mRadioConfigResponse.createFullCapabilitySet(),
+                        mRadioConfigResponse.getFullCapabilitySet(),
                         CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                 result.sendToTarget();
             } else {
