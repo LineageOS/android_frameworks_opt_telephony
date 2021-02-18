@@ -3500,7 +3500,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
             mAllowedNetworkTypesBitmask = networkTypeBitmask;
             try {
-                radioProxy16.setAllowedNetworkTypesBitmap(rr.mSerial, networkTypeBitmask);
+                radioProxy16.setAllowedNetworkTypesBitmap(rr.mSerial,
+                        convertToHalRadioAccessFamily(mAllowedNetworkTypesBitmask));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setAllowedNetworkTypeBitmask", e);
             }
