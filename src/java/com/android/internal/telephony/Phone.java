@@ -2815,7 +2815,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /** Notify the data enabled changes. */
     public void notifyDataEnabled(boolean enabled,
             @TelephonyManager.DataEnabledReason int reason) {
-        mNotifier.notifyDataEnabled(enabled, reason);
+        mNotifier.notifyDataEnabled(this, enabled, reason);
     }
 
     /**
