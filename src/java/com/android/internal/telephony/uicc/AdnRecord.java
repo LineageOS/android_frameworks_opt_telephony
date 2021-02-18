@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Build;
 import android.os.Parcel;
@@ -23,7 +24,6 @@ import android.os.Parcelable;
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 
-import com.android.internal.telephony.GsmAlphabet;
 import com.android.telephony.Rlog;
 
 import java.util.Arrays;
@@ -118,9 +118,12 @@ public class AdnRecord implements Parcelable {
      * <p>This is the same representation as is used for this field in buildAdnString but there
      * is no restriction on the length.
      */
+    @NonNull
     public static byte[] encodeAlphaTag(String alphaTag) {
-        return !TextUtils.isEmpty(alphaTag) ? GsmAlphabet.stringToGsm8BitPacked(alphaTag)
-                : new byte[0];
+        if (TextUtils.isEmpty(alphaTag)) {
+            return new byte[0];
+        }
+        return IccUtils.stringToAdnStringField(alphaTag);
     }
 
     /**

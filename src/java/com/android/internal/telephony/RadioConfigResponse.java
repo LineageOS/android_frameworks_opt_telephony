@@ -277,7 +277,7 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
      * @return all capabilities
      */
     @RadioInterfaceCapability
-    public Set<String> createFullCapabilitySet() {
+    public Set<String> getFullCapabilitySet() {
         return getCaps(mRadioHalVersion, false);
     }
 

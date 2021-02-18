@@ -4750,6 +4750,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return Collections.emptyList();
     }
 
+    /**
+     * Return link bandwidth estimator
+     */
+    public LinkBandwidthEstimator getLinkBandwidthEstimator() {
+        return mLinkBandwidthEstimator;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
@@ -4923,6 +4930,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (getCarrierPrivilegesTracker() != null) {
             pw.println("CarrierPrivilegesTracker:");
             getCarrierPrivilegesTracker().dump(fd, pw, args);
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (getLinkBandwidthEstimator() != null) {
+            pw.println("LinkBandwidthEstimator:");
+            getLinkBandwidthEstimator().dump(fd, pw, args);
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
