@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
  * networks changes.
  */
 public class AccessNetworksManager extends Handler {
-    private static final String TAG = AccessNetworksManager.class.getSimpleName();
+    private final String mLogTag;
     private static final boolean DBG = false;
     private final UUID mAnomalyUUID = UUID.fromString("c2d1a639-00e2-4561-9619-6acf37d90590");
     private String mLastBoundPackageName;
@@ -296,6 +296,7 @@ public class AccessNetworksManager extends Handler {
         mPhone = phone;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
+        mLogTag = "ANM-" + mPhone.getPhoneId();
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
@@ -305,7 +306,7 @@ public class AccessNetworksManager extends Handler {
             contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
                 null /* broadcastPermission */, null);
         } catch (PackageManager.NameNotFoundException e) {
-            Rlog.e(TAG, "Package name not found: " + e.getMessage());
+            loge("Package name not found: ", e);
         }
         bindQualifiedNetworksService();
     }
@@ -484,15 +485,15 @@ public class AccessNetworksManager extends Handler {
     }
 
     private void log(String s) {
-        Rlog.d(TAG, s);
+        Rlog.d(mLogTag, s);
     }
 
     private void loge(String s) {
-        Rlog.e(TAG, s);
+        Rlog.e(mLogTag, s);
     }
 
     private void loge(String s, Exception ex) {
-        Rlog.e(TAG, s, ex);
+        Rlog.e(mLogTag, s, ex);
     }
 
 }
