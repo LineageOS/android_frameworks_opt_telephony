@@ -360,10 +360,7 @@ public class NetworkTypeController extends StateMachine {
 
     private @Annotation.OverrideNetworkType int getCurrentOverrideNetworkType() {
         int displayNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        int dataNetworkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
-                : nri.getAccessNetworkTechnology();
+        int dataNetworkType = getDataNetworkType();
         boolean nrNsa = isLte(dataNetworkType)
                 && mPhone.getServiceState().getNrState() != NetworkRegistrationInfo.NR_STATE_NONE;
         boolean nrSa = dataNetworkType == TelephonyManager.NETWORK_TYPE_NR;
@@ -420,7 +417,7 @@ public class NetworkTypeController extends StateMachine {
 
     private @Annotation.OverrideNetworkType int getLteDisplayType() {
         int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
-        if ((mPhone.getServiceState().getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
+        if ((getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
                 || mPhone.getServiceState().isUsingCarrierAggregation())
                 && (IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
                         > mLtePlusThresholdBandwidth)) {
@@ -558,7 +555,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("LegacyState: process " + getEventName(msg.what));
             updateTimers();
-            int rat = mPhone.getServiceState().getDataNetworkType();
+            int rat = getDataNetworkType();
             switch (msg.what) {
                 case EVENT_DATA_RAT_CHANGED:
                     if (rat == TelephonyManager.NETWORK_TYPE_NR || isLte(rat) && isNrConnected()) {
@@ -634,7 +631,7 @@ public class NetworkTypeController extends StateMachine {
             updateTimers();
             switch (msg.what) {
                 case EVENT_DATA_RAT_CHANGED:
-                    int rat = mPhone.getServiceState().getDataNetworkType();
+                    int rat = getDataNetworkType();
                     if (rat == TelephonyManager.NETWORK_TYPE_NR) {
                         transitionTo(mNrConnectedState);
                     } else if (!isLte(rat) || !isNrNotRestricted()) {
@@ -701,7 +698,7 @@ public class NetworkTypeController extends StateMachine {
             updateTimers();
             switch (msg.what) {
                 case EVENT_DATA_RAT_CHANGED:
-                    int rat = mPhone.getServiceState().getDataNetworkType();
+                    int rat = getDataNetworkType();
                     if (rat == TelephonyManager.NETWORK_TYPE_NR) {
                         transitionTo(mNrConnectedState);
                     } else if (!isLte(rat) || !isNrNotRestricted()) {
@@ -769,7 +766,7 @@ public class NetworkTypeController extends StateMachine {
         public boolean processMessage(Message msg) {
             if (DBG) log("NrConnectedState: process " + getEventName(msg.what));
             updateTimers();
-            int rat = mPhone.getServiceState().getDataNetworkType();
+            int rat = getDataNetworkType();
             switch (msg.what) {
                 case EVENT_DATA_RAT_CHANGED:
                     if (rat == TelephonyManager.NETWORK_TYPE_NR || isLte(rat) && isNrConnected()) {
@@ -859,7 +856,7 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private void transitionToCurrentState() {
-        int dataRat = mPhone.getServiceState().getDataNetworkType();
+        int dataRat = getDataNetworkType();
         IState transitionState;
         if (dataRat == TelephonyManager.NETWORK_TYPE_NR || isNrConnected()) {
             transitionState = mNrConnectedState;
@@ -912,7 +909,7 @@ public class NetworkTypeController extends StateMachine {
             resetAllTimers();
         }
 
-        int rat = mPhone.getServiceState().getDataNetworkType();
+        int rat = getDataNetworkType();
         if (!isLte(rat) && rat != TelephonyManager.NETWORK_TYPE_NR) {
             // Rat is 3G or 2G, and it doesn't need NR timer.
             resetAllTimers();
@@ -1039,6 +1036,13 @@ public class NetworkTypeController extends StateMachine {
 
     private boolean isPhysicalLinkActive() {
         return mPhysicalLinkState == DcController.PHYSICAL_LINK_ACTIVE;
+    }
+
+    private int getDataNetworkType() {
+        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        return nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
+                : nri.getAccessNetworkTechnology();
     }
 
     private String getEventName(int event) {
