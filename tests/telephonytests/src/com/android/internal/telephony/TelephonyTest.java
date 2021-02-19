@@ -566,6 +566,7 @@ public abstract class TelephonyTest {
         doReturn(mSmsStats).when(mPhone).getSmsStats();
         doReturn(mImsStats).when(mImsPhone).getImsStats();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
+        doReturn(mLinkBandwidthEstimator).when(mPhone).getLinkBandwidthEstimator();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
