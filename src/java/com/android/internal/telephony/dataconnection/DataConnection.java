@@ -1684,8 +1684,9 @@ public class DataConnection extends StateMachine {
      * @return the {@link NetworkCapabilities} of this data connection.
      */
     public NetworkCapabilities getNetworkCapabilities() {
-        NetworkCapabilities result = new NetworkCapabilities();
-        result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        boolean hasInternet = false;
 
         if (mApnSetting != null) {
             final String[] types = ApnSetting.getApnTypesStringFromBitmask(
@@ -1699,62 +1700,66 @@ public class DataConnection extends StateMachine {
                 }
                 switch (type) {
                     case PhoneConstants.APN_TYPE_ALL: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        hasInternet = true;
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DEFAULT: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        hasInternet = true;
                         break;
                     }
                     case PhoneConstants.APN_TYPE_MMS: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_SUPL: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DUN: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_FOTA: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_IMS: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_CBS: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_IA: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_EMERGENCY: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_MCX: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_XCAP: {
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
                         break;
                     }
                     default:
                 }
+            }
+
+            if (hasInternet) {
+                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             }
 
             // Mark NOT_METERED in the following cases:
@@ -1762,44 +1767,52 @@ public class DataConnection extends StateMachine {
             // 2. The non-restricted data is intended for unmetered use only.
             if ((mUnmeteredUseOnly && !mRestrictedNetworkOverride)
                     || !ApnSettingUtils.isMetered(mApnSetting, mPhone)) {
-                result.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
             } else {
-                result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
             }
 
-            if (result.deduceRestrictedCapability()) {
-                result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            // TODO: Need to remove the use of hidden API deduceRestrictedCapability
+            if (builder.build().deduceRestrictedCapability()) {
+                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
             }
         }
 
         if (mRestrictedNetworkOverride) {
-            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
             // don't use dun on restriction-overriden networks.
-            result.removeCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
         }
 
-        result.setLinkDownstreamBandwidthKbps(mDownlinkBandwidth);
-        result.setLinkUpstreamBandwidthKbps(mUplinkBandwidth);
+        builder.setLinkDownstreamBandwidthKbps(mDownlinkBandwidth);
+        builder.setLinkUpstreamBandwidthKbps(mUplinkBandwidth);
 
-        result.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
+        builder.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
                 .setSubscriptionId(mSubId).build());
 
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
-                !mPhone.getServiceState().getDataRoaming());
+        if (!mPhone.getServiceState().getDataRoaming()) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
+        }
 
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED, !mCongestedOverride);
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
-                mUnmeteredOverride);
+        if (!mCongestedOverride) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        }
 
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED, !mIsSuspended);
+        if (mUnmeteredOverride) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
+        }
 
-        result.setAdministratorUids(mAdministratorUids);
+        if (!mIsSuspended) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
+        }
+
+        builder.setAdministratorUids(mAdministratorUids);
 
         // Check for VCN-specified Network policy before returning NetworkCapabilities
-        result.setCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED,
-                !isVcnManaged(result));
-
-        return result;
+        if (!isVcnManaged(builder.build())) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        }
+        return builder.build();
     }
 
     /**
