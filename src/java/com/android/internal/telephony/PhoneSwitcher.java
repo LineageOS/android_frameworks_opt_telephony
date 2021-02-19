@@ -438,25 +438,25 @@ public class PhoneSwitcher extends Handler {
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
 
-        NetworkCapabilities netCap = new NetworkCapabilities();
-        netCap.addTransportType(TRANSPORT_CELLULAR);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        netCap.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
-        netCap.setNetworkSpecifier(new MatchAllNetworkSpecifier());
+        final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
+                .addTransportType(TRANSPORT_CELLULAR)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_IA)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_RCS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
+                .setNetworkSpecifier(new MatchAllNetworkSpecifier());
 
         NetworkFactory networkFactory = new PhoneSwitcherNetworkRequestListener(looper, context,
-                netCap, this);
+                builder.build(), this);
         // we want to see all requests
         networkFactory.setScoreFilter(101);
         networkFactory.register();
