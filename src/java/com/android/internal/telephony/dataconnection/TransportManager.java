@@ -94,7 +94,7 @@ import java.util.stream.Collectors;
  *          The carrier config takes precedence over the resource overlay if both exist.
  */
 public class TransportManager extends Handler {
-    private static final String TAG = TransportManager.class.getSimpleName();
+    private final String mLogTag;
 
     // Key is the access network, value is the transport.
     private static final Map<Integer, Integer> ACCESS_NETWORK_TRANSPORT_TYPE_MAP;
@@ -226,6 +226,7 @@ public class TransportManager extends Handler {
         mPendingHandoverApns = new SparseIntArray();
         mHandoverNeededEventRegistrants = new RegistrantList();
         mAvailableNetworksList = new LinkedList<>();
+        mLogTag = TransportManager.class.getSimpleName() + "-" + mPhone.getPhoneId();
 
         if (isInLegacyMode()) {
             log("operates in legacy mode.");
@@ -494,7 +495,7 @@ public class TransportManager extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printwriter, "  ");
-        pw.println("TransportManager:");
+        pw.println(mLogTag);
         pw.increaseIndent();
         pw.println("mAvailableTransports=[" + Arrays.stream(mAvailableTransports)
                 .mapToObj(type -> AccessNetworkConstants.transportTypeToString(type))
@@ -523,10 +524,10 @@ public class TransportManager extends Handler {
     }
 
     private void log(String s) {
-        Rlog.d(TAG, s);
+        Rlog.d(mLogTag, s);
     }
 
     private void loge(String s) {
-        Rlog.e(TAG, s);
+        Rlog.e(mLogTag, s);
     }
 }
