@@ -132,6 +132,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -2128,86 +2129,50 @@ public class DcTracker extends Handler {
         return true;
     }
 
-    protected void setInitialAttachApn() {
-        ApnSetting iaApnSetting = null;
-        ApnSetting defaultApnSetting = null;
-        ApnSetting firstNonEmergencyApnSetting = null;
-
-        log("setInitialApn: E mPreferredApn=" + mPreferredApn);
-
-        if (mPreferredApn != null && mPreferredApn.canHandleType(ApnSetting.TYPE_IA)) {
-              iaApnSetting = mPreferredApn;
-        } else if (!mAllApnSettings.isEmpty()) {
-            // Search for Initial APN setting and the first apn that can handle default
-            int preferredApnSetId = getPreferredApnSetId();
-            for (ApnSetting apn : mAllApnSettings) {
-                if (preferredApnSetId != apn.getApnSetId()) {
-                    if (VDBG) {
-                        log("setInitialApn: APN set id " + apn.getApnSetId()
-                                + " does not match the preferred set id " + preferredApnSetId);
-                    }
-                    continue;
-                }
-                if (firstNonEmergencyApnSetting == null
-                        && !apn.isEmergencyApn()) {
-                    firstNonEmergencyApnSetting = apn;
-                    log("setInitialApn: firstNonEmergencyApnSetting="
-                            + firstNonEmergencyApnSetting);
-                }
-                if (apn.canHandleType(ApnSetting.TYPE_IA)) {
-                    // The Initial Attach APN is highest priority so use it if there is one
-                    log("setInitialApn: iaApnSetting=" + apn);
-                    iaApnSetting = apn;
-                    break;
-                } else if ((defaultApnSetting == null)
-                        && (apn.canHandleType(ApnSetting.TYPE_DEFAULT))) {
-                    // Use the first default apn if no better choice
-                    log("setInitialApn: defaultApnSetting=" + apn);
-                    defaultApnSetting = apn;
-                }
+    // Get the allowed APN types for initial attach. The order in the returned list represent
+    // the order of APN types that should be used for initial attach.
+    private @NonNull @ApnType List<Integer> getAllowedInitialAttachApnTypes() {
+        PersistableBundle bundle = getCarrierConfig();
+        if (bundle != null) {
+            String[] apnTypesArray = bundle.getStringArray(
+                    CarrierConfigManager.KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY);
+            if (apnTypesArray != null) {
+                return Arrays.stream(apnTypesArray)
+                        .map(ApnSetting::getApnTypesBitmaskFromString)
+                        .collect(Collectors.toList());
             }
         }
 
-        if ((iaApnSetting == null) && (defaultApnSetting == null) &&
-                !allowInitialAttachForOperator()) {
-            log("Abort Initial attach");
-            return;
-        }
-
-        // The priority of apn candidates from highest to lowest is:
-        //   1) APN_TYPE_IA (Initial Attach)
-        //   2) mPreferredApn, i.e. the current preferred apn
-        //   3) The first apn that than handle APN_TYPE_DEFAULT
-        //   4) The first APN we can find.
-
-        ApnSetting initialAttachApnSetting = null;
-        if (iaApnSetting != null) {
-            if (DBG) log("setInitialAttachApn: using iaApnSetting");
-            initialAttachApnSetting = iaApnSetting;
-        } else if (mPreferredApn != null) {
-            if (DBG) log("setInitialAttachApn: using mPreferredApn");
-            initialAttachApnSetting = mPreferredApn;
-        } else if (defaultApnSetting != null) {
-            if (DBG) log("setInitialAttachApn: using defaultApnSetting");
-            initialAttachApnSetting = defaultApnSetting;
-        } else if (firstNonEmergencyApnSetting != null) {
-            if (DBG) log("setInitialAttachApn: using firstNonEmergencyApnSetting");
-            initialAttachApnSetting = firstNonEmergencyApnSetting;
-        }
-
-        if (initialAttachApnSetting == null) {
-            if (DBG) log("setInitialAttachApn: X There in no available apn");
-        } else {
-            if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
-
-            mDataServiceManager.setInitialAttachApn(createDataProfile(initialAttachApnSetting,
-                            initialAttachApnSetting.equals(getPreferredApn())),
-                    mPhone.getServiceState().getDataRoamingFromRegistration(), null);
-        }
+        return Collections.emptyList();
     }
 
-    protected boolean allowInitialAttachForOperator() {
-        return true;
+    protected void setInitialAttachApn() {
+        ApnSetting apnSetting = null;
+        // Get the allowed APN types for initial attach. Note that if none of the APNs has the
+        // allowed APN types, then the initial attach will not be performed.
+        List<Integer> allowedApnTypes = getAllowedInitialAttachApnTypes();
+        for (int allowedApnType : allowedApnTypes) {
+            apnSetting = mAllApnSettings.stream()
+                    .filter(apn -> apn.canHandleType(allowedApnType))
+                    .findFirst()
+                    .orElse(null);
+            if (apnSetting != null) break;
+        }
+
+        if (DBG) {
+            log("setInitialAttachApn: Allowed APN types=" + allowedApnTypes.stream()
+                    .map(ApnSetting::getApnTypeString)
+                    .collect(Collectors.joining(",")));
+        }
+
+        if (apnSetting == null) {
+            if (DBG) log("setInitialAttachApn: X There in no available apn.");
+        } else {
+            if (DBG) log("setInitialAttachApn: X selected APN=" + apnSetting);
+            mDataServiceManager.setInitialAttachApn(createDataProfile(apnSetting,
+                    apnSetting.equals(getPreferredApn())),
+                    mPhone.getServiceState().getDataRoamingFromRegistration(), null);
+        }
     }
 
     /**

@@ -31,7 +31,6 @@ import com.android.internal.telephony.dataconnection.ApnContext;
 import com.android.internal.telephony.dataconnection.DcTracker;
 
 import java.util.HashSet;
-import java.util.Iterator;
 
 public class VendorDcTracker extends DcTracker {
     private String LOG_TAG = "VendorDCT";
@@ -64,37 +63,6 @@ public class VendorDcTracker extends DcTracker {
         LOG_TAG = LOG_TAG + "-" +
                 ((transportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
         if (DBG) log(LOG_TAG + ".constructor");
-        fillIccIdSet();
-    }
-
-    @Override
-    protected boolean allowInitialAttachForOperator() {
-        String iccId = mPhone.getIccSerialNumber();
-        if (iccId != null) {
-            Iterator<String> itr = mIccidSet.iterator();
-            while (itr.hasNext()) {
-                if (iccId.contains(itr.next())) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private void fillIccIdSet() {
-        mIccidSet.add("8991840");
-        mIccidSet.add("8991854");
-        mIccidSet.add("8991855");
-        mIccidSet.add("8991856");
-        mIccidSet.add("8991857");
-        mIccidSet.add("8991858");
-        mIccidSet.add("8991859");
-        mIccidSet.add("899186");
-        mIccidSet.add("8991870");
-        mIccidSet.add("8991871");
-        mIccidSet.add("8991872");
-        mIccidSet.add("8991873");
-        mIccidSet.add("8991874");
     }
 
     @Override
