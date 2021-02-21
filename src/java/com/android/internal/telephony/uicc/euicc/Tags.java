@@ -57,7 +57,6 @@ class Tags {
     static final int TAG_CTX_8 = 0x88;
     static final int TAG_CTX_9 = 0x89;
     static final int TAG_CTX_10 = 0x8A;
-    static final int TAG_CTX_11 = 0x8B;
 
     // Context tags for constructed (compound) types
     static final int TAG_CTX_COMP_0 = 0xA0;
