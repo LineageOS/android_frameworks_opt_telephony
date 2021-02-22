@@ -2772,7 +2772,6 @@ public class GsmCdmaPhone extends Phone {
         // If this is on APM off, SIM may already be loaded. Send setPreferredNetworkType
         // request to RIL to preserve user setting across APM toggling
         setPreferredNetworkTypeIfSimLoaded();
-        notifyAllowedNetworkTypesChanged();
     }
 
     private void handleRadioOffOrNotAvailable() {
@@ -2921,8 +2920,9 @@ public class GsmCdmaPhone extends Phone {
 
                 updateCdmaRoamingSettingsAfterCarrierConfigChanged(b);
 
-                updateNrSettingsAfterCarrierConfigChanged();
-
+                updateNrSettingsAfterCarrierConfigChanged(b);
+                loadAllowedNetworksFromSubscriptionDatabase();
+                updateAllowedNetworkTypes(null);
                 break;
 
             case EVENT_SET_ROAMING_PREFERENCE_DONE:
@@ -4639,8 +4639,15 @@ public class GsmCdmaPhone extends Phone {
         setBroadcastEmergencyCallStateChanges(broadcastEmergencyCallStateChanges);
     }
 
-    private void updateNrSettingsAfterCarrierConfigChanged() {
-        updateAllowedNetworkTypes(null);
+    private void updateNrSettingsAfterCarrierConfigChanged(PersistableBundle config) {
+        if (config == null) {
+            loge("didn't get the carrier_nr_availability_int from the carrier config.");
+            return;
+        }
+        mIsCarrierNrSupported = config.getInt(
+                CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITY_INT,
+                CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA)
+                != CarrierConfigManager.CARRIER_NR_AVAILABILITY_NONE;
     }
 
     private void updateCdmaRoamingSettingsAfterCarrierConfigChanged(PersistableBundle config) {

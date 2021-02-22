@@ -45,7 +45,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -155,15 +154,15 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mSST).isRadioOn();
         doReturn(mNotificationBuilder).when(spyPrefNetworkNotification).getNotificationBuilder();
 
-        Map<Integer, Long> allowedNetworkTypesList = new HashMap<>();
+
         long networkType = (long) RadioAccessFamily.getRafFromNetworkType(
                 TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO);
-        allowedNetworkTypesList.put(TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER,
-                networkType);
+        int allowedNetworkTypeReason = TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER;
+        long allowedNetworkTypeValue = networkType;
         doReturn(networkType).when(mPhone).getAllowedNetworkTypes(
                 TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
         mSpyCarrierSST.getAllowedNetworkTypesChangedListener().onAllowedNetworkTypesChanged(
-                allowedNetworkTypesList);
+                allowedNetworkTypeReason, allowedNetworkTypeValue);
 
         processAllMessages();
         verify(mNotificationManager, atLeast(1)).notify(
@@ -172,12 +171,11 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
 
         networkType = (long) RadioAccessFamily.getRafFromNetworkType(
                 TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA);
-        allowedNetworkTypesList.put(TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER,
-                networkType);
+        allowedNetworkTypeValue = networkType;
         doReturn(networkType).when(mPhone).getAllowedNetworkTypes(
                 TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
         mSpyCarrierSST.getAllowedNetworkTypesChangedListener().onAllowedNetworkTypesChanged(
-                allowedNetworkTypesList);
+                allowedNetworkTypeReason, allowedNetworkTypeValue);
 
         processAllMessages();
         verify(mNotificationManager, atLeast(1)).cancel(
