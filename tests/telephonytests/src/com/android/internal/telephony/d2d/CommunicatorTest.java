@@ -57,7 +57,6 @@ public class CommunicatorTest {
         MockitoAnnotations.initMocks(this);
         TransportProtocol protocol1 = getMockTransportProtocol();
         TransportProtocol protocol2 = getMockTransportProtocol();
-
         mTransportProtocols.add(protocol1);
         mTransportProtocols.add(protocol2);
     }
