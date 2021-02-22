@@ -1669,6 +1669,9 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
+        value.put(SubscriptionManager.ALLOWED_NETWORK_TYPES,
+                "user=" + RadioAccessFamily.getRafFromNetworkType(
+                        RILConstants.PREFERRED_NETWORK_MODE));
 
         Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
 
