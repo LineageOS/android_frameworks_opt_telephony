@@ -611,4 +611,14 @@ public class DtmfTransport implements TransportProtocol {
             }
         }
     }
+
+    @Override
+    public void forceNegotiated() {
+
+    }
+
+    @Override
+    public void forceNotNegotiated() {
+
+    }
 }

@@ -329,6 +329,11 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
                 mRtpAdapter.getAcceptedRtpHeaderExtensions();
         mSupportedRtpHeaderExtensionTypes.addAll(acceptedExtensions);
 
+        Log.i(this, "startNegotiation: supportedExtensions=%s", mSupportedRtpHeaderExtensionTypes
+                .stream()
+                .map(e -> e.toString())
+                .collect(Collectors.joining(",")));
+
         boolean areExtensionsAvailable = acceptedExtensions.stream().anyMatch(
                 e -> e.getUri().equals(DEVICE_STATE_RTP_HEADER_EXTENSION))
                 && acceptedExtensions.stream().anyMatch(
@@ -358,7 +363,30 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
     public void sendMessages(Set<Communicator.Message> messages) {
         Set<RtpHeaderExtension> toSend = messages.stream().map(m -> generateRtpHeaderExtension(m))
                 .collect(Collectors.toSet());
+        Log.i(this, "sendMessages: sending=%s", messages);
         mRtpAdapter.sendRtpHeaderExtensions(toSend);
+    }
+
+    /**
+     * Forces the protocol status to negotiated; for test purposes.
+     */
+    @Override
+    public void forceNegotiated() {
+        // If there is no supported RTP header extensions we need to fake it.
+        if (mSupportedRtpHeaderExtensionTypes == null
+                || mSupportedRtpHeaderExtensionTypes.isEmpty()) {
+            mSupportedRtpHeaderExtensionTypes.add(DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE);
+            mSupportedRtpHeaderExtensionTypes.add(CALL_STATE_RTP_HEADER_EXTENSION_TYPE);
+        }
+        mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_COMPLETE;
+    }
+
+    /**
+     * Forces the protocol status to un-negotiated; for test purposes.
+     */
+    @Override
+    public void forceNotNegotiated() {
+        mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_REQUIRED;
     }
 
     /**
