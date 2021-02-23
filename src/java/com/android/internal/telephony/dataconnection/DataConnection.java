@@ -1595,9 +1595,20 @@ public class DataConnection extends StateMachine {
             log("updateLinkBandwidthsFromBandwidthEstimator, UL= "
                     + uplinkBandwidthKbps + " DL= " + downlinkBandwidthKbps);
         }
-        mDownlinkBandwidth = downlinkBandwidthKbps;
-        mUplinkBandwidth = uplinkBandwidthKbps;
+        boolean downlinkUpdated = false;
+        boolean uplinkUpdated = false;
+        if (downlinkBandwidthKbps > 0) {
+            mDownlinkBandwidth = downlinkBandwidthKbps;
+            downlinkUpdated = true;
+        }
+        if (uplinkBandwidthKbps > 0) {
+            mUplinkBandwidth = uplinkBandwidthKbps;
+            uplinkUpdated = true;
+        }
 
+        if (!downlinkUpdated || !uplinkUpdated) {
+            fallBackToCarrierConfigValues(downlinkUpdated, uplinkUpdated);
+        }
         if (mNetworkAgent != null) {
             mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(), DataConnection.this);
         }
