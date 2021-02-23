@@ -585,12 +585,6 @@ public class ServiceStateTracker extends Handler {
                 return;
             }
 
-            // TODO: Remove this weird check left over from CDMA/GSM service state tracker merge.
-            if (!mPhone.isPhoneTypeGsm()) {
-                loge("Ignoring intent " + intent + " received on CDMA phone");
-                return;
-            }
-
             if (intent.getAction().equals(Intent.ACTION_LOCALE_CHANGED)) {
                 // update emergency string whenever locale changed
                 updateSpnDisplay();
