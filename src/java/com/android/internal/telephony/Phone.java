@@ -3828,7 +3828,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public PhoneConstants.DataState getDataConnectionState() {
-        return getDataConnectionState(PhoneConstants.APN_TYPE_DEFAULT);
+        return getDataConnectionState(ApnSetting.TYPE_DEFAULT_STRING);
     }
 
     public void notifyCallForwardingIndicator() {
