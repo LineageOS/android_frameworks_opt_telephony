@@ -44,7 +44,7 @@ import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.vcn.VcnManager;
-import android.net.vcn.VcnUnderlyingNetworkPolicy;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -666,9 +666,9 @@ public abstract class TelephonyTest {
 
         doAnswer(invocation -> {
             NetworkCapabilities nc = invocation.getArgument(0);
-            return new VcnUnderlyingNetworkPolicy(
+            return new VcnNetworkPolicyResult(
                     false /* isTearDownRequested */, nc);
-        }).when(mVcnManager).getUnderlyingNetworkPolicy(any(), any());
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
 
         //SIM
         doReturn(1).when(mTelephonyManager).getSimCount();

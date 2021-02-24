@@ -388,7 +388,7 @@ public class DataConnectionTest extends TelephonyTest {
                 .registerForLceInfo(any(Handler.class),
                         eq(DataConnection.EVENT_LINK_CAPACITY_CHANGED), eq(null));
         verify(mVcnManager, atLeastOnce())
-                .getUnderlyingNetworkPolicy(
+                .applyVcnNetworkPolicy(
                         argThat(caps ->
                                 caps.hasCapability(
                                         NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)),
