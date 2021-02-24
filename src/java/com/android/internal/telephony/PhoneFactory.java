@@ -173,6 +173,10 @@ public class PhoneFactory {
                     sCommandsInterfaces[i] = new RIL(context, networkModes[i],
                             cdmaSubscription, i);
                 }
+                HalVersion radioHalVersion;
+                if (numPhones > 0) radioHalVersion = sCommandsInterfaces[0].getHalVersion();
+                else radioHalVersion = HalVersion.UNKNOWN;
+                RadioConfig.make(context, radioHalVersion);
 
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()
