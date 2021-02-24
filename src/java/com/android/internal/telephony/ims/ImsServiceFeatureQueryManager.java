@@ -43,6 +43,10 @@ public class ImsServiceFeatureQueryManager {
 
         private final ComponentName mName;
         private final String mIntentFilter;
+        // Track the status of whether or not the Service has died in case we need to permanently
+        // unbind (see onNullBinding below).
+        private boolean mIsServiceConnectionDead = false;
+
 
         ImsServiceFeatureQuery(ComponentName name, String intentFilter) {
             mName = name;
@@ -85,6 +89,7 @@ public class ImsServiceFeatureQueryManager {
 
         @Override
         public void onBindingDied(ComponentName name) {
+            mIsServiceConnectionDead = true;
             Log.w(LOG_TAG, "onBindingDied: " + name);
             cleanup();
             // retry again!
@@ -94,6 +99,9 @@ public class ImsServiceFeatureQueryManager {
         @Override
         public void onNullBinding(ComponentName name) {
             Log.w(LOG_TAG, "onNullBinding: " + name);
+            // onNullBinding will happen after onBindingDied. In this case, we should not
+            // permanently unbind and instead let the automatic rebind occur.
+            if (mIsServiceConnectionDead) return;
             cleanup();
             mListener.onPermanentError(name);
         }
