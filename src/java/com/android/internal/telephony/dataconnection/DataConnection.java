@@ -1808,10 +1808,13 @@ public class DataConnection extends StateMachine {
 
         builder.setAdministratorUids(mAdministratorUids);
 
-        // Check for VCN-specified Network policy before returning NetworkCapabilities
-        if (!isVcnManaged(builder.build())) {
-            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        // Always start with NOT_VCN_MANAGED, then remove if VcnManager indicates this is part of a
+        // VCN.
+        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        if (isVcnManaged(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
         }
+
         return builder.build();
     }
 
