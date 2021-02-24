@@ -55,8 +55,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyDisplayInfo;
-import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
@@ -651,15 +649,6 @@ public class DataConnectionTest extends TelephonyTest {
         mContextFixture.getCarrierConfigBundle().putStringArray(
                 CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[] { "default" });
-        // TODO: Remove these checks after b/176119724 is fixed.
-        doReturn((int) TelephonyManager.NETWORK_TYPE_BITMASK_NR)
-                .when(mPhone).getRadioAccessFamily();
-        mContextFixture.getCarrierConfigBundle().putBoolean(
-                CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL, true);
-        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA))
-                .when(mDisplayInfoController).getTelephonyDisplayInfo();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         testConnectEvent();
 
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
