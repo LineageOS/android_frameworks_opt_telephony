@@ -40,8 +40,8 @@ import android.net.RouteInfo;
 import android.net.SocketKeepalive;
 import android.net.TelephonyNetworkSpecifier;
 import android.net.vcn.VcnManager;
-import android.net.vcn.VcnManager.VcnUnderlyingNetworkPolicyListener;
-import android.net.vcn.VcnUnderlyingNetworkPolicy;
+import android.net.vcn.VcnManager.VcnNetworkPolicyListener;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.HandlerExecutor;
 import android.os.Message;
@@ -332,8 +332,8 @@ public class DataConnection extends StateMachine {
     PendingIntent mReconnectIntent = null;
 
     /** Class used to track VCN-defined Network policies for this DcNetworkAgent. */
-    private final VcnUnderlyingNetworkPolicyListener mVcnPolicyListener =
-            new DataConnectionVcnUnderlyingNetworkPolicyListener();
+    private final VcnNetworkPolicyListener mVcnPolicyListener =
+            new DataConnectionVcnNetworkPolicyListener();
 
     // ***** Event codes for driving the state machine, package visible for Dcc
     static final int BASE = Protocol.BASE_DATA_CONNECTION;
@@ -1769,13 +1769,13 @@ public class DataConnection extends StateMachine {
      * <p>Determining if the Network is VCN-managed requires polling VcnManager.
      */
     private boolean isVcnManaged(NetworkCapabilities networkCapabilities) {
-        VcnUnderlyingNetworkPolicy networkPolicy =
-                mVcnManager.getUnderlyingNetworkPolicy(networkCapabilities, getLinkProperties());
+        VcnNetworkPolicyResult policyResult =
+                mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
 
         // if the Network does have capability NOT_VCN_MANAGED, return false to indicate it's not
         // VCN-managed
-        return !networkPolicy
-                .getMergedNetworkCapabilities()
+        return !policyResult
+                .getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
     }
 
@@ -2588,9 +2588,9 @@ public class DataConnection extends StateMachine {
                         + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly);
             }
 
-            // Always register a VcnUnderlyingNetworkPolicyListener, regardless of whether this is a
-            // handover or new Network.
-            mVcnManager.addVcnUnderlyingNetworkPolicyListener(
+            // Always register a VcnNetworkPolicyListener, regardless of whether this is a handover
+            // or new Network.
+            mVcnManager.addVcnNetworkPolicyListener(
                     new HandlerExecutor(getHandler()), mVcnPolicyListener);
 
             if (mConnectionParams != null
@@ -2644,10 +2644,10 @@ public class DataConnection extends StateMachine {
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this, mPhone, mScore,
                         configBuilder.build(), provider, mTransportType);
 
-                VcnUnderlyingNetworkPolicy policy =
-                        mVcnManager.getUnderlyingNetworkPolicy(
+                VcnNetworkPolicyResult policyResult =
+                        mVcnManager.applyVcnNetworkPolicy(
                                 getNetworkCapabilities(), getLinkProperties());
-                if (policy.isTeardownRequested()) {
+                if (policyResult.isTeardownRequested()) {
                     tearDownAll(
                             Phone.REASON_VCN_REQUESTED_TEARDOWN,
                             DcTracker.RELEASE_TYPE_DETACH,
@@ -2706,7 +2706,7 @@ public class DataConnection extends StateMachine {
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
             mDataCallSessionStats.onDataCallDisconnected();
 
-            mVcnManager.removeVcnUnderlyingNetworkPolicyListener(mVcnPolicyListener);
+            mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
 
             mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
         }
@@ -3716,16 +3716,15 @@ public class DataConnection extends StateMachine {
      *
      * <p>MUST be registered with the associated DataConnection's Handler.
      */
-    private class DataConnectionVcnUnderlyingNetworkPolicyListener
-            implements VcnUnderlyingNetworkPolicyListener {
+    private class DataConnectionVcnNetworkPolicyListener implements VcnNetworkPolicyListener {
         @Override
         public void onPolicyChanged() {
             // Poll the current underlying Network policy from VcnManager and send to NetworkAgent.
             final NetworkCapabilities networkCapabilities = getNetworkCapabilities();
-            VcnUnderlyingNetworkPolicy policy =
-                    mVcnManager.getUnderlyingNetworkPolicy(
+            VcnNetworkPolicyResult policyResult =
+                    mVcnManager.applyVcnNetworkPolicy(
                             networkCapabilities, getLinkProperties());
-            if (policy.isTeardownRequested()) {
+            if (policyResult.isTeardownRequested()) {
                 tearDownAll(
                         Phone.REASON_VCN_REQUESTED_TEARDOWN,
                         DcTracker.RELEASE_TYPE_DETACH,
