@@ -72,6 +72,7 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
+import com.android.ims.ImsManager;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -133,9 +134,10 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
+        doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
 
         mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
-            PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
+            PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
         mPhoneUT.setVoiceCallSessionStats(mVoiceCallSessionStats);
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController).registerForIccChanged(eq(mPhoneUT), integerArgumentCaptor.capture(),
@@ -998,7 +1000,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         };
 
         Phone phone = new GsmCdmaPhone(mContext, sc, mNotifier, true, 0,
-                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
+                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
         phone.setVoiceCallSessionStats(mVoiceCallSessionStats);
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController).registerForIccChanged(eq(phone), integerArgumentCaptor.capture(),
