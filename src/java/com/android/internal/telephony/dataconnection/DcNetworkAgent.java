@@ -100,7 +100,7 @@ public class DcNetworkAgent extends NetworkAgent {
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
                 networkProvider);
         register();
-        mId = getNetwork().netId;
+        mId = getNetwork().getNetId();
         mTag = "DcNetworkAgent" + "-" + mId;
         mPhone = phone;
         mNetworkCapabilities = dc.getNetworkCapabilities();
