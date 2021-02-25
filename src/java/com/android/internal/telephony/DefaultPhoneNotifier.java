@@ -67,8 +67,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         if (ringingCall != null && ringingCall.getEarliestConnection() != null) {
             incomingNumber = ringingCall.getEarliestConnection().getAddress();
         }
-        mTelephonyRegistryMgr.notifyCallStateChanged(subId, phoneId,
-            PhoneConstantConversions.convertCallState(sender.getState()), incomingNumber);
+        mTelephonyRegistryMgr.notifyCallStateChanged(phoneId, subId,
+                PhoneConstantConversions.convertCallState(sender.getState()), incomingNumber);
     }
 
     @Override
@@ -86,7 +86,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             ss = new ServiceState();
             ss.setStateOutOfService();
         }
-        mTelephonyRegistryMgr.notifyServiceStateChanged(subId, phoneId, ss);
+        mTelephonyRegistryMgr.notifyServiceStateChanged(phoneId, subId, ss);
     }
 
     @Override
@@ -98,16 +98,16 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             Rlog.d(LOG_TAG, "notifySignalStrength: mRegistryMgr=" + mTelephonyRegistryMgr
                 + " ss=" + sender.getSignalStrength() + " sender=" + sender);
         }
-        mTelephonyRegistryMgr.notifySignalStrengthChanged(subId, phoneId,
-            sender.getSignalStrength());
+        mTelephonyRegistryMgr.notifySignalStrengthChanged(phoneId, subId,
+                sender.getSignalStrength());
     }
 
     @Override
     public void notifyMessageWaitingChanged(Phone sender) {
         int phoneId = sender.getPhoneId();
         int subId = sender.getSubId();
-        mTelephonyRegistryMgr.notifyMessageWaitingChanged(subId, phoneId,
-            sender.getMessageWaitingIndicator());
+        mTelephonyRegistryMgr.notifyMessageWaitingChanged(phoneId, subId,
+                sender.getMessageWaitingIndicator());
     }
 
     @Override
@@ -150,10 +150,10 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         Call foregroundCall = sender.getForegroundCall();
         Call backgroundCall = sender.getBackgroundCall();
         if (ringingCall != null && foregroundCall != null && backgroundCall != null) {
-            mTelephonyRegistryMgr.notifyPreciseCallState(sender.getSubId(), sender.getPhoneId(),
-                convertPreciseCallState(ringingCall.getState()),
-                convertPreciseCallState(foregroundCall.getState()),
-                convertPreciseCallState(backgroundCall.getState()));
+            mTelephonyRegistryMgr.notifyPreciseCallState(sender.getPhoneId(), sender.getSubId(),
+                    convertPreciseCallState(ringingCall.getState()),
+                    convertPreciseCallState(foregroundCall.getState()),
+                    convertPreciseCallState(backgroundCall.getState()));
         }
     }
 
@@ -174,14 +174,14 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyDataActivationStateChanged(Phone sender, int activationState) {
-        mTelephonyRegistryMgr.notifyDataActivationStateChanged(sender.getSubId(),
-            sender.getPhoneId(), activationState);
+        mTelephonyRegistryMgr.notifyDataActivationStateChanged(sender.getPhoneId(),
+                sender.getSubId(), activationState);
     }
 
     @Override
     public void notifyVoiceActivationStateChanged(Phone sender, int activationState) {
-        mTelephonyRegistryMgr.notifyVoiceActivationStateChanged(sender.getSubId(),
-            sender.getPhoneId(),  activationState);
+        mTelephonyRegistryMgr.notifyVoiceActivationStateChanged(sender.getPhoneId(),
+                sender.getSubId(), activationState);
     }
 
     @Override
@@ -203,13 +203,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyRadioPowerStateChanged(Phone sender, @RadioPowerState int state) {
-        mTelephonyRegistryMgr.notifyRadioPowerStateChanged(sender.getSubId(), sender.getPhoneId(),
-            state);
+        mTelephonyRegistryMgr.notifyRadioPowerStateChanged(sender.getPhoneId(), sender.getSubId(),
+                state);
     }
 
     @Override
     public void notifyEmergencyNumberList(Phone sender) {
-        mTelephonyRegistryMgr.notifyEmergencyNumberList(sender.getSubId(), sender.getPhoneId());
+        mTelephonyRegistryMgr.notifyEmergencyNumberList(sender.getPhoneId(), sender.getSubId());
     }
 
     @Override
@@ -220,9 +220,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyCallQualityChanged(Phone sender, CallQuality callQuality,
-        int callNetworkType) {
-        mTelephonyRegistryMgr.notifyCallQualityChanged(sender.getSubId(), sender.getPhoneId(),
-            callQuality, callNetworkType);
+            int callNetworkType) {
+        mTelephonyRegistryMgr.notifyCallQualityChanged(sender.getPhoneId(), sender.getSubId(),
+                callQuality, callNetworkType);
     }
 
     @Override
@@ -246,15 +246,16 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     @Override
-    public void notifyDataEnabled(boolean enabled, @DataEnabledReason int reason) {
-        mTelephonyRegistryMgr.notifyDataEnabled(enabled, reason);
+    public void notifyDataEnabled(Phone sender, boolean enabled, @DataEnabledReason int reason) {
+        mTelephonyRegistryMgr.notifyDataEnabled(sender.getPhoneId(), sender.getSubId(),
+                enabled, reason);
     }
 
     @Override
     public void notifyAllowedNetworkTypesChanged(Phone sender,
             Map<Integer, Long> allowedNetworkTypeList) {
-        mTelephonyRegistryMgr.notifyAllowedNetworkTypesChanged(sender.getSubId(),
-                sender.getPhoneId(), allowedNetworkTypeList);
+        mTelephonyRegistryMgr.notifyAllowedNetworkTypesChanged(sender.getPhoneId(),
+                sender.getSubId(), allowedNetworkTypeList);
     }
 
     /**
