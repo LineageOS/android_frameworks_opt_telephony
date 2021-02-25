@@ -298,7 +298,7 @@ public class DeviceStateMonitor extends Handler {
         filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
         filter.addAction(BatteryManager.ACTION_CHARGING);
         filter.addAction(BatteryManager.ACTION_DISCHARGING);
-        filter.addAction(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
+        filter.addAction(TetheringManager.ACTION_TETHER_STATE_CHANGED);
         filter.addAction(UiModeManager.ACTION_ENTER_CAR_MODE_PRIORITIZED);
         filter.addAction(UiModeManager.ACTION_EXIT_CAR_MODE_PRIORITIZED);
         mPhone.getContext().registerReceiver(mBroadcastReceiver, filter, null, mPhone);
