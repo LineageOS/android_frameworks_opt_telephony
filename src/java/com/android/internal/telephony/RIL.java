@@ -56,6 +56,8 @@ import android.hardware.radio.V1_5.AccessNetwork;
 import android.hardware.radio.V1_5.IndicationFilter;
 import android.hardware.radio.V1_5.PersoSubstate;
 import android.hardware.radio.V1_5.RadioAccessNetworks;
+import android.hardware.radio.V1_6.OptionalDnn;
+import android.hardware.radio.V1_6.OptionalOsAppId;
 import android.hardware.radio.V1_6.OptionalSliceInfo;
 import android.hardware.radio.V1_6.OptionalTrafficDescriptor;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
@@ -109,6 +111,7 @@ import android.telephony.data.DataService;
 import android.telephony.data.Qos;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.SliceInfo;
+import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
 import android.util.Log;
@@ -1905,7 +1908,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return dpi;
     }
 
-    private OptionalSliceInfo convertToHalSliceInfo16(@Nullable SliceInfo sliceInfo) {
+    private static OptionalSliceInfo convertToHalSliceInfo(@Nullable SliceInfo sliceInfo) {
         OptionalSliceInfo optionalSliceInfo = new OptionalSliceInfo();
         if (sliceInfo == null) {
             return optionalSliceInfo;
@@ -1920,7 +1923,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return optionalSliceInfo;
     }
 
-    private ArrayList<android.hardware.radio.V1_5.LinkAddress> convertToHalLinkProperties15(
+    private static OptionalTrafficDescriptor convertToHalTrafficDescriptor(
+            @Nullable TrafficDescriptor trafficDescriptor) {
+        OptionalTrafficDescriptor optionalTrafficDescriptor = new OptionalTrafficDescriptor();
+        if (trafficDescriptor == null) {
+            return optionalTrafficDescriptor;
+        }
+
+        android.hardware.radio.V1_6.TrafficDescriptor td =
+                new android.hardware.radio.V1_6.TrafficDescriptor();
+
+        OptionalDnn optionalDnn = new OptionalDnn();
+        if (trafficDescriptor.getDnn() != null) {
+            optionalDnn.value(trafficDescriptor.getDnn());
+        }
+        td.dnn = optionalDnn;
+
+        OptionalOsAppId optionalOsAppId = new OptionalOsAppId();
+        if (trafficDescriptor.getOsAppId() != null) {
+            android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
+            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId().getBytes());
+            optionalOsAppId.value(osAppId);
+        }
+        td.osAppId = optionalOsAppId;
+
+        optionalTrafficDescriptor.value(td);
+        return optionalTrafficDescriptor;
+    }
+
+    private static ArrayList<android.hardware.radio.V1_5.LinkAddress> convertToHalLinkProperties15(
             LinkProperties linkProperties) {
         ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 = new ArrayList<>();
         if (linkProperties != null) {
@@ -1997,8 +2028,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
-                              boolean allowRoaming, int reason, LinkProperties linkProperties,
-                              int pduSessionId, SliceInfo sliceInfo, Message result) {
+            boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
+            SliceInfo sliceInfo, TrafficDescriptor trafficDescriptor, boolean matchAllRuleAllowed,
+            Message result) {
         IRadio radioProxy = getRadioProxy(result);
 
         if (radioProxy != null) {
@@ -2027,15 +2059,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     android.hardware.radio.V1_5.DataProfileInfo dpi =
                             convertToHalDataProfile15(dataProfile);
 
-                    android.hardware.radio.V1_6.OptionalSliceInfo sliceInfo16 =
-                            convertToHalSliceInfo16(sliceInfo);
+                    OptionalSliceInfo si = convertToHalSliceInfo(sliceInfo);
 
                     ArrayList<android.hardware.radio.V1_5.LinkAddress> addresses15 =
                             convertToHalLinkProperties15(linkProperties);
 
-                    OptionalTrafficDescriptor trafficDescriptor16 =
-                            new OptionalTrafficDescriptor();
-                    boolean matchAllRuleAllowed = true;
+                    OptionalTrafficDescriptor td = convertToHalTrafficDescriptor(trafficDescriptor);
 
                     if (RILJ_LOGD) {
                         riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -2043,12 +2072,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 + AccessNetworkType.toString(accessNetworkType) + ",isRoaming="
                                 + isRoaming + ",allowRoaming=" + allowRoaming + "," + dataProfile
                                 + ",addresses=" + addresses15 + ",dnses=" + dnses
-                                + ",pduSessionId=" + pduSessionId + ",sliceInfo=" + sliceInfo16);
+                                + ",pduSessionId=" + pduSessionId + ",sliceInfo=" + si
+                                + ",trafficDescriptor=" + td + ",matchAllRuleAllowed="
+                                + matchAllRuleAllowed);
                     }
 
                     radioProxy16.setupDataCall_1_6(rr.mSerial, accessNetworkType, dpi, allowRoaming,
-                            reason, addresses15, dnses, pduSessionId, sliceInfo16,
-                            trafficDescriptor16, matchAllRuleAllowed);
+                            reason, addresses15, dnses, pduSessionId, si, td, matchAllRuleAllowed);
                 } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     // IRadio V1.5
                     android.hardware.radio.V1_5.IRadio radioProxy15 =
@@ -4371,7 +4401,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
-
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_INITIAL_ATTACH_APN, result,
@@ -4785,19 +4814,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result) {
-
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-
-            RILRequest rr = null;
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
+                    mRILDefaultWorkSource);
             try {
                 if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     // V1.5
                     android.hardware.radio.V1_5.IRadio radioProxy15 =
                             (android.hardware.radio.V1_5.IRadio) radioProxy;
-
-                    rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
-                            mRILDefaultWorkSource);
 
                     ArrayList<android.hardware.radio.V1_5.DataProfileInfo> dpis = new ArrayList<>();
                     for (DataProfile dp : dps) {
@@ -4817,9 +4842,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     // V1.4
                     android.hardware.radio.V1_4.IRadio radioProxy14 =
                             (android.hardware.radio.V1_4.IRadio) radioProxy;
-
-                    rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
-                            mRILDefaultWorkSource);
 
                     ArrayList<android.hardware.radio.V1_4.DataProfileInfo> dpis = new ArrayList<>();
                     for (DataProfile dp : dps) {
@@ -4847,9 +4869,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
 
                     if (!dpis.isEmpty()) {
-                        rr = obtainRequest(RIL_REQUEST_SET_DATA_PROFILE, result,
-                                mRILDefaultWorkSource);
-
                         if (RILJ_LOGD) {
                             riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                                     + " with data profiles : ");
@@ -7438,6 +7457,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         List<LinkAddress> laList = new ArrayList<>();
         List<QosBearerSession> qosSessions = new ArrayList<>();
         SliceInfo sliceInfo = null;
+        List<TrafficDescriptor> trafficDescriptors = new ArrayList<>();
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
             final android.hardware.radio.V1_0.SetupDataCallResult result =
@@ -7528,6 +7548,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             qosSessions = result.qosSessions.stream().map(session ->
                     QosBearerSession.create(session)).collect(Collectors.toList());
             sliceInfo = convertToSliceInfo(result.sliceInfo);
+            trafficDescriptors = result.trafficDescriptors.stream().map(td ->
+                    convertToTrafficDescriptor(td)).collect(Collectors.toList());
         } else {
             Rlog.e(RILJ_LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
             return null;
@@ -7597,6 +7619,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setDefaultQos(defaultQos)
                 .setQosBearerSessions(qosSessions)
                 .setSliceInfo(sliceInfo)
+                .setTrafficDescriptors(trafficDescriptors)
                 .build();
     }
 
@@ -7616,6 +7639,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .setMappedHplmnSliceDifferentiator(si.mappedHplmnSD);
         }
         return builder.build();
+    }
+
+    private static TrafficDescriptor convertToTrafficDescriptor(
+            android.hardware.radio.V1_6.TrafficDescriptor td) {
+        String dnn = td.dnn.getDiscriminator() == OptionalDnn.hidl_discriminator.noinit
+                ? null : td.dnn.value();
+        String osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
+                ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
+        return new TrafficDescriptor(dnn, osAppId);
     }
 
     /**

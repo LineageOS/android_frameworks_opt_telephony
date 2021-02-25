@@ -35,6 +35,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.SliceInfo;
+import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -1848,18 +1849,33 @@ public interface CommandsInterface {
      * @param linkProperties
      *            If the reason is for handover, this indicates the link properties of the existing
      *            data connection
-     * @param result
-     *            Callback message
+     * @param pduSessionId the pdu session id to be used for this data call.
+     *            The standard range of values are 1-15 while 0 means no pdu session id was attached
+     *            to this call. Reference: 3GPP TS 24.007 section 11.2.3.1b.
      * @param sliceInfo used within the data connection when a handover occurs from EPDG to 5G.
      *            The value is null unless the access network is
      *            {@link android.telephony.AccessNetworkConstants.AccessNetworkType#NGRAN} and a
      *            handover is occurring from EPDG to 5G.  If the slice passed is rejected, then
      *            {@link DataCallResponse#getCause()} is
      *            {@link android.telephony.DataFailCause#SLICE_REJECTED}.
+     * @param trafficDescriptor TrafficDescriptor for which data connection needs to be established.
+     *            It is used for URSP traffic matching as described in 3GPP TS 24.526 Section 4.2.2.
+     *            It includes an optional DNN which, if present, must be used for traffic matching;
+     *            it does not specify the end point to be used for the data call.
+     * @param matchAllRuleAllowed indicates if using default match-all URSP rule for this request is
+     *            allowed. If false, this request must not use the match-all URSP rule and if a
+     *            non-match-all rule is not found (or if URSP rules are not available) then
+     *            {@link DataCallResponse#getCause()} is
+     *            {@link android.telephony.DataFailCause#MATCH_ALL_RULE_NOT_ALLOWED}. This is needed
+     *            as some requests need to have a hard failure if the intention cannot be met,
+     *            for example, a zero-rating slice.
+     * @param result
+     *            Callback message
      */
     void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
-                       boolean allowRoaming, int reason, LinkProperties linkProperties,
-                       int pduSessionId, SliceInfo sliceInfo, Message result);
+            boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
+            SliceInfo sliceInfo, TrafficDescriptor trafficDescriptor, boolean matchAllRuleAllowed,
+            Message result);
 
     /**
      * Deactivate packet data connection
