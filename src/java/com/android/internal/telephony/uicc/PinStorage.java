@@ -25,7 +25,11 @@ import static android.security.keystore.KeyProperties.PURPOSE_ENCRYPT;
 
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__CACHED_PIN_DISCARDED;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_REQUIRED_AFTER_REBOOT;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_STORED_FOR_VERIFICATION;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SKIPPED_SIM_CARD_MISMATCH;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SUCCESS;
 import static com.android.internal.telephony.uicc.IccCardStatus.PinState.PINSTATE_ENABLED_NOT_VERIFIED;
 import static com.android.internal.telephony.uicc.IccCardStatus.PinState.PINSTATE_ENABLED_VERIFIED;
 
@@ -260,6 +264,9 @@ public class PinStorage extends Handler {
                 // The ICCID does not match: it's possible that the SIM card was changed.
                 // Delete the cached PIN.
                 savePinInformation(slotId, null);
+                TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                        PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SKIPPED_SIM_CARD_MISMATCH,
+                        /* number_of_pins= */ 1);
             } else if (storedPin.status == PinStatus.VERIFICATION_READY) {
                 logd("getPin[%d] - Found PIN ready for verification", slotId);
                 // Move the state to AVAILABLE, so that it cannot be retrieved again.
@@ -309,6 +316,7 @@ public class PinStorage extends Handler {
         @TelephonyManager.PrepareUnattendedRebootResult
         int result =  TelephonyManager.PREPARE_UNATTENDED_REBOOT_SUCCESS;
         int storedCount = 0;
+        int notAvailableCount = 0;
 
         for (int slotId = 0; slotId < numSlots; slotId++) {
             StoredPin storedPin = storedPins.get(slotId);
@@ -324,13 +332,20 @@ public class PinStorage extends Handler {
                 // status is enabled and verified).
                 loge("Slot %d requires PIN and is not cached", slotId);
                 result = TelephonyManager.PREPARE_UNATTENDED_REBOOT_PIN_REQUIRED;
+                notAvailableCount++;
             }
         }
 
-        logd("prepareUnattendedReboot - Stored %d PINs", storedCount);
-        // Write metrics about number of stored PINs
-        TelephonyStatsLog.write(PIN_STORAGE_EVENT,
-                PIN_STORAGE_EVENT__EVENT__PIN_STORED_FOR_VERIFICATION, storedCount);
+        // Generate metrics
+        if (result == TelephonyManager.PREPARE_UNATTENDED_REBOOT_SUCCESS) {
+            logd("prepareUnattendedReboot - Stored %d PINs", storedCount);
+            TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                    PIN_STORAGE_EVENT__EVENT__PIN_STORED_FOR_VERIFICATION, storedCount);
+        } else if (result == TelephonyManager.PREPARE_UNATTENDED_REBOOT_PIN_REQUIRED) {
+            logd("prepareUnattendedReboot - Required %d PINs after reboot", notAvailableCount);
+            TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                    PIN_STORAGE_EVENT__EVENT__PIN_REQUIRED_AFTER_REBOOT, notAvailableCount);
+        }
 
         return result;
     }
@@ -535,6 +550,13 @@ public class PinStorage extends Handler {
             // Otherwise nothing to do.
             clearPin(slotId);
         }
+        // Update metrics:
+        TelephonyStatsLog.write(
+                PIN_STORAGE_EVENT,
+                success
+                    ? PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SUCCESS
+                    : PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE,
+                /* number_of_pins= */ 1);
     }
 
     @Override
