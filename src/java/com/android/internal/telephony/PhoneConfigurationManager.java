@@ -31,9 +31,9 @@ import android.os.RegistrantList;
 import android.os.storage.StorageManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
+import android.telephony.RadioInterfaceCapabilities;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -42,7 +42,6 @@ import com.android.telephony.Rlog;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 
 /**
  * This class manages phone's configuration which defines the potential capability (static) of the
@@ -74,7 +73,7 @@ public class PhoneConfigurationManager {
     private MockableInterface mMi = new MockableInterface();
     private TelephonyManager mTelephonyManager;
     private static final RegistrantList sMultiSimConfigChangeRegistrants = new RegistrantList();
-    private Set<String> mRadioInterfaceCapabilities;
+    private RadioInterfaceCapabilities mRadioInterfaceCapabilities;
     private final Object mLockRadioInterfaceCapabilities = new Object();
 
     /**
@@ -102,7 +101,7 @@ public class PhoneConfigurationManager {
         mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         //initialize with default, it'll get updated when RADIO is ON/AVAILABLE
         mStaticCapability = getDefaultCapability();
-        mRadioConfig = RadioConfig.getInstance();
+        mRadioConfig = RadioConfig.getInstance(mContext);
         mHandler = new ConfigManagerHandler();
         mPhoneStatusMap = new HashMap<>();
 
@@ -319,9 +318,9 @@ public class PhoneConfigurationManager {
      * Gets the radio interface capabilities for the device
      */
     @NonNull
-    public synchronized Set<String> getRadioInterfaceCapabilities() {
+    public synchronized RadioInterfaceCapabilities getRadioInterfaceCapabilities() {
         if (mRadioInterfaceCapabilities == null) {
-            // Only incur cost of synchronization block if mRadioInterfaceCapabilities isn't null
+            //Only incur cost of synchronization block if mRadioInterfaceCapabilities isn't null
             synchronized (mLockRadioInterfaceCapabilities) {
                 if (mRadioInterfaceCapabilities == null) {
                     mRadioConfig.getHalDeviceCapabilities(
@@ -339,9 +338,8 @@ public class PhoneConfigurationManager {
                 }
             }
         }
-
-        if (mRadioInterfaceCapabilities == null) return new ArraySet<>();
-        return mRadioInterfaceCapabilities;
+        if (mRadioInterfaceCapabilities == null) return new RadioInterfaceCapabilities();
+        else return mRadioInterfaceCapabilities;
     }
 
     private void setupRadioInterfaceCapabilities(@NonNull AsyncResult ar) {
@@ -353,7 +351,8 @@ public class PhoneConfigurationManager {
                     }
                     log("setupRadioInterfaceCapabilities: "
                             + "mRadioInterfaceCapabilities now setup");
-                    mRadioInterfaceCapabilities = (Set<String>) ar.result;
+
+                    mRadioInterfaceCapabilities = (RadioInterfaceCapabilities) ar.result;
                 }
                 mLockRadioInterfaceCapabilities.notify();
             }
