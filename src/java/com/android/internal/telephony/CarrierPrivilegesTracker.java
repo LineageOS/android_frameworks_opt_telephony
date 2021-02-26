@@ -58,6 +58,8 @@ import android.util.IntArray;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -135,11 +137,11 @@ public class CarrierPrivilegesTracker extends Handler {
     private final RegistrantList mRegistrantList;
     private final LocalLog mLocalLog;
 
-    // Stores rules for Carrier Config-loaded certs
-    private final List<UiccAccessRule> mCarrierConfigCerts;
+    // Stores rules for Carrier Config-loaded rules
+    private final List<UiccAccessRule> mCarrierConfigRules;
 
-    // TODO(b/151981841): Use Set<UiccAccessRule> to also check for package names loaded from SIM
-    private final Set<String> mUiccCerts;
+    // Stores rules for SIM-loaded rules.
+    private final List<UiccAccessRule> mUiccRules;
 
     // Map of PackageName -> Certificate hashes for that Package
     private final Map<String, Set<String>> mInstalledPackageCerts;
@@ -235,8 +237,8 @@ public class CarrierPrivilegesTracker extends Handler {
         mContext.registerReceiver(mIntentReceiver, packageFilter);
 
         mRegistrantList = new RegistrantList();
-        mCarrierConfigCerts = new ArrayList<>();
-        mUiccCerts = new ArraySet<>();
+        mCarrierConfigRules = new ArrayList<>();
+        mUiccRules = new ArrayList<>();
         mInstalledPackageCerts = new ArrayMap<>();
         mCachedUids = new ArrayMap<>();
         mPrivilegedUids = new int[0];
@@ -298,67 +300,72 @@ public class CarrierPrivilegesTracker extends Handler {
     private void handleCarrierConfigUpdated(int subId, int slotIndex) {
         if (slotIndex != mPhone.getPhoneId()) return;
 
-        List<UiccAccessRule> updatedCarrierConfigCerts = Collections.EMPTY_LIST;
+        List<UiccAccessRule> updatedCarrierConfigRules = Collections.EMPTY_LIST;
 
         // Carrier Config broadcasts with INVALID_SUBSCRIPTION_ID when the SIM is removed. This is
         // an expected event. When this happens, clear the certificates from the previous configs.
-        // The certs will be cleared in maybeUpdateCertsAndNotifyRegistrants() below.
+        // The rules will be cleared in maybeUpdateRulesAndNotifyRegistrants() below.
         if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            updatedCarrierConfigCerts = getCarrierConfigCerts(subId);
+            updatedCarrierConfigRules = getCarrierConfigRules(subId);
         }
 
         mLocalLog.log("CarrierConfigUpdated:"
                 + " subId=" + subId
                 + " slotIndex=" + slotIndex
-                + " updated CarrierConfig certs=" + updatedCarrierConfigCerts);
-        maybeUpdateCertsAndNotifyRegistrants(mCarrierConfigCerts, updatedCarrierConfigCerts);
+                + " updated CarrierConfig rules=" + updatedCarrierConfigRules);
+        maybeUpdateRulesAndNotifyRegistrants(mCarrierConfigRules, updatedCarrierConfigRules);
     }
 
-    private List<UiccAccessRule> getCarrierConfigCerts(int subId) {
+    private List<UiccAccessRule> getCarrierConfigRules(int subId) {
         PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
         if (!mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
             return Collections.EMPTY_LIST;
         }
 
-        String[] carrierConfigCerts =
+        String[] carrierConfigRules =
                 carrierConfigs.getStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
-        if (carrierConfigCerts == null) {
+        if (carrierConfigRules == null) {
             return Collections.EMPTY_LIST;
         }
-        return Arrays.asList(UiccAccessRule.decodeRulesFromCarrierConfig(carrierConfigCerts));
+        return Arrays.asList(UiccAccessRule.decodeRulesFromCarrierConfig(carrierConfigRules));
     }
 
     private void handleSimStateChanged(int slotId, int simState) {
         if (slotId != mPhone.getPhoneId()) return;
 
-        Set<String> updatedUiccCerts = Collections.EMPTY_SET;
+        List<UiccAccessRule> updatedUiccRules = Collections.EMPTY_LIST;
 
-        // Only include the UICC certs if the SIM is fully loaded
+        // Only include the UICC rules if the SIM is fully loaded
         if (simState == SIM_STATE_LOADED) {
-            updatedUiccCerts = getSimCerts();
+            updatedUiccRules = getSimRules();
         }
 
         mLocalLog.log("SIM State Changed:"
                 + " slotId=" + slotId
                 + " simState=" + simState
-                + " updated SIM-loaded certs=" + updatedUiccCerts);
-        maybeUpdateCertsAndNotifyRegistrants(mUiccCerts, updatedUiccCerts);
+                + " updated SIM-loaded rules=" + updatedUiccRules);
+        maybeUpdateRulesAndNotifyRegistrants(mUiccRules, updatedUiccRules);
     }
 
-    private Set<String> getSimCerts() {
-        Set<String> updatedUiccCerts = Collections.EMPTY_SET;
-        TelephonyManager telMan = mTelephonyManager.createForSubscriptionId(mPhone.getSubId());
-
-        if (telMan.hasIccCard(mPhone.getPhoneId())) {
-            updatedUiccCerts = new ArraySet<>();
-            List<String> uiccCerts = telMan.getCertsFromCarrierPrivilegeAccessRules();
-            if (uiccCerts != null) {
-                for (String cert : uiccCerts) {
-                    updatedUiccCerts.add(cert.toUpperCase());
-                }
-            }
+    private List<UiccAccessRule> getSimRules() {
+        if (!mTelephonyManager.hasIccCard(mPhone.getPhoneId())) {
+            return Collections.EMPTY_LIST;
         }
-        return updatedUiccCerts;
+        UiccCard uiccCard = mPhone.getUiccCard();
+        if (uiccCard == null) {
+            Rlog.w(
+                    TAG,
+                    "Null UiccCard, but hasIccCard was true for phoneId " + mPhone.getPhoneId());
+            return Collections.EMPTY_LIST;
+        }
+        UiccProfile uiccProfile = uiccCard.getUiccProfile();
+        if (uiccProfile == null) {
+            Rlog.w(
+                    TAG,
+                    "Null UiccProfile, but hasIccCard was true for phoneId " + mPhone.getPhoneId());
+            return Collections.EMPTY_LIST;
+        }
+        return uiccProfile.getCarrierPrivilegeAccessRules();
     }
 
     private void handlePackageAddedOrReplaced(String pkgName) {
@@ -406,11 +413,11 @@ public class CarrierPrivilegesTracker extends Handler {
     }
 
     private void handleInitializeTracker() {
-        // Cache CarrierConfig Certs
-        mCarrierConfigCerts.addAll(getCarrierConfigCerts(mPhone.getSubId()));
+        // Cache CarrierConfig rules
+        mCarrierConfigRules.addAll(getCarrierConfigRules(mPhone.getSubId()));
 
-        // Cache SIM certs
-        mUiccCerts.addAll(getSimCerts());
+        // Cache SIM rules
+        mUiccRules.addAll(getSimRules());
 
         // Cache all installed packages and their certs
         int flags =
@@ -428,8 +435,8 @@ public class CarrierPrivilegesTracker extends Handler {
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
 
         String msg = "Initializing state:"
-                + " CarrierConfig certs=" + mCarrierConfigCerts
-                + " SIM-loaded certs=" + mUiccCerts;
+                + " CarrierConfig rules=" + mCarrierConfigRules
+                + " SIM-loaded rules=" + mUiccRules;
         if (VDBG) {
             msg += " installed pkgs=" + getObfuscatedPackages();
         }
@@ -444,22 +451,12 @@ public class CarrierPrivilegesTracker extends Handler {
         return obfuscatedPkgs.toString();
     }
 
-    private void maybeUpdateCertsAndNotifyRegistrants(
-            Set<String> currentCerts, Set<String> updatedCerts) {
-        if (currentCerts.equals(updatedCerts)) return;
+    private void maybeUpdateRulesAndNotifyRegistrants(
+            List<UiccAccessRule> currentRules, List<UiccAccessRule> updatedRules) {
+        if (currentRules.equals(updatedRules)) return;
 
-        currentCerts.clear();
-        currentCerts.addAll(updatedCerts);
-
-        maybeUpdatePrivilegedUidsAndNotifyRegistrants();
-    }
-
-    private void maybeUpdateCertsAndNotifyRegistrants(
-            List<UiccAccessRule> currentCerts, List<UiccAccessRule> updatedCerts) {
-        if (currentCerts.equals(updatedCerts)) return;
-
-        currentCerts.clear();
-        currentCerts.addAll(updatedCerts);
+        currentRules.clear();
+        currentRules.addAll(updatedRules);
 
         maybeUpdatePrivilegedUidsAndNotifyRegistrants();
     }
@@ -494,16 +491,25 @@ public class CarrierPrivilegesTracker extends Handler {
 
     /**
      * Returns true iff there is an overlap between the provided certificate hashes and the
-     * certificate hashes stored in mCarrierConfigCerts and mUiccCerts.
+     * certificate hashes stored in mCarrierConfigRules and mUiccRules.
      */
     private boolean isPackagePrivileged(String pkgName, Set<String> certs) {
+        // Double-nested for loops, but each collection should contain at most 2 elements in nearly
+        // every case.
+        // TODO(b/184382310) find a way to speed this up
         for (String cert : certs) {
-            if (mCarrierConfigCerts.stream().anyMatch(rule -> rule.matches(cert, pkgName))) {
-                return true;
+            for (UiccAccessRule rule : mCarrierConfigRules) {
+                if (rule.matches(cert, pkgName)) {
+                    return true;
+                }
+            }
+            for (UiccAccessRule rule : mUiccRules) {
+                if (rule.matches(cert, pkgName)) {
+                    return true;
+                }
             }
         }
-
-        return !Collections.disjoint(mUiccCerts, certs);
+        return false;
     }
 
     private Set<Integer> getUidsForPackage(String pkgName) {
@@ -536,8 +542,8 @@ public class CarrierPrivilegesTracker extends Handler {
         pw.println("CarrierPrivilegesTracker - Log End ----");
         pw.println("CarrierPrivilegesTracker - Privileged UIDs: "
                 + Arrays.toString(mPrivilegedUids));
-        pw.println("CarrierPrivilegesTracker - SIM-loaded Certs: " + mUiccCerts);
-        pw.println("CarrierPrivilegesTracker - CarrierPrivileged Certs: " + mCarrierConfigCerts);
+        pw.println("CarrierPrivilegesTracker - SIM-loaded rules: " + mUiccRules);
+        pw.println("CarrierPrivilegesTracker - Carrier config rules: " + mCarrierConfigRules);
         if (VDBG) {
             pw.println("CarrierPrivilegesTracker - Obfuscated Pkgs + Certs: "
                     + getObfuscatedPackages());
