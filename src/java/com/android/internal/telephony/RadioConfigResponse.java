@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.CAPABILITY_ALLOWED_NETWORK_TYPES_USED;
+import static android.telephony.TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE;
+import static android.telephony.TelephonyManager.RadioInterfaceCapability;
+
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.config.V1_1.ModemsConfig;
@@ -23,14 +27,15 @@ import android.hardware.radio.config.V1_3.HalDeviceCapabilities;
 import android.hardware.radio.config.V1_3.IRadioConfigResponse;
 import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
-import android.telephony.RadioInterfaceCapabilities;
-import android.telephony.TelephonyManager;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class is the implementation of IRadioConfigResponse interface.
@@ -39,9 +44,11 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
     private static final String TAG = "RadioConfigResponse";
 
     private final RadioConfig mRadioConfig;
+    private final HalVersion mRadioHalVersion;
 
-    public RadioConfigResponse(RadioConfig radioConfig) {
+    public RadioConfigResponse(RadioConfig radioConfig, HalVersion radioHalVersion) {
         mRadioConfig = radioConfig;
+        mRadioHalVersion = radioHalVersion;
     }
 
     /**
@@ -236,18 +243,15 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             HalDeviceCapabilities halDeviceCapabilities) {
 
-        //convert hal device capabilities to RadioInterfaceCapabilities
+        // convert hal device capabilities to RadioInterfaceCapabilities
 
         RILRequest rr = mRadioConfig.processResponse_1_6(responseInfo);
         if (rr != null) {
-            RadioInterfaceCapabilities ret = new RadioInterfaceCapabilities();
-            if (!halDeviceCapabilities.modemReducedFeatureSet1) {
-                Rlog.d(TAG, "getHalDeviceCapabilitiesResponse: modemReducedFeatureSet1=false");
-                ret.addSupportedCapability(
-                        TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE);
-            } else {
-                Rlog.d(TAG, "getHalDeviceCapabilitiesResponse: modemReducedFeatureSet1=true");
-            }
+            // The response is compatible with Radio 1.6, it means the modem
+            // supports setAllowedNetworkTypeBitmap.
+
+            final Set<String> ret = getCaps(mRadioHalVersion,
+                    halDeviceCapabilities.modemReducedFeatureSet1);
 
             if (responseInfo.error == RadioError.NONE) {
                 // send response
@@ -263,5 +267,43 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
         } else {
             Rlog.e(TAG, "getHalDeviceCapabilities: Error " + responseInfo.toString());
         }
+    }
+
+    /**
+     * Returns all capabilities supported in the most recent radio hal version.
+     * <p/>
+     * Used in the {@link RILConstants.REQUEST_NOT_SUPPORTED} case.
+     *
+     * @return all capabilities
+     */
+    @RadioInterfaceCapability
+    public Set<String> getFullCapabilitySet() {
+        return getCaps(mRadioHalVersion, false);
+    }
+
+    /**
+     * Create capabilities based off of the radio hal version and feature set configurations.
+     */
+    @VisibleForTesting
+    public static Set<String> getCaps(HalVersion radioHalVersion,
+            boolean modemReducedFeatureSet1) {
+        final Set<String> caps = new HashSet<>();
+
+        if (radioHalVersion.equals(RIL.RADIO_HAL_VERSION_UNKNOWN)) {
+            // If the Radio HAL is UNKNOWN, no capabilities will present themselves.
+            Rlog.e(TAG, "Radio Hal Version is UNKNOWN!");
+        }
+
+        Rlog.d(TAG, "Radio Hal Version = " + radioHalVersion.toString());
+        if (radioHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) {
+            caps.add(CAPABILITY_ALLOWED_NETWORK_TYPES_USED);
+            Rlog.d(TAG, "CAPABILITY_ALLOWED_NETWORK_TYPES_USED");
+
+            if (!modemReducedFeatureSet1) {
+                caps.add(CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE);
+                Rlog.d(TAG, "CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE");
+            }
+        }
+        return caps;
     }
 }
