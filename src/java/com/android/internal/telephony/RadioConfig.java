@@ -25,8 +25,7 @@ import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_STATUS;
-import static com.android.internal.telephony.RILConstants
-        .RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG;
 
@@ -43,7 +42,6 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.WorkSource;
-import android.telephony.RadioInterfaceCapabilities;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
@@ -85,6 +83,7 @@ public class RadioConfig extends Handler {
     private final WorkSource mDefaultWorkSource;
     private final int mDeviceNrCapability;
     private static RadioConfig sRadioConfig;
+    private static final Object sLock = new Object();
 
     protected Registrant mSimSlotStatusRegistrant;
 
@@ -97,12 +96,12 @@ public class RadioConfig extends Handler {
         }
     }
 
-    private RadioConfig(Context context) {
+    private RadioConfig(Context context, HalVersion radioHalVersion) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(
                 Context.CONNECTIVITY_SERVICE);
         mIsMobileNetworkSupported = cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
 
-        mRadioConfigResponse = new RadioConfigResponse(this);
+        mRadioConfigResponse = new RadioConfigResponse(this, radioHalVersion);
         mRadioConfigIndication = new RadioConfigIndication(this);
         mServiceDeathRecipient = new ServiceDeathRecipient();
 
@@ -121,11 +120,27 @@ public class RadioConfig extends Handler {
     /**
      * Returns the singleton static instance of RadioConfig
      */
-    public static RadioConfig getInstance(Context context) {
-        if (sRadioConfig == null) {
-            sRadioConfig = new RadioConfig(context);
+    public static RadioConfig getInstance() {
+        synchronized (sLock) {
+            if (sRadioConfig == null) {
+                throw new RuntimeException(
+                        "RadioConfig.getInstance can't be called before make()");
+            }
+            return sRadioConfig;
         }
-        return sRadioConfig;
+    }
+
+    /**
+     * Makes the radio config based on the context and the radio hal version passed in
+     */
+    public static RadioConfig make(Context c, HalVersion radioHalVersion) {
+        synchronized (sLock) {
+            if (sRadioConfig != null) {
+                throw new RuntimeException("RadioConfig.make() should only be called once");
+            }
+            sRadioConfig = new RadioConfig(c, radioHalVersion);
+            return sRadioConfig;
+        }
     }
 
     @Override
@@ -540,7 +555,10 @@ public class RadioConfig extends Handler {
                 if (DBG) {
                     logd("RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES > REQUEST_NOT_SUPPORTED");
                 }
-                AsyncResult.forMessage(result, new RadioInterfaceCapabilities() /* send empty */,
+                AsyncResult.forMessage(result,
+                        /* Send response such that all capabilities are supported (depending on
+                           the hal version of course.) */
+                        mRadioConfigResponse.getFullCapabilitySet(),
                         CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                 result.sendToTarget();
             } else {
