@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.os.PowerWhitelistManager.REASON_EVENT_MMS;
-import static android.os.PowerWhitelistManager.REASON_EVENT_SMS;
-import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED;
 import static android.provider.Telephony.Sms.Intents.RESULT_SMS_DATABASE_ERROR;
 import static android.provider.Telephony.Sms.Intents.RESULT_SMS_DISPATCH_FAILURE;
 import static android.provider.Telephony.Sms.Intents.RESULT_SMS_INVALID_URI;
@@ -1392,12 +1389,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             bundle = bopts.toBundle();
         }
         long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                pkgName, PowerWhitelistManager.EVENT_SMS, REASON_EVENT_SMS, reason);
+                pkgName, PowerWhitelistManager.EVENT_SMS, reason);
         if (bopts == null) bopts = BroadcastOptions.makeBasic();
-        bopts.setTemporaryAppAllowlist(duration,
-                TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
-                REASON_EVENT_SMS,
-                "");
+        bopts.setTemporaryAppWhitelistDuration(duration);
         bundle = bopts.toBundle();
 
         return bundle;
@@ -1661,13 +1655,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
                         mContext.getPackageName(),
                         PowerWhitelistManager.EVENT_MMS,
-                        REASON_EVENT_MMS,
                         "mms-broadcast");
                 BroadcastOptions bopts = BroadcastOptions.makeBasic();
-                bopts.setTemporaryAppAllowlist(duration,
-                        TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
-                        REASON_EVENT_MMS,
-                        "");
+                bopts.setTemporaryAppWhitelistDuration(duration);
                 Bundle options = bopts.toBundle();
 
                 String mimeType = intent.getType();
