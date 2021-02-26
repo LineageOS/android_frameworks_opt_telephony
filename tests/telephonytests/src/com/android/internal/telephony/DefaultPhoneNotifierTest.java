@@ -112,7 +112,7 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         doReturn(1).when(mPhone).getSubId();
         doReturn(2).when(mPhone).getPhoneId();
         mDefaultPhoneNotifierUT.notifySignalStrength(mPhone);
-        verify(mTelephonyRegistryManager).notifySignalStrengthChanged(eq(1), eq(2),
+        verify(mTelephonyRegistryManager).notifySignalStrengthChanged(eq(2), eq(1),
                 signalStrengthArgumentCaptor.capture());
         assertEquals(99, signalStrengthArgumentCaptor.getValue().getGsmSignalStrength());
     }
@@ -135,19 +135,19 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     public void testNotifyMessageWaiting() throws Exception {
         doReturn(1).when(mPhone).getPhoneId();
         mDefaultPhoneNotifierUT.notifyMessageWaitingChanged(mPhone);
-        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(0, 1, false);
+        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(1, 0, false);
 
         doReturn(2).when(mPhone).getPhoneId();
         mDefaultPhoneNotifierUT.notifyMessageWaitingChanged(mPhone);
-        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(0, 2, false);
+        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(2, 0, false);
 
         doReturn(1).when(mPhone).getSubId();
         mDefaultPhoneNotifierUT.notifyMessageWaitingChanged(mPhone);
-        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(1, 2, false);
+        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(2, 1, false);
 
         doReturn(true).when(mPhone).getMessageWaitingIndicator();
         mDefaultPhoneNotifierUT.notifyMessageWaitingChanged(mPhone);
-        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(1, 2, true);
+        verify(mTelephonyRegistryManager).notifyMessageWaitingChanged(2, 1, true);
     }
 
     @Test @SmallTest
