@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static android.os.PowerWhitelistManager.REASON_EVENT_MMS;
+import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED;
+
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
 
 import android.annotation.NonNull;
@@ -369,7 +372,8 @@ public class WapPushOverSms implements ServiceConnection {
                 } else {
                     synchronized (this) {
                         mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                                mWapPushManagerPackage, PowerWhitelistManager.EVENT_MMS, "mms-mgr");
+                                mWapPushManagerPackage, PowerWhitelistManager.EVENT_MMS,
+                                REASON_EVENT_MMS, "mms-mgr");
                     }
 
                     Intent intent = new Intent();
@@ -429,9 +433,13 @@ public class WapPushOverSms implements ServiceConnection {
             if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
                     " " + componentName.getClassName());
             long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                    componentName.getPackageName(), PowerWhitelistManager.EVENT_MMS, "mms-app");
+                    componentName.getPackageName(), PowerWhitelistManager.EVENT_MMS,
+                    REASON_EVENT_MMS, "mms-app");
             BroadcastOptions bopts = BroadcastOptions.makeBasic();
-            bopts.setTemporaryAppWhitelistDuration(duration);
+            bopts.setTemporaryAppAllowlist(duration,
+                    TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
+                    REASON_EVENT_MMS,
+                    "");
             options = bopts.toBundle();
         }
 
