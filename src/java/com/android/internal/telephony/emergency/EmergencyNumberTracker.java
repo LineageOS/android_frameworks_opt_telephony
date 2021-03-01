@@ -296,11 +296,14 @@ public class EmergencyNumberTracker extends Handler {
             EmergencyNumberTracker emergencyNumberTracker;
             if (phone != null && phone.getEmergencyNumberTracker() != null) {
                 emergencyNumberTracker = phone.getEmergencyNumberTracker();
-                if (TextUtils.isEmpty(emergencyNumberTracker.getEmergencyCountryIso())
-                        || emergencyNumberTracker.mIsCountrySetByAnotherSub) {
-                    emergencyNumberTracker.mIsCountrySetByAnotherSub = true;
-                    emergencyNumberTracker.updateEmergencyNumberDatabaseCountryChange(
+                // If signal is lost, do not update the empty country iso for other slots.
+                if (!TextUtils.isEmpty(countryIso)) {
+                    if (TextUtils.isEmpty(emergencyNumberTracker.getEmergencyCountryIso())
+                            || emergencyNumberTracker.mIsCountrySetByAnotherSub) {
+                        emergencyNumberTracker.mIsCountrySetByAnotherSub = true;
+                        emergencyNumberTracker.updateEmergencyNumberDatabaseCountryChange(
                             countryIso);
+                    }
                 }
             }
         }
