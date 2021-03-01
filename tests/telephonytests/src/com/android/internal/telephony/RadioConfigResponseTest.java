@@ -52,6 +52,8 @@ public class RadioConfigResponseTest extends TelephonyTest {
         assertFalse(
                 caps.contains(
                         TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE));
+        assertFalse(
+                caps.contains(TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING));
     }
 
     @Test
@@ -64,6 +66,8 @@ public class RadioConfigResponseTest extends TelephonyTest {
         assertFalse(
                 caps.contains(
                         TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE));
+        assertFalse(
+                caps.contains(TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING));
     }
 
     @Test
@@ -76,5 +80,7 @@ public class RadioConfigResponseTest extends TelephonyTest {
         assertTrue(
                 caps.contains(
                         TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE));
+        assertTrue(
+                caps.contains(TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING));
     }
 }
