@@ -61,8 +61,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import android.net.StringNetworkSpecifier;
-import android.net.NetworkSpecifier;
 
 public class VendorPhoneSwitcher extends PhoneSwitcher {
 
