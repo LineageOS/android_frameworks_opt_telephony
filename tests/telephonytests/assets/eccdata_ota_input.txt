@@ -1,0 +1,11 @@
+revision: 999999
+countries {
+  iso_code: "US"
+  eccs {
+    phone_number: "98765"
+    types: POLICE
+    types: AMBULANCE
+    types: FIRE
+  }
+  ecc_fallback: "911"
+}

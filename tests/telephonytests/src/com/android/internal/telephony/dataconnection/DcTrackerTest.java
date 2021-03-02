@@ -2215,4 +2215,16 @@ public class DcTrackerTest extends TelephonyTest {
                 .filter(x -> x.getApnType().equals(type))
                 .findFirst().get().getPriority());
     }
+
+    @Test
+    public void testProvisionBroadcastReceiver() {
+        Intent intent = new Intent("com.android.internal.telephony.PROVISION");
+        intent.putExtra("provision.phone.id", mPhone.getPhoneId());
+        try {
+            mContext.sendBroadcast(intent);
+        } catch (SecurityException e) {
+            fail();
+        }
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+    }
 }
