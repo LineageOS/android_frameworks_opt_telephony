@@ -38,6 +38,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.hardware.radio.V1_5.IndicationFilter;
 import android.net.ConnectivityManager;
+import android.net.TetheringManager;
 import android.os.BatteryManager;
 import android.os.Message;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -250,7 +251,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @Test
     public void testTethering() {
         // Turn tethering on
-        Intent intent = new Intent(ConnectivityManager.ACTION_TETHER_STATE_CHANGED);
+        Intent intent = new Intent(TetheringManager.ACTION_TETHER_STATE_CHANGED);
         intent.putExtra(ConnectivityManager.EXTRA_ACTIVE_TETHER, new ArrayList<>(asList("abc")));
         mContext.sendBroadcast(intent);
         processAllMessages();
