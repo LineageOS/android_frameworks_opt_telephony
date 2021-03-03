@@ -28,6 +28,7 @@ import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.EpsQos;
+import android.telephony.data.TrafficDescriptor;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -35,9 +36,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class DataCallResponseTest extends AndroidTestCase {
+    public static final String FAKE_DNN = "FAKE_DNN";
+    public static final String FAKE_OS_APP_ID = "FAKE_OS_APP_ID";
 
     @SmallTest
-    public void testParcel() throws Exception {
+    public void testParcel() {
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(0)
                 .setRetryDurationMillis(-1L)
@@ -55,6 +58,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setMtuV6(1440)
                 .setDefaultQos(new EpsQos())
                 .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(
+                        Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
                 .build();
 
         Parcel p = Parcel.obtain();
@@ -66,7 +71,7 @@ public class DataCallResponseTest extends AndroidTestCase {
     }
 
     @SmallTest
-    public void testEquals() throws Exception {
+    public void testEquals() {
         DataCallResponse response = new DataCallResponse.Builder()
                 .setCause(0)
                 .setRetryDurationMillis(-1L)
@@ -82,6 +87,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                         Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
                 .setMtuV4(1440)
                 .setMtuV6(1400)
+                .setTrafficDescriptors(
+                        Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
                 .build();
 
         DataCallResponse response1 = new DataCallResponse.Builder()
@@ -99,6 +106,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                         Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
                 .setMtuV4(1440)
                 .setMtuV6(1400)
+                .setTrafficDescriptors(
+                        Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))
                 .build();
 
         assertEquals(response, response);
@@ -121,6 +130,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                         InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
                 .setMtuV4(1441)
                 .setMtuV6(1440)
+                .setTrafficDescriptors(
+                        Arrays.asList(new TrafficDescriptor("FAKE_DNN_2", "FAKE_OS_APP_ID_2")))
                 .build();
 
         assertNotSame(response1, response2);
