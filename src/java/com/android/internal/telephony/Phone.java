@@ -4356,20 +4356,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Determines if  IMS is enabled for call.
-     *
-     * @return {@code true} if IMS calling is enabled.
-     */
-    public boolean isImsUseEnabled() {
-        ImsManager imsManager = ImsManager.getInstance(mContext, mPhoneId);
-        boolean imsUseEnabled = ((imsManager.isVolteEnabledByPlatform()
-                && imsManager.isEnhanced4gLteModeSettingEnabledByUser())
-                || (imsManager.isWfcEnabledByPlatform() && imsManager.isWfcEnabledByUser())
-                && imsManager.isNonTtyOrTtyOnVolteEnabled());
-        return imsUseEnabled;
-    }
-
-    /**
      * Determines if the connection to IMS services are available yet.
      * @return {@code true} if the connection to IMS services are available.
      */
