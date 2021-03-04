@@ -1774,7 +1774,7 @@ public class TelephonyMetrics {
             dataCall.type = response.getProtocolType() + 1;
 
             if (!TextUtils.isEmpty(response.getInterfaceName())) {
-                dataCall.iframe = response.getInterfaceName();
+                dataCall.ifname = response.getInterfaceName();
             }
         }
         setupDataCallResponse.call = dataCall;
