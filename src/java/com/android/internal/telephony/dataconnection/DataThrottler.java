@@ -127,6 +127,21 @@ public class DataThrottler {
         return RetryManager.NO_SUGGESTED_RETRY_DELAY;
     }
 
+    /**
+     * Resets retry times for all APNs to {@link RetryManager.NO_SUGGESTED_RETRY_DELAY}.
+     */
+    public void reset() {
+        final List<Integer> apnTypes = new ArrayList<>();
+        for (ThrottleStatus throttleStatus : mThrottleStatus.values()) {
+            apnTypes.add(throttleStatus.getApnType());
+        }
+
+        for (int apnType : apnTypes) {
+            setRetryTime(apnType, RetryManager.NO_SUGGESTED_RETRY_DELAY,
+                    DcTracker.REQUEST_TYPE_NORMAL);
+        }
+    }
+
     private ThrottleStatus createStatus(@Annotation.ApnType int apnType, long retryElapsedTime,
             @DcTracker.RequestNetworkType int newRequestType) {
         ThrottleStatus.Builder builder = new ThrottleStatus.Builder();
