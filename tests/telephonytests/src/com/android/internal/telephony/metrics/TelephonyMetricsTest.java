@@ -536,7 +536,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(6, respProto.suggestedRetryTimeMillis);
         assertEquals(7, respProto.call.cid);
         assertEquals(PDP_TYPE_IPV4V6, respProto.call.type);
-        assertEquals(FAKE_IFNAME, respProto.call.iframe);
+        assertEquals(FAKE_IFNAME, respProto.call.ifname);
     }
 
     // Test write on deactivate data call response
