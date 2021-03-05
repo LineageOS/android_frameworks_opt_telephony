@@ -38,9 +38,9 @@ import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
 import android.util.ArrayMap;
 import android.util.LocalLog;
@@ -142,7 +142,7 @@ public class LinkBandwidthEstimator extends Handler {
     private long mRxBytesDeltaAcc;
 
     private ModemActivityInfo mLastModemActivityInfo = null;
-    private final PhoneStateListener mPhoneStateListener = new PhoneStateListenerImpl();
+    private final TelephonyCallback mTelephonyCallback = new TelephonyCallbackImpl();
     private int mSignalStrengthDbm;
     private int mSignalLevel;
     private int mDataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
@@ -213,8 +213,8 @@ public class LinkBandwidthEstimator extends Handler {
         dm.registerDisplayListener(mDisplayListener, null);
         handleScreenStateChanged(isScreenOn());
         mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback, this);
-        mTelephonyManager.registerPhoneStateListener(new HandlerExecutor(this),
-                mPhoneStateListener);
+        mTelephonyManager.registerTelephonyCallback(new HandlerExecutor(this),
+                mTelephonyCallback);
         mPlaceholderNetwork = new NetworkBandwidth("", "");
         registerDataServiceState();
     }
@@ -765,8 +765,8 @@ public class LinkBandwidthEstimator extends Handler {
         return 0;
     }
 
-    private class PhoneStateListenerImpl extends PhoneStateListener
-            implements PhoneStateListener.SignalStrengthsChangedListener {
+    private class TelephonyCallbackImpl extends TelephonyCallback implements
+            TelephonyCallback.SignalStrengthsListener {
         @Override
         public void onSignalStrengthsChanged(SignalStrength signalStrength) {
             obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, signalStrength).sendToTarget();
