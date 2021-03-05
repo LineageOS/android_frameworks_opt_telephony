@@ -74,11 +74,27 @@ public class CellBroadcastServiceManager {
         mPhone = phone;
     }
 
+    private boolean cbMessagesDisabledByOem() {
+        if (mContext != null && mContext.getResources() != null) {
+            return mContext.getResources().getBoolean(
+                    com.android.internal.R.bool.config_disable_all_cb_messages);
+        } else {
+            return false;
+        }
+    }
+
     /**
      * Send a GSM CB message to the CellBroadcastServiceManager's handler.
      * @param m the message
      */
     public void sendGsmMessageToHandler(Message m) {
+        if (cbMessagesDisabledByOem()) {
+            Log.d(TAG, "GSM CB message ignored - CB messages disabled by OEM.");
+            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_FILTERED,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__TYPE__GSM,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM);
+            return;
+        }
         m.what = EVENT_NEW_GSM_SMS_CB;
         mModuleCellBroadcastHandler.sendMessage(m);
     }
@@ -88,6 +104,13 @@ public class CellBroadcastServiceManager {
      * @param sms the SmsMessage to forward
      */
     public void sendCdmaMessageToHandler(SmsMessage sms) {
+        if (cbMessagesDisabledByOem()) {
+            Log.d(TAG, "CDMA CB message ignored - CB messages disabled by OEM.");
+            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_FILTERED,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__TYPE__CDMA,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM);
+            return;
+        }
         Message m = Message.obtain();
         m.what = EVENT_NEW_CDMA_SMS_CB;
         m.obj = sms;
@@ -99,6 +122,13 @@ public class CellBroadcastServiceManager {
      * @param sms the SCP message
      */
     public void sendCdmaScpMessageToHandler(SmsMessage sms, RemoteCallback callback) {
+        if (cbMessagesDisabledByOem()) {
+            Log.d(TAG, "CDMA SCP CB message ignored - CB messages disabled by OEM.");
+            CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_FILTERED,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__TYPE__CDMA_SPC,
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM);
+            return;
+        }
         Message m = Message.obtain();
         m.what = EVENT_NEW_CDMA_SCP_MESSAGE;
         m.obj = Pair.create(sms, callback);
