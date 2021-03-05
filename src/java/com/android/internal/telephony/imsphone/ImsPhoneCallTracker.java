@@ -3075,6 +3075,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             if (conn != null) {
                 conn.setPreciseDisconnectCause(getPreciseDisconnectCauseFromReasonInfo(reasonInfo));
+                conn.setImsReasonInfo(reasonInfo);
             }
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
