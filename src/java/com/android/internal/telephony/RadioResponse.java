@@ -1048,7 +1048,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getPreferredNetworkTypeResponse(RadioResponseInfo responseInfo, int nwType) {
         mRil.mPreferredNetworkType = nwType;
-        responseInts(responseInfo, nwType);
+        responseInts(responseInfo, RadioAccessFamily.getRafFromNetworkType(nwType));
     }
 
     /**
@@ -1060,10 +1060,9 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getPreferredNetworkTypeBitmapResponse(
             RadioResponseInfo responseInfo, int halRadioAccessFamilyBitmap) {
 
-        int networkType = RadioAccessFamily.getNetworkTypeFromRaf(
-                RIL.convertToNetworkTypeBitMask(halRadioAccessFamilyBitmap));
-        mRil.mPreferredNetworkType = networkType;
-        responseInts(responseInfo, networkType);
+        int networkTypeBitmask = RIL.convertToNetworkTypeBitMask(halRadioAccessFamilyBitmap);
+        mRil.mPreferredNetworkType = RadioAccessFamily.getNetworkTypeFromRaf(networkTypeBitmask);
+        responseInts(responseInfo, networkTypeBitmask);
     }
 
     /**

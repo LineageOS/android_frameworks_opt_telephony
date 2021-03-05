@@ -40,6 +40,7 @@ import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
 import com.android.telephony.Rlog;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * broadcast intents
@@ -248,6 +249,13 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyDataEnabled(Phone sender, boolean enabled, @DataEnabledReason int reason) {
         mTelephonyRegistryMgr.notifyDataEnabled(sender.getPhoneId(), sender.getSubId(),
                 enabled, reason);
+    }
+
+    @Override
+    public void notifyAllowedNetworkTypesChanged(Phone sender,
+            Map<Integer, Long> allowedNetworkTypeList) {
+        mTelephonyRegistryMgr.notifyAllowedNetworkTypesChanged(sender.getSubId(),
+                sender.getPhoneId(), allowedNetworkTypeList);
     }
 
     /**
