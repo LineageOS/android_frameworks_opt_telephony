@@ -34,6 +34,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * {@hide}
@@ -123,5 +124,9 @@ public interface PhoneNotifier {
     void notifyPhysicalChannelConfig(Phone sender, List<PhysicalChannelConfig> configs);
 
     /** Notify DataEnabled has changed. */
+
     void notifyDataEnabled(Phone sender, boolean enabled, @DataEnabledReason int reason);
+
+    /** Notify Allowed Network Type has changed. */
+    void notifyAllowedNetworkTypesChanged(Phone sender, Map<Integer, Long> allowedNetworkType);
 }
