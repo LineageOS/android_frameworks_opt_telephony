@@ -261,6 +261,8 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     }
 
     @Test @SmallTest
+    @FlakyTest
+    @Ignore
     public void testSendMultipartTextWithInvalidText() throws Exception {
         // unmock ActivityManager to be able to register receiver, create real PendingIntent and
         // receive TEST_INTENT

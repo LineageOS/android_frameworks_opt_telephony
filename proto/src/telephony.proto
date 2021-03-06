@@ -706,7 +706,7 @@ message RilDataCall {
   optional PdpType type = 2;
 
   // The network interface name e.g. wlan0, rmnet_data0.
-  optional string iframe = 3;
+  optional string ifname = 3;
 
   // State of the Data Call connection
   optional State state = 4;
@@ -1743,7 +1743,7 @@ message TelephonyEvent {
     optional bool is_network_unmetered = 1;
   }
 
-  // Time when event happened on device, in milliseconds since epoch
+  // Time when event happened on device, in milliseconds since boot
   optional int64 timestamp_millis = 1;
 
   // In Multi-SIM devices this indicates SIM slot

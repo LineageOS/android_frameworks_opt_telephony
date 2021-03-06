@@ -791,7 +791,8 @@ public class TelephonyMetrics {
         Integer lastSimState = mLastSimState.get(phoneId);
         if (lastSimState == null || !lastSimState.equals(state)) {
             mLastSimState.put(phoneId, state);
-            addTelephonyEvent(new TelephonyEventBuilder().setSimStateChange(mLastSimState).build());
+            addTelephonyEvent(
+                    new TelephonyEventBuilder(phoneId).setSimStateChange(mLastSimState).build());
         }
     }
 
@@ -1775,7 +1776,7 @@ public class TelephonyMetrics {
             dataCall.type = response.getProtocolType() + 1;
 
             if (!TextUtils.isEmpty(response.getInterfaceName())) {
-                dataCall.iframe = response.getInterfaceName();
+                dataCall.ifname = response.getInterfaceName();
             }
         }
         setupDataCallResponse.call = dataCall;
