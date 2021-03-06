@@ -791,7 +791,8 @@ public class TelephonyMetrics {
         Integer lastSimState = mLastSimState.get(phoneId);
         if (lastSimState == null || !lastSimState.equals(state)) {
             mLastSimState.put(phoneId, state);
-            addTelephonyEvent(new TelephonyEventBuilder().setSimStateChange(mLastSimState).build());
+            addTelephonyEvent(
+                    new TelephonyEventBuilder(phoneId).setSimStateChange(mLastSimState).build());
         }
     }
 
