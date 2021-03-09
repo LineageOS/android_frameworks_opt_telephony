@@ -614,7 +614,7 @@ public class ServiceStateTracker extends Handler {
     private String mCurrentCarrier = null;
 
     private final AccessNetworksManager mAccessNetworksManager;
-    private final SparseArray<NetworkRegistrationManager> mRegStateManagers = new SparseArray<>();
+    protected final SparseArray<NetworkRegistrationManager> mRegStateManagers = new SparseArray<>();
 
     /* Last known TAC/LAC */
     private int mLastKnownAreaCode = CellInfo.UNAVAILABLE;

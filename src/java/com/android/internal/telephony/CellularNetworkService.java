@@ -109,13 +109,19 @@ public class CellularNetworkService extends NetworkService {
                     TelephonyManager.NETWORK_TYPE_TD_SCDMA}));
     }
 
-    private class CellularNetworkServiceProvider extends NetworkServiceProvider {
+    protected class CellularNetworkServiceProvider extends NetworkServiceProvider {
 
         private final Map<Message, NetworkServiceCallback> mCallbackMap = new HashMap<>();
 
         private final Handler mHandler;
 
         private final Phone mPhone;
+
+        protected CellularNetworkServiceProvider() {
+            super(SubscriptionManager.DEFAULT_SIM_SLOT_INDEX);
+            mHandler = null;
+            mPhone = null;
+        }
 
         CellularNetworkServiceProvider(int slotId) {
             super(slotId);
@@ -236,7 +242,8 @@ public class CellularNetworkService extends NetworkService {
             return availableServices;
         }
 
-        private NetworkRegistrationInfo getRegistrationStateFromResult(Object result, int domain) {
+        protected NetworkRegistrationInfo getRegistrationStateFromResult(Object result,
+                                                                         int domain) {
             if (result == null) {
                 return null;
             }
