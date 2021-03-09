@@ -170,6 +170,7 @@ public class ImsPhone extends ImsPhoneBase {
             private android.telecom.Connection.RttTextStream mRttTextStream;
             private int mRetryCallFailCause = ImsReasonInfo.CODE_UNSPECIFIED;
             private int mRetryCallFailNetworkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+            private boolean mIsWpsCall = false;
 
             public static ImsDialArgs.Builder from(DialArgs dialArgs) {
                 if (dialArgs instanceof ImsDialArgs) {
@@ -182,7 +183,8 @@ public class ImsPhone extends ImsPhoneBase {
                             .setClirMode(dialArgs.clirMode)
                             .setRetryCallFailCause(((ImsDialArgs)dialArgs).retryCallFailCause)
                             .setRetryCallFailNetworkType(
-                                    ((ImsDialArgs)dialArgs).retryCallFailNetworkType);
+                                    ((ImsDialArgs)dialArgs).retryCallFailNetworkType)
+                            .setIsWpsCall(((ImsDialArgs)dialArgs).isWpsCall);
                 }
                 return new ImsDialArgs.Builder()
                         .setUusInfo(dialArgs.uusInfo)
@@ -208,6 +210,11 @@ public class ImsPhone extends ImsPhoneBase {
                 return this;
             }
 
+            public ImsDialArgs.Builder setIsWpsCall(boolean isWpsCall) {
+                this.mIsWpsCall = isWpsCall;
+                return this;
+            }
+
             public ImsDialArgs build() {
                 return new ImsDialArgs(this);
             }
@@ -222,11 +229,15 @@ public class ImsPhone extends ImsPhoneBase {
         public final int retryCallFailCause;
         public final int retryCallFailNetworkType;
 
+        /** Indicates the call is Wireless Priority Service call */
+        public final boolean isWpsCall;
+
         private ImsDialArgs(ImsDialArgs.Builder b) {
             super(b);
             this.rttTextStream = b.mRttTextStream;
             this.retryCallFailCause = b.mRetryCallFailCause;
             this.retryCallFailNetworkType = b.mRetryCallFailNetworkType;
+            this.isWpsCall = b.mIsWpsCall;
         }
     }
 
