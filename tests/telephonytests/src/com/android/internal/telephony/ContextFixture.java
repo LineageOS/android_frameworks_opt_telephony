@@ -326,6 +326,11 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public Context createConfigurationContext(Configuration overrideConfiguration) {
+            return spy(new FakeContext());
+        }
+
+        @Override
         public ApplicationInfo getApplicationInfo() {
             return mApplicationInfo;
         }
