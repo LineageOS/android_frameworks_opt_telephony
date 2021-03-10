@@ -143,7 +143,7 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
         }
 
         return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
-                validationBeforeSwitchSupported, mRadioConfig.getDeviceNrCapability());
+                validationBeforeSwitchSupported, mRadioConfig.getDeviceNrCapabilities());
     }
     /**
      * Response function for IRadioConfig.getPhoneCapability().
