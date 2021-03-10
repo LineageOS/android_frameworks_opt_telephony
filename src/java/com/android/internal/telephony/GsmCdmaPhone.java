@@ -1364,9 +1364,15 @@ public class GsmCdmaPhone extends Phone {
         }
         TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
         boolean isEmergency = tm.isEmergencyNumber(dialString);
+        /** Check if the call is Wireless Priority Service call */
+        boolean isWpsCall = dialString != null ? (dialString.startsWith(PREFIX_WPS)
+                || dialString.startsWith(PREFIX_WPS_CLIR_ACTIVATE)
+                || dialString.startsWith(PREFIX_WPS_CLIR_DEACTIVATE)) : false;
+
         ImsPhone.ImsDialArgs.Builder imsDialArgsBuilder;
         imsDialArgsBuilder = ImsPhone.ImsDialArgs.Builder.from(dialArgs)
-                                                 .setIsEmergency(isEmergency);
+                                                 .setIsEmergency(isEmergency)
+                                                 .setIsWpsCall(isWpsCall);
         mDialArgs = dialArgs = imsDialArgsBuilder.build();
 
         Phone imsPhone = mImsPhone;
@@ -1374,10 +1380,6 @@ public class GsmCdmaPhone extends Phone {
         CarrierConfigManager configManager =
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
 
-        /** Check if the call is Wireless Priority Service call */
-        boolean isWpsCall = dialString != null ? (dialString.startsWith(PREFIX_WPS)
-                || dialString.startsWith(PREFIX_WPS_CLIR_ACTIVATE)
-                || dialString.startsWith(PREFIX_WPS_CLIR_DEACTIVATE)) : false;
         boolean allowWpsOverIms = configManager.getConfigForSubId(getSubId())
                 .getBoolean(CarrierConfigManager.KEY_SUPPORT_WPS_OVER_IMS_BOOL);
 

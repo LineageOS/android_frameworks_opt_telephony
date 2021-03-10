@@ -108,6 +108,8 @@ public class ImsPhoneConnection extends Connection implements
 
     private boolean mIsEmergency = false;
 
+    private boolean mIsWpsCall = false;
+
     /**
      * Used to indicate that video state changes detected by
      * {@link #updateMediaCapabilities(ImsCall)} should be ignored.  When a video state change from
@@ -231,7 +233,7 @@ public class ImsPhoneConnection extends Connection implements
 
     /** This is an MO call, created when dialing */
     public ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent, boolean isEmergency) {
+            ImsPhoneCall parent, boolean isEmergency, boolean isWpsCall) {
         super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
         acquireWakeLock();
@@ -260,6 +262,8 @@ public class ImsPhoneConnection extends Connection implements
         if (isEmergency) {
             setEmergencyCallInfo(mOwner);
         }
+
+        mIsWpsCall = isWpsCall;
 
         fetchDtmfToneDelay(phone);
 
@@ -1411,6 +1415,10 @@ public class ImsPhoneConnection extends Connection implements
         return mIsEmergency;
     }
 
+    protected boolean isWpsCall() {
+        return mIsWpsCall;
+    }
+
     /**
      * Indicates whether current phone connection is cross sim calling or not
      * @return boolean: true if cross sim calling, false otherwise
@@ -1585,5 +1593,17 @@ public class ImsPhoneConnection extends Connection implements
             default:
                 return android.telecom.Connection.VERIFICATION_STATUS_NOT_VERIFIED;
         }
+    }
+
+    /**
+     * The priority of the call to the user. A higher number means higher priority.
+     */
+    protected int getCallPriority() {
+        if (isEmergency()) {
+            return 2;
+        } else if (isWpsCall()) {
+            return 1;
+        }
+        return 0;
     }
 }
