@@ -873,6 +873,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      */
     private boolean mShouldUpdateImsConfigOnDisconnect = false;
 
+    private Pair<Boolean, Integer> mPendingSilentRedialInfo = null;
+
     /**
      * Default implementation for retrieving shared preferences; uses the actual PreferencesManager.
      */
@@ -1279,6 +1281,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             throws CallStateException {
         boolean isPhoneInEcmMode = isPhoneInEcbMode();
         boolean isEmergencyNumber = dialArgs.isEmergency;
+        boolean isWpsCall = dialArgs.isWpsCall;
 
         if (!shouldNumberBePlacedOnIms(isEmergencyNumber, dialString)) {
             Rlog.i(LOG_TAG, "dial: shouldNumberBePlacedOnIms = false");
@@ -1321,7 +1324,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mLastDialString = dialString;
             mLastDialArgs = dialArgs;
             mPendingMO = new ImsPhoneConnection(mPhone, dialString, this, mForegroundCall,
-                    isEmergencyNumber);
+                    isEmergencyNumber, isWpsCall);
             if (isEmergencyNumber && dialArgs != null && dialArgs.intentExtras != null) {
                 Rlog.i(LOG_TAG, "dial ims emergency dialer: " + dialArgs.intentExtras.getBoolean(
                         TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -2950,15 +2953,27 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (mPendingMO != null) {
                 // To initiate dialing circuit-switched call
                 if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
-                        && mBackgroundCall.getState() == ImsPhoneCall.State.IDLE
-                        && mRingingCall.getState() == ImsPhoneCall.State.IDLE) {
+                        && mRingingCall.getState() == ImsPhoneCall.State.IDLE
+                        && isForegroundHigherPriority()) {
                     mForegroundCall.detach(mPendingMO);
                     removeConnection(mPendingMO);
                     mPendingMO.finalize();
                     mPendingMO = null;
-                    updatePhoneState();
-                    mPhone.initiateSilentRedial(reasonInfo.getExtraCode() ==
-                            ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY, eccCategory);
+                    // if we need to perform CSFB of call, hang up any background call
+                    // before redialing if it is a lower priority.
+                    if (mBackgroundCall.getState().isAlive()) {
+                        try {
+                            hangup(mBackgroundCall);
+                            mPendingSilentRedialInfo = new Pair<>(reasonInfo.getExtraCode() ==
+                                ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY, eccCategory);
+                        } catch (CallStateException ex) {
+                            mPendingSilentRedialInfo = null;
+                        }
+                    } else {
+                        updatePhoneState();
+                        mPhone.initiateSilentRedial(reasonInfo.getExtraCode() ==
+                                ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY, eccCategory);
+                    }
                     return;
                 } else {
                     sendCallStartFailedDisconnect(imsCall, reasonInfo);
@@ -3165,6 +3180,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mImsManager.updateImsServiceConfig();
                 }
                 mShouldUpdateImsConfigOnDisconnect = false;
+            }
+
+            if (mPendingSilentRedialInfo != null) {
+                mPhone.initiateSilentRedial(mPendingSilentRedialInfo.first,
+                                            mPendingSilentRedialInfo.second);
+                mPendingSilentRedialInfo = null;
             }
         }
 
@@ -5099,5 +5120,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             bgConnection.handleMergeComplete();
         }
         mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
+    }
+
+    /**
+     * Calculate whether CSFB or not with fg call type and bg call type.
+     * @return {@code true} if bg call is not alive or fg call has higher score than bg call.
+     */
+    private boolean isForegroundHigherPriority() {
+        if (!mBackgroundCall.getState().isAlive()) {
+            return true;
+        }
+        ImsPhoneConnection fgConnection = mForegroundCall.getFirstConnection();
+        ImsPhoneConnection bgConnection = mBackgroundCall.getFirstConnection();
+        if (fgConnection.getCallPriority() > bgConnection.getCallPriority()) {
+            return true;
+        }
+        return false;
     }
 }
