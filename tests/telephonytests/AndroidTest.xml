@@ -23,6 +23,8 @@
     <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
         <option name="package" value="com.android.frameworks.telephonytests" />
         <option name="runner" value="androidx.test.runner.AndroidJUnitRunner" />
+        <option name="exclude-annotation" value="androidx.test.filters.FlakyTest" />
+        <option name="exclude-annotation" value="org.junit.Ignore" />
         <option name="hidden-api-checks" value="false"/>
     </test>
 </configuration>
