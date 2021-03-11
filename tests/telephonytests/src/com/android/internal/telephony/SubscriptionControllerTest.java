@@ -47,6 +47,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
@@ -112,6 +113,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("SubscriptionControllerTest");
 
+        if (Looper.myLooper() == null) {
+            Looper.prepare();
+        }
+
         doReturn(SINGLE_SIM).when(mTelephonyManager).getSimCount();
         doReturn(SINGLE_SIM).when(mTelephonyManager).getPhoneCount();
         mMockContentResolver = (MockContentResolver) mContext.getContentResolver();
@@ -144,8 +149,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         /*clear sub info in mSubscriptionControllerUT since they will otherwise be persistent
          * between each test case. */
-        mSubscriptionControllerUT.clearSubInfo();
-        mSubscriptionControllerUT.resetStaticMembers();
+        if (mSubscriptionControllerUT != null) {
+            mSubscriptionControllerUT.clearSubInfo();
+            mSubscriptionControllerUT.resetStaticMembers();
+        }
 
         /* clear settings for default voice/data/sms sub ID */
         Settings.Global.putInt(mContext.getContentResolver(),
