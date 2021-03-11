@@ -1281,13 +1281,23 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     }
 
     /**
-     * Ensures when D2D communication is supported that we register the expected D2D RTP header
-     * extension types.
+     * Ensures when both RTP and SDP is supported that we register the expected header extension
+     * types.
      * @throws Exception
      */
     @Test
     @SmallTest
     public void testConfigureRtpHeaderExtensionTypes() throws Exception {
+
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_DEVICE_TO_DEVICE_COMMUNICATION_USING_RTP_BOOL,
+                true);
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL,
+                true);
+        // Hacky but ImsPhoneCallTracker caches carrier config, so necessary.
+        mCTUT.updateCarrierConfigCache(mContextFixture.getCarrierConfigBundle());
+
         ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
         config.isD2DCommunicationSupported = true;
         mCTUT.setConfig(config);
@@ -1300,6 +1310,35 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(2, types.size());
         assertTrue(types.contains(RtpTransport.CALL_STATE_RTP_HEADER_EXTENSION_TYPE));
         assertTrue(types.contains(RtpTransport.DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE));
+    }
+
+    /**
+     * Ensures when SDP is not supported (by RTP is) we don't register any extensions.
+     * @throws Exception
+     */
+    @Test
+    @SmallTest
+    public void testRtpButNoSdp() throws Exception {
+
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_DEVICE_TO_DEVICE_COMMUNICATION_USING_RTP_BOOL,
+                true);
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL,
+                false);
+        // Hacky but ImsPhoneCallTracker caches carrier config, so necessary.
+        mCTUT.updateCarrierConfigCache(mContextFixture.getCarrierConfigBundle());
+
+        ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
+        config.isD2DCommunicationSupported = true;
+        mCTUT.setConfig(config);
+        mConnectorListener.connectionReady(mImsManager);
+
+        // Expect to get offered header extensions since d2d is supported.
+        verify(mImsManager).setOfferedRtpHeaderExtensionTypes(
+                mRtpHeaderExtensionTypeCaptor.capture());
+        Set<RtpHeaderExtensionType> types = mRtpHeaderExtensionTypeCaptor.getValue();
+        assertEquals(0, types.size());
     }
 
     /**
