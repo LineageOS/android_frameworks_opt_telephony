@@ -3543,11 +3543,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
-                if (result != null) {
-                    AsyncResult.forMessage(result, null,
-                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                    result.sendToTarget();
-                }
+                // For older HAL, redirects the call to getPreferredNetworkType.
+                getPreferredNetworkType(result);
                 return;
             }
 
