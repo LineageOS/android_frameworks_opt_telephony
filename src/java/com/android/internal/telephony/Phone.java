@@ -2448,8 +2448,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response is callback message to report network types bitmask
      */
     public void getAllowedNetworkTypesBitmask(Message response) {
-        //TODO: Change to getAllowedNetworkTypesBitmap after 1.6 HAL ready.
-        mCi.getPreferredNetworkType(response);
+        mCi.getAllowedNetworkTypesBitmap(response);
     }
 
     /**
