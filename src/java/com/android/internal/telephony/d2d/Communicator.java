@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Responsible for facilitating device-to-device communication between both ends of a call.
@@ -107,6 +108,9 @@ public class Communicator implements TransportProtocol.Callback {
 
     public Communicator(@NonNull List<TransportProtocol> transportProtocols,
             @NonNull Callback callback) {
+        Log.i(this, "Initializing communicator with transports: %s",
+                transportProtocols.stream().map(p -> p.getClass().getSimpleName()).collect(
+                        Collectors.joining(",")));
         mTransportProtocols.addAll(transportProtocols);
         mTransportProtocols.forEach(p -> p.setCallback(this));
         mCallback = callback;
@@ -314,5 +318,12 @@ public class Communicator implements TransportProtocol.Callback {
         mActiveTransport = tp.get();
         mIsNegotiated = true;
         Log.i(this, "setTransportActive: %s has been forced active.", transport);
+    }
+
+    /**
+     * @return the list of {@link TransportProtocol} which are configured at the current time.
+     */
+    public @NonNull List<TransportProtocol> getTransportProtocols() {
+        return mTransportProtocols;
     }
 }
