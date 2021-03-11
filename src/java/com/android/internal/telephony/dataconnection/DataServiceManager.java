@@ -51,7 +51,7 @@ import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.IDataService;
 import android.telephony.data.IDataServiceCallback;
-import android.telephony.data.SliceInfo;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.text.TextUtils;
 
@@ -634,7 +634,7 @@ public class DataServiceManager extends Handler {
      */
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
             boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
-            @Nullable  SliceInfo sliceInfo, @Nullable TrafficDescriptor trafficDescriptor,
+            @Nullable NetworkSliceInfo sliceInfo, @Nullable TrafficDescriptor trafficDescriptor,
             boolean matchAllRuleAllowed, Message onCompleteMessage) {
         if (DBG) log("setupDataCall");
         if (!mBound) {

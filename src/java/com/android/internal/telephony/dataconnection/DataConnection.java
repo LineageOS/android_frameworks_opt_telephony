@@ -69,9 +69,9 @@ import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.Qos;
 import android.telephony.data.QosBearerSession;
-import android.telephony.data.SliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -320,7 +320,7 @@ public class DataConnection extends StateMachine {
     private int mUplinkBandwidth = 14;
     private Qos mDefaultQos = null;
     private List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
-    private SliceInfo mSliceInfo;
+    private NetworkSliceInfo mSliceInfo;
     private List<TrafficDescriptor> mTrafficDescriptors = new ArrayList<>();
 
     /** The corresponding network agent for this data connection. */
@@ -630,7 +630,7 @@ public class DataConnection extends StateMachine {
         return mPduSessionId;
     }
 
-    public SliceInfo getSliceInfo() {
+    public NetworkSliceInfo getSliceInfo() {
         return mSliceInfo;
     }
 
