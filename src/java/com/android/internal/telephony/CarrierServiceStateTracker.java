@@ -84,17 +84,14 @@ public class CarrierServiceStateTracker extends Handler {
     public class AllowedNetworkTypesListener extends TelephonyCallback
             implements TelephonyCallback.AllowedNetworkTypesListener {
         @Override
-        public void onAllowedNetworkTypesChanged(Map<Integer, Long> allowedNetworkTypesList) {
-            if (!allowedNetworkTypesList.containsKey(
-                    TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER)) {
+        public void onAllowedNetworkTypesChanged(int reason, long newAllowedNetworkType) {
+            if (reason != TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER) {
                 return;
             }
 
-            long newAllowedNetworkType = allowedNetworkTypesList.get(
-                    TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
             if (mAllowedNetworkType != newAllowedNetworkType) {
                 mAllowedNetworkType = newAllowedNetworkType;
-                handlePrefNetworkModeChanged();
+                handleAllowedNetworkTypeChanged();
             }
         }
     }
@@ -291,7 +288,7 @@ public class CarrierServiceStateTracker extends Handler {
         }
     }
 
-    private void handlePrefNetworkModeChanged() {
+    private void handleAllowedNetworkTypeChanged() {
         NotificationType notificationType = mNotificationTypeMap.get(NOTIFICATION_PREF_NETWORK);
         if (notificationType != null) {
             evaluateSendingMessageOrCancelNotification(notificationType);
