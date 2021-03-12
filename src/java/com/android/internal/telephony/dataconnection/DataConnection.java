@@ -40,7 +40,7 @@ import android.net.RouteInfo;
 import android.net.SocketKeepalive;
 import android.net.TelephonyNetworkSpecifier;
 import android.net.vcn.VcnManager;
-import android.net.vcn.VcnManager.VcnNetworkPolicyListener;
+import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.HandlerExecutor;
@@ -334,8 +334,8 @@ public class DataConnection extends StateMachine {
     PendingIntent mReconnectIntent = null;
 
     /** Class used to track VCN-defined Network policies for this DcNetworkAgent. */
-    private final VcnNetworkPolicyListener mVcnPolicyListener =
-            new DataConnectionVcnNetworkPolicyListener();
+    private final VcnNetworkPolicyChangeListener mVcnPolicyChangeListener =
+            new DataConnectionVcnNetworkPolicyChangeListener();
 
     // ***** Event codes for driving the state machine, package visible for Dcc
     static final int BASE = Protocol.BASE_DATA_CONNECTION;
@@ -2695,10 +2695,11 @@ public class DataConnection extends StateMachine {
                         + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly);
             }
 
-            // Always register a VcnNetworkPolicyListener, regardless of whether this is a handover
+            // Always register a VcnNetworkPolicyChangeListener, regardless of whether this is a
+            // handover
             // or new Network.
-            mVcnManager.addVcnNetworkPolicyListener(
-                    new HandlerExecutor(getHandler()), mVcnPolicyListener);
+            mVcnManager.addVcnNetworkPolicyChangeListener(
+                    new HandlerExecutor(getHandler()), mVcnPolicyChangeListener);
 
             if (mConnectionParams != null
                     && mConnectionParams.mRequestType == REQUEST_TYPE_HANDOVER) {
@@ -2817,7 +2818,7 @@ public class DataConnection extends StateMachine {
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
             mDataCallSessionStats.onDataCallDisconnected();
 
-            mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
+            mVcnManager.removeVcnNetworkPolicyChangeListener(mVcnPolicyChangeListener);
 
             mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
         }
@@ -3839,7 +3840,8 @@ public class DataConnection extends StateMachine {
      *
      * <p>MUST be registered with the associated DataConnection's Handler.
      */
-    private class DataConnectionVcnNetworkPolicyListener implements VcnNetworkPolicyListener {
+    private class DataConnectionVcnNetworkPolicyChangeListener
+            implements VcnNetworkPolicyChangeListener {
         @Override
         public void onPolicyChanged() {
             // Poll the current underlying Network policy from VcnManager and send to NetworkAgent.
