@@ -1697,6 +1697,9 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
+        value.put(SubscriptionManager.ALLOWED_NETWORK_TYPES,
+                "user=" + RadioAccessFamily.getRafFromNetworkType(
+                        RILConstants.PREFERRED_NETWORK_MODE));
 
         Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
 
@@ -2085,6 +2088,43 @@ public class SubscriptionController extends ISub.Stub {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.DATA_ROAMING, roaming);
             if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
+
+            int result = updateDatabase(value, subId, true);
+
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
+
+            notifySubscriptionInfoChanged();
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    /**
+     * Set device to device status sharing preference
+     * @param sharing the sharing preference to set
+     * @param subId
+     * @return the number of records updated
+     */
+    @Override
+    public int setDeviceToDeviceStatusSharing(int sharing, int subId) {
+        if (DBG) logd("[setDeviceToDeviceStatusSharing]- sharing:" + sharing + " subId:" + subId);
+
+        enforceModifyPhoneState("setDeviceToDeviceStatusSharing");
+
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            if (sharing < 0) {
+                if (DBG) logd("[setDeviceToDeviceStatusSharing]- fail");
+                return -1;
+            }
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.D2D_STATUS_SHARING, sharing);
+            if (DBG) logd("[setDeviceToDeviceStatusSharing]- sharing:" + sharing + " set");
 
             int result = updateDatabase(value, subId, true);
 
@@ -3116,6 +3156,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
                         case SubscriptionManager.ALLOWED_NETWORK_TYPES:
                         case SubscriptionManager.VOIMS_OPT_IN_STATUS:
+                        case SubscriptionManager.D2D_STATUS_SHARING:
                             resultValue = cursor.getString(0);
                             break;
                         default:
