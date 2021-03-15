@@ -49,6 +49,9 @@ public class RadioConfigResponseTest extends TelephonyTest {
                 caps.contains(TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE));
         assertFalse(
                 caps.contains(TelephonyManager.CAPABILITY_ALLOWED_NETWORK_TYPES_USED));
+        assertFalse(
+                caps.contains(
+                        TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE));
     }
 
     @Test
@@ -58,6 +61,9 @@ public class RadioConfigResponseTest extends TelephonyTest {
                 caps.contains(TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE));
         assertTrue(
                 caps.contains(TelephonyManager.CAPABILITY_ALLOWED_NETWORK_TYPES_USED));
+        assertFalse(
+                caps.contains(
+                        TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE));
     }
 
     @Test
@@ -67,5 +73,8 @@ public class RadioConfigResponseTest extends TelephonyTest {
                 caps.contains(TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE));
         assertTrue(
                 caps.contains(TelephonyManager.CAPABILITY_ALLOWED_NETWORK_TYPES_USED));
+        assertTrue(
+                caps.contains(
+                        TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE));
     }
 }
