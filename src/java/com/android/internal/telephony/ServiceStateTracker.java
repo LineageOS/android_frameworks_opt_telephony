@@ -1794,6 +1794,10 @@ public class ServiceStateTracker extends Handler {
                 updateReportingCriteria(getCarrierConfig());
 
                 onCompleted.sendToTarget();
+
+                // Always poll signal strength after setting the update request which has waken up
+                // modem if it was idle. An additional signal strength polling is almost cost free.
+                obtainMessage(EVENT_POLL_SIGNAL_STRENGTH).sendToTarget();
                 break;
             }
 
