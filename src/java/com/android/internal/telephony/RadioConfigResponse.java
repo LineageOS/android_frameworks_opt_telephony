@@ -17,6 +17,8 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.CAPABILITY_ALLOWED_NETWORK_TYPES_USED;
+import static android.telephony.TelephonyManager
+        .CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE;
 import static android.telephony.TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE;
 import static android.telephony.TelephonyManager.RadioInterfaceCapability;
 
@@ -302,6 +304,8 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             if (!modemReducedFeatureSet1) {
                 caps.add(CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE);
                 Rlog.d(TAG, "CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE");
+                caps.add(CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE);
+                Rlog.d(TAG, "CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE");
             }
         }
         return caps;
