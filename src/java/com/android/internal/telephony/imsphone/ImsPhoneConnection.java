@@ -17,6 +17,7 @@
 package com.android.internal.telephony.imsphone;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.Uri;
@@ -39,6 +40,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.AudioCodecAttributes;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.RtpHeaderExtensionType;
@@ -140,6 +142,12 @@ public class ImsPhoneConnection extends Connection implements
      * calls.
      */
     private boolean mIsLocalVideoCapable = true;
+
+    /**
+     * When the call is in a disconnected, state, will be set to the {@link ImsReasonInfo}
+     * associated with the disconnection, if known.
+     */
+    private ImsReasonInfo mImsReasonInfo;
 
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
@@ -1573,6 +1581,23 @@ public class ImsPhoneConnection extends Connection implements
             return Collections.EMPTY_SET;
         }
         return mImsCall.getCallProfile().getAcceptedRtpHeaderExtensionTypes();
+    }
+
+    /**
+     * For a connection being disconnected, sets the {@link ImsReasonInfo} which describes the
+     * reason for the disconnection.
+     * @param imsReasonInfo The IMS reason info.
+     */
+    public void setImsReasonInfo(@Nullable ImsReasonInfo imsReasonInfo) {
+        mImsReasonInfo = imsReasonInfo;
+    }
+
+    /**
+     * @return the {@link ImsReasonInfo} describing why this connection disconnected, or
+     * {@code null} otherwise.
+     */
+    public @Nullable ImsReasonInfo getImsReasonInfo() {
+        return mImsReasonInfo;
     }
 
     /**
