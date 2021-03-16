@@ -34,6 +34,7 @@ import android.net.LinkProperties;
 import android.os.ServiceManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
+import android.telephony.LinkCapacityEstimate;
 import android.telephony.PhoneCapability;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.SubscriptionInfo;
@@ -54,7 +55,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,6 +68,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Mock
     private SubscriptionInfo mMockSubInfo;
     private TelephonyCallbackWrapper mTelephonyCallback;
+    private List<LinkCapacityEstimate> mLinkCapacityEstimateList;
     private TelephonyRegistry mTelephonyRegistry;
     private PhoneCapability mPhoneCapability;
     private int mActiveSubId;
@@ -135,7 +139,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
             TelephonyCallback.ActiveDataSubscriptionIdListener,
             TelephonyCallback.RadioPowerStateListener,
             TelephonyCallback.PreciseDataConnectionStateListener,
-            TelephonyCallback.DisplayInfoListener{
+            TelephonyCallback.DisplayInfoListener,
+            TelephonyCallback.LinkCapacityEstimateChangedListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
         // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
         public AtomicInteger invocationCount = new AtomicInteger(0);
@@ -168,6 +173,12 @@ public class TelephonyRegistryTest extends TelephonyTest {
         @Override
         public void onDisplayInfoChanged(TelephonyDisplayInfo displayInfo) {
             mTelephonyDisplayInfo = displayInfo;
+        }
+
+        @Override
+        public void onLinkCapacityEstimateChanged(
+                List<LinkCapacityEstimate> linkCapacityEstimateList) {
+            mLinkCapacityEstimateList =  linkCapacityEstimateList;
         }
     }
 
@@ -549,5 +560,35 @@ public class TelephonyRegistryTest extends TelephonyTest {
         } catch (SecurityException unexpected) {
             fail("SecurityException thrown with permission");
         }
+    }
+
+    @Test
+    public void testNotifyLinkCapacityEstimateChanged() {
+        mContext.sendBroadcast(new Intent(ACTION_DEFAULT_SUBSCRIPTION_CHANGED)
+                .putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, 2)
+                .putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, 0));
+        processAllMessages();
+        int[] events = {TelephonyCallback.EVENT_LINK_CAPACITY_ESTIMATE_CHANGED};
+        mTelephonyRegistry.listenWithEventList(2, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback,
+                events, false);
+
+        // Notify with invalid subId / phoneId on default phone. Should NOT trigger callback.
+        List<LinkCapacityEstimate> lceList = new ArrayList<>();
+        lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED, 4000,
+                LinkCapacityEstimate.INVALID));
+        mTelephonyRegistry.notifyLinkCapacityEstimateChanged(1, INVALID_SUBSCRIPTION_ID, lceList);
+        processAllMessages();
+        assertEquals(null, mLinkCapacityEstimateList);
+
+        // Notify with invalid phoneId. Should NOT trigger callback.
+        mTelephonyRegistry.notifyLinkCapacityEstimateChanged(2, 2, lceList);
+        processAllMessages();
+        assertEquals(null, mLinkCapacityEstimateList);
+
+        // Notify with the matching subId on default phone. Should trigger callback.
+        mTelephonyRegistry.notifyLinkCapacityEstimateChanged(0, 2, lceList);
+        processAllMessages();
+        assertEquals(lceList, mLinkCapacityEstimateList);
     }
 }
