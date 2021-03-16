@@ -43,13 +43,13 @@ import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.ApnType;
-import android.telephony.CarrierBandwidth;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.LinkCapacityEstimate;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseDataConnectionState;
@@ -2247,14 +2247,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * get carrier bandwidth per primary and secondary carrier
-     * @return CarrierBandwidth with bandwidth of both primary and secondary carrier.
-     */
-    public CarrierBandwidth getCarrierBandwidth() {
-        return new CarrierBandwidth();
-    }
-
-    /**
      * Enable/Disable E-UTRA-NR Dual Connectivity
      * @param nrDualConnectivityState expected NR dual connectivity state
      * This can be passed following states
@@ -2832,6 +2824,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void notifyDataEnabled(boolean enabled,
             @TelephonyManager.DataEnabledReason int reason) {
         mNotifier.notifyDataEnabled(this, enabled, reason);
+    }
+
+    /** Notify link capacity estimate has changed. */
+    public void notifyLinkCapacityEstimateChanged(
+            List<LinkCapacityEstimate> linkCapacityEstimateList) {
+        mNotifier.notifyLinkCapacityEstimateChanged(this, linkCapacityEstimateList);
     }
 
     /**
