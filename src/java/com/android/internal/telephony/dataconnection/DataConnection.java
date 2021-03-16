@@ -57,7 +57,6 @@ import android.telephony.Annotation.DataState;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
-import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
@@ -81,6 +80,7 @@ import android.util.TimeUtils;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.LinkCapacityEstimate;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
@@ -1547,20 +1547,19 @@ public class DataConnection extends StateMachine {
     }
 
 
-    private void updateLinkBandwidthsFromModem(List<LinkCapacityEstimate> lceList) {
-        if (DBG) log("updateLinkBandwidthsFromModem: lceList=" + lceList);
+    private void updateLinkBandwidthsFromModem(LinkCapacityEstimate lce) {
+        if (DBG) log("updateLinkBandwidthsFromModem: lce=" + lce);
         boolean downlinkUpdated = false;
         boolean uplinkUpdated = false;
-        LinkCapacityEstimate lce = lceList.get(0);
         // LCE status deprecated in IRadio 1.2, so only check for IRadio < 1.2
         if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_2)
                 || mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {
-            if (lce.getDownlinkCapacityKbps() != LinkCapacityEstimate.INVALID) {
-                mDownlinkBandwidth = lce.getDownlinkCapacityKbps();
+            if (lce.downlinkCapacityKbps != LinkCapacityEstimate.INVALID) {
+                mDownlinkBandwidth = lce.downlinkCapacityKbps;
                 downlinkUpdated = true;
             }
-            if (lce.getUplinkCapacityKbps() != LinkCapacityEstimate.INVALID) {
-                mUplinkBandwidth = lce.getUplinkCapacityKbps();
+            if (lce.uplinkCapacityKbps != LinkCapacityEstimate.INVALID) {
+                mUplinkBandwidth = lce.uplinkCapacityKbps;
                 uplinkUpdated = true;
             }
         }
@@ -3002,7 +3001,7 @@ public class DataConnection extends StateMachine {
                         log("EVENT_BW_REFRESH_RESPONSE: error ignoring, e=" + ar.exception);
                     } else {
                         if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_MODEM_KEY)) {
-                            updateLinkBandwidthsFromModem((List<LinkCapacityEstimate>) ar.result);
+                            updateLinkBandwidthsFromModem((LinkCapacityEstimate) ar.result);
                         }
                     }
                     retVal = HANDLED;
@@ -3109,7 +3108,7 @@ public class DataConnection extends StateMachine {
                         loge("EVENT_LINK_CAPACITY_CHANGED e=" + ar.exception);
                     } else {
                         if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_MODEM_KEY)) {
-                            updateLinkBandwidthsFromModem((List<LinkCapacityEstimate>) ar.result);
+                            updateLinkBandwidthsFromModem((LinkCapacityEstimate) ar.result);
                         }
                     }
                     retVal = HANDLED;
