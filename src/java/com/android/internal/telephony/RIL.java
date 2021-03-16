@@ -89,7 +89,6 @@ import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.ClientRequestStats;
 import android.telephony.ImsiEncryptionInfo;
-import android.telephony.LinkCapacityEstimate;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.NetworkScanRequest;
@@ -7225,49 +7224,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rc;
     }
 
-    static List<LinkCapacityEstimate> convertHalLceData(LceDataInfo halData, RIL ril) {
-        final List<LinkCapacityEstimate> lceList = new ArrayList<>();
-        lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED,
+    static LinkCapacityEstimate convertHalLceData(LceDataInfo halData, RIL ril) {
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
                 halData.lastHopCapacityKbps,
-                LinkCapacityEstimate.INVALID));
-        ril.riljLog("LCE capacity information received:" + lceList);
-        return lceList;
+                Byte.toUnsignedInt(halData.confidenceLevel),
+                halData.lceSuspended ? LinkCapacityEstimate.STATUS_SUSPENDED
+                        : LinkCapacityEstimate.STATUS_ACTIVE);
+
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
     }
 
-    static List<LinkCapacityEstimate> convertHalLceData(
+    static LinkCapacityEstimate convertHalLceData(
             android.hardware.radio.V1_2.LinkCapacityEstimate halData, RIL ril) {
-        final List<LinkCapacityEstimate> lceList = new ArrayList<>();
-        lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED,
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
                 halData.downlinkCapacityKbps,
-                halData.uplinkCapacityKbps));
-        ril.riljLog("LCE capacity information received:" + lceList);
-        return lceList;
+                halData.uplinkCapacityKbps);
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
     }
 
-    static List<LinkCapacityEstimate> convertHalLceData(
+    static LinkCapacityEstimate convertHalLceData(
             android.hardware.radio.V1_6.LinkCapacityEstimate halData, RIL ril) {
-        final List<LinkCapacityEstimate> lceList = new ArrayList<>();
-        int primaryDownlinkCapacityKbps = halData.downlinkCapacityKbps;
-        int primaryUplinkCapacityKbps = halData.uplinkCapacityKbps;
-        if (primaryDownlinkCapacityKbps != LinkCapacityEstimate.INVALID
-                && halData.secondaryDownlinkCapacityKbps != LinkCapacityEstimate.INVALID) {
-            primaryDownlinkCapacityKbps =
-                    halData.downlinkCapacityKbps - halData.secondaryDownlinkCapacityKbps;
-        }
-        if (primaryUplinkCapacityKbps != LinkCapacityEstimate.INVALID
-                && halData.secondaryUplinkCapacityKbps != LinkCapacityEstimate.INVALID) {
-            primaryUplinkCapacityKbps =
-                    halData.uplinkCapacityKbps - halData.secondaryUplinkCapacityKbps;
-        }
-
-        lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_PRIMARY,
-                primaryDownlinkCapacityKbps,
-                primaryUplinkCapacityKbps));
-        lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_SECONDARY,
+        final LinkCapacityEstimate lce = new LinkCapacityEstimate(
+                halData.downlinkCapacityKbps,
+                halData.uplinkCapacityKbps,
                 halData.secondaryDownlinkCapacityKbps,
-                halData.secondaryUplinkCapacityKbps));
-        ril.riljLog("LCE capacity information received:" + lceList);
-        return lceList;
+                halData.secondaryUplinkCapacityKbps);
+        ril.riljLog("LCE capacity information received:" + lce);
+        return lce;
     }
 
     /**
