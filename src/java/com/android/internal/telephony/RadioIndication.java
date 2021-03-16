@@ -95,7 +95,6 @@ import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
-import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.PhysicalChannelConfig;
@@ -258,7 +257,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                                             android.hardware.radio.V1_2.LinkCapacityEstimate lce) {
         mRil.processIndication(indicationType);
 
-        List<LinkCapacityEstimate> response = RIL.convertHalLceData(lce, mRil);
+        LinkCapacityEstimate response = RIL.convertHalLceData(lce, mRil);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
@@ -274,7 +273,7 @@ public class RadioIndication extends IRadioIndication.Stub {
             android.hardware.radio.V1_6.LinkCapacityEstimate lce) {
         mRil.processIndication(indicationType);
 
-        List<LinkCapacityEstimate> response = RIL.convertHalLceData(lce, mRil);
+        LinkCapacityEstimate response = RIL.convertHalLceData(lce, mRil);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
@@ -1009,7 +1008,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void lceData(int indicationType, LceDataInfo lce) {
         mRil.processIndication(indicationType);
 
-        List<LinkCapacityEstimate> response = RIL.convertHalLceData(lce, mRil);
+        LinkCapacityEstimate response = RIL.convertHalLceData(lce, mRil);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
