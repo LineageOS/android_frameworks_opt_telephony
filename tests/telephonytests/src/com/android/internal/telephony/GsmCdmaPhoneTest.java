@@ -56,11 +56,11 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
-import android.telephony.CarrierBandwidth;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
+import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -72,7 +72,6 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -93,6 +92,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
@@ -1545,15 +1545,45 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     }
 
     @Test
-    public void testEventLCEUpdate() {
+    public void testEventLceUpdate() {
         mPhoneUT.mCi = mMockCi;
+
+        ArgumentCaptor<List<LinkCapacityEstimate>> captor = ArgumentCaptor.forClass(List.class);
+        List<LinkCapacityEstimate> lceList1 = new ArrayList<>();
+        lceList1.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_PRIMARY, 2000, 5000));
+        lceList1.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_SECONDARY, 1000, 1500));
+
+        List<LinkCapacityEstimate> lceList2 = new ArrayList<>();
+        lceList2.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED, 2000, 5000));
+
+        List<LinkCapacityEstimate> lceList3 = new ArrayList<>();
+        lceList3.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED, 2000,
+                LinkCapacityEstimate.INVALID));
+
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_LINK_CAPACITY_CHANGED,
-                new AsyncResult(null, new LinkCapacityEstimate(1000, 500, 100, 50), null)));
+                new AsyncResult(null, lceList1, null)));
         processAllMessages();
-        CarrierBandwidth bandwidth = mPhoneUT.getCarrierBandwidth();
-        assertEquals(bandwidth.getPrimaryDownlinkCapacityKbps(), 900);
-        assertEquals(bandwidth.getPrimaryUplinkCapacityKbps(), 450);
-        assertEquals(bandwidth.getSecondaryDownlinkCapacityKbps(), 100);
-        assertEquals(bandwidth.getSecondaryUplinkCapacityKbps(), 50);
+        verify(mNotifier, times(1))
+                .notifyLinkCapacityEstimateChanged(any(), captor.capture());
+        assertEquals(2, captor.getValue().size());
+        LinkCapacityEstimate lce1 = captor.getValue().get(1);
+        assertEquals(1000, lce1.getDownlinkCapacityKbps());
+        assertEquals(LinkCapacityEstimate.LCE_TYPE_SECONDARY, lce1.getType());
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_LINK_CAPACITY_CHANGED,
+                new AsyncResult(null, lceList2, null)));
+        processAllMessages();
+        verify(mNotifier, times(2))
+                .notifyLinkCapacityEstimateChanged(any(), captor.capture());
+        assertEquals(1, captor.getValue().size());
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_LINK_CAPACITY_CHANGED,
+                new AsyncResult(null, lceList3, null)));
+        processAllMessages();
+        verify(mNotifier, times(3))
+                .notifyLinkCapacityEstimateChanged(any(), captor.capture());
+        LinkCapacityEstimate lce3 = captor.getValue().get(0);
+        assertEquals(LinkCapacityEstimate.INVALID, lce3.getUplinkCapacityKbps());
+        assertEquals(LinkCapacityEstimate.LCE_TYPE_COMBINED, lce3.getType());
     }
 }
