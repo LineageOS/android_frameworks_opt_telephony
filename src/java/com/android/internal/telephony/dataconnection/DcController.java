@@ -26,6 +26,7 @@ import android.os.Message;
 import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.DataFailCause;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 
 import com.android.internal.telephony.DctConstants;
@@ -158,6 +159,14 @@ public class DcController extends Handler {
             if (DBG && removedDc == null) {
                 log("removeActiveDcByCid removedDc=null dc=" + dc);
             }
+        }
+    }
+
+    boolean isDefaultDataActive() {
+        synchronized (mDcListAll) {
+            return mDcListActiveByCid.values().stream()
+                    .anyMatch(dc -> dc.getApnContexts().stream()
+                            .anyMatch(apn -> apn.getApnTypeBitmask() == ApnSetting.TYPE_DEFAULT));
         }
     }
 
