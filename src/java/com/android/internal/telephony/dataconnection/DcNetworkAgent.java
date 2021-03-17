@@ -106,9 +106,6 @@ public class DcNetworkAgent extends NetworkAgent {
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
         mDataConnection = dc;
-        int networkType = getNetworkType();
-        setLegacySubtype(networkType, TelephonyManager.getNetworkTypeName(networkType));
-        setLegacyExtraInfo(dc.getApnSetting().getApnName());
         if (dc.getLinkProperties() != null) {
             checkDuplicateInterface(mId, dc.getLinkProperties().getInterfaceName());
             logd("created for data connection " + dc.getName() + ", "
