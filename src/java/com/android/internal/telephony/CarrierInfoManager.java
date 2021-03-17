@@ -254,7 +254,13 @@ public class CarrierInfoManager {
             return;
         }
         mLastAccessResetCarrierKey = now;
-        deleteCarrierInfoForImsiEncryption(context);
+        int[] subIds = context.getSystemService(SubscriptionManager.class)
+                .getSubscriptionIds(mPhoneId);
+        if (subIds == null || subIds.length < 1) {
+            Log.e(LOG_TAG, "Could not reset carrier keys, subscription for mPhoneId=" + mPhoneId);
+            return;
+        }
+        deleteCarrierInfoForImsiEncryption(context, subIds[0]);
         Intent resetIntent = new Intent(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
         SubscriptionManager.putPhoneIdAndSubIdExtra(resetIntent, mPhoneId);
         context.sendBroadcastAsUser(resetIntent, UserHandle.ALL);
@@ -264,12 +270,12 @@ public class CarrierInfoManager {
      * Deletes all the keys for a given Carrier from the device keystore.
      * @param context Context
      */
-    public static void deleteCarrierInfoForImsiEncryption(Context context) {
-        Log.i(LOG_TAG, "deleting carrier key from db");
+    public static void deleteCarrierInfoForImsiEncryption(Context context, int subId) {
+        Log.i(LOG_TAG, "deleting carrier key from db for subId=" + subId);
         String mcc = "";
         String mnc = "";
-        final TelephonyManager telephonyManager =
-                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        final TelephonyManager telephonyManager = context.getSystemService(TelephonyManager.class)
+                .createForSubscriptionId(subId);
         String simOperator = telephonyManager.getSimOperator();
         if (!TextUtils.isEmpty(simOperator)) {
             mcc = simOperator.substring(0, 3);
