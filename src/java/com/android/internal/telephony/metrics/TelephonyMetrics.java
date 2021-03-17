@@ -18,6 +18,7 @@ package com.android.internal.telephony.metrics;
 
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 
+import static com.android.internal.telephony.InboundSmsHandler.SOURCE_INJECTED_FROM_IMS;
 import static com.android.internal.telephony.InboundSmsHandler.SOURCE_NOT_INJECTED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_SEND_SMS;
@@ -2243,7 +2244,8 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param rilSerial RIL request serial number
      * @param tech SMS RAT
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param messageId Unique id for this message.
      */
     public synchronized void writeRilSendSms(int phoneId, int rilSerial, int tech, int format,
@@ -2329,7 +2331,8 @@ public class TelephonyMetrics {
      * Write an incoming multi-part SMS that was discarded because some parts were missing
      *
      * @param phoneId Phone id
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param receivedCount Number of received parts.
      * @param totalCount Total number of parts of the SMS.
      */
@@ -2356,7 +2359,8 @@ public class TelephonyMetrics {
      *
      * @param phoneId Phone id
      * @param type Type of the SMS.
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
      */
     private void writeIncomingSmsWithType(int phoneId, int type, String format, boolean success) {
@@ -2373,7 +2377,8 @@ public class TelephonyMetrics {
      * Write an incoming SMS-PP for the USIM
      *
      * @param phoneId Phone id
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
      */
     public void writeIncomingSMSPP(int phoneId, String format, boolean success) {
@@ -2386,7 +2391,8 @@ public class TelephonyMetrics {
      * Write an incoming SMS to update voicemail indicator
      *
      * @param phoneId Phone id
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      */
     public void writeIncomingVoiceMailSms(int phoneId, String format) {
         logv("Logged VoiceMail message.");
@@ -2398,7 +2404,8 @@ public class TelephonyMetrics {
      * Write an incoming SMS of type 0
      *
      * @param phoneId Phone id
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      */
     public void writeIncomingSmsTypeZero(int phoneId, String format) {
         logv("Logged Type-0 SMS message.");
@@ -2412,7 +2419,8 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param type Type of the SMS.
      * @param smsSource the source of the SMS message
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
@@ -2427,16 +2435,18 @@ public class TelephonyMetrics {
                 + " type = " + type
                 + " " + SmsController.formatCrossStackMessageId(messageId));
 
+        int smsFormat = convertSmsFormat(format);
+        int smsError =
+                success ? SmsManager.RESULT_ERROR_NONE : SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+        int smsTech = getSmsTech(smsSource, smsFormat == SmsSession.Event.Format.SMS_FORMAT_3GPP2);
+
         InProgressSmsSession smsSession = startNewSmsSession(phoneId);
         for (long time : timestamps) {
             SmsSessionEventBuilder eventBuilder =
                     new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
-                        .setFormat(convertSmsFormat(format))
-                        .setTech(smsSource != SOURCE_NOT_INJECTED
-                            ? SmsSession.Event.Tech.SMS_IMS
-                            : SmsSession.Event.Tech.SMS_GSM)
-                        .setErrorCode(success ? SmsManager.RESULT_ERROR_NONE :
-                            SmsManager.RESULT_ERROR_GENERIC_FAILURE)
+                        .setFormat(smsFormat)
+                        .setTech(smsTech)
+                        .setErrorCode(smsError)
                         .setSmsType(type)
                         .setBlocked(blocked)
                         .setMessageId(messageId);
@@ -2450,7 +2460,8 @@ public class TelephonyMetrics {
      *
      * @param phoneId Phone id
      * @param smsSource the source of the SMS message
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param success Indicates if the SMS-PP was successfully delivered to the USIM.
      * @param messageId Unique id for this message.
@@ -2466,7 +2477,8 @@ public class TelephonyMetrics {
      *
      * @param phoneId Phone id
      * @param smsSource the source of the SMS message
-     * @param format SMS format. Either 3GPP or 3GPP2.
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
      * @param timestamps array with timestamps of each incoming SMS part. It contains a single
      * @param blocked indicates if the message was blocked or not.
      * @param messageId Unique id for this message.
@@ -2481,11 +2493,12 @@ public class TelephonyMetrics {
      * Write an error incoming SMS
      *
      * @param phoneId Phone id
+     * @param is3gpp2 true for 3GPP2 format, false for 3GPP format.
      * @param smsSource the source of the SMS message
      * @param result Indicates the reason of the failure.
      */
-    public void writeIncomingSmsError(int phoneId, @InboundSmsHandler.SmsSource int smsSource,
-            int result) {
+    public void writeIncomingSmsError(int phoneId, boolean is3gpp2,
+            @InboundSmsHandler.SmsSource int smsSource, int result) {
         logv("Incoming SMS error = " + result);
 
         int smsError = SmsManager.RESULT_ERROR_GENERIC_FAILURE;
@@ -2509,10 +2522,11 @@ public class TelephonyMetrics {
 
         SmsSessionEventBuilder eventBuilder =
                 new SmsSessionEventBuilder(SmsSession.Event.Type.SMS_RECEIVED)
-                    .setErrorCode(smsError)
-                    .setTech(smsSource != SOURCE_NOT_INJECTED
-                        ? SmsSession.Event.Tech.SMS_IMS
-                        : SmsSession.Event.Tech.SMS_GSM);
+                    .setFormat(is3gpp2
+                                ? SmsSession.Event.Format.SMS_FORMAT_3GPP2
+                                : SmsSession.Event.Format.SMS_FORMAT_3GPP)
+                    .setTech(getSmsTech(smsSource, is3gpp2))
+                    .setErrorCode(smsError);
         smsSession.addEvent(eventBuilder);
         finishSmsSession(smsSession);
     }
@@ -2656,6 +2670,19 @@ public class TelephonyMetrics {
             }
         }
         return formatCode;
+    }
+
+    /**
+     * Get SMS technology
+     */
+    private int getSmsTech(@InboundSmsHandler.SmsSource int smsSource, boolean is3gpp2) {
+        if (smsSource == SOURCE_INJECTED_FROM_IMS) {
+            return SmsSession.Event.Tech.SMS_IMS;
+        } else if (smsSource == SOURCE_NOT_INJECTED) {
+            return is3gpp2 ? SmsSession.Event.Tech.SMS_CDMA : SmsSession.Event.Tech.SMS_GSM;
+        } else { // SOURCE_INJECTED_FROM_UNKNOWN
+            return SmsSession.Event.Tech.SMS_UNKNOWN;
+        }
     }
 
     /**

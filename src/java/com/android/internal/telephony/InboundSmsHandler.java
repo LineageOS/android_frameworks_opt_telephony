@@ -747,7 +747,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         // In case of error, add to metrics. This is not required in case of success, as the
         // data will be tracked when the message is processed (processMessagePart).
         if (result != Intents.RESULT_SMS_HANDLED && result != Activity.RESULT_OK) {
-            mMetrics.writeIncomingSmsError(mPhone.getPhoneId(), smsSource, result);
+            mMetrics.writeIncomingSmsError(mPhone.getPhoneId(), is3gpp2(), smsSource, result);
             mPhone.getSmsStats().onIncomingSmsError(is3gpp2(), smsSource, result);
         }
         return result;
