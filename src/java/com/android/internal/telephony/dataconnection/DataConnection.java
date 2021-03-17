@@ -2637,6 +2637,9 @@ public class DataConnection extends StateMachine {
             final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
             configBuilder.setLegacyType(ConnectivityManager.TYPE_MOBILE);
             configBuilder.setLegacyTypeName(NETWORK_TYPE);
+            int networkType = getNetworkType();
+            configBuilder.setLegacySubType(networkType);
+            configBuilder.setLegacySubTypeName(TelephonyManager.getNetworkTypeName(networkType));
             configBuilder.setLegacyExtraInfo(mApnSetting.getApnName());
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
             if (carrierSignalAgent.hasRegisteredReceivers(TelephonyManager
@@ -3005,7 +3008,7 @@ public class DataConnection extends StateMachine {
                     if (handle < 0) {
                         loge("No slot found for stopSocketKeepalive! " + slotId);
                         mNetworkAgent.sendSocketKeepaliveEvent(
-                                slotId, SocketKeepalive.NO_KEEPALIVE);
+                                slotId, SocketKeepalive.ERROR_NO_SUCH_SLOT);
                         retVal = HANDLED;
                         break;
                     } else {
