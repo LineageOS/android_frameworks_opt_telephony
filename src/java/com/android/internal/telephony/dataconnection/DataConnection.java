@@ -111,6 +111,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1807,6 +1808,7 @@ public class DataConnection extends StateMachine {
 
         builder.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
                 .setSubscriptionId(mSubId).build());
+        builder.setSubIds(Collections.singleton(mSubId));
 
         if (!mPhone.getServiceState().getDataRoaming()) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
