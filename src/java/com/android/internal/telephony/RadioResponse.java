@@ -46,6 +46,7 @@ import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
+import android.telephony.LinkCapacityEstimate;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.NetworkScanRequest;
@@ -2839,7 +2840,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            LinkCapacityEstimate ret = RIL.convertHalLceData(lceInfo, mRil);
+            List<LinkCapacityEstimate> ret = RIL.convertHalLceData(lceInfo, mRil);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
