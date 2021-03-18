@@ -24,6 +24,7 @@ import android.telephony.BarringInfo;
 import android.telephony.CallQuality;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
+import android.telephony.LinkCapacityEstimate;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.PreciseDataConnectionState;
@@ -129,4 +130,8 @@ public interface PhoneNotifier {
 
     /** Notify Allowed Network Type has changed. */
     void notifyAllowedNetworkTypesChanged(Phone sender, Map<Integer, Long> allowedNetworkType);
+
+    /** Notify link capacity estimate has changed. */
+    void notifyLinkCapacityEstimateChanged(Phone sender,
+            List<LinkCapacityEstimate> linkCapacityEstimateList);
 }
