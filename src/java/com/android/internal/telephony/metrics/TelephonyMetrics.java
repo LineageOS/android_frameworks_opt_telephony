@@ -275,7 +275,7 @@ public class TelephonyMetrics {
      * @param pw Print writer
      * @param args Arguments
      */
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    public synchronized void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         if (args != null && args.length > 0) {
             boolean reset = true;
             if (args.length > 1 && "--keep".equals(args[1])) {
@@ -1136,7 +1136,7 @@ public class TelephonyMetrics {
         }
     }
 
-    private SmsSession finishSmsSession(InProgressSmsSession inProgressSmsSession) {
+    private synchronized SmsSession finishSmsSession(InProgressSmsSession inProgressSmsSession) {
         SmsSession smsSession = new SmsSession();
         smsSession.events = new SmsSession.Event[inProgressSmsSession.events.size()];
         inProgressSmsSession.events.toArray(smsSession.events);
@@ -1818,12 +1818,10 @@ public class TelephonyMetrics {
      */
     private synchronized void writeOnSmsSolicitedResponse(int phoneId, int rilSerial, int rilError,
                                                           SmsResponse response) {
-
         InProgressSmsSession smsSession = mInProgressSmsSessions.get(phoneId);
         if (smsSession == null) {
             Rlog.e(TAG, "SMS session is missing");
         } else {
-
             int errorCode = SmsResponse.NO_ERROR_CODE;
             long messageId = 0L;
             if (response != null) {
