@@ -39,6 +39,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.NetworkTypeBitMask;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.telephony.Rlog;
 
@@ -272,8 +273,9 @@ public class CarrierServiceStateTracker extends Handler {
             Rlog.e(LOG_TAG, "isCarrierConfigEnableNr: Cannot get config " + mPhone.getSubId());
             return false;
         }
-        return config.getInt(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITY_INT)
-                != CarrierConfigManager.CARRIER_NR_AVAILABILITY_NONE;
+        int[] nrAvailabilities = config.getIntArray(
+                CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
+        return !ArrayUtils.isEmpty(nrAvailabilities);
     }
 
     private boolean checkSupportedBitmask(@NetworkTypeBitMask long supportedBitmask,
