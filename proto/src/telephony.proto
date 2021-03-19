@@ -2457,7 +2457,7 @@ message SmsSession {
     // Formats used to encode SMS messages
     enum Format {
 
-      // State is unknown.
+      // Format is unknown.
       SMS_FORMAT_UNKNOWN = 0;
 
       // GSM, WCDMA
