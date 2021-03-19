@@ -431,7 +431,6 @@ public class ServiceStateTracker extends Handler {
             Context context = mPhone.getContext();
 
             mPhone.notifyPhoneStateChanged();
-            mPhone.notifyCallForwardingIndicator();
 
             if (!SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
                 // just went from invalid to valid subId, so notify with current service
@@ -5073,6 +5072,7 @@ public class ServiceStateTracker extends Handler {
         updateReportingCriteria(config);
         updateOperatorNamePattern(config);
         mCdnr.updateEfFromCarrierConfig(config);
+        mPhone.notifyCallForwardingIndicator();
 
         // Sometimes the network registration information comes before carrier config is ready.
         // For some cases like roaming/non-roaming overriding, we need carrier config. So it's
