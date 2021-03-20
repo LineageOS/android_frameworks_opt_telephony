@@ -4622,10 +4622,9 @@ public class GsmCdmaPhone extends Phone {
             loge("didn't get the carrier_nr_availability_int from the carrier config.");
             return;
         }
-        mIsCarrierNrSupported = config.getInt(
-                CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITY_INT,
-                CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA)
-                != CarrierConfigManager.CARRIER_NR_AVAILABILITY_NONE;
+        int[] nrAvailabilities = config.getIntArray(
+                CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
+        mIsCarrierNrSupported = !ArrayUtils.isEmpty(nrAvailabilities);
     }
 
     private void updateCdmaRoamingSettingsAfterCarrierConfigChanged(PersistableBundle config) {
