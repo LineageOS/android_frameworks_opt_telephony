@@ -127,6 +127,7 @@ public class DcTrackerTest extends TelephonyTest {
     public static final String FAKE_APN6 = "FAKE APN 6";
     public static final String FAKE_APN7 = "FAKE APN 7";
     public static final String FAKE_APN8 = "FAKE APN 8";
+    public static final String FAKE_APN9 = "FAKE APN 9";
     public static final String FAKE_IFNAME = "FAKE IFNAME";
     public static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
     public static final String FAKE_GATEWAY = "11.22.33.44";
@@ -208,16 +209,10 @@ public class DcTrackerTest extends TelephonyTest {
 
         private String mFakeApn1Types = "default,supl";
 
-        private int mNetworkTypeBitmask = NETWORK_TYPE_LTE_BITMASK;
-
         private int mRowIdOffset = 0;
 
         public void setFakeApn1Types(String apnTypes) {
             mFakeApn1Types = apnTypes;
-        }
-
-        public void setFakeApn1NetworkTypeBitmask(int networkTypeBitmask) {
-            mNetworkTypeBitmask = networkTypeBitmask;
         }
 
         public void setRowIdOffset(int rowIdOffset) {
@@ -294,7 +289,7 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            mNetworkTypeBitmask,    // network_type_bitmask
+                            NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
                             0,                      // apn_set_id
                             -1,                     // carrier_id
                             -1                      // skip_464xlat
@@ -466,7 +461,7 @@ public class DcTrackerTest extends TelephonyTest {
                     });
 
                     mc.addRow(new Object[]{
-                            2169,                   // id
+                            2169 + mRowIdOffset,    // id
                             FAKE_PLMN,              // numeric
                             "sp-mode",              // name
                             FAKE_APN7,              // apn
@@ -499,7 +494,7 @@ public class DcTrackerTest extends TelephonyTest {
                     });
 
                     mc.addRow(new Object[]{
-                            2170,                   // id
+                            2170 + mRowIdOffset,    // id
                             FAKE_PLMN,              // numeric
                             "IMS",                  // name
                             FAKE_APN8,              // apn
@@ -527,6 +522,39 @@ public class DcTrackerTest extends TelephonyTest {
                             "",                     // mnvo_match_data
                             NETWORK_TYPE_LTE_BITMASK,  // network_type_bitmask
                             -1,                      // apn_set_id
+                            -1,                     // carrier_id
+                            -1                      // skip_464xlat
+                    });
+
+                    mc.addRow(new Object[]{
+                            2171 + mRowIdOffset,    // id
+                            FAKE_PLMN,              // numeric
+                            "sp-mode nr",           // name
+                            FAKE_APN9,              // apn
+                            "",                     // proxy
+                            "",                     // port
+                            "",                     // mmsc
+                            "",                     // mmsproxy
+                            "",                     // mmsport
+                            "",                     // user
+                            "",                     // password
+                            -1,                     // authtype
+                            "default,enterprise",   // types
+                            "IP",                   // protocol
+                            "IP",                   // roaming_protocol
+                            1,                      // carrier_enabled
+                            ServiceState.RIL_RADIO_TECHNOLOGY_LTE, // bearer
+                            0,                      // bearer_bitmask
+                            0,                      // profile_id
+                            1,                      // modem_cognitive
+                            0,                      // max_conns
+                            0,                      // wait_time
+                            0,                      // max_conns_time
+                            0,                      // mtu
+                            "",                     // mvno_type
+                            "",                     // mnvo_match_data
+                            NETWORK_TYPE_NR_BITMASK, // network_type_bitmask
+                            0,                      // apn_set_id
                             -1,                     // carrier_id
                             -1                      // skip_464xlat
                     });
@@ -776,8 +804,6 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testDataSetup() throws Exception {
-        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
-
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = isDataAllowed(dataConnectionReasons);
         assertFalse(dataConnectionReasons.toString(), allowed);
@@ -950,8 +976,7 @@ public class DcTrackerTest extends TelephonyTest {
         waitForMs(200);
         // expected tear down all metered DataConnections
         verify(mSimulatedCommandsVerifier, times(2)).deactivateDataCall(
-                eq(DataService.REQUEST_REASON_NORMAL), anyInt(),
-                any(Message.class));
+                anyInt(), eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
         assertEquals(DctConstants.State.IDLE, mDct.getState(ApnSetting.TYPE_DEFAULT_STRING));
         assertEquals(DctConstants.State.IDLE, mDct.getState(ApnSetting.TYPE_MMS_STRING));
 
@@ -1164,24 +1189,31 @@ public class DcTrackerTest extends TelephonyTest {
 
     // Test the ENTERPRISE APN setup.
     @Test
-    @SmallTest
     public void testTrySetupDataEnterpriseApn() {
-        mApnSettingContentProvider.setFakeApn1Types("default,enterprise");
-        mApnSettingContentProvider.setFakeApn1NetworkTypeBitmask(NETWORK_TYPE_NR_BITMASK);
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT, DcTracker.REQUEST_TYPE_NORMAL, null);
+        sendInitializationEvents();
+
+        ArgumentCaptor<TrafficDescriptor> tdCaptor =
+                ArgumentCaptor.forClass(TrafficDescriptor.class);
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
+                anyBoolean(), any(Message.class));
+        assertEquals("FAKE APN 1", tdCaptor.getValue().getDnn());
+        assertEquals(null, tdCaptor.getValue().getOsAppId());
+
         mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
                 .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
                 .build();
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
-        initApns(ApnSetting.TYPE_ENTERPRISE_STRING,
-                new String[]{ApnSetting.TYPE_ENTERPRISE_STRING, ApnSetting.TYPE_DEFAULT_STRING});
+        SetupDataCallResult result = createSetupDataCallResult();
+        result.cid = 10;
+        mSimulatedCommands.setDataCallResult(true, result);
         mDct.enableApn(ApnSetting.TYPE_ENTERPRISE, DcTracker.REQUEST_TYPE_NORMAL, null);
+        waitForMs(200);
 
-        sendInitializationEvents();
-
-        ArgumentCaptor<TrafficDescriptor> tdCaptor =
-                ArgumentCaptor.forClass(TrafficDescriptor.class);
         verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
                 eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
@@ -1556,7 +1588,6 @@ public class DcTrackerTest extends TelephonyTest {
         mApnSettingContentProvider.setFakeApn1Types("default,supl,dun");
 
         // Enable the default apn
-        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
         mDct.enableApn(ApnSetting.TYPE_DEFAULT, DcTracker.REQUEST_TYPE_NORMAL, null);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
@@ -2339,8 +2370,6 @@ public class DcTrackerTest extends TelephonyTest {
 
     @Test
     public void testRatChanged() throws Exception {
-        mSimulatedCommands.setDataCallResult(true, createSetupDataCallResult());
-
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = isDataAllowed(dataConnectionReasons);
         assertFalse(dataConnectionReasons.toString(), allowed);
