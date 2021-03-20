@@ -47,7 +47,6 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
-import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.NetworkSliceInfo;
@@ -1205,14 +1204,6 @@ public class SimulatedCommands extends BaseCommands
             } catch (Exception e) {
 
             }
-        }
-
-        // Store different cids to simulate concurrent IMS and default data calls
-        if ((dataProfile.getSupportedApnTypesBitmask() & ApnSetting.TYPE_IMS)
-            == ApnSetting.TYPE_IMS) {
-            mSetupDataCallResult.cid = 0;
-        } else {
-            mSetupDataCallResult.cid = 1;
         }
 
         DataCallResponse response = RIL.convertDataCallResult(mSetupDataCallResult);
