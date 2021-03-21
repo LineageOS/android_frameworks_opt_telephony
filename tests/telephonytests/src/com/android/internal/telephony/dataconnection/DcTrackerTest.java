@@ -1199,7 +1199,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals("FAKE APN 1", tdCaptor.getValue().getDnn());
+        assertEquals("FAKE APN 1", tdCaptor.getValue().getDataNetworkName());
         assertEquals(null, tdCaptor.getValue().getOsAppId());
 
         mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
@@ -1218,7 +1218,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
-        assertEquals(null, tdCaptor.getValue().getDnn());
+        assertEquals(null, tdCaptor.getValue().getDataNetworkName());
         assertTrue(tdCaptor.getValue().getOsAppId().contains(ApnSetting.TYPE_ENTERPRISE_STRING));
     }
 
