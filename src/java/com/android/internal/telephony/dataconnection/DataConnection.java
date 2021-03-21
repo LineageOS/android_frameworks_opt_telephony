@@ -570,7 +570,9 @@ public class DataConnection extends StateMachine {
         ERROR_RADIO_NOT_AVAILABLE,
         ERROR_INVALID_ARG,
         ERROR_STALE,
-        ERROR_DATA_SERVICE_SPECIFIC_ERROR;
+        ERROR_DATA_SERVICE_SPECIFIC_ERROR,
+        ERROR_DUPLICATE_CID,
+        ERROR_NO_DEFAULT_CONNECTION;
 
         public int mFailCause;
 
@@ -643,7 +645,7 @@ public class DataConnection extends StateMachine {
     public void updateQosParameters(final @Nullable DataCallResponse response) {
         if (response == null) {
             mDefaultQos = null;
-            mQosBearerSessions = null;
+            mQosBearerSessions.clear();
             return;
         }
 
@@ -886,7 +888,7 @@ public class DataConnection extends StateMachine {
         String dnn = null;
         String osAppId = null;
         if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE) {
-            // TODO: update osAppId to use NetworkCapability API once it's available
+            // TODO(b/181916712): update osAppId to use NetworkCapability API once it's available
             osAppId = ApnSetting.getApnTypesStringFromBitmask(mApnSetting.getApnTypeBitmask());
         } else {
             dnn = mApnSetting.getApnName();
@@ -1316,6 +1318,7 @@ public class DataConnection extends StateMachine {
         mApnContexts.clear();
         mApnSetting = null;
         mUnmeteredUseOnly = false;
+        mEnterpriseUse = false;
         mRestrictedNetworkOverride = false;
         mDcFailCause = DataFailCause.NONE;
         mDisabledApnTypeBitMask = 0;
@@ -1327,6 +1330,10 @@ public class DataConnection extends StateMachine {
         mIsSuspended = false;
         mHandoverState = HANDOVER_STATE_IDLE;
         mHandoverFailureMode = DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN;
+        mSliceInfo = null;
+        mDefaultQos = null;
+        mQosBearerSessions.clear();
+        mTrafficDescriptors.clear();
     }
 
     /**
@@ -1359,6 +1366,14 @@ public class DataConnection extends StateMachine {
                 result = SetupResult.ERROR_DATA_SERVICE_SPECIFIC_ERROR;
                 result.mFailCause = DataFailCause.getFailCause(response.getCause());
             }
+        } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
+                && mDcController.getActiveDcByCid(response.getId()) != null) {
+            if (DBG) log("DataConnection already exists for cid: " + response.getId());
+            result = SetupResult.ERROR_DUPLICATE_CID;
+        } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
+                && !mDcController.isDefaultDataActive()) {
+            if (DBG) log("No default data connection currently active");
+            result = SetupResult.ERROR_NO_DEFAULT_CONNECTION;
         } else {
             if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
             mCid = response.getId();
@@ -1648,13 +1663,20 @@ public class DataConnection extends StateMachine {
     private boolean mRestrictedNetworkOverride = false;
 
     /**
+     * Indicates if this data connection supports enterprise use. Note that this flag should be
+     * populated when data becomes active. Once it is set, the value cannot be changed because
+     * setting it will cause this data connection to lose immutable network capabilities, which can
+     * cause issues in connectivity service.
+     */
+    private boolean mEnterpriseUse = false;
+
+    /**
      * Check if this data connection should be restricted. We should call this when data connection
      * becomes active, or when we want to re-evaluate the conditions to decide if we need to
      * unstrict the data connection.
      *
      * @return True if this data connection needs to be restricted.
      */
-
     private boolean shouldRestrictNetwork() {
         // first, check if there is any network request that containing restricted capability
         // (i.e. Do not have NET_CAPABILITY_NOT_RESTRICTED in the request)
@@ -1725,6 +1747,25 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * Check if this data connection supports enterprise use. We call this when the data connection
+     * becomes active or when we want to reevaluate the conditions to decide if we need to update
+     * the network agent capabilities.
+     *
+     * @return True if this data connection supports enterprise use.
+     */
+    private boolean isEnterpriseUse() {
+        // TODO(b/181916712): update osAppId to use NetworkCapability API once it's available
+        boolean enterpriseTrafficDescriptor = mTrafficDescriptors
+                .stream()
+                .anyMatch(td -> td.getOsAppId() != null && td.getOsAppId().equals(
+                        ApnSetting.TYPE_ENTERPRISE_STRING));
+        boolean enterpriseApnContext = mApnContexts.keySet()
+                .stream()
+                .anyMatch(ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);
+        return enterpriseTrafficDescriptor || enterpriseApnContext;
+    }
+
+    /**
      * Get the network capabilities for this data connection.
      *
      * @return the {@link NetworkCapabilities} of this data connection.
@@ -1733,8 +1774,9 @@ public class DataConnection extends StateMachine {
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
         boolean hasInternet = false;
+        boolean unmeteredApns = false;
 
-        if (mApnSetting != null) {
+        if (mApnSetting != null && !mEnterpriseUse) {
             final String[] types = ApnSetting.getApnTypesStringFromBitmask(
                     mApnSetting.getApnTypeBitmask() & ~mDisabledApnTypeBitMask).split(",");
             for (String type : types) {
@@ -1808,26 +1850,27 @@ public class DataConnection extends StateMachine {
                 builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             }
 
-            // Mark NOT_METERED in the following cases:
-            // 1. All APNs in the APN settings are unmetered.
-            // 2. The non-restricted data is intended for unmetered use only.
-            if ((mUnmeteredUseOnly && !mRestrictedNetworkOverride)
-                    || !ApnSettingUtils.isMetered(mApnSetting, mPhone)) {
-                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-            } else {
-                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-            }
-
-            // TODO: Need to remove the use of hidden API deduceRestrictedCapability
-            if (builder.build().deduceRestrictedCapability()) {
-                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            if (!ApnSettingUtils.isMetered(mApnSetting, mPhone)) {
+                unmeteredApns = true;
             }
         }
 
-        for (ApnContext ctx : mApnContexts.keySet()) {
-            if (ctx.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE) {
-                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
-            }
+        // Mark NOT_METERED in the following cases:
+        // 1. All APNs in the APN settings are unmetered.
+        // 2. The non-restricted data is intended for unmetered use only.
+        if (unmeteredApns || (mUnmeteredUseOnly && !mRestrictedNetworkOverride)) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        } else {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
+
+        // TODO: Need to remove the use of hidden API deduceRestrictedCapability
+        if (builder.build().deduceRestrictedCapability()) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+
+        if (mEnterpriseUse) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
         }
 
         if (mRestrictedNetworkOverride) {
@@ -2560,6 +2603,12 @@ public class DataConnection extends StateMachine {
                                     DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
                             transitionTo(mInactiveState);
                             break;
+                        case ERROR_DUPLICATE_CID:
+                            // TODO (b/180988471): Properly handle the case when an existing cid is
+                            // returned by tearing down the network agent if enterprise changed.
+                        case ERROR_NO_DEFAULT_CONNECTION:
+                            // TODO (b/180988471): Properly handle the case when a default data
+                            // connection doesn't exist.
                         case ERROR_INVALID_ARG:
                             // The addresses given from the RIL are bad
                             tearDownData(cp);
@@ -2690,10 +2739,12 @@ public class DataConnection extends StateMachine {
             }
 
             mUnmeteredUseOnly = isUnmeteredUseOnly();
+            mEnterpriseUse = isEnterpriseUse();
 
             if (DBG) {
                 log("mRestrictedNetworkOverride = " + mRestrictedNetworkOverride
-                        + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly);
+                        + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly
+                        + ", mEnterpriseUse = " + mEnterpriseUse);
             }
 
             // Always register a VcnNetworkPolicyChangeListener, regardless of whether this is a
@@ -3813,6 +3864,7 @@ public class DataConnection extends StateMachine {
         pw.println("mUserData=" + mUserData);
         pw.println("mRestrictedNetworkOverride=" + mRestrictedNetworkOverride);
         pw.println("mUnmeteredUseOnly=" + mUnmeteredUseOnly);
+        pw.println("mEnterpriseUse=" + mEnterpriseUse);
         pw.println("mUnmeteredOverride=" + mUnmeteredOverride);
         pw.println("mCongestedOverride=" + mCongestedOverride);
         pw.println("mDownlinkBandwidth" + mDownlinkBandwidth);
