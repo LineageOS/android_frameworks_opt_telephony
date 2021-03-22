@@ -4763,6 +4763,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mLinkBandwidthEstimator;
     }
 
+    /**
+     * Request to get the current slicing configuration including URSP rules and
+     * NSSAIs (configured, allowed and rejected).
+     */
+    public void getSlicingConfig(Message response) {
+        mCi.getSlicingConfig(response);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
