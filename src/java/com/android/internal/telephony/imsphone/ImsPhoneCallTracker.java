@@ -3797,6 +3797,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
             cqm.saveCallQuality(callQuality);
             mCallQualityMetrics.put(callId, cqm);
+
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                Bundle report = new Bundle();
+                report.putParcelable(android.telecom.Connection.EXTRA_CALL_QUALITY_REPORT,
+                        callQuality);
+                conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_QUALITY_REPORT,
+                        report);
+            }
         }
 
         /**
