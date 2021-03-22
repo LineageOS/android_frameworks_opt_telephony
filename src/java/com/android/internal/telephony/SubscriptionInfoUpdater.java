@@ -561,13 +561,6 @@ public class SubscriptionInfoUpdater extends Handler {
                 int storedSubId = sp.getInt(CURR_SUBID + phoneId, -1);
 
                 if (storedSubId != subId) {
-                    long networkType = PhoneFactory.getPhone(phoneId).getAllowedNetworkTypes(
-                            TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
-
-                    // Set the modem network mode
-                    PhoneFactory.getPhone(phoneId).setAllowedNetworkTypes(
-                            TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER, networkType, null);
-
                     // Only support automatic selection mode on SIM change.
                     PhoneFactory.getPhone(phoneId).getNetworkSelectionMode(
                             obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE,
