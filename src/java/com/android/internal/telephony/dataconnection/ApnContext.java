@@ -450,12 +450,10 @@ public class ApnContext {
         synchronized (mRefCountLock) {
             for (NetworkRequest nr : mNetworkRequests) {
                 if (excludeDun &&
-                        nr.networkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                        nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
                     continue;
                 }
-                if (!nr.networkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                if (!nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
                     return true;
                 }
             }
@@ -534,10 +532,9 @@ public class ApnContext {
     }
 
     static @ApnType int getApnTypeFromNetworkRequest(NetworkRequest nr) {
-        NetworkCapabilities nc = nr.networkCapabilities;
         // For now, ignore the bandwidth stuff
-        if (nc.getTransportTypes().length > 0 &&
-                nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == false) {
+        if (nr.getTransportTypes().length > 0
+                && !nr.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
             return ApnSetting.TYPE_NONE;
         }
 
@@ -546,50 +543,50 @@ public class ApnContext {
         int apnType = ApnSetting.TYPE_NONE;
         boolean error = false;
 
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
             apnType = ApnSetting.TYPE_DEFAULT;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_MMS;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_SUPL;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_DUN;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_FOTA;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_IMS;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_CBS;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IA)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_IA)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_IA;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_EMERGENCY;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_MCX)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_MCX)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_MCX;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_XCAP;
         }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)) {
+        if (nr.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)) {
             if (apnType != ApnSetting.TYPE_NONE) error = true;
             apnType = ApnSetting.TYPE_ENTERPRISE;
         }

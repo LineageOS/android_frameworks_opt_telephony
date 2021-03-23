@@ -34,7 +34,6 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.config.V1_0.IRadioConfig;
 import android.hardware.radio.config.V1_1.ModemsConfig;
-import android.net.ConnectivityManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HwBinder;
@@ -42,6 +41,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.WorkSource;
+import android.telephony.TelephonyManager;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
@@ -96,10 +96,16 @@ public class RadioConfig extends Handler {
         }
     }
 
+    private boolean isMobileDataCapable(Context context) {
+        final TelephonyManager tm = context.getSystemService(TelephonyManager.class);
+        if (tm == null) {
+            return false;
+        }
+        return tm.isDataCapable();
+    }
+
     private RadioConfig(Context context, HalVersion radioHalVersion) {
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        mIsMobileNetworkSupported = cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
+        mIsMobileNetworkSupported = isMobileDataCapable(context);
 
         mRadioConfigResponse = new RadioConfigResponse(this, radioHalVersion);
         mRadioConfigIndication = new RadioConfigIndication(this);
