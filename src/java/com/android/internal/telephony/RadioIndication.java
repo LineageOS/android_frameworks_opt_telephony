@@ -87,6 +87,7 @@ import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
 import android.hardware.radio.V1_6.IRadioIndication;
 import android.hardware.radio.V1_6.PhysicalChannelConfig.Band;
+import android.hardware.radio.V1_6.PhonebookRecordInfo;
 import android.os.AsyncResult;
 import android.os.RemoteException;
 import android.sysprop.TelephonyProperties;
@@ -1069,6 +1070,26 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         KeepaliveStatus ks = new KeepaliveStatus(halStatus.sessionHandle, halStatus.code);
         mRil.mNattKeepaliveStatusRegistrants.notifyRegistrants(new AsyncResult(null, ks, null));
+    }
+
+    /**
+     * Indicates when the phonebook is changed.
+     *
+     * @param indicationType RadioIndicationType
+     */
+    public void simPhonebookChanged(int indicationType) {
+
+    }
+
+    /**
+     * Indicates the content of all the used records in the SIM phonebook.
+     *
+     * @param indicationType RadioIndicationType
+     * @param records Content of the SIM phonebook records
+     */
+    public void simPhonebookRecordsReceived(int indicationType, int status,
+            ArrayList<PhonebookRecordInfo> records) {
+
     }
 
     /**
