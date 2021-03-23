@@ -32,8 +32,10 @@ import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
+import android.telephony.NrVopsSupportInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.VopsSupportInfo;
 import android.test.suitebuilder.annotation.MediumTest;
 
 import com.android.internal.R;
@@ -156,7 +158,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
             assertTrue(false);
         }
 
-        LteVopsSupportInfo lteVopsSupportInfo =
+        VopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                         LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
 
@@ -165,6 +167,278 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
                 false, availableServices, null, "", maxDataCalls, false, false, false,
                 lteVopsSupportInfo);
+
+        try {
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
+                    eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+    }
+
+    @Test
+    @MediumTest
+    public void testGetNetworkRegistrationInfoV1_5() {
+        // common parameters
+        int regState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
+        int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        int reasonForDenial = 0;
+
+        // voice services
+        List<Integer> availableVoiceServices = new ArrayList<>(Arrays.asList(new Integer[] {
+                NetworkRegistrationInfo.SERVICE_TYPE_VOICE,
+                NetworkRegistrationInfo.SERVICE_TYPE_SMS,
+                NetworkRegistrationInfo.SERVICE_TYPE_VIDEO
+        }));
+
+        // Default value per 24.008
+        int maxDataCalls = 16;
+        // data service
+        List<Integer> availableDataServices = Arrays.asList(
+                NetworkRegistrationInfo.SERVICE_TYPE_DATA);
+
+        // ENDC parameters
+        boolean isEndcAvailable = true;
+        boolean isDcNrRestricted = false;
+        boolean isNrAvailable = true;
+
+        // LTE VoPS parameters
+        boolean isVopsSupported = true;
+        boolean isEmcBearerSupported = true;
+
+        android.hardware.radio.V1_5.RegStateResult regResult =
+                new android.hardware.radio.V1_5.RegStateResult();
+
+        regResult.regState = regState;
+        regResult.rat = radioTech;
+        regResult.reasonForDenial = reasonForDenial;
+
+        android.hardware.radio.V1_5.RegStateResult.AccessTechnologySpecificInfo
+                .EutranRegistrationInfo eutranInfo = new android.hardware.radio.V1_5
+                .RegStateResult.AccessTechnologySpecificInfo.EutranRegistrationInfo();
+        eutranInfo.lteVopsInfo.isVopsSupported = isVopsSupported;
+        eutranInfo.lteVopsInfo.isEmcBearerSupported = isEmcBearerSupported;
+        eutranInfo.nrIndicators.isEndcAvailable = isEndcAvailable;
+        eutranInfo.nrIndicators.isDcNrRestricted = isDcNrRestricted;
+        eutranInfo.nrIndicators.isNrAvailable = isNrAvailable;
+        regResult.accessTechnologySpecificInfo.eutranInfo(eutranInfo);
+
+        VopsSupportInfo vops = new LteVopsSupportInfo(
+                LteVopsSupportInfo.LTE_STATUS_SUPPORTED, LteVopsSupportInfo.LTE_STATUS_SUPPORTED);
+
+        mSimulatedCommands.setVoiceRegStateResult(regResult);
+        mSimulatedCommands.setDataRegStateResult(regResult);
+
+        // test voice registration state
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, NetworkRegistrationInfo.DOMAIN_CS, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
+                false, availableVoiceServices, null, "", false, 0, 0, 0);
+
+        try {
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
+                    eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        // test data registration state
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, NetworkRegistrationInfo.DOMAIN_PS, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        expectedState = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
+                false, availableDataServices, null, "", maxDataCalls, isDcNrRestricted,
+                isNrAvailable, isEndcAvailable, vops);
+
+        try {
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
+                    eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+    }
+
+    @Test
+    @MediumTest
+    public void testGetNetworkRegistrationInfoV1_6WithLte() {
+        // common parameters
+        int regState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
+        int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        int reasonForDenial = 0;
+
+        // voice services
+        List<Integer> availableVoiceServices = new ArrayList<>(Arrays.asList(new Integer[] {
+                NetworkRegistrationInfo.SERVICE_TYPE_VOICE,
+                NetworkRegistrationInfo.SERVICE_TYPE_SMS,
+                NetworkRegistrationInfo.SERVICE_TYPE_VIDEO
+        }));
+
+        // Default value per 24.008
+        int maxDataCalls = 16;
+        // data service
+        List<Integer> availableDataServices = Arrays.asList(
+                NetworkRegistrationInfo.SERVICE_TYPE_DATA);
+
+        // ENDC parameters
+        boolean isEndcAvailable = true;
+        boolean isDcNrRestricted = false;
+        boolean isNrAvailable = true;
+
+        // LTE VoPS parameters
+        boolean isVopsSupported = true;
+        boolean isEmcBearerSupported = true;
+
+        android.hardware.radio.V1_6.RegStateResult regResult =
+                new android.hardware.radio.V1_6.RegStateResult();
+
+        regResult.regState = regState;
+        regResult.rat = radioTech;
+        regResult.reasonForDenial = reasonForDenial;
+
+        android.hardware.radio.V1_5.RegStateResult.AccessTechnologySpecificInfo
+                .EutranRegistrationInfo eutranInfo = new android.hardware.radio.V1_5
+                .RegStateResult.AccessTechnologySpecificInfo.EutranRegistrationInfo();
+        eutranInfo.lteVopsInfo.isVopsSupported = isVopsSupported;
+        eutranInfo.lteVopsInfo.isEmcBearerSupported = isEmcBearerSupported;
+        eutranInfo.nrIndicators.isEndcAvailable = isEndcAvailable;
+        eutranInfo.nrIndicators.isDcNrRestricted = isDcNrRestricted;
+        eutranInfo.nrIndicators.isNrAvailable = isNrAvailable;
+        regResult.accessTechnologySpecificInfo.eutranInfo(eutranInfo);
+
+        VopsSupportInfo vops = new LteVopsSupportInfo(
+                LteVopsSupportInfo.LTE_STATUS_SUPPORTED, LteVopsSupportInfo.LTE_STATUS_SUPPORTED);
+
+        mSimulatedCommands.setVoiceRegStateResult(regResult);
+        mSimulatedCommands.setDataRegStateResult(regResult);
+
+        // test voice registration state
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, NetworkRegistrationInfo.DOMAIN_CS, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
+                false, availableVoiceServices, null, "", false, 0, 0, 0);
+
+        try {
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
+                    eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        // test data registration state
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, NetworkRegistrationInfo.DOMAIN_PS, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        expectedState = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
+                false, availableDataServices, null, "", maxDataCalls, isDcNrRestricted,
+                isNrAvailable, isEndcAvailable, vops);
+
+        try {
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
+                    eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+    }
+
+
+    @Test
+    @MediumTest
+    public void testGetNetworkRegistrationInfoV1_6WithNr() {
+        // common parameters
+        int regState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
+        int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_NR;
+        int reasonForDenial = 0;
+
+        // voice services
+        List<Integer> availableVoiceServices = new ArrayList<>(Arrays.asList(new Integer[] {
+                NetworkRegistrationInfo.SERVICE_TYPE_VOICE,
+                NetworkRegistrationInfo.SERVICE_TYPE_SMS,
+                NetworkRegistrationInfo.SERVICE_TYPE_VIDEO
+        }));
+
+        // Default value per 24.008
+        int maxDataCalls = 16;
+        // data service
+        List<Integer> availableDataServices = Arrays.asList(
+                NetworkRegistrationInfo.SERVICE_TYPE_DATA);
+
+        // NR VoPS parameters
+        byte vopsSupported = android.hardware.radio.V1_6.VopsIndicator.VOPS_OVER_3GPP;
+        byte emcSupported = android.hardware.radio.V1_6.EmcIndicator.EMC_NR_CONNECTED_TO_5GCN;
+        byte emfSupported = android.hardware.radio.V1_6.EmfIndicator.EMF_NR_CONNECTED_TO_5GCN;
+
+        android.hardware.radio.V1_6.RegStateResult regResult =
+                new android.hardware.radio.V1_6.RegStateResult();
+
+        regResult.regState = regState;
+        regResult.rat = radioTech;
+        regResult.reasonForDenial = reasonForDenial;
+
+
+        android.hardware.radio.V1_6.RegStateResult.AccessTechnologySpecificInfo
+                .NgranRegistrationInfo ngranInfo = new android.hardware.radio.V1_6
+                .RegStateResult.AccessTechnologySpecificInfo.NgranRegistrationInfo();
+        ngranInfo.nrVopsInfo.vopsSupported = vopsSupported;
+        ngranInfo.nrVopsInfo.emcSupported = emcSupported;
+        ngranInfo.nrVopsInfo.emfSupported = emfSupported;
+        regResult.accessTechnologySpecificInfo.ngranInfo(ngranInfo);
+
+        VopsSupportInfo vops = new NrVopsSupportInfo(vopsSupported, emcSupported, emfSupported);
+        mSimulatedCommands.setVoiceRegStateResult(regResult);
+        mSimulatedCommands.setDataRegStateResult(regResult);
+
+        // test voice registration state
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, NetworkRegistrationInfo.DOMAIN_CS, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
+                false, availableVoiceServices, null, "", false, 0, 0, 0);
+
+        try {
+            verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
+                    eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        // test data registration state
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, NetworkRegistrationInfo.DOMAIN_PS, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        expectedState = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
+                false, availableDataServices, null, "", maxDataCalls, false, false, false, vops);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(

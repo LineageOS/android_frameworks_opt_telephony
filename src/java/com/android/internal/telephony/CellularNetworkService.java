@@ -33,9 +33,11 @@ import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
+import android.telephony.NrVopsSupportInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.VopsSupportInfo;
 import android.text.TextUtils;
 
 import com.android.telephony.Rlog;
@@ -476,9 +478,7 @@ public class CellularNetworkService extends NetworkService {
             boolean isEndcAvailable = false;
             boolean isNrAvailable = false;
             boolean isDcNrRestricted = false;
-            LteVopsSupportInfo vopsInfo = new LteVopsSupportInfo(
-                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
-                    LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+            VopsSupportInfo vopsInfo = null;
 
             android.hardware.radio.V1_6.RegStateResult.AccessTechnologySpecificInfo info =
                     regResult.accessTechnologySpecificInfo;
@@ -497,6 +497,13 @@ public class CellularNetworkService extends NetworkService {
                     vopsInfo = convertHalLteVopsSupportInfo(
                             info.eutranInfo().lteVopsInfo.isVopsSupported,
                             info.eutranInfo().lteVopsInfo.isEmcBearerSupported);
+                    break;
+                case AccessTechnologySpecificInfo.hidl_discriminator.ngranInfo:
+                    android.hardware.radio.V1_6.RegStateResult
+                            .AccessTechnologySpecificInfo.NgranRegistrationInfo ngranInfo =
+                                    regResult.accessTechnologySpecificInfo.ngranInfo();
+                    vopsInfo = new NrVopsSupportInfo(ngranInfo.nrVopsInfo.vopsSupported,
+                            ngranInfo.nrVopsInfo.emcSupported, ngranInfo.nrVopsInfo.emfSupported);
                     break;
                 case AccessTechnologySpecificInfo.hidl_discriminator.geranInfo:
                     android.hardware.radio.V1_6.RegStateResult
