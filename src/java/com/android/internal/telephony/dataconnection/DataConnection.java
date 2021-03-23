@@ -99,6 +99,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.net.module.util.NetworkCapabilitiesUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -1864,8 +1865,7 @@ public class DataConnection extends StateMachine {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
 
-        // TODO: Need to remove the use of hidden API deduceRestrictedCapability
-        if (builder.build().deduceRestrictedCapability()) {
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
