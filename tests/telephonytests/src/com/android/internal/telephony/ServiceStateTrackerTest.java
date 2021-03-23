@@ -82,6 +82,7 @@ import android.telephony.INetworkService;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
+import android.telephony.NrVopsSupportInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -2372,7 +2373,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testOnVopsInfoChanged() {
+    public void testOnLteVopsInfoChanged() {
         ServiceState ss = new ServiceState();
         ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
         ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
@@ -2430,6 +2431,70 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(lteVopsSupportInfo,
                 sSnetworkRegistrationInfo.getDataSpecificInfo().getLteVopsSupportInfo());
     }
+
+    @Test
+    @SmallTest
+    public void testOnNrVopsInfoChanged() {
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        CellIdentityLte cellId =
+                new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
+        NrVopsSupportInfo nrVopsSupportInfo = new NrVopsSupportInfo(
+                NrVopsSupportInfo.NR_STATUS_VOPS_NOT_SUPPORTED,
+                NrVopsSupportInfo.NR_STATUS_EMC_NOT_SUPPORTED,
+                NrVopsSupportInfo.NR_STATUS_EMF_NOT_SUPPORTED);
+
+        NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_NR,
+                0, false, null, cellId, "00101", 1, false, false, false, nrVopsSupportInfo);
+        sst.mPollingContext[0] = 2;
+
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_NR, 0,
+                false, null, cellId, "00101", false, 0, 0, 0);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.getCurrentDataConnectionState());
+        NetworkRegistrationInfo sSnetworkRegistrationInfo =
+                sst.mSS.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertEquals(nrVopsSupportInfo,
+                sSnetworkRegistrationInfo.getDataSpecificInfo().getVopsSupportInfo());
+
+        nrVopsSupportInfo = new NrVopsSupportInfo(
+                NrVopsSupportInfo.NR_STATUS_VOPS_3GPP_SUPPORTED,
+                NrVopsSupportInfo.NR_STATUS_EMC_5GCN_ONLY,
+                NrVopsSupportInfo.NR_STATUS_EMF_5GCN_ONLY);
+        dataResult = new NetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_NR, 0, false, null, cellId, "00101",
+                1, false, false, false, nrVopsSupportInfo);
+        sst.mPollingContext[0] = 1;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        sSnetworkRegistrationInfo =
+                sst.mSS.getNetworkRegistrationInfo(2, 1);
+        assertEquals(nrVopsSupportInfo,
+                sSnetworkRegistrationInfo.getDataSpecificInfo().getVopsSupportInfo());
+    }
+
 
     @Test
     @SmallTest

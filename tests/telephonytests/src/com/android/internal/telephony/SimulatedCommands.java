@@ -163,6 +163,9 @@ public class SimulatedCommands extends BaseCommands
     private IccIoResult mIccIoResultForApduLogicalChannel;
     private int mChannelId = IccOpenLogicalChannelResponse.INVALID_CHANNEL;
 
+    private Object mDataRegStateResult;
+    private Object mVoiceRegStateResult;
+
     int mPausedResponseCount;
     ArrayList<Message> mPausedResponses = new ArrayList<Message>();
 
@@ -1001,14 +1004,17 @@ public class SimulatedCommands extends BaseCommands
     public void getVoiceRegistrationState(Message result) {
         mGetVoiceRegistrationStateCallCount.incrementAndGet();
 
-        VoiceRegStateResult ret = new VoiceRegStateResult();
-        ret.regState = mVoiceRegState;
-        ret.rat = mVoiceRadioTech;
-        ret.cssSupported = mCssSupported;
-        ret.roamingIndicator = mRoamingIndicator;
-        ret.systemIsInPrl = mSystemIsInPrl;
-        ret.defaultRoamingIndicator = mDefaultRoamingIndicator;
-        ret.reasonForDenial = mReasonForDenial;
+        Object ret = mVoiceRegStateResult;
+        if (ret == null) {
+            ret = new VoiceRegStateResult();
+            ((VoiceRegStateResult) ret).regState = mVoiceRegState;
+            ((VoiceRegStateResult) ret).rat = mVoiceRadioTech;
+            ((VoiceRegStateResult) ret).cssSupported = mCssSupported;
+            ((VoiceRegStateResult) ret).roamingIndicator = mRoamingIndicator;
+            ((VoiceRegStateResult) ret).systemIsInPrl = mSystemIsInPrl;
+            ((VoiceRegStateResult) ret).defaultRoamingIndicator = mDefaultRoamingIndicator;
+            ((VoiceRegStateResult) ret).reasonForDenial = mReasonForDenial;
+        }
 
         resultSuccess(result, ret);
     }
@@ -1029,14 +1035,17 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void getDataRegistrationState (Message result) {
+    public void getDataRegistrationState(Message result) {
         mGetDataRegistrationStateCallCount.incrementAndGet();
 
-        DataRegStateResult ret = new DataRegStateResult();
-        ret.regState = mDataRegState;
-        ret.rat = mDataRadioTech;
-        ret.maxDataCalls = mMaxDataCalls;
-        ret.reasonDataDenied = mReasonForDenial;
+        Object ret = mDataRegStateResult;
+        if (ret == null) {
+            ret = new DataRegStateResult();
+            ((DataRegStateResult) ret).regState = mDataRegState;
+            ((DataRegStateResult) ret).rat = mDataRadioTech;
+            ((DataRegStateResult) ret).maxDataCalls = mMaxDataCalls;
+            ((DataRegStateResult) ret).reasonDataDenied = mReasonForDenial;
+        }
 
         resultSuccess(result, ret);
     }
@@ -2432,4 +2441,15 @@ public class SimulatedCommands extends BaseCommands
         SimulatedCommandsVerifier.getInstance().getSlicingConfig(result);
         resultSuccess(result, null);
     }
+
+    @VisibleForTesting
+    public void setDataRegStateResult(Object regStateResult) {
+        mDataRegStateResult = regStateResult;
+    }
+
+    @VisibleForTesting
+    public void setVoiceRegStateResult(Object regStateResult) {
+        mVoiceRegStateResult = regStateResult;
+    }
+
 }
