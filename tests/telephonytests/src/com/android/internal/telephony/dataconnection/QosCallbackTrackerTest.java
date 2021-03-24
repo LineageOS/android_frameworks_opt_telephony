@@ -258,7 +258,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         qosSessions.remove(1);
         mQosCallbackTracker.updateSessions(qosSessions);
 
-        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1235));
+        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1235), eq(1));
     }
 
     @Test
@@ -380,8 +380,8 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         // Update empty QOS sessions list
         mQosCallbackTracker.updateSessions(new ArrayList<>());
 
-        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234));
-        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235));
+        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234), eq(1));
+        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235), eq(1));
     }
 
     @Test
@@ -423,8 +423,8 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         // Update empty QOS sessions list
         mQosCallbackTracker.updateSessions(new ArrayList<>());
 
-        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234));
-        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235));
+        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234), eq(1));
+        verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235), eq(1));
     }
 }
 
