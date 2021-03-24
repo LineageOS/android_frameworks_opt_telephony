@@ -889,8 +889,8 @@ public class DataConnection extends StateMachine {
         String dnn = null;
         String osAppId = null;
         if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE) {
-            // TODO(b/181916712): update osAppId to use NetworkCapability API once it's available
-            osAppId = ApnSetting.getApnTypesStringFromBitmask(mApnSetting.getApnTypeBitmask());
+            osAppId = NetworkCapabilities.getCapabilityCarrierName(
+                    NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
         } else {
             dnn = mApnSetting.getApnName();
         }
@@ -1755,11 +1755,11 @@ public class DataConnection extends StateMachine {
      * @return True if this data connection supports enterprise use.
      */
     private boolean isEnterpriseUse() {
-        // TODO(b/181916712): update osAppId to use NetworkCapability API once it's available
         boolean enterpriseTrafficDescriptor = mTrafficDescriptors
                 .stream()
                 .anyMatch(td -> td.getOsAppId() != null && td.getOsAppId().equals(
-                        ApnSetting.TYPE_ENTERPRISE_STRING));
+                        NetworkCapabilities.getCapabilityCarrierName(
+                                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)));
         boolean enterpriseApnContext = mApnContexts.keySet()
                 .stream()
                 .anyMatch(ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);

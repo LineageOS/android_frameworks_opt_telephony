@@ -1219,7 +1219,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
         assertEquals(null, tdCaptor.getValue().getDataNetworkName());
-        assertTrue(tdCaptor.getValue().getOsAppId().contains(ApnSetting.TYPE_ENTERPRISE_STRING));
+        assertTrue(tdCaptor.getValue().getOsAppId().equals("ENTERPRISE"));
     }
 
     @Test
