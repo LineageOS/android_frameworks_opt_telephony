@@ -19,8 +19,11 @@ package com.android.internal.telephony.dataconnection;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.LinkAddress;
+import android.net.QosSession;
 import android.telephony.data.EpsQos;
+import android.telephony.data.NrQos;
 import android.telephony.data.EpsBearerQosSessionAttributes;
+import android.telephony.data.NrQosSessionAttributes;
 import android.telephony.data.QosBearerFilter;
 import android.telephony.data.QosBearerSession;
 
@@ -179,25 +182,41 @@ public class QosCallbackTracker {
             @NonNull final QosBearerSession session, @NonNull IFilter filter) {
         QosBearerFilter qosBearerFilter = getMatchingQosBearerFilter(session, filter);
         List<InetSocketAddress> remoteAddresses = new ArrayList<>();
-        EpsQos qos = (EpsQos) session.getQos();
         if(qosBearerFilter.getRemoteAddresses().size() > 0) {
             remoteAddresses.add(
                   new InetSocketAddress(qosBearerFilter.getRemoteAddresses().get(0).getAddress(),
                   qosBearerFilter.getRemotePortRange().getStart()));
         }
-        EpsBearerQosSessionAttributes epsBearerAttr =
-                new EpsBearerQosSessionAttributes(qos.getQci(),
-                        qos.getUplinkBandwidth().getMaxBitrateKbps(),
-                        qos.getDownlinkBandwidth().getMaxBitrateKbps(),
-                        qos.getDownlinkBandwidth().getGuaranteedBitrateKbps(),
-                        qos.getUplinkBandwidth().getGuaranteedBitrateKbps(),
-                        remoteAddresses);
-        mDcNetworkAgent.notifyQosSessionAvailable(
-                callbackId, session.getQosBearerSessionId(), epsBearerAttr);
+
+        if (session.getQos() instanceof EpsQos) {
+            EpsQos qos = (EpsQos) session.getQos();
+            EpsBearerQosSessionAttributes epsBearerAttr =
+                    new EpsBearerQosSessionAttributes(qos.getQci(),
+                            qos.getUplinkBandwidth().getMaxBitrateKbps(),
+                            qos.getDownlinkBandwidth().getMaxBitrateKbps(),
+                            qos.getDownlinkBandwidth().getGuaranteedBitrateKbps(),
+                            qos.getUplinkBandwidth().getGuaranteedBitrateKbps(),
+                            remoteAddresses);
+            mDcNetworkAgent.notifyQosSessionAvailable(
+                    callbackId, session.getQosBearerSessionId(), epsBearerAttr);
+        } else {
+            NrQos qos = (NrQos) session.getQos();
+            NrQosSessionAttributes nrQosAttr =
+                    new NrQosSessionAttributes(qos.get5Qi(), qos.getQfi(),
+                            qos.getUplinkBandwidth().getMaxBitrateKbps(),
+                            qos.getDownlinkBandwidth().getMaxBitrateKbps(),
+                            qos.getDownlinkBandwidth().getGuaranteedBitrateKbps(),
+                            qos.getUplinkBandwidth().getGuaranteedBitrateKbps(),
+                            qos.getAveragingWindow(), remoteAddresses);
+            mDcNetworkAgent.notifyQosSessionAvailable(
+                    callbackId, session.getQosBearerSessionId(), nrQosAttr);
+        }
     }
 
     private void sendSessionLost(final int callbackId, @NonNull final QosBearerSession session) {
-        mDcNetworkAgent.notifyQosSessionLost(callbackId, session.getQosBearerSessionId());
+        mDcNetworkAgent.notifyQosSessionLost(callbackId, session.getQosBearerSessionId(),
+                session.getQos() instanceof EpsQos ?
+                QosSession.TYPE_EPS_BEARER : QosSession.TYPE_NR_BEARER);
     }
 
     public interface IFilter {
