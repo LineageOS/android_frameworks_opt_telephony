@@ -312,7 +312,7 @@ public class PhoneConfigurationManager {
     }
 
     public int getNumberOfModemsWithSimultaneousDataConnections() {
-        return mStaticCapability.getMaxActiveInternetData();
+        return mStaticCapability.getMaxActiveDataSubscriptions();
     }
 
     private void notifyCapabilityChanged() {

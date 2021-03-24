@@ -99,6 +99,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.net.module.util.NetworkCapabilitiesUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -1864,8 +1865,7 @@ public class DataConnection extends StateMachine {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
 
-        // TODO: Need to remove the use of hidden API deduceRestrictedCapability
-        if (builder.build().deduceRestrictedCapability()) {
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
@@ -2720,6 +2720,9 @@ public class DataConnection extends StateMachine {
             final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
             configBuilder.setLegacyType(ConnectivityManager.TYPE_MOBILE);
             configBuilder.setLegacyTypeName(NETWORK_TYPE);
+            int networkType = getNetworkType();
+            configBuilder.setLegacySubType(networkType);
+            configBuilder.setLegacySubTypeName(TelephonyManager.getNetworkTypeName(networkType));
             configBuilder.setLegacyExtraInfo(mApnSetting.getApnName());
             final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
             if (carrierSignalAgent.hasRegisteredReceivers(TelephonyManager
@@ -3090,7 +3093,7 @@ public class DataConnection extends StateMachine {
                     if (handle < 0) {
                         loge("No slot found for stopSocketKeepalive! " + slotId);
                         mNetworkAgent.sendSocketKeepaliveEvent(
-                                slotId, SocketKeepalive.NO_KEEPALIVE);
+                                slotId, SocketKeepalive.ERROR_NO_SUCH_SLOT);
                         retVal = HANDLED;
                         break;
                     } else {

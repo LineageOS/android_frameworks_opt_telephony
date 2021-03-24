@@ -32,6 +32,8 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
@@ -62,6 +64,7 @@ import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -99,6 +102,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.view.WindowManager;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
@@ -118,6 +122,7 @@ import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEna
 import com.android.internal.telephony.metrics.DataStallRecoveryStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.ArrayUtils;
+import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.AsyncChannel;
 import com.android.telephony.Rlog;
@@ -149,6 +154,7 @@ public class DcTracker extends Handler {
     private static final boolean VDBG = false; // STOPSHIP if true
     private static final boolean VDBG_STALL = false; // STOPSHIP if true
     private static final boolean RADIO_TESTS = false;
+    private static final String NOTIFICATION_TAG = DcTracker.class.getSimpleName();
 
     @IntDef(value = {
             REQUEST_TYPE_NORMAL,
@@ -2994,10 +3000,13 @@ public class DcTracker extends Handler {
                     mPhone.getContext().unregisterReceiver(mProvisionBroadcastReceiver);
                     mProvisionBroadcastReceiver = null;
                 }
+
                 if ((!isProvApn) || mIsProvisioning) {
-                    // Hide any provisioning notification.
-                    cm.setProvisioningNotificationVisible(false, ConnectivityManager.TYPE_MOBILE,
-                            INTENT_PROVISION + ":" + mPhone.getPhoneId());
+                    if (mIsProvisioning) {
+                        // Hide any notification that was showing previously
+                        hideProvisioningNotification();
+                    }
+
                     // Complete the connection normally notifying the world we're connected.
                     // We do this if this isn't a special provisioning apn or if we've been
                     // told its time to provision.
@@ -3021,9 +3030,10 @@ public class DcTracker extends Handler {
                             mTelephonyManager.getNetworkOperatorName());
                     mPhone.getContext().registerReceiver(mProvisionBroadcastReceiver,
                             new IntentFilter(INTENT_PROVISION));
+
                     // Put up user notification that sign-in is required.
-                    cm.setProvisioningNotificationVisible(true, ConnectivityManager.TYPE_MOBILE,
-                            INTENT_PROVISION + ":" + mPhone.getPhoneId());
+                    showProvisioningNotification();
+
                     // Turn off radio to save battery and avoid wasting carrier resources.
                     // The network isn't usable and network validation will just fail anyhow.
                     setRadio(false);
@@ -5471,5 +5481,50 @@ public class DcTracker extends Handler {
      */
     public @NonNull DataThrottler getDataThrottler() {
         return mDataThrottler;
+    }
+
+    private void showProvisioningNotification() {
+        final Intent intent = new Intent(DcTracker.INTENT_PROVISION);
+        intent.putExtra(DcTracker.EXTRA_PROVISION_PHONE_ID, mPhone.getPhoneId());
+        final PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                mPhone.getContext(), 0 /* requestCode */, intent, PendingIntent.FLAG_IMMUTABLE);
+
+        final Resources r = mPhone.getContext().getResources();
+        final String title = r.getString(R.string.network_available_sign_in, 0);
+        final String details = mTelephonyManager.getNetworkOperator(mPhone.getSubId());
+        final Notification.Builder builder = new Notification.Builder(mPhone.getContext())
+                .setWhen(System.currentTimeMillis())
+                .setSmallIcon(R.drawable.stat_notify_rssi_in_range)
+                .setChannelId(NotificationChannelController.CHANNEL_ID_MOBILE_DATA_STATUS)
+                .setAutoCancel(true)
+                .setTicker(title)
+                .setColor(mPhone.getContext().getColor(
+                        com.android.internal.R.color.system_notification_accent_color))
+                .setContentTitle(title)
+                .setContentText(details)
+                .setContentIntent(pendingIntent)
+                .setLocalOnly(true)
+                .setOnlyAlertOnce(true);
+
+        final Notification notification = builder.build();
+        try {
+            getNotificationManager().notify(NOTIFICATION_TAG, mPhone.getPhoneId(), notification);
+        } catch (final NullPointerException npe) {
+            Log.e(mLogTag, "showProvisioningNotification: error showing notification", npe);
+        }
+    }
+
+    private void hideProvisioningNotification() {
+        try {
+            getNotificationManager().cancel(NOTIFICATION_TAG, mPhone.getPhoneId());
+        } catch (final NullPointerException npe) {
+            Log.e(mLogTag, "hideProvisioningNotification: error hiding notification", npe);
+        }
+    }
+
+    private NotificationManager getNotificationManager() {
+        return (NotificationManager) mPhone.getContext()
+                .createContextAsUser(UserHandle.ALL, 0 /* flags */)
+                .getSystemService(Context.NOTIFICATION_SERVICE);
     }
 }
