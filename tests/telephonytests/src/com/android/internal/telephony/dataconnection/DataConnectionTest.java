@@ -83,6 +83,7 @@ import org.mockito.Mock;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
 
 public class DataConnectionTest extends TelephonyTest {
 
@@ -707,6 +708,16 @@ public class DataConnectionTest extends TelephonyTest {
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_METERED));
         assertFalse(getNetworkCapabilities().hasCapability(NET_CAPABILITY_TEMPORARILY_NOT_METERED));
         assertTrue(getNetworkCapabilities().hasCapability(NET_CAPABILITY_NOT_CONGESTED));
+    }
+
+    @Test
+    public void testSubIds() throws Exception {
+        mContextFixture.getCarrierConfigBundle().putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[] { "default" });
+        testConnectEvent();
+
+        assertEquals(Collections.singleton(0), getNetworkCapabilities().getSubIds());
     }
 
     @Test
