@@ -4397,7 +4397,7 @@ public class DcTracker extends Handler {
         boolean isNrNsa = (networkType == TelephonyManager.NETWORK_TYPE_LTE
                 || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
                 && (overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
-                || overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA_MMWAVE);
+                || overrideNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED);
         boolean is5GHysteresisActive = mPhone.getDisplayInfoController().is5GHysteresisActive();
 
         // True if device is on NR SA or NR NSA, or neither but 5G hysteresis is active
