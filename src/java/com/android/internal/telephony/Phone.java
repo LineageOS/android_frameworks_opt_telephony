@@ -2698,6 +2698,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.nvResetConfig(2 /* erase NV */, response);
     }
 
+    /**
+     * Erase data saved in the SharedPreference. Used for network reset
+     *
+     */
+    public boolean eraseDataInSharedPreferences() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        Rlog.d(LOG_TAG, "Erase all data saved in SharedPreferences");
+        editor.clear();
+        return editor.commit();
+    }
+
     public void setSystemSelectionChannels(List<RadioAccessSpecifier> specifiers,
             Message response) {
         mCi.setSystemSelectionChannels(specifiers, response);
