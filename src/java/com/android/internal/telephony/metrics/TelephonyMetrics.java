@@ -546,7 +546,7 @@ public class TelephonyMetrics {
             for (SmsSession.Event event : smsSession.events) {
                 pw.print(event.delay);
                 pw.print(" T=");
-                if (event.type == TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED) {
+                if (event.type == SmsSession.Event.Type.RIL_SERVICE_STATE_CHANGED) {
                     pw.println(smsSessionEventToString(event.type)
                             + "(" + "Data RAT " + event.serviceState.dataRat
                             + " Voice RAT " + event.serviceState.voiceRat
@@ -1093,7 +1093,7 @@ public class TelephonyMetrics {
         TelephonyServiceState serviceState = mLastServiceState.get(phoneId);
         if (serviceState != null) {
             smsSession.addEvent(smsSession.startElapsedTimeMs, new SmsSessionEventBuilder(
-                    TelephonyCallSession.Event.Type.RIL_SERVICE_STATE_CHANGED)
+                    SmsSession.Event.Type.RIL_SERVICE_STATE_CHANGED)
                     .setServiceState(serviceState));
         }
 
