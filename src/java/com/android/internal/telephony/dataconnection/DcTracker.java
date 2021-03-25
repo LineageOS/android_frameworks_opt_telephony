@@ -2310,9 +2310,13 @@ public class DcTracker extends Handler {
 
     protected void startReconnect(long delay, ApnContext apnContext,
             @RequestNetworkType int requestType) {
+        apnContext.setState(DctConstants.State.RETRYING);
         Message msg = obtainMessage(DctConstants.EVENT_DATA_RECONNECT,
                        mPhone.getSubId(), requestType, apnContext);
         cancelReconnect(apnContext);
+
+        // Wait a bit before trying the next APN, so that
+        // we're not tying up the RIL command channel
         sendMessageDelayed(msg, delay);
 
         if (DBG) {
@@ -3121,10 +3125,6 @@ public class DcTracker extends Handler {
                         + ". Request type=" + requestTypeToString(requestType) + ", Retry in "
                         + delay + "ms.");
             }
-            apnContext.setState(DctConstants.State.RETRYING);
-            // Wait a bit before trying the next APN, so that
-            // we're not tying up the RIL command channel
-
             startReconnect(delay, apnContext, requestType);
         } else {
             // If we are not going to retry any APN, set this APN context to failed state.
