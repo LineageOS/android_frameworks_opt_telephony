@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.PhoneCapability.DEVICE_NR_CAPABILITY_NONE;
 import static android.telephony.PhoneCapability.DEVICE_NR_CAPABILITY_NSA;
 import static android.telephony.PhoneCapability.DEVICE_NR_CAPABILITY_SA;
 
@@ -49,6 +48,7 @@ import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -81,7 +81,7 @@ public class RadioConfig extends Handler {
     private final SparseArray<RILRequest> mRequestList = new SparseArray<RILRequest>();
     /* default work source which will blame phone process */
     private final WorkSource mDefaultWorkSource;
-    private final int mDeviceNrCapability;
+    private final int[] mDeviceNrCapabilities;
     private static RadioConfig sRadioConfig;
     private static final Object sLock = new Object();
 
@@ -118,9 +118,19 @@ public class RadioConfig extends Handler {
                 com.android.internal.R.bool.config_telephony5gStandalone);
         boolean is5gNonStandalone = context.getResources().getBoolean(
                 com.android.internal.R.bool.config_telephony5gNonStandalone);
-        mDeviceNrCapability =
-                (is5gStandalone ? DEVICE_NR_CAPABILITY_SA : DEVICE_NR_CAPABILITY_NONE) | (
-                        is5gNonStandalone ? DEVICE_NR_CAPABILITY_NSA : DEVICE_NR_CAPABILITY_NONE);
+
+        if (!is5gStandalone && !is5gNonStandalone) {
+            mDeviceNrCapabilities = new int[0];
+        } else {
+            List<Integer> list = new ArrayList<>();
+            if (is5gNonStandalone) {
+                list.add(DEVICE_NR_CAPABILITY_NSA);
+            }
+            if (is5gStandalone) {
+                list.add(DEVICE_NR_CAPABILITY_SA);
+            }
+            mDeviceNrCapabilities = list.stream().mapToInt(Integer::valueOf).toArray();
+        }
     }
 
     /**
@@ -579,8 +589,8 @@ public class RadioConfig extends Handler {
     /**
      * Returns the device's nr capability.
      */
-    public int getDeviceNrCapability() {
-        return mDeviceNrCapability;
+    public int[] getDeviceNrCapabilities() {
+        return mDeviceNrCapabilities;
     }
 
     static ArrayList<IccSlotStatus> convertHalSlotStatus(
