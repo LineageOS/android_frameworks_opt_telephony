@@ -1889,7 +1889,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void deleteCarrierInfoForImsiEncryption() {
-        CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext);
+        CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId());
     }
 
     @Override
