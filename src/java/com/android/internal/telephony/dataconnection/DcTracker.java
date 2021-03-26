@@ -5345,6 +5345,9 @@ public class DcTracker extends Handler {
                     cleanUpAllConnectionsInternal(false, Phone.REASON_IWLAN_DATA_SERVICE_DIED);
                 }
             }
+        } else {
+            //reset throttling after binding to data service
+            mDataThrottler.reset();
         }
         mDataServiceBound = bound;
     }
