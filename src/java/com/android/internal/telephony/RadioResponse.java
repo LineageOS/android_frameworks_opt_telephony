@@ -1999,6 +1999,31 @@ public class RadioResponse extends IRadioResponse.Stub {
         return iccCardStatus;
     }
 
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     */
+    public void getSimPhonebookRecordsResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+    }
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     * @param pbCapacity Contains the adn, email, anr capacities in the sim card.
+     */
+    public void getSimPhonebookCapacityResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            android.hardware.radio.V1_6.PhonebookCapacity pbCapacity) {
+    }
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     * @param updatedRecordIndex The index of the updated record.
+     */
+    public void updateSimPhonebookRecordsResponse(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            int updatedRecordIndex) {
+    }
+
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
         RILRequest rr = mRil.processResponse(responseInfo);
 

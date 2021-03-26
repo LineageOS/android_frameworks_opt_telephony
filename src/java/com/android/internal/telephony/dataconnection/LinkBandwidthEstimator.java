@@ -21,14 +21,17 @@ import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.hardware.display.DisplayManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.Message;
 import android.os.OutcomeReceiver;
+import android.preference.PreferenceManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityGsm;
@@ -81,7 +84,6 @@ public class LinkBandwidthEstimator extends Handler {
     static final int MSG_NR_FREQUENCY_CHANGED = 6;
     @VisibleForTesting
     static final int MSG_NR_STATE_CHANGED = 7;
-    static final int MSG_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED = 8;
 
     // TODO: move the following parameters to xml file
     private static final int TRAFFIC_STATS_POLL_INTERVAL_MS = 1_000;
@@ -91,8 +93,10 @@ public class LinkBandwidthEstimator extends Handler {
     private static final int BYTE_DELTA_ACC_THRESHOLD_MAX_KB = 5_000;
     private static final int MODEM_POLL_TIME_DELTA_MAX_MS = 15_000;
     private static final int FILTER_UPDATE_MAX_INTERVAL_MS = 5_100;
+    // BW samples with Tx or Rx time below the following value is ignored.
+    private static final int TX_RX_TIME_MIN_MS = 200;
     // The large time constant used in BW filter
-    private static final int TIME_CONSTANT_LARGE_SEC = 30;
+    private static final int TIME_CONSTANT_LARGE_SEC = 6;
     // The small time constant used in BW filter
     private static final int TIME_CONSTANT_SMALL_SEC = 6;
     // If RSSI changes by more than the below value, update BW filter with small time constant
@@ -105,20 +109,32 @@ public class LinkBandwidthEstimator extends Handler {
     // over Rx time ratio is above the following value, use Tx time + Rx time as Rx time.
     private static final int TX_OVER_RX_TIME_RATIO_THRESHOLD_NUM = 3;
     private static final int TX_OVER_RX_TIME_RATIO_THRESHOLD_DEN = 2;
-    // Default Link bandwidth value if the RAT entry is not found in carrier config table.
+    // Default Link bandwidth value if the RAT entry is not found in static BW table.
     private static final int DEFAULT_LINK_BAND_WIDTH_KBPS = 14;
     // If Tx or Rx link bandwidth change is above the following value, send the BW update
-    private static final int BW_UPDATE_THRESHOLD_PERCENT = 40;
+    private static final int BW_UPDATE_THRESHOLD_PERCENT = 15;
 
     // To be used in link bandwidth estimation, each TrafficStats poll sample needs to be above
     // a predefine threshold.
-    // For RAT with carrier config above HIGH_BANDWIDTH_THRESHOLD_KBPS, it uses the following table.
-    // For others RATs, the thresholds are derived from the default carrier config BW values.
+    // For RAT with static BW above HIGH_BANDWIDTH_THRESHOLD_KBPS, it uses the following table.
+    // For others RATs, the thresholds are derived from the static BW values.
     // The following table is defined per signal level, int [NUM_SIGNAL_LEVEL].
-    static final int HIGH_BANDWIDTH_THRESHOLD_KBPS = 5000;
-    static final int[] LINK_BANDWIDTH_BYTE_DELTA_THRESHOLD_KB = {250, 500, 750, 1000, 1000};
+    private static final int HIGH_BANDWIDTH_THRESHOLD_KBPS = 5000;
+    //Array dimension : int [NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL]
+    private static final int[][] BYTE_DELTA_THRESHOLD_KB =
+            {{200, 300, 400, 600, 1000}, {400, 600, 800, 1000, 1000}};
     // Used to derive byte count threshold from avg BW
-    static final int AVG_BW_TO_LOW_BW_RATIO = 4;
+    private static final int AVG_BW_TO_LOW_BW_RATIO = 4;
+    private static final int BYTE_DELTA_THRESHOLD_MIN_KB = 10;
+    private static final int MAX_ERROR_PERCENT = 100 * 100;
+    private static final String[] AVG_BW_PER_RAT = {
+            "GPRS:24,24", "EDGE:70,18", "UMTS:115,115", "CDMA:14,14",
+            "CDMA - 1xRTT:30,30", "CDMA - EvDo rev. 0:750,48", "CDMA - EvDo rev. A:950,550",
+            "HSDPA:4300,620", "HSUPA:4300,1800", "HSPA:4300,1800", "CDMA - EvDo rev. B:1500,550",
+            "CDMA - eHRPD:750,48", "HSPA+:13000,3400", "TD_SCDMA:115,115",
+            "LTE:30000,15000", "NR_NSA:47000,18000",
+            "NR_NSA_MMWAVE:145000,60000", "NR:145000,60000"};
+    private static final Map<String, Pair<Integer, Integer>> AVG_BW_PER_RAT_MAP = new ArrayMap<>();
 
     // To be used in the long term avg, each count needs to be above the following value
     static final int BW_STATS_COUNT_THRESHOLD = 5;
@@ -135,7 +151,7 @@ public class LinkBandwidthEstimator extends Handler {
     private boolean mScreenOn = false;
     private boolean mIsOnDefaultRoute = false;
     private long mLastModemPollTimeMs;
-
+    private boolean mLastTrafficValid = true;
     private long mLastMobileTxBytes;
     private long mLastMobileRxBytes;
     private long mTxBytesDeltaAcc;
@@ -154,18 +170,40 @@ public class LinkBandwidthEstimator extends Handler {
     private long mFilterUpdateTimeMs;
 
     private int mBandwidthUpdateSignalDbm = -1;
+    private int mBandwidthUpdateSignalLevel = -1;
     private int mBandwidthUpdateDataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
     private String mBandwidthUpdatePlmn = "";
     private BandwidthState mTxState = new BandwidthState(LINK_TX);
     private BandwidthState mRxState = new BandwidthState(LINK_RX);
 
+    private static void initAvgBwPerRatTable() {
+        for (String config : AVG_BW_PER_RAT) {
+            int rxKbps = 14;
+            int txKbps = 14;
+            String[] kv = config.split(":");
+            if (kv.length == 2) {
+                String[] split = kv[1].split(",");
+                if (split.length == 2) {
+                    try {
+                        rxKbps = Integer.parseInt(split[0]);
+                        txKbps = Integer.parseInt(split[1]);
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                AVG_BW_PER_RAT_MAP.put(kv[0], new Pair<>(rxKbps, txKbps));
+            }
+        }
+    }
+
     private final DisplayManager.DisplayListener mDisplayListener =
             new DisplayManager.DisplayListener() {
                 @Override
-                public void onDisplayAdded(int displayId) { }
+                public void onDisplayAdded(int displayId) {
+                }
 
                 @Override
-                public void onDisplayRemoved(int displayId) { }
+                public void onDisplayRemoved(int displayId) {
+                }
 
                 @Override
                 public void onDisplayChanged(int displayId) {
@@ -215,12 +253,14 @@ public class LinkBandwidthEstimator extends Handler {
         mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback, this);
         mTelephonyManager.registerTelephonyCallback(new HandlerExecutor(this),
                 mTelephonyCallback);
-        mPlaceholderNetwork = new NetworkBandwidth("", "");
+        mPlaceholderNetwork = new NetworkBandwidth("");
+        initAvgBwPerRatTable();
         registerDataServiceState();
     }
 
     @Override
     public void handleMessage(Message msg) {
+        AsyncResult ar;
         switch (msg.what) {
             case MSG_SCREEN_STATE_CHANGED:
                 handleScreenStateChanged((boolean) msg.obj);
@@ -240,9 +280,7 @@ public class LinkBandwidthEstimator extends Handler {
             case MSG_NR_FREQUENCY_CHANGED:
                 // fall through
             case MSG_NR_STATE_CHANGED:
-                // fall through
-            case MSG_CARRIER_CONFIG_LINK_BANDWIDTHS_CHANGED:
-                checkUpdateColdStartValueResetFilter();
+                updateStaticBwValueResetFilter();
                 break;
             default:
                 Rlog.e(TAG, "invalid message " + msg.what);
@@ -312,12 +350,23 @@ public class LinkBandwidthEstimator extends Handler {
         long mobileRxBytes = mTelephonyFacade.getMobileRxBytes();
         long txBytesDelta = mobileTxBytes - mLastMobileTxBytes;
         long rxBytesDelta = mobileRxBytes - mLastMobileRxBytes;
-        mLastMobileTxBytes = mobileTxBytes;
-        mLastMobileRxBytes = mobileRxBytes;
-        mTxBytesDeltaAcc += txBytesDelta;
-        mRxBytesDeltaAcc += rxBytesDelta;
+
         // Schedule the next traffic stats poll
         sendEmptyMessageDelayed(MSG_TRAFFIC_STATS_POLL, TRAFFIC_STATS_POLL_INTERVAL_MS);
+
+        mLastMobileTxBytes = mobileTxBytes;
+        mLastMobileRxBytes = mobileRxBytes;
+        // Sometimes TrafficStats byte counts return invalid values
+        // Ignore two polls if it happens
+        boolean trafficValid = txBytesDelta >= 0 && rxBytesDelta >= 0;
+        if (!mLastTrafficValid || !trafficValid) {
+            mLastTrafficValid = trafficValid;
+            Rlog.e(TAG, " run into invalid traffic count");
+            return;
+        }
+
+        mTxBytesDeltaAcc += txBytesDelta;
+        mRxBytesDeltaAcc += rxBytesDelta;
 
         boolean doModemPoll = true;
         // Check if it meets the requirement to request modem activity
@@ -339,10 +388,10 @@ public class LinkBandwidthEstimator extends Handler {
 
         if (doModemPoll) {
             StringBuilder sb = new StringBuilder();
-            logd(sb.append("TxByteDelta ").append(txBytesDelta)
-                    .append(" RxByteDelta ").append(rxBytesDelta)
-                    .append("TxByteDeltaAcc ").append(mTxBytesDeltaAcc)
-                    .append(" RxByteDeltaAcc ").append(mRxBytesDeltaAcc)
+            logd(sb.append("txByteDelta ").append(txBytesDelta)
+                    .append(" rxByteDelta ").append(rxBytesDelta)
+                    .append(" txByteDeltaAcc ").append(mTxBytesDeltaAcc)
+                    .append(" rxByteDeltaAcc ").append(mRxBytesDeltaAcc)
                     .append(" trigger modem activity request").toString());
             updateDataRatCellIdentity();
             // Filter update will happen after the request
@@ -368,7 +417,9 @@ public class LinkBandwidthEstimator extends Handler {
         updateBandwidthTxRxSamples(result);
         updateTxRxBandwidthFilterSendToDataConnection();
         mLastModemActivityInfo = result;
+        // Update for next poll
         resetByteDeltaAcc();
+        invalidateTxRxSamples();
     }
 
     private void resetByteDeltaAcc() {
@@ -376,9 +427,12 @@ public class LinkBandwidthEstimator extends Handler {
         mRxBytesDeltaAcc = 0;
     }
 
+    private void invalidateTxRxSamples() {
+        mTxState.mBwSampleValid = false;
+        mRxState.mBwSampleValid = false;
+    }
+
     private void updateBandwidthTxRxSamples(ModemActivityInfo modemActivityInfo) {
-        mTxState.mBandwidthSampleValid = false;
-        mRxState.mBandwidthSampleValid = false;
         if (mLastModemActivityInfo == null || modemActivityInfo == null
                 || mNetworkCapabilities == null) {
             return;
@@ -404,25 +458,24 @@ public class LinkBandwidthEstimator extends Handler {
         mTxState.updateBandwidthSample(mTxBytesDeltaAcc, txTimeDeltaMs);
         mRxState.updateBandwidthSample(mRxBytesDeltaAcc, rxTimeBwEstMs);
 
-        int l2TxTputKbps = mNetworkCapabilities.getLinkUpstreamBandwidthKbps();
-        int l2RxTputKbps = mNetworkCapabilities.getLinkDownstreamBandwidthKbps();
+        int reportedTxTputKbps = mNetworkCapabilities.getLinkUpstreamBandwidthKbps();
+        int reportedRxTputKbps = mNetworkCapabilities.getLinkDownstreamBandwidthKbps();
 
         StringBuilder sb = new StringBuilder();
-        logd(sb.append(" dBm=").append(mSignalStrengthDbm)
-                .append(" level=").append(mSignalLevel)
-                .append(" rat=").append(getDataRatName(mDataRat))
-                .append(" plmn=").append(mPlmn)
-                .append(" tac=").append(mTac)
-                .append(" l2TxKbps=").append(l2TxTputKbps)
-                .append(" l2RxKbps=").append(l2RxTputKbps)
-                .append(" txMs=").append(txTimeDeltaMs)
-                .append(" rxMs=").append(rxTimeDeltaMs)
-                .append(" txKB=").append(mTxBytesDeltaAcc / 1024)
-                .append(" rxKB=").append(mRxBytesDeltaAcc / 1024)
-                .append(" TxMbps=").append(mTxState.mBandwidthSampleKbps / 1024)
-                .append(" RxMbps=").append(mRxState.mBandwidthSampleKbps / 1024)
-                .append(" TxValid=").append(mTxState.mBandwidthSampleValid)
-                .append(" RxValid=").append(mRxState.mBandwidthSampleValid)
+        logd(sb.append("UpdateBwSample")
+                .append(" dBm ").append(mSignalStrengthDbm)
+                .append(" level ").append(mSignalLevel)
+                .append(" rat ").append(getDataRatName(mDataRat))
+                .append(" plmn ").append(mPlmn)
+                .append(" tac ").append(mTac)
+                .append(" reportedTxKbps ").append(reportedTxTputKbps)
+                .append(" reportedRxKbps ").append(reportedRxTputKbps)
+                .append(" txMs ").append(txTimeDeltaMs)
+                .append(" rxMs ").append(rxTimeDeltaMs)
+                .append(" txKB ").append(mTxBytesDeltaAcc / 1024)
+                .append(" rxKB ").append(mRxBytesDeltaAcc / 1024)
+                .append(" txKBThr ").append(mTxState.mByteDeltaAccThr / 1024)
+                .append(" rxKBThr ").append(mRxState.mByteDeltaAccThr / 1024)
                 .toString());
     }
 
@@ -439,65 +492,112 @@ public class LinkBandwidthEstimator extends Handler {
         mTxState.updateBandwidthFilter();
         mRxState.updateBandwidthFilter();
 
-        int txDeltaKbps = Math.abs(mTxState.mLastReportedBwKbps - mTxState.mFilterKbps);
-        int rxDeltaKbps = Math.abs(mRxState.mLastReportedBwKbps - mRxState.mFilterKbps);
-        if ((txDeltaKbps * 100  >  BW_UPDATE_THRESHOLD_PERCENT * mTxState.mLastReportedBwKbps)
-                || (rxDeltaKbps * 100  >  BW_UPDATE_THRESHOLD_PERCENT
-                * mRxState.mLastReportedBwKbps)
+        if (mTxState.hasLargeBwChange()
+                || mRxState.hasLargeBwChange()
                 || mBandwidthUpdateDataRat != mDataRat
+                || mBandwidthUpdateSignalLevel != mSignalLevel
                 || !mBandwidthUpdatePlmn.equals(mPlmn)) {
-            sendLinkBandwidthToDataConnection(mTxState.mFilterKbps, mRxState.mFilterKbps);
-            mTxState.mLastReportedBwKbps = mTxState.mFilterKbps;
-            mRxState.mLastReportedBwKbps = mRxState.mFilterKbps;
+            mTxState.mLastReportedBwKbps = mTxState.mAvgUsedKbps < 0 ? -1 : mTxState.mFilterKbps;
+            mRxState.mLastReportedBwKbps  = mRxState.mAvgUsedKbps < 0 ? -1 : mRxState.mFilterKbps;
+            sendLinkBandwidthToDataConnection(
+                    mTxState.mLastReportedBwKbps,
+                    mRxState.mLastReportedBwKbps);
         }
         mBandwidthUpdateSignalDbm = mSignalStrengthDbm;
+        mBandwidthUpdateSignalLevel = mSignalLevel;
         mBandwidthUpdateDataRat = mDataRat;
         mBandwidthUpdatePlmn = mPlmn;
+
+        mTxState.calculateError();
+        mRxState.calculateError();
     }
 
     private class BandwidthState {
         private final int mLink;
         int mFilterKbps;
-        int mByteDeltaAccThr;
-        int mBandwidthSampleKbps;
-        boolean mBandwidthSampleValid;
-        long mBandwidthSampleValidTimeMs;
-        int mBandwidthColdStartKbps;
+        int mByteDeltaAccThr = BYTE_DELTA_THRESHOLD_KB[0][0];
+        int mAvgUsedKbps;
+        int mBwSampleKbps;
+        boolean mBwSampleValid;
+        long mBwSampleValidTimeMs;
+        int mStaticBwKbps;
         int mLastReportedBwKbps;
+        private final Map<String, EstimationError> mErrorMap = new ArrayMap<>();
+
+        private class EstimationError {
+            final String mRatName;
+            final long[] mBwEstIntNse = new long[NUM_SIGNAL_LEVEL];
+            final long[] mBwEstExtNse = new long[NUM_SIGNAL_LEVEL];
+            final long[] mStaticBwNse = new long[NUM_SIGNAL_LEVEL];
+            final int[] mCount = new int[NUM_SIGNAL_LEVEL];
+
+            EstimationError(String ratName) {
+                mRatName = ratName;
+            }
+
+            @Override
+            public String toString() {
+                StringBuilder sb = new StringBuilder();
+                return sb.append(mRatName)
+                        .append("\n Internal\n").append(printAvgError(mBwEstIntNse, mCount))
+                        .append("\n External\n").append(printAvgError(mBwEstExtNse, mCount))
+                        .append("\n StaticBw\n").append(printAvgError(mStaticBwNse, mCount))
+                        .toString();
+            }
+
+            private String printAvgError(long[] stats, int[] count) {
+                StringBuilder sb = new StringBuilder();
+                for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
+                    int avgStat = (count[k] >= BW_STATS_COUNT_THRESHOLD && stats[k] >= 0)
+                            ? (int) Math.sqrt(stats[k] / count[k]) : 0;
+                    sb.append(" " + avgStat);
+                }
+                return sb.toString();
+            }
+        }
 
         BandwidthState(int link) {
             mLink = link;
+        }
+
+        private EstimationError lookupEstimationError(String dataRatName) {
+            EstimationError ans = mErrorMap.get(dataRatName);
+            if (ans == null) {
+                ans = new EstimationError(dataRatName);
+                mErrorMap.put(dataRatName, ans);
+            }
+            return ans;
         }
 
         private void updateBandwidthSample(long bytesDelta, long timeDeltaMs) {
             if (bytesDelta < mByteDeltaAccThr) {
                 return;
             }
-            if (timeDeltaMs <= 0) {
+            if (timeDeltaMs < TX_RX_TIME_MIN_MS) {
                 return;
             }
             int linkBandwidthKbps = (int) (bytesDelta * 8 * 1000 / timeDeltaMs / 1024);
-            mBandwidthSampleValid = true;
-            mBandwidthSampleKbps = linkBandwidthKbps;
+            mBwSampleValid = true;
+            mBwSampleKbps = linkBandwidthKbps;
 
             String dataRatName = getDataRatName(mDataRat);
             NetworkBandwidth network = lookupNetwork(mPlmn, dataRatName);
             // Update per RAT stats of all TAC
-            network.linkBandwidthStats.increment(linkBandwidthKbps, mLink, mSignalLevel);
+            network.update(linkBandwidthKbps, mLink, mSignalLevel);
 
             // Update per TAC stats
-            LocalAreaNetworkBandwidth localNetwork = lookupLocalNetwork(mPlmn, mTac, dataRatName);
-            localNetwork.linkBandwidthStats.increment(linkBandwidthKbps, mLink, mSignalLevel);
+            network = lookupNetwork(mPlmn, mTac, dataRatName);
+            network.update(linkBandwidthKbps, mLink, mSignalLevel);
         }
 
         private void updateBandwidthFilter() {
             int avgKbps = getAvgLinkBandwidthKbps();
             // Feed the filter with the long term avg if there is no valid BW sample so that filter
             // will gradually converge the long term avg.
-            int filterInKbps = mBandwidthSampleValid ? mBandwidthSampleKbps : avgKbps;
+            int filterInKbps = mBwSampleValid ? mBwSampleKbps : avgKbps;
 
             long currTimeMs = mTelephonyFacade.getElapsedSinceBootMillis();
-            int timeDeltaSec = (int) (currTimeMs - mBandwidthSampleValidTimeMs) / 1000;
+            int timeDeltaSec = (int) (currTimeMs - mBwSampleValidTimeMs) / 1000;
 
             // If the operation condition changes significantly since the last update
             // or the sample has higher BW, use a faster filter. Otherwise, use a slow filter
@@ -505,19 +605,18 @@ public class LinkBandwidthEstimator extends Handler {
             if (Math.abs(mBandwidthUpdateSignalDbm - mSignalStrengthDbm) > RSSI_DELTA_THRESHOLD_DB
                     || !mBandwidthUpdatePlmn.equals(mPlmn)
                     || mBandwidthUpdateDataRat != mDataRat
-                    || (mBandwidthSampleValid && mBandwidthSampleKbps > avgKbps)) {
+                    || (mBwSampleValid && mBwSampleKbps > avgKbps)) {
                 timeConstantSec = TIME_CONSTANT_SMALL_SEC;
             } else {
                 timeConstantSec = TIME_CONSTANT_LARGE_SEC;
             }
             // Update timestamp for next iteration
-            if (mBandwidthSampleValid) {
-                mBandwidthSampleValidTimeMs = currTimeMs;
-                mBandwidthSampleValid = false;
+            if (mBwSampleValid) {
+                mBwSampleValidTimeMs = currTimeMs;
             }
 
             if (filterInKbps == mFilterKbps) {
-                logd(mLink + " skip filter because the same input / current = " + filterInKbps);
+                logv(mLink + " skip filter because the same input / current = " + filterInKbps);
                 return;
             }
 
@@ -526,7 +625,7 @@ public class LinkBandwidthEstimator extends Handler {
             mFilterKbps = alpha == 0 ? filterInKbps : ((mFilterKbps * alpha
                     + filterInKbps * FILTER_SCALE - filterInKbps * alpha) / FILTER_SCALE);
             StringBuilder sb = new StringBuilder();
-            logd(sb.append(mLink)
+            logv(sb.append(mLink)
                     .append(" lastSampleWeight=").append(alpha)
                     .append("/").append(FILTER_SCALE)
                     .append(" filterInKbps=").append(filterInKbps)
@@ -538,31 +637,35 @@ public class LinkBandwidthEstimator extends Handler {
         private int getAvgUsedLinkBandwidthKbps() {
             // Check if current TAC/RAT/level has enough stats
             String dataRatName = getDataRatName(mDataRat);
-            LinkBandwidthStats linkBandwidthStats =
-                    lookupLocalNetwork(mPlmn, mTac, dataRatName).linkBandwidthStats;
-            int count = linkBandwidthStats.getCount(mLink, mSignalLevel);
+            NetworkBandwidth network = lookupNetwork(mPlmn, mTac, dataRatName);
+            int count = network.getCount(mLink, mSignalLevel);
             if (count >= BW_STATS_COUNT_THRESHOLD) {
-                return (int) (linkBandwidthStats.getValue(mLink, mSignalLevel) / count);
+                return (int) (network.getValue(mLink, mSignalLevel) / count);
             }
 
             // Check if current RAT/level has enough stats
-            linkBandwidthStats = lookupNetwork(mPlmn, dataRatName).linkBandwidthStats;
-            count = linkBandwidthStats.getCount(mLink, mSignalLevel);
+            network = lookupNetwork(mPlmn, dataRatName);
+            count = network.getCount(mLink, mSignalLevel);
             if (count >= BW_STATS_COUNT_THRESHOLD) {
-                return (int) (linkBandwidthStats.getValue(mLink, mSignalLevel) / count);
+                return (int) (network.getValue(mLink, mSignalLevel) / count);
             }
             return -1;
         }
 
-        /** get a long term avg value (PLMN/RAT/TAC/level dependent) or carrier config value */
-        private int getAvgLinkBandwidthKbps() {
-            int avgUsagKbps = getAvgUsedLinkBandwidthKbps();
+        private int getCurrentCount() {
+            String dataRatName = getDataRatName(mDataRat);
+            NetworkBandwidth network = lookupNetwork(mPlmn, dataRatName);
+            return network.getCount(mLink, mSignalLevel);
+        }
 
-            if (avgUsagKbps > 0) {
-                return avgUsagKbps;
+        /** get a long term avg value (PLMN/RAT/TAC/level dependent) or static value */
+        private int getAvgLinkBandwidthKbps() {
+            mAvgUsedKbps = getAvgUsedLinkBandwidthKbps();
+            if (mAvgUsedKbps > 0) {
+                return mAvgUsedKbps;
             }
-            // Fall back to cold start value
-            return mBandwidthColdStartKbps;
+            // Fall back to static value
+            return mStaticBwKbps;
         }
 
         private void resetBandwidthFilter() {
@@ -571,11 +674,11 @@ public class LinkBandwidthEstimator extends Handler {
 
         private void updateByteCountThr() {
             // For high BW RAT cases, use predefined value + threshold derived from avg usage BW
-            if (mBandwidthColdStartKbps > HIGH_BANDWIDTH_THRESHOLD_KBPS) {
+            if (mStaticBwKbps > HIGH_BANDWIDTH_THRESHOLD_KBPS) {
                 int lowBytes = calculateByteCountThreshold(getAvgUsedLinkBandwidthKbps(),
                         MODEM_POLL_MIN_INTERVAL_MS);
                 // Start with a predefined value
-                mByteDeltaAccThr = LINK_BANDWIDTH_BYTE_DELTA_THRESHOLD_KB[mSignalLevel] * 1024;
+                mByteDeltaAccThr = BYTE_DELTA_THRESHOLD_KB[mLink][mSignalLevel] * 1024;
                 if (lowBytes > 0) {
                     // Raise the threshold if the avg usage BW is high
                     mByteDeltaAccThr = Math.max(lowBytes, mByteDeltaAccThr);
@@ -584,43 +687,75 @@ public class LinkBandwidthEstimator extends Handler {
                 }
                 return;
             }
-            // For low BW RAT cases, derive the threshold from carrier config BW values
-            mByteDeltaAccThr = calculateByteCountThreshold(mBandwidthColdStartKbps,
+            // For low BW RAT cases, derive the threshold from avg BW values
+            mByteDeltaAccThr = calculateByteCountThreshold(mStaticBwKbps,
                     MODEM_POLL_MIN_INTERVAL_MS);
+
+            mByteDeltaAccThr = Math.max(mByteDeltaAccThr, BYTE_DELTA_THRESHOLD_MIN_KB * 1024);
             // Low BW RAT threshold value should be no more than high BW one.
-            mByteDeltaAccThr = Math.min(mByteDeltaAccThr,
-                    LINK_BANDWIDTH_BYTE_DELTA_THRESHOLD_KB[0] * 1024);
+            mByteDeltaAccThr = Math.min(mByteDeltaAccThr, BYTE_DELTA_THRESHOLD_KB[mLink][0] * 1024);
         }
 
         // Calculate a byte count threshold for the given avg BW and observation window size
         private int calculateByteCountThreshold(int avgBwKbps, int durationMs) {
             return avgBwKbps / 8 * durationMs / AVG_BW_TO_LOW_BW_RATIO;
         }
+
+        public boolean hasLargeBwChange() {
+            int deltaKbps = Math.abs(mLastReportedBwKbps - mFilterKbps);
+            return mAvgUsedKbps > 0
+                    && deltaKbps * 100 > BW_UPDATE_THRESHOLD_PERCENT * mLastReportedBwKbps;
+        }
+
+        public void calculateError() {
+            if (!mBwSampleValid || getCurrentCount() <= BW_STATS_COUNT_THRESHOLD + 1) {
+                return;
+            }
+            int bwEstExtErrPercent = calculateErrorPercent(mLastReportedBwKbps, mBwSampleKbps);
+            int bwEstAvgErrPercent = calculateErrorPercent(mAvgUsedKbps, mBwSampleKbps);
+            int bwEstIntErrPercent = calculateErrorPercent(mFilterKbps, mBwSampleKbps);
+            int coldStartErrPercent = calculateErrorPercent(mStaticBwKbps, mBwSampleKbps);
+            EstimationError err = lookupEstimationError(getDataRatName(mDataRat));
+            err.mBwEstIntNse[mSignalLevel] += bwEstIntErrPercent * bwEstIntErrPercent;
+            err.mBwEstExtNse[mSignalLevel] += bwEstExtErrPercent * bwEstExtErrPercent;
+            err.mStaticBwNse[mSignalLevel] += coldStartErrPercent * coldStartErrPercent;
+            err.mCount[mSignalLevel]++;
+            StringBuilder sb = new StringBuilder();
+            logd(sb.append(mLink)
+                    .append(" sampKbps ").append(mBwSampleKbps)
+                    .append(" filtKbps ").append(mFilterKbps)
+                    .append(" reportKbps ").append(mLastReportedBwKbps)
+                    .append(" avgUsedKbps ").append(mAvgUsedKbps)
+                    .append(" csKbps ").append(mStaticBwKbps)
+                    .append(" intErrPercent ").append(bwEstIntErrPercent)
+                    .append(" avgErrPercent ").append(bwEstAvgErrPercent)
+                    .append(" extErrPercent ").append(bwEstExtErrPercent)
+                    .append(" csErrPercent ").append(coldStartErrPercent)
+                    .toString());
+        }
+
+        private int calculateErrorPercent(int inKbps, int bwSampleKbps) {
+            int errorKbps = inKbps - bwSampleKbps;
+            int errorPercent = bwSampleKbps > 0 ? (errorKbps * 100 / bwSampleKbps) : 0;
+            return Math.max(-MAX_ERROR_PERCENT, Math.min(errorPercent, MAX_ERROR_PERCENT));
+        }
     }
 
     /**
      * Update the byte count threshold.
-     * It should be called whenever the RAT, signal level or carrier config is changed.
-     * For the RAT with high BW (4G and beyond), use LINK_BANDWIDTH_BYTE_DELTA_THRESHOLD_KB table.
-     * For other RATs, derive the threshold based on the carrier config avg BW values.
+     * It should be called whenever the RAT or signal level is changed.
+     * For the RAT with high BW (4G and beyond), use BYTE_DELTA_THRESHOLD_KB table.
+     * For other RATs, derive the threshold based on the static BW values.
      */
     private void updateByteCountThr() {
         mTxState.updateByteCountThr();
         mRxState.updateByteCountThr();
-        logd("ByteAccThr tx:" + mTxState.mByteDeltaAccThr + " rx:" + mRxState.mByteDeltaAccThr);
     }
 
-    // Reset BW filter to a long term avg value (PLMN/RAT/TAC dependent) or carrier config value.
-    // It should be called whenever PLMN/RAT/carrier config is changed;
+    // Reset BW filter to a long term avg value (PLMN/RAT/TAC dependent) or static BW value.
+    // It should be called whenever PLMN/RAT or static BW value is changed;
     private void resetBandwidthFilter() {
         StringBuilder sb = new StringBuilder();
-        logd(sb.append("Reset BW filter ")
-                .append(" dBm=").append(mSignalStrengthDbm)
-                .append(" level=").append(mSignalLevel)
-                .append(" rat=").append(getDataRatName(mDataRat))
-                .append(" plmn=").append(mPlmn)
-                .append(" tac=").append(mTac)
-                .toString());
         mTxState.resetBandwidthFilter();
         mRxState.resetBandwidthFilter();
     }
@@ -634,7 +769,7 @@ public class LinkBandwidthEstimator extends Handler {
         if (dc == null) {
             return;
         }
-        logd("Update DC BW, tx " + linkBandwidthTxKps + " rx " + linkBandwidthRxKps);
+        logv("send to DC tx " + linkBandwidthTxKps + " rx " + linkBandwidthRxKps);
         dc.updateLinkBandwidthEstimation(linkBandwidthTxKps, linkBandwidthRxKps);
     }
 
@@ -669,33 +804,37 @@ public class LinkBandwidthEstimator extends Handler {
         return TelephonyManager.getNetworkTypeName(rat);
     }
 
-    // Update BW cold start values.
+    // Update avg BW values.
     // It should be called whenever the RAT could be changed.
-    // return true if cold start value is changed;
-    private boolean updateColdStartValueFromCarrierConfig() {
-        DcTracker dt = mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        if (dt == null) {
-            return false;
-        }
-        String dataRatName = getDataRatName(mDataRat);
-        Pair<Integer, Integer> values = dt.getLinkBandwidthsFromCarrierConfig(dataRatName);
+    // return true if avg value is changed;
+    private boolean updateStaticBwValue(int dataRat) {
+        Pair<Integer, Integer> values = getStaticAvgBw(dataRat);
         if (values == null) {
-            Rlog.e(TAG, dataRatName + " returns null CarrierConfig BW");
-            mTxState.mBandwidthColdStartKbps = DEFAULT_LINK_BAND_WIDTH_KBPS;
-            mRxState.mBandwidthColdStartKbps = DEFAULT_LINK_BAND_WIDTH_KBPS;
+            mTxState.mStaticBwKbps = DEFAULT_LINK_BAND_WIDTH_KBPS;
+            mRxState.mStaticBwKbps = DEFAULT_LINK_BAND_WIDTH_KBPS;
             return true;
         }
-        if (mTxState.mBandwidthColdStartKbps != values.second
-                || mRxState.mBandwidthColdStartKbps != values.first) {
-            mTxState.mBandwidthColdStartKbps = values.second;
-            mRxState.mBandwidthColdStartKbps = values.first;
+        if (mTxState.mStaticBwKbps != values.second
+                || mRxState.mStaticBwKbps != values.first) {
+            mTxState.mStaticBwKbps = values.second;
+            mRxState.mStaticBwKbps = values.first;
             return true;
         }
         return false;
     }
 
-    private void checkUpdateColdStartValueResetFilter() {
-        if (updateColdStartValueFromCarrierConfig()) {
+    /** get per-RAT static bandwidth value */
+    public Pair<Integer, Integer> getStaticAvgBw(int dataRat) {
+        String dataRatName = getDataRatName(dataRat);
+        Pair<Integer, Integer> values = AVG_BW_PER_RAT_MAP.get(dataRatName);
+        if (values == null) {
+            Rlog.e(TAG, dataRatName + " is not found in Avg BW table");
+        }
+        return values;
+    }
+
+    private void updateStaticBwValueResetFilter() {
+        if (updateStaticBwValue(mDataRat)) {
             updateByteCountThr();
             resetBandwidthFilter();
             updateTxRxBandwidthFilterSendToDataConnection();
@@ -735,7 +874,7 @@ public class LinkBandwidthEstimator extends Handler {
             if (dataRat != mDataRat) {
                 updatedRat = true;
                 mDataRat = dataRat;
-                updateColdStartValueFromCarrierConfig();
+                updateStaticBwValue(mDataRat);
                 updateByteCountThr();
             }
         }
@@ -773,14 +912,19 @@ public class LinkBandwidthEstimator extends Handler {
         }
     }
 
+    void logv(String msg) {
+        if (DBG) Rlog.v(TAG, msg);
+    }
+
     void logd(String msg) {
         if (DBG) Rlog.d(TAG, msg);
         mLocalLog.log(msg);
     }
 
+    @VisibleForTesting
+    static final int UNKNOWN_TAC = -1;
     // Map with NetworkKey as the key and NetworkBandwidth as the value.
     // NetworkKey is specified by the PLMN, data RAT and TAC of network.
-    // If TAC is not available, default TAC value (-1) is used.
     // NetworkBandwidth represents the bandwidth related stats of each network.
     private final Map<NetworkKey, NetworkBandwidth> mNetworkMap = new ArrayMap<>();
     private static class NetworkKey {
@@ -790,11 +934,6 @@ public class LinkBandwidthEstimator extends Handler {
         NetworkKey(String plmn, int tac, String dataRat) {
             mPlmn = plmn;
             mTac = tac;
-            mDataRat = dataRat;
-        }
-        NetworkKey(String plmn, String dataRat) {
-            mPlmn = plmn;
-            mTac = -1;
             mDataRat = dataRat;
         }
         @Override
@@ -817,92 +956,110 @@ public class LinkBandwidthEstimator extends Handler {
         public int hashCode() {
             return Objects.hash(mPlmn, mDataRat, mTac);
         }
-
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Plmn").append(mPlmn)
+                    .append("Rat").append(mDataRat)
+                    .append("Tac").append(mTac)
+                    .toString();
+            return sb.toString();
+        }
     }
+
+    @NonNull
     private NetworkBandwidth lookupNetwork(String plmn, String dataRat) {
-        if (plmn == null) {
+        return lookupNetwork(plmn, UNKNOWN_TAC, dataRat);
+    }
+
+    /** Look up NetworkBandwidth and create a new one if it doesn't exist */
+    @VisibleForTesting
+    @NonNull
+    public NetworkBandwidth lookupNetwork(String plmn, int tac, String dataRat) {
+        if (plmn == null || dataRat.equals(
+                TelephonyManager.getNetworkTypeName(TelephonyManager.NETWORK_TYPE_UNKNOWN))) {
             return mPlaceholderNetwork;
         }
-        NetworkKey key = new NetworkKey(plmn, dataRat);
+        NetworkKey key = new NetworkKey(plmn, tac, dataRat);
         NetworkBandwidth ans = mNetworkMap.get(key);
         if (ans == null) {
-            ans = new NetworkBandwidth(plmn, dataRat);
+            ans = new NetworkBandwidth(key.toString());
             mNetworkMap.put(key, ans);
         }
         return ans;
     }
 
-    private static class NetworkBandwidth {
-        protected final String mPlmn;
-        protected final NetworkKey mKey;
-        protected final String mDataRat;
-        public final LinkBandwidthStats linkBandwidthStats;
-        NetworkBandwidth(String plmn, String dataRat) {
-            mKey = new NetworkKey(plmn, dataRat);
-            mPlmn = plmn;
-            mDataRat = dataRat;
-            linkBandwidthStats = new LinkBandwidthStats();
+    /** A class holding link bandwidth related stats */
+    @VisibleForTesting
+    public class NetworkBandwidth {
+        private final String mKey;
+        NetworkBandwidth(String key) {
+            mKey = key;
         }
+
+        /** Update link bandwidth stats */
+        public void update(long value, int link, int level) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                    mPhone.getContext());
+            String valueKey = getValueKey(link, level);
+            String countKey = getCountKey(link, level);
+            SharedPreferences.Editor editor = sp.edit();
+            long currValue = sp.getLong(valueKey, 0);
+            int currCount = sp.getInt(countKey, 0);
+            editor.putLong(valueKey, currValue + value);
+            editor.putInt(countKey, currCount + 1);
+            editor.apply();
+        }
+
+        private String getValueKey(int link, int level) {
+            return getDataKey(link, level) + "Data";
+        }
+
+        private String getCountKey(int link, int level) {
+            return getDataKey(link, level) + "Count";
+        }
+
+        private String getDataKey(int link, int level) {
+            StringBuilder sb = new StringBuilder();
+            return sb.append(mKey)
+                    .append("Link").append(link)
+                    .append("Level").append(level)
+                    .toString();
+        }
+
+        /** Get the accumulated bandwidth value */
+        public long getValue(int link, int level) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                    mPhone.getContext());
+            String valueKey = getValueKey(link, level);
+            return sp.getLong(valueKey, 0);
+        }
+
+        /** Get the accumulated bandwidth count */
+        public int getCount(int link, int level) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                    mPhone.getContext());
+            String countKey = getCountKey(link, level);
+            return sp.getInt(countKey, 0);
+        }
+
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            sb.append(" PLMN ").append(mPlmn)
-                    .append(" RAT ").append(mDataRat)
-                    .append(" Stats \n").append(linkBandwidthStats);
-            return sb.toString();
-        }
-    }
-
-    private LocalAreaNetworkBandwidth lookupLocalNetwork(String plmn, int tac, String dataRat) {
-        NetworkKey key = new NetworkKey(plmn, tac, dataRat);
-        LocalAreaNetworkBandwidth ans = (LocalAreaNetworkBandwidth) mNetworkMap.get(key);
-        if (ans == null) {
-            ans = new LocalAreaNetworkBandwidth(plmn, tac, dataRat);
-            mNetworkMap.put(key, ans);
-        }
-        return ans;
-    }
-
-    private static class LocalAreaNetworkBandwidth extends NetworkBandwidth {
-        private final int mTac;
-        LocalAreaNetworkBandwidth(String plmn, int tac, String dataRat) {
-            super(plmn, dataRat);
-            mTac = tac;
-        }
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append(" PLMN ").append(mPlmn)
-                    .append(" RAT ").append(mDataRat)
-                    .append(" TAC ").append(mTac)
-                    .append(" Stats \n").append(linkBandwidthStats);
-            return sb.toString();
-        }
-    }
-
-    private static class LinkBandwidthStats {
-        // Stats per signal level
-        private final long[][] mValue = new long[NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
-        private final int[][] mCount = new int[NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
-        void increment(long value, int link, int level) {
-            mValue[link][level] += value;
-            mCount[link][level]++;
-        }
-        int getCount(int link, int level) {
-            return mCount[link][level];
-        }
-        long getValue(int link, int level) {
-            return mValue[link][level];
-        }
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < NUM_LINK_DIRECTION; i++) {
-                sb.append(" i = " + i);
-                for (int j = 0; j < NUM_SIGNAL_LEVEL; j++) {
-                    sb.append(" j = " + j);
-                    sb.append(" value: " + mValue[i][j]);
-                    sb.append(" count: " + mCount[i][j]);
+            sb.append(mKey);
+            sb.append("\n");
+            for (int link = 0; link < NUM_LINK_DIRECTION; link++) {
+                sb.append((link == 0 ? "tx" : "rx"));
+                sb.append("\n avgKbps");
+                for (int level = 0; level < NUM_SIGNAL_LEVEL; level++) {
+                    int count = getCount(link, level);
+                    int avgKbps = count == 0 ? 0 : (int) (getValue(link, level) / count);
+                    sb.append(" ").append(avgKbps);
+                }
+                sb.append("\n count");
+                for (int level = 0; level < NUM_SIGNAL_LEVEL; level++) {
+                    int count = getCount(link, level);
+                    sb.append(" ").append(count);
                 }
                 sb.append("\n");
             }
@@ -917,9 +1074,19 @@ public class LinkBandwidthEstimator extends Handler {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, " ");
         pw.increaseIndent();
         pw.println("current PLMN " + mPlmn + " TAC " + mTac + " RAT " + getDataRatName(mDataRat));
-        pw.println("all recent networks ");
+        pw.println("all networks visited since device boot");
         for (NetworkBandwidth network : mNetworkMap.values()) {
             pw.println(network.toString());
+        }
+
+        pw.println("Tx NRMSE");
+        for (BandwidthState.EstimationError err : mTxState.mErrorMap.values()) {
+            pw.println(err.toString());
+        }
+
+        pw.println("Rx NRMSE");
+        for (BandwidthState.EstimationError err : mRxState.mErrorMap.values()) {
+            pw.println(err.toString());
         }
 
         try {
@@ -931,4 +1098,5 @@ public class LinkBandwidthEstimator extends Handler {
         pw.println();
         pw.flush();
     }
+
 }
