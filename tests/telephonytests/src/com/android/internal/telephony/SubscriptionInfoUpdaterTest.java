@@ -88,6 +88,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private static final String FAKE_ICCID_1 = "89012604200000000000";
     private static final String FAKE_MCC_MNC_1 = "123456";
     private static final String FAKE_MCC_MNC_2 = "456789";
+    private static final int FAKE_PHONE_ID_1 = 0;
 
     private SubscriptionInfoUpdater mUpdater;
     private IccRecords mIccRecord;
@@ -239,17 +240,17 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testSimNotReady() throws Exception {
         mUpdater.updateInternalIccState(
-                IccCardConstants.INTENT_VALUE_ICC_NOT_READY, null, FAKE_SUB_ID_1);
+                IccCardConstants.INTENT_VALUE_ICC_NOT_READY, null, FAKE_PHONE_ID_1);
 
         processAllMessages();
         assertFalse(mUpdater.isSubInfoInitialized());
         verify(mSubscriptionContent, never()).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        verify(mConfigManager, never()).updateConfigForPhoneId(eq(FAKE_SUB_ID_1),
+        verify(mConfigManager, never()).updateConfigForPhoneId(eq(FAKE_PHONE_ID_1),
                 eq(IccCardConstants.INTENT_VALUE_ICC_NOT_READY));
-        verify(mSubscriptionController, never()).clearSubInfo();
-        verify(mSubscriptionController, never()).notifySubscriptionInfoChanged();
+        verify(mSubscriptionController).clearSubInfoRecord(FAKE_PHONE_ID_1);
+        verify(mSubscriptionController).notifySubscriptionInfoChanged();
     }
 
     @Test
@@ -259,19 +260,19 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(true).when(mIccCard).isEmptyProfile();
 
         mUpdater.updateInternalIccState(
-                IccCardConstants.INTENT_VALUE_ICC_NOT_READY, null, FAKE_SUB_ID_1);
+                IccCardConstants.INTENT_VALUE_ICC_NOT_READY, null, FAKE_PHONE_ID_1);
 
         processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         // Sub info should be cleared and change should be notified.
-        verify(mSubscriptionController).clearSubInfoRecord(eq(FAKE_SUB_ID_1));
+        verify(mSubscriptionController).clearSubInfoRecord(eq(FAKE_PHONE_ID_1));
         verify(mSubscriptionController).notifySubscriptionInfoChanged();
         // No new sub should be added.
         verify(mSubscriptionManager, never()).addSubscriptionInfoRecord(any(), anyInt());
         verify(mSubscriptionContent, never()).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        verify(mConfigManager).updateConfigForPhoneId(eq(FAKE_SUB_ID_1),
+        verify(mConfigManager).updateConfigForPhoneId(eq(FAKE_PHONE_ID_1),
                 eq(IccCardConstants.INTENT_VALUE_ICC_NOT_READY));
     }
 
@@ -286,24 +287,24 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(false).when(mSubInfo).areUiccApplicationsEnabled();
 
         mUpdater.updateInternalIccState(
-                IccCardConstants.INTENT_VALUE_ICC_NOT_READY, null, FAKE_SUB_ID_1);
+                IccCardConstants.INTENT_VALUE_ICC_NOT_READY, null, FAKE_PHONE_ID_1);
 
         processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
         // Sub info should be cleared and change should be notified.
-        verify(mSubscriptionController).clearSubInfoRecord(eq(FAKE_SUB_ID_1));
+        verify(mSubscriptionController).clearSubInfoRecord(eq(FAKE_PHONE_ID_1));
         verify(mSubscriptionController).notifySubscriptionInfoChanged();
         // No new sub should be added.
         verify(mSubscriptionManager, never()).addSubscriptionInfoRecord(any(), anyInt());
         verify(mSubscriptionContent, never()).put(anyString(), any());
         CarrierConfigManager mConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        verify(mConfigManager).updateConfigForPhoneId(eq(FAKE_SUB_ID_1),
+        verify(mConfigManager).updateConfigForPhoneId(eq(FAKE_PHONE_ID_1),
                 eq(IccCardConstants.INTENT_VALUE_ICC_NOT_READY));
 
         // When becomes ABSENT, UICC_APPLICATIONS_ENABLED should be reset to true.
         mUpdater.updateInternalIccState(
-                IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, FAKE_SUB_ID_1);
+                IccCardConstants.INTENT_VALUE_ICC_ABSENT, null, FAKE_PHONE_ID_1);
         processAllMessages();
         ArgumentCaptor<ContentValues> valueCapture = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), valueCapture.capture(),
