@@ -1376,7 +1376,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         if (rxBytes != 0 || txBytes != 0) {
             expectedStats = expectedStats.addEntry(
-                    new Entry(NetworkStats.IFACE_VT, UID_ALL, SET_FOREGROUND,
+                    new Entry(mCTUT.getVtInterface(), UID_ALL, SET_FOREGROUND,
                             TAG_NONE, METERED_YES, ROAMING_NO, DEFAULT_NETWORK_YES, rxBytes, 0L,
                             txBytes, 0L, 0L));
         }
