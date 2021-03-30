@@ -35,10 +35,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.content.Intent;
+import android.content.pm.UserInfo;
 import android.net.LinkProperties;
+import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityGsm;
+import android.telephony.CellLocation;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.PhoneCapability;
 import android.telephony.PhysicalChannelConfig;
@@ -64,6 +70,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -85,6 +92,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private int mRadioPowerState = RADIO_POWER_UNAVAILABLE;
     private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
     private TelephonyRegistry.ConfigurationProvider mMockConfigurationProvider;
+    private CellLocation mCellLocation;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
     private static final Set<Integer> READ_PHONE_STATE_EVENTS;
@@ -151,7 +159,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
             TelephonyCallback.PreciseDataConnectionStateListener,
             TelephonyCallback.DisplayInfoListener,
             TelephonyCallback.LinkCapacityEstimateChangedListener,
-            TelephonyCallback.PhysicalChannelConfigListener {
+            TelephonyCallback.PhysicalChannelConfigListener,
+            TelephonyCallback.CellLocationListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
         // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
         public AtomicInteger invocationCount = new AtomicInteger(0);
@@ -189,7 +198,12 @@ public class TelephonyRegistryTest extends TelephonyTest {
         @Override
         public void onLinkCapacityEstimateChanged(
                 List<LinkCapacityEstimate> linkCapacityEstimateList) {
-            mLinkCapacityEstimateList =  linkCapacityEstimateList;
+            mLinkCapacityEstimateList = linkCapacityEstimateList;
+        }
+
+        @Override
+        public void onCellLocationChanged(CellLocation location) {
+            mCellLocation = location;
         }
 
         @Override
@@ -608,6 +622,51 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyDisplayInfoChanged(0, 2, displayInfo);
         processAllMessages();
         assertEquals(displayInfo, mTelephonyDisplayInfo);
+    }
+
+    @Test
+    public void testNotifyCellLocationForSubscriberByUserSwitched() throws RemoteException {
+        final int phoneId = 0;
+        final int subId = 1;
+
+        // Return a slotIndex / phoneId of 0 for subId 1.
+        doReturn(new int[] {subId}).when(mSubscriptionController).getSubId(phoneId);
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(subId);
+        doReturn(phoneId).when(mMockSubInfo).getSimSlotIndex();
+        mServiceManagerMockedServices.put("isub", mSubscriptionController);
+        doReturn(mSubscriptionController).when(mSubscriptionController)
+                .queryLocalInterface(anyString());
+
+        UserInfo userInfo = new UserInfo(UserHandle.myUserId(), "" /* name */, 0 /* flags */);
+        doReturn(userInfo).when(mIActivityManager).getCurrentUser();
+
+        doReturn(true).when(mLocationManager).isLocationEnabledForUser(any(UserHandle.class));
+
+        CellIdentity cellIdentity = new CellIdentityGsm(-1, -1, -1, -1, null, null, null, null,
+                Collections.emptyList());
+        mTelephonyRegistry.notifyCellLocationForSubscriber(subId, cellIdentity);
+        processAllMessages();
+
+        // Listen to EVENT_CELL_LOCATION_CHANGED for the current user Id.
+        int[] events = {TelephonyCallback.EVENT_CELL_LOCATION_CHANGED};
+        mTelephonyRegistry.listenWithEventList(subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, false);
+
+        // Broadcast ACTION_USER_SWITCHED for USER_SYSTEM. Callback should be triggered.
+        mCellLocation = null;
+        mContext.sendBroadcast(new Intent(Intent.ACTION_USER_SWITCHED));
+
+        processAllMessages();
+        assertEquals(cellIdentity.asCellLocation(), mCellLocation);
+
+        // Broadcast ACTION_USER_SWITCHED for the current user Id + 1. Callback shouldn't be
+        // triggered.
+        userInfo.id++;
+        mCellLocation = null;
+        mContext.sendBroadcast(new Intent(Intent.ACTION_USER_SWITCHED));
+
+        processAllMessages();
+        assertEquals(null, mCellLocation);
     }
 
     private void assertSecurityExceptionThrown(int[] event) {
