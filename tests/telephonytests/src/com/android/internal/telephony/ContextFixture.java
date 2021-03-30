@@ -55,6 +55,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.Uri;
@@ -275,6 +276,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return TestApplication.getAppContext().getSystemService(name);
                 case Context.POWER_WHITELIST_MANAGER:
                     return mPowerWhitelistManager;
+                case Context.LOCATION_SERVICE:
+                    return mLocationManager;
                 default:
                     return null;
             }
@@ -306,6 +309,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.KEYGUARD_SERVICE;
             } else if (serviceClass == VcnManager.class) {
                 return Context.VCN_MANAGEMENT_SERVICE;
+            } else if (serviceClass == LocationManager.class) {
+                return Context.LOCATION_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -654,6 +659,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final PowerWhitelistManager mPowerWhitelistManager = mock(PowerWhitelistManager.class);
     private final KeyguardManager mKeyguardManager = mock(KeyguardManager.class);
     private final VcnManager mVcnManager = mock(VcnManager.class);
+    private final LocationManager mLocationManager = mock(LocationManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
