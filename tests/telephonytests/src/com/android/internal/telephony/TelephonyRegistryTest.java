@@ -638,7 +638,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 .queryLocalInterface(anyString());
 
         UserInfo userInfo = new UserInfo(UserHandle.myUserId(), "" /* name */, 0 /* flags */);
-        doReturn(userInfo).when(mIActivityManager).getCurrentUser();
+        doReturn(userInfo.id).when(mIActivityManager).getCurrentUserId();
 
         doReturn(true).when(mLocationManager).isLocationEnabledForUser(any(UserHandle.class));
 
@@ -662,6 +662,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // Broadcast ACTION_USER_SWITCHED for the current user Id + 1. Callback shouldn't be
         // triggered.
         userInfo.id++;
+        doReturn(userInfo.id).when(mIActivityManager).getCurrentUserId();
         mCellLocation = null;
         mContext.sendBroadcast(new Intent(Intent.ACTION_USER_SWITCHED));
 
