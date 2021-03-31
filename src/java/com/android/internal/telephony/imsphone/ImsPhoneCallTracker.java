@@ -1616,6 +1616,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                             cleanseInstantLetteringMessage(intentExtras.getString(
                                     android.telecom.TelecomManager.EXTRA_CALL_SUBJECT))
                     );
+                    intentExtras.putString(ImsCallProfile.EXTRA_CALL_SUBJECT,
+                            intentExtras.getString(TelecomManager.EXTRA_CALL_SUBJECT));
                 }
 
                 if (intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_PRIORITY)) {
