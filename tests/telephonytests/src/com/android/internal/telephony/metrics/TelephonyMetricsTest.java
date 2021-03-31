@@ -73,6 +73,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.FrequencyRange;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.NrState;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyServiceState.RoamingType;
+import com.android.internal.telephony.nano.TelephonyProto.TelephonySettings.RilNetworkMode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -417,6 +418,36 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(2, log.callSessions[0].events.length);
         assertFalse(log.callSessions[0].eventsDropped);
         assertTrue(log.callSessions[0].events[1].settings.isEnhanced4GLteModeEnabled);
+    }
+
+    // Test multiple events impacting TelephonySettings.
+    @Test
+    @SmallTest
+    public void testTelephonySettingsEvents() throws Exception {
+        mMetrics.writeImsSetFeatureValue(mPhone.getPhoneId(),
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE, 1);
+        mMetrics.writeSetPreferredNetworkType(mPhone.getPhoneId(),
+                TelephonyManager.NETWORK_MODE_LTE_ONLY);
+        mMetrics.writeImsSetFeatureValue(mPhone.getPhoneId(),
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+                ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN, 1);
+
+        TelephonyLog log = buildProto();
+
+        assertEquals(3, log.events.length);
+        assertTrue(log.events[0].settings.isEnhanced4GLteModeEnabled);
+        assertFalse(log.events[0].settings.isWifiCallingEnabled);
+        assertEquals(log.events[0].settings.preferredNetworkMode,
+                RilNetworkMode.NETWORK_MODE_UNKNOWN);
+        assertTrue(log.events[1].settings.isEnhanced4GLteModeEnabled);
+        assertFalse(log.events[1].settings.isWifiCallingEnabled);
+        assertEquals(log.events[1].settings.preferredNetworkMode,
+                RilNetworkMode.NETWORK_MODE_LTE_ONLY);
+        assertTrue(log.events[2].settings.isEnhanced4GLteModeEnabled);
+        assertTrue(log.events[2].settings.isWifiCallingEnabled);
+        assertEquals(log.events[2].settings.preferredNetworkMode,
+                RilNetworkMode.NETWORK_MODE_LTE_ONLY);
     }
 
     // Test write on ims call handover event
