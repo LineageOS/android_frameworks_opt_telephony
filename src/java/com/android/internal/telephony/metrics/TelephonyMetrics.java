@@ -57,6 +57,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.PrefNetworkMode;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
 import android.telephony.emergency.EmergencyNumber;
@@ -1227,6 +1228,20 @@ public class TelephonyMetrics {
                 .setSignalStrength(signalStrength).build());
     }
 
+    private TelephonySettings cloneCurrentTelephonySettings(int phoneId) {
+        TelephonySettings newSettings = new TelephonySettings();
+        TelephonySettings lastSettings = mLastSettings.get(phoneId);
+        if (lastSettings != null) {
+            // No clone method available, so each relevant field is copied individually.
+            newSettings.preferredNetworkMode = lastSettings.preferredNetworkMode;
+            newSettings.isEnhanced4GLteModeEnabled = lastSettings.isEnhanced4GLteModeEnabled;
+            newSettings.isVtOverLteEnabled = lastSettings.isVtOverLteEnabled;
+            newSettings.isWifiCallingEnabled = lastSettings.isWifiCallingEnabled;
+            newSettings.isVtOverWifiEnabled = lastSettings.isVtOverWifiEnabled;
+        }
+        return newSettings;
+    }
+
     /**
      * Write IMS feature settings changed event
      *
@@ -1235,8 +1250,9 @@ public class TelephonyMetrics {
      * @param network The IMS network type
      * @param value The settings. 0 indicates disabled, otherwise enabled.
      */
-    public void writeImsSetFeatureValue(int phoneId, int feature, int network, int value) {
-        TelephonySettings s = new TelephonySettings();
+    public synchronized void writeImsSetFeatureValue(int phoneId, int feature, int network,
+            int value) {
+        TelephonySettings s = cloneCurrentTelephonySettings(phoneId);
         if (network == ImsRegistrationImplBase.REGISTRATION_TECH_LTE) {
             switch (feature) {
                 case MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE:
@@ -1256,7 +1272,6 @@ public class TelephonyMetrics {
                     break;
             }
         }
-
 
         // If the settings don't change, we don't log the event.
         if (mLastSettings.get(phoneId) != null &&
@@ -1284,8 +1299,9 @@ public class TelephonyMetrics {
      * @param phoneId Phone id
      * @param networkType The preferred network
      */
-    public void writeSetPreferredNetworkType(int phoneId, int networkType) {
-        TelephonySettings s = new TelephonySettings();
+    public synchronized void writeSetPreferredNetworkType(int phoneId,
+            @PrefNetworkMode int networkType) {
+        TelephonySettings s = cloneCurrentTelephonySettings(phoneId);
         s.preferredNetworkMode = networkType + 1;
 
         // If the settings don't change, we don't log the event.
