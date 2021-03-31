@@ -279,6 +279,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return TestApplication.getAppContext().getSystemService(name);
                 case Context.POWER_WHITELIST_MANAGER:
                     return mPowerWhitelistManager;
+                case Context.LOCATION_SERVICE:
+                    return mLocationManager;
                 default:
                     return null;
             }
