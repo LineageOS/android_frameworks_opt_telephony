@@ -3749,9 +3749,9 @@ public class GsmCdmaPhone extends Phone {
             // Get how many number of system selection code ranges
             int selRc = Integer.parseInt(sch[1]);
             for (int i = 0; i < selRc; i++) {
-                if (!TextUtils.isEmpty(sch[i+2]) && !TextUtils.isEmpty(sch[i+3])) {
-                    int selMin = Integer.parseInt(sch[i+2]);
-                    int selMax = Integer.parseInt(sch[i+3]);
+                if (!TextUtils.isEmpty(sch[i*2+2]) && !TextUtils.isEmpty(sch[i*2+3])) {
+                    int selMin = Integer.parseInt(sch[i*2+2]);
+                    int selMax = Integer.parseInt(sch[i*2+3]);
                     // Check if the selection code extracted from the dial string falls
                     // within any of the range pairs specified in the schema.
                     if ((sysSelCodeInt >= selMin) && (sysSelCodeInt <= selMax)) {
