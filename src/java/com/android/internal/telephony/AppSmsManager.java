@@ -36,8 +36,8 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.util.Preconditions;
 
 import java.security.SecureRandom;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 
@@ -187,9 +187,10 @@ public class AppSmsManager {
     private void removeExpiredTokenLocked() {
         final long currentTimeMillis = System.currentTimeMillis();
 
-        final Set<String> keySet = mTokenMap.keySet();
-        for (String token : keySet) {
-            AppRequestInfo request = mTokenMap.get(token);
+        Iterator<Map.Entry<String, AppRequestInfo>> iterator = mTokenMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, AppRequestInfo> entry = iterator.next();
+            AppRequestInfo request = entry.getValue();
             if (request.packageBasedToken
                     && (currentTimeMillis - TIMEOUT_MILLIS > request.timestamp)) {
                 // Send the provided intent with SMS retriever status
@@ -202,8 +203,9 @@ public class AppSmsManager {
                 } catch (PendingIntent.CanceledException e) {
                     // do nothing
                 }
-
-                removeRequestLocked(request);
+                // Remove from mTokenMap and mPackageMap
+                iterator.remove();
+                mPackageMap.remove(entry.getValue().packageName);
             }
         }
     }
