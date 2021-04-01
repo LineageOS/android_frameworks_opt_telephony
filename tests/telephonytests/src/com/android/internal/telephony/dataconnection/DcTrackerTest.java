@@ -209,10 +209,16 @@ public class DcTrackerTest extends TelephonyTest {
 
         private String mFakeApn1Types = "default,supl";
 
+        private int mNetworkTypeBitmask = NETWORK_TYPE_LTE_BITMASK;
+
         private int mRowIdOffset = 0;
 
         public void setFakeApn1Types(String apnTypes) {
             mFakeApn1Types = apnTypes;
+        }
+
+        public void setFakeApn1NetworkTypeBitmask(int bitmask) {
+            mNetworkTypeBitmask = bitmask;
         }
 
         public void setRowIdOffset(int rowIdOffset) {
@@ -289,7 +295,7 @@ public class DcTrackerTest extends TelephonyTest {
                             0,                      // mtu
                             "",                     // mvno_type
                             "",                     // mnvo_match_data
-                            NETWORK_TYPE_LTE_BITMASK, // network_type_bitmask
+                            mNetworkTypeBitmask,    // network_type_bitmask
                             0,                      // apn_set_id
                             -1,                     // carrier_id
                             -1                      // skip_464xlat
@@ -1219,7 +1225,7 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
         assertEquals(null, tdCaptor.getValue().getDataNetworkName());
-        assertTrue(tdCaptor.getValue().getOsAppId().equals("ENTERPRISE"));
+        assertEquals(tdCaptor.getValue().getOsAppId(), "ENTERPRISE");
     }
 
     @Test
@@ -1629,6 +1635,68 @@ public class DcTrackerTest extends TelephonyTest {
         //Check that the DUN is using the same active data connection
         assertEquals(apnContexts.get(ApnSetting.TYPE_DEFAULT).getDataConnection(),
                 apnContextsAfterRowIdsChanged.get(ApnSetting.TYPE_DUN).getDataConnection());
+    }
+
+    @Test
+    @SmallTest
+    public void testCheckForCompatibleDataConnectionWithEnterprise() {
+        // Allow both DEFAULT and ENTERPRISE to use APN 1
+        mApnSettingContentProvider.setFakeApn1NetworkTypeBitmask(
+                NETWORK_TYPE_LTE_BITMASK | NETWORK_TYPE_NR_BITMASK);
+
+        // Enable the DEFAULT APN
+        mDct.enableApn(ApnSetting.TYPE_DEFAULT, DcTracker.REQUEST_TYPE_NORMAL, null);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        sendInitializationEvents();
+
+        ArgumentCaptor<TrafficDescriptor> tdCaptor =
+                ArgumentCaptor.forClass(TrafficDescriptor.class);
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), any(DataProfile.class), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
+                anyBoolean(), any(Message.class));
+        assertEquals("FAKE APN 1", tdCaptor.getValue().getDataNetworkName());
+        assertEquals(null, tdCaptor.getValue().getOsAppId());
+
+        // Check APN contexts after DEFAULT is set up
+        Map<Integer, ApnContext> apnContexts = mDct.getApnContexts()
+                .stream().collect(Collectors.toMap(ApnContext::getApnTypeBitmask, x -> x));
+        assertEquals(apnContexts.get(ApnSetting.TYPE_DEFAULT).getState(),
+                DctConstants.State.CONNECTED);
+        assertNotEquals(apnContexts.get(ApnSetting.TYPE_ENTERPRISE).getState(),
+                DctConstants.State.CONNECTED);
+
+        // Enable the ENTERPRISE APN
+        mNetworkRegistrationInfo = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
+                anyInt(), anyInt());
+        SetupDataCallResult result = createSetupDataCallResult();
+        result.cid = 10;
+        mSimulatedCommands.setDataCallResult(true, result);
+        mDct.enableApn(ApnSetting.TYPE_ENTERPRISE, DcTracker.REQUEST_TYPE_NORMAL, null);
+        waitForMs(200);
+
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(AccessNetworkType.NGRAN), any(DataProfile.class), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
+                anyBoolean(), any(Message.class));
+        assertEquals(null, tdCaptor.getValue().getDataNetworkName());
+        assertEquals(tdCaptor.getValue().getOsAppId(), "ENTERPRISE");
+
+        // Check APN contexts after ENTERPRISE is set up
+        Map<Integer, ApnContext> apnContextsAfterRowIdsChanged = mDct.getApnContexts()
+                .stream().collect(Collectors.toMap(ApnContext::getApnTypeBitmask, x -> x));
+
+        // Make sure that the data connection used earlier wasn't cleaned up and still in use.
+        assertEquals(apnContexts.get(ApnSetting.TYPE_DEFAULT).getDataConnection(),
+                apnContextsAfterRowIdsChanged.get(ApnSetting.TYPE_DEFAULT).getDataConnection());
+
+        // Check that ENTERPRISE isn't using the same data connection as DEFAULT
+        assertNotEquals(apnContexts.get(ApnSetting.TYPE_DEFAULT).getDataConnection(),
+                apnContextsAfterRowIdsChanged.get(ApnSetting.TYPE_ENTERPRISE).getDataConnection());
     }
 
     // Test for Data setup with APN Set ID
