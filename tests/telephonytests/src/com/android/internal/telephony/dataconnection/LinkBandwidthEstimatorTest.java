@@ -455,12 +455,12 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         assertEquals(900_000L * 8 * 1000 / 200 / 1024 * (BW_STATS_COUNT_THRESHOLD - 1),
                 network.getValue(LINK_RX, 1));
         network = mLBE.lookupNetwork("310260", 367, "LTE");
-        assertEquals(2, network.getCount(LINK_RX, 1));
-        assertEquals(1_000_000L * 8 * 1000 / 200 / 1024 * 2,
+        assertEquals(1, network.getCount(LINK_RX, 1));
+        assertEquals(1_000_000L * 8 * 1000 / 200 / 1024,
                 network.getValue(LINK_RX, 1));
         network = mLBE.lookupNetwork("310260", UNKNOWN_TAC, "LTE");
-        assertEquals(BW_STATS_COUNT_THRESHOLD * 3 / 2 - 1, network.getCount(LINK_RX, 1));
-        assertEquals(218_748, network.getValue(LINK_RX, 1));
+        assertEquals(BW_STATS_COUNT_THRESHOLD * 3 / 2 - 2, network.getCount(LINK_RX, 1));
+        assertEquals(179_686, network.getValue(LINK_RX, 1));
         verify(mDataConnection, times(2)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
     }
 
@@ -527,7 +527,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         processAllMessages();
         for (int i = 0; i < BW_STATS_COUNT_THRESHOLD + 5; i++) {
             addTxBytes(12_000L);
-            addRxBytes(12_000L);
+            addRxBytes(24_000L);
             addElapsedTime(5_100);
             moveTimeForward(5_100);
             processAllMessages();
@@ -540,8 +540,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
 
         assertEquals(0, network.getCount(LINK_TX, 1));
         assertEquals(BW_STATS_COUNT_THRESHOLD + 4, network.getCount(LINK_RX, 1));
-        assertEquals(12_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD + 4),
+        assertEquals(24_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD + 4),
                 network.getValue(LINK_RX, 1));
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(92));
     }
 }

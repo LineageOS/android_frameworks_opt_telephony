@@ -90,7 +90,7 @@ public class LinkBandwidthEstimator extends Handler {
     private static final int MODEM_POLL_MIN_INTERVAL_MS = 5_000;
     private static final int TRAFFIC_MODEM_POLL_BYTE_RATIO = 8;
     private static final int TRAFFIC_POLL_BYTE_THRESHOLD_MAX = 20_000;
-    private static final int BYTE_DELTA_ACC_THRESHOLD_MAX_KB = 5_000;
+    private static final int BYTE_DELTA_ACC_THRESHOLD_MAX_KB = 4_000;
     private static final int MODEM_POLL_TIME_DELTA_MAX_MS = 15_000;
     private static final int FILTER_UPDATE_MAX_INTERVAL_MS = 5_100;
     // BW samples with Tx or Rx time below the following value is ignored.
@@ -124,7 +124,8 @@ public class LinkBandwidthEstimator extends Handler {
     private static final int[][] BYTE_DELTA_THRESHOLD_KB =
             {{200, 300, 400, 600, 1000}, {400, 600, 800, 1000, 1000}};
     // Used to derive byte count threshold from avg BW
-    private static final int AVG_BW_TO_LOW_BW_RATIO = 4;
+    private static final int LOW_BW_TO_AVG_BW_RATIO_NUM = 3;
+    private static final int LOW_BW_TO_AVG_BW_RATIO_DEN = 8;
     private static final int BYTE_DELTA_THRESHOLD_MIN_KB = 10;
     private static final int MAX_ERROR_PERCENT = 100 * 100;
     private static final String[] AVG_BW_PER_RAT = {
@@ -570,6 +571,7 @@ public class LinkBandwidthEstimator extends Handler {
         }
 
         private void updateBandwidthSample(long bytesDelta, long timeDeltaMs) {
+            updateByteCountThr();
             if (bytesDelta < mByteDeltaAccThr) {
                 return;
             }
@@ -698,7 +700,8 @@ public class LinkBandwidthEstimator extends Handler {
 
         // Calculate a byte count threshold for the given avg BW and observation window size
         private int calculateByteCountThreshold(int avgBwKbps, int durationMs) {
-            return avgBwKbps / 8 * durationMs / AVG_BW_TO_LOW_BW_RATIO;
+            int avgBytes = avgBwKbps / 8 * durationMs;
+            return avgBytes * LOW_BW_TO_AVG_BW_RATIO_NUM / LOW_BW_TO_AVG_BW_RATIO_DEN;
         }
 
         public boolean hasLargeBwChange() {
