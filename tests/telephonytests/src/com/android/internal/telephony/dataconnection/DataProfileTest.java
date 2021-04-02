@@ -107,6 +107,33 @@ public class DataProfileTest extends TestCase {
             -1,                     // mvno_type
             "");                    // mnvo_match_data
 
+    private ApnSetting mApn4 = ApnSetting.makeApnSetting(
+            2163,                   // id
+            "44010",                // numeric
+            "sp-mode",              // name
+            "fake_apn",             // apn
+            null,                   // proxy
+            -1,                     // port
+            null,                   // mmsc
+            null,                   // mmsproxy
+            -1,                     // mmsport
+            "user",                 // user
+            "passwd",               // password
+            -1,                     // authtype
+            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,   // types
+            ApnSetting.PROTOCOL_IP,                 // protocol
+            ApnSetting.PROTOCOL_IP,                 // roaming_protocol
+            true,                   // carrier_enabled
+            10360,                  // networktype_bitmask
+            1234,                   // profile_id
+            false,                  // modem_cognitive
+            111,                    // max_conns
+            456,                    // wait_time
+            789,                    // max_conns_time
+            0,                      // mtu
+            -1,                     // mvno_type
+            "");                    // mnvo_match_data
+
     @SmallTest
     public void testCreateFromApnSetting() throws Exception {
         DataProfile dp = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
@@ -132,11 +159,13 @@ public class DataProfileTest extends TestCase {
         assertEquals(RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dp.getAuthType());
         assertEquals(mApn3.getUser(), dp.getUserName());
         assertEquals(mApn3.getPassword(), dp.getPassword());
-        assertEquals(2, dp.getType());  // TYPE_3GPP2
+        assertEquals(0, dp.getType());  // TYPE_COMMON
         assertEquals(mApn3.getWaitTime(), dp.getWaitTime());
         assertEquals(mApn3.isEnabled(), dp.isEnabled());
         int expectedBearerBitmap = mApn3.getNetworkTypeBitmask();
         assertEquals(expectedBearerBitmap, dp.getBearerBitmask());
+        dp = DcTracker.createDataProfile(mApn4, mApn4.getProfileId(), false);
+        assertEquals(2, dp.getType());  // TYPE_3GPP2
     }
 
     @SmallTest
