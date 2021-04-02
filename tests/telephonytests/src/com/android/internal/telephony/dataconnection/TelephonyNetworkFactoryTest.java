@@ -254,7 +254,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
      */
     @Test
     @SmallTest
-    @FlakyTest
     public void testRequests() throws Exception {
         mTestName = "testActive";
         final int numberOfPhones = 2;
