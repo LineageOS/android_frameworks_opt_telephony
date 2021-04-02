@@ -46,6 +46,7 @@ import android.util.SparseArray;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
@@ -60,6 +61,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class represents a network agent which is communication channel between
@@ -94,6 +96,9 @@ public class DcNetworkAgent extends NetworkAgent {
 
     // For interface duplicate detection. Key is the net id, value is the interface name in string.
     private static Map<Integer, String> sInterfaceNames = new ArrayMap<>();
+
+    private static final long NETWORK_UNWANTED_ANOMALY_WINDOW_MS = TimeUnit.MINUTES.toMillis(5);
+    private static final int NETWORK_UNWANTED_ANOMALY_NUM_OCCURRENCES =  12;
 
     DcNetworkAgent(DataConnection dc, Phone phone, int score, NetworkAgentConfig config,
             NetworkProvider networkProvider, int transportType) {
@@ -189,8 +194,13 @@ public class DcNetworkAgent extends NetworkAgent {
         return mDataConnection;
     }
 
+    private static final SlidingWindowEventCounter sNetworkUnwantedCounter =
+            new SlidingWindowEventCounter(NETWORK_UNWANTED_ANOMALY_WINDOW_MS,
+                    NETWORK_UNWANTED_ANOMALY_NUM_OCCURRENCES);
+
     @Override
     public synchronized void onNetworkUnwanted() {
+        trackNetworkUnwanted();
         if (mDataConnection == null) {
             loge("onNetworkUnwanted found called on no-owner DcNetworkAgent!");
             return;
@@ -200,6 +210,27 @@ public class DcNetworkAgent extends NetworkAgent {
                 + mDataConnection.getName());
         mDataConnection.tearDownAll(Phone.REASON_RELEASED_BY_CONNECTIVITY_SERVICE,
                 DcTracker.RELEASE_TYPE_DETACH, null);
+    }
+
+    /**
+     * There have been several bugs where a RECONNECT loop kicks off where a DataConnection
+     * connects to the Network, ConnectivityService indicates that the Network is unwanted,
+     * and then the DataConnection reconnects.  By the time we get the bug report it's too late
+     * because there have already been hundreds of RECONNECTS.  This is meant to capture the issue
+     * when it first starts.
+     *
+     * The unwanted counter is configured to only take an anomaly report in extreme cases.
+     * This is to avoid having the anomaly message show up on several devices.
+     *
+     * This is directly related to b/175845538.  But, there have been several other occurrences of
+     * this issue.
+     */
+    private void trackNetworkUnwanted() {
+        if (sNetworkUnwantedCounter.addOccurrence()) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("3f578b5c-64e9-11eb-ae93-0242ac130002"),
+                    "Network Unwanted called 12 times in 5 minutes.");
+        }
     }
 
     @Override
