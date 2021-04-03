@@ -121,6 +121,11 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         when(mTelephonyFacade.getMobileRxBytes()).thenReturn(mRxBytes);
     }
 
+    private void subtractRxBytes(long rxBytes) {
+        mRxBytes -= rxBytes;
+        when(mTelephonyFacade.getMobileRxBytes()).thenReturn(mRxBytes);
+    }
+
     @After
     public void tearDown() throws Exception {
         super.tearDown();
@@ -340,6 +345,10 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         assertEquals(47000, (int) values.first);
         values = mLBE.getStaticAvgBw(TelephonyManager.NETWORK_TYPE_NR);
         assertEquals(145_000, (int) values.first);
+        when(mServiceState.getNrFrequencyRange()).thenReturn(ServiceState.FREQUENCY_RANGE_MMWAVE);
+        values = mLBE.getStaticAvgBw(TelephonyManager.NETWORK_TYPE_NR);
+        assertEquals("NR_MMWAVE", mLBE.getDataRatName(TelephonyManager.NETWORK_TYPE_NR));
+        assertEquals(145_000, (int) values.first);
     }
 
     @Test
@@ -384,6 +393,32 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
                 .requestModemActivityInfo(any(), any());
         verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
         verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(19_597));
+    }
+
+    @Test
+    public void testAbnormalTrafficCountTriggerLessBwUpdate() throws Exception {
+        mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
+        processAllMessages();
+
+        for (int i = 0; i < BW_STATS_COUNT_THRESHOLD + 2; i++) {
+            if (i == 1) {
+                addTxBytes(10_000L);
+                subtractRxBytes(500_000L);
+            } else {
+                addTxBytes(10_000L);
+                addRxBytes(500_000L);
+            }
+            addElapsedTime(5_100);
+            moveTimeForward(5_100);
+            processAllMessages();
+            mLBE.obtainMessage(MSG_MODEM_ACTIVITY_RETURNED, new ModemActivityInfo(
+                    i * 5_100L, 0, 0, TX_TIME_2_MS, i * RX_TIME_2_MS)).sendToTarget();
+            processAllMessages();
+        }
+
+        verify(mTelephonyManager, times(BW_STATS_COUNT_THRESHOLD))
+                .requestModemActivityInfo(any(), any());
+        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
     }
 
     @Test
