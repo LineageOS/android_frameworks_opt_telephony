@@ -55,6 +55,8 @@ import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyFacade;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.nano.TelephonyProto.NrMode;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -134,15 +136,15 @@ public class LinkBandwidthEstimator extends Handler {
             "HSDPA:4300,620", "HSUPA:4300,1800", "HSPA:4300,1800", "CDMA - EvDo rev. B:1500,550",
             "CDMA - eHRPD:750,48", "HSPA+:13000,3400", "TD_SCDMA:115,115",
             "LTE:30000,15000", "NR_NSA:47000,18000",
-            "NR_NSA_MMWAVE:145000,60000", "NR:145000,60000"};
+            "NR_NSA_MMWAVE:145000,60000", "NR:145000,60000", "NR_MMWAVE:145000,60000"};
     private static final Map<String, Pair<Integer, Integer>> AVG_BW_PER_RAT_MAP = new ArrayMap<>();
 
     // To be used in the long term avg, each count needs to be above the following value
-    static final int BW_STATS_COUNT_THRESHOLD = 5;
-    static final int NUM_SIGNAL_LEVEL = 5;
-    static final int LINK_TX = 0;
-    static final int LINK_RX = 1;
-    private static final int NUM_LINK_DIRECTION = 2;
+    public static final int BW_STATS_COUNT_THRESHOLD = 5;
+    public static final int NUM_SIGNAL_LEVEL = 5;
+    public static final int LINK_TX = 0;
+    public static final int LINK_RX = 1;
+    public static final int NUM_LINK_DIRECTION = 2;
 
     private final Phone mPhone;
     private final TelephonyFacade mTelephonyFacade;
@@ -523,51 +525,9 @@ public class LinkBandwidthEstimator extends Handler {
         long mBwSampleValidTimeMs;
         int mStaticBwKbps;
         int mLastReportedBwKbps;
-        private final Map<String, EstimationError> mErrorMap = new ArrayMap<>();
-
-        private class EstimationError {
-            final String mRatName;
-            final long[] mBwEstIntNse = new long[NUM_SIGNAL_LEVEL];
-            final long[] mBwEstExtNse = new long[NUM_SIGNAL_LEVEL];
-            final long[] mStaticBwNse = new long[NUM_SIGNAL_LEVEL];
-            final int[] mCount = new int[NUM_SIGNAL_LEVEL];
-
-            EstimationError(String ratName) {
-                mRatName = ratName;
-            }
-
-            @Override
-            public String toString() {
-                StringBuilder sb = new StringBuilder();
-                return sb.append(mRatName)
-                        .append("\n Internal\n").append(printAvgError(mBwEstIntNse, mCount))
-                        .append("\n External\n").append(printAvgError(mBwEstExtNse, mCount))
-                        .append("\n StaticBw\n").append(printAvgError(mStaticBwNse, mCount))
-                        .toString();
-            }
-
-            private String printAvgError(long[] stats, int[] count) {
-                StringBuilder sb = new StringBuilder();
-                for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
-                    int avgStat = (count[k] >= BW_STATS_COUNT_THRESHOLD && stats[k] >= 0)
-                            ? (int) Math.sqrt(stats[k] / count[k]) : 0;
-                    sb.append(" " + avgStat);
-                }
-                return sb.toString();
-            }
-        }
 
         BandwidthState(int link) {
             mLink = link;
-        }
-
-        private EstimationError lookupEstimationError(String dataRatName) {
-            EstimationError ans = mErrorMap.get(dataRatName);
-            if (ans == null) {
-                ans = new EstimationError(dataRatName);
-                mErrorMap.put(dataRatName, ans);
-            }
-            return ans;
         }
 
         private void updateBandwidthSample(long bytesDelta, long timeDeltaMs) {
@@ -718,11 +678,11 @@ public class LinkBandwidthEstimator extends Handler {
             int bwEstAvgErrPercent = calculateErrorPercent(mAvgUsedKbps, mBwSampleKbps);
             int bwEstIntErrPercent = calculateErrorPercent(mFilterKbps, mBwSampleKbps);
             int coldStartErrPercent = calculateErrorPercent(mStaticBwKbps, mBwSampleKbps);
-            EstimationError err = lookupEstimationError(getDataRatName(mDataRat));
-            err.mBwEstIntNse[mSignalLevel] += bwEstIntErrPercent * bwEstIntErrPercent;
-            err.mBwEstExtNse[mSignalLevel] += bwEstExtErrPercent * bwEstExtErrPercent;
-            err.mStaticBwNse[mSignalLevel] += coldStartErrPercent * coldStartErrPercent;
-            err.mCount[mSignalLevel]++;
+
+            TelephonyMetrics.getInstance().writeBandwidthStats(mLink, mDataRat, getNrMode(mDataRat),
+                    mSignalLevel, bwEstIntErrPercent, bwEstExtErrPercent,
+                    coldStartErrPercent, mAvgUsedKbps);
+
             StringBuilder sb = new StringBuilder();
             logd(sb.append(mLink)
                     .append(" sampKbps ").append(mBwSampleKbps)
@@ -798,13 +758,47 @@ public class LinkBandwidthEstimator extends Handler {
                 MSG_NR_FREQUENCY_CHANGED, null);
     }
 
-    private String getDataRatName(int rat) {
-        if (rat == TelephonyManager.NETWORK_TYPE_LTE && isNRConnected()) {
+    /**
+     * Get a string based on current RAT
+     */
+    public String getDataRatName(int rat) {
+        return getDataRatName(rat, getNrMode(rat));
+    }
+
+    private int getNrMode(int rat) {
+        if (rat == TelephonyManager.NETWORK_TYPE_LTE && isNrNsaConnected()) {
             return mPhone.getServiceState().getNrFrequencyRange()
                     == ServiceState.FREQUENCY_RANGE_MMWAVE
-                    ? DctConstants.RAT_NAME_NR_NSA_MMWAVE : DctConstants.RAT_NAME_NR_NSA;
+                    ? NrMode.NR_NSA_MMWAVE : NrMode.NR_NSA;
+        } else if (rat == TelephonyManager.NETWORK_TYPE_NR) {
+            return mPhone.getServiceState().getNrFrequencyRange()
+                    == ServiceState.FREQUENCY_RANGE_MMWAVE
+                    ? NrMode.NR_SA_MMWAVE : NrMode.NR_SA;
+        }
+        return NrMode.NR_NONE;
+    }
+
+    /**
+     * Get a string based on current RAT and NR operation mode.
+     */
+    public static String getDataRatName(int rat, int nrMode) {
+        if (rat == TelephonyManager.NETWORK_TYPE_LTE
+                && (nrMode == NrMode.NR_NSA || nrMode == NrMode.NR_NSA_MMWAVE)) {
+            return nrMode == NrMode.NR_NSA
+                    ? DctConstants.RAT_NAME_NR_NSA : DctConstants.RAT_NAME_NR_NSA_MMWAVE;
+        } else if (rat == TelephonyManager.NETWORK_TYPE_NR) {
+            return nrMode == NrMode.NR_SA
+                    ? TelephonyManager.getNetworkTypeName(rat) : DctConstants.RAT_NAME_NR_SA_MMWAVE;
         }
         return TelephonyManager.getNetworkTypeName(rat);
+    }
+
+    /**
+     * Check if the device is connected to NR 5G Non-Standalone network
+     */
+    private boolean isNrNsaConnected() {
+        return mPhone.getServiceState().getNrState()
+                == NetworkRegistrationInfo.NR_STATE_CONNECTED;
     }
 
     // Update avg BW values.
@@ -844,10 +838,9 @@ public class LinkBandwidthEstimator extends Handler {
         }
     }
 
-    /** Check if the device is connected to NR 5G Non-Standalone network. */
-    private boolean isNRConnected() {
-        return mPhone.getServiceState().getNrState()
-                == NetworkRegistrationInfo.NR_STATE_CONNECTED;
+    private NetworkRegistrationInfo getDataNri() {
+        return  mPhone.getServiceState().getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 
     private void updateDataRatCellIdentity() {
@@ -870,8 +863,7 @@ public class LinkBandwidthEstimator extends Handler {
         }
 
         boolean updatedRat = false;
-        NetworkRegistrationInfo nri = mPhone.getServiceState().getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        NetworkRegistrationInfo nri = getDataNri();
         if (nri != null) {
             int dataRat = nri.getAccessNetworkTechnology();
             if (dataRat != mDataRat) {
@@ -1080,16 +1072,6 @@ public class LinkBandwidthEstimator extends Handler {
         pw.println("all networks visited since device boot");
         for (NetworkBandwidth network : mNetworkMap.values()) {
             pw.println(network.toString());
-        }
-
-        pw.println("Tx NRMSE");
-        for (BandwidthState.EstimationError err : mTxState.mErrorMap.values()) {
-            pw.println(err.toString());
-        }
-
-        pw.println("Rx NRMSE");
-        for (BandwidthState.EstimationError err : mRxState.mErrorMap.values()) {
-            pw.println(err.toString());
         }
 
         try {
