@@ -53,6 +53,9 @@ message TelephonyLog {
 
   // The last active subscription info for each slot.
   repeated ActiveSubscriptionInfo last_active_subscription_info = 10;
+
+  // Bandwidth estimator stats
+  optional BandwidthEstimatorStats bandwidth_estimator_stats = 11;
 }
 
 // The time information
@@ -416,6 +419,20 @@ enum RadioAccessTechnology {
   RAT_LTE_CA = 19;
 
   RAT_NR = 20;
+}
+
+// NR (5G) operation mode
+enum NrMode {
+  // The device is not in a NR network.
+  NR_NONE = 1;
+  // The device is in a NR non-standalone network at non-MMWAVE frequencies.
+  NR_NSA = 2;
+  // The device is in a NR non-standalone network at MMWAVE frequencies.
+  NR_NSA_MMWAVE = 3;
+  // The device is in a NR standalone network at non-MMWAVE frequencies.
+  NR_SA = 4;
+  // The device is in a NR standalone network at MMWAVE frequencies.
+  NR_SA_MMWAVE = 5;
 }
 
 // The information about IMS errors
@@ -2679,4 +2696,35 @@ message ModemPowerStats {
 
   // Actual monitored rail energy consumed by modem (mAh)
   optional double monitored_rail_energy_consumed_mah = 15;
+}
+
+// Bandwidth estimator stats
+message BandwidthEstimatorStats {
+  // Bandwidth stats of each level
+  message PerLevel {
+    optional uint32 signal_level = 1;
+    // Accumulated bandwidth sample count
+    optional uint32 count = 2;
+    // Average end-to-end bandwidth in kbps
+    optional uint32 avg_bw_kbps = 3;
+    // Normalized root mean square error (NRMSE) of static BW values in percent
+    optional uint32 static_bw_nrmse_percent = 4;
+    // Normalized root mean square error (NRMSE) of end-to-end BW estimation in percent
+    optional uint32 bw_est_nrmse_percent = 5;
+  }
+
+  // Bandwidth stats of each RAT
+  message PerRat {
+    // radio access technology
+    optional RadioAccessTechnology rat = 1;
+    // NR (5g) operation mode
+    optional NrMode nr_mode = 2;
+    // bandwidth stats of signal levels
+    repeated PerLevel per_level = 3;
+  }
+
+  // Tx Stats of visited RATs
+  repeated PerRat per_rat_tx = 1;
+  // Rx Stats of visited RATs
+  repeated PerRat per_rat_rx = 2;
 }
