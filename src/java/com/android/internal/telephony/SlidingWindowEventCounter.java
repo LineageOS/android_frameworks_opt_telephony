@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.IntRange;
+import android.os.SystemClock;
 import android.util.LongArrayQueue;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -43,6 +44,16 @@ public class SlidingWindowEventCounter {
         mWindowSizeMillis = windowSizeMillis;
         mNumOccurrences = numOccurrences;
         mTimestampQueueMillis = new LongArrayQueue(numOccurrences);
+    }
+
+    /**
+     * Increments the occurrence counter.
+     *
+     * Returns true if an event has occurred at least mNumOccurrences times within the
+     * time span mWindowSizeMillis.
+     */
+    public synchronized boolean addOccurrence() {
+        return addOccurrence(SystemClock.elapsedRealtime());
     }
 
     /**
