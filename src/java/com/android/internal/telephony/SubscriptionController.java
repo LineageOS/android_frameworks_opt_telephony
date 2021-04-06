@@ -3834,6 +3834,30 @@ public class SubscriptionController extends ISub.Stub {
 
     }
 
+    /**
+     * Check if the passed in phoneId has a sub that belongs to the same group as the sub
+     * corresponding to the passed in iccid.
+     * @param phoneId phone id to check
+     * @param iccid ICCID to check
+     * @return true if sub/group is the same, false otherwise
+     */
+    public boolean checkPhoneIdAndIccIdMatch(int phoneId, String iccid) {
+        int subId = getSubIdUsingPhoneId(phoneId);
+        if (!SubscriptionManager.isUsableSubIdValue(subId)) return false;
+        ParcelUuid groupUuid = getGroupUuid(subId);
+        List<SubscriptionInfo> subInfoList;
+        if (groupUuid != null) {
+            subInfoList = getSubInfo(SubscriptionManager.GROUP_UUID
+                    + "=\'" + groupUuid.toString() + "\'", null);
+        } else {
+            subInfoList = getSubInfo(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                    + "=" + subId, null);
+        }
+        return subInfoList != null && subInfoList.stream().anyMatch(
+                subInfo -> IccUtils.stripTrailingFs(subInfo.getIccId()).equals(
+                IccUtils.stripTrailingFs(iccid)));
+    }
+
     public ParcelUuid getGroupUuid(int subId) {
         ParcelUuid groupUuid;
         List<SubscriptionInfo> subInfo = getSubInfo(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
