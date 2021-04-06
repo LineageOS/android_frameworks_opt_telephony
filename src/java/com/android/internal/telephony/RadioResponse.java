@@ -42,6 +42,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AnomalyReporter;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
@@ -52,6 +53,7 @@ import android.telephony.NeighboringCellInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.RadioAccessFamily;
+import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -647,14 +649,12 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     @Override
     public void setSimCardPowerResponse_1_6(android.hardware.radio.V1_6.RadioResponseInfo info) {
-        /* This method was missing a response, will let the owner know */
         responseVoid_1_6(info);
     }
 
     @Override
     public void setAllowedNetworkTypesBitmapResponse(
             android.hardware.radio.V1_6.RadioResponseInfo info) {
-        /* This method was missing a response, will let the owner know */
         responseVoid_1_6(info);
     }
 
@@ -2000,28 +2000,31 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     * @param info Response info struct containing response type, serial no. and error.
+     * @param responseInfo Response info struct containing response type, serial no. and error.
      */
     public void getSimPhonebookRecordsResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
+        responseVoid_1_6(responseInfo);
     }
 
     /**
-     * @param info Response info struct containing response type, serial no. and error.
+     * @param responseInfo Response info struct containing response type, serial no. and error.
      * @param pbCapacity Contains the adn, email, anr capacities in the sim card.
      */
     public void getSimPhonebookCapacityResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             android.hardware.radio.V1_6.PhonebookCapacity pbCapacity) {
+        responseVoid_1_6(responseInfo);
     }
 
     /**
-     * @param info Response info struct containing response type, serial no. and error.
+     * @param responseInfo Response info struct containing response type, serial no. and error.
      * @param updatedRecordIndex The index of the updated record.
      */
     public void updateSimPhonebookRecordsResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             int updatedRecordIndex) {
+        responseVoid_1_6(responseInfo);
     }
 
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {
@@ -3028,12 +3031,69 @@ public class RadioResponse extends IRadioResponse.Stub {
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
-     * @param specifiers List of RadioAccessSpecifiers that are scanned.
+     * @param halSpecifiers List of RadioAccessSpecifiers that are scanned.
      */
     public void getSystemSelectionChannelsResponse(
             android.hardware.radio.V1_6.RadioResponseInfo info,
-            ArrayList<android.hardware.radio.V1_5.RadioAccessSpecifier> specifiers) {
-        responseVoid_1_6(info);
+            ArrayList<android.hardware.radio.V1_5.RadioAccessSpecifier> halSpecifiers) {
+        RILRequest rr = mRil.processResponse_1_6(info);
+
+        if (rr != null) {
+            ArrayList<RadioAccessSpecifier> specifiers = new ArrayList<>();
+            for (android.hardware.radio.V1_5.RadioAccessSpecifier specifier : halSpecifiers) {
+                specifiers.add(convertRadioAccessSpecifier(specifier));
+            }
+            mRil.riljLog("getSystemSelectionChannelsResponse: from HIDL: " + specifiers);
+            if (info.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, specifiers);
+            }
+            mRil.processResponseDone_1_6(rr, info, specifiers);
+        }
+    }
+
+    private static RadioAccessSpecifier convertRadioAccessSpecifier(
+            android.hardware.radio.V1_5.RadioAccessSpecifier specifier) {
+        if (specifier == null) return null;
+        ArrayList<Integer> halBands = new ArrayList<>();
+        switch (specifier.bands.getDiscriminator()) {
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .geranBands:
+                halBands = specifier.bands.geranBands();
+                break;
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .utranBands:
+                halBands = specifier.bands.utranBands();
+                break;
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .eutranBands:
+                halBands = specifier.bands.eutranBands();
+                break;
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .ngranBands:
+                halBands = specifier.bands.ngranBands();
+                break;
+        }
+        return new RadioAccessSpecifier(convertRanToAnt(specifier.radioAccessNetwork),
+                halBands.stream().mapToInt(Integer::intValue).toArray(),
+                specifier.channels.stream().mapToInt(Integer::intValue).toArray());
+    }
+
+    private static int convertRanToAnt(int ran) {
+        switch (ran) {
+            case android.hardware.radio.V1_5.RadioAccessNetworks.GERAN:
+                return AccessNetworkConstants.AccessNetworkType.GERAN;
+            case android.hardware.radio.V1_5.RadioAccessNetworks.UTRAN:
+                return AccessNetworkConstants.AccessNetworkType.UTRAN;
+            case android.hardware.radio.V1_5.RadioAccessNetworks.EUTRAN:
+                return AccessNetworkConstants.AccessNetworkType.EUTRAN;
+            case android.hardware.radio.V1_5.RadioAccessNetworks.NGRAN:
+                return AccessNetworkConstants.AccessNetworkType.NGRAN;
+            case android.hardware.radio.V1_5.RadioAccessNetworks.CDMA2000:
+                return AccessNetworkConstants.AccessNetworkType.CDMA2000;
+            case android.hardware.radio.V1_5.RadioAccessNetworks.UNKNOWN:
+            default:
+                return AccessNetworkConstants.AccessNetworkType.UNKNOWN;
+        }
     }
 
     /**
