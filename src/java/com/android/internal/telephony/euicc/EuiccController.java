@@ -1538,8 +1538,13 @@ public class EuiccController extends IEuiccController.Stub {
 
             // There is no active subscription on the target SIM, checks whether the caller can
             // manage any active subscription on any other SIM.
-            return mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(callingPackage)
+            final long token = Binder.clearCallingIdentity();
+            try {
+                return mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(callingPackage)
                     == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+            } finally {
+                Binder.restoreCallingIdentity(token);
+            }
         } else {
             for (SubscriptionInfo subInfo : subInfoList) {
                 if (subInfo.isEmbedded()
