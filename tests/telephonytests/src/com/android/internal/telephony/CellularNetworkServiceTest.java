@@ -396,14 +396,13 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         regResult.rat = radioTech;
         regResult.reasonForDenial = reasonForDenial;
 
-
-        android.hardware.radio.V1_6.RegStateResult.AccessTechnologySpecificInfo
-                .NgranRegistrationInfo ngranInfo = new android.hardware.radio.V1_6
-                .RegStateResult.AccessTechnologySpecificInfo.NgranRegistrationInfo();
-        ngranInfo.nrVopsInfo.vopsSupported = vopsSupported;
-        ngranInfo.nrVopsInfo.emcSupported = emcSupported;
-        ngranInfo.nrVopsInfo.emfSupported = emfSupported;
-        regResult.accessTechnologySpecificInfo.ngranInfo(ngranInfo);
+        regResult.accessTechnologySpecificInfo.ngranNrVopsInfo(new android.hardware.radio.V1_6
+                .NrVopsInfo());
+        regResult.accessTechnologySpecificInfo.ngranNrVopsInfo().vopsSupported = vopsSupported;
+        regResult.accessTechnologySpecificInfo.ngranNrVopsInfo().emcSupported = emcSupported;
+        regResult.accessTechnologySpecificInfo.ngranNrVopsInfo().emfSupported = emfSupported;
+        regResult.accessTechnologySpecificInfo.ngranNrVopsInfo(
+                regResult.accessTechnologySpecificInfo.ngranNrVopsInfo());
 
         VopsSupportInfo vops = new NrVopsSupportInfo(vopsSupported, emcSupported, emfSupported);
         mSimulatedCommands.setVoiceRegStateResult(regResult);

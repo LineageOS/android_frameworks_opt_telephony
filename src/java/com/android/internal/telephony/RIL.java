@@ -1824,7 +1824,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 try {
                     android.hardware.radio.V1_6.IRadio radioProxy16 =
                             (android.hardware.radio.V1_6.IRadio) radioProxy;
-                    radioProxy16.sendSMSExpectMore_1_6(rr.mSerial, msg);
+                    radioProxy16.sendSmsExpectMore_1_6(rr.mSerial, msg);
                     mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
                             SmsSession.Event.Format.SMS_FORMAT_3GPP,
                             getOutgoingSmsMessageId(result));
@@ -3678,7 +3678,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.setNrDualConnectivityState(rr.mSerial, nrDualConnectivityState);
+                radioProxy16.setNrDualConnectivityState(rr.mSerial,
+                        (byte) nrDualConnectivityState);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "enableNRDualConnectivity", e);
             }
@@ -5060,7 +5061,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.setDataThrottling(rr.mSerial, dataThrottlingAction,
+                radioProxy16.setDataThrottling(rr.mSerial, (byte) dataThrottlingAction,
                         completionWindowMillis);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setDataThrottling", e);
@@ -5565,7 +5566,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     for (byte b : imsiEncryptionInfo.getPublicKey().getEncoded()) {
                         halImsiInfo.base.carrierKey.add(new Byte(b));
                     }
-                    halImsiInfo.keyType = imsiEncryptionInfo.getKeyType();
+                    halImsiInfo.keyType = (byte) imsiEncryptionInfo.getKeyType();
 
                     radioProxy16.setCarrierInfoForImsiEncryption_1_6(
                             rr.mSerial, halImsiInfo);
