@@ -1688,7 +1688,7 @@ public class GsmCdmaPhone extends Phone {
         SharedPreferences.Editor editor = sp.edit();
         setVmSimImsi(getSubscriberId());
         logd("storeVoiceMailNumber: mPrecisePhoneType=" + mPrecisePhoneType + " vmNumber="
-                + number);
+                + Rlog.pii(LOG_TAG, number));
         if (isPhoneTypeGsm()) {
             editor.putString(VM_NUMBER + getPhoneId(), number);
             editor.apply();
@@ -1709,9 +1709,10 @@ public class GsmCdmaPhone extends Phone {
                 SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
                 String spName = isPhoneTypeGsm() ? VM_NUMBER : VM_NUMBER_CDMA;
                 number = sp.getString(spName + getPhoneId(), null);
-                logd("getVoiceMailNumber: from " + spName + " number=" + number);
+                logd("getVoiceMailNumber: from " + spName + " number="
+                        + Rlog.pii(LOG_TAG, number));
             } else {
-                logd("getVoiceMailNumber: from IccRecords number=" + number);
+                logd("getVoiceMailNumber: from IccRecords number=" + Rlog.pii(LOG_TAG, number));
             }
         }
         if (!isPhoneTypeGsm() && TextUtils.isEmpty(number)) {
