@@ -23,6 +23,7 @@ import android.os.Message;
 import android.telephony.Annotation.ApnType;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.LocalLog;
 import android.util.SparseIntArray;
 
@@ -395,7 +396,7 @@ public class ApnContext {
     }
 
     private final LocalLog mLocalLog = new LocalLog(150);
-    private final ArrayList<NetworkRequest> mNetworkRequests = new ArrayList<>();
+    private final ArraySet<NetworkRequest> mNetworkRequests = new ArraySet<>();
     private final LocalLog mStateLocalLog = new LocalLog(50);
 
     public void requestLog(String str) {
