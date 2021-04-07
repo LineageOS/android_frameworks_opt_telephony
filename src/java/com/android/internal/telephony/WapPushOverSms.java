@@ -31,7 +31,6 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -75,32 +74,6 @@ public class WapPushOverSms implements ServiceConnection {
     /** Assigned from ServiceConnection callback on main threaad. */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private volatile IWapPushManager mWapPushManager;
-
-    /** Broadcast receiver that binds to WapPushManager when the user unlocks the phone for the
-     *  first time after reboot and the credential-encrypted storage is available.
-     */
-    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(final Context context, Intent intent) {
-            Rlog.d(TAG, "Received broadcast " + intent.getAction());
-            if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
-                new BindServiceThread(mContext).start();
-            }
-        }
-    };
-
-    private class BindServiceThread extends Thread {
-        private final Context context;
-
-        private BindServiceThread(Context context) {
-            this.context = context;
-        }
-
-        @Override
-        public void run() {
-            bindWapPushManagerService(context);
-        }
-    }
 
     private void bindWapPushManagerService(Context context) {
         Intent intent = new Intent(IWapPushManager.class.getName());
@@ -161,13 +134,7 @@ public class WapPushOverSms implements ServiceConnection {
 
         UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
 
-        if (userManager.isUserUnlocked()) {
-            bindWapPushManagerService(mContext);
-        } else {
-            IntentFilter userFilter = new IntentFilter();
-            userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
-            context.registerReceiver(mBroadcastReceiver, userFilter);
-        }
+        bindWapPushManagerService(mContext);
     }
 
     public void dispose() {
