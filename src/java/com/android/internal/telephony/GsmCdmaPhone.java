@@ -444,8 +444,6 @@ public class GsmCdmaPhone extends Phone {
     private void initRatSpecific(int precisePhoneType) {
         mPendingMMIs.clear();
         mIccPhoneBookIntManager.updateIccRecords(null);
-        mEsn = null;
-        mMeid = null;
 
         mPrecisePhoneType = precisePhoneType;
         logd("Precise phone type " + mPrecisePhoneType);
