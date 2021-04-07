@@ -1837,9 +1837,9 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
 
             case EVENT_GET_CLIP_DONE:
-                Bundle ssInfoResp = null;
-                if (ar.exception == null) {
-                    ssInfoResp = (Bundle) ar.result;
+                ImsSsInfo ssInfoResp = null;
+                if (ar.exception == null && ar.result instanceof ImsSsInfo) {
+                    ssInfoResp = (ImsSsInfo) ar.result;
                 }
                 if (ss != null) {
                     sendResponseOrRetryOnCsfbSs(ss, msg.what, ar.exception, ssInfoResp);
