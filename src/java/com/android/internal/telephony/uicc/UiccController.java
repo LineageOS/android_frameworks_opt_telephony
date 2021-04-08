@@ -1168,12 +1168,6 @@ public class UiccController extends Handler {
             CarrierConfigManager configManager = (CarrierConfigManager)
                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
             configManager.updateConfigForPhoneId(index, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
-
-            boolean requirePowerOffOnSimRefreshReset = mContext.getResources().getBoolean(
-                    com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
-            if (requirePowerOffOnSimRefreshReset) {
-                mCis[index].setRadioPower(false, null);
-            }
         }
 
         // The card status could have changed. Get the latest state.
