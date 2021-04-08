@@ -1929,11 +1929,18 @@ public class DcTracker extends Handler {
         }
 
         int preferredApnSetId = getPreferredApnSetId();
+        ApnSetting preferredApn = getPreferredApnFromDB();
         for (ApnSetting dunSetting : dunCandidates) {
             if (dunSetting.canSupportNetworkType(
                     ServiceState.rilRadioTechnologyToNetworkType(bearer))) {
                 if (preferredApnSetId == dunSetting.getApnSetId()) {
-                    retDunSettings.add(dunSetting);
+                    if (preferredApn != null && preferredApn.equals(dunSetting)) {
+                        // If there is a preferred APN can handled DUN type, prepend it to list to
+                        // use it preferred.
+                        retDunSettings.add(0, dunSetting);
+                    } else {
+                        retDunSettings.add(dunSetting);
+                    }
                 }
             }
         }

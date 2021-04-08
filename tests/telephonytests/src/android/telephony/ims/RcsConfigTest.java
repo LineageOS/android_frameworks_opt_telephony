@@ -144,6 +144,19 @@ public final class RcsConfigTest {
         assertTrue(config.equals(config2));
     }
 
+    @Test
+    @SmallTest
+    public void testIsRcsVolteSingleRegistrationSupported() {
+        String[] vals = new String[]{"0", "1", "false", "true"};
+        boolean[] expectedRes = new boolean[]{false, true, false, true};
+        for (int i = 0; i < vals.length; i++) {
+            String xml = "<RCSConfig>\n" + "\t<rcsVolteSingleRegistration>" + vals[i]
+                    + "</rcsVolteSingleRegistration>\n" + "</RCSConfig>\n";
+            RcsConfig config = new RcsConfig(xml.getBytes());
+            assertEquals(config.isRcsVolteSingleRegistrationSupported(), expectedRes[i]);
+        }
+    }
+
     private void createFakeSimInfo() {
         ContentValues contentValues = new ContentValues();
         final String fakeIccId = "fakeleIccId";

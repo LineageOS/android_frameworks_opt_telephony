@@ -57,9 +57,9 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.UiccSlotInfo;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccController;
@@ -1938,5 +1938,22 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 1,
                 mSubscriptionControllerUT
                         .getAllSubInfoList(mCallingPackage, mCallingFeature).size());
+    }
+
+    @Test
+    @SmallTest
+    public void testCheckPhoneIdAndIccIdMatch() {
+        try {
+            testSetSubscriptionGroupWithModifyPermission();
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e);
+        }
+
+        mSubscriptionControllerUT.addSubInfoRecord("test3",
+                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+
+        assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test"));
+        assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test2"));
+        assertFalse(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test3"));
     }
 }
