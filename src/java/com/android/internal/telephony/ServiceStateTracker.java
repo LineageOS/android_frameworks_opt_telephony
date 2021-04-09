@@ -706,6 +706,9 @@ public class ServiceStateTracker extends Handler {
         int enableCellularOnBoot = Settings.Global.getInt(mCr,
                 Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
         mDesiredPowerState = (enableCellularOnBoot > 0) && ! (airplaneMode > 0);
+        if (!mDesiredPowerState) {
+            sRadioPowerOffReasons.add(Phone.RADIO_POWER_REASON_USER);
+        }
         mRadioPowerLog.log("init : airplane mode = " + airplaneMode + " enableCellularOnBoot = " +
                 enableCellularOnBoot);
 
