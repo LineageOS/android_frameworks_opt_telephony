@@ -586,8 +586,8 @@ public class ServiceStateTracker extends Handler {
             }
 
             if (intent.getAction().equals(Intent.ACTION_LOCALE_CHANGED)) {
-                // update emergency string whenever locale changed
-                updateSpnDisplay();
+                // Update emergency string or operator name, polling service state.
+                pollState();
             } else if (intent.getAction().equals(ACTION_RADIO_OFF)) {
                 mAlarmSwitch = false;
                 powerOffRadioSafely();

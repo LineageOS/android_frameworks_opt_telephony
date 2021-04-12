@@ -80,7 +80,7 @@ public interface EfData {
      * .IccRecords.INVALID_CARRIER_NAME_DISPLAY_CONDITION_BITMASK} if it's not existed.
      */
     @CarrierNameDisplayConditionBitmask
-    default int getServiceProviderNameDisplayCondition() {
+    default int getServiceProviderNameDisplayCondition(boolean isRoaming) {
         return IccRecords.INVALID_CARRIER_NAME_DISPLAY_CONDITION_BITMASK;
     }
 

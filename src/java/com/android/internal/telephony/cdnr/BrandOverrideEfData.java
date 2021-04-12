@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.cdnr;
 
+import com.android.internal.telephony.uicc.IccRecords;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,9 +37,8 @@ public final class BrandOverrideEfData implements EfData {
     }
 
     @Override
-    public int getServiceProviderNameDisplayCondition() {
-        // No SPN in roaming network, no PLMN in home network
-        return 0;
+    public int getServiceProviderNameDisplayCondition(boolean isRoaming) {
+        return IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN;
     }
 
     @Override
