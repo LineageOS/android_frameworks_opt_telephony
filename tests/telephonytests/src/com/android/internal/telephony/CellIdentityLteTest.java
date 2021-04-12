@@ -22,7 +22,10 @@ import android.telephony.CellInfo;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 /** Unit tests for {@link CellIdentityLte}. */
 
@@ -252,5 +255,16 @@ public class CellIdentityLteTest extends AndroidTestCase {
 
         CellIdentityLte newCi = CellIdentityLte.CREATOR.createFromParcel(p);
         assertEquals(ci, newCi);
+    }
+
+    @SmallTest
+    public void testBands() {
+        android.hardware.radio.V1_5.CellIdentityLte cid =
+                new android.hardware.radio.V1_5.CellIdentityLte();
+        cid.bands = Arrays.stream(BANDS).boxed().collect(Collectors.toCollection(ArrayList::new));
+
+        CellIdentityLte cellIdentityLte = new CellIdentityLte(cid);
+        assertTrue(Arrays.equals(cellIdentityLte.getBands(), BANDS));
+
     }
 }
