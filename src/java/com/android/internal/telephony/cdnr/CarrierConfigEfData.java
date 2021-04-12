@@ -47,7 +47,7 @@ public final class CarrierConfigEfData implements EfData {
     }
 
     @Override
-    public int getServiceProviderNameDisplayCondition() {
+    public int getServiceProviderNameDisplayCondition(boolean isRoaming) {
         int condition = mConfig.getInt(
                 CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT,
                 IccRecords.INVALID_CARRIER_NAME_DISPLAY_CONDITION_BITMASK);
