@@ -27,7 +27,6 @@ import static android.telephony.TelephonyManager.RadioInterfaceCapability;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.config.V1_1.ModemsConfig;
-import android.hardware.radio.config.V1_3.HalDeviceCapabilities;
 import android.hardware.radio.config.V1_3.IRadioConfigResponse;
 import android.telephony.ModemInfo;
 import android.telephony.PhoneCapability;
@@ -245,7 +244,7 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
      */
     public void getHalDeviceCapabilitiesResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
-            HalDeviceCapabilities halDeviceCapabilities) {
+            boolean modemReducedFeatureSet1) {
 
         // convert hal device capabilities to RadioInterfaceCapabilities
 
@@ -254,8 +253,7 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
             // The response is compatible with Radio 1.6, it means the modem
             // supports setAllowedNetworkTypeBitmap.
 
-            final Set<String> ret = getCaps(mRadioHalVersion,
-                    halDeviceCapabilities.modemReducedFeatureSet1);
+            final Set<String> ret = getCaps(mRadioHalVersion, modemReducedFeatureSet1);
 
             if (responseInfo.error == RadioError.NONE) {
                 // send response
