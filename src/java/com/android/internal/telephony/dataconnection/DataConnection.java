@@ -2741,7 +2741,7 @@ public class DataConnection extends StateMachine {
             if (carrierSignalAgent.hasRegisteredReceivers(TelephonyManager
                     .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
                 // carrierSignal Receivers will place the carrier-specific provisioning notification
-                configBuilder.disableProvisioningNotification();
+                configBuilder.setProvisioningNotificationEnabled(false);
             }
 
             final String subscriberId = mPhone.getSubscriberId();
@@ -2751,7 +2751,7 @@ public class DataConnection extends StateMachine {
 
             // set skip464xlat if it is not default otherwise
             if (shouldSkip464Xlat()) {
-                configBuilder.disableNat64Detection();
+                configBuilder.setNat64DetectionEnabled(false);
             }
 
             mUnmeteredUseOnly = isUnmeteredUseOnly();
