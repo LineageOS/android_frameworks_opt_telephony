@@ -1291,6 +1291,18 @@ public abstract class InboundSmsHandler extends StateMachine {
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user, int subId) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         final String action = intent.getAction();
+        if (Intents.SMS_DELIVER_ACTION.equals(action)
+                || Intents.SMS_RECEIVED_ACTION.equals(action)
+                || Intents.WAP_PUSH_DELIVER_ACTION.equals(action)
+                || Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
+            // Some intents need to be delivered with high priority:
+            // SMS_DELIVER, SMS_RECEIVED, WAP_PUSH_DELIVER, WAP_PUSH_RECEIVED
+            // In some situations, like after boot up or system under load, normal
+            // intent delivery could take a long time.
+            // This flag should only be set for intents for visible, timely operations
+            // which is true for the intents above.
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        }
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
 
         // override the subId value in the intent with the values from tracker as they can be
