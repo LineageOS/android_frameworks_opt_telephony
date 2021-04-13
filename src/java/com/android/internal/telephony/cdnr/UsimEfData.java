@@ -18,6 +18,7 @@ package com.android.internal.telephony.cdnr;
 
 import android.text.TextUtils;
 
+import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
 import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
 import com.android.internal.telephony.uicc.SIMRecords;
@@ -41,8 +42,16 @@ public final class UsimEfData implements EfData {
     }
 
     @Override
-    public int getServiceProviderNameDisplayCondition() {
-        return mUsim.getCarrierNameDisplayCondition();
+    public int getServiceProviderNameDisplayCondition(boolean isRoaming) {
+        if (isRoaming) {
+            // Show PLMN on roaming.
+            return IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_PLMN
+                    | mUsim.getCarrierNameDisplayCondition();
+        } else {
+            // Show SPN on non-roaming.
+            return IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN
+                    | mUsim.getCarrierNameDisplayCondition();
+        }
     }
 
     @Override
