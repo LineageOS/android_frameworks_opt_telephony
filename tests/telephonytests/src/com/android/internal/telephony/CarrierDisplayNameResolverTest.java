@@ -173,4 +173,99 @@ public class CarrierDisplayNameResolverTest extends TelephonyTest {
         CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
         assertThat(data.getPlmn()).isEqualTo(PNN_HOME_NAME_FROM_USIM);
     }
+
+    @Test
+    public void testShouldShowPLMNFromSourceBandOverride_notShowPLMN() {
+        // Update ef records from brand override
+        mCdnr.updateEfForBrandOverride("spn from brand override");
+
+        mSS.setRoaming(ROAMING);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowPlmn()).isFalse();
+    }
+
+    @Test
+    public void testShouldShowSPNFromSourceCC_conditionOverrideShowPLMN_notShowSPN() {
+        // Carrier config source > sim record source
+        mConfig.putInt(CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT, 1);
+
+        // Update ef records from carrier config
+        mCdnr.updateEfFromCarrierConfig(mConfig);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowSpn()).isFalse();
+    }
+
+    @Test
+    public void testShouldShowPLMNFromSourceCC_conditionOverrideShowPLMN_shouldShowPLMN() {
+        // Carrier config source > sim record source
+        mConfig.putInt(CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT, 1);
+
+        // Update ef records from carrier config
+        mCdnr.updateEfFromCarrierConfig(mConfig);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+        assertThat(data.shouldShowPlmn()).isTrue();
+    }
+
+    @Test
+    public void testShouldShowPLMNLongName_plmnNotInProvidedList_showPLMNLongName() {
+        // Carrier config source > sim record source
+        mConfig.putInt(CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT, 1);
+
+        // Update ef records from carrier config
+        mCdnr.updateEfFromCarrierConfig(mConfig);
+
+        SIMRecords usim = Mockito.mock(SIMRecords.class);
+        doReturn(SPN_FROM_USIM).when(usim).getServiceProviderName();
+        mCdnr.updateEfFromUsim(usim);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+
+        assertThat(data.shouldShowPlmn()).isTrue();
+        assertThat(data.getPlmn()).isEqualTo("long name");
+    }
+
+    @Test
+    public void testShouldShowPLMNShortName_plmnNotInProvidedList_showPLMNShortName() {
+        // Carrier config source > sim record source
+        mConfig.putInt(CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT, 1);
+
+        // Update ef records from carrier config
+        mCdnr.updateEfFromCarrierConfig(mConfig);
+
+        SIMRecords usim = Mockito.mock(SIMRecords.class);
+        doReturn(SPN_FROM_USIM).when(usim).getServiceProviderName();
+        mCdnr.updateEfFromUsim(usim);
+
+        // long name empty
+        mSS.setOperatorName("", "short name", HOME_PLMN_NUMERIC);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+
+        assertThat(data.shouldShowPlmn()).isTrue();
+        assertThat(data.getPlmn()).isEqualTo("short name");
+    }
+
+    @Test
+    public void testShouldShowPLMNNumeric_plmnNotInProvidedList_showPLMNNumeric() {
+        // Carrier config source > sim record source
+        mConfig.putInt(CarrierConfigManager.KEY_SPN_DISPLAY_CONDITION_OVERRIDE_INT, 1);
+
+        // Update ef records from carrier config
+        mCdnr.updateEfFromCarrierConfig(mConfig);
+
+        SIMRecords usim = Mockito.mock(SIMRecords.class);
+        doReturn(SPN_FROM_USIM).when(usim).getServiceProviderName();
+        mCdnr.updateEfFromUsim(usim);
+
+        // long name and short name empty
+        mSS.setOperatorName("", "", HOME_PLMN_NUMERIC);
+
+        CarrierDisplayNameData data = mCdnr.getCarrierDisplayNameData();
+
+        assertThat(data.shouldShowPlmn()).isTrue();
+        assertThat(data.getPlmn()).isEqualTo(HOME_PLMN_NUMERIC);
+    }
 }

@@ -150,7 +150,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String DATA_DISABLED_ON_BOOT_KEY = "disabled_on_boot_key";
 
     // Key used to read/write data_roaming_is_user_setting pref
-    public static final String DATA_ROAMING_IS_USER_SETTING_KEY = "data_roaming_is_user_setting_key";
+    public static final String DATA_ROAMING_IS_USER_SETTING_KEY =
+            "data_roaming_is_user_setting_key";
 
     // Default value when there has been no last emergency SMS time recorded yet.
     private static final int EMERGENCY_SMS_NO_TIME_RECORDED = -1;
@@ -453,7 +454,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected boolean mIsCarrierNrSupported = false;
 
     private boolean mUnitTestMode;
-    private final CarrierPrivilegesTracker mCarrierPrivilegesTracker;
+    private CarrierPrivilegesTracker mCarrierPrivilegesTracker = null;
 
     protected VoiceCallSessionStats mVoiceCallSessionStats;
     protected SmsStats mSmsStats;
@@ -581,8 +582,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mIsVoiceCapable = ((TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE))
                 .isVoiceCapable();
 
-        mCarrierPrivilegesTracker = new CarrierPrivilegesTracker(mLooper, this, mContext);
-
         /**
          *  Some RIL's don't always send RIL_UNSOL_CALL_RING so it needs
          *  to be generated locally. Ideally all ring tones should be loops
@@ -618,6 +617,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mSimActivationTracker = mTelephonyComponentFactory
                 .inject(SimActivationTracker.class.getName())
                 .makeSimActivationTracker(this);
+        mCarrierPrivilegesTracker = new CarrierPrivilegesTracker(mLooper, this, mContext);
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         }

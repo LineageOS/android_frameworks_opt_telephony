@@ -38,7 +38,7 @@ public final class RuimEfData implements EfData {
     }
 
     @Override
-    public int getServiceProviderNameDisplayCondition() {
+    public int getServiceProviderNameDisplayCondition(boolean isRoaming) {
         return mRuim.getCsimSpnDisplayCondition()
                 ? IccRecords.CARRIER_NAME_DISPLAY_CONDITION_BITMASK_SPN :
                 DEFAULT_CARRIER_NAME_DISPLAY_CONDITION_BITMASK;
