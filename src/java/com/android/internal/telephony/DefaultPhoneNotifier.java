@@ -241,8 +241,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     @Override
     public void notifyPhysicalChannelConfig(Phone sender,
                                                    List<PhysicalChannelConfig> configs) {
-        int subId = sender.getSubId();
-        mTelephonyRegistryMgr.notifyPhysicalChannelConfigForSubscriber(subId, configs);
+        mTelephonyRegistryMgr.notifyPhysicalChannelConfigForSubscriber(
+                sender.getPhoneId(), sender.getSubId(), configs);
     }
 
     @Override
