@@ -2404,8 +2404,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void setAllowedNetworkTypes(@TelephonyManager.AllowedNetworkTypesReason int reason,
             @TelephonyManager.NetworkTypeBitMask long networkTypes, Message response) {
+        int subId = getSubId();
         if (!TelephonyManager.isValidAllowedNetworkTypesReason(reason)) {
-            Rlog.e(LOG_TAG, "Invalid allowed network type reason: " + reason);
+            loge("setAllowedNetworkTypes: Invalid allowed network type reason: " + reason);
+            return;
+        }
+        if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
+            loge("setAllowedNetworkTypes: Invalid subscriptionId: " + subId);
             return;
         }
         String mapAsString = "";
@@ -2416,10 +2421,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                             + mAllowedNetworkTypesForReasons.get(key))
                     .collect(Collectors.joining(","));
         }
-        SubscriptionManager.setSubscriptionProperty(getSubId(),
+        SubscriptionManager.setSubscriptionProperty(subId,
                 SubscriptionManager.ALLOWED_NETWORK_TYPES,
                 mapAsString);
-        logd("SubId" + getSubId() + ",setAllowedNetworkTypes " + mapAsString);
+        logd("setAllowedNetworkTypes: SubId" + subId + ",setAllowedNetworkTypes " + mapAsString);
 
         updateAllowedNetworkTypes(response);
         notifyAllowedNetworkTypesChanged(reason);
