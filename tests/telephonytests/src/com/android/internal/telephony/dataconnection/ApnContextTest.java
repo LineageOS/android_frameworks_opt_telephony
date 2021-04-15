@@ -26,7 +26,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.NetworkCapabilities;
-import android.net.NetworkConfig;
 import android.net.NetworkRequest;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -41,9 +40,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 
 public class ApnContextTest extends TelephonyTest {
-
-    @Mock
-    NetworkConfig mNetworkConfig;
     @Mock
     ApnSetting mApnSetting;
 
@@ -52,7 +48,7 @@ public class ApnContextTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mNetworkConfig.dependencyMet = true;
+
         mApnContext = new ApnContext(mPhone, ApnSetting.TYPE_DEFAULT, TAG, mDcTracker, 1);
     }
 
