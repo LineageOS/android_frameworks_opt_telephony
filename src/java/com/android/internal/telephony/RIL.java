@@ -1965,7 +1965,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         OptionalOsAppId optionalOsAppId = new OptionalOsAppId();
         if (trafficDescriptor.getOsAppId() != null) {
             android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
-            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId().getBytes());
+            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId());
             optionalOsAppId.value(osAppId);
         }
         td.osAppId = optionalOsAppId;
@@ -7707,8 +7707,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             android.hardware.radio.V1_6.TrafficDescriptor td) {
         String dnn = td.dnn.getDiscriminator() == OptionalDnn.hidl_discriminator.noinit
                 ? null : td.dnn.value();
-        String osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
-                ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
+        byte[] osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
+                ? null : arrayListToPrimitiveArray(td.osAppId.value().osAppId);
         TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
         if (dnn != null) {
             builder.setDataNetworkName(dnn);

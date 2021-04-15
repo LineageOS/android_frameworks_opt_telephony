@@ -825,6 +825,16 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * API to generate the OSAppId for enterprise traffic category.
+     * @return byte[] representing OSId + OSAppId
+     */
+    @VisibleForTesting
+    public static byte[] getEnterpriseOsAppId() {
+        return NetworkCapabilities.getCapabilityCarrierName(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE).getBytes();
+    }
+
+    /**
      * Begin setting up a data connection, calls setupDataCall
      * and the ConnectionParams will be returned with the
      * EVENT_SETUP_DATA_CONNECTION_DONE
@@ -888,10 +898,9 @@ public class DataConnection extends StateMachine {
                 || isUnmeteredApnType));
 
         String dnn = null;
-        String osAppId = null;
+        byte[] osAppId = null;
         if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE) {
-            osAppId = NetworkCapabilities.getCapabilityCarrierName(
-                    NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
+            osAppId = getEnterpriseOsAppId();
         } else {
             dnn = mApnSetting.getApnName();
         }
@@ -1771,9 +1780,8 @@ public class DataConnection extends StateMachine {
     private boolean isEnterpriseUse() {
         boolean enterpriseTrafficDescriptor = mTrafficDescriptors
                 .stream()
-                .anyMatch(td -> td.getOsAppId() != null && td.getOsAppId().equals(
-                        NetworkCapabilities.getCapabilityCarrierName(
-                                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)));
+                .anyMatch(td -> td.getOsAppId() != null && Arrays.equals(td.getOsAppId(),
+                        getEnterpriseOsAppId()));
         boolean enterpriseApnContext = mApnContexts.keySet()
                 .stream()
                 .anyMatch(ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);

@@ -37,7 +37,8 @@ import java.util.Arrays;
 
 public class DataCallResponseTest extends AndroidTestCase {
     public static final String FAKE_DNN = "FAKE_DNN";
-    public static final String FAKE_OS_APP_ID = "FAKE_OS_APP_ID";
+    public static final byte[] FAKE_OS_APP_ID = {1, 2, 3, 4};
+    public static final byte[] FAKE_OS_APP_ID_2 = {5, 6, 8, 9};
 
     @SmallTest
     public void testParcel() {
@@ -131,7 +132,7 @@ public class DataCallResponseTest extends AndroidTestCase {
                 .setMtuV4(1441)
                 .setMtuV6(1440)
                 .setTrafficDescriptors(
-                        Arrays.asList(new TrafficDescriptor("FAKE_DNN_2", "FAKE_OS_APP_ID_2")))
+                        Arrays.asList(new TrafficDescriptor("FAKE_DNN_2", FAKE_OS_APP_ID_2)))
                 .build();
 
         assertNotSame(response1, response2);
