@@ -1087,7 +1087,7 @@ public class RadioIndication extends IRadioIndication.Stub {
      * @param indicationType RadioIndicationType
      * @param records Content of the SIM phonebook records
      */
-    public void simPhonebookRecordsReceived(int indicationType, byte status,
+    public void simPhonebookRecordsReceived(int indicationType, int status,
             ArrayList<PhonebookRecordInfo> records) {
 
     }
@@ -1281,8 +1281,8 @@ public class RadioIndication extends IRadioIndication.Stub {
                         convertConnectionStatusFromCellConnectionStatus(config.status))
                         .setDownlinkChannelNumber(config.downlinkChannelNumber)
                         .setUplinkChannelNumber(config.uplinkChannelNumber)
-                        .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlinkKhz)
-                        .setCellBandwidthUplinkKhz(config.cellBandwidthUplinkKhz)
+                        .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlink)
+                        .setCellBandwidthUplinkKhz(config.cellBandwidthUplink)
                         .setNetworkType(ServiceState.rilRadioTechnologyToNetworkType(config.rat))
                         .setPhysicalCellId(config.physicalCellId)
                         .setContextIds(config.contextIds.stream().mapToInt(x -> x).toArray())
