@@ -446,6 +446,11 @@ public class VoiceCallSessionStats {
             proto.disconnectExtraMessage = "";
         }
 
+        // Retry populating carrier ID if it was invalid
+        if (proto.carrierId <= 0) {
+            proto.carrierId = mPhone.getCarrierId();
+        }
+
         mAtomsStorage.addVoiceCallSession(proto);
 
         // merge RAT usages to PersistPullers when the call session ends (i.e. no more active calls)
