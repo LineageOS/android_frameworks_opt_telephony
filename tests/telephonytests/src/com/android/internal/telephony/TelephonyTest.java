@@ -64,6 +64,8 @@ import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellIdentity;
+import android.telephony.CellLocation;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -329,6 +331,10 @@ public abstract class TelephonyTest {
     protected PinStorage mPinStorage;
     @Mock
     protected LocationManager mLocationManager;
+    @Mock
+    protected CellIdentity mCellIdentity;
+    @Mock
+    protected CellLocation mCellLocation;
 
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
@@ -573,6 +579,8 @@ public abstract class TelephonyTest {
         doReturn(mImsStats).when(mImsPhone).getImsStats();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
         doReturn(mLinkBandwidthEstimator).when(mPhone).getLinkBandwidthEstimator();
+        doReturn(mCellIdentity).when(mPhone).getCurrentCellIdentity();
+        doReturn(mCellLocation).when(mCellIdentity).asCellLocation();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
