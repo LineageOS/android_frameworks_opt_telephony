@@ -23,11 +23,13 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
 import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
 
 import static com.android.internal.telephony.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
+import static com.android.internal.telephony.PhoneSwitcher.EVENT_IMS_RADIO_TECH_CHANGED;
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_MULTI_SIM_CONFIG_CHANGED;
 import static com.android.internal.telephony.PhoneSwitcher.EVENT_PRECISE_CALL_STATE_CHANGED;
 
@@ -638,6 +640,42 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testNonDefaultDataPhoneInCall_ImsCallOnCrossSIM_HandoverToLTE() throws Exception {
+        initialize();
+        setAllPhonesInactive();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        processAllMessages();
+
+        // Phone 0 should be the default data phoneId.
+        assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
+
+        // Phone 1 has active IMS call on CROSS_SIM. And data of DEFAULT apn is enabled. This should
+        // not trigger data switch.
+        doReturn(mImsPhone).when(mPhone2).getImsPhone();
+        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        mockImsRegTech(1, REGISTRATION_TECH_CROSS_SIM);
+        notifyPhoneAsInCall(mImsPhone);
+
+        // Phone 0 should remain the default data phone.
+        assertEquals(0, mPhoneSwitcher.getPreferredDataPhoneId());
+
+        // Phone 1 has has handed over the call to LTE. And data of DEFAULT apn is enabled.
+        // This should trigger data switch.
+        mockImsRegTech(1, REGISTRATION_TECH_LTE);
+        notifyImsRegistrationTechChange(mPhone2);
+
+        // Phone 1 should become the default data phone.
+        assertEquals(1, mPhoneSwitcher.getPreferredDataPhoneId());
+    }
+
+    @Test
+    @SmallTest
     public void testNonDefaultDataPhoneInCall() throws Exception {
         doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
         initialize();
@@ -1209,6 +1247,11 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(dataEnabled).when(mDataEnabledSettings).isDataEnabled(anyInt());
         doReturn(dataEnabled).when(mDataEnabledSettings2).isDataEnabled(anyInt());
         mPhoneSwitcher.sendEmptyMessage(EVENT_DATA_ENABLED_CHANGED);
+        processAllMessages();
+    }
+
+    private void notifyImsRegistrationTechChange(Phone phone) {
+        mPhoneSwitcher.sendEmptyMessage(EVENT_IMS_RADIO_TECH_CHANGED);
         processAllMessages();
     }
 
