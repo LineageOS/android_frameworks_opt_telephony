@@ -148,8 +148,8 @@ public class CarrierResolver extends Handler {
             int subId = intent.getIntExtra("sub_id",
                     SubscriptionManager.getDefaultSubscriptionId());
 
-            if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
-                logd("Override carrier id can't be -1.", phoneId);
+            if (carrierId <= 0) {
+                logd("Override carrier id must be greater than 0.", phoneId);
                 return;
             } else if (subId != mPhone.getSubId()) {
                 logd("Override carrier id failed. The sub id doesn't same as phone's sub id.",

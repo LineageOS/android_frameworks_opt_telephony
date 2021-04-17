@@ -474,7 +474,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         List<PhysicalChannelConfig> configs = new ArrayList<>(1);
         configs.add(config);
 
-        mTelephonyRegistry.notifyPhysicalChannelConfigForSubscriber(subId, configs);
+        mTelephonyRegistry.notifyPhysicalChannelConfigForSubscriber(0, subId, configs);
         mTelephonyRegistry.listenWithEventList(subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
         processAllMessages();

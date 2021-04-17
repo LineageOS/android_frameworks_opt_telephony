@@ -1372,10 +1372,12 @@ public class DataConnection extends StateMachine {
                 && mDcController.getActiveDcByCid(response.getId()) != null) {
             if (DBG) log("DataConnection already exists for cid: " + response.getId());
             result = SetupResult.ERROR_DUPLICATE_CID;
+            result.mFailCause = DataFailCause.DUPLICATE_CID;
         } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
                 && !mDcController.isDefaultDataActive()) {
             if (DBG) log("No default data connection currently active");
             result = SetupResult.ERROR_NO_DEFAULT_CONNECTION;
+            result.mFailCause = DataFailCause.NO_DEFAULT_DATA;
         } else {
             if (DBG) log("onSetupConnectionCompleted received successful DataCallResponse");
             mCid = response.getId();
@@ -1896,7 +1898,7 @@ public class DataConnection extends StateMachine {
 
         builder.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
                 .setSubscriptionId(mSubId).build());
-        builder.setSubIds(Collections.singleton(mSubId));
+        builder.setSubscriptionIds(Collections.singleton(mSubId));
 
         if (!mPhone.getServiceState().getDataRoaming()) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
@@ -2619,9 +2621,27 @@ public class DataConnection extends StateMachine {
                         case ERROR_DUPLICATE_CID:
                             // TODO (b/180988471): Properly handle the case when an existing cid is
                             // returned by tearing down the network agent if enterprise changed.
+                            long retry = RetryManager.NO_SUGGESTED_RETRY_DELAY;
+                            if (cp.mApnContext != null) {
+                                retry = RetryManager.NO_RETRY;
+                                mDct.getDataThrottler().setRetryTime(
+                                        cp.mApnContext.getApnTypeBitmask(),
+                                        retry, DcTracker.REQUEST_TYPE_NORMAL);
+                            }
+                            String logStr = "DcActivatingState: "
+                                    + DataFailCause.toString(result.mFailCause)
+                                    + " retry=" + retry;
+                            if (DBG) log(logStr);
+                            if (cp.mApnContext != null) cp.mApnContext.requestLog(logStr);
+                            mInactiveState.setEnterNotificationParams(cp, result.mFailCause,
+                                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
+                            transitionTo(mInactiveState);
+                            break;
                         case ERROR_NO_DEFAULT_CONNECTION:
                             // TODO (b/180988471): Properly handle the case when a default data
-                            // connection doesn't exist.
+                            // connection doesn't exist (tear down connection and retry).
+                            // Currently, this just tears down the connection without retry.
+                            if (DBG) log("DcActivatingState: NO_DEFAULT_DATA");
                         case ERROR_INVALID_ARG:
                             // The addresses given from the RIL are bad
                             tearDownData(cp);
