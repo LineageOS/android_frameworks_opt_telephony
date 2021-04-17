@@ -58,7 +58,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
-import android.telephony.data.SlicingConfig;
+import android.telephony.data.NetworkSlicingConfig;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
@@ -3163,7 +3163,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse_1_6(info);
 
         if (rr != null) {
-            SlicingConfig ret = new SlicingConfig(slicingConfig);
+            NetworkSlicingConfig ret = new NetworkSlicingConfig(slicingConfig);
             if (info.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
