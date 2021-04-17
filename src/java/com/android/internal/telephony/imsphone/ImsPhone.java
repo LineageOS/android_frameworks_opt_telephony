@@ -2065,7 +2065,12 @@ public class ImsPhone extends ImsPhoneBase {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public boolean isVolteEnabled() {
-        return mCT.isVolteEnabled();
+        return isVoiceOverCellularImsEnabled();
+    }
+
+    @Override
+    public boolean isVoiceOverCellularImsEnabled() {
+        return mCT.isVoiceOverCellularImsEnabled();
     }
 
     @Override
