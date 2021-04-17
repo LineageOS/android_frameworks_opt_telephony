@@ -26,6 +26,7 @@ import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPAB
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NR;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
 import static android.util.Patterns.EMAIL_ADDRESS;
 
@@ -392,8 +393,9 @@ public class ImsStats {
                 return TelephonyManager.NETWORK_TYPE_LTE;
             case REGISTRATION_TECH_IWLAN:
                 return TelephonyManager.NETWORK_TYPE_IWLAN;
+            case REGISTRATION_TECH_NR:
+                return TelephonyManager.NETWORK_TYPE_NR;
             default:
-                // TODO: for VoNR, need to add registration tech to ImsRegistrationImplBase
                 loge("convertRegistrationTechToNetworkType: unknown radio tech %d", radioTech);
                 return getWwanPsRat();
         }
