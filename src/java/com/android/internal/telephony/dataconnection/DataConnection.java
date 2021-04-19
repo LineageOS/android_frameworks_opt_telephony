@@ -1360,6 +1360,9 @@ public class DataConnection extends StateMachine {
         } else if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
             result.mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+        } else if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_ARG) {
+            result = SetupResult.ERROR_INVALID_ARG;
+            result.mFailCause = DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER;
         } else if (response.getCause() != 0) {
             if (response.getCause() == DataFailCause.RADIO_NOT_AVAILABLE) {
                 result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
