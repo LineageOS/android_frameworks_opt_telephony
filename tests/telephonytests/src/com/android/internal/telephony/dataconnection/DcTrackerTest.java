@@ -1276,7 +1276,8 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
         assertEquals(null, tdCaptor.getValue().getDataNetworkName());
-        assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
+        assertTrue(Arrays.equals(DataConnection.getEnterpriseOsAppId(),
+                tdCaptor.getValue().getOsAppId()));
     }
 
     // Test the ENTERPRISE APN setup when default data is not set up yet.
@@ -1298,7 +1299,8 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
         assertEquals(null, tdCaptor.getValue().getDataNetworkName());
-        assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
+        assertTrue(Arrays.equals(DataConnection.getEnterpriseOsAppId(),
+                tdCaptor.getValue().getOsAppId()));
 
         // Check APN contexts with no DEFAULT set up
         Map<Integer, ApnContext> apnContexts = mDct.getApnContexts()
@@ -1350,7 +1352,8 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
         assertEquals(null, tdCaptor.getValue().getDataNetworkName());
-        assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
+        assertTrue(Arrays.equals(DataConnection.getEnterpriseOsAppId(),
+                tdCaptor.getValue().getOsAppId()));
 
         // Check APN contexts after DEFAULT is set up (and ENTERPRISE reenabled)
         apnContexts = mDct.getApnContexts()
@@ -1389,7 +1392,7 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(FAKE_APN1, tds.get(0).getDataNetworkName());
         assertEquals(null, tds.get(0).getOsAppId());
         assertEquals(null, tds.get(1).getDataNetworkName());
-        assertEquals("ENTERPRISE", tds.get(1).getOsAppId());
+        assertTrue(Arrays.equals(DataConnection.getEnterpriseOsAppId(), tds.get(1).getOsAppId()));
 
         // Check APN contexts after DEFAULT and ENTERPRISE set up
         Map<Integer, ApnContext> apnContexts = mDct.getApnContexts()
@@ -1883,7 +1886,8 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), tdCaptor.capture(),
                 anyBoolean(), any(Message.class));
         assertEquals(null, tdCaptor.getValue().getDataNetworkName());
-        assertEquals("ENTERPRISE", tdCaptor.getValue().getOsAppId());
+        assertTrue(Arrays.equals(DataConnection.getEnterpriseOsAppId(),
+                tdCaptor.getValue().getOsAppId()));
 
         // Check APN contexts after ENTERPRISE is set up
         Map<Integer, ApnContext> apnContextsAfterRowIdsChanged = mDct.getApnContexts()
