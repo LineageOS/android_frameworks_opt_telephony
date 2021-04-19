@@ -1419,6 +1419,19 @@ public class DcTracker extends Handler {
         }
 
         if (apnContext != null) {
+            if (mPhone.getTransportManager().getPreferredTransport(
+                    apnContext.getApnTypeBitmask())
+                    == AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
+                // If QNS explicitly specified this APN type is not allowed on either cellular or
+                // IWLAN, we should not allow data setup.
+                reasons.add(DataDisallowedReasonType.DISABLED_BY_QNS);
+            } else if (mTransportType != mPhone.getTransportManager().getPreferredTransport(
+                    apnContext.getApnTypeBitmask())) {
+                // If the latest preference has already switched to other transport, we should not
+                // allow data setup.
+                reasons.add(DataDisallowedReasonType.ON_OTHER_TRANSPORT);
+            }
+
             // If the transport has been already switched to the other transport, we should not
             // allow the data setup. The only exception is the handover case, where we setup
             // handover data connection before switching the transport.
@@ -1551,6 +1564,15 @@ public class DcTracker extends Handler {
         String logStr = "trySetupData for APN type " + apnContext.getApnType() + ", reason: "
                 + apnContext.getReason() + ", requestType=" + requestTypeToString(requestType)
                 + ". " + dataConnectionReasons.toString();
+        if (dataConnectionReasons.contains(DataDisallowedReasonType.DISABLED_BY_QNS)
+                || dataConnectionReasons.contains(DataDisallowedReasonType.ON_OTHER_TRANSPORT)) {
+            logStr += ", current transport=" + AccessNetworkConstants.transportTypeToString(
+                    mPhone.getTransportManager().getCurrentTransport(
+                            apnContext.getApnTypeBitmask()));
+            logStr += ", preferred transport=" + AccessNetworkConstants.transportTypeToString(
+                    mPhone.getTransportManager().getPreferredTransport(
+                            apnContext.getApnTypeBitmask()));
+        }
         if (DBG) log(logStr);
         apnContext.requestLog(logStr);
         if (isDataAllowed) {
