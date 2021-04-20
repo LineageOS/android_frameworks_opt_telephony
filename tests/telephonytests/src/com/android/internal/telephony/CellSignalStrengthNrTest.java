@@ -33,6 +33,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class CellSignalStrengthNrTest extends AndroidTestCase {
     private static final int CSIRSRP = -123;
@@ -43,10 +45,17 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
     private static final int INVALID_SSRSRP = Integer.MAX_VALUE;
     private static final int CSISINR = 18;
     private static final int CSICQI_TABLE_INDEX = 1;
-    private static final ArrayList<Integer> CSICQI_REPORT = new ArrayList<>(Arrays.asList(3, 2, 1));
+    private static final ArrayList<Byte> CSICQI_REPORT =
+            new ArrayList<>(Arrays.asList((byte) 3, (byte) 2, (byte) 1));
     private static final int SSRSRP = -112;
     private static final int SSRSRQ = -13;
     private static final int SSSINR = 32;
+
+    private List<Integer> getCsiCqiList() {
+        return CSICQI_REPORT.stream()
+                .map(cqi -> new Integer(Byte.toUnsignedInt(cqi)))
+                .collect(Collectors.toList());
+    }
 
     @Test
     public void testGetMethod() {
@@ -59,7 +68,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         assertThat(css.getCsiRsrq()).isEqualTo(CSIRSRQ);
         assertThat(css.getCsiSinr()).isEqualTo(CSISINR);
         assertThat(css.getCsiCqiTableIndex()).isEqualTo(CSICQI_TABLE_INDEX);
-        assertThat(css.getCsiCqiReport()).isEqualTo(CSICQI_REPORT);
+        assertThat(css.getCsiCqiReport()).isEqualTo(getCsiCqiList());
         assertThat(css.getSsRsrp()).isEqualTo(SSRSRP);
         assertThat(css.getSsRsrq()).isEqualTo(SSRSRQ);
         assertThat(css.getSsSinr()).isEqualTo(SSSINR);
@@ -85,7 +94,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         assertThat(css.getCsiRsrq()).isEqualTo(CSIRSRQ);
         assertThat(css.getCsiSinr()).isEqualTo(CSISINR);
         assertThat(css.getCsiCqiTableIndex()).isEqualTo(CSICQI_TABLE_INDEX);
-        assertThat(css.getCsiCqiReport()).isEqualTo(CSICQI_REPORT);
+        assertThat(css.getCsiCqiReport()).isEqualTo(getCsiCqiList());
         assertThat(css.getSsRsrp()).isEqualTo(SSRSRP);
         assertThat(css.getSsRsrq()).isEqualTo(SSRSRQ);
         assertThat(css.getSsSinr()).isEqualTo(SSSINR);
@@ -100,7 +109,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         nrSignalStrength.base.csiRsrq = CellInfo.UNAVAILABLE;
         nrSignalStrength.base.csiSinr = CellInfo.UNAVAILABLE;
         nrSignalStrength.csiCqiTableIndex = CellInfo.UNAVAILABLE;
-        nrSignalStrength.csiCqiReport = new ArrayList<Integer>();
+        nrSignalStrength.csiCqiReport = new ArrayList<Byte>();
         nrSignalStrength.base.ssRsrp = CellInfo.UNAVAILABLE;
         nrSignalStrength.base.ssRsrq = CellInfo.UNAVAILABLE;
         nrSignalStrength.base.ssSinr = CellInfo.UNAVAILABLE;
@@ -206,7 +215,7 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         assertThat(anotherCss.getCsiRsrq()).isEqualTo(CSIRSRQ);
         assertThat(anotherCss.getCsiSinr()).isEqualTo(CSISINR);
         assertThat(css.getCsiCqiTableIndex()).isEqualTo(CSICQI_TABLE_INDEX);
-        assertThat(css.getCsiCqiReport()).isEqualTo(CSICQI_REPORT);
+        assertThat(css.getCsiCqiReport()).isEqualTo(getCsiCqiList());
         assertThat(anotherCss.getSsRsrp()).isEqualTo(SSRSRP);
         assertThat(anotherCss.getSsRsrq()).isEqualTo(SSRSRQ);
         assertThat(anotherCss.getSsSinr()).isEqualTo(SSSINR);

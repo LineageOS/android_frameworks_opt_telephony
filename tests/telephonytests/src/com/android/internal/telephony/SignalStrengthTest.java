@@ -90,7 +90,8 @@ public class SignalStrengthTest {
     public void testParcelUnparcel() throws Exception {
         assertParcelingIsLossless(new SignalStrength());
 
-        List<Integer> NrCqiReport = new ArrayList<>(Arrays.asList(3, 2, 1));
+        ArrayList<Byte> NrCqiReport = new ArrayList<>(
+                Arrays.asList((byte) 3, (byte) 2 , (byte) 1));
         SignalStrength s = new SignalStrength(
                 new CellSignalStrengthCdma(-93, -132, -89, -125, 5),
                 new CellSignalStrengthGsm(-79, 2, 5),

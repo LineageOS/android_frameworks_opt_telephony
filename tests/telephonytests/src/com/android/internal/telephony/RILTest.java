@@ -810,7 +810,7 @@ public class RILTest extends TelephonyTest {
         msg.smscPdu = smscPdu;
         msg.pdu = pdu;
         mRILUnderTest.sendSMSExpectMore(smscPdu, pdu, obtainMessage());
-        verify(mRadioProxy).sendSMSExpectMore_1_6(mSerialNumberCaptor.capture(), eq(msg));
+        verify(mRadioProxy).sendSmsExpectMore_1_6(mSerialNumberCaptor.capture(), eq(msg));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS_EXPECT_MORE);
     }
@@ -2350,7 +2350,8 @@ public class RILTest extends TelephonyTest {
         android.hardware.radio.V1_6.OptionalOsAppId halOsAppId =
                 new android.hardware.radio.V1_6.OptionalOsAppId();
         android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
-        osAppId.osAppId = mRILUnderTest.primitiveArrayToArrayList("OS_APP_ID".getBytes());
+        byte[] osAppIdArray = {1, 2, 3, 4};
+        osAppId.osAppId = mRILUnderTest.primitiveArrayToArrayList(osAppIdArray);
         halOsAppId.value(osAppId);
 
         halTrafficDescriptor.dnn = halDnn;
@@ -2358,7 +2359,7 @@ public class RILTest extends TelephonyTest {
         result16.trafficDescriptors = new ArrayList<>(Arrays.asList(halTrafficDescriptor));
 
         List<TrafficDescriptor> trafficDescriptors = Arrays.asList(
-                new TrafficDescriptor("DNN", "OS_APP_ID"));
+                new TrafficDescriptor("DNN", osAppIdArray));
 
         response = new DataCallResponse.Builder()
                 .setCause(0)
