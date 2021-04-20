@@ -65,7 +65,7 @@ public class DataThrottlerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mDataThrottler = new DataThrottler(1, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        mDataThrottler = new DataThrottler(mPhone, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         mDataThrottler.registerForThrottleStatusChanges(mMockChangedCallback1);
     }
 
@@ -87,9 +87,9 @@ public class DataThrottlerTest extends TelephonyTest {
         processAllMessages();
         expectedStatuses.add(List.of());
 
-
         mDataThrottler.setRetryTime(ApnSetting.TYPE_DEFAULT, 1234567890L,
                 REQUEST_TYPE_NORMAL);
+        processAllMessages();
         assertEquals(1234567890L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DEFAULT));
         assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY,
                 mDataThrottler.getRetryTime(ApnSetting.TYPE_MMS));
@@ -97,14 +97,14 @@ public class DataThrottlerTest extends TelephonyTest {
         processAllMessages();
         expectedStatuses.add(List.of(
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_HIPRI)
                         .setThrottleExpiryTimeMillis(1234567890L)
                         .setRetryType(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
                         .build(),
                 new ThrottleStatus.Builder()
-                    .setSlotIndex(1)
+                    .setSlotIndex(0)
                     .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                     .setApnType(DEFAULT_APN_TYPE)
                     .setThrottleExpiryTimeMillis(1234567890L)
@@ -115,27 +115,28 @@ public class DataThrottlerTest extends TelephonyTest {
 
         mDataThrottler.setRetryTime(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_DUN, 13579L,
                 REQUEST_TYPE_HANDOVER);
+        processAllMessages();
         assertEquals(13579L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DEFAULT));
         assertEquals(13579L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DUN));
 
         processAllMessages();
         expectedStatuses.add(List.of(
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_HIPRI)
                         .setThrottleExpiryTimeMillis(13579L)
                         .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
                         .build(),
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_DUN)
                         .setThrottleExpiryTimeMillis(13579L)
                         .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
                         .build(),
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(DEFAULT_APN_TYPE)
                         .setThrottleExpiryTimeMillis(13579L)
@@ -146,12 +147,13 @@ public class DataThrottlerTest extends TelephonyTest {
 
         mDataThrottler.setRetryTime(ApnSetting.TYPE_MMS, -10,
                 REQUEST_TYPE_NORMAL);
+        processAllMessages();
         assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY,
                 mDataThrottler.getRetryTime(ApnSetting.TYPE_MMS));
         processAllMessages();
         expectedStatuses.add(List.of(
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setNoThrottle()
                         .setApnType(ApnSetting.TYPE_MMS)
@@ -165,14 +167,14 @@ public class DataThrottlerTest extends TelephonyTest {
         processAllMessages();
         expectedStatuses.add(List.of(
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_EMERGENCY)
                         .setThrottleExpiryTimeMillis(RetryManager.NO_RETRY)
                         .setRetryType(ThrottleStatus.RETRY_TYPE_NONE)
                         .build(),
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(1)
+                        .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_FOTA)
                         .setThrottleExpiryTimeMillis(RetryManager.NO_RETRY)
@@ -212,5 +214,22 @@ public class DataThrottlerTest extends TelephonyTest {
         }
 
         this.mDataThrottler.registerForThrottleStatusChanges(mMockChangedCallback2);
+    }
+
+    /**
+     * Test the behavior of a retry manager with no waiting APNs set.
+     */
+    @Test
+    @SmallTest
+    public void testUnthrottle() throws Exception {
+        mDataThrottler.setRetryTime(ApnSetting.TYPE_DEFAULT, 1234567890L,
+                REQUEST_TYPE_NORMAL);
+        processAllMessages();
+        assertEquals(1234567890L, mDataThrottler.getRetryTime(ApnSetting.TYPE_DEFAULT));
+
+        mDataThrottler.reset();
+        processAllMessages();
+        assertEquals(RetryManager.NO_SUGGESTED_RETRY_DELAY,
+                mDataThrottler.getRetryTime(ApnSetting.TYPE_DEFAULT));
     }
 }
