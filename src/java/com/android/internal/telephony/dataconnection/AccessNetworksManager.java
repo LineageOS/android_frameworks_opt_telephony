@@ -41,10 +41,10 @@ import android.telephony.data.IQualifiedNetworksServiceCallback;
 import android.telephony.data.QualifiedNetworksService;
 import android.telephony.data.ThrottleStatus;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -477,7 +477,7 @@ public class AccessNetworksManager extends Handler {
             pw.println("APN type "
                     + ApnSetting.getApnTypeStringInternal(mAvailableNetworks.keyAt(i))
                     + ": [" + Arrays.stream(mAvailableNetworks.valueAt(i))
-                    .mapToObj(type -> AccessNetworkType.toString(type))
+                    .mapToObj(AccessNetworkType::toString)
                     .collect(Collectors.joining(",")) + "]");
         }
         pw.decreaseIndent();

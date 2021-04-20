@@ -50,12 +50,12 @@ public class DataConnectionReasons {
     public String toString() {
         StringBuilder reasonStr = new StringBuilder();
         if (mDataDisallowedReasonSet.size() > 0) {
-            reasonStr.append("Data disallowed, reasons:");
+            reasonStr.append("Data disallowed reasons:");
             for (DataDisallowedReasonType reason : mDataDisallowedReasonSet) {
                 reasonStr.append(" ").append(reason);
             }
         } else {
-            reasonStr.append("Data allowed, reason:");
+            reasonStr.append("Data allowed reason:");
             reasonStr.append(" ").append(mDataAllowedReason);
         }
         return reasonStr.toString();
@@ -100,9 +100,13 @@ public class DataConnectionReasons {
     // Disallowed reasons. There could be multiple reasons if data connection is not allowed.
     public enum DataDisallowedReasonType {
         // Soft failure reasons. Normally the reasons from users or policy settings.
-        DATA_DISABLED(false),               // Data is disabled by the user or policy.
-        ROAMING_DISABLED(false),            // Data roaming is disabled by the user.
-        DEFAULT_DATA_UNSELECTED(false),     // Default data not selected.
+
+        // Data is disabled by the user or policy.
+        DATA_DISABLED(false),
+        // Data roaming is disabled by the user.
+        ROAMING_DISABLED(false),
+        // Default data not selected.
+        DEFAULT_DATA_UNSELECTED(false),
 
         // Belows are all hard failure reasons.
         NOT_ATTACHED(true),
@@ -113,19 +117,27 @@ public class DataConnectionReasons {
         UNDESIRED_POWER_STATE(true),
         INTERNAL_DATA_DISABLED(true),
         RADIO_DISABLED_BY_CARRIER(true),
-        APN_NOT_CONNECTABLE(true),  // Not in the right state for data call setup.
-        DATA_IS_CONNECTING(true),   // Data is in connecting state. No need to send another setup
-                                    // request.
-        DATA_IS_DISCONNECTING(true),    // Data is being disconnected. Telephony will retry after
-                                        // disconnected.
-        DATA_ALREADY_CONNECTED(true),   // Data is already connected. No need to setup data again.
+        // Not in the right state for data call setup.
+        APN_NOT_CONNECTABLE(true),
+        // Data is in connecting state. No need to send another setup request.
+        DATA_IS_CONNECTING(true),
+        // Data is being disconnected. Telephony will retry after disconnected.
+        DATA_IS_DISCONNECTING(true),
+        // Data is already connected. No need to setup data again.
+        DATA_ALREADY_CONNECTED(true),
+        // certain APNs are not allowed on IWLAN in legacy mode.
         ON_IWLAN(true),
+        // certain APNs are only allowed when the device is camped on NR.
         NOT_ON_NR(true),
+        // Data is not allowed while device is in emergency callback mode.
         IN_ECBM(true),
-        ON_OTHER_TRANSPORT(true),   // When data retry occurs, the given APN type's preferred
-                                    // transport might be already changed. In this case we
-                                    // should disallow data retry.
-        DATA_SERVICE_NOT_READY(true);   // Underlying data service is not bound.
+        // The given APN type's preferred transport has switched.
+        ON_OTHER_TRANSPORT(true),
+        // Underlying data service is not bound.
+        DATA_SERVICE_NOT_READY(true),
+        // Qualified networks service does not allow certain types of APN brought up on either
+        // cellular or IWLAN.
+        DISABLED_BY_QNS(true);
 
         private boolean mIsHardReason;
 

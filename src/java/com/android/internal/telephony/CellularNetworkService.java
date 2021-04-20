@@ -498,18 +498,13 @@ public class CellularNetworkService extends NetworkService {
                             info.eutranInfo().lteVopsInfo.isVopsSupported,
                             info.eutranInfo().lteVopsInfo.isEmcBearerSupported);
                     break;
-                case AccessTechnologySpecificInfo.hidl_discriminator.ngranInfo:
-                    android.hardware.radio.V1_6.RegStateResult
-                            .AccessTechnologySpecificInfo.NgranRegistrationInfo ngranInfo =
-                                    regResult.accessTechnologySpecificInfo.ngranInfo();
-                    vopsInfo = new NrVopsSupportInfo(ngranInfo.nrVopsInfo.vopsSupported,
-                            ngranInfo.nrVopsInfo.emcSupported, ngranInfo.nrVopsInfo.emfSupported);
+                case AccessTechnologySpecificInfo.hidl_discriminator.ngranNrVopsInfo:
+                    vopsInfo = new NrVopsSupportInfo(info.ngranNrVopsInfo().vopsSupported,
+                            info.ngranNrVopsInfo().emcSupported,
+                            info.ngranNrVopsInfo().emfSupported);
                     break;
-                case AccessTechnologySpecificInfo.hidl_discriminator.geranInfo:
-                    android.hardware.radio.V1_6.RegStateResult
-                            .AccessTechnologySpecificInfo.GeranRegistrationInfo geranInfo =
-                            regResult.accessTechnologySpecificInfo.geranInfo();
-                    cssSupported = geranInfo.dtmSupported;
+                case AccessTechnologySpecificInfo.hidl_discriminator.geranDtmSupported:
+                    cssSupported = info.geranDtmSupported();
                     break;
                 default:
                     log("No access tech specific info passes for RegStateResult");

@@ -1825,7 +1825,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 try {
                     android.hardware.radio.V1_6.IRadio radioProxy16 =
                             (android.hardware.radio.V1_6.IRadio) radioProxy;
-                    radioProxy16.sendSMSExpectMore_1_6(rr.mSerial, msg);
+                    radioProxy16.sendSmsExpectMore_1_6(rr.mSerial, msg);
                     mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
                             SmsSession.Event.Format.SMS_FORMAT_3GPP,
                             getOutgoingSmsMessageId(result));
@@ -1965,7 +1965,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         OptionalOsAppId optionalOsAppId = new OptionalOsAppId();
         if (trafficDescriptor.getOsAppId() != null) {
             android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
-            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId().getBytes());
+            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId());
             optionalOsAppId.value(osAppId);
         }
         td.osAppId = optionalOsAppId;
@@ -3679,7 +3679,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.setNrDualConnectivityState(rr.mSerial, nrDualConnectivityState);
+                radioProxy16.setNrDualConnectivityState(rr.mSerial,
+                        (byte) nrDualConnectivityState);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "enableNRDualConnectivity", e);
             }
@@ -5061,7 +5062,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy16.setDataThrottling(rr.mSerial, dataThrottlingAction,
+                radioProxy16.setDataThrottling(rr.mSerial, (byte) dataThrottlingAction,
                         completionWindowMillis);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "setDataThrottling", e);
@@ -5566,7 +5567,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     for (byte b : imsiEncryptionInfo.getPublicKey().getEncoded()) {
                         halImsiInfo.base.carrierKey.add(new Byte(b));
                     }
-                    halImsiInfo.keyType = imsiEncryptionInfo.getKeyType();
+                    halImsiInfo.keyType = (byte) imsiEncryptionInfo.getKeyType();
 
                     radioProxy16.setCarrierInfoForImsiEncryption_1_6(
                             rr.mSerial, halImsiInfo);
@@ -7707,8 +7708,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             android.hardware.radio.V1_6.TrafficDescriptor td) {
         String dnn = td.dnn.getDiscriminator() == OptionalDnn.hidl_discriminator.noinit
                 ? null : td.dnn.value();
-        String osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
-                ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
+        byte[] osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
+                ? null : arrayListToPrimitiveArray(td.osAppId.value().osAppId);
         TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
         if (dnn != null) {
             builder.setDataNetworkName(dnn);
