@@ -471,6 +471,12 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendBroadcastMultiplePermissions(Intent intent,
+                String[] includePermissions, String[] excludePermissions) {
+            sendBroadcast(intent);
+        }
+
+        @Override
         public Context createContextAsUser(UserHandle user, int flags) {
             return this;
         }
