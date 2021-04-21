@@ -6978,9 +6978,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SET_DATA_THROTTLING:
                 return "RIL_REQUEST_SET_DATA_THROTTLING";
             case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP:
-                return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPE_BITMAP";
+                return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
-                return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPE_BITMAP";
+                return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_SLICING_CONFIG:
                 return "RIL_REQUEST_GET_SLICING_CONFIG";
             default: return "<unknown request>";
