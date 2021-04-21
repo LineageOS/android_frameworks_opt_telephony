@@ -109,6 +109,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -116,6 +117,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -140,6 +142,12 @@ public class DataConnection extends StateMachine {
 
     private static final String RAT_NAME_5G = "nr";
     private static final String RAT_NAME_EVDO = "evdo";
+
+    /**
+     * OSId for "Android", using UUID version 5 with namespace ISO OSI.
+     * Prepended to the OsAppId in TrafficDescriptor to use for URSP matching.
+     */
+    private static final UUID OS_ID = UUID.fromString("97a498e3-fc92-5c94-8986-0333d06e4e47");
 
     private static final int MIN_V6_MTU = 1280;
 
@@ -825,13 +833,20 @@ public class DataConnection extends StateMachine {
     }
 
     /**
-     * API to generate the OSAppId for enterprise traffic category.
-     * @return byte[] representing OSId + OSAppId
+     * API to generate the OsAppId for enterprise traffic category.
+     * @return byte[] representing OsId + length of OsAppId + OsAppId
      */
     @VisibleForTesting
     public static byte[] getEnterpriseOsAppId() {
-        return NetworkCapabilities.getCapabilityCarrierName(
+        byte[] osAppId = NetworkCapabilities.getCapabilityCarrierName(
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE).getBytes();
+        // 16 bytes for UUID, 1 byte for length of osAppId, and up to 255 bytes for osAppId
+        ByteBuffer bb = ByteBuffer.allocate(16 + 1 + osAppId.length);
+        bb.putLong(OS_ID.getMostSignificantBits());
+        bb.putLong(OS_ID.getLeastSignificantBits());
+        bb.put((byte) osAppId.length);
+        bb.put(osAppId);
+        return bb.array();
     }
 
     /**
@@ -1369,6 +1384,9 @@ public class DataConnection extends StateMachine {
         } else if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
             result.mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+        } else if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_ARG) {
+            result = SetupResult.ERROR_INVALID_ARG;
+            result.mFailCause = DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER;
         } else if (response.getCause() != 0) {
             if (response.getCause() == DataFailCause.RADIO_NOT_AVAILABLE) {
                 result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
