@@ -590,7 +590,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      *                     is defined in 1.6/types.hal
      * @param sms Response to sms sent as defined by SendSmsResult in 1.6/types.hal
      */
-    public void sendSMSExpectMoreResponse_1_6(
+    public void sendSmsExpectMoreResponse_1_6(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             SendSmsResult sms) {
         responseSms_1_6(responseInfo, sms);
