@@ -17,12 +17,24 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.annotation.ElapsedRealtimeLong;
+import android.annotation.NonNull;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
+import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.Annotation.ApnType;
+import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ThrottleStatus;
 
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RetryManager;
 import com.android.telephony.Rlog;
 
@@ -35,11 +47,19 @@ import java.util.concurrent.ConcurrentHashMap;
  * Data throttler tracks the throttling status of the data network and notifies registrants when
  * there are changes.  The throttler is per phone and per transport type.
  */
-public class DataThrottler {
+public class DataThrottler extends Handler {
     private static final String TAG = DataThrottler.class.getSimpleName();
 
+    private static final int EVENT_SET_RETRY_TIME = 1;
+    private static final int EVENT_CARRIER_CONFIG_CHANGED = 2;
+    private static final int EVENT_RESET = 3;
+    private static final int EVENT_AIRPLANE_MODE_CHANGED = 4;
+    private static final int EVENT_TRACING_AREA_CODE_CHANGED = 5;
+
+    private final Phone mPhone;
     private final int mSlotIndex;
     private final @AccessNetworkConstants.TransportType int mTransportType;
+    private boolean mResetWhenAreaCodeChanged = false;
 
     /**
      * Callbacks that report the apn throttle status.
@@ -52,9 +72,93 @@ public class DataThrottler {
      */
     private final Map<Integer, ThrottleStatus> mThrottleStatus = new ConcurrentHashMap<>();
 
-    public DataThrottler(int slotIndex, int transportType) {
-        mSlotIndex = slotIndex;
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                if (mPhone.getPhoneId() == intent.getIntExtra(CarrierConfigManager.EXTRA_SLOT_INDEX,
+                        SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
+                    if (intent.getBooleanExtra(
+                            CarrierConfigManager.EXTRA_REBROADCAST_ON_UNLOCK, false)) {
+                        // Ignore the rebroadcast one to prevent multiple carrier config changed
+                        // event during boot up.
+                        return;
+                    }
+                    int subId = intent.getIntExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,
+                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                    if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                        sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
+                    }
+                }
+            }
+        }
+    };
+
+    public DataThrottler(Phone phone, int transportType) {
+        super(null, false);
+        mPhone = phone;
+        mSlotIndex = phone.getPhoneId();
         mTransportType = transportType;
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mPhone.getContext().registerReceiver(mBroadcastReceiver, filter, null, mPhone);
+
+        mPhone.getServiceStateTracker().registerForAirplaneModeChanged(this,
+                EVENT_AIRPLANE_MODE_CHANGED, null);
+        mPhone.getServiceStateTracker().registerForAreaCodeChanged(this,
+                EVENT_TRACING_AREA_CODE_CHANGED, null);
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+        AsyncResult ar;
+        switch (msg.what) {
+            case EVENT_SET_RETRY_TIME:
+                int apnTypes = msg.arg1;
+                int newRequestType = msg.arg2;
+                long retryElapsedTime = (long) msg.obj;
+                setRetryTimeInternal(apnTypes, retryElapsedTime, newRequestType);
+                break;
+            case EVENT_CARRIER_CONFIG_CHANGED:
+                onCarrierConfigChanged();
+                break;
+            case EVENT_RESET:
+                resetInternal();
+                break;
+            case EVENT_AIRPLANE_MODE_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                if (!(Boolean) ar.result) {
+                    resetInternal();
+                }
+                break;
+            case EVENT_TRACING_AREA_CODE_CHANGED:
+                if (mResetWhenAreaCodeChanged) {
+                    resetInternal();
+                }
+                break;
+        }
+    }
+
+    @NonNull
+    private PersistableBundle getCarrierConfig() {
+        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configManager != null) {
+            // If an invalid subId is used, this bundle will contain default values.
+            PersistableBundle config = configManager.getConfigForSubId(mPhone.getSubId());
+            if (config != null) {
+                return config;
+            }
+        }
+        // Return static default defined in CarrierConfigManager.
+        return CarrierConfigManager.getDefaultConfig();
+    }
+
+    private void onCarrierConfigChanged() {
+        PersistableBundle config = getCarrierConfig();
+        mResetWhenAreaCodeChanged = config.getBoolean(
+                CarrierConfigManager.KEY_UNTHROTTLE_DATA_RETRY_WHEN_TAC_CHANGES_BOOL, false);
     }
 
     /**
@@ -65,8 +169,23 @@ public class DataThrottler {
      * retried. {@link RetryManager#NO_SUGGESTED_RETRY_DELAY} indicates throttling does not exist.
      * {@link RetryManager#NO_RETRY} indicates retry should never happen.
      */
-    public void setRetryTime(@ApnType int apnTypes, long retryElapsedTime,
+    public void setRetryTime(@ApnType int apnTypes, @ElapsedRealtimeLong long retryElapsedTime,
             @DcTracker.RequestNetworkType int newRequestType) {
+        sendMessage(obtainMessage(EVENT_SET_RETRY_TIME, apnTypes, newRequestType,
+                retryElapsedTime));
+    }
+
+    /**
+     * Set the retry time and handover failure mode for the give APN types. This is running on the
+     * handler thread.
+     *
+     * @param apnTypes APN types
+     * @param retryElapsedTime The elapsed time that data connection for APN types should not be
+     * retried. {@link RetryManager#NO_SUGGESTED_RETRY_DELAY} indicates throttling does not exist.
+     * {@link RetryManager#NO_RETRY} indicates retry should never happen.
+     */
+    private void setRetryTimeInternal(@ApnType int apnTypes, @ElapsedRealtimeLong
+            long retryElapsedTime, @DcTracker.RequestNetworkType int newRequestType) {
         if (retryElapsedTime < 0) {
             retryElapsedTime = RetryManager.NO_SUGGESTED_RETRY_DELAY;
         }
@@ -103,6 +222,9 @@ public class DataThrottler {
     /**
      * Get the earliest retry time for the given APN type. The time is the system's elapse time.
      *
+     * Note the DataThrottler is running phone process's main thread, which is most of the telephony
+     * components running on. Calling this method from other threads might run into race conditions.
+     *
      * @param apnType APN type
      * @return The earliest retry time for APN type. The time is the system's elapse time.
      * {@link RetryManager#NO_SUGGESTED_RETRY_DELAY} indicates there is no throttling for given APN
@@ -131,6 +253,13 @@ public class DataThrottler {
      * Resets retry times for all APNs to {@link RetryManager.NO_SUGGESTED_RETRY_DELAY}.
      */
     public void reset() {
+        sendEmptyMessage(EVENT_RESET);
+    }
+
+    /**
+     * Resets retry times for all APNs to {@link RetryManager.NO_SUGGESTED_RETRY_DELAY}.
+     */
+    private void resetInternal() {
         final List<Integer> apnTypes = new ArrayList<>();
         for (ThrottleStatus throttleStatus : mThrottleStatus.values()) {
             apnTypes.add(throttleStatus.getApnType());
