@@ -913,6 +913,11 @@ public abstract class TelephonyTest {
                 .checkDeviceIdentifierAccess(any(), any(), any(), anyInt(), anyInt());
     }
 
+    protected void setPhoneNumberAccess(int value) {
+        doReturn(value).when(mMockLegacyPermissionManager).checkPhoneNumberAccess(any(), any(),
+                any(), anyInt(), anyInt());
+    }
+
     protected void setCarrierPrivileges(boolean hasCarrierPrivileges) {
         doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
         doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
