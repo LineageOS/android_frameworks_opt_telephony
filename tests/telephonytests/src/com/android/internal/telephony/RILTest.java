@@ -809,7 +809,7 @@ public class RILTest extends TelephonyTest {
         msg.smscPdu = smscPdu;
         msg.pdu = pdu;
         mRILUnderTest.sendSMSExpectMore(smscPdu, pdu, obtainMessage());
-        verify(mRadioProxy).sendSMSExpectMore_1_6(mSerialNumberCaptor.capture(), eq(msg));
+        verify(mRadioProxy).sendSmsExpectMore_1_6(mSerialNumberCaptor.capture(), eq(msg));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SEND_SMS_EXPECT_MORE);
     }
