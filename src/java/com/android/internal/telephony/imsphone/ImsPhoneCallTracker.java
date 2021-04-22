@@ -4502,9 +4502,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
-    public boolean isVolteEnabled() {
+    /**
+     * @return {@code true} if voice over cellular is enabled.
+     */
+    public boolean isVoiceOverCellularImsEnabled() {
         return isImsCapabilityInCacheAvailable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
-                ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+                ImsRegistrationImplBase.REGISTRATION_TECH_LTE)
+                || isImsCapabilityInCacheAvailable(
+                        MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE,
+                        ImsRegistrationImplBase.REGISTRATION_TECH_NR);
     }
 
     public boolean isVowifiEnabled() {
@@ -5033,7 +5039,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         if (DBG) log(sb.toString());
 
-        String logMessage = "handleFeatureCapabilityChanged: isVolteEnabled=" + isVolteEnabled()
+        String logMessage = "handleFeatureCapabilityChanged: isVolteEnabled="
+                + isVoiceOverCellularImsEnabled()
                 + ", isVideoCallEnabled=" + isVideoCallEnabled()
                 + ", isVowifiEnabled=" + isVowifiEnabled()
                 + ", isUtEnabled=" + isUtEnabled();

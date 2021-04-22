@@ -1282,8 +1282,8 @@ public class GsmCdmaPhone extends Phone {
     private boolean useImsForCall(DialArgs dialArgs) {
         return isImsUseEnabled()
                 && mImsPhone != null
-                && (mImsPhone.isVolteEnabled() || mImsPhone.isWifiCallingEnabled() ||
-                (mImsPhone.isVideoEnabled() && VideoProfile.isVideo(dialArgs.videoState)))
+                && (mImsPhone.isVoiceOverCellularImsEnabled() || mImsPhone.isWifiCallingEnabled()
+                || (mImsPhone.isVideoEnabled() && VideoProfile.isVideo(dialArgs.videoState)))
                 && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
     }
 
@@ -1380,8 +1380,8 @@ public class GsmCdmaPhone extends Phone {
                     + ", isWpsCall=" + isWpsCall
                     + ", allowWpsOverIms=" + allowWpsOverIms
                     + ", imsPhone=" + imsPhone
-                    + ", imsPhone.isVolteEnabled()="
-                    + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
+                    + ", imsPhone.isVoiceOverCellularImsEnabled()="
+                    + ((imsPhone != null) ? imsPhone.isVoiceOverCellularImsEnabled() : "N/A")
                     + ", imsPhone.isVowifiEnabled()="
                     + ((imsPhone != null) ? imsPhone.isWifiCallingEnabled() : "N/A")
                     + ", imsPhone.isVideoEnabled()="
@@ -1490,7 +1490,7 @@ public class GsmCdmaPhone extends Phone {
                         isImsUseEnabled()
                         && imsPhone != null
                         // VoLTE not available
-                        && !imsPhone.isVolteEnabled()
+                        && !imsPhone.isVoiceOverCellularImsEnabled()
                         // WFC is available
                         && imsPhone.isWifiCallingEnabled()
                         && !isEmergency
