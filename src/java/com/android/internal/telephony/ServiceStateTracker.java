@@ -5052,7 +5052,10 @@ public class ServiceStateTracker extends Handler {
 
                     if (dds != mPhone.getSubId()
                             && !ProxyController.getInstance().areAllDataDisconnected(dds)) {
-                        if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
+                        if (DBG) {
+                            log(String.format("Data is active on DDS (%d)."
+                                    + " Wait for all data disconnect", dds));
+                        }
                         // Data is not disconnected on DDS. Wait for the data disconnect complete
                         // before sending the RADIO_POWER off.
                         ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
@@ -5063,7 +5066,7 @@ public class ServiceStateTracker extends Handler {
                     msg.what = EVENT_SET_RADIO_POWER_OFF;
                     msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
                     if (sendMessageDelayed(msg, 30000)) {
-                        if (DBG) log("Wait upto 30s for data to disconnect, then turn off radio.");
+                        if (DBG) log("Wait up to 30s for data to disconnect, then turn off radio.");
                         mPendingRadioPowerOffAfterDataOff = true;
                     } else {
                         log("Cannot send delayed Msg, turn off radio right away.");
