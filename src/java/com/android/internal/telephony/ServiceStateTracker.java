@@ -4949,8 +4949,8 @@ public class ServiceStateTracker extends Handler {
                     if (dds != mPhone.getSubId()
                             && !ProxyController.getInstance().areAllDataDisconnected(dds)) {
                         if (DBG) {
-                            log("powerOffRadioSafely: Data is active on DDS.  Wait for all data "
-                                    + "disconnect");
+                            log(String.format("powerOffRadioSafely: Data is active on DDS (%d)."
+                                    + " Wait for all data disconnect", dds));
                         }
                         // Data is not disconnected on DDS. Wait for the data disconnect complete
                         // before sending the RADIO_POWER off.
