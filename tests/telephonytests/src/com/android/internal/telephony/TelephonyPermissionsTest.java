@@ -233,79 +233,42 @@ public class TelephonyPermissionsTest {
     }
 
     @Test
-    public void testCheckReadPhoneNumber_defaultSmsApp() throws Exception {
-        setupMocksForDeviceIdentifiersErrorPath();
-        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_WRITE_SMS), eq(UID), eq(PACKAGE),
-                eq(FEATURE), nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
-        assertTrue(TelephonyPermissions.checkReadPhoneNumber(
-                mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
+    public void testCheckReadPhoneNumber_targetPreRWithReadPhoneStateNoAppop() throws Exception {
+        // If ap app is targeting SDK version < R then the phone number should be accessible with
+        // both the READ_PHONE_STATE permission and appop granted; if only the permission is granted
+        // but the appop is denied then the LegacyPermissionManager should return MODE_IGNORED
+        // to indicate the check should fail silently (return empty / null data).
+        when(mMockLegacyPermissionManagerService.checkPhoneNumberAccess(PACKAGE, MSG, FEATURE,
+                PID, UID)).thenReturn(AppOpsManager.MODE_IGNORED);
+        assertFalse(
+                TelephonyPermissions.checkReadPhoneNumber(mMockContext, SUB_ID, PID, UID, PACKAGE,
+                        FEATURE, MSG));
     }
 
     @Test
-    public void testCheckReadPhoneNumber_hasPrivilegedPhoneStatePermission() throws Exception {
-        setupMocksForDeviceIdentifiersErrorPath();
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, PID, UID, MSG);
-        assertTrue(TelephonyPermissions.checkReadPhoneNumber(
-                mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
+    public void testCheckReadPhoneNumber_hasPermissionManagerPhoneNumberAccess() {
+        // To limit binder transactions the targetSdkVersion, permission, and appop checks are all
+        // performed by the LegacyPermissionManager; this test verifies when this API returns
+        // the calling package meets the requirements for phone number access the telephony
+        // check also returns true.
+        when(mMockLegacyPermissionManagerService.checkPhoneNumberAccess(PACKAGE, MSG, FEATURE,
+                PID, UID)).thenReturn(PackageManager.PERMISSION_GRANTED);
+        assertTrue(
+                TelephonyPermissions.checkReadPhoneNumber(mMockContext, SUB_ID, PID, UID, PACKAGE,
+                        FEATURE, MSG));
     }
 
     @Test
-    public void testCheckReadPhoneNumber_hasReadSms() throws Exception {
-        setupMocksForDeviceIdentifiersErrorPath();
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_SMS, PID, UID, MSG);
-        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_READ_SMS), eq(UID), eq(PACKAGE), eq(FEATURE),
-                nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
-        assertTrue(TelephonyPermissions.checkReadPhoneNumber(
-                mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
+    public void testCheckReadPhoneNumber_hasCarrierPrivileges() throws Exception {
+        when(mTelephonyManagerMock.createForSubscriptionId(eq(SUB_ID))).thenReturn(
+                mTelephonyManagerMockForSub1);
+        when(mTelephonyManagerMockForSub1.getCarrierPrivilegeStatus(anyInt())).thenReturn(
+                TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(
+                TelephonyPermissions.checkReadPhoneNumber(mMockContext, SUB_ID, PID, UID, PACKAGE,
+                        FEATURE, MSG));
     }
 
-    @Test
-    public void testCheckReadPhoneNumber_hasReadPhoneNumbers() throws Exception {
-        setupMocksForDeviceIdentifiersErrorPath();
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
-        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_READ_PHONE_NUMBERS), eq(UID), eq(PACKAGE),
-                eq(FEATURE), nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
-        assertTrue(TelephonyPermissions.checkReadPhoneNumber(
-                mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
-    }
-
-    @Test
-    public void testCheckReadPhoneNumber_hasReadSmsNoAppop() throws Exception {
-        // If an app has been granted the READ_SMS permission, but the OPSTR_READ_SMS appop has been
-        // revoked then instead of immediately returning false the phone number access check should
-        // check if the caller has the READ_PHONE_NUMBERS permission and appop.
-        setupMocksForDeviceIdentifiersErrorPath();
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_SMS, PID, UID, MSG);
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
-        when(mMockAppOps.noteOp(eq(AppOpsManager.OPSTR_READ_PHONE_NUMBERS), eq(UID), eq(PACKAGE),
-                eq(FEATURE), nullable(String.class))).thenReturn(AppOpsManager.MODE_ALLOWED);
-        assertTrue(TelephonyPermissions.checkReadPhoneNumber(
-                mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG));
-    }
-
-    @Test
-    public void testCheckReadPhoneNumber_hasReadSmsAndReadPhoneNumbersNoAppops() throws Exception {
-        // If an app has both the READ_SMS and READ_PHONE_NUMBERS permissions granted but does not
-        // have the corresponding appops instead of returning false for not having the appop granted
-        // a SecurityException should be thrown.
-        setupMocksForDeviceIdentifiersErrorPath();
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_SMS, PID, UID, MSG);
-        doNothing().when(mMockContext).enforcePermission(
-                android.Manifest.permission.READ_PHONE_NUMBERS, PID, UID, MSG);
-        try {
-            TelephonyPermissions.checkReadPhoneNumber(
-                    mMockContext, SUB_ID, PID, UID, PACKAGE, FEATURE, MSG);
-            fail("Should have thrown SecurityException");
-        } catch (SecurityException e) {
-            // expected
-        }
-    }
 
     @Test
     public void testCheckReadDeviceIdentifiers_noPermissions() throws Exception {
@@ -617,6 +580,8 @@ public class TelephonyPermissionsTest {
                 PackageManager.PERMISSION_GRANTED);
 
         when(mMockLegacyPermissionManagerService.checkDeviceIdentifierAccess(any(), any(), any(),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mMockLegacyPermissionManagerService.checkPhoneNumberAccess(any(), any(), any(),
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access
