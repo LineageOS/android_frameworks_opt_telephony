@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 21
+// Next id: 22
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -84,6 +84,9 @@ message PersistAtoms {
 
     /* Timestamp of last ims_registration_stats pull. */
     optional int64 ims_registration_stats_pull_timestamp_millis = 20;
+
+    /* Last Android build fingerprint. This usually changes after system OTA. */
+    optional string build_fingerprint = 21;
 }
 
 // The canonical versions of the following enums live in:
