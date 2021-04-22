@@ -405,14 +405,22 @@ public class ApnContext {
         }
     }
 
+    /**
+     * Request a network
+     *
+     * @param networkRequest Network request from clients
+     * @param type The request type
+     * @param onHandoverCompleteMsg When request type is handover, this message will be sent when
+     * handover is completed. For normal request, this should be null.
+     */
     public void requestNetwork(NetworkRequest networkRequest, @RequestNetworkType int type,
-                               Message onCompleteMsg) {
+            Message onHandoverCompleteMsg) {
         synchronized (mRefCountLock) {
             mNetworkRequests.add(networkRequest);
             logl("requestNetwork for " + networkRequest + ", type="
                     + DcTracker.requestTypeToString(type));
             mDcTracker.enableApn(ApnSetting.getApnTypesBitmaskFromString(mApnType), type,
-                    onCompleteMsg);
+                    onHandoverCompleteMsg);
             if (mDataConnection != null) {
                 // New network request added. Should re-evaluate properties of
                 // the data connection. For example, the score may change.
