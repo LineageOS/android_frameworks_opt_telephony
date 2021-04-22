@@ -242,6 +242,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
     private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
     private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
+    private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -649,6 +650,9 @@ public class ServiceStateTracker extends Handler {
     private static final int INVALID_LTE_EARFCN = -1;
 
     private final List<SignalRequestRecord> mSignalRequestRecords = new ArrayList<>();
+
+    /* Last known TAC/LAC */
+    private int mLastKnownAreaCode = CellInfo.UNAVAILABLE;
 
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         mNitzState = TelephonyComponentFactory.getInstance()
@@ -1854,7 +1858,7 @@ public class ServiceStateTracker extends Handler {
         return simAbsent;
     }
 
-    private int[] getBandwidthsFromConfigs(List<PhysicalChannelConfig> list) {
+    private static int[] getBandwidthsFromConfigs(List<PhysicalChannelConfig> list) {
         return list.stream()
                 .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
                 .mapToInt(Integer::intValue)
@@ -2529,6 +2533,28 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    private static boolean isValidNrBandwidthKhz(int bandwidth) {
+        // Valid bandwidths, see 3gpp 38.101 sec 5.3
+        switch (bandwidth) {
+            case 5000:
+            case 10000:
+            case 15000:
+            case 20000:
+            case 25000:
+            case 30000:
+            case 40000:
+            case 50000:
+            case 60000:
+            case 70000:
+            case 80000:
+            case 90000:
+            case 100000:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /**
      * Extract the CID/CI for GSM/UTRA/EUTRA
      *
@@ -2554,6 +2580,19 @@ public class ServiceStateTracker extends Handler {
         return cid;
     }
 
+    //TODO: Move this and getCidFromCellIdentity to CellIdentityUtils.
+    private static int getAreaCodeFromCellIdentity(CellIdentity id) {
+        if (id == null) return CellInfo.UNAVAILABLE;
+        switch(id.getType()) {
+            case CellInfo.TYPE_GSM: return ((CellIdentityGsm) id).getLac();
+            case CellInfo.TYPE_WCDMA: return ((CellIdentityWcdma) id).getLac();
+            case CellInfo.TYPE_TDSCDMA: return ((CellIdentityTdscdma) id).getLac();
+            case CellInfo.TYPE_LTE: return ((CellIdentityLte) id).getTac();
+            case CellInfo.TYPE_NR: return ((CellIdentityNr) id).getTac();
+            default: return CellInfo.UNAVAILABLE;
+        }
+    }
+
     private void setPhyCellInfoFromCellIdentity(ServiceState ss, CellIdentity cellIdentity) {
         if (cellIdentity == null) {
             if (DBG) {
@@ -2566,13 +2605,14 @@ public class ServiceStateTracker extends Handler {
         if (VDBG) {
             log("Setting channel number: " + cellIdentity.getChannelNumber());
         }
-
+        int[] bandwidths = null;
+        PhysicalChannelConfig primaryPcc = getPrimaryPhysicalChannelConfigForCell(
+                mLastPhysicalChannelConfigList, cellIdentity);
         if (cellIdentity instanceof CellIdentityLte) {
-            CellIdentityLte cl = (CellIdentityLte) cellIdentity;
-            int[] bandwidths = null;
+            CellIdentityLte ci = (CellIdentityLte) cellIdentity;
             // Prioritize the PhysicalChannelConfig list because we might already be in carrier
             // aggregation by the time poll state is performed.
-            if (!ArrayUtils.isEmpty(mLastPhysicalChannelConfigList)) {
+            if (primaryPcc != null) {
                 bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
                 for (int bw : bandwidths) {
                     if (!isValidLteBandwidthKhz(bw)) {
@@ -2581,6 +2621,8 @@ public class ServiceStateTracker extends Handler {
                         break;
                     }
                 }
+            } else {
+                if (VDBG) log("No primary LTE PhysicalChannelConfig");
             }
             // If we don't have a PhysicalChannelConfig[] list, then pull from CellIdentityLte.
             // This is normal if we're in idle mode and the PhysicalChannelConfig[] has already
@@ -2593,7 +2635,7 @@ public class ServiceStateTracker extends Handler {
             // channel active). In the normal case of single-carrier non-return-to-idle, the
             // values *must* be the same, so it doesn't matter which is chosen.
             if (bandwidths == null || bandwidths.length == 1) {
-                final int cbw = cl.getBandwidth();
+                final int cbw = ci.getBandwidth();
                 if (isValidLteBandwidthKhz(cbw)) {
                     bandwidths = new int[] {cbw};
                 } else if (cbw == Integer.MAX_VALUE) {
@@ -2603,12 +2645,62 @@ public class ServiceStateTracker extends Handler {
                     loge("Invalid LTE Bandwidth in RegistrationState, " + cbw);
                 }
             }
-            if (bandwidths != null) {
-                ss.setCellBandwidths(bandwidths);
+        } else if (cellIdentity instanceof CellIdentityNr) {
+            // Prioritize the PhysicalChannelConfig list because we might already be in carrier
+            // aggregation by the time poll state is performed.
+            if (primaryPcc != null) {
+                bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
+                for (int bw : bandwidths) {
+                    if (!isValidNrBandwidthKhz(bw)) {
+                        loge("Invalid NR Bandwidth in RegistrationState, " + bw);
+                        bandwidths = null;
+                        break;
+                    }
+                }
+            } else {
+                if (VDBG) log("No primary NR PhysicalChannelConfig");
             }
+            // TODO: update bandwidths from CellIdentityNr if the field is added
         } else {
-            if (VDBG) log("Skipping bandwidth update for Non-LTE cell.");
+            if (VDBG) log("Skipping bandwidth update for Non-LTE and Non-NR cell.");
         }
+
+        if (bandwidths == null && primaryPcc != null && primaryPcc.getCellBandwidthDownlinkKhz()
+                != PhysicalChannelConfig.CELL_BANDWIDTH_UNKNOWN) {
+            bandwidths = new int[] {primaryPcc.getCellBandwidthDownlinkKhz()};
+        } else if (VDBG) {
+            log("Skipping bandwidth update because no primary PhysicalChannelConfig exists.");
+        }
+
+        if (bandwidths != null) {
+            ss.setCellBandwidths(bandwidths);
+        }
+    }
+
+    private static PhysicalChannelConfig getPrimaryPhysicalChannelConfigForCell(
+            List<PhysicalChannelConfig> pccs, CellIdentity cellIdentity) {
+        if (ArrayUtils.isEmpty(pccs) || !(cellIdentity instanceof CellIdentityLte
+                || cellIdentity instanceof CellIdentityNr)) {
+            return null;
+        }
+
+        int networkType, pci;
+        if (cellIdentity instanceof CellIdentityLte) {
+            networkType = TelephonyManager.NETWORK_TYPE_LTE;
+            pci = ((CellIdentityLte) cellIdentity).getPci();
+        } else {
+            networkType = TelephonyManager.NETWORK_TYPE_NR;
+            pci = ((CellIdentityNr) cellIdentity).getPci();
+        }
+
+        for (PhysicalChannelConfig pcc : pccs) {
+            if (pcc.getConnectionStatus() == PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING
+                    && pcc.getNetworkType() == networkType && pcc.getPhysicalCellId() == pci) {
+                return pcc;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -3634,6 +3726,12 @@ public class ServiceStateTracker extends Handler {
         mNewSS.setStateOutOfService();
 
         mCellIdentity = primaryCellIdentity;
+
+        int areaCode = getAreaCodeFromCellIdentity(mCellIdentity);
+        if (areaCode != mLastKnownAreaCode && areaCode != CellInfo.UNAVAILABLE) {
+            mLastKnownAreaCode = areaCode;
+            mAreaCodeChangedRegistrants.notifyRegistrants();
+        }
 
         if (hasRilVoiceRadioTechnologyChanged) {
             updatePhoneObject();
@@ -6221,5 +6319,23 @@ public class ServiceStateTracker extends Handler {
         // TODO(b/177924721): TM#setAlwaysReportSignalStrength will be removed and we will not
         // worry about unset flag which was set by other client.
         mPhone.setAlwaysReportSignalStrength(alwaysReport);
+    }
+
+    /**
+     * Registers for TAC/LAC changed event.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForAreaCodeChanged(Handler h, int what, Object obj) {
+        mAreaCodeChangedRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for TAC/LAC changed event.
+     * @param h handler to notify
+     */
+    public void unregisterForAreaCodeChanged(Handler h) {
+        mAreaCodeChangedRegistrants.remove(h);
     }
 }

@@ -2094,13 +2094,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     }
 
-    private void sendPhyChanConfigChange(int[] bandwidths) {
+    private void sendPhyChanConfigChange(int[] bandwidths, int networkType, int pci) {
         ArrayList<PhysicalChannelConfig> pc = new ArrayList<>();
         int ssType = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
         for (int bw : bandwidths) {
             pc.add(new PhysicalChannelConfig.Builder()
                     .setCellConnectionStatus(ssType)
                     .setCellBandwidthDownlinkKhz(bw)
+                    .setNetworkType(networkType)
+                    .setPhysicalCellId(pci)
                     .build());
 
             // All cells after the first are secondary serving cells.
@@ -2136,6 +2138,31 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
     }
 
+    private void sendRegStateUpdateForNrCellId(CellIdentityNr cellId) {
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+        NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_NR,
+                0, false, null, cellId, getPlmnFromCellIdentity(cellId), 1, false, false, false,
+                lteVopsSupportInfo);
+        NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, TelephonyManager.NETWORK_TYPE_NR,
+                0, false, null, cellId, getPlmnFromCellIdentity(cellId), false, 0, 0, 0);
+        sst.mPollingContext[0] = 2;
+        // update data reg state to be in service
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+    }
+
     @Test
     public void testPhyChanBandwidthUpdatedOnDataRegState() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
@@ -2143,7 +2170,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 5000, "001", "01", "test",
                         "tst", Collections.emptyList(), null);
 
-        sendPhyChanConfigChange(new int[] {10000});
+        sendPhyChanConfigChange(new int[] {10000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
         sendRegStateUpdateForLteCellId(cellIdentity5);
         assertTrue(Arrays.equals(new int[] {5000}, sst.mSS.getCellBandwidths()));
     }
@@ -2155,7 +2182,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 12345, "001", "01", "test",
                         "tst", Collections.emptyList(), null);
 
-        sendPhyChanConfigChange(new int[] {10000});
+        sendPhyChanConfigChange(new int[] {10000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
         sendRegStateUpdateForLteCellId(cellIdentityInv);
         assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
     }
@@ -2167,7 +2194,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 10000, "001", "01", "test",
                         "tst", Collections.emptyList(), null);
 
-        sendPhyChanConfigChange(new int[] {10000, 5000});
+        sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
         sendRegStateUpdateForLteCellId(cellIdentity10);
         assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
     }
@@ -2181,7 +2208,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         sendRegStateUpdateForLteCellId(cellIdentity10);
         assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
-        sendPhyChanConfigChange(new int[] {10000, 5000});
+        sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
         assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
     }
 
@@ -2210,6 +2237,17 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testPhyChanBandwidthForNr() {
+        // NR Cell with bandwidth = 10000
+        CellIdentityNr nrCi = new CellIdentityNr(
+                0, 0, 0, new int[] {}, "", "", 5, "", "", Collections.emptyList());
+
+        sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_NR, 0);
+        sendRegStateUpdateForNrCellId(nrCi);
+        assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
     }
 
     /**
