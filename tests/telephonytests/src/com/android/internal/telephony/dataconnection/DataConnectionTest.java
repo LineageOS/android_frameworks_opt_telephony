@@ -826,13 +826,13 @@ public class DataConnectionTest extends TelephonyTest {
     }
 
     @Test
-    public void testSubIds() throws Exception {
+    public void testSubscriptionIds() throws Exception {
         mContextFixture.getCarrierConfigBundle().putStringArray(
                 CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
                 new String[] { "default" });
         testConnectEvent();
 
-        assertEquals(Collections.singleton(0), getNetworkCapabilities().getSubIds());
+        assertEquals(Collections.singleton(0), getNetworkCapabilities().getSubscriptionIds());
     }
 
     @Test
