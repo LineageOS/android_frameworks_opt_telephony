@@ -158,22 +158,67 @@ public class QosCallbackTracker {
         return getMatchingQosBearerFilter(qosBearerSession, filter) != null;
     }
 
+    private boolean matchesByLocalAddress(
+        QosBearerFilter sessionFilter, final IFilter filter) {
+        for (final LinkAddress qosAddress : sessionFilter.getLocalAddresses()) {
+            return filter.matchesLocalAddress(qosAddress.getAddress(),
+                  sessionFilter.getLocalPortRange().getStart(),
+                  sessionFilter.getLocalPortRange().getEnd());
+        }
+        return false;
+    }
+
+    private boolean matchesByRemoteAddress(
+            QosBearerFilter sessionFilter, final IFilter filter) {
+        for (final LinkAddress qosAddress : sessionFilter.getRemoteAddresses()) {
+            return filter.matchesRemoteAddress(qosAddress.getAddress(),
+                  sessionFilter.getRemotePortRange().getStart(),
+                  sessionFilter.getRemotePortRange().getEnd());
+        }
+        return false;
+    }
+
+    private boolean matchesByRemoteAndLocalAddress(
+            QosBearerFilter sessionFilter, final IFilter filter) {
+        for (final LinkAddress remoteAddress : sessionFilter.getRemoteAddresses()) {
+            for (final LinkAddress localAddress : sessionFilter.getLocalAddresses()) {
+                return filter.matchesRemoteAddress(remoteAddress.getAddress(),
+                        sessionFilter.getRemotePortRange().getStart(),
+                        sessionFilter.getRemotePortRange().getEnd())
+                        && filter.matchesLocalAddress(localAddress.getAddress(),
+                              sessionFilter.getLocalPortRange().getStart(),
+                              sessionFilter.getLocalPortRange().getEnd());
+            }
+        }
+        return false;
+    }
+
+    private QosBearerFilter getFilterByPrecedence(
+            QosBearerFilter qosFilter, QosBearerFilter sessionFilter) {
+        // Find for the highest precedence filter, lower the value is the higher the precedence
+        return qosFilter == null || sessionFilter.getPrecedence() < qosFilter.getPrecedence()
+                ? sessionFilter : qosFilter;
+    }
+
     private QosBearerFilter getMatchingQosBearerFilter(
             final QosBearerSession qosBearerSession, final IFilter filter) {
         QosBearerFilter qosFilter = null;
 
         for (final QosBearerFilter sessionFilter : qosBearerSession.getQosBearerFilterList()) {
-            for (final LinkAddress qosAddress : sessionFilter.getLocalAddresses()) {
-                if (filter.matchesLocalAddress(qosAddress.getAddress(),
-                        sessionFilter.getLocalPortRange().getStart(),
-                        sessionFilter.getLocalPortRange().getEnd())) {
-                    // Find for the highest precedence filter
-                    if (qosFilter == null
-                            || sessionFilter.getPrecedence() < qosFilter.getPrecedence()) {
-                        qosFilter = sessionFilter;
-                    }
-                }
-            }
+           if (!sessionFilter.getLocalAddresses().isEmpty()
+                   && !sessionFilter.getRemoteAddresses().isEmpty()) {
+               if (matchesByRemoteAndLocalAddress(sessionFilter, filter)) {
+                   qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
+               }
+           } else if (!sessionFilter.getRemoteAddresses().isEmpty()) {
+               if (matchesByRemoteAddress(sessionFilter, filter)) {
+                   qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
+               }
+           } else if (!sessionFilter.getLocalAddresses().isEmpty()) {
+               if (matchesByLocalAddress(sessionFilter, filter)) {
+                   qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
+               }
+           }
         }
         return qosFilter;
     }
@@ -221,6 +266,7 @@ public class QosCallbackTracker {
 
     public interface IFilter {
         public boolean matchesLocalAddress(InetAddress address, int startPort, int endPort);
+        public boolean matchesRemoteAddress(InetAddress address, int startPort, int endPort);
     }
 
     /**
