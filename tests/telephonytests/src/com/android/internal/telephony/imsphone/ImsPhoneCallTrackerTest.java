@@ -326,7 +326,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     public void testImsFeatureCapabilityChange() {
         doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_LTE).when(
                 mImsManager).getRegistrationTech();
-        assertFalse(mCTUT.isVolteEnabled());
+        assertFalse(mCTUT.isVoiceOverCellularImsEnabled());
         assertFalse(mCTUT.isVideoCallEnabled());
 
         // enable only Voice
@@ -335,7 +335,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mCapabilityCallback.onCapabilitiesStatusChanged(caps);
         processAllMessages();
 
-        assertTrue(mCTUT.isVolteEnabled());
+        assertTrue(mCTUT.isVoiceOverCellularImsEnabled());
         assertFalse(mCTUT.isVideoCallEnabled());
         // video call not enabled
         verify(mImsPhone, times(0)).notifyForVideoCapabilityChanged(anyBoolean());

@@ -4181,15 +4181,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Get Volte Feature Availability
+     * @deprecated Use {@link #isVoiceOverCellularImsEnabled} instead.
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+    @Deprecated
     public boolean isVolteEnabled() {
+        return isVoiceOverCellularImsEnabled();
+    }
+
+    /**
+     * @return {@code true} if voice over IMS on cellular is enabled, {@code false} otherwise.
+     */
+    public boolean isVoiceOverCellularImsEnabled() {
         Phone imsPhone = mImsPhone;
         boolean isVolteEnabled = false;
         if (imsPhone != null) {
-            isVolteEnabled = imsPhone.isVolteEnabled();
+            isVolteEnabled = imsPhone.isVoiceOverCellularImsEnabled();
         }
-        Rlog.d(LOG_TAG, "isVolteEnabled=" + isVolteEnabled);
+        Rlog.d(LOG_TAG, "isVoiceOverCellularImsEnabled=" + isVolteEnabled);
         return isVolteEnabled;
     }
 

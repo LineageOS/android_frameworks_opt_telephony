@@ -93,11 +93,6 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
     private static final int EVENT_INITIALIZE = 12;
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED = 13;
-    // events that don't reset the timer
-    private static final int[] ALL_EVENTS = { EVENT_DATA_RAT_CHANGED, EVENT_NR_STATE_CHANGED,
-            EVENT_NR_FREQUENCY_CHANGED, EVENT_PHYSICAL_LINK_STATE_CHANGED,
-            EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED, EVENT_PRIMARY_TIMER_EXPIRED,
-            EVENT_SECONDARY_TIMER_EXPIRED, EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED};
 
     private static final String[] sEvents = new String[EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED + 1];
     static {
@@ -498,18 +493,12 @@ public class NetworkTypeController extends StateMachine {
                     if (DBG) {
                         log("mIsPhysicalChannelConfigOn changed to: " + mIsPhysicalChannelConfigOn);
                     }
-                    for (int event : ALL_EVENTS) {
-                        removeMessages(event);
-                    }
                     if (!mIsPhysicalChannelConfigOn) {
                         resetAllTimers();
                     }
                     transitionToCurrentState();
                     break;
                 case EVENT_CARRIER_CONFIG_CHANGED:
-                    for (int event : ALL_EVENTS) {
-                        removeMessages(event);
-                    }
                     parseCarrierConfigs();
                     resetAllTimers();
                     transitionToCurrentState();
