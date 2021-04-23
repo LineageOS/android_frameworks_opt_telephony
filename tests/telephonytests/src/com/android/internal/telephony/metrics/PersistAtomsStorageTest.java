@@ -37,6 +37,7 @@ import static org.mockito.Mockito.times;
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.Build;
 import android.telephony.DisconnectCause;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -439,7 +440,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         TestablePersistAtomsStorage(Context context) {
             super(context);
             // Remove delay for saving to persistent storage during tests.
-            mSaveDelay = 0;
+            mSaveImmediately = true;
         }
 
         @Override
@@ -1283,6 +1284,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private void createTestFile(long lastPullTimeMillis) throws Exception {
         PersistAtoms atoms = new PersistAtoms();
+        atoms.buildFingerprint = Build.FINGERPRINT;
         atoms.voiceCallRatUsagePullTimestampMillis = lastPullTimeMillis;
         atoms.voiceCallRatUsage = mVoiceCallRatUsages;
         atoms.voiceCallSessionPullTimestampMillis = lastPullTimeMillis;
