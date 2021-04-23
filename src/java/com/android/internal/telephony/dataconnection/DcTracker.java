@@ -1208,6 +1208,8 @@ public class DcTracker extends Handler {
      * <p>
      * Assumes there is less than one {@link ApnSetting} can support the given apn type.
      */
+    // TODO: for enterprise this always returns IDLE, which is ok for now since it is never called
+    // for enterprise
     public DctConstants.State getState(String apnType) {
         DctConstants.State state = DctConstants.State.IDLE;
         final int apnTypeBitmask = ApnSetting.getApnTypesBitmaskFromString(apnType);
