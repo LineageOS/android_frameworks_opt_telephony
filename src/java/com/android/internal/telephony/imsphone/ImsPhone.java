@@ -273,7 +273,7 @@ public class ImsPhone extends ImsPhoneBase {
     private ImsRegistrationCallbackHelper mImsMmTelRegistrationHelper;
 
     // The roaming state if currently in service, or the last roaming state when was in service.
-    private boolean mRoaming = false;
+    private boolean mLastKnownRoamingState = false;
 
     private boolean mIsInImsEcm = false;
 
@@ -2065,7 +2065,12 @@ public class ImsPhone extends ImsPhoneBase {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public boolean isVolteEnabled() {
-        return mCT.isVolteEnabled();
+        return isVoiceOverCellularImsEnabled();
+    }
+
+    @Override
+    public boolean isVoiceOverCellularImsEnabled() {
+        return mCT.isVoiceOverCellularImsEnabled();
     }
 
     @Override
@@ -2312,15 +2317,15 @@ public class ImsPhone extends ImsPhoneBase {
         }
         boolean newRoamingState = ss.getRoaming();
         // Do not recalculate if there is no change to state.
-        if (mRoaming == newRoamingState) {
+        if (mLastKnownRoamingState == newRoamingState) {
             return;
         }
         boolean isInService = (ss.getState() == ServiceState.STATE_IN_SERVICE
                 || ss.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE);
         // If we are not IN_SERVICE for voice or data, ignore change roaming state, as we always
         // move to home in this case.
-        if (!isInService) {
-            logi("updateRoamingState: we are OUT_OF_SERVICE, ignoring roaming change.");
+        if (!isInService || !mDefaultPhone.isRadioOn()) {
+            logi("updateRoamingState: we are not IN_SERVICE, ignoring roaming change.");
             return;
         }
         // We ignore roaming changes when moving to IWLAN because it always sets the roaming
@@ -2334,7 +2339,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
         if (mCT.getState() == PhoneConstants.State.IDLE) {
             if (DBG) logd("updateRoamingState now: " + newRoamingState);
-            mRoaming = newRoamingState;
+            mLastKnownRoamingState = newRoamingState;
             CarrierConfigManager configManager = (CarrierConfigManager)
                     getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             // Don't set wfc mode if carrierconfig has not loaded. It will be set by GsmCdmaPhone
@@ -2484,8 +2489,8 @@ public class ImsPhone extends ImsPhoneBase {
                 getBackgroundCall().getState() != Call.State.IDLE);
     }
 
-    public boolean getRoamingState() {
-        return mRoaming;
+    public boolean getLastKnownRoamingState() {
+        return mLastKnownRoamingState;
     }
 
     @Override
@@ -2506,7 +2511,7 @@ public class ImsPhone extends ImsPhoneBase {
         pw.println("  mSilentRedialRegistrants = " + mSilentRedialRegistrants);
         pw.println("  mImsMmTelRegistrationState = "
                 + mImsMmTelRegistrationHelper.getImsRegistrationState());
-        pw.println("  mRoaming = " + mRoaming);
+        pw.println("  mLastKnownRoamingState = " + mLastKnownRoamingState);
         pw.println("  mSsnRegistrants = " + mSsnRegistrants);
         pw.println(" Registration Log:");
         pw.increaseIndent();

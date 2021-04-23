@@ -712,6 +712,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @SmallTest
     public void testRoamingDuplicateMessages() throws Exception {
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
 
         //roaming - data registration only on LTE
         Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
@@ -729,12 +730,40 @@ public class ImsPhoneTest extends TelephonyTest {
         verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
     }
 
+    @Test
+    @SmallTest
+    public void testRoamingToAirplanModeIwlanInService() throws Exception {
+        doReturn(true).when(mTransportManager).isInLegacyMode();
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
+
+        //roaming - data registration only on LTE
+        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
+        // Inject the message synchronously instead of waiting for the thread to do it.
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
+
+        // move to airplane mode + IWLAN in service
+        doReturn(false).when(mPhone).isRadioOn();
+        m = getServiceStateChangedMessage(getServiceStateDataOnly(
+            ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, ServiceState.STATE_IN_SERVICE, false));
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        // setWfcMode should not be called again, airplane mode should not trigger move out of
+        // roaming.
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
+    }
 
     @Test
     @SmallTest
     public void testRoamingToOutOfService() throws Exception {
         doReturn(true).when(mTransportManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
 
         //roaming - data registration only on LTE
         Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
@@ -760,6 +789,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testRoamingChangeForLteInLegacyMode() throws Exception {
         doReturn(true).when(mTransportManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
 
         //roaming - data registration only on LTE
         Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
@@ -784,6 +814,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testDataOnlyRoamingCellToIWlanInLegacyMode() throws Exception {
         doReturn(true).when(mTransportManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
 
         //roaming - data registration only on LTE
         Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
@@ -809,6 +840,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testCellVoiceDataChangeToWlanInLegacyMode() throws Exception {
         doReturn(true).when(mTransportManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
 
         //roaming - voice/data registration on LTE
         ServiceState ss = getServiceStateDataAndVoice(

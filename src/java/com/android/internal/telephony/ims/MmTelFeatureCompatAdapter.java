@@ -61,6 +61,8 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
     private static final Map<Integer, Integer> REG_TECH_TO_NET_TYPE = new HashMap<>(2);
 
     static {
+        REG_TECH_TO_NET_TYPE.put(ImsRegistrationImplBase.REGISTRATION_TECH_NR,
+                TelephonyManager.NETWORK_TYPE_NR);
         REG_TECH_TO_NET_TYPE.put(ImsRegistrationImplBase.REGISTRATION_TECH_LTE,
                 TelephonyManager.NETWORK_TYPE_LTE);
         REG_TECH_TO_NET_TYPE.put(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN,
