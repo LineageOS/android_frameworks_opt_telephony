@@ -18,6 +18,7 @@ package com.android.internal.telephony.metrics;
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.telephony.TelephonyManager;
@@ -58,7 +59,15 @@ public class PersistAtomsStorage {
     private static final String FILENAME = "persist_atoms.pb";
 
     /** Delay to store atoms to persistent storage to bundle multiple operations together. */
-    private static final int SAVE_TO_FILE_DELAY_MILLIS = 30000;
+    private static final int SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS = 30000;
+
+    /**
+     * Delay to store atoms to persistent storage during pulls to avoid unnecessary operations.
+     *
+     * <p>This delay should be short to avoid duplicating atoms or losing pull timestamp in case of
+     * crash or power loss.
+     */
+    private static final int SAVE_TO_FILE_DELAY_FOR_GET_MILLIS = 500;
 
     /** Maximum number of call sessions to store between pulls. */
     private static final int MAX_NUM_CALL_SESSIONS = 50;
@@ -96,8 +105,8 @@ public class PersistAtomsStorage {
     /** Aggregates RAT duration and call count. */
     private final VoiceCallRatTracker mVoiceCallRatTracker;
 
-    /** Delay before data is stored persistenly to storage. */
-    @VisibleForTesting protected int mSaveDelay;
+    /** Whether atoms should be saved immediately, skipping the delay. */
+    @VisibleForTesting protected boolean mSaveImmediately;
 
     private final Context mContext;
     private final Handler mHandler;
@@ -120,14 +129,14 @@ public class PersistAtomsStorage {
         mHandlerThread = new HandlerThread("PersistAtomsThread");
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
-        mSaveDelay = SAVE_TO_FILE_DELAY_MILLIS;
+        mSaveImmediately = false;
     }
 
     /** Adds a call to the storage. */
     public synchronized void addVoiceCallSession(VoiceCallSession call) {
         mAtoms.voiceCallSession =
                 insertAtRandomPlace(mAtoms.voiceCallSession, call, MAX_NUM_CALL_SESSIONS);
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
         Rlog.d(TAG, "Add new voice call session: " + call.toString());
     }
@@ -136,13 +145,13 @@ public class PersistAtomsStorage {
     public synchronized void addVoiceCallRatUsage(VoiceCallRatTracker ratUsages) {
         mVoiceCallRatTracker.mergeWith(ratUsages);
         mAtoms.voiceCallRatUsage = mVoiceCallRatTracker.toProto();
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /** Adds an incoming SMS to the storage. */
     public synchronized void addIncomingSms(IncomingSms sms) {
         mAtoms.incomingSms = insertAtRandomPlace(mAtoms.incomingSms, sms, MAX_NUM_SMS);
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
         // To be removed
         Rlog.d(TAG, "Add new incoming SMS atom: " + sms.toString());
@@ -160,7 +169,7 @@ public class PersistAtomsStorage {
         }
 
         mAtoms.outgoingSms = insertAtRandomPlace(mAtoms.outgoingSms, sms, MAX_NUM_SMS);
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
         // To be removed
         Rlog.d(TAG, "Add new outgoing SMS atom: " + sms.toString());
@@ -195,14 +204,14 @@ public class PersistAtomsStorage {
             }
         }
 
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /** Adds a data call session to the storage. */
     public synchronized void addDataCallSession(DataCallSession dataCall) {
         mAtoms.dataCallSession =
                 insertAtRandomPlace(mAtoms.dataCallSession, dataCall, MAX_NUM_DATA_CALL_SESSIONS);
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /**
@@ -231,7 +240,7 @@ public class PersistAtomsStorage {
             mAtoms.carrierIdMismatch = Arrays.copyOf(mAtoms.carrierIdMismatch, newLength);
             mAtoms.carrierIdMismatch[newLength - 1] = carrierIdMismatch;
         }
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
         return true;
     }
 
@@ -255,7 +264,7 @@ public class PersistAtomsStorage {
                     insertAtRandomPlace(
                             mAtoms.imsRegistrationStats, stats, MAX_NUM_IMS_REGISTRATION_STATS);
         }
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /** Adds IMS registration termination to the storage. */
@@ -272,7 +281,7 @@ public class PersistAtomsStorage {
                             termination,
                             MAX_NUM_IMS_REGISTRATION_TERMINATIONS);
         }
-        saveAtomsToFile();
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /**
@@ -283,7 +292,7 @@ public class PersistAtomsStorage {
     public synchronized boolean setCarrierIdTableVersion(int carrierIdTableVersion) {
         if (mAtoms.carrierIdTableVersion < carrierIdTableVersion) {
             mAtoms.carrierIdTableVersion = carrierIdTableVersion;
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
             return true;
         } else {
             return false;
@@ -300,7 +309,7 @@ public class PersistAtomsStorage {
             mAtoms.voiceCallSessionPullTimestampMillis = getWallTimeMillis();
             VoiceCallSession[] previousCalls = mAtoms.voiceCallSession;
             mAtoms.voiceCallSession = new VoiceCallSession[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousCalls;
         } else {
             return null;
@@ -318,7 +327,7 @@ public class PersistAtomsStorage {
             VoiceCallRatUsage[] previousUsages = mAtoms.voiceCallRatUsage;
             mVoiceCallRatTracker.clear();
             mAtoms.voiceCallRatUsage = new VoiceCallRatUsage[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousUsages;
         } else {
             return null;
@@ -335,7 +344,7 @@ public class PersistAtomsStorage {
             mAtoms.incomingSmsPullTimestampMillis = getWallTimeMillis();
             IncomingSms[] previousIncomingSms = mAtoms.incomingSms;
             mAtoms.incomingSms = new IncomingSms[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousIncomingSms;
         } else {
             return null;
@@ -352,7 +361,7 @@ public class PersistAtomsStorage {
             mAtoms.outgoingSmsPullTimestampMillis = getWallTimeMillis();
             OutgoingSms[] previousOutgoingSms = mAtoms.outgoingSms;
             mAtoms.outgoingSms = new OutgoingSms[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousOutgoingSms;
         } else {
             return null;
@@ -369,7 +378,7 @@ public class PersistAtomsStorage {
             mAtoms.dataCallSessionPullTimestampMillis = getWallTimeMillis();
             DataCallSession[] previousDataCallSession = mAtoms.dataCallSession;
             mAtoms.dataCallSession = new DataCallSession[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousDataCallSession;
         } else {
             return null;
@@ -388,7 +397,7 @@ public class PersistAtomsStorage {
             CellularServiceState[] previousStates = mAtoms.cellularServiceState;
             Arrays.stream(previousStates).forEach(state -> state.lastUsedMillis = 0L);
             mAtoms.cellularServiceState = new CellularServiceState[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousStates;
         } else {
             return null;
@@ -409,7 +418,7 @@ public class PersistAtomsStorage {
             Arrays.stream(previousSwitches)
                     .forEach(serviceSwitch -> serviceSwitch.lastUsedMillis = 0L);
             mAtoms.cellularDataServiceSwitch = new CellularDataServiceSwitch[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousSwitches;
         } else {
             return null;
@@ -428,7 +437,7 @@ public class PersistAtomsStorage {
             ImsRegistrationStats[] previousStats = mAtoms.imsRegistrationStats;
             Arrays.stream(previousStats).forEach(stats -> stats.lastUsedMillis = 0L);
             mAtoms.imsRegistrationStats = new ImsRegistrationStats[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousStats;
         } else {
             return null;
@@ -449,7 +458,7 @@ public class PersistAtomsStorage {
             Arrays.stream(previousTerminations)
                     .forEach(termination -> termination.lastUsedMillis = 0L);
             mAtoms.imsRegistrationTermination = new ImsRegistrationTermination[0];
-            saveAtomsToFile();
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousTerminations;
         } else {
             return null;
@@ -462,6 +471,12 @@ public class PersistAtomsStorage {
             PersistAtoms atoms =
                     PersistAtoms.parseFrom(
                             Files.readAllBytes(mContext.getFileStreamPath(FILENAME).toPath()));
+            // Start from scratch if build changes, since mixing atoms from different builds could
+            // produce strange results
+            if (!Build.FINGERPRINT.equals(atoms.buildFingerprint)) {
+                Rlog.d(TAG, "Build changed");
+                return makeNewPersistAtoms();
+            }
             // check all the fields in case of situations such as OTA or crash during saving
             atoms.voiceCallRatUsage =
                     sanitizeAtoms(atoms.voiceCallRatUsage, VoiceCallRatUsage.class);
@@ -534,10 +549,10 @@ public class PersistAtomsStorage {
      * <p>The delay is introduced to avoid too frequent operations to disk, which would negatively
      * impact the power consumption.
      */
-    private void saveAtomsToFile() {
-        if (mSaveDelay > 0) {
+    private void saveAtomsToFile(int delayMillis) {
+        if (delayMillis > 0 && !mSaveImmediately) {
             mHandler.removeCallbacks(mSaveRunnable);
-            if (mHandler.postDelayed(mSaveRunnable, mSaveDelay)) {
+            if (mHandler.postDelayed(mSaveRunnable, delayMillis)) {
                 return;
             }
         }
@@ -719,6 +734,7 @@ public class PersistAtomsStorage {
         PersistAtoms atoms = new PersistAtoms();
         // allow pulling only after some time so data are sufficiently aggregated
         long currentTime = getWallTimeMillis();
+        atoms.buildFingerprint = Build.FINGERPRINT;
         atoms.voiceCallRatUsagePullTimestampMillis = currentTime;
         atoms.voiceCallSessionPullTimestampMillis = currentTime;
         atoms.incomingSmsPullTimestampMillis = currentTime;
