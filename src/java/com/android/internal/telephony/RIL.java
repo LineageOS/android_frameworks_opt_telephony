@@ -70,6 +70,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HwBinder;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
@@ -79,6 +80,7 @@ import android.provider.Settings;
 import android.service.carrier.CarrierIdentifier;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthCdma;
@@ -129,6 +131,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -1300,10 +1303,39 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    private String getEmergencyNumberAddressWithoutPrefix(String address) {
+        SubscriptionManager subscriptionManager = mContext.getSystemService(
+                SubscriptionManager.class);
+        int subId = subscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(
+                mPhoneId).getSubscriptionId();
+        CarrierConfigManager configMgr = mContext.getSystemService(CarrierConfigManager.class);
+        if (configMgr == null) {
+            return null;
+        }
+        PersistableBundle b = configMgr.getConfigForSubId(subId);
+        String[] prefixes = b == null ? null : b.getStringArray(
+                CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
+        if (ArrayUtils.isEmpty(prefixes)) {
+            return address;
+        }
+        for (String prefix : prefixes) {
+            // If emergencyNumber starts with this prefix, remove this prefix to retrieve the
+            // actual emergency number.
+            if (!TextUtils.isEmpty(prefix) && address.startsWith(prefix)) {
+                return address.substring(prefix.length());
+            }
+        }
+        return address;
+    }
+
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
                      boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo,
                      Message result) {
+        // Remove prefix while dialing emergency number with modem
+        if (isEmergencyCall) {
+            address = getEmergencyNumberAddressWithoutPrefix(address);
+        }
         if (isEmergencyCall && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_4)
                 && emergencyNumberInfo != null) {
             emergencyDial(address, emergencyNumberInfo, hasKnownUserIntentEmergency, clirMode,

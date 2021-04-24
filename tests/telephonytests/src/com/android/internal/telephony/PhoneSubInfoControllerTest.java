@@ -30,6 +30,7 @@ import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Binder;
 import android.os.Build;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -44,6 +45,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
     private AppOpsManager mAppOsMgr;
+    private PackageManager mPm;
 
     @Mock
     GsmCdmaPhone mSecondPhone;
@@ -69,6 +71,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(mContext).when(mSecondPhone).getContext();
 
         mAppOsMgr = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mPm = mContext.getPackageManager();
 
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mSecondPhone});
         mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext);
@@ -81,6 +84,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_DEVICE_IDENTIFIERS), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
+
+        // Bypass calling package check.
+        doReturn(Binder.getCallingUid()).when(mPm).getPackageUid(eq(TAG), anyInt());
     }
 
     @After
