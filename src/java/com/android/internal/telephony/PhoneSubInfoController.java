@@ -30,6 +30,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
+import android.os.UserHandle;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
@@ -47,7 +48,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final Context mContext;
-    private PackageManager mPm;
 
     public PhoneSubInfoController(Context context) {
         ServiceRegisterer phoneSubServiceRegisterer = TelephonyFrameworkInitializer
@@ -57,7 +57,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             phoneSubServiceRegisterer.register(this);
         }
         mContext = context;
-        mPm = mContext.getPackageManager();
     }
 
     @Deprecated
@@ -310,10 +309,14 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
      */
     private void enforceCallingPackage(String callingPackage, int callingUid, String message) {
         int packageUid = -1;
-        try {
-            packageUid = mPm.getPackageUid(callingPackage, 0);
-        } catch (PackageManager.NameNotFoundException e) {
-            // packageUid is -1
+        PackageManager pm = mContext.createContextAsUser(
+                UserHandle.getUserHandleForUid(callingUid), 0).getPackageManager();
+        if (pm != null) {
+            try {
+                packageUid = pm.getPackageUid(callingPackage, 0);
+            } catch (PackageManager.NameNotFoundException e) {
+                // packageUid is -1
+            }
         }
         if (packageUid != callingUid) {
             throw new SecurityException(message + ": Package " + callingPackage
