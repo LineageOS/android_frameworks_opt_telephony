@@ -106,6 +106,7 @@ import android.content.pm.ApplicationInfo;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
 import android.hardware.radio.V1_0.DataProfileInfo;
+import android.hardware.radio.V1_0.Dial;
 import android.hardware.radio.V1_0.GsmSmsMessage;
 import android.hardware.radio.V1_0.ImsSmsMessage;
 import android.hardware.radio.V1_0.NvWriteItem;
@@ -114,6 +115,7 @@ import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.SmsWriteArgs;
+import android.hardware.radio.V1_0.UusInfo;
 import android.hardware.radio.V1_6.IRadio;
 import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
@@ -124,10 +126,12 @@ import android.os.IPowerManager;
 import android.os.IThermalService;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
@@ -153,6 +157,7 @@ import android.telephony.RadioAccessSpecifier;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -161,6 +166,7 @@ import android.telephony.data.EpsQos;
 import android.telephony.data.QosBearerFilter;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
+import android.telephony.emergency.EmergencyNumber;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -197,6 +203,10 @@ public class RILTest extends TelephonyTest {
     private static final int DEFAULT_WAKE_LOCK_TIMEOUT_MS = 60000;
 
     @Mock
+    private CarrierConfigManager mMockCarrierConfigManager;
+    @Mock
+    private SubscriptionInfo mSubscriptionInfo;
+    @Mock
     private ConnectivityManager mConnectionManager;
     @Mock
     private TelephonyManager mTelephonyManager;
@@ -216,6 +226,7 @@ public class RILTest extends TelephonyTest {
     private RIL mRILInstance;
     private RIL mRILUnderTest;
     ArgumentCaptor<Integer> mSerialNumberCaptor = ArgumentCaptor.forClass(Integer.class);
+    ArgumentCaptor<Dial> mDialArgumentCaptor = ArgumentCaptor.forClass(Dial.class);
 
     // Constants
     private static final String ALPHA_LONG = "long";
@@ -300,6 +311,10 @@ public class RILTest extends TelephonyTest {
         Context context = new ContextFixture().getTestDouble();
         doReturn(true).when(mConnectionManager)
             .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
+        doReturn(mSubscriptionManager).when(context)
+                .getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        doReturn(mMockCarrierConfigManager).when(context)
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
         doReturn(mConnectionManager).when(context)
             .getSystemService(Context.CONNECTIVITY_SERVICE);
         doReturn(mTelephonyManager).when(context)
@@ -748,6 +763,53 @@ public class RILTest extends TelephonyTest {
         mRILUnderTest.sendDtmf(c, obtainMessage());
         verify(mRadioProxy).sendDtmf(mSerialNumberCaptor.capture(), eq(c + ""));
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DTMF);
+    }
+
+    private void setEmergencyNumberPrefixCarrierConfig(String[] prefixes) {
+        doReturn(mSubscriptionInfo).when(mSubscriptionManager)
+                .getActiveSubscriptionInfoForSimSlotIndex(anyInt());
+        doReturn(0).when(mSubscriptionInfo).getSubscriptionId();
+
+        final PersistableBundle bundle = new PersistableBundle();
+        bundle.putStringArray(
+                CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY, prefixes);
+        doReturn(bundle).when(mMockCarrierConfigManager).getConfigForSubId(anyInt());
+    }
+
+    @FlakyTest
+    @Test
+    public void testDialEmergencyNumberWithoutPrefix() throws Exception {
+        String[] prefixes = {"999"};
+        setEmergencyNumberPrefixCarrierConfig(prefixes);
+
+        String addressWithPrefix = "99912345";
+        boolean isEmergencyCall = true;
+        EmergencyNumber emergencyNumber = new EmergencyNumber(
+                "99912345",
+                "us",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        boolean hasKnownUserIntentEmergency = true;
+        int clirMode = 0;
+        UUSInfo uusInfo = null;
+        Message result = obtainMessage();
+
+        Dial dialInfo = new Dial();
+        dialInfo.address = "12345";
+        dialInfo.clir = clirMode;
+        if (uusInfo != null) {
+            UusInfo info = new UusInfo();
+            dialInfo.uusInfo.add(info);
+        }
+
+        mRILUnderTest.dial(addressWithPrefix, isEmergencyCall, emergencyNumber,
+                hasKnownUserIntentEmergency, clirMode, uusInfo, result);
+        verify(mRadioProxy).dial(mSerialNumberCaptor.capture(),
+                mDialArgumentCaptor.capture());
+        assertEquals(mDialArgumentCaptor.getValue().address, "12345");
     }
 
     @FlakyTest
