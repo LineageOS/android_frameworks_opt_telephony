@@ -1545,6 +1545,11 @@ public class DcTracker extends Handler {
         return isInEcm && !isInImsEcm;
     }
 
+    private boolean isHandoverPending(@ApnType int apnType) {
+        List<Message> messageList = mHandoverCompletionMsgs.get(apnType);
+        return messageList != null && messageList.size() > 0;
+    }
+
     private void trySetupData(ApnContext apnContext, @RequestNetworkType int requestType,
             @Nullable Message onHandoverCompleteMsg) {
         if (onHandoverCompleteMsg != null) {
@@ -1574,6 +1579,19 @@ public class DcTracker extends Handler {
 
             if (!mDataEnabledSettings.isDataEnabled()) {
                 str.append("isDataEnabled() = false. " + mDataEnabledSettings);
+            }
+
+            // Check if it fails because of the existing data is still disconnecting.
+            if (dataConnectionReasons.containsOnly(
+                    DataDisallowedReasonType.DATA_IS_DISCONNECTING)
+                    && isHandoverPending(apnContext.getApnTypeBitmask())) {
+                // Normally we don't retry when isDataAllow() returns false, because that's consider
+                // pre-condition not met, for example, data not enabled by the user, or airplane
+                // mode is on. If we retry in those cases, there will be significant power impact.
+                // DATA_IS_DISCONNECTING is a special case we want to retry, and for the handover
+                // case only.
+                log("Data is disconnecting. Will retry handover later.");
+                return;
             }
 
             // If this is a data retry, we should set the APN state to FAILED so it won't stay
@@ -2338,9 +2356,10 @@ public class DcTracker extends Handler {
         sendMessageDelayed(msg, delay);
 
         if (DBG) {
-            log("startReconnect: delay=" + delay + " apn="
-                    + apnContext + "reason: " + apnContext.getReason()
-                    + " subId=" + mPhone.getSubId() + " request type=" + requestType);
+            log("startReconnect: delay=" + delay + ", apn="
+                    + apnContext + ", reason=" + apnContext.getReason()
+                    + ", subId=" + mPhone.getSubId() + ", request type="
+                    + requestTypeToString(requestType));
         }
     }
 
@@ -2653,7 +2672,6 @@ public class DcTracker extends Handler {
             switch(state) {
                 case CONNECTING:
                 case CONNECTED:
-                case DISCONNECTING:
                     if (DBG) log("onEnableApn: APN in " + state + " state. Exit now.");
                     if (onHandoverCompleteMsg != null) {
                         sendHandoverCompleteMsg(onHandoverCompleteMsg, false, mTransportType,
@@ -3262,11 +3280,19 @@ public class DcTracker extends Handler {
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
             if (DBG) log("onDisconnectDone: attached, ready and retry after disconnect");
-            long delay = apnContext.getRetryAfterDisconnectDelay();
-            if (delay > 0) {
-                // Data connection is in IDLE state, so when we reconnect later, we'll rebuild
-                // the waiting APN list, which will also reset/reconfigure the retry manager.
-                startReconnect(delay, apnContext, REQUEST_TYPE_NORMAL);
+
+            // See if there are still handover request pending that we need to retry handover
+            // after previous data gets disconnected.
+            if (isHandoverPending(apnContext.getApnTypeBitmask())) {
+                if (DBG) log("Handover request pending. Retry handover immediately.");
+                startReconnect(0, apnContext, REQUEST_TYPE_HANDOVER);
+            } else {
+                long delay = apnContext.getRetryAfterDisconnectDelay();
+                if (delay > 0) {
+                    // Data connection is in IDLE state, so when we reconnect later, we'll rebuild
+                    // the waiting APN list, which will also reset/reconfigure the retry manager.
+                    startReconnect(delay, apnContext, REQUEST_TYPE_NORMAL);
+                }
             }
         } else {
             boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
