@@ -2423,6 +2423,7 @@ public class DataConnection extends StateMachine {
                     mApnSetting != null ? (long) mApnSetting.getApnTypeBitmask() : 0L,
                     mApnSetting != null
                         ? mApnSetting.canHandleType(ApnSetting.TYPE_DEFAULT) : false);
+            mDataCallSessionStats.onDataCallDisconnected(mDcFailCause);
             if (mHandoverState == HANDOVER_STATE_BEING_TRANSFERRED) {
                 // This is from source data connection to set itself's state
                 setHandoverState(HANDOVER_STATE_COMPLETED);
@@ -2916,7 +2917,6 @@ public class DataConnection extends StateMachine {
 
             TelephonyMetrics.getInstance().writeRilDataCallEvent(mPhone.getPhoneId(),
                     mCid, mApnSetting.getApnTypeBitmask(), RilDataCall.State.DISCONNECTED);
-            mDataCallSessionStats.onDataCallDisconnected();
 
             mVcnManager.removeVcnNetworkPolicyChangeListener(mVcnPolicyChangeListener);
 
