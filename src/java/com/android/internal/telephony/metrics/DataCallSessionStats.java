@@ -24,6 +24,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION
 
 import android.os.SystemClock;
 import android.telephony.Annotation.ApnType;
+import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
 import android.telephony.ServiceState;
@@ -69,8 +70,7 @@ public class DataCallSessionStats {
             // deactivateDataCall hasn't been processed properly, so we save the previous atom here
             // and move on to create a new atom.
             if (mOngoingDataCall != null) {
-                mOngoingDataCall.failureCause = DataFailCause.UNKNOWN;
-                onDataCallDisconnected();
+                onDataCallDisconnected(DataFailCause.UNKNOWN);
             }
             mOngoingDataCall = getDefaultProto(apnTypeBitMask);
             mStartTime = getTimeMillis();
@@ -96,7 +96,7 @@ public class DataCallSessionStats {
             @RilRadioTechnology int radioTechnology,
             @ApnType int apnTypeBitmask,
             @ProtocolType int protocol,
-            int failureCause) {
+            @DataFailureCause int failureCause) {
         // there should've been another call to initiate the atom,
         // so this method is being called out of order -> no metric will be logged
         if (mOngoingDataCall == null) {
@@ -161,14 +161,17 @@ public class DataCallSessionStats {
         mOngoingDataCall.oosAtEnd = getIsOos();
     }
 
-    /** Stores the atom when DataConnection reaches DISCONNECTED state. */
-    public synchronized void onDataCallDisconnected() {
+    /** Stores the atom when DataConnection reaches DISCONNECTED state.
+     *  @param failureCause failure cause as per android.telephony.DataFailCause
+     **/
+    public synchronized void onDataCallDisconnected(@DataFailureCause int failureCause) {
         // there should've been another call to initiate the atom,
         // so this method is being called out of order -> no atom will be saved
         if (mOngoingDataCall == null) {
             loge("onSetupDataCallResponse: no DataCallSession atom has been initiated.");
             return;
         }
+        mOngoingDataCall.failureCause = failureCause;
         mOngoingDataCall.ongoing = false;
         mOngoingDataCall.durationMinutes = convertMillisToMinutes(getTimeMillis() - mStartTime);
         // store for the data call list event, after DataCall is disconnected and entered into
