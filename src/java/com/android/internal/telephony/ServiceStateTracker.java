@@ -3524,6 +3524,9 @@ public class ServiceStateTracker extends Handler {
         boolean hasAirplaneModeOnChanged =
                 mSS.getState() != ServiceState.STATE_POWER_OFF
                         && mNewSS.getState() == ServiceState.STATE_POWER_OFF;
+        boolean hasAirplaneModeOffChanged =
+                mSS.getState() == ServiceState.STATE_POWER_OFF
+                        && mNewSS.getState() != ServiceState.STATE_POWER_OFF;
 
         SparseBooleanArray hasDataAttached = new SparseBooleanArray(
                 mTransportManager.getAvailableTransports().length);
@@ -3885,6 +3888,14 @@ public class ServiceStateTracker extends Handler {
                     mDetachedRegistrants.get(transport).notifyRegistrants();
                 }
             }
+        }
+
+        // Before starting to poll network state, the signal strength will be
+        // reset under radio power off, so here expects to query it again
+        // because the signal strength might come earlier RAT and radio state
+        // changed.
+        if (hasAirplaneModeOffChanged) {
+            mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
         }
 
         if (shouldLogAttachedChange) {
@@ -5261,8 +5272,10 @@ public class ServiceStateTracker extends Handler {
 
         // This signal is used for both voice and data radio signal so parse
         // all fields
-
-        if ((ar.exception == null) && (ar.result != null)) {
+        // Under power off, let's suppress valid signal strength report, which is
+        // beneficial to avoid icon flickering.
+        if ((ar.exception == null) && (ar.result != null)
+                && mSS.getState() != ServiceState.STATE_POWER_OFF) {
             mSignalStrength = (SignalStrength) ar.result;
 
             PersistableBundle config = getCarrierConfig();
