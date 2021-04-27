@@ -85,8 +85,6 @@ public class CarrierKeyDownloadManager extends Handler {
     // This will define the end date of the window.
     private static final int END_RENEWAL_WINDOW_DAYS = 7;
 
-
-
     /* Intent for downloading the public key */
     private static final String INTENT_KEY_RENEWAL_ALARM_PREFIX =
             "com.android.internal.telephony.carrier_key_download_alarm";
@@ -125,7 +123,7 @@ public class CarrierKeyDownloadManager extends Handler {
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        filter.addAction(INTENT_KEY_RENEWAL_ALARM_PREFIX + mPhone.getPhoneId());
+        filter.addAction(INTENT_KEY_RENEWAL_ALARM_PREFIX);
         filter.addAction(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
         mContext.registerReceiver(mBroadcastReceiver, filter, null, phone);
         mDownloadManager = (DownloadManager) mContext.getSystemService(Context.DOWNLOAD_SERVICE);
@@ -135,18 +133,22 @@ public class CarrierKeyDownloadManager extends Handler {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            int slotId = mPhone.getPhoneId();
-            if (action.equals(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId)) {
-                Log.d(LOG_TAG, "Handling key renewal alarm: " + action);
-                sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
+            int slotIndex = SubscriptionManager.getSlotIndex(mPhone.getSubId());
+            int phoneId = mPhone.getPhoneId();
+            if (action.equals(INTENT_KEY_RENEWAL_ALARM_PREFIX)) {
+                int slotIndexExtra = intent.getIntExtra(SubscriptionManager.EXTRA_SLOT_INDEX, -1);
+                if (slotIndexExtra == slotIndex) {
+                    Log.d(LOG_TAG, "Handling key renewal alarm: " + action);
+                    sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
+                }
             } else if (action.equals(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD)) {
-                if (slotId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
+                if (phoneId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
                     Log.d(LOG_TAG, "Handling reset intent: " + action);
                     sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
                 }
             } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                if (slotId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
+                if (phoneId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
                     Log.d(LOG_TAG, "Carrier Config changed: " + action);
                     sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
@@ -210,8 +212,9 @@ public class CarrierKeyDownloadManager extends Handler {
 
     private void cleanupRenewalAlarms() {
         Log.d(LOG_TAG, "Cleaning up existing renewal alarms");
-        int slotId = mPhone.getPhoneId();
-        Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId);
+        int slotIndex = SubscriptionManager.getSlotIndex(mPhone.getSubId());
+        Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX);
+        intent.putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, slotIndex);
         PendingIntent carrierKeyDownloadIntent = PendingIntent.getBroadcast(mContext, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         AlarmManager alarmManager =
@@ -266,12 +269,13 @@ public class CarrierKeyDownloadManager extends Handler {
     @VisibleForTesting
     public void resetRenewalAlarm() {
         cleanupRenewalAlarms();
-        int slotId = mPhone.getPhoneId();
+        int slotIndex = SubscriptionManager.getSlotIndex(mPhone.getSubId());
         long minExpirationDate = getExpirationDate();
         Log.d(LOG_TAG, "minExpirationDate: " + new Date(minExpirationDate));
         final AlarmManager alarmManager = (AlarmManager) mContext.getSystemService(
                 Context.ALARM_SERVICE);
-        Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX + slotId);
+        Intent intent = new Intent(INTENT_KEY_RENEWAL_ALARM_PREFIX);
+        intent.putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, slotIndex);
         PendingIntent carrierKeyDownloadIntent = PendingIntent.getBroadcast(mContext, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarmManager.set(AlarmManager.RTC_WAKEUP, minExpirationDate, carrierKeyDownloadIntent);
