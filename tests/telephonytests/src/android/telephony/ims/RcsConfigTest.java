@@ -18,6 +18,7 @@ package com.telephony.ims;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 
@@ -25,9 +26,9 @@ import static org.mockito.Mockito.when;
 
 import android.content.ContentValues;
 import android.content.Context;
-import android.os.Parcel;
 import android.telephony.SubscriptionManager;
 import android.telephony.ims.RcsConfig;
+import android.telephony.ims.RcsConfig.Characteristic;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -97,7 +98,7 @@ public final class RcsConfigTest {
             + "\t\t\t\t<parm name=\"AutAccept\" value=\"1\"/>\n"
             + "\t\t\t\t<parm name=\"AutAcceptGroupChat\" value=\"1\"/>\n"
             + "\t\t\t\t<parm name=\"TimerIdle\" value=\"120\"/>\n"
-            + "\t\t\t\t<parm name=\"MaxSize\" value=\"8192\"/>\n"
+            + "\t\t\t\t<parm name=\"MaxSize\" value=\"16384\"/>\n"
             + "\t\t\t\t<parm name=\"ChatRevokeTimer\" value=\"0\"/>\n"
             + "\t\t\t\t<parm name=\"reconnectGuardTimer\" value=\"0\"/>\n"
             + "\t\t\t\t<parm name=\"cfsTrigger\" value=\"1\"/>\n"
@@ -146,6 +147,17 @@ public final class RcsConfigTest {
         {"ftAuth", "1"}, {"standaloneMsgAuth", "1"}, {"geolocPushAuth", "1"},
         {"rcsMessagingDataOff", "1"}, {"fileTransferDataOff", "1"}, {"mmsDataOff", "1"},
         {"syncDataOff", "1"}};
+
+    private static final String[] VALID_CHARACTERISTICS = {"APPLICATION", "3GPP_IMS", "Ext",
+        "GSMA",  "SERVICES", "DaTAOFF", "PRESENCE", "MESSAGING", "Chat", "FileTransfer",
+        "Chatbot", "MessageSTORE"};
+    private static final String[] INVALID_CHARACTERISTICS = {"APP2LICATION", "3GPPIMS", "Exte",
+        "GSMf",  "SERVICE", "DaTAOn", "PRESENCE2", "MESSAG", "Ch", "File", "STORE"};
+    private static final String[][] SUB_CHARACTERISTICS = {
+        {"APPLICATION", "3GPP_IMS", "Ext", "GSMA"},
+        {"APPLICATION", "SERVICES", "Ext", "DataOff", "Ext"}};
+    private static final String[][] SAME_PARMS_DIFF_CHARS_VALUE_MAP = {
+        {"MaxSize", "Chat", "16384"}, {"MaxSize", "StandaloneMsg", "8192"}};
 
     private static final int FAKE_SUB_ID = 1;
     private MockContentResolver mContentResolver;
@@ -201,6 +213,7 @@ public final class RcsConfigTest {
     @SmallTest
     public void testParseConfig() {
         RcsConfig config = new RcsConfig(TEST_RCS_CONFIG.getBytes());
+
         for (int i = 0; i < TEST_CONFIG_VALUES.length; i++) {
             assertEquals(config.getString(TEST_CONFIG_VALUES[i][0], null),
                     TEST_CONFIG_VALUES[i][1]);
@@ -209,14 +222,56 @@ public final class RcsConfigTest {
 
     @Test
     @SmallTest
-    public void testParcelUnparcel() {
+    public void testGetCharacteristic() {
         RcsConfig config = new RcsConfig(TEST_RCS_CONFIG.getBytes());
-        Parcel parcel = Parcel.obtain();
-        config.writeToParcel(parcel, 0);
-        parcel.setDataPosition(0);
-        RcsConfig config2 = RcsConfig.CREATOR.createFromParcel(parcel);
-        parcel.recycle();
-        assertTrue(config.equals(config2));
+
+        for (int i = 0; i < VALID_CHARACTERISTICS.length; i++) {
+            assertNotNull(config.getCharacteristic(VALID_CHARACTERISTICS[i]));
+        }
+
+        for (int i = 0; i < INVALID_CHARACTERISTICS.length; i++) {
+            assertNull(config.getCharacteristic(INVALID_CHARACTERISTICS[i]));
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testSetAndMoveCharacteristic() {
+        RcsConfig config = new RcsConfig(TEST_RCS_CONFIG.getBytes());
+
+        for (String[] sub : SUB_CHARACTERISTICS) {
+            Characteristic[] cl = new Characteristic[sub.length];
+            int c = 0;
+            for (String cur : sub) {
+                cl[c] = config.getCharacteristic(cur);
+                assertNotNull(cl[c]);
+                config.setCurrentCharacteristic(cl[c]);
+                c++;
+            }
+
+            while (c > 0) {
+                assertEquals(cl[--c], config.getCurrentCharacteristic());
+                config.moveToParent();
+            }
+
+            assertEquals(config.getRoot(), config.getCurrentCharacteristic());
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testGetDuplicateParmInDifferentCharacteristics() {
+        RcsConfig config = new RcsConfig(TEST_RCS_CONFIG.getBytes());
+        for (String[] sub : SAME_PARMS_DIFF_CHARS_VALUE_MAP) {
+            config.moveToRoot();
+            if (!sub[1].isEmpty()) {
+                config.setCurrentCharacteristic(config.getCharacteristic(sub[1]));
+            }
+
+            String value = config.getString(sub[0], "");
+
+            assertEquals(value, sub[2]);
+        }
     }
 
     @Test
