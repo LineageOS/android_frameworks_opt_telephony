@@ -2202,12 +2202,23 @@ public class DcTracker extends Handler {
 
     protected void setInitialAttachApn() {
         ApnSetting apnSetting = null;
+        int preferredApnSetId = getPreferredApnSetId();
+        ArrayList<ApnSetting> allApnSettings = new ArrayList<>();
+        if (mPreferredApn != null) {
+            // Put the preferred apn at the beginning of the list. It's okay to have a duplicate
+            // when later on mAllApnSettings get added. That would not change the selection result.
+            allApnSettings.add(mPreferredApn);
+        }
+        allApnSettings.addAll(mAllApnSettings);
+
         // Get the allowed APN types for initial attach. Note that if none of the APNs has the
         // allowed APN types, then the initial attach will not be performed.
         List<Integer> allowedApnTypes = getAllowedInitialAttachApnTypes();
         for (int allowedApnType : allowedApnTypes) {
-            apnSetting = mAllApnSettings.stream()
+            apnSetting = allApnSettings.stream()
                     .filter(apn -> apn.canHandleType(allowedApnType))
+                    .filter(apn -> (apn.getApnSetId() == preferredApnSetId
+                            || apn.getApnSetId() == Telephony.Carriers.MATCH_ALL_APN_SET_ID))
                     .findFirst()
                     .orElse(null);
             if (apnSetting != null) break;
