@@ -375,7 +375,7 @@ public class RetryManager {
                         if (splitStr.length == 2) {
                             String apnTypeStr = splitStr[0].trim();
                             // Check if this retry pattern is for the APN we want.
-                            if (apnTypeStr.equals(ApnSetting.getApnTypeStringInternal(apnType))) {
+                            if (apnTypeStr.equals(ApnSetting.getApnTypeString(apnType))) {
                                 // Extract the config string. Note that an empty string is valid
                                 // here, meaning no retry for the specified APN.
                                 configString = splitStr[1];
@@ -697,7 +697,7 @@ public class RetryManager {
 
     public String toString() {
         if (mConfig == null) return "";
-        return "RetryManager: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
+        return "RetryManager: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + " mRetryCount="
                 + mRetryCount + " mMaxRetryCount=" + mMaxRetryCount + " mCurrentApnIndex="
                 + mCurrentApnIndex + " mSameApnRtryCount=" + mSameApnRetryCount
@@ -709,6 +709,6 @@ public class RetryManager {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String s) {
-        Rlog.d(LOG_TAG, "[" + ApnSetting.getApnTypeStringInternal(apnType) + "] " + s);
+        Rlog.d(LOG_TAG, "[" + ApnSetting.getApnTypeString(apnType) + "] " + s);
     }
 }
