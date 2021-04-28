@@ -2526,6 +2526,9 @@ public class DcTracker extends Handler {
                 @ApnType int apnTypes = ac.getApnTypeBitmask();
                 mDataThrottler.setRetryTime(apnTypes, RetryManager.NO_SUGGESTED_RETRY_DELAY,
                         REQUEST_TYPE_NORMAL);
+                // After data unthrottled, we should see if it's possible to bring up the data
+                // again.
+                trySetupData(ac, REQUEST_TYPE_NORMAL, null);
             } else {
                 loge("EVENT_APN_UNTHROTTLED: Invalid APN passed: " + apn);
             }
