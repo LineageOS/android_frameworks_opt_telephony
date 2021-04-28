@@ -21,6 +21,7 @@ import static android.telephony.TelephonyManager
         .CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE;
 import static android.telephony.TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED;
 import static android.telephony.TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE;
+import static android.telephony.TelephonyManager.CAPABILITY_SIM_PHONEBOOK_IN_MODEM;
 import static android.telephony.TelephonyManager.CAPABILITY_SLICING_CONFIG_SUPPORTED;
 import static android.telephony.TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING;
 import static android.telephony.TelephonyManager.RadioInterfaceCapability;
@@ -313,6 +314,8 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
                 Rlog.d(TAG, "CAPABILITY_SLICING_CONFIG_SUPPORTED");
                 caps.add(CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
                 Rlog.d(TAG, "CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED");
+                caps.add(CAPABILITY_SIM_PHONEBOOK_IN_MODEM);
+                Rlog.d(TAG, "CAPABILITY_SIM_PHONEBOOK_IN_MODEM");
             }
         }
         return caps;
