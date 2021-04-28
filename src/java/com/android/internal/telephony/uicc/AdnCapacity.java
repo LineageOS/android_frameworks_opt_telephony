@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.hardware.radio.V1_6.PhonebookCapacity;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -37,6 +38,8 @@ public class AdnCapacity implements Parcelable {
     private int mMaxEmailLength;
     private int mMaxAnrLength;
 
+    private int mHashCode = 0;
+
     public AdnCapacity(int maxAdnCount, int usedAdnCount, int maxEmailCount,
             int usedEmailCount, int maxAnrCount, int usedAnrCount, int maxNameLength,
             int maxNumberLength, int maxEmailLength, int maxAnrLength) {
@@ -50,6 +53,21 @@ public class AdnCapacity implements Parcelable {
         mMaxNumberLength = maxNumberLength;
         mMaxEmailLength = maxEmailLength;
         mMaxAnrLength = maxAnrLength;
+    }
+
+    public AdnCapacity(PhonebookCapacity pbCap) {
+        if (pbCap != null) {
+            mMaxAdnCount = pbCap.maxAdnRecords;
+            mUsedAdnCount = pbCap.usedAdnRecords;
+            mMaxEmailCount = pbCap.maxEmailRecords;
+            mUsedEmailCount = pbCap.usedEmailRecords;
+            mMaxAnrCount = pbCap.maxAdditionalNumberRecords;
+            mUsedAnrCount = pbCap.usedAdditionalNumberRecords;
+            mMaxNameLength = pbCap.maxNameLen;
+            mMaxNumberLength = pbCap.maxNumberLen;
+            mMaxEmailLength = pbCap.maxEmailLen;
+            mMaxAnrLength = pbCap.maxAdditionalNumberLen;
+        }
     }
 
     public int getMaxAdnCount() {
@@ -90,6 +108,10 @@ public class AdnCapacity implements Parcelable {
 
     public int getMaxAnrLength() {
         return mMaxAnrLength;
+    }
+
+    public boolean isSimFull() {
+        return mMaxAdnCount == mUsedAdnCount;
     }
 
     public static final Parcelable.Creator<AdnCapacity> CREATOR
@@ -134,5 +156,41 @@ public class AdnCapacity implements Parcelable {
         dest.writeInt(mMaxNumberLength);
         dest.writeInt(mMaxEmailLength);
         dest.writeInt(mMaxAnrLength);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof AdnCapacity) {
+            AdnCapacity capacity = (AdnCapacity)obj;
+            return capacity.getMaxAdnCount() == mMaxAdnCount
+                    && capacity.getUsedAdnCount() == mUsedAdnCount
+                    && capacity.getMaxEmailCount() == mMaxEmailCount
+                    && capacity.getUsedEmailCount() == mUsedEmailCount
+                    && capacity.getMaxAnrCount() == mMaxAnrCount
+                    && capacity.getUsedAnrCount() == mUsedAnrCount
+                    && capacity.getMaxNameLength() == mMaxNameLength
+                    && capacity.getMaxNumberLength() == mMaxNumberLength
+                    && capacity.getMaxEmailLength() == mMaxEmailLength
+                    && capacity.getMaxAnrLength() == mMaxAnrLength;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        if (mHashCode == 0) {
+            mHashCode = mMaxAdnCount;
+            mHashCode = 31 * mHashCode + mUsedAdnCount;
+            mHashCode = 31 * mHashCode + mMaxEmailCount;
+            mHashCode = 31 * mHashCode + mUsedEmailCount;
+            mHashCode = 31 * mHashCode + mMaxAnrCount;
+            mHashCode = 31 * mHashCode + mUsedAnrCount;
+            mHashCode = 31 * mHashCode + mMaxNameLength;
+            mHashCode = 31 * mHashCode + mMaxNumberLength;
+            mHashCode = 31 * mHashCode + mMaxEmailLength;
+            mHashCode = 31 * mHashCode + mMaxAnrLength;
+        }
+        return mHashCode;
     }
 }
