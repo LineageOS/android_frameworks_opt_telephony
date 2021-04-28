@@ -103,7 +103,7 @@ public class ApnContext {
      * @param priority Priority of APN type
      */
     public ApnContext(Phone phone, int typeId, String logTag, DcTracker tracker, int priority) {
-        this(phone, ApnSetting.getApnTypeStringInternal(typeId), logTag, tracker, priority);
+        this(phone, ApnSetting.getApnTypeString(typeId), logTag, tracker, priority);
     }
 
     /**
