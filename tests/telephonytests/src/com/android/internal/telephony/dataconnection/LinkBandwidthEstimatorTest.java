@@ -21,6 +21,7 @@ import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.BW_STATS_COUNT_THRESHOLD;
 import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.LINK_RX;
 import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.LINK_TX;
+import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_ACTIVE_PHONE_CHANGED;
 import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_DEFAULT_NETWORK_CHANGED;
 import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_MODEM_ACTIVITY_RETURNED;
 import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_NR_FREQUENCY_CHANGED;
@@ -31,14 +32,17 @@ import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimat
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.net.NetworkCapabilities;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
 import android.telephony.CellIdentityLte;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -55,6 +59,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
@@ -71,6 +76,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             new ModemActivityInfo(100L, 0, 0, TX_TIME_2_MS, RX_TIME_2_MS);
     private static final ModemActivityInfo MAI_RX_TIME_HIGH =
             new ModemActivityInfo(100L, 0, 0, TX_TIME_1_MS, RX_TIME_2_MS);
+    private static final int EVENT_BANDWIDTH_ESTIMATOR_UPDATE = 1;
     private NetworkCapabilities mNetworkCapabilities;
     private CellIdentityLte mCellIdentity;
     private long mElapsedTimeMs = 0;
@@ -79,7 +85,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     @Mock
     TelephonyFacade mTelephonyFacade;
     @Mock
-    DataConnection mDataConnection;
+    private Handler mTestHandler;
     private NetworkRegistrationInfo mNri;
 
     @Before
@@ -94,15 +100,19 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
                 .build();
         when(mServiceState.getNetworkRegistrationInfo(anyInt(), anyInt())).thenReturn(mNri);
+        when(mServiceState.getOperatorNumeric()).thenReturn("310260");
         when(mTelephonyFacade.getElapsedSinceBootMillis()).thenReturn(0L);
         when(mTelephonyFacade.getMobileTxBytes()).thenReturn(0L);
         when(mTelephonyFacade.getMobileTxBytes()).thenReturn(0L);
         when(mPhone.getCurrentCellIdentity()).thenReturn(mCellIdentity);
-        when(mDcTracker.getDataConnectionByApnType(anyString())).thenReturn(mDataConnection);
+        when(mPhone.getSubId()).thenReturn(1);
         when(mSignalStrength.getDbm()).thenReturn(-100);
         when(mSignalStrength.getLevel()).thenReturn(1);
         mLBE = new LinkBandwidthEstimator(mPhone, mTelephonyFacade);
+        mLBE.registerForBandwidthChanged(mTestHandler, EVENT_BANDWIDTH_ESTIMATOR_UPDATE, null);
         mLBE.obtainMessage(MSG_DEFAULT_NETWORK_CHANGED, mNetworkCapabilities).sendToTarget();
+        mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, false).sendToTarget();
+        mLBE.obtainMessage(MSG_ACTIVE_PHONE_CHANGED, 1).sendToTarget();
         processAllMessages();
     }
 
@@ -146,6 +156,32 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     }
 
     @Test
+    public void testScreenOnTxTrafficHighNotActivePhoneNoModemPoll() throws Exception {
+        mLBE.obtainMessage(MSG_ACTIVE_PHONE_CHANGED, 0).sendToTarget();
+        addElapsedTime(4_100);
+        moveTimeForward(4_100);
+        processAllMessages();
+
+        mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
+        addTxBytes(500_000L);
+        addRxBytes(10_000L);
+        addElapsedTime(2_100);
+        moveTimeForward(2_100);
+        processAllMessages();
+
+        verify(mTelephonyManager, times(0)).requestModemActivityInfo(any(), any());
+    }
+
+    private void verifyUpdateBandwidth(int txKbps, int rxKbps) {
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler, atLeast(1))
+                .sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(EVENT_BANDWIDTH_ESTIMATOR_UPDATE, messageArgumentCaptor.getValue().what);
+        assertEquals(new Pair<Integer, Integer>(txKbps, rxKbps),
+                ((AsyncResult) messageArgumentCaptor.getValue().obj).result);
+    }
+
+    @Test
     public void testScreenOnTxRxTrafficHighTwoModemPoll() throws Exception {
         addElapsedTime(4_100);
         moveTimeForward(4_100);
@@ -172,7 +208,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         processAllMessages();
 
         verify(mTelephonyManager, times(2)).requestModemActivityInfo(any(), any());
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -202,7 +238,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         processAllMessages();
 
         verify(mTelephonyManager, times(2)).requestModemActivityInfo(any(), any());
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -236,6 +272,8 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     @Test
     public void testScreenOnDefaultNetworkToggleNoExtraTrafficPoll() throws Exception {
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
+        addElapsedTime(500);
+        moveTimeForward(500);
         processAllMessages();
         mLBE.obtainMessage(MSG_DEFAULT_NETWORK_CHANGED, null).sendToTarget();
         addElapsedTime(500);
@@ -271,7 +309,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         processAllMessages();
 
         verify(mTelephonyManager, times(0)).requestModemActivityInfo(any(), any());
-        verify(mDataConnection, times(2)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -290,8 +328,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             processAllMessages();
         }
 
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(19_597));
+        verifyUpdateBandwidth(-1, 19_597);
 
         addTxBytes(20_000L);
         addRxBytes(50_000L);
@@ -301,7 +338,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         moveTimeForward(6000);
         processAllMessages();
 
-        verify(mDataConnection, times(2)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -370,7 +407,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         moveTimeForward(6000);
         processAllMessages();
 
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -391,8 +428,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
 
         verify(mTelephonyManager, times(BW_STATS_COUNT_THRESHOLD + 2))
                 .requestModemActivityInfo(any(), any());
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(19_597));
+        verifyUpdateBandwidth(-1, 19_597);
     }
 
     @Test
@@ -418,7 +454,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
 
         verify(mTelephonyManager, times(BW_STATS_COUNT_THRESHOLD))
                 .requestModemActivityInfo(any(), any());
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -450,8 +486,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             processAllMessages();
         }
 
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(19_597));
+        verifyUpdateBandwidth(-1, 19_597);
     }
 
     @Test
@@ -496,7 +531,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         network = mLBE.lookupNetwork("310260", UNKNOWN_TAC, "LTE");
         assertEquals(BW_STATS_COUNT_THRESHOLD * 3 / 2 - 2, network.getCount(LINK_RX, 1));
         assertEquals(179_686, network.getValue(LINK_RX, 1));
-        verify(mDataConnection, times(2)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, 37_350);
     }
 
     @Test
@@ -515,11 +550,11 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             processAllMessages();
         }
 
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(19_597));
+        verifyUpdateBandwidth(-1, 19_597);
 
         mCellIdentity = new CellIdentityLte(320, 265, 1234, 123456, 366);
         when(mPhone.getCurrentCellIdentity()).thenReturn(mCellIdentity);
+        when(mServiceState.getOperatorNumeric()).thenReturn("320265");
 
         addTxBytes(10_000L);
         addRxBytes(10_000L);
@@ -527,7 +562,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         moveTimeForward(5_100);
         processAllMessages();
 
-        verify(mDataConnection, times(2)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
@@ -546,12 +581,11 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             processAllMessages();
         }
 
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(eq(-1), eq(-1));
-        verify(mDataConnection, times(1)).updateLinkBandwidthEstimation(anyInt(), anyInt());
+        verifyUpdateBandwidth(-1, -1);
     }
 
     @Test
-    public void testUseHighTxRxByteEdge() throws Exception {
+    public void testUseHighTxRxByteEdgeThenUnknownNetwork() throws Exception {
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
         processAllMessages();
         mNri = new NetworkRegistrationInfo.Builder()
@@ -576,6 +610,47 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         assertEquals(0, network.getCount(LINK_TX, 1));
         assertEquals(BW_STATS_COUNT_THRESHOLD + 4, network.getCount(LINK_RX, 1));
         assertEquals(24_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD + 4),
+                network.getValue(LINK_RX, 1));
+
+        mNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UNKNOWN)
+                .build();
+        when(mServiceState.getNetworkRegistrationInfo(anyInt(), anyInt())).thenReturn(mNri);
+        mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
+        processAllMessages();
+        for (int i = 0; i < 5; i++) {
+            addElapsedTime(5_100);
+            moveTimeForward(5_100);
+            processAllMessages();
+        }
+        network = mLBE.lookupNetwork("310260", 366, "UNKNOWN");
+
+        assertEquals(0, network.getCount(LINK_RX, 1));
+    }
+
+
+    @Test
+    public void testVeryHighByteCountReturnNonNegativeValue() throws Exception {
+        mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
+        processAllMessages();
+        mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
+        processAllMessages();
+        for (int i = 0; i < BW_STATS_COUNT_THRESHOLD + 5; i++) {
+            addTxBytes(8_000_000_000L);
+            addRxBytes(16_000_000_000L);
+            addElapsedTime(5_100);
+            moveTimeForward(5_100);
+            processAllMessages();
+            mLBE.obtainMessage(MSG_MODEM_ACTIVITY_RETURNED, new ModemActivityInfo(
+                    i * 5_100L, 0, 0, TX_TIME_2_MS, i * RX_TIME_2_MS * 5)).sendToTarget();
+            processAllMessages();
+        }
+
+        LinkBandwidthEstimator.NetworkBandwidth network = mLBE.lookupNetwork("310260", 366, "LTE");
+
+        assertEquals(BW_STATS_COUNT_THRESHOLD + 4, network.getCount(LINK_RX, 1));
+        assertEquals(0, network.getValue(LINK_TX, 1));
+        assertEquals(16_000_000_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD + 4),
                 network.getValue(LINK_RX, 1));
     }
 }
