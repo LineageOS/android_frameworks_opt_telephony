@@ -1087,7 +1087,7 @@ public class DcTracker extends Handler {
             mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType()),
                     apnContext);
 
-            log("initApnContexts: apnContext=" + ApnSetting.getApnTypeStringInternal(
+            log("initApnContexts: apnContext=" + ApnSetting.getApnTypeString(
                     apnConfigType.getType()));
         }
         mPrioritySortedApnContexts.sort((c1, c2) -> c2.getPriority() - c1.getPriority());
@@ -1208,6 +1208,8 @@ public class DcTracker extends Handler {
      * <p>
      * Assumes there is less than one {@link ApnSetting} can support the given apn type.
      */
+    // TODO: for enterprise this always returns IDLE, which is ok for now since it is never called
+    // for enterprise
     public DctConstants.State getState(String apnType) {
         DctConstants.State state = DctConstants.State.IDLE;
         final int apnTypeBitmask = ApnSetting.getApnTypesBitmaskFromString(apnType);
@@ -1915,7 +1917,7 @@ public class DcTracker extends Handler {
         if (defaultPreferredApn != null
                 && defaultPreferredApn.canHandleType(mRequestedApnType)) {
             log("setDefaultPreferredApnIfNeeded: For APN type "
-                    + ApnSetting.getApnTypeStringInternal(mRequestedApnType)
+                    + ApnSetting.getApnTypeString(mRequestedApnType)
                     + " found default apnSetting "
                     + defaultPreferredApn);
 
@@ -2524,6 +2526,9 @@ public class DcTracker extends Handler {
                 @ApnType int apnTypes = ac.getApnTypeBitmask();
                 mDataThrottler.setRetryTime(apnTypes, RetryManager.NO_SUGGESTED_RETRY_DELAY,
                         REQUEST_TYPE_NORMAL);
+                // After data unthrottled, we should see if it's possible to bring up the data
+                // again.
+                trySetupData(ac, REQUEST_TYPE_NORMAL, null);
             } else {
                 loge("EVENT_APN_UNTHROTTLED: Invalid APN passed: " + apn);
             }
@@ -2572,7 +2577,8 @@ public class DcTracker extends Handler {
                                     + " found canHandle conn=" + curDc);
                         }
                         return curDc;
-                    } else if (curDc.isActivating() || apnSetting.equals(nextApn)) {
+                    } else if (curDc.isActivating()
+                            || (apnSetting !=  null && apnSetting.equals(nextApn))) {
                         potentialDc = curDc;
                     }
                 }
@@ -2691,7 +2697,7 @@ public class DcTracker extends Handler {
             return;
         }
 
-        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
+        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", request type=" + requestTypeToString(requestType);
         if (DBG) log(str);
         apnContext.requestLog(str);
@@ -2760,7 +2766,7 @@ public class DcTracker extends Handler {
         }
 
         boolean cleanup = false;
-        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
+        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", release type=" + releaseTypeToString(releaseType);
         if (DBG) log(str);
         apnContext.requestLog(str);
@@ -3739,7 +3745,7 @@ public class DcTracker extends Handler {
             for(ApnSetting p : mAllApnSettings) {
                 if (p.getId() == pos && p.canHandleType(mRequestedApnType)) {
                     log("getPreferredApn: For APN type "
-                            + ApnSetting.getApnTypeStringInternal(mRequestedApnType)
+                            + ApnSetting.getApnTypeString(mRequestedApnType)
                             + " found apnSetting " + p);
                     cursor.close();
                     return p;
@@ -5134,9 +5140,9 @@ public class DcTracker extends Handler {
                         EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP,
                             mSentSinceLastRecv);
                         if (DBG) log("doRecovery() cleanup all connections");
-                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeStringInternal(
+                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeString(
                                 ApnSetting.TYPE_DEFAULT)));
-                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeStringInternal(
+                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeString(
                                 ApnSetting.TYPE_ENTERPRISE)));
                         putRecoveryAction(RECOVERY_ACTION_REREGISTER);
                         break;
