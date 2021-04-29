@@ -2707,10 +2707,10 @@ message BandwidthEstimatorStats {
     optional uint32 count = 2;
     // Average end-to-end bandwidth in kbps
     optional uint32 avg_bw_kbps = 3;
-    // Normalized root mean square error (NRMSE) of static BW values in percent
-    optional uint32 static_bw_nrmse_percent = 4;
-    // Normalized root mean square error (NRMSE) of end-to-end BW estimation in percent
-    optional uint32 bw_est_nrmse_percent = 5;
+    // Normalized error of static BW values in percent
+    optional uint32 static_bw_error_percent = 4;
+    // Normalized error of end-to-end BW estimation in percent
+    optional uint32 bw_est_error_percent = 5;
   }
 
   // Bandwidth stats of each RAT
