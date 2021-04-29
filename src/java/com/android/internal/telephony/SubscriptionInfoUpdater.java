@@ -579,13 +579,24 @@ public class SubscriptionInfoUpdater extends Handler {
          *  2. ACTION_SIM_STATE_CHANGED/ACTION_SIM_CARD_STATE_CHANGED
          *  /ACTION_SIM_APPLICATION_STATE_CHANGED
          *  3. ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED
-         *  4. ACTION_CARRIER_CONFIG_CHANGED
+         *  4. restore sim-specific settings
+         *  5. ACTION_CARRIER_CONFIG_CHANGED
          */
         broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
         broadcastSimCardStateChanged(phoneId, TelephonyManager.SIM_STATE_PRESENT);
         broadcastSimApplicationStateChanged(phoneId, TelephonyManager.SIM_STATE_LOADED);
         updateSubscriptionCarrierId(phoneId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        /* Sim-specific settings restore depends on knowing both the mccmnc and the carrierId of the
+        sim which is why it must be done after #updateSubscriptionCarrierId(). It is done before
+        carrier config update to avoid any race conditions with user settings that depend on
+        carrier config*/
+        restoreSimSpecificSettingsForPhone(phoneId);
         updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
+    }
+
+    private void restoreSimSpecificSettingsForPhone(int phoneId) {
+        SubscriptionManager subManager = SubscriptionManager.from(sContext);
+        subManager.restoreSimSpecificSettingsForIccIdFromBackup(sIccId[phoneId]);
     }
 
     private void updateCarrierServices(int phoneId, String simState) {
