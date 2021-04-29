@@ -58,6 +58,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaCall;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 
 import org.junit.After;
@@ -459,6 +460,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         when(mImsPhone.getVoiceCallSessionStats()).thenReturn(stats);
 
         mConnectionUT = new ImsPhoneConnection(mImsPhone, imsCall, mImsCT, mForeGroundCall, false);
+        mConnectionUT.setTelephonyMetrics(mock(TelephonyMetrics.class));
         CountDownLatch latch = new CountDownLatch(1);
         boolean[] receivedCountCallback = new boolean[1];
         mConnectionUT.addListener(new Connection.ListenerBase() {
