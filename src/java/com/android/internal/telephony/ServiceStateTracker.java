@@ -1548,6 +1548,7 @@ public class ServiceStateTracker extends Handler {
                     if (mPendingRadioPowerOffAfterDataOff) {
                         if (DBG) log("EVENT_ALL_DATA_DISCONNECTED, turn radio off now.");
                         hangupAndPowerOff();
+                        mPendingRadioPowerOffAfterDataOffTag += 1;
                         mPendingRadioPowerOffAfterDataOff = false;
                     } else {
                         log("EVENT_ALL_DATA_DISCONNECTED is stale");
@@ -5098,8 +5099,8 @@ public class ServiceStateTracker extends Handler {
         synchronized(this) {
             if (mPendingRadioPowerOffAfterDataOff) {
                 if (DBG) log("Process pending request to turn radio off.");
-                mPendingRadioPowerOffAfterDataOffTag += 1;
                 hangupAndPowerOff();
+                mPendingRadioPowerOffAfterDataOffTag += 1;
                 mPendingRadioPowerOffAfterDataOff = false;
                 return true;
             }
