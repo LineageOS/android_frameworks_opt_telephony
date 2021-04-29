@@ -899,16 +899,16 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(2, stats.perRatTx[0].perLevel[0].count);
         assertEquals(0, stats.perRatTx[0].perLevel[0].signalLevel);
         assertEquals(500_000, stats.perRatTx[0].perLevel[0].avgBwKbps);
-        assertEquals(41, stats.perRatTx[0].perLevel[0].staticBwNrmsePercent);
-        assertEquals(31, stats.perRatTx[0].perLevel[0].bwEstNrmsePercent);
+        assertEquals(40, stats.perRatTx[0].perLevel[0].staticBwErrorPercent);
+        assertEquals(30, stats.perRatTx[0].perLevel[0].bwEstErrorPercent);
     }
 
     private void addBandwidthStats(int link, int dataRat, int nrMode) {
         for (int i = 0; i < NUM_SIGNAL_LEVEL - 1; i++) {
             mMetrics.writeBandwidthStats(link, dataRat, nrMode,
-                    i, 10, 20, 30, 300_000);
+                    i, 20, 30, 300_000);
             mMetrics.writeBandwidthStats(link, dataRat, nrMode,
-                    i, 30, 40, 50, 500_000);
+                    i, 40, 50, 500_000);
         }
     }
 }
