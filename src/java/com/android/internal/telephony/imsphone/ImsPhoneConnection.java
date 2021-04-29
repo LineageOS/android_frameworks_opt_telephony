@@ -49,6 +49,7 @@ import android.text.TextUtils;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsException;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -311,6 +312,10 @@ public class ImsPhoneConnection extends Connection implements
         }
     }
 
+    @VisibleForTesting
+    public void setTelephonyMetrics(TelephonyMetrics tm) {
+        mMetrics = tm;
+    }
 
     public void dispose() {
     }
