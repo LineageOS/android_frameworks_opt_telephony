@@ -31,6 +31,8 @@ import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.Message;
 import android.os.OutcomeReceiver;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentity;
@@ -53,7 +55,6 @@ import android.view.Display;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyFacade;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.NrMode;
@@ -86,6 +87,8 @@ public class LinkBandwidthEstimator extends Handler {
     static final int MSG_NR_FREQUENCY_CHANGED = 6;
     @VisibleForTesting
     static final int MSG_NR_STATE_CHANGED = 7;
+    @VisibleForTesting
+    static final int MSG_ACTIVE_PHONE_CHANGED = 8;
 
     // TODO: move the following parameters to xml file
     private static final int TRAFFIC_STATS_POLL_INTERVAL_MS = 1_000;
@@ -138,6 +141,7 @@ public class LinkBandwidthEstimator extends Handler {
             "LTE:30000,15000", "NR_NSA:47000,18000",
             "NR_NSA_MMWAVE:145000,60000", "NR:145000,60000", "NR_MMWAVE:145000,60000"};
     private static final Map<String, Pair<Integer, Integer>> AVG_BW_PER_RAT_MAP = new ArrayMap<>();
+    private static final String UNKNOWN_PLMN = "";
 
     // To be used in the long term avg, each count needs to be above the following value
     public static final int BW_STATS_COUNT_THRESHOLD = 5;
@@ -146,6 +150,7 @@ public class LinkBandwidthEstimator extends Handler {
     public static final int LINK_RX = 1;
     public static final int NUM_LINK_DIRECTION = 2;
 
+    // One common timestamp for all sim to avoid frequent modem polling
     private final Phone mPhone;
     private final TelephonyFacade mTelephonyFacade;
     private final TelephonyManager mTelephonyManager;
@@ -153,6 +158,7 @@ public class LinkBandwidthEstimator extends Handler {
     private final LocalLog mLocalLog = new LocalLog(512);
     private boolean mScreenOn = false;
     private boolean mIsOnDefaultRoute = false;
+    private boolean mIsOnActiveData = false;
     private long mLastModemPollTimeMs;
     private boolean mLastTrafficValid = true;
     private long mLastMobileTxBytes;
@@ -166,18 +172,19 @@ public class LinkBandwidthEstimator extends Handler {
     private int mSignalLevel;
     private int mDataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
     private int mTac;
-    private String mPlmn = "";
+    private String mPlmn = UNKNOWN_PLMN;
     private NetworkCapabilities mNetworkCapabilities;
     private NetworkBandwidth mPlaceholderNetwork;
-
     private long mFilterUpdateTimeMs;
 
     private int mBandwidthUpdateSignalDbm = -1;
     private int mBandwidthUpdateSignalLevel = -1;
     private int mBandwidthUpdateDataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-    private String mBandwidthUpdatePlmn = "";
+    private String mBandwidthUpdatePlmn = UNKNOWN_PLMN;
     private BandwidthState mTxState = new BandwidthState(LINK_TX);
     private BandwidthState mRxState = new BandwidthState(LINK_RX);
+
+    private RegistrantList mBandwidthChangedRegistrants = new RegistrantList();
 
     private static void initAvgBwPerRatTable() {
         for (String config : AVG_BW_PER_RAT) {
@@ -256,9 +263,9 @@ public class LinkBandwidthEstimator extends Handler {
         mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback, this);
         mTelephonyManager.registerTelephonyCallback(new HandlerExecutor(this),
                 mTelephonyCallback);
-        mPlaceholderNetwork = new NetworkBandwidth("");
+        mPlaceholderNetwork = new NetworkBandwidth(UNKNOWN_PLMN);
         initAvgBwPerRatTable();
-        registerDataServiceState();
+        registerNrStateFrequencyChange();
     }
 
     @Override
@@ -285,12 +292,35 @@ public class LinkBandwidthEstimator extends Handler {
             case MSG_NR_STATE_CHANGED:
                 updateStaticBwValueResetFilter();
                 break;
+            case MSG_ACTIVE_PHONE_CHANGED:
+                handleActivePhoneChanged((int) msg.obj);
+                break;
             default:
                 Rlog.e(TAG, "invalid message " + msg.what);
                 break;
         }
     }
 
+    /**
+     * Registers for bandwidth estimation change. The bandwidth will be returned
+     *      * {@link AsyncResult#result} as a {@link Pair} Object.
+     *      * The {@link AsyncResult} will be in the notification {@link Message#obj}.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForBandwidthChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mBandwidthChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for bandwidth estimation change.
+     * @param h handler to notify
+     */
+    public void unregisterForBandwidthChanged(Handler h) {
+        mBandwidthChangedRegistrants.remove(h);
+    }
     /**
      * @return True if one the device's screen (e.g. main screen, wifi display, HDMI display etc...)
      * is on.
@@ -340,15 +370,26 @@ public class LinkBandwidthEstimator extends Handler {
         handleTrafficStatsPollConditionChanged();
     }
 
+    private void handleActivePhoneChanged(int activeDataSubId) {
+        boolean isOnActiveData = activeDataSubId == mPhone.getSubId();
+        if (mIsOnActiveData == isOnActiveData) {
+            return;
+        }
+        mIsOnActiveData = isOnActiveData;
+        logd("mIsOnActiveData " + mIsOnActiveData + " activeDataSubId " + activeDataSubId);
+        handleTrafficStatsPollConditionChanged();
+    }
+
     private void handleTrafficStatsPollConditionChanged() {
         removeMessages(MSG_TRAFFIC_STATS_POLL);
-        if (mScreenOn && mIsOnDefaultRoute) {
-            updateDataRatCellIdentity();
+        if (mScreenOn && mIsOnDefaultRoute && mIsOnActiveData) {
+            updateDataRatCellIdentityBandwidth();
             handleTrafficStatsPoll();
         }
     }
 
     private void handleTrafficStatsPoll() {
+        invalidateTxRxSamples();
         long mobileTxBytes = mTelephonyFacade.getMobileTxBytes();
         long mobileRxBytes = mTelephonyFacade.getMobileRxBytes();
         long txBytesDelta = mobileTxBytes - mLastMobileTxBytes;
@@ -396,7 +437,7 @@ public class LinkBandwidthEstimator extends Handler {
                     .append(" txByteDeltaAcc ").append(mTxBytesDeltaAcc)
                     .append(" rxByteDeltaAcc ").append(mRxBytesDeltaAcc)
                     .append(" trigger modem activity request").toString());
-            updateDataRatCellIdentity();
+            updateDataRatCellIdentityBandwidth();
             // Filter update will happen after the request
             makeRequestModemActivity();
             return;
@@ -405,8 +446,10 @@ public class LinkBandwidthEstimator extends Handler {
         long timeSinceLastFilterUpdateMs = currTimeMs - mFilterUpdateTimeMs;
         // Update filter
         if (timeSinceLastFilterUpdateMs >= FILTER_UPDATE_MAX_INTERVAL_MS) {
-            updateDataRatCellIdentity();
-            updateTxRxBandwidthFilterSendToDataConnection();
+            boolean updatedBandwidth = updateDataRatCellIdentityBandwidth();
+            if (!updatedBandwidth) {
+                updateTxRxBandwidthFilterSendToDataConnection();
+            }
         }
     }
 
@@ -422,7 +465,6 @@ public class LinkBandwidthEstimator extends Handler {
         mLastModemActivityInfo = result;
         // Update for next poll
         resetByteDeltaAcc();
-        invalidateTxRxSamples();
     }
 
     private void resetByteDeltaAcc() {
@@ -495,11 +537,12 @@ public class LinkBandwidthEstimator extends Handler {
         mTxState.updateBandwidthFilter();
         mRxState.updateBandwidthFilter();
 
-        if (mTxState.hasLargeBwChange()
+        boolean isNetworkChanged = mTxState.hasLargeBwChange()
                 || mRxState.hasLargeBwChange()
                 || mBandwidthUpdateDataRat != mDataRat
                 || mBandwidthUpdateSignalLevel != mSignalLevel
-                || !mBandwidthUpdatePlmn.equals(mPlmn)) {
+                || !mBandwidthUpdatePlmn.equals(mPlmn);
+        if (isValidNetwork() && isNetworkChanged) {
             mTxState.mLastReportedBwKbps = mTxState.mAvgUsedKbps < 0 ? -1 : mTxState.mFilterKbps;
             mRxState.mLastReportedBwKbps  = mRxState.mAvgUsedKbps < 0 ? -1 : mRxState.mFilterKbps;
             sendLinkBandwidthToDataConnection(
@@ -513,6 +556,10 @@ public class LinkBandwidthEstimator extends Handler {
 
         mTxState.calculateError();
         mRxState.calculateError();
+    }
+
+    private boolean isValidNetwork() {
+        return !mPlmn.equals(UNKNOWN_PLMN) && mDataRat != TelephonyManager.NETWORK_TYPE_UNKNOWN;
     }
 
     private class BandwidthState {
@@ -538,7 +585,11 @@ public class LinkBandwidthEstimator extends Handler {
             if (timeDeltaMs < TX_RX_TIME_MIN_MS) {
                 return;
             }
-            int linkBandwidthKbps = (int) (bytesDelta * 8 * 1000 / timeDeltaMs / 1024);
+            long linkBandwidthLongKbps = bytesDelta * 8 / timeDeltaMs * 1000 / 1024;
+            if (linkBandwidthLongKbps > Integer.MAX_VALUE || linkBandwidthLongKbps < 0) {
+                return;
+            }
+            int linkBandwidthKbps = (int) linkBandwidthLongKbps;
             mBwSampleValid = true;
             mBwSampleKbps = linkBandwidthKbps;
 
@@ -578,14 +629,20 @@ public class LinkBandwidthEstimator extends Handler {
             }
 
             if (filterInKbps == mFilterKbps) {
-                logv(mLink + " skip filter because the same input / current = " + filterInKbps);
                 return;
             }
 
             int alpha = timeDeltaSec > LARGE_TIME_DECAY_RATIO * timeConstantSec ? 0
                     : (int) (FILTER_SCALE * Math.exp(-1.0 * timeDeltaSec / timeConstantSec));
-            mFilterKbps = alpha == 0 ? filterInKbps : ((mFilterKbps * alpha
-                    + filterInKbps * FILTER_SCALE - filterInKbps * alpha) / FILTER_SCALE);
+            if (alpha == 0) {
+                mFilterKbps = filterInKbps;
+                return;
+            }
+            long filterOutKbps = (long) mFilterKbps * alpha
+                    + filterInKbps * FILTER_SCALE - filterInKbps * alpha;
+            filterOutKbps = filterOutKbps / FILTER_SCALE;
+            mFilterKbps = (int) Math.min(filterOutKbps, Integer.MAX_VALUE);
+
             StringBuilder sb = new StringBuilder();
             logv(sb.append(mLink)
                     .append(" lastSampleWeight=").append(alpha)
@@ -631,6 +688,7 @@ public class LinkBandwidthEstimator extends Handler {
         }
 
         private void resetBandwidthFilter() {
+            mBwSampleValid = false;
             mFilterKbps = getAvgLinkBandwidthKbps();
         }
 
@@ -660,8 +718,9 @@ public class LinkBandwidthEstimator extends Handler {
 
         // Calculate a byte count threshold for the given avg BW and observation window size
         private int calculateByteCountThreshold(int avgBwKbps, int durationMs) {
-            int avgBytes = avgBwKbps / 8 * durationMs;
-            return avgBytes * LOW_BW_TO_AVG_BW_RATIO_NUM / LOW_BW_TO_AVG_BW_RATIO_DEN;
+            long avgBytes = (long) avgBwKbps / 8 * durationMs;
+            long result = avgBytes * LOW_BW_TO_AVG_BW_RATIO_NUM / LOW_BW_TO_AVG_BW_RATIO_DEN;
+            return (int) Math.min(result, Integer.MAX_VALUE);
         }
 
         public boolean hasLargeBwChange() {
@@ -671,7 +730,8 @@ public class LinkBandwidthEstimator extends Handler {
         }
 
         public void calculateError() {
-            if (!mBwSampleValid || getCurrentCount() <= BW_STATS_COUNT_THRESHOLD + 1) {
+            if (!mBwSampleValid || getCurrentCount() <= BW_STATS_COUNT_THRESHOLD + 1
+                    || mAvgUsedKbps <= 0) {
                 return;
             }
             int bwEstExtErrPercent = calculateErrorPercent(mLastReportedBwKbps, mBwSampleKbps);
@@ -680,8 +740,7 @@ public class LinkBandwidthEstimator extends Handler {
             int coldStartErrPercent = calculateErrorPercent(mStaticBwKbps, mBwSampleKbps);
 
             TelephonyMetrics.getInstance().writeBandwidthStats(mLink, mDataRat, getNrMode(mDataRat),
-                    mSignalLevel, bwEstIntErrPercent, bwEstExtErrPercent,
-                    coldStartErrPercent, mAvgUsedKbps);
+                    mSignalLevel, bwEstExtErrPercent, coldStartErrPercent, mAvgUsedKbps);
 
             StringBuilder sb = new StringBuilder();
             logd(sb.append(mLink)
@@ -698,9 +757,8 @@ public class LinkBandwidthEstimator extends Handler {
         }
 
         private int calculateErrorPercent(int inKbps, int bwSampleKbps) {
-            int errorKbps = inKbps - bwSampleKbps;
-            int errorPercent = bwSampleKbps > 0 ? (errorKbps * 100 / bwSampleKbps) : 0;
-            return Math.max(-MAX_ERROR_PERCENT, Math.min(errorPercent, MAX_ERROR_PERCENT));
+            long errorPercent = 100L * (inKbps - bwSampleKbps) / bwSampleKbps;
+            return (int) Math.max(-MAX_ERROR_PERCENT, Math.min(errorPercent, MAX_ERROR_PERCENT));
         }
     }
 
@@ -718,22 +776,15 @@ public class LinkBandwidthEstimator extends Handler {
     // Reset BW filter to a long term avg value (PLMN/RAT/TAC dependent) or static BW value.
     // It should be called whenever PLMN/RAT or static BW value is changed;
     private void resetBandwidthFilter() {
-        StringBuilder sb = new StringBuilder();
         mTxState.resetBandwidthFilter();
         mRxState.resetBandwidthFilter();
     }
 
     private void sendLinkBandwidthToDataConnection(int linkBandwidthTxKps, int linkBandwidthRxKps) {
-        DcTracker dt = mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        if (dt == null) {
-            return;
-        }
-        DataConnection dc = dt.getDataConnectionByApnType(PhoneConstants.APN_TYPE_DEFAULT);
-        if (dc == null) {
-            return;
-        }
         logv("send to DC tx " + linkBandwidthTxKps + " rx " + linkBandwidthRxKps);
-        dc.updateLinkBandwidthEstimation(linkBandwidthTxKps, linkBandwidthRxKps);
+        Pair<Integer, Integer> bandwidthInfo =
+                new Pair<Integer, Integer>(linkBandwidthTxKps, linkBandwidthRxKps);
+        mBandwidthChangedRegistrants.notifyRegistrants(new AsyncResult(null, bandwidthInfo, null));
     }
 
     private void handleSignalStrengthChanged(SignalStrength signalStrength) {
@@ -741,17 +792,20 @@ public class LinkBandwidthEstimator extends Handler {
             return;
         }
 
-        updateDataRatCellIdentity();
-
         mSignalStrengthDbm = signalStrength.getDbm();
         mSignalLevel = signalStrength.getLevel();
+        updateByteCountThr();
+        boolean updatedBandwidth = updateDataRatCellIdentityBandwidth();
+        if (updatedBandwidth) {
+            return;
+        }
+
         if (Math.abs(mBandwidthUpdateSignalDbm - mSignalStrengthDbm) > RSSI_DELTA_THRESHOLD_DB) {
-            updateByteCountThr();
             updateTxRxBandwidthFilterSendToDataConnection();
         }
     }
 
-    private void registerDataServiceState() {
+    private void registerNrStateFrequencyChange() {
         mPhone.getServiceStateTracker().registerForNrStateChanged(this,
                 MSG_NR_STATE_CHANGED, null);
         mPhone.getServiceStateTracker().registerForNrFrequencyChanged(this,
@@ -843,18 +897,19 @@ public class LinkBandwidthEstimator extends Handler {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 
-    private void updateDataRatCellIdentity() {
+    private boolean updateDataRatCellIdentityBandwidth() {
         boolean updatedPlmn = false;
         CellIdentity cellIdentity = mPhone.getCurrentCellIdentity();
         mTac = getTac(cellIdentity);
         String plmn;
-        if (cellIdentity.getPlmn() != null) {
-            plmn = cellIdentity.getPlmn();
+
+        if (mPhone.getServiceState().getOperatorNumeric() != null) {
+            plmn = mPhone.getServiceState().getOperatorNumeric();
         } else {
-            if (cellIdentity.getOperatorAlphaShort() != null) {
-                plmn = cellIdentity.getOperatorAlphaShort().toString();
+            if (cellIdentity.getPlmn() != null) {
+                plmn = cellIdentity.getPlmn();
             } else {
-                plmn = "";
+                plmn = UNKNOWN_PLMN;
             }
         }
         if (mPlmn == null || !plmn.equals(mPlmn)) {
@@ -874,10 +929,12 @@ public class LinkBandwidthEstimator extends Handler {
             }
         }
 
-        if (updatedPlmn || updatedRat) {
+        boolean updatedPlmnOrRat = updatedPlmn || updatedRat;
+        if (updatedPlmnOrRat) {
             resetBandwidthFilter();
             updateTxRxBandwidthFilterSendToDataConnection();
         }
+        return updatedPlmnOrRat;
     }
 
     private int getTac(@NonNull CellIdentity cellIdentity) {
@@ -900,10 +957,15 @@ public class LinkBandwidthEstimator extends Handler {
     }
 
     private class TelephonyCallbackImpl extends TelephonyCallback implements
-            TelephonyCallback.SignalStrengthsListener {
+            TelephonyCallback.SignalStrengthsListener,
+            TelephonyCallback.ActiveDataSubscriptionIdListener {
         @Override
         public void onSignalStrengthsChanged(SignalStrength signalStrength) {
             obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, signalStrength).sendToTarget();
+        }
+        @Override
+        public void onActiveDataSubscriptionIdChanged(int subId) {
+            obtainMessage(MSG_ACTIVE_PHONE_CHANGED, subId).sendToTarget();
         }
     }
 
