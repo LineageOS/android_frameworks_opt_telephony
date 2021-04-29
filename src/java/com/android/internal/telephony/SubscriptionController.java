@@ -3039,6 +3039,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.WFC_IMS_ROAMING_ENABLED:
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
+            case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3116,6 +3117,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.GROUP_UUID:
                         case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
                         case SubscriptionManager.ALLOWED_NETWORK_TYPES:
+                        case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                             resultValue = cursor.getString(0);
                             break;
                         default:
