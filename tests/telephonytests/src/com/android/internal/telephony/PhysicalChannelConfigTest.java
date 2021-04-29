@@ -150,7 +150,6 @@ public class PhysicalChannelConfigTest {
         assertThat(mPhysicalChannelConfig.getCellBandwidthDownlinkKhz()).isEqualTo(CELL_BANDWIDTH);
         assertThat(mPhysicalChannelConfig.getCellBandwidthUplinkKhz()).isEqualTo(CELL_BANDWIDTH);
         assertThat(mPhysicalChannelConfig.getFrequencyRange()).isEqualTo(FREQUENCY_RANGE);
-        assertThat(mPhysicalChannelConfig.getChannelNumber()).isEqualTo(CHANNEL_NUMBER);
         assertThat(mPhysicalChannelConfig.getContextIds()).isEqualTo(CONTEXT_IDS);
         assertThat(mPhysicalChannelConfig.getPhysicalCellId()).isEqualTo(PHYSICAL_CELL_ID);
         assertThat(mPhysicalChannelConfig.getDownlinkChannelNumber()).isEqualTo(CHANNEL_NUMBER);
