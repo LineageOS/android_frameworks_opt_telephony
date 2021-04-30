@@ -3568,7 +3568,8 @@ public class DcTracker extends Handler {
      * @return waitingApns list to be used to create PDP
      *          error when waitingApns.isEmpty()
      */
-    private ArrayList<ApnSetting> buildWaitingApns(String requestedApnType, int radioTech) {
+    private @NonNull ArrayList<ApnSetting> buildWaitingApns(String requestedApnType,
+            int radioTech) {
         if (DBG) log("buildWaitingApns: E requestedApnType=" + requestedApnType);
         ArrayList<ApnSetting> apnList = new ArrayList<ApnSetting>();
 
@@ -4740,7 +4741,10 @@ public class DcTracker extends Handler {
                 if (!apnContext.isDisconnected()) {
                     ArrayList<ApnSetting> waitingApns = buildWaitingApns(
                             apnContext.getApnType(), getDataRat());
-                    apnContext.setWaitingApns(waitingApns);
+                    if (apnContext.getWaitingApns().size() != waitingApns.size()
+                            || !apnContext.getWaitingApns().containsAll(waitingApns)) {
+                        apnContext.setWaitingApns(waitingApns);
+                    }
                     for (ApnSetting apnSetting : waitingApns) {
                         if (areCompatible(apnSetting, apnContext.getApnSetting())) {
                             cleanupRequired = false;
