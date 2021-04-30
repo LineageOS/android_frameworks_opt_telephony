@@ -2934,12 +2934,10 @@ public class TelephonyMetrics {
      * Write bandwidth estimator stats
      */
     public synchronized void writeBandwidthStats(int link, int rat, int nrMode,
-            int signalLevel, int bwEstIntErrPercent,
-            int bwEstExtErrPercent, int coldStartErrPercent, int avgUsedKbps) {
+            int signalLevel, int bwEstExtErrPercent, int coldStartErrPercent, int avgUsedKbps) {
         BwEstimationStats stats = lookupEstimationStats(link, rat, nrMode);
-        stats.mBwEstIntNse[signalLevel] += bwEstIntErrPercent * bwEstIntErrPercent;
-        stats.mBwEstExtNse[signalLevel] += bwEstExtErrPercent * bwEstExtErrPercent;
-        stats.mStaticBwNse[signalLevel] += coldStartErrPercent * coldStartErrPercent;
+        stats.mBwEstErrorAcc[signalLevel] += Math.abs(bwEstExtErrPercent);
+        stats.mStaticBwErrorAcc[signalLevel] += Math.abs(coldStartErrPercent);
         stats.mAvgBwKbps[signalLevel] = avgUsedKbps;
         stats.mCount[signalLevel]++;
     }
@@ -2976,9 +2974,8 @@ public class TelephonyMetrics {
     private static class BwEstimationStats {
         final int mRadioTechnology;
         final int mNrMode;
-        final long[] mBwEstIntNse = new long[NUM_SIGNAL_LEVEL];
-        final long[] mBwEstExtNse = new long[NUM_SIGNAL_LEVEL];
-        final long[] mStaticBwNse = new long[NUM_SIGNAL_LEVEL];
+        final long[] mBwEstErrorAcc = new long[NUM_SIGNAL_LEVEL];
+        final long[] mStaticBwErrorAcc = new long[NUM_SIGNAL_LEVEL];
         final int[] mAvgBwKbps = new int[NUM_SIGNAL_LEVEL];
         final int[] mCount = new int[NUM_SIGNAL_LEVEL];
 
@@ -2993,9 +2990,8 @@ public class TelephonyMetrics {
             return sb.append(LinkBandwidthEstimator.getDataRatName(mRadioTechnology, mNrMode))
                     .append("\n Count\n").append(printValues(mCount))
                     .append("\n AvgKbps\n").append(printValues(mAvgBwKbps))
-                    .append("\n Internal NRMSE\n").append(printAvgError(mBwEstIntNse, mCount))
-                    .append("\n External NRMSE\n").append(printAvgError(mBwEstExtNse, mCount))
-                    .append("\n StaticBw NRMSE\n").append(printAvgError(mStaticBwNse, mCount))
+                    .append("\n BwEst Error\n").append(printAvgError(mBwEstErrorAcc, mCount))
+                    .append("\n StaticBw Error\n").append(printAvgError(mStaticBwErrorAcc, mCount))
                     .toString();
         }
 
@@ -3010,8 +3006,7 @@ public class TelephonyMetrics {
         private String printAvgError(long[] stats, int[] count) {
             StringBuilder sb = new StringBuilder();
             for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
-                int avgStat = (count[k] > 0 && stats[k] >= 0)
-                        ? (int) Math.sqrt(stats[k] / count[k]) : 0;
+                int avgStat = calculateAvgError(stats[k], count[k]);
                 sb.append(" " + avgStat);
             }
             return sb.toString();
@@ -3039,15 +3034,15 @@ public class TelephonyMetrics {
                 stats.signalLevel = level;
                 stats.count = count;
                 stats.avgBwKbps = mAvgBwKbps[level];
-                stats.staticBwNrmsePercent = calculateNrmse(mStaticBwNse[level], count);
-                stats.bwEstNrmsePercent = calculateNrmse(mBwEstExtNse[level], count);
+                stats.staticBwErrorPercent = calculateAvgError(mStaticBwErrorAcc[level], count);
+                stats.bwEstErrorPercent = calculateAvgError(mBwEstErrorAcc[level], count);
                 return stats;
             }
             return null;
         }
 
-        private int calculateNrmse(long nse, int count) {
-            return (count > 0  && nse >= 0) ? (int) Math.sqrt(nse / count) : 0;
+        private int calculateAvgError(long errorAccPercent, int count) {
+            return (count > 0) ? (int) (errorAccPercent / count) : 0;
         }
     }
 

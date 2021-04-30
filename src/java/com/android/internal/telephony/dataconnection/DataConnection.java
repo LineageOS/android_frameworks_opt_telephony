@@ -1668,12 +1668,6 @@ public class DataConnection extends StateMachine {
         }
     }
 
-    /** Update Tx and Rx link bandwidth estimation values */
-    public void updateLinkBandwidthEstimation(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {
-        sendMessage(DataConnection.EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE,
-                new Pair<Integer, Integer>(uplinkBandwidthKbps, downlinkBandwidthKbps));
-    }
-
     private boolean isBandwidthSourceKey(String source) {
         return source.equals(mPhone.getContext().getResources().getString(
                 com.android.internal.R.string.config_bandwidthEstimateSource));
@@ -2211,6 +2205,10 @@ public class DataConnection extends StateMachine {
                     DataConnection.EVENT_NR_FREQUENCY_CHANGED, null);
             mPhone.getServiceStateTracker().registerForCssIndicatorChanged(getHandler(),
                     DataConnection.EVENT_CSS_INDICATOR_CHANGED, null);
+            if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR_KEY)) {
+                mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(getHandler(),
+                        DataConnection.EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE, null);
+            }
 
             // Add ourselves to the list of data connections
             mDcController.addDc(DataConnection.this);
@@ -2228,6 +2226,9 @@ public class DataConnection extends StateMachine {
             mPhone.getServiceStateTracker().unregisterForNrStateChanged(getHandler());
             mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
             mPhone.getServiceStateTracker().unregisterForCssIndicatorChanged(getHandler());
+            if (isBandwidthSourceKey(DctConstants.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR_KEY)) {
+                mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+            }
 
             // Remove ourselves from the DC lists
             mDcController.removeDc(DataConnection.this);
@@ -3235,10 +3236,15 @@ public class DataConnection extends StateMachine {
                     break;
                 }
                 case EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE: {
-                    Pair<Integer, Integer> pair = (Pair<Integer, Integer>) msg.obj;
-                    if (isBandwidthSourceKey(
-                            DctConstants.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR_KEY)) {
-                        updateLinkBandwidthsFromBandwidthEstimator(pair.first, pair.second);
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        loge("EVENT_LINK_BANDWIDTH_ESTIMATOR_UPDATE e=" + ar.exception);
+                    } else {
+                        Pair<Integer, Integer> pair = (Pair<Integer, Integer>) ar.result;
+                        if (isBandwidthSourceKey(
+                                DctConstants.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR_KEY)) {
+                            updateLinkBandwidthsFromBandwidthEstimator(pair.first, pair.second);
+                        }
                     }
                     retVal = HANDLED;
                     break;
