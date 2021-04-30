@@ -1351,8 +1351,6 @@ public class SubscriptionController extends ISub.Stub {
                         setDisplayName = true;
                         Uri uri = insertEmptySubInfoRecord(uniqueId, slotIndex);
                         if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
-                        SubscriptionManager subManager = SubscriptionManager.from(mContext);
-                        subManager.restoreSimSpecificSettingsForIccIdFromBackup(uniqueId);
                     } else { // there are matching records in the database for the given ICC_ID
                         int subId = cursor.getInt(0);
                         int oldSimInfoId = cursor.getInt(1);
