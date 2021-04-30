@@ -17,14 +17,14 @@
 package com.android.internal.telephony.d2d;
 
 import android.telecom.Connection;
-import android.telecom.DiagnosticCall;
+import android.telecom.CallDiagnostics;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.BiMap;
 
 /**
  * Helper class to map between the message types and values used in {@link Communicator} and those
- * defined in the public API in {@link DiagnosticCall}.
+ * defined in the public API in {@link CallDiagnostics}.
  */
 public class MessageTypeAndValueHelper {
     // Maps between the local message and value types defined here and those defined in the
@@ -34,44 +34,44 @@ public class MessageTypeAndValueHelper {
      * Convert between the local message type (e.g.
      * {@link Communicator#MESSAGE_CALL_RADIO_ACCESS_TYPE})
      * and
-     * the ones referred to in {@link DiagnosticCall}.
+     * the ones referred to in {@link CallDiagnostics}.
      */
     public static final BiMap<Integer, Integer> MSG_TYPE_TO_DC_MSG_TYPE = new BiMap<>();
 
     /**
      * Convert between the local RAT type (e.g. {@link Communicator#RADIO_ACCESS_TYPE_IWLAN}) and
      * the ones
-     * referred to by {@link DiagnosticCall#MESSAGE_CALL_NETWORK_TYPE}.
+     * referred to by {@link CallDiagnostics#MESSAGE_CALL_NETWORK_TYPE}.
      */
     public static final BiMap<Integer, Integer> RAT_TYPE_TO_DC_NETWORK_TYPE = new BiMap<>();
 
     /**
      * Convert between the local codec (e.g. {@link Communicator#AUDIO_CODEC_AMR_WB}) and the ones
-     * referred to by {@link DiagnosticCall#MESSAGE_CALL_AUDIO_CODEC}.
+     * referred to by {@link CallDiagnostics#MESSAGE_CALL_AUDIO_CODEC}.
      */
     public static final BiMap<Integer, Integer> CODEC_TO_DC_CODEC = new BiMap<>();
 
     /**
      * Convert between the local battery state (e.g. {@link Communicator#BATTERY_STATE_GOOD}) and
-     * the ones referred to by {@link DiagnosticCall#MESSAGE_DEVICE_BATTERY_STATE}.
+     * the ones referred to by {@link CallDiagnostics#MESSAGE_DEVICE_BATTERY_STATE}.
      */
     public static final BiMap<Integer, Integer> BATTERY_STATE_TO_DC_BATTERY_STATE = new BiMap();
 
     /**
      * Convert between the local battery state (e.g. {@link Communicator#COVERAGE_GOOD}) and the
-     * ones referred to by {@link DiagnosticCall#MESSAGE_DEVICE_NETWORK_COVERAGE}.
+     * ones referred to by {@link CallDiagnostics#MESSAGE_DEVICE_NETWORK_COVERAGE}.
      */
     public static final BiMap<Integer, Integer> COVERAGE_TO_DC_COVERAGE = new BiMap();
 
     static {
         MSG_TYPE_TO_DC_MSG_TYPE.put(Communicator.MESSAGE_CALL_RADIO_ACCESS_TYPE,
-                DiagnosticCall.MESSAGE_CALL_NETWORK_TYPE);
+                CallDiagnostics.MESSAGE_CALL_NETWORK_TYPE);
         MSG_TYPE_TO_DC_MSG_TYPE.put(Communicator.MESSAGE_CALL_AUDIO_CODEC,
-                DiagnosticCall.MESSAGE_CALL_AUDIO_CODEC);
+                CallDiagnostics.MESSAGE_CALL_AUDIO_CODEC);
         MSG_TYPE_TO_DC_MSG_TYPE.put(Communicator.MESSAGE_DEVICE_BATTERY_STATE,
-                DiagnosticCall.MESSAGE_DEVICE_BATTERY_STATE);
+                CallDiagnostics.MESSAGE_DEVICE_BATTERY_STATE);
         MSG_TYPE_TO_DC_MSG_TYPE.put(Communicator.MESSAGE_DEVICE_NETWORK_COVERAGE,
-                DiagnosticCall.MESSAGE_DEVICE_NETWORK_COVERAGE);
+                CallDiagnostics.MESSAGE_DEVICE_NETWORK_COVERAGE);
 
         RAT_TYPE_TO_DC_NETWORK_TYPE.put(Communicator.RADIO_ACCESS_TYPE_LTE,
                 TelephonyManager.NETWORK_TYPE_LTE);
@@ -85,13 +85,13 @@ public class MessageTypeAndValueHelper {
         CODEC_TO_DC_CODEC.put(Communicator.AUDIO_CODEC_AMR_NB, Connection.AUDIO_CODEC_AMR);
 
         BATTERY_STATE_TO_DC_BATTERY_STATE.put(Communicator.BATTERY_STATE_LOW,
-                DiagnosticCall.BATTERY_STATE_LOW);
+                CallDiagnostics.BATTERY_STATE_LOW);
         BATTERY_STATE_TO_DC_BATTERY_STATE.put(Communicator.BATTERY_STATE_GOOD,
-                DiagnosticCall.BATTERY_STATE_GOOD);
+                CallDiagnostics.BATTERY_STATE_GOOD);
         BATTERY_STATE_TO_DC_BATTERY_STATE.put(Communicator.BATTERY_STATE_CHARGING,
-                DiagnosticCall.BATTERY_STATE_CHARGING);
+                CallDiagnostics.BATTERY_STATE_CHARGING);
 
-        COVERAGE_TO_DC_COVERAGE.put(Communicator.COVERAGE_POOR, DiagnosticCall.COVERAGE_POOR);
-        COVERAGE_TO_DC_COVERAGE.put(Communicator.COVERAGE_GOOD, DiagnosticCall.COVERAGE_GOOD);
+        COVERAGE_TO_DC_COVERAGE.put(Communicator.COVERAGE_POOR, CallDiagnostics.COVERAGE_POOR);
+        COVERAGE_TO_DC_COVERAGE.put(Communicator.COVERAGE_GOOD, CallDiagnostics.COVERAGE_GOOD);
     }
 }
