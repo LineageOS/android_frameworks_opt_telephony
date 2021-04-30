@@ -217,7 +217,7 @@ public class RetryManager {
      * The list to store APN setting candidates for data call setup. Most of the carriers only have
      * one APN, but few carriers have more than one.
      */
-    private ArrayList<ApnSetting> mWaitingApns = null;
+    private ArrayList<ApnSetting> mWaitingApns = new ArrayList<>();
 
     /**
      * Index pointing to the current trying APN from mWaitingApns
@@ -683,7 +683,7 @@ public class RetryManager {
      * Get the list of waiting APNs.
      * @return the list of waiting APNs
      */
-    public ArrayList<ApnSetting> getWaitingApns() {
+    public @NonNull ArrayList<ApnSetting> getWaitingApns() {
         return mWaitingApns;
     }
 
