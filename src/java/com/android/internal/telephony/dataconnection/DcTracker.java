@@ -739,7 +739,7 @@ public class DcTracker extends Handler {
 
         mTransportType = transportType;
         mDataServiceManager = new DataServiceManager(phone, transportType, tagSuffix);
-        mDataThrottler = new DataThrottler(mPhone.getPhoneId(), transportType);
+        mDataThrottler = new DataThrottler(mPhone, transportType);
 
         mResolver = mPhone.getContext().getContentResolver();
         mAlarmManager =
@@ -832,6 +832,7 @@ public class DcTracker extends Handler {
         mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
         mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(mTransportType, this);
+        mPhone.getServiceStateTracker().unregisterForAirplaneModeChanged(this);
     }
 
     private void registerForAllEvents() {

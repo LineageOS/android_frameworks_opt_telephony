@@ -239,6 +239,8 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
     private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
+    private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
+    private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -647,6 +649,9 @@ public class ServiceStateTracker extends Handler {
     private static final int INVALID_LTE_EARFCN = -1;
 
     private final List<SignalRequestRecord> mSignalRequestRecords = new ArrayList<>();
+
+    /* Last known TAC/LAC */
+    private int mLastKnownAreaCode = CellInfo.UNAVAILABLE;
 
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         mNitzState = TelephonyComponentFactory.getInstance()
@@ -2010,6 +2015,7 @@ public class ServiceStateTracker extends Handler {
     public void onAirplaneModeChanged(boolean isAirplaneModeOn) {
         mLastNitzData = null;
         mNitzState.handleAirplaneModeChanged(isAirplaneModeOn);
+        mAirplaneModeChangedRegistrants.notifyResult(isAirplaneModeOn);
     }
 
     protected Phone getPhone() {
@@ -2549,6 +2555,19 @@ public class ServiceStateTracker extends Handler {
         }
 
         return cid;
+    }
+
+    //TODO: Move this and getCidFromCellIdentity to CellIdentityUtils.
+    private static int getAreaCodeFromCellIdentity(CellIdentity id) {
+        if (id == null) return CellInfo.UNAVAILABLE;
+        switch(id.getType()) {
+            case CellInfo.TYPE_GSM: return ((CellIdentityGsm) id).getLac();
+            case CellInfo.TYPE_WCDMA: return ((CellIdentityWcdma) id).getLac();
+            case CellInfo.TYPE_TDSCDMA: return ((CellIdentityTdscdma) id).getLac();
+            case CellInfo.TYPE_LTE: return ((CellIdentityLte) id).getTac();
+            case CellInfo.TYPE_NR: return ((CellIdentityNr) id).getTac();
+            default: return CellInfo.UNAVAILABLE;
+        }
     }
 
     private void setPhyCellInfoFromCellIdentity(ServiceState ss, CellIdentity cellIdentity) {
@@ -3586,6 +3605,12 @@ public class ServiceStateTracker extends Handler {
         mNewSS.setStateOutOfService();
 
         mCellIdentity = primaryCellIdentity;
+
+        int areaCode = getAreaCodeFromCellIdentity(mCellIdentity);
+        if (areaCode != mLastKnownAreaCode && areaCode != CellInfo.UNAVAILABLE) {
+            mLastKnownAreaCode = areaCode;
+            mAreaCodeChangedRegistrants.notifyRegistrants();
+        }
 
         if (hasRilVoiceRadioTechnologyChanged) {
             updatePhoneObject();
@@ -4756,6 +4781,27 @@ public class ServiceStateTracker extends Handler {
         if (mDataRegStateOrRatChangedRegistrants.get(transport) != null) {
             mDataRegStateOrRatChangedRegistrants.get(transport).remove(h);
         }
+    }
+
+    /**
+     * Registration for Airplane Mode changing.  The state of Airplane Mode will be returned
+     * {@link AsyncResult#result} as a {@link Boolean} Object.
+     * The {@link AsyncResult} will be in the notification {@link Message#obj}.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in {@link AsyncResult#userObj}
+     */
+    public void registerForAirplaneModeChanged(Handler h, int what, Object obj) {
+        mAirplaneModeChangedRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregister for Airplane Mode changed event.
+     *
+     * @param h The handler
+     */
+    public void unregisterForAirplaneModeChanged(Handler h) {
+        mAirplaneModeChangedRegistrants.remove(h);
     }
 
     /**
@@ -6161,5 +6207,23 @@ public class ServiceStateTracker extends Handler {
         // TODO(b/177924721): TM#setAlwaysReportSignalStrength will be removed and we will not
         // worry about unset flag which was set by other client.
         mPhone.setAlwaysReportSignalStrength(alwaysReport);
+    }
+
+    /**
+     * Registers for TAC/LAC changed event.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForAreaCodeChanged(Handler h, int what, Object obj) {
+        mAreaCodeChangedRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for TAC/LAC changed event.
+     * @param h handler to notify
+     */
+    public void unregisterForAreaCodeChanged(Handler h) {
+        mAreaCodeChangedRegistrants.remove(h);
     }
 }
