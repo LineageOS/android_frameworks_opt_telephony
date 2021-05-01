@@ -592,16 +592,19 @@ public class SmsUsageMonitor {
         if (appId == Process.SYSTEM_UID || appId == Process.PHONE_UID || uid == 0) {
             return;
         }
+        // log string should be same in both exception scenarios below, otherwise it can be used to
+        // detect if a package is installed on the device which is a privacy/security issue
+        String errorLog = "Calling uid " + uid + " gave package " + pkg + " which is either "
+                + "unknown or owned by another uid";
         try {
             ApplicationInfo ai = mContext.getPackageManager().getApplicationInfoAsUser(
                     pkg, 0, UserHandle.getUserHandleForUid(uid));
 
-          if (UserHandle.getAppId(ai.uid) != UserHandle.getAppId(uid)) {
-                throw new SecurityException("Calling uid " + uid + " gave package"
-                        + pkg + " which is owned by uid " + ai.uid);
+            if (UserHandle.getAppId(ai.uid) != UserHandle.getAppId(uid)) {
+                throw new SecurityException(errorLog);
             }
         } catch (NameNotFoundException ex) {
-            throw new SecurityException("Unknown package " + pkg + "\n" + ex);
+            throw new SecurityException(errorLog);
         }
     }
 
