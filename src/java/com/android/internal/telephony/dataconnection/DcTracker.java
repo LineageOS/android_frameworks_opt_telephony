@@ -822,6 +822,8 @@ public class DcTracker extends Handler {
                 DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(mTransportType, this,
                 DctConstants.EVENT_DATA_RAT_CHANGED, null);
+        mPhone.getServiceStateTracker().registerForAirplaneModeChanged(this,
+                DctConstants.EVENT_AIRPLANE_MODE_CHANGED, null);
     }
 
     public void unregisterServiceStateTrackerEvents() {
@@ -832,6 +834,7 @@ public class DcTracker extends Handler {
         mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
         mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(mTransportType, this);
+        mPhone.getServiceStateTracker().unregisterForAirplaneModeChanged(this);
     }
 
     private void registerForAllEvents() {
@@ -4051,6 +4054,13 @@ public class DcTracker extends Handler {
                 break;
             case DctConstants.EVENT_APN_UNTHROTTLED:
                 onApnUnthrottled(msg);
+                break;
+            case DctConstants.EVENT_AIRPLANE_MODE_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                if (!(Boolean) ar.result) {
+                    log("Airplane Mode switched off, resetting data throttler");
+                    mDataThrottler.reset();
+                }
                 break;
             default:
                 Rlog.e("DcTracker", "Unhandled event=" + msg);
