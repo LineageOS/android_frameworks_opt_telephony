@@ -239,6 +239,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
     private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
+    private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -2010,6 +2011,7 @@ public class ServiceStateTracker extends Handler {
     public void onAirplaneModeChanged(boolean isAirplaneModeOn) {
         mLastNitzData = null;
         mNitzState.handleAirplaneModeChanged(isAirplaneModeOn);
+        mAirplaneModeChangedRegistrants.notifyResult(isAirplaneModeOn);
     }
 
     protected Phone getPhone() {
@@ -4756,6 +4758,27 @@ public class ServiceStateTracker extends Handler {
         if (mDataRegStateOrRatChangedRegistrants.get(transport) != null) {
             mDataRegStateOrRatChangedRegistrants.get(transport).remove(h);
         }
+    }
+
+    /**
+     * Registration for Airplane Mode changing.  The state of Airplane Mode will be returned
+     * {@link AsyncResult#result} as a {@link Boolean} Object.
+     * The {@link AsyncResult} will be in the notification {@link Message#obj}.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in {@link AsyncResult#userObj}
+     */
+    public void registerForAirplaneModeChanged(Handler h, int what, Object obj) {
+        mAirplaneModeChangedRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregister for Airplane Mode changed event.
+     *
+     * @param h The handler
+     */
+    public void unregisterForAirplaneModeChanged(Handler h) {
+        mAirplaneModeChangedRegistrants.remove(h);
     }
 
     /**
