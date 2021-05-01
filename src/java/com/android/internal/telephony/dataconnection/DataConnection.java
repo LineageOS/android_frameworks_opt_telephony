@@ -2401,7 +2401,13 @@ public class DataConnection extends StateMachine {
     }
 
     private void notifyDataConnectionState() {
-        mPhone.notifyDataConnection(getPreciseDataConnectionState());
+        // The receivers of this have no way to differentiate between default and enterprise
+        // connections. Do not notify for enterprise.
+        if (!isEnterpriseUse()) {
+            mPhone.notifyDataConnection(getPreciseDataConnectionState());
+        } else {
+            log("notifyDataConnectionState: Skipping for enterprise; state=" + getState());
+        }
     }
 
     private DcDefaultState mDefaultState = new DcDefaultState();
