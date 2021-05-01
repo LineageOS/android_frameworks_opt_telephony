@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
@@ -255,7 +256,7 @@ public class ApnContext {
      * Get the list of waiting APNs.
      * @return the list of waiting APNs
      */
-    public ArrayList<ApnSetting> getWaitingApns() {
+    public @NonNull ArrayList<ApnSetting> getWaitingApns() {
         return mRetryManager.getWaitingApns();
     }
 
@@ -288,10 +289,8 @@ public class ApnContext {
         }
 
         if (mState == DctConstants.State.FAILED) {
-            if (mRetryManager.getWaitingApns() != null) {
-                // when teardown the connection and set to IDLE
-                mRetryManager.getWaitingApns().clear();
-            }
+            // when teardown the connection and set to IDLE
+            mRetryManager.getWaitingApns().clear();
         }
     }
 
