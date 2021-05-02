@@ -86,6 +86,7 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
 import android.util.Pair;
+import android.util.SparseArray;
 
 import androidx.test.filters.FlakyTest;
 
@@ -101,6 +102,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -115,6 +117,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -799,6 +802,18 @@ public class DcTrackerTest extends TelephonyTest {
                     DataConnectionReasons.class);
             method.setAccessible(true);
             return (boolean) method.invoke(mDct, dataConnectionReasons);
+        } catch (Exception e) {
+            fail(e.toString());
+            return false;
+        }
+    }
+
+    private boolean isHandoverPending(int apnType) {
+        try {
+            Method method = DcTracker.class.getDeclaredMethod("isHandoverPending",
+                    int.class);
+            method.setAccessible(true);
+            return (boolean) method.invoke(mDct, apnType);
         } catch (Exception e) {
             fail(e.toString());
             return false;
@@ -2609,5 +2624,45 @@ public class DcTrackerTest extends TelephonyTest {
             fail();
         }
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+    }
+
+    @Test
+    public void testRetryHandoverWhenDisconnecting() throws Exception {
+        initApns(ApnSetting.TYPE_IMS_STRING, new String[]{ApnSetting.TYPE_IMS_STRING});
+        setUpDataConnection();
+        SparseArray<ApnContext> apnContextsByType = Mockito.mock(SparseArray.class);
+        ConcurrentHashMap<String, ApnContext> apnContexts = Mockito.mock(ConcurrentHashMap.class);
+        doReturn(mApnContext).when(apnContextsByType).get(eq(ApnSetting.TYPE_IMS));
+        doReturn(mApnContext).when(apnContexts).get(eq(ApnSetting.TYPE_IMS_STRING));
+        doReturn(false).when(mApnContext).isConnectable();
+        doReturn(DctConstants.State.DISCONNECTING).when(mApnContext).getState();
+        replaceInstance(DcTracker.class, "mApnContextsByType", mDct, apnContextsByType);
+        replaceInstance(DcTracker.class, "mApnContexts", mDct, apnContexts);
+
+        sendInitializationEvents();
+
+        logd("Sending EVENT_ENABLE_APN");
+        // APN id 0 is APN_TYPE_DEFAULT
+        mDct.enableApn(ApnSetting.TYPE_IMS, DcTracker.REQUEST_TYPE_HANDOVER,
+                mDct.obtainMessage(12345));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        assertTrue(isHandoverPending(ApnSetting.TYPE_IMS));
+
+        // Verify no handover request was sent
+        verify(mDataConnection, never()).bringUp(any(ApnContext.class), anyInt(), anyInt(),
+                any(Message.class), anyInt(), anyInt(), anyInt(), anyBoolean());
+
+        doReturn(DctConstants.State.RETRYING).when(mApnContext).getState();
+        // Data now is disconnected
+        doReturn(true).when(mApnContext).isConnectable();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE,
+                new AsyncResult(Pair.create(mApnContext, 0), null, null)));
+
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mDataConnection).bringUp(any(ApnContext.class), anyInt(), anyInt(),
+                any(Message.class), anyInt(), eq(DcTracker.REQUEST_TYPE_HANDOVER), anyInt(),
+                anyBoolean());
     }
 }
