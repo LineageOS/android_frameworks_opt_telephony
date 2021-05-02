@@ -3191,6 +3191,9 @@ public class DcTracker extends Handler {
             apnContext.setDataConnection(null);
             log("onDataSetupCompleteError: Stop retrying APNs. delay=" + delay
                     + ", requestType=" + requestTypeToString(requestType));
+            //send request network complete messages as needed
+            sendRequestNetworkCompleteMessages(apnContext.getApnTypeBitmask(),
+                    requestType, false, fallbackOnFailedHandover);
         }
     }
 
