@@ -2136,6 +2136,45 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    /**
+     * Set contacts that allow device to device status sharing.
+     * @param contacts contacts to set
+     * @param subscriptionId
+     * @return the number of records updated
+     */
+    @Override
+    public int setDeviceToDeviceStatusSharingContacts(String contacts, int subscriptionId) {
+        if (DBG) {
+            logd("[setDeviceToDeviceStatusSharingContacts]- contacts:" + contacts
+                    + " subId:" + subscriptionId);
+        }
+
+        enforceModifyPhoneState("setDeviceToDeviceStatusSharingContacts");
+
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subscriptionId);
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.D2D_STATUS_SHARING_SELECTED_CONTACTS, contacts);
+            if (DBG) {
+                logd("[setDeviceToDeviceStatusSharingContacts]- contacts:" + contacts
+                        + " set");
+            }
+
+            int result = updateDatabase(value, subscriptionId, true);
+
+            // Refresh the Cache of Active Subscription Info List
+            refreshCachedActiveSubscriptionInfoList();
+
+            notifySubscriptionInfoChanged();
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
     public void syncGroupedSetting(int refSubId) {
         logd("syncGroupedSetting");
         try (Cursor cursor = mContext.getContentResolver().query(
@@ -3154,6 +3193,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.ALLOWED_NETWORK_TYPES:
                         case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                         case SubscriptionManager.D2D_STATUS_SHARING:
+                        case SubscriptionManager.D2D_STATUS_SHARING_SELECTED_CONTACTS:
                             resultValue = cursor.getString(0);
                             break;
                         default:
