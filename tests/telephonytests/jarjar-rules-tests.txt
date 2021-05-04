@@ -7,6 +7,8 @@ rule android.net.NetworkFactory* android.net.services.NetworkFactory@1
 
 # Telephony-common has already included net-utils-framework-common lib and jarjars
 # the package name. FrameworksTelephonyTests also includes net-utils-framework-common
-# via net-tests-utils and tries to jarjar it again. Rename the package name with
-# differnt prefix in the test jarjar rule to avoid duplicate jar entries.
+# via net-tests-utils and tries to jarjar it again. Rename the package names with
+# a different prefix in the test jarjar rule to avoid duplicate jar entries.
 rule com.android.net.module.util.** com.android.internal.telephony.util.test.@1
+# Similarly, this is needed for the build utils.
+rule com.android.modules.utils.** com.android.internal.telephony.util.test.@1
