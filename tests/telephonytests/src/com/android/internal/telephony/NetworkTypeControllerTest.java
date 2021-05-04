@@ -103,6 +103,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(RadioAccessFamily.getRafFromNetworkType(
                 TelephonyManager.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA)).when(
                 mPhone).getCachedAllowedNetworkTypesBitmask();
+        doReturn(false).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
         processAllMessages();
     }
@@ -275,12 +277,45 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testTransitionToCurrentStateIdleSupportPhysicalChannelConfig1_6() throws Exception {
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        processAllMessages();
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        setPhysicalLinkState(false);
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
+    }
+
+    @Test
     public void testTransitionToCurrentStateLteConnected() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
                 new AsyncResult(null, DcController.PHYSICAL_LINK_ACTIVE, null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateLteConnectedSupportPhysicalChannelConfig1_6()
+            throws Exception {
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        processAllMessages();
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        setPhysicalLinkState(true);
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
@@ -322,9 +357,9 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
                 .setBand(41)
                 .build();
-        List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = new ArrayList<>();
-        mLastPhysicalChannelConfigList.add(physicalChannelConfig);
-        doReturn(mLastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
+        lastPhysicalChannelConfigList.add(physicalChannelConfig);
+        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
         broadcastCarrierConfigs();
 
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
@@ -345,9 +380,9 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
                 .setBand(2)
                 .build();
-        List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = new ArrayList<>();
-        mLastPhysicalChannelConfigList.add(physicalChannelConfig);
-        doReturn(mLastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
+        lastPhysicalChannelConfigList.add(physicalChannelConfig);
+        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
         broadcastCarrierConfigs();
 
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
@@ -415,12 +450,51 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testNrPhysicalChannelChange1_6FromNrConnectedMmwaveToLteConnected()
+            throws Exception {
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        processAllMessages();
+        testTransitionToCurrentStateNrConnectedMmwave();
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        setPhysicalLinkState(true);
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+        mNetworkTypeController.sendMessage(EVENT_NR_FREQUENCY_CHANGED);
+        mNetworkTypeController.sendMessage(EVENT_NR_STATE_CHANGED);
+
+        processAllMessages();
+
+        assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+    }
+
+    @Test
     public void testEventPhysicalLinkStateChanged() throws Exception {
         testTransitionToCurrentStateLteConnected();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
                 new AsyncResult(null, DcController.PHYSICAL_LINK_NOT_ACTIVE, null));
+
         processAllMessages();
+
+        assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
+    }
+
+    @Test
+    public void testEventPhysicalLinkStateChangedSupportPhysicalChannelConfig1_6()
+            throws Exception {
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        processAllMessages();
+        testTransitionToCurrentStateLteConnectedSupportPhysicalChannelConfig1_6();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        setPhysicalLinkState(false);
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+
+        processAllMessages();
+
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
     }
 
@@ -841,5 +915,22 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
         assertFalse(mNetworkTypeController.is5GHysteresisActive());
+    }
+
+    private void setPhysicalLinkState(Boolean state) {
+        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
+        // If PhysicalChannelConfigList is empty, PhysicalLinkState is DcController
+        // .PHYSICAL_LINK_NOT_ACTIVE
+        // If PhysicalChannelConfigList is not empty, PhysicalLinkState is DcController
+        // .PHYSICAL_LINK_ACTIVE
+
+        if (state) {
+            PhysicalChannelConfig physicalChannelConfig = new PhysicalChannelConfig.Builder()
+                    .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                    .setBand(41)
+                    .build();
+            lastPhysicalChannelConfigList.add(physicalChannelConfig);
+        }
+        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
     }
 }
