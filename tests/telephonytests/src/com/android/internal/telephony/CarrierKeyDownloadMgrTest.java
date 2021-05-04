@@ -15,7 +15,7 @@
  */
 package com.android.internal.telephony;
 
-import static android.preference.PreferenceManager.getDefaultSharedPreferences;
+import static junit.framework.Assert.assertNull;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -31,7 +31,6 @@ import static org.mockito.Mockito.when;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
@@ -155,7 +154,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         }
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", 2,
                 "key1=value", keyInfo.first, new Date(keyInfo.second));
-        String mccMnc = "310:270";
+        String mccMnc = "310270";
         mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr, mccMnc);
         verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
                 (Matchers.refEq(imsiEncryptionInfo)));
@@ -176,7 +175,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         }
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", 2,
                 "key1=value", keyInfo.first, new Date(keyInfo.second));
-        String mccMnc = "310:270";
+        String mccMnc = "310270";
         mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr1, mccMnc);
         verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
                 (Matchers.refEq(imsiEncryptionInfo)));
@@ -189,7 +188,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testParseBadJsonFail() {
-        String mccMnc = "310:290";
+        String mccMnc = "310290";
         String badJsonStr = "{badJsonString}";
         mCarrierKeyDM.parseJsonAndPersistKey(badJsonStr, mccMnc);
         verify(mPhone, times(0)).setCarrierInfoForImsiEncryption(any());
@@ -202,9 +201,13 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testIsValidDownload() {
-        String mccMnc = "310:260";
-        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
-        assertTrue(mCarrierKeyDM.isValidDownload(mccMnc));
+        String currentMccMnc = "310260";
+        long currentDownloadId = 1;
+        // mock downloadId to match
+        mCarrierKeyDM.mMccMncForDownload = currentMccMnc;
+        mCarrierKeyDM.mDownloadId = currentDownloadId;
+
+        assertTrue(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId));
     }
 
     /**
@@ -214,9 +217,18 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testIsValidDownloadFail() {
-        String mccMnc = "310:290";
-        when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
-        assertFalse(mCarrierKeyDM.isValidDownload(mccMnc));
+        String currentMccMnc = "310260";
+        long currentDownloadId = 1;
+
+        // mock downloadId to match, mccmnc so it doesn't match
+        mCarrierKeyDM.mMccMncForDownload = "310290";
+        mCarrierKeyDM.mDownloadId = currentDownloadId;
+        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId));
+
+        // pass in mccmnc to match, and mock shared pref downloadId so it doesn't match
+        currentMccMnc = "310290";
+        mCarrierKeyDM.mDownloadId = currentDownloadId + 1;
+        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId));
     }
 
     /**
@@ -244,11 +256,10 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDownloadComplete() {
-        SharedPreferences.Editor editor = getDefaultSharedPreferences(mContext).edit();
-        String mccMnc = "310:260";
-        int slotId = mPhone.getPhoneId();
-        editor.putString("CARRIER_KEY_DM_MCC_MNC" + slotId, mccMnc);
-        editor.commit();
+        String mccMnc = "310260";
+        long downloadId = 1;
+        mCarrierKeyDM.mMccMncForDownload = mccMnc;
+        mCarrierKeyDM.mDownloadId = downloadId;
 
         SimpleDateFormat dt = new SimpleDateFormat("yyyy-mm-dd");
         Calendar expectedCal = new GregorianCalendar();
@@ -257,6 +268,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
 
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         Intent mIntent = new Intent(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        mIntent.putExtra(DownloadManager.EXTRA_DOWNLOAD_ID, downloadId);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
@@ -282,9 +294,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
-        SharedPreferences preferences = getDefaultSharedPreferences(mContext);
-        String mccMnc = preferences.getString("CARRIER_KEY_DM_MCC_MNC" + slotId, null);
-        assertTrue(mccMnc.equals("310:260"));
+        assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);
     }
 
     /**
@@ -305,9 +315,8 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
-        SharedPreferences preferences = getDefaultSharedPreferences(mContext);
-        String mccMnc = preferences.getString("CARRIER_KEY_DM_MCC_MNC" + slotId, null);
-        assertEquals(null, mccMnc);
+        assertNull(mCarrierKeyDM.mMccMncForDownload);
+
         verify(mPhone).deleteCarrierInfoForImsiEncryption();
     }
 
@@ -330,10 +339,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         mIntent.putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, slotIndex);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
-        SharedPreferences preferences = getDefaultSharedPreferences(mContext);
-        int slotId = mPhone.getPhoneId();
-        String mccMnc = preferences.getString("CARRIER_KEY_DM_MCC_MNC" + slotId, null);
-        assertTrue(mccMnc.equals("310:260"));
+        assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);
     }
 
     /**
@@ -351,7 +357,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270",
                 TelephonyManager.KEY_TYPE_WLAN, "key1=value", keyInfo.first,
                 new Date(CERT_EXPIRATION));
-        String mccMnc = "310:270";
+        String mccMnc = "310270";
         mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr3GppSpec, mccMnc);
         verify(mPhone).setCarrierInfoForImsiEncryption(
                 (Matchers.refEq(imsiEncryptionInfo)));
