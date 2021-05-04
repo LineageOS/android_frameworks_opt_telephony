@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.preference.PreferenceManager.getDefaultSharedPreferences;
 import static android.telephony.CarrierConfigManager.KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -28,7 +27,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
@@ -69,8 +67,6 @@ import java.util.zip.ZipException;
 public class CarrierKeyDownloadManager extends Handler {
     private static final String LOG_TAG = "CarrierKeyDownloadManager";
 
-    private static final String MCC_MNC_PREF_TAG = "CARRIER_KEY_DM_MCC_MNC";
-
     private static final String CERT_BEGIN_STRING = "-----BEGIN CERTIFICATE-----";
 
     private static final String CERT_END_STRING = "-----END CERTIFICATE-----";
@@ -94,10 +90,6 @@ public class CarrierKeyDownloadManager extends Handler {
     @VisibleForTesting
     public int mKeyAvailability = 0;
 
-    public static final String MNC = "MNC";
-    public static final String MCC = "MCC";
-    private static final String SEPARATOR = ":";
-
     private static final String JSON_CERTIFICATE = "certificate";
     private static final String JSON_CERTIFICATE_ALTERNATE = "public-key";
     private static final String JSON_TYPE = "key-type";
@@ -119,17 +111,33 @@ public class CarrierKeyDownloadManager extends Handler {
     private String mURL;
     private boolean mAllowedOverMeteredNetwork = false;
 
+    @VisibleForTesting
+    public String mMccMncForDownload;
+    @VisibleForTesting
+    public long mDownloadId;
+
     public CarrierKeyDownloadManager(Phone phone) {
         mPhone = phone;
         mContext = phone.getContext();
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        filter.addAction(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         filter.addAction(INTENT_KEY_RENEWAL_ALARM_PREFIX + mPhone.getPhoneId());
         filter.addAction(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
         mContext.registerReceiver(mBroadcastReceiver, filter, null, phone);
         mDownloadManager = (DownloadManager) mContext.getSystemService(Context.DOWNLOAD_SERVICE);
     }
+
+    private final BroadcastReceiver mDownloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action.equals(DownloadManager.ACTION_DOWNLOAD_COMPLETE)) {
+                Log.d(LOG_TAG, "Download Complete");
+                sendMessage(obtainMessage(EVENT_DOWNLOAD_COMPLETE,
+                        intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, 0)));
+            }
+        }
+    };
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -151,10 +159,6 @@ public class CarrierKeyDownloadManager extends Handler {
                     Log.d(LOG_TAG, "Carrier Config changed: " + action);
                     sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
                 }
-            } else if (action.equals(DownloadManager.ACTION_DOWNLOAD_COMPLETE)) {
-                Log.d(LOG_TAG, "Download Complete");
-                sendMessage(obtainMessage(EVENT_DOWNLOAD_COMPLETE,
-                        intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, 0)));
             }
         }
     };
@@ -167,9 +171,9 @@ public class CarrierKeyDownloadManager extends Handler {
                 break;
             case EVENT_DOWNLOAD_COMPLETE:
                 long carrierKeyDownloadIdentifier = (long) msg.obj;
-                String mccMnc = getMccMncSetFromPref();
-                if (isValidDownload(mccMnc)) {
-                    onDownloadComplete(carrierKeyDownloadIdentifier, mccMnc);
+                String currentMccMnc = getSimOperator();
+                if (isValidDownload(currentMccMnc, carrierKeyDownloadIdentifier)) {
+                    onDownloadComplete(carrierKeyDownloadIdentifier, currentMccMnc);
                     onPostDownloadProcessing(carrierKeyDownloadIdentifier);
                 }
                 break;
@@ -178,7 +182,10 @@ public class CarrierKeyDownloadManager extends Handler {
 
     private void onPostDownloadProcessing(long carrierKeyDownloadIdentifier) {
         resetRenewalAlarm();
-        cleanupDownloadPreferences(carrierKeyDownloadIdentifier);
+        cleanupDownloadInfo();
+
+        // unregister from DOWNLOAD_COMPLETE
+        mContext.unregisterReceiver(mDownloadReceiver);
     }
 
     private void handleAlarmOrConfigChange() {
@@ -201,11 +208,11 @@ public class CarrierKeyDownloadManager extends Handler {
         }
     }
 
-    private void cleanupDownloadPreferences(long carrierKeyDownloadIdentifier) {
-        Log.d(LOG_TAG, "Cleaning up download preferences: " + carrierKeyDownloadIdentifier);
-        SharedPreferences.Editor editor = getDefaultSharedPreferences(mContext).edit();
-        editor.remove(String.valueOf(carrierKeyDownloadIdentifier));
-        editor.commit();
+    private void cleanupDownloadInfo() {
+        Log.d(LOG_TAG, "Cleaning up download info");
+        mDownloadId = -1;
+        mMccMncForDownload = null;
+
     }
 
     private void cleanupRenewalAlarms() {
@@ -279,14 +286,6 @@ public class CarrierKeyDownloadManager extends Handler {
                 + new Date(minExpirationDate));
     }
 
-    private String getMccMncSetFromPref() {
-        // check if this is a download that we had created. We do this by checking if the
-        // downloadId is stored in the shared prefs.
-        int slotId = mPhone.getPhoneId();
-        SharedPreferences preferences = getDefaultSharedPreferences(mContext);
-        return preferences.getString(MCC_MNC_PREF_TAG + slotId, null);
-    }
-
     /**
      * Returns the sim operator.
      **/
@@ -303,31 +302,21 @@ public class CarrierKeyDownloadManager extends Handler {
      *  instance of the phone.
      **/
     @VisibleForTesting
-    public boolean isValidDownload(String mccMnc) {
-        String mccCurrent = "";
-        String mncCurrent = "";
-        String mccSource = "";
-        String mncSource = "";
-
-        String simOperator = getSimOperator();
-        if (TextUtils.isEmpty(simOperator) || TextUtils.isEmpty(mccMnc)) {
-            Log.e(LOG_TAG, "simOperator or mcc/mnc is empty");
+    public boolean isValidDownload(String currentMccMnc, long currentDownloadId) {
+        if (currentDownloadId != mDownloadId) {
+            Log.e(LOG_TAG, "download ID=" + currentDownloadId
+                    + " for completed download does not match stored id=" + mDownloadId);
             return false;
         }
 
-        String[] splitValue = mccMnc.split(SEPARATOR);
-        mccSource = splitValue[0];
-        mncSource = splitValue[1];
-        Log.d(LOG_TAG, "values from sharedPrefs mcc, mnc: " + mccSource + "," + mncSource);
-
-        mccCurrent = simOperator.substring(0, 3);
-        mncCurrent = simOperator.substring(3);
-        Log.d(LOG_TAG, "using values for mcc, mnc: " + mccCurrent + "," + mncCurrent);
-
-        if (TextUtils.equals(mncSource, mncCurrent) &&  TextUtils.equals(mccSource, mccCurrent)) {
-            return true;
+        if (TextUtils.isEmpty(currentMccMnc) || TextUtils.isEmpty(mMccMncForDownload)
+                || !TextUtils.equals(currentMccMnc, mMccMncForDownload)) {
+            Log.e(LOG_TAG, "currentMccMnc=" + currentMccMnc + " stored=" + mMccMncForDownload);
+            return false;
         }
-        return false;
+
+        Log.d(LOG_TAG, "Matched MccMnc, downloadId: " + currentMccMnc + "," + currentDownloadId);
+        return true;
     }
 
     /**
@@ -461,11 +450,8 @@ public class CarrierKeyDownloadManager extends Handler {
             return;
         }
         try {
-            String mcc = "";
-            String mnc = "";
-            String[] splitValue = mccMnc.split(SEPARATOR);
-            mcc = splitValue[0];
-            mnc = splitValue[1];
+            String mcc = mccMnc.substring(0, 3);
+            String mnc = mccMnc.substring(3);
             JSONObject jsonObj = new JSONObject(jsonStr);
             JSONArray keys = jsonObj.getJSONArray(JSON_CARRIER_KEYS);
             for (int i = 0; i < keys.length(); i++) {
@@ -548,19 +534,19 @@ public class CarrierKeyDownloadManager extends Handler {
 
     private boolean downloadKey() {
         Log.d(LOG_TAG, "starting download from: " + mURL);
-        String mcc = "";
-        String mnc = "";
-        String simOperator = getSimOperator();
+        String mccMnc = getSimOperator();
 
-        if (!TextUtils.isEmpty(simOperator)) {
-            mcc = simOperator.substring(0, 3);
-            mnc = simOperator.substring(3);
-            Log.d(LOG_TAG, "using values for mcc, mnc: " + mcc + "," + mnc);
+        if (!TextUtils.isEmpty(mccMnc)) {
+            Log.d(LOG_TAG, "downloading key for mccmnc: " + mccMnc);
         } else {
-            Log.e(LOG_TAG, "mcc, mnc: is empty");
+            Log.e(LOG_TAG, "mccmnc: is empty");
             return false;
         }
         try {
+            // register the broadcast receiver to listen for download complete
+            IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+            mContext.registerReceiver(mDownloadReceiver, filter, null, mPhone);
+
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(mURL));
 
             // TODO(b/128550341): Implement the logic to minimize using metered network such as
@@ -569,14 +555,11 @@ public class CarrierKeyDownloadManager extends Handler {
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
             request.addRequestHeader("Accept-Encoding", "gzip");
             Long carrierKeyDownloadRequestId = mDownloadManager.enqueue(request);
-            SharedPreferences.Editor editor = getDefaultSharedPreferences(mContext).edit();
 
-            String mccMnc = mcc + SEPARATOR + mnc;
-            int slotId = mPhone.getPhoneId();
-            Log.d(LOG_TAG, "storing values in sharedpref mcc, mnc, days: " + mcc + "," + mnc
-                    + "," + carrierKeyDownloadRequestId);
-            editor.putString(MCC_MNC_PREF_TAG + slotId, mccMnc);
-            editor.commit();
+            Log.d(LOG_TAG, "saving values mccmnc, downloadId: " + mccMnc
+                    + ", " + carrierKeyDownloadRequestId);
+            mMccMncForDownload = mccMnc;
+            mDownloadId = carrierKeyDownloadRequestId;
         } catch (Exception e) {
             Log.e(LOG_TAG, "exception trying to download key from url: " + mURL);
             return false;
