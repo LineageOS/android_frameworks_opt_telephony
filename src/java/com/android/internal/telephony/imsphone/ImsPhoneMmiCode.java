@@ -55,6 +55,7 @@ import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 
 import com.android.ims.ImsException;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandException;
@@ -259,7 +260,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      */
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    static ImsPhoneMmiCode newFromDialString(String dialString, ImsPhone phone) {
+    @VisibleForTesting
+    public static ImsPhoneMmiCode newFromDialString(String dialString, ImsPhone phone) {
        return newFromDialString(dialString, phone, null);
     }
 
@@ -268,10 +270,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         Matcher m;
         ImsPhoneMmiCode ret = null;
 
-        if (phone.getDefaultPhone().getServiceState().getVoiceRoaming()
-                && phone.getDefaultPhone().supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming()) {
+        if ((phone.getDefaultPhone().getServiceState().getVoiceRoaming()
+                && phone.getDefaultPhone().supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming())
+                        || (isEmergencyNumber(phone, dialString)
+                                && isCarrierSupportCallerIdVerticalServiceCodes(phone))) {
             /* The CDMA MMI coded dialString will be converted to a 3GPP MMI Coded dialString
-               so that it can be processed by the matcher and code below
+               so that it can be processed by the matcher and code below. This can be triggered if
+               the dialing string is an emergency number and carrier supports caller ID vertical
+               service codes *67, *82.
              */
             dialString = convertCdmaMmiCodesTo3gppMmiCodes(dialString);
         }
@@ -317,13 +323,13 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             ret = new ImsPhoneMmiCode(phone);
             ret.mDialingNumber = dialString;
         }
-
         return ret;
     }
 
     private static String convertCdmaMmiCodesTo3gppMmiCodes(String dialString) {
         Matcher m;
         m = sPatternCdmaMmiCodeWhileRoaming.matcher(dialString);
+
         if (m.matches()) {
             String serviceCode = makeEmptyNull(m.group(MATCH_GROUP_CDMA_MMI_CODE_SERVICE_CODE));
             String prefix = m.group(MATCH_GROUP_CDMA_MMI_CODE_NUMBER_PREFIX);
@@ -672,10 +678,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         if (dialString.length() == 0) {
             return false;
         }
-
-        TelephonyManager tm =
-                (TelephonyManager) phone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
-        if (tm.isEmergencyNumber(dialString)) {
+        if (isEmergencyNumber(phone, dialString)) {
             return false;
         } else {
             return isShortCodeUSSD(dialString, phone);
@@ -726,10 +729,43 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      *       " # 31 # [called number] SEND "
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    boolean
-    isTemporaryModeCLIR() {
-        return mSc != null && mSc.equals(SC_CLIR) && mDialingNumber != null
-                && (isActivate() || isDeactivate());
+    @VisibleForTesting
+    public boolean isTemporaryModeCLIR() {
+        return mSc != null && mSc.equals(SC_CLIR)
+                && mDialingNumber != null && (isActivate() || isDeactivate());
+    }
+
+    /**
+     * Checks if the dialing string is an emergency number.
+     */
+    @VisibleForTesting
+    public static boolean isEmergencyNumber(Phone phone, String dialString) {
+        try {
+            TelephonyManager tm = phone.getContext().getSystemService(TelephonyManager.class);
+            return tm.isEmergencyNumber(dialString);
+        } catch (RuntimeException ex) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks if carrier supports caller id vertical service codes by checking with
+     * {@link CarrierConfigManager#KEY_CARRIER_SUPPORTS_CALLER_ID_VERTICAL_SERVICE_CODES_BOOL}.
+     */
+    @VisibleForTesting
+    public static boolean isCarrierSupportCallerIdVerticalServiceCodes(Phone phone) {
+        CarrierConfigManager configManager = phone.getContext().getSystemService(
+                CarrierConfigManager.class);
+        PersistableBundle b = null;
+        if (configManager != null) {
+            // If an invalid subId is used, this bundle will contain default values.
+            b = configManager.getConfigForSubId(phone.getSubId());
+        }
+        if (b != null) {
+            return b == null ? false : b.getBoolean(CarrierConfigManager
+                .KEY_CARRIER_SUPPORTS_CALLER_ID_VERTICAL_SERVICE_CODES_BOOL);
+        }
+        return false;
     }
 
     /**
