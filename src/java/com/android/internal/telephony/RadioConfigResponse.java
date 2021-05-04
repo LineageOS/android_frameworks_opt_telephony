@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.telephony.TelephonyManager.CAPABILITY_ALLOWED_NETWORK_TYPES_USED;
 import static android.telephony.TelephonyManager
         .CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE;
+import static android.telephony.TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED;
 import static android.telephony.TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE;
 import static android.telephony.TelephonyManager.CAPABILITY_SLICING_CONFIG_SUPPORTED;
 import static android.telephony.TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING;
@@ -310,6 +311,8 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
                 Rlog.d(TAG, "CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING");
                 caps.add(CAPABILITY_SLICING_CONFIG_SUPPORTED);
                 Rlog.d(TAG, "CAPABILITY_SLICING_CONFIG_SUPPORTED");
+                caps.add(CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+                Rlog.d(TAG, "CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED");
             }
         }
         return caps;
