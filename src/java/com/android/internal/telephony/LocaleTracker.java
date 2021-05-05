@@ -49,7 +49,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -259,17 +258,6 @@ public class LocaleTracker extends Handler {
 
         mPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
         mPhone.registerForCellInfo(this, EVENT_UNSOL_CELL_INFO, null);
-    }
-
-    private @NonNull String getCarrierCountry() {
-        // The locale from the "ro.carrier" system property or R.array.carrier_properties.
-        // This will be overwritten by the Locale from the SIM language settings (EF-PL, EF-LI)
-        // if applicable.
-        final Locale carrierLocale = mPhone.getLocaleFromCarrierProperties();
-        if (carrierLocale != null && !TextUtils.isEmpty(carrierLocale.getCountry())) {
-            return carrierLocale.getCountry();
-        }
-        return "";
     }
 
     /**
@@ -494,8 +482,8 @@ public class LocaleTracker extends Handler {
      */
     private synchronized void updateLocale() {
         // If MCC is available from network service state, use it first.
-        String countryIso = getCarrierCountry();
-        String countryIsoDebugInfo = "getCarrierCountry()";
+        String countryIso = "";
+        String countryIsoDebugInfo = "empty as default";
 
         // For time zone detection we want the best geographical match we can get, which may differ
         // from the countryIso.
@@ -541,8 +529,9 @@ public class LocaleTracker extends Handler {
             timeZoneCountryIsoDebugInfo = countryIsoDebugInfo;
         }
 
-        if (mLastServiceState == ServiceState.STATE_POWER_OFF) {
+        if (!mPhone.isRadioOn()) {
             countryIso = "";
+            countryIsoDebugInfo = "radio off";
         }
 
         log("updateLocale: countryIso = " + countryIso
