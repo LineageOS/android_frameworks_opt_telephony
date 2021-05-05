@@ -123,6 +123,10 @@ public class RadioInterfaceCapabilityController extends Handler {
                     if (ar.exception != null) {
                         loge("setupRadioInterfaceCapabilities: " + ar.exception);
                     }
+                    if (ar.result == null) {
+                        loge("setupRadioInterfaceCapabilities: ar.result is null");
+                        return;
+                    }
                     log("setupRadioInterfaceCapabilities: "
                             + "mRadioInterfaceCapabilities now setup");
                     mRadioInterfaceCapabilities =

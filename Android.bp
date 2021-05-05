@@ -120,6 +120,7 @@ java_library {
         "PlatformProperties",
         "net-utils-framework-common",
         "telephony-protos",
+        "modules-utils-build_system",
     ],
 
     product_variables: {
