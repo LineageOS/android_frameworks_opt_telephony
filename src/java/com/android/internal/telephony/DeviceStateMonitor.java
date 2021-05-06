@@ -302,7 +302,7 @@ public class DeviceStateMonitor extends Handler {
 
         UiModeManager umm = (UiModeManager) phone.getContext().getSystemService(
                 Context.UI_MODE_SERVICE);
-        umm.addOnProjectionStateChangeListener(PROJECTION_TYPE_AUTOMOTIVE,
+        umm.addOnProjectionStateChangedListener(PROJECTION_TYPE_AUTOMOTIVE,
                 phone.getContext().getMainExecutor(),
                 (t, pkgs) -> {
                     Message msg = obtainMessage(EVENT_AUTOMOTIVE_PROJECTION_STATE_CHANGED);
