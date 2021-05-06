@@ -446,6 +446,8 @@ public final class NetworkScanRequestTracker {
                     .setCallingPid(nsri.mPid)
                     .setCallingUid(nsri.mUid)
                     .setMinSdkVersionForFine(Build.VERSION_CODES.Q)
+                    .setMinSdkVersionForCoarse(Build.VERSION_CODES.Q)
+                    .setMinSdkVersionForEnforcement(Build.VERSION_CODES.Q)
                     .setMethod("NetworkScanTracker#onResult")
                     .build();
             if (ar.exception == null && ar.result != null) {
