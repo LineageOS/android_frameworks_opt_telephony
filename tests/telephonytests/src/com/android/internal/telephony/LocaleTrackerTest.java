@@ -87,6 +87,7 @@ public class LocaleTrackerTest extends TelephonyTest {
             m.sendToTarget();
             return null; }).when(mPhone).requestCellInfoUpdate(any(), any());
 
+        doReturn(true).when(mPhone).isRadioOn();
         processAllMessages();
         logd("LocaleTrackerTest -Setup!");
     }
@@ -135,6 +136,7 @@ public class LocaleTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testUpdateOperatorNumericSync() throws Exception {
+        doReturn(false).when(mPhone).isRadioOn();
         mLocaleTracker.updateOperatorNumeric(US_MCC + FAKE_MNC);
         // Because the service state is in APM, the country ISO should be set empty.
         assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
@@ -161,6 +163,7 @@ public class LocaleTrackerTest extends TelephonyTest {
     @SmallTest
     public void testBootupInAirplaneModeOn() throws Exception {
         mLocaleTracker.updateOperatorNumeric("");
+        doReturn(false).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_POWER_OFF);
         assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE});
@@ -170,6 +173,7 @@ public class LocaleTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testToggleAirplaneModeOn() throws Exception {
+        doReturn(true).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_IN_SERVICE);
         mLocaleTracker.updateOperatorNumeric(US_MCC + FAKE_MNC);
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
@@ -183,6 +187,7 @@ public class LocaleTrackerTest extends TelephonyTest {
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
         assertEquals(US_COUNTRY_CODE, mLocaleTracker.getLastKnownCountryIso());
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE, US_COUNTRY_CODE});
+        doReturn(false).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_POWER_OFF);
         assertFalse(mLocaleTracker.isTracking());
 
@@ -198,6 +203,7 @@ public class LocaleTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testToggleAirplaneModeOff() throws Exception {
+        doReturn(false).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_POWER_OFF);
         mLocaleTracker.updateOperatorNumeric("");
         processAllMessages();
@@ -205,6 +211,7 @@ public class LocaleTrackerTest extends TelephonyTest {
         verifyCountryCodeNotified(new String[]{COUNTRY_CODE_UNAVAILABLE});
         assertFalse(mLocaleTracker.isTracking());
 
+        doReturn(true).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_OUT_OF_SERVICE);
         processAllMessages();
         assertTrue(mLocaleTracker.isTracking());
@@ -214,6 +221,7 @@ public class LocaleTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testToggleAirplaneModeOosPlmn() throws Exception {
+        doReturn(false).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_POWER_OFF);
         mLocaleTracker.updateOperatorNumeric("");
         processAllMessages();
@@ -228,6 +236,7 @@ public class LocaleTrackerTest extends TelephonyTest {
             m.sendToTarget();
             return null; }).when(mPhone).requestCellInfoUpdate(any(), any());
 
+        doReturn(true).when(mPhone).isRadioOn();
         sendServiceState(ServiceState.STATE_OUT_OF_SERVICE);
         processAllMessages();
         assertTrue(mLocaleTracker.isTracking());
