@@ -2596,7 +2596,6 @@ public class GsmCdmaPhone extends Phone {
      * @param mmi MMI that is done
      */
     public void onMMIDone(MmiCode mmi) {
-
         /* Only notify complete if it's on the pending list.
          * Otherwise, it's already been handled (eg, previously canceled).
          * The exception is cancellation of an incoming USSD-REQUEST, which is
@@ -2604,7 +2603,6 @@ public class GsmCdmaPhone extends Phone {
          */
         if (mPendingMMIs.remove(mmi) || (isPhoneTypeGsm() && (mmi.isUssdRequest() ||
                 ((GsmMmiCode)mmi).isSsInfo()))) {
-
             ResultReceiver receiverCallback = mmi.getUssdCallbackReceiver();
             if (receiverCallback != null) {
                 Rlog.i(LOG_TAG, "onMMIDone: invoking callback: " + mmi);
@@ -2645,6 +2643,7 @@ public class GsmCdmaPhone extends Phone {
         if (!isPhoneTypeGsm()) {
             loge("onIncomingUSSD: not expected on GSM");
         }
+
         boolean isUssdError;
         boolean isUssdRequest;
         boolean isUssdRelease;
@@ -2672,7 +2671,6 @@ public class GsmCdmaPhone extends Phone {
 
         if (found != null) {
             // Complete pending USSD
-
             if (isUssdRelease) {
                 found.onUssdRelease();
             } else if (isUssdError) {
@@ -2692,6 +2690,13 @@ public class GsmCdmaPhone extends Phone {
                                                    GsmCdmaPhone.this,
                                                    mUiccApplication.get());
             onNetworkInitiatedUssd(mmi);
+        } else if (isUssdError && !isUssdRelease) {
+            GsmMmiCode mmi;
+            mmi = GsmMmiCode.newNetworkInitiatedUssd(ussdMessage,
+                    true,
+                    GsmCdmaPhone.this,
+                    mUiccApplication.get());
+            mmi.onUssdFinishedError();
         }
     }
 
