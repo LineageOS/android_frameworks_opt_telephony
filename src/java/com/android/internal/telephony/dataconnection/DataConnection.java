@@ -1017,6 +1017,12 @@ public class DataConnection extends StateMachine {
         }
     }
 
+    private void onRquestHandoverFailed(ConnectionParams cp) {
+        sendMessage(obtainMessage(EVENT_CANCEL_HANDOVER));
+        notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+    }
+
     private void requestHandover(boolean inCorrectState, DataConnection srcDc,
             @DataServiceCallback.ResultCode int resultCode,
             ConnectionParams cp, Message msg, DataProfile dp, boolean isModemRoaming,
@@ -1034,8 +1040,7 @@ public class DataConnection extends StateMachine {
                             + "srcdc = null");
                 }
             }
-            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            onRquestHandoverFailed(cp);
             return;
         } else if (!isResultCodeSuccess(resultCode)) {
             if (DBG) {
@@ -1043,8 +1048,7 @@ public class DataConnection extends StateMachine {
                         + "setupDataCall will not be called, result code = "
                         + DataServiceCallback.resultCodeToString(resultCode));
             }
-            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            onRquestHandoverFailed(cp);
             return;
         }
 
@@ -1069,8 +1073,7 @@ public class DataConnection extends StateMachine {
         if (linkProperties == null || linkProperties.getLinkAddresses().isEmpty()) {
             loge("requestHandover: Can't find link properties of handover data connection. dc="
                     + srcDc);
-            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            onRquestHandoverFailed(cp);
             return;
         }
 
@@ -2750,6 +2753,10 @@ public class DataConnection extends StateMachine {
                 case EVENT_START_HANDOVER_ON_TARGET:
                     //called after startHandover on target transport
                     ((Consumer<Boolean>) msg.obj).accept(true /* is in correct state*/);
+                    retVal = HANDLED;
+                    break;
+                case EVENT_CANCEL_HANDOVER:
+                    transitionTo(mInactiveState);
                     retVal = HANDLED;
                     break;
                 default:
