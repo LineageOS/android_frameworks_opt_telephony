@@ -1051,6 +1051,9 @@ public class SmsDispatchersController extends Handler {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         mGsmInboundSmsHandler.dump(fd, pw, args);
         mCdmaInboundSmsHandler.dump(fd, pw, args);
+        mGsmDispatcher.dump(fd, pw, args);
+        mCdmaDispatcher.dump(fd, pw, args);
+        mImsSmsDispatcher.dump(fd, pw, args);
     }
 
     private void logd(String msg) {
