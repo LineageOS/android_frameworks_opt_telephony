@@ -277,14 +277,17 @@ public final class RcsConfigTest {
     @Test
     @SmallTest
     public void testIsRcsVolteSingleRegistrationSupported() {
-        String[] vals = new String[]{"0", "1", "false", "true"};
-        boolean[] expectedRes = new boolean[]{false, true, false, true};
+        String[] vals = new String[]{"0", "1", "2"};
+        boolean[] expectedResHome = new boolean[]{false, true, true};
+        boolean[] expectedResRoaming = new boolean[]{false, true, false};
         for (int i = 0; i < vals.length; i++) {
             String xml = "\t\t\t\t<characteristic type=\"GSMA\">\n"
                     + "\t\t\t\t\t<parm name=\"rcsVolteSingleRegistration\" value=\""
                     + vals[i] + "\"/>\n" + "\t\t\t\t</characteristic>\n";
             RcsConfig config = new RcsConfig(xml.getBytes());
-            assertEquals(config.isRcsVolteSingleRegistrationSupported(), expectedRes[i]);
+            assertEquals(config.isRcsVolteSingleRegistrationSupported(false), expectedResHome[i]);
+            assertEquals(config.isRcsVolteSingleRegistrationSupported(true),
+                    expectedResRoaming[i]);
         }
     }
 
