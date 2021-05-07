@@ -101,6 +101,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Controls a test {@link Context} as would be provided by the Android framework to an
@@ -197,6 +198,9 @@ public class ContextFixture implements TestFixture<Context> {
                 Intent serviceIntent,
                 ServiceConnection connection,
                 int flags) {
+            if (mMockBindingFailureForPackage.contains(serviceIntent.getPackage())) {
+                return false;
+            }
             if (mServiceByServiceConnection.containsKey(connection)) {
                 throw new RuntimeException("ServiceConnection already bound: " + connection);
             }
@@ -218,10 +222,11 @@ public class ContextFixture implements TestFixture<Context> {
         public void unbindService(
                 ServiceConnection connection) {
             IInterface service = mServiceByServiceConnection.remove(connection);
-            if (service == null) {
-                throw new RuntimeException("ServiceConnection not found: " + connection);
+            if (service != null) {
+                connection.onServiceDisconnected(mComponentNameByService.get(service));
+            } else {
+                logd("unbindService: ServiceConnection not found: " + connection);
             }
-            connection.onServiceDisconnected(mComponentNameByService.get(service));
         }
 
         @Override
@@ -624,6 +629,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final Map<ComponentName, IntentFilter> mIntentFilterByComponentName = new HashMap<>();
     private final Map<IInterface, ComponentName> mComponentNameByService =
             new HashMap<IInterface, ComponentName>();
+    private final Set<String> mMockBindingFailureForPackage = new HashSet();
     private final Map<ServiceConnection, IInterface> mServiceByServiceConnection =
             new HashMap<ServiceConnection, IInterface>();
     private final Multimap<String, BroadcastReceiver> mBroadcastReceiversByAction =
@@ -789,6 +795,10 @@ public class ContextFixture implements TestFixture<Context> {
         mServiceByComponentName.put(name, service);
         mServiceByPackageName.put(packageName, service);
         mComponentNameByService.put(service, name);
+    }
+
+    public void mockBindingFailureForPackage(String packageName) {
+        mMockBindingFailureForPackage.add(packageName);
     }
 
     private List<ResolveInfo> doQueryIntentServices(Intent intent, int flags) {
