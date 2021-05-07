@@ -468,7 +468,6 @@ public abstract class SMSDispatcher extends Handler {
          */
         @Override
         public void onSendSmsComplete(int result, int messageRef) {
-            checkCallerIsPhoneOrCarrierApp();
             final long identity = Binder.clearCallingIdentity();
             try {
                 mSmsSender.mCarrierMessagingServiceWrapper.disconnect();
@@ -628,7 +627,6 @@ public abstract class SMSDispatcher extends Handler {
                 return;
             }
 
-            checkCallerIsPhoneOrCarrierApp();
             final long identity = Binder.clearCallingIdentity();
             try {
                 processSendMultipartSmsResponse(mSmsSender.mTrackers, result, messageRefs);
