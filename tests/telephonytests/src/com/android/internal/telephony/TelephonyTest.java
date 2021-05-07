@@ -589,6 +589,7 @@ public abstract class TelephonyTest {
                 eq(UiccController.APP_FAM_3GPP2));
         doReturn(mUiccCardApplicationIms).when(mUiccController).getUiccCardApplication(anyInt(),
                 eq(UiccController.APP_FAM_IMS));
+        doReturn(mUiccCard).when(mUiccController).getUiccCard(anyInt());
 
         doAnswer(new Answer<IccRecords>() {
             public IccRecords answer(InvocationOnMock invocation) {
