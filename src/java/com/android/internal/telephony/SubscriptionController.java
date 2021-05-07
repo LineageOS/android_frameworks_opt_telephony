@@ -456,10 +456,10 @@ public class SubscriptionController extends ISub.Stub {
      * SecurityException.
      */
     private boolean hasSubscriberIdentifierAccess(int subId, String callingPackage,
-            String callingFeatureId, String message) {
+            String callingFeatureId, String message, boolean reportFailure) {
         try {
             return TelephonyPermissions.checkCallingOrSelfReadSubscriberIdentifiers(mContext, subId,
-                    callingPackage, callingFeatureId, message);
+                    callingPackage, callingFeatureId, message, reportFailure);
         } catch (SecurityException e) {
             // A SecurityException indicates that the calling package is targeting at least the
             // minimum level that enforces identifier access restrictions and the new access
@@ -4159,7 +4159,7 @@ public class SubscriptionController extends ISub.Stub {
             if (canReadPhoneState) {
                 canReadIdentifiers = hasSubscriberIdentifierAccess(
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
-                        callingFeatureId, "getSubscriptionInfoList");
+                        callingFeatureId, "getSubscriptionInfoList", false);
                 canReadPhoneNumber = hasPhoneNumberAccess(
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
                         callingFeatureId, "getSubscriptionInfoList");
@@ -4211,7 +4211,7 @@ public class SubscriptionController extends ISub.Stub {
         SubscriptionInfo result = subInfo;
         int subId = subInfo.getSubscriptionId();
         boolean hasIdentifierAccess = hasSubscriberIdentifierAccess(subId, callingPackage,
-                callingFeatureId, message);
+                callingFeatureId, message, true);
         boolean hasPhoneNumberAccess = hasPhoneNumberAccess(subId, callingPackage, callingFeatureId,
                 message);
         return conditionallyRemoveIdentifiers(subInfo, hasIdentifierAccess, hasPhoneNumberAccess);
@@ -4235,6 +4235,7 @@ public class SubscriptionController extends ISub.Stub {
         if (!hasIdentifierAccess) {
             result.clearIccId();
             result.clearCardString();
+            result.clearGroupUuid();
         }
         if (!hasPhoneNumberAccess) {
             result.clearNumber();
