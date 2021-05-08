@@ -430,6 +430,13 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                     : DcTracker.RELEASE_TYPE_DETACH;
             releaseNetworkInternal(networkRequest, releaseType, originTransport);
             mNetworkRequests.put(networkRequest, targetTransport);
+        } else {
+            // If handover fails and requires to fallback, the context of target transport needs to
+            // be released
+            if (!success) {
+                releaseNetworkInternal(networkRequest,
+                        DcTracker.RELEASE_TYPE_NORMAL, targetTransport);
+            }
         }
 
         handoverParams.callback.onCompleted(success, fallback);
