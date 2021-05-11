@@ -540,6 +540,8 @@ public class ServiceStateTracker extends Handler {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mEmergencyOnly = false;
+    private boolean mCSEmergencyOnly = false;
+    private boolean mPSEmergencyOnly = false;
     /** Started the recheck process after finding gprs should registered but not. */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mStartedGprsRegCheck;
@@ -2291,15 +2293,16 @@ public class ServiceStateTracker extends Handler {
                 int cssIndicator = voiceSpecificStates.cssSupported ? 1 : 0;
                 int newVoiceRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
-
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
+
                 setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
                 //Denial reason if registrationState = 3
                 int reasonForDenial = networkRegState.getRejectCause();
-                mEmergencyOnly = networkRegState.isEmergencyEnabled();
+                mCSEmergencyOnly = networkRegState.isEmergencyEnabled();
+                mEmergencyOnly = (mCSEmergencyOnly || mPSEmergencyOnly);
                 if (mPhone.isPhoneTypeGsm()) {
 
                     mGsmVoiceRoaming = regCodeIsRoaming(registrationState);
@@ -2397,6 +2400,8 @@ public class ServiceStateTracker extends Handler {
                     mServiceStateStats.onServiceStateChanged(mSS);
                 }
 
+                mPSEmergencyOnly = networkRegState.isEmergencyEnabled();
+                mEmergencyOnly = (mCSEmergencyOnly || mPSEmergencyOnly);
                 if (mPhone.isPhoneTypeGsm()) {
 
                     mNewReasonDataDenied = networkRegState.getRejectCause();
@@ -5441,6 +5446,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mGsmVoiceRoaming=" + mGsmVoiceRoaming);
         pw.println(" mGsmDataRoaming=" + mGsmDataRoaming);
         pw.println(" mEmergencyOnly=" + mEmergencyOnly);
+        pw.println(" mCSEmergencyOnly=" + mCSEmergencyOnly);
+        pw.println(" mPSEmergencyOnly=" + mPSEmergencyOnly);
         pw.flush();
         mNitzState.dumpState(pw);
         pw.println(" mLastNitzData=" + mLastNitzData);
