@@ -35,7 +35,6 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.service.carrier.CarrierService;
-import android.telephony.PackageChangeReceiver;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
