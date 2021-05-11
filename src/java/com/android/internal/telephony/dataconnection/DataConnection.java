@@ -537,7 +537,10 @@ public class DataConnection extends StateMachine {
         return mCid;
     }
 
-    ApnSetting getApnSetting() {
+    /**
+     * @return DataConnection's ApnSetting.
+     */
+    public ApnSetting getApnSetting() {
         return mApnSetting;
     }
 
