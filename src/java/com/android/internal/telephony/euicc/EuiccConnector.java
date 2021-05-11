@@ -57,7 +57,6 @@ import android.service.euicc.IOtaStatusChangedCallback;
 import android.service.euicc.IRetainSubscriptionsForFactoryResetCallback;
 import android.service.euicc.ISwitchToSubscriptionCallback;
 import android.service.euicc.IUpdateSubscriptionNicknameCallback;
-import android.telephony.PackageChangeReceiver;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccCardInfo;
@@ -70,6 +69,7 @@ import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.PackageChangeReceiver;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
