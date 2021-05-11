@@ -4797,6 +4797,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.getSlicingConfig(response);
     }
 
+    /**
+     * Returns the InboundSmsHandler object for this phone
+     */
+    public InboundSmsHandler getInboundSmsHandler(boolean is3gpp2) {
+        return null;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
