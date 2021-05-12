@@ -278,7 +278,7 @@ public class VoiceCallSessionStats {
             loge("onVideoStateChange: untracked connection");
             return;
         }
-        logd(TAG, "Video state = " + videoState);
+        logd("Video state = " + videoState);
         if (videoState != VideoProfile.STATE_AUDIO_ONLY) {
             proto.videoEnabled = true;
         }
@@ -292,7 +292,7 @@ public class VoiceCallSessionStats {
             loge("onMultipartyChange: untracked connection");
             return;
         }
-        logd(TAG, "Multiparty = " + isMultiParty);
+        logd("Multiparty = " + isMultiParty);
         if (isMultiParty) {
             proto.isMultiparty = true;
         }
@@ -599,7 +599,7 @@ public class VoiceCallSessionStats {
             // Scale result into 0 to 4 range.
             result = VOICE_CALL_SESSION__SIGNAL_STRENGTH_AT_END__SIGNAL_STRENGTH_GREAT
                     * level / max;
-            logd(TAG, "WiFi level: " + result + " (" + level + "/" + max + ")");
+            logd("WiFi level: " + result + " (" + level + "/" + max + ")");
         }
         return result;
     }
@@ -642,7 +642,7 @@ public class VoiceCallSessionStats {
             timePerQuality[quality] += time;
             totalTime += time;
         }
-        logd(TAG, "Time per codec quality = " + Arrays.toString(timePerQuality));
+        logd("Time per codec quality = " + Arrays.toString(timePerQuality));
 
         // We calculate 70% duration of the call as the threshold for the main audio codec quality
         // and iterate on all codec qualities. As soon as the sum of codec duration is greater than

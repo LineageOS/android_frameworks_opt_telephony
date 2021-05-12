@@ -824,10 +824,13 @@ public class PhoneSwitcher extends Handler {
 
         mPhoneSubscriptions = copyOf(mPhoneSubscriptions, mActiveModemCount);
         mPhoneStates = copyOf(mPhoneStates, mActiveModemCount);
-        //clear the list in case of multisim config change
-        mCurrentDdsSwitchFailure.clear();
 
-        // Single SIM -> dual SIM switch.
+        // Dual SIM -> Single SIM switch.
+        for (int phoneId = oldActiveModemCount - 1; phoneId >= mActiveModemCount; phoneId--) {
+            mCurrentDdsSwitchFailure.remove(phoneId);
+        }
+
+        // Single SIM -> Dual SIM switch.
         for (int phoneId = oldActiveModemCount; phoneId < mActiveModemCount; phoneId++) {
             mPhoneStates[phoneId] = new PhoneState();
             Phone phone = PhoneFactory.getPhone(phoneId);
