@@ -105,12 +105,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
                 return;
             }
 
-            // Return early if phone_id is explicilty included and does not match mPhone.
-            // If phone_id extra is not included, continue.
-            int phoneId = mPhone.getPhoneId();
-            if (intent.getIntExtra("phone_id", phoneId) != phoneId) {
-                return;
-            }
             Message m = Message.obtain();
             AsyncResult.forMessage(m, smsPdu, null);
             mCellBroadcastServiceManager.sendGsmMessageToHandler(m);
