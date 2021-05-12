@@ -347,6 +347,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
             throws RemoteException {
         when(stub.queryLocalInterface(anyString())).thenReturn(stub);
         when(stub.asBinder()).thenReturn(stub);
+        // for single part
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
@@ -359,6 +360,21 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
             }
         }).when(stub).sendTextSms(
                 anyString(), anyInt(), anyString(), anyInt(),
+                any(ICarrierMessagingCallback.class));
+
+        // for multi part
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                ICarrierMessagingCallback callback = (ICarrierMessagingCallback) args[4];
+                if (callOnFilterComplete) {
+                    callback.onSendMultipartSmsComplete(result, null);
+                }
+                return null;
+            }
+        }).when(stub).sendMultipartTextSms(
+                any(), anyInt(), anyString(), anyInt(),
                 any(ICarrierMessagingCallback.class));
     }
 
@@ -416,5 +432,82 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 null, null, null, null, false, -1, false, -1, false, 0L);
         processAllMessages();
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(), any(Message.class));
+    }
+
+    private void sendMultipartTextSms(boolean withSentIntents) {
+        // initiate parameters for a multipart sms
+        ArrayList<String> parts = new ArrayList<>();
+        parts.add("segment1");
+        parts.add("segment2");
+
+        ArrayList<PendingIntent> sentIntents = new ArrayList<>();
+        PendingIntent sentIntent1 = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
+                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+        PendingIntent sentIntent2 = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
+                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+        sentIntents.add(sentIntent1);
+        sentIntents.add(sentIntent2);
+
+        mGsmSmsDispatcher.sendMultipartText("6501002000" /*destAddr*/, "222" /*scAddr*/, parts,
+                withSentIntents ? sentIntents : null, null, null, null, false, -1, false, -1, 0L);
+    }
+
+    @Test
+    @SmallTest
+    public void testSendMultipartSmsByCarrierApp() throws Exception {
+        mockCarrierApp();
+        mockCarrierAppStubResults(CarrierMessagingService.SEND_STATUS_OK,
+                mICarrierAppMessagingService, true);
+        registerTestIntentReceiver();
+
+        // send SMS and check sentIntent
+        mReceivedTestIntent = false;
+        sendMultipartTextSms(true);
+        processAllMessages();
+        synchronized (mLock) {
+            if (!mReceivedTestIntent) {
+                // long wait since sometimes broadcasts can take a long time if the system is loaded
+                mLock.wait(60000);
+            }
+            assertEquals(true, mReceivedTestIntent);
+            int resultCode = mTestReceiver.getResultCode();
+            assertTrue("Unexpected result code: " + resultCode,
+                    resultCode == SmsManager.RESULT_ERROR_NONE || resultCode == Activity.RESULT_OK);
+            verify(mSimulatedCommandsVerifier, times(0)).sendSMS(anyString(), anyString(),
+                    any(Message.class));
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testSendMultipartSmsByCarrierAppNoResponse() throws Exception {
+        mockCarrierApp();
+        // do not mock result, instead reduce the timeout for test
+        mGsmSmsDispatcher.mCarrierMessagingTimeout = 100;
+
+        sendMultipartTextSms(false);
+
+        // wait for timeout
+        waitForMs(150);
+        verify(mSimulatedCommandsVerifier).sendSMSExpectMore(anyString(), anyString(),
+                any(Message.class));
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(),
+                any(Message.class));
+    }
+
+    @Test
+    @SmallTest
+    public void testSendMultipartSmsByCarrierAppBindingFailed() throws Exception {
+        mContextFixture.mockBindingFailureForPackage(CARRIER_APP_PACKAGE_NAME);
+        // mock presence of carrier app, but do not create a mock service to make binding fail
+        mockUiccWithCarrierApp();
+
+        sendMultipartTextSms(false);
+
+        processAllMessages();
+        verify(mSimulatedCommandsVerifier).sendSMSExpectMore(anyString(), anyString(),
+                any(Message.class));
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(),
+                any(Message.class));
     }
 }
