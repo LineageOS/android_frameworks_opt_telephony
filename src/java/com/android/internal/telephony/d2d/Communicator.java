@@ -38,6 +38,7 @@ public class Communicator implements TransportProtocol.Callback {
      */
     public interface Callback {
         void onMessagesReceived(@NonNull Set<Message> messages);
+        void onD2DAvailabilitychanged(boolean isAvailable);
     }
 
     public static final int MESSAGE_CALL_RADIO_ACCESS_TYPE = 1;
@@ -158,6 +159,7 @@ public class Communicator implements TransportProtocol.Callback {
         Log.i(this, "onNegotiationSuccess: %s negotiated; setting active.",
                 protocol.getClass().getSimpleName());
         mIsNegotiated = true;
+        notifyD2DStatus(true /* isAvailable */);
     }
 
     /**
@@ -210,6 +212,7 @@ public class Communicator implements TransportProtocol.Callback {
         if (mActiveTransport == null) {
             // No more protocols, exit.
             Log.i(this, "negotiateNextProtocol: no remaining transports.");
+            notifyD2DStatus(false /* isAvailable */);
             return;
         }
         Log.i(this, "negotiateNextProtocol: trying %s",
@@ -224,7 +227,11 @@ public class Communicator implements TransportProtocol.Callback {
     private TransportProtocol getNextCandidateProtocol() {
         TransportProtocol candidateProtocol = null;
         if (mActiveTransport == null) {
-            candidateProtocol = mTransportProtocols.get(0);
+            if (mTransportProtocols.size() > 0) {
+                candidateProtocol = mTransportProtocols.get(0);
+            } else {
+                mIsNegotiated = false;
+            }
         } else {
             for (int ix = 0; ix < mTransportProtocols.size(); ix++) {
                 TransportProtocol protocol = mTransportProtocols.get(ix);
@@ -238,6 +245,17 @@ public class Communicator implements TransportProtocol.Callback {
             }
         }
         return candidateProtocol;
+    }
+
+    /**
+     * Notifies listeners (okay, {@link com.android.services.telephony.TelephonyConnection} when
+     * the availability of D2D communication changes.
+     * @param isAvailable {@code true} if D2D is available, {@code false} otherwise.
+     */
+    private void notifyD2DStatus(boolean isAvailable) {
+        if (mCallback != null) {
+            mCallback.onD2DAvailabilitychanged(isAvailable);
+        }
     }
 
     public static String messageToString(int messageType) {
