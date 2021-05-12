@@ -245,11 +245,11 @@ public class CarrierServicesSmsFilter {
             mSmsFilterCallback = smsFilterCallback;
             if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
                     mContext, mPackageName, runnable -> runnable.run(), ()-> onServiceReady())) {
-                loge("CarrierSmsFilter::filterSms: bindService() for failed for " + mPackageName);
+                loge("CarrierSmsFilter::filterSms: bindService() failed for " + mPackageName);
                 smsFilterCallback.onReceiveSmsComplete(
                         CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             } else {
-                logv("CarrierSmsFilter::filterSms: bindService() for succeeded for "
+                logv("CarrierSmsFilter::filterSms: bindService() succeeded for "
                         + mPackageName);
             }
         }
