@@ -4680,4 +4680,9 @@ public class GsmCdmaPhone extends Phone {
                 && imsManager.isNonTtyOrTtyOnVolteEnabled());
         return imsUseEnabled;
     }
+
+    @Override
+    public InboundSmsHandler getInboundSmsHandler(boolean is3gpp2) {
+        return mIccSmsInterfaceManager.getInboundSmsHandler(is3gpp2);
+    }
 }
