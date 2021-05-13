@@ -19,6 +19,7 @@ package com.android.internal.telephony.d2d;
 import static junit.framework.Assert.assertEquals;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
@@ -39,6 +40,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -76,6 +78,37 @@ public class CommunicatorTest {
         verify(mTransportProtocols.get(1)).startNegotiation();
         assertEquals(mTransportProtocols.get(1), mCommunicator.getActiveTransport());
         mCallback.onNegotiationSuccess(mTransportProtocols.get(1));
+        verify(mCommunicatorCallback).onD2DAvailabilitychanged(eq(true));
+    }
+
+    /**
+     * Verifies that D2D negotiation failed callback is invoked when D2D could not be negotiated.
+     */
+    @SmallTest
+    @Test
+    public void testNegotiationFailed() {
+        mCommunicator = new Communicator(mTransportProtocols, mCommunicatorCallback);
+        mCommunicator.onStateChanged(null, Connection.STATE_ACTIVE);
+        verify(mTransportProtocols.get(0)).startNegotiation();
+        assertEquals(mTransportProtocols.get(0), mCommunicator.getActiveTransport());
+        // Assume negotiation on the first one failed.
+        mCallback.onNegotiationFailed(mTransportProtocols.get(0));
+        verify(mTransportProtocols.get(1)).startNegotiation();
+        assertEquals(mTransportProtocols.get(1), mCommunicator.getActiveTransport());
+        // Oops, the second one failed too; not negotiated!
+        mCallback.onNegotiationFailed(mTransportProtocols.get(1));
+        verify(mCommunicatorCallback).onD2DAvailabilitychanged(eq(false));
+    }
+
+    /**
+     * Verifies that D2D negotiation failed callback is invoked when no transports are available.
+     */
+    @SmallTest
+    @Test
+    public void testNegotiationFailedNoProtocols() {
+        mCommunicator = new Communicator(Collections.EMPTY_LIST, mCommunicatorCallback);
+        mCommunicator.onStateChanged(null, Connection.STATE_ACTIVE);
+        verify(mCommunicatorCallback).onD2DAvailabilitychanged(eq(false));
     }
 
     /**

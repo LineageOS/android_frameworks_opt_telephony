@@ -1146,7 +1146,8 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendSMSExpectMore (String smscPDU, String pdu, Message result) {
-        unimplemented(result);
+        SimulatedCommandsVerifier.getInstance().sendSMSExpectMore(smscPDU, pdu, result);
+        resultSuccess(result, new SmsResponse(0 /*messageRef*/, null, SmsResponse.NO_ERROR_CODE));
     }
 
     @Override
