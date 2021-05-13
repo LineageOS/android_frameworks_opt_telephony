@@ -1497,6 +1497,13 @@ public class IccSmsInterfaceManager {
         }
     }
 
+    /**
+     * Get InboundSmsHandler for the phone.
+     */
+    public InboundSmsHandler getInboundSmsHandler(boolean is3gpp2) {
+        return mDispatchersController.getInboundSmsHandler(is3gpp2);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Enabled GSM channels: " + mCellBroadcastRangeManager);
         pw.println("Enabled CDMA channels: " + mCdmaBroadcastRangeManager);
