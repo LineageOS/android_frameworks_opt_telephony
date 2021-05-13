@@ -2055,6 +2055,64 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(null, sst.getServiceState().getOperatorAlpha());
     }
 
+    @Test
+    public void testCSEmergencyRegistrationState() throws Exception {
+        CellIdentityGsm cellIdentity =
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
+                        Collections.emptyList());
+
+        NetworkRegistrationInfo dataReg = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                0, 16, 0, false, null, cellIdentity, getPlmnFromCellIdentity(cellIdentity),
+                1, false, false, false, null);
+
+        NetworkRegistrationInfo voiceReg = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                0, 16, 0, true, null, cellIdentity, getPlmnFromCellIdentity(cellIdentity),
+                false, 0, 0, 0);
+
+        sst.mPollingContext[0] = 2;
+        // update data reg state to be in oos
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataReg, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceReg, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(sst.mSS.isEmergencyOnly());
+    }
+
+    @Test
+    public void testPSEmergencyRegistrationState() throws Exception {
+        CellIdentityGsm cellIdentity =
+                new CellIdentityGsm(0, 1, 900, 5, "001", "01", "test", "tst",
+                        Collections.emptyList());
+
+        NetworkRegistrationInfo dataReg = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                0, 16, 0, true, null, cellIdentity, getPlmnFromCellIdentity(cellIdentity),
+                1, false, false, false, null);
+
+        NetworkRegistrationInfo voiceReg = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                0, 16, 0, false, null, cellIdentity, getPlmnFromCellIdentity(cellIdentity),
+                false, 0, 0, 0);
+
+        sst.mPollingContext[0] = 2;
+        // update data reg state to be in oos
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataReg, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceReg, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(sst.mSS.isEmergencyOnly());
+    }
+
     // Edge and GPRS are grouped under the same family and Edge has higher rate than GPRS.
     // Expect no rat update when move from E to G.
     @Test
