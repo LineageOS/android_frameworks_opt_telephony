@@ -759,8 +759,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mFuturePhone).complete(true);
 
-        // Emergency override result sent this, onDdsSwitchResponse won't be invoked
-        verify(mTelephonyRegistryManager, never()).notifyActiveDataSubIdChanged(eq(1));
+        // Make sure the correct broadcast is sent out for the overridden phone ID
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(2));
     }
 
     @Test
@@ -853,9 +853,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
         moveTimeForward(ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS + 2000);
         processAllMessages();
         verify(mMockRadioConfig, never()).setPreferredDataModem(eq(0), any());
-
-        // Emergency override result sent this, onDdsSwitchResponse won't be invoked
-        verify(mTelephonyRegistryManager, never()).notifyActiveDataSubIdChanged(eq(0));
+        // Make sure the correct broadcast is sent out for the phone ID
+        verify(mTelephonyRegistryManager).notifyActiveDataSubIdChanged(eq(2));
 
         // End ECBM
         clearInvocations(mTelephonyRegistryManager);
