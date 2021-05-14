@@ -259,7 +259,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
 
     private LocalLog mLocalLog = new LocalLog(64);
-    private LocalLog mCarrierServiceLocalLog = new LocalLog(10);
+    private LocalLog mCarrierServiceLocalLog = new LocalLog(8);
 
     PowerWhitelistManager mPowerWhitelistManager;
 

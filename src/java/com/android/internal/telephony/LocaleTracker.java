@@ -160,7 +160,7 @@ public class LocaleTracker extends Handler {
 
     private boolean mIsTracking = false;
 
-    private final LocalLog mLocalLog = new LocalLog(50);
+    private final LocalLog mLocalLog = new LocalLog(32);
 
     /** Broadcast receiver to get SIM card state changed event */
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {

@@ -151,7 +151,7 @@ public class TransportManager extends Handler {
 
     private final Phone mPhone;
 
-    private final LocalLog mLocalLog = new LocalLog(100);
+    private final LocalLog mLocalLog = new LocalLog(64);
 
     /** The available transports. Must be one or more of AccessNetworkConstants.TransportType.XXX */
     private final int[] mAvailableTransports;
