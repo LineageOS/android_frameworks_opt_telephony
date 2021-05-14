@@ -363,6 +363,12 @@ public class DcNetworkAgent extends NetworkAgent {
                           InetAddress address, int startPort, int endPort) {
                       return filter.matchesLocalAddress(address, startPort, endPort);
                   }
+
+                  @Override
+                  public boolean matchesRemoteAddress(
+                          InetAddress address, int startPort, int endPort) {
+                      return filter.matchesRemoteAddress(address, startPort, endPort);
+                  }
               }));
     }
 
