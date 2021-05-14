@@ -119,7 +119,7 @@ public class SubscriptionController extends ISub.Stub {
     private static final int DEPRECATED_SETTING = -1;
     private static final ParcelUuid INVALID_GROUP_UUID =
             ParcelUuid.fromString(CarrierConfigManager.REMOVE_GROUP_UUID_STRING);
-    private final LocalLog mLocalLog = new LocalLog(200);
+    private final LocalLog mLocalLog = new LocalLog(128);
     private static final int SUB_ID_FOUND = 1;
     private static final int NO_ENTRY_FOR_SLOT_INDEX = -1;
     private static final int SUB_ID_NOT_IN_SLOT = -2;

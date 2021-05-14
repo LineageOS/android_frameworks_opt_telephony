@@ -213,7 +213,7 @@ public class DataConnection extends StateMachine {
 
     private final String mTagSuffix;
 
-    private final LocalLog mHandoverLocalLog = new LocalLog(100);
+    private final LocalLog mHandoverLocalLog = new LocalLog(64);
 
     private int[] mAdministratorUids = new int[0];
 
