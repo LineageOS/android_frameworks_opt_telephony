@@ -254,6 +254,10 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         mSmsFilters.add(mSmsFilter2);
         mGsmInboundSmsHandler.setSmsFiltersForTesting(mSmsFilters);
         monitorTestableLooper(new TestableLooper(mGsmInboundSmsHandler.getHandler().getLooper()));
+
+        doReturn(mGsmInboundSmsHandler).when(mPhone).getInboundSmsHandler(false);
+        doReturn(mCdmaInboundSmsHandler).when(mPhone).getInboundSmsHandler(true);
+
         processAllMessages();
     }
 
