@@ -920,6 +920,10 @@ public class SubscriptionController extends ISub.Stub {
             subList = getSubInfo(null, null);
             if (subList != null) {
                 if (VDBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
+                subList.stream().map(
+                        subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
+                                callingPackage, callingFeatureId, "getAllSubInfoList"))
+                        .collect(Collectors.toList());
             } else {
                 if (VDBG) logd("[getAllSubInfoList]- no info return");
             }
