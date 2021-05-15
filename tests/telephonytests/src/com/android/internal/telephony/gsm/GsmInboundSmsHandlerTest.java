@@ -368,6 +368,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSmsFromBlockedNumber_noBroadcastsSent() {
@@ -385,6 +386,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSmsWithUserLocked_notificationShown() {
@@ -411,6 +413,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 any(Notification.class));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSmsFromBlockedNumberWithUserLocked_noNotificationShown() {
@@ -440,6 +443,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 any(Notification.class));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSms_filterInvoked_noBroadcastsSent() {
@@ -465,6 +469,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testNewSms_filterChaining_noBroadcastsSent() {
@@ -515,6 +520,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testClass0Sms() {
@@ -546,6 +552,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastSms() {
@@ -647,6 +654,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 InboundSmsHandler.SOURCE_NOT_INJECTED);
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultiPartSmsWithIncompleteWAP() {
@@ -786,6 +794,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultiPartIncompleteSms() {
@@ -850,6 +859,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(never());
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultiPartSmsWithInvalidSeqNumber() {
@@ -909,6 +919,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(never());
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultipartSmsFromBlockedNumber_noBroadcastsSent() {
@@ -947,6 +958,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultipartSmsFromBlockedEmail_noBroadcastsSent() {
@@ -1002,6 +1014,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testMultipartSms_filterInvoked_noBroadcastsSent() {
@@ -1051,6 +1064,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 anyBoolean(), anyBoolean(), Mockito.<List<InboundSmsHandler.SmsFilter>>any());
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredUserLocked() throws Exception {
@@ -1091,6 +1105,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredUserUnlocked() throws Exception {
@@ -1112,6 +1127,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredDeleted() throws Exception {
@@ -1179,6 +1195,7 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         verifySmsFiltersInvoked(times(1));
     }
 
+    @FlakyTest // temporarily disabled, see b/182498318
     @Test
     @MediumTest
     public void testBroadcastUndeliveredMultiSim() throws Exception {
