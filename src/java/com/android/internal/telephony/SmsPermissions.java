@@ -78,14 +78,14 @@ public class SmsPermissions {
     /**
      * Enforces that the caller is one of the following apps:
      * <ul>
-     *     <li> IMS App
+     *     <li> IMS App determined by telephony to implement RCS features
      *     <li> Carrier App
      * </ul>
      */
     public void enforceCallerIsImsAppOrCarrierApp(String message) {
-        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext,
+        String imsRcsPackage = CarrierSmsUtils.getImsRcsPackageForIntent(mContext,
                 mPhone, new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-        if (carrierImsPackage != null && packageNameMatchesCallingUid(carrierImsPackage)) {
+        if (imsRcsPackage != null && packageNameMatchesCallingUid(imsRcsPackage)) {
             return;
         }
         TelephonyPermissions.enforceCallingOrSelfCarrierPrivilege(
