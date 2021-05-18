@@ -36,6 +36,7 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
 
 public class SimulatedCommandsVerifier implements CommandsInterface {
     private static SimulatedCommandsVerifier sInstance;
@@ -1495,5 +1496,33 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
 
     @Override
     public void getSlicingConfig(Message result) {
+    }
+
+    @Override
+    public void getSimPhonebookRecords(Message result){
+    }
+
+    @Override
+    public void getSimPhonebookCapacity(Message result){
+    }
+
+    @Override
+    public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result){
+    }
+
+    @Override
+    public void registerForSimPhonebookChanged(Handler h, int what, Object obj){
+    }
+
+    @Override
+    public void unregisterForSimPhonebookChanged(Handler h){
+    }
+
+    @Override
+    public void registerForSimPhonebookRecordsReceived(Handler h, int what, Object obj){
+    }
+
+    @Override
+    public void unregisterForSimPhonebookRecordsReceived(Handler h){
     }
 }
