@@ -102,7 +102,8 @@ public class CarrierServicesSmsFilter {
     }
 
     /**
-     * @return {@code true} if the SMS was handled by carrier services.
+     * @return {@code true} if the SMS was handled by a carrier application or an ImsService
+     * implementing RCS features.
      */
     @VisibleForTesting
     public boolean filter() {
@@ -111,10 +112,10 @@ public class CarrierServicesSmsFilter {
         if (carrierAppForFiltering.isPresent()) {
             smsFilterPackages.add(carrierAppForFiltering.get());
         }
-        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
+        String imsRcsPackage = CarrierSmsUtils.getImsRcsPackageForIntent(mContext, mPhone,
                 new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-        if (carrierImsPackage != null) {
-            smsFilterPackages.add(carrierImsPackage);
+        if (imsRcsPackage != null) {
+            smsFilterPackages.add(imsRcsPackage);
         }
 
         if (mFilterAggregator != null) {
