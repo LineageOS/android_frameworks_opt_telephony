@@ -41,6 +41,7 @@ import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.text.format.Time;
+import android.util.EventLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -254,6 +255,11 @@ public class SubscriptionController extends ISub.Stub {
     private void enforceModifyPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE, message);
+    }
+
+    private void enforceReadPrivilegedPhoneState(String message) {
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
     }
 
     /**
@@ -734,8 +740,18 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public List<SubscriptionInfo> getAvailableSubscriptionInfoList(String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "getAvailableSubscriptionInfoList")) {
-            throw new SecurityException("Need READ_PHONE_STATE to call "
+        try {
+            enforceReadPrivilegedPhoneState("getAvailableSubscriptionInfoList");
+        } catch (SecurityException e) {
+            try {
+                mContext.enforceCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE, null);
+                // If caller doesn't have READ_PRIVILEGED_PHONE_STATE permission but only
+                // has READ_PHONE_STATE permission, log this event.
+                EventLog.writeEvent(0x534e4554, "185235454", Binder.getCallingUid());
+            } catch (SecurityException ex) {
+                // Ignore
+            }
+            throw new SecurityException("Need READ_PRIVILEGED_PHONE_STATE to call "
                     + " getAvailableSubscriptionInfoList");
         }
 
