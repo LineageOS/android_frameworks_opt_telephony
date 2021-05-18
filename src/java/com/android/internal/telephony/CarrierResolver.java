@@ -106,7 +106,7 @@ public class CarrierResolver extends Handler {
     private Context mContext;
     private Phone mPhone;
     private IccRecords mIccRecords;
-    private final LocalLog mCarrierIdLocalLog = new LocalLog(20);
+    private final LocalLog mCarrierIdLocalLog = new LocalLog(16);
     private final TelephonyManager mTelephonyMgr;
 
     private final ContentObserver mContentObserver = new ContentObserver(this) {
