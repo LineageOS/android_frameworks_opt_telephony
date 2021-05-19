@@ -106,6 +106,7 @@ import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -1035,10 +1036,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         maybeConfigureRtpHeaderExtensions();
-
-        if (mCarrierConfigLoaded) {
-            mImsManager.updateImsServiceConfig();
-        }
+        updateImsServiceConfig();
         // For compatibility with apps that still use deprecated intent
         sendImsServiceStateIntent(ImsManager.ACTION_IMS_SERVICE_UP);
     }
@@ -1461,6 +1459,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return;
         }
 
+        Phone defaultPhone = getPhone().getDefaultPhone();
+        if (defaultPhone != null && defaultPhone.getIccCard() != null) {
+            IccCardConstants.State state = defaultPhone.getIccCard().getState();
+            // Bypass until PIN/PUK lock is removed as to ensure that we do not push a config down
+            // when the device is still locked. A CARRIER_CONFIG_CHANGED indication will be sent
+            // once the device moves to ready.
+            if (state != null && (!state.iccCardExist() || state.isPinLocked())) {
+                loge("cacheCarrierConfiguration: card state is not ready, skipping. State= "
+                        + state);
+                mCarrierConfigLoaded = false;
+                return;
+            }
+        }
+
         PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
         if (carrierConfig == null) {
             loge("cacheCarrierConfiguration: Empty carrier config.");
@@ -1470,9 +1482,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mCarrierConfigLoaded = true;
 
         updateCarrierConfigCache(carrierConfig);
-        if (mImsManager != null) {
-            mImsManager.updateImsServiceConfig();
-        }
+        updateImsServiceConfig();
         // Check for changes due to carrier config.
         maybeConfigureRtpHeaderExtensions();
     }
@@ -3220,9 +3230,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (mShouldUpdateImsConfigOnDisconnect) {
                 // Ensure we update the IMS config when the call is disconnected; we delayed this
                 // because a video call was paused.
-                if (mImsManager != null) {
-                    mImsManager.updateImsServiceConfig();
-                }
+                updateImsServiceConfig();
                 mShouldUpdateImsConfigOnDisconnect = false;
             }
 
@@ -3960,7 +3968,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     || item == ImsConfig.ConfigConstants.LVC_SETTING_ENABLED)) {
                 // Update Ims Service state to make sure updated provisioning values take effect
                 // immediately.
-                mImsManager.updateImsServiceConfig();
+                updateImsServiceConfig();
             }
         }
 
@@ -4812,9 +4820,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 && reason != DataEnabledSettings.REASON_REGISTERED && mCarrierConfigLoaded) {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.
-            if (mImsManager != null) {
-                mImsManager.updateImsServiceConfig();
-            }
+            updateImsServiceConfig();
+        }
+    }
+
+    /**
+     * If the ImsService is currently connected and we have loaded the carrier config, proceed to
+     * trigger the update of the configuration sent to the ImsService.
+     */
+    private void updateImsServiceConfig() {
+        if (mImsManager != null && mCarrierConfigLoaded) {
+            mImsManager.updateImsServiceConfig();
         }
     }
 
