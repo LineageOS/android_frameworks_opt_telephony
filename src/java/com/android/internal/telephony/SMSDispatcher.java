@@ -162,6 +162,9 @@ public abstract class SMSDispatcher extends Handler {
     private static final int SEND_RETRY_DELAY = 2000;
     /** Message sending queue limit */
     private static final int MO_MSG_QUEUE_LIMIT = 5;
+    /** SMS anomaly uuid -- CarrierMessagingService did not respond */
+    private static final UUID sAnomalyNoResponseFromCarrierMessagingService =
+            UUID.fromString("279d9fbc-462d-4fc2-802c-bf21ddd9dd90");
 
     /**
      * Message reference for a CONCATENATED_8_BIT_REFERENCE or
@@ -408,6 +411,8 @@ public abstract class SMSDispatcher extends Handler {
             if (msg.what == EVENT_TIMEOUT) {
                 logWithLocalLog("handleMessage: did not receive response from "
                         + mCarrierPackageName + " for " + mCarrierMessagingTimeout + " ms");
+                AnomalyReporter.reportAnomaly(sAnomalyNoResponseFromCarrierMessagingService,
+                        "No response from " + mCarrierPackageName);
                 onSendComplete(CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK);
             } else {
                 logWithLocalLog("handleMessage: received unexpected message " + msg.what);
@@ -2025,8 +2030,9 @@ public abstract class SMSDispatcher extends Handler {
 
         private Boolean mIsFromDefaultSmsApplication;
 
-        // SMS anomaly uuid
-        private final UUID mAnomalyUUID = UUID.fromString("43043600-ea7a-44d2-9ae6-a58567ac7886");
+        // SMS anomaly uuid -- unexpected error from RIL
+        private final UUID mAnomalyUnexpectedErrorFromRilUUID =
+                UUID.fromString("43043600-ea7a-44d2-9ae6-a58567ac7886");
 
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
@@ -2262,8 +2268,9 @@ public abstract class SMSDispatcher extends Handler {
         private UUID generateUUID(int error, int errorCode) {
             long lerror = error;
             long lerrorCode = errorCode;
-            return new UUID(mAnomalyUUID.getMostSignificantBits(),
-                    mAnomalyUUID.getLeastSignificantBits() + ((lerrorCode << 32) + lerror));
+            return new UUID(mAnomalyUnexpectedErrorFromRilUUID.getMostSignificantBits(),
+                    mAnomalyUnexpectedErrorFromRilUUID.getLeastSignificantBits()
+                            + ((lerrorCode << 32) + lerror));
         }
 
         /**
