@@ -63,6 +63,7 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
@@ -2014,7 +2015,8 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getSimPhonebookCapacityResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             android.hardware.radio.V1_6.PhonebookCapacity pbCapacity) {
-        responseVoid_1_6(responseInfo);
+        AdnCapacity capacity = new AdnCapacity(pbCapacity);
+        responseAdnCapacity(responseInfo, capacity);
     }
 
     /**
@@ -2024,7 +2026,19 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void updateSimPhonebookRecordsResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             int updatedRecordIndex) {
-        responseVoid_1_6(responseInfo);
+        responseInts_1_6(responseInfo, updatedRecordIndex);
+    }
+
+    private void responseAdnCapacity(
+            android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
+            AdnCapacity capacity) {
+        RILRequest rr = mRil.processResponse_1_6(responseInfo);
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, capacity);
+            }
+            mRil.processResponseDone_1_6(rr, responseInfo, capacity);
+        }
     }
 
     private void responseIccCardStatus(RadioResponseInfo responseInfo, CardStatus cardStatus) {

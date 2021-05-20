@@ -2516,9 +2516,9 @@ public abstract class SMSDispatcher extends Handler {
         if (carrierPackages != null && carrierPackages.size() == 1) {
             return carrierPackages.get(0);
         }
-        // If there is no carrier package which implements CarrierMessagingService, then lookup if
-        // for a carrierImsPackage that implements CarrierMessagingService.
-        return CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
+        // If there is no carrier package which implements CarrierMessagingService, then lookup
+        // an ImsService implementing RCS that also implements CarrierMessagingService.
+        return CarrierSmsUtils.getImsRcsPackageForIntent(mContext, mPhone,
                 new Intent(CarrierMessagingService.SERVICE_INTERFACE));
     }
 
