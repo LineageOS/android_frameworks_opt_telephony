@@ -194,7 +194,6 @@ public class AccessNetworksManager extends Handler {
                 registerDataThrottlersFirstTime();
 
             } catch (RemoteException e) {
-                mDeathRecipient.binderDied();
                 loge("Remote exception. " + e);
             }
         }
