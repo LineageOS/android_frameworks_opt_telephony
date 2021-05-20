@@ -380,6 +380,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private Config mConfig = null;
 
     /**
+     * Whether D2D has been force enabled via the d2d telephony command.
+     */
+    private boolean mDeviceToDeviceForceEnabled = false;
+
+    /**
      * Network callback used to schedule the handover check when a wireless network connects.
      */
     private ConnectivityManager.NetworkCallback mNetworkCallback =
@@ -1045,7 +1050,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Where device to device communication is available, ensure that the
         // supported RTP header extension types defined in {@link RtpTransport} are
         // set as the offered RTP header extensions for this device.
-        if (mConfig != null && mConfig.isD2DCommunicationSupported && mSupportD2DUsingRtp) {
+        if (mDeviceToDeviceForceEnabled
+                || (mConfig != null && mConfig.isD2DCommunicationSupported
+                && mSupportD2DUsingRtp)) {
             ArraySet<RtpHeaderExtensionType> types = new ArraySet<>();
             if (mSupportSdpForRtpHeaderExtensions) {
                 types.add(RtpTransport.CALL_STATE_RTP_HEADER_EXTENSION_TYPE);
@@ -1062,6 +1069,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 loge("maybeConfigureRtpHeaderExtensions: failed to set extensions; " + e);
             }
         }
+    }
+
+    /**
+     * Used via the telephony shell command to force D2D to be enabled.
+     * @param isEnabled {@code true} if D2D is force enabled.
+     */
+    public void setDeviceToDeviceForceEnabled(boolean isEnabled) {
+        mDeviceToDeviceForceEnabled = isEnabled;
+        maybeConfigureRtpHeaderExtensions();
     }
 
     private void stopListeningForCalls() {
@@ -4433,7 +4449,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mIsConferenceEventPackageHandlingEnabled=" + mIsConferenceEventPackageEnabled);
         pw.println(" mSupportCepOnPeer=" + mSupportCepOnPeer);
         if (mConfig != null) {
-            pw.println(" isDeviceToDeviceCommsSupported= " + mConfig.isD2DCommunicationSupported);
+            pw.print(" isDeviceToDeviceCommsSupported= " + mConfig.isD2DCommunicationSupported);
+            pw.println("(forceEnabled=" + mDeviceToDeviceForceEnabled + ")");
             if (mConfig.isD2DCommunicationSupported) {
                 pw.println(" mSupportD2DUsingRtp= " + mSupportD2DUsingRtp);
                 pw.println(" mSupportSdpForRtpHeaderExtensions= "
