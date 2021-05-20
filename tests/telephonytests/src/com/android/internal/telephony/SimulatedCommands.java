@@ -68,6 +68,9 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.uicc.AdnCapacity;
+import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
@@ -2453,4 +2456,30 @@ public class SimulatedCommands extends BaseCommands
         mVoiceRegStateResult = regStateResult;
     }
 
+    @Override
+    public void getSimPhonebookRecords(Message result) {
+        resultSuccess(result, null);
+
+        // send a fake result
+        List<SimPhonebookRecord> phonebookRecordInfoGroup = new ArrayList<SimPhonebookRecord>();
+        mSimPhonebookRecordsReceivedRegistrants.notifyRegistrants(
+                new AsyncResult(null,
+                new ReceivedPhonebookRecords(4, phonebookRecordInfoGroup), null));
+    }
+
+    @Override
+    public void getSimPhonebookCapacity(Message result) {
+        resultSuccess(result, new AdnCapacity(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+    }
+
+    @Override
+    public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
+        resultSuccess(result, new int[]{phonebookRecord.getRecordIndex()});
+        notifySimPhonebookChanged();
+    }
+
+    @VisibleForTesting
+    public void notifySimPhonebookChanged() {
+        mSimPhonebookChangedRegistrants.notifyRegistrants();
+    }
 }

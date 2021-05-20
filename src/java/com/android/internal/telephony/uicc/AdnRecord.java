@@ -223,6 +223,10 @@ public class AdnRecord implements Parcelable {
         return mRecordNumber;
     }
 
+    public void setRecId(int recordId) {
+        mRecordNumber = recordId;
+    }
+
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public String getNumber() {
         return mNumber;

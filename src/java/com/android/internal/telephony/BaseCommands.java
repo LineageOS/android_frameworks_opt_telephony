@@ -29,6 +29,8 @@ import android.telephony.Annotation.RadioPowerState;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,6 +111,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mEmergencyNumberListRegistrants = new RegistrantList();
     protected RegistrantList mUiccApplicationsEnablementRegistrants = new RegistrantList();
     protected RegistrantList mBarringInfoChangedRegistrants = new RegistrantList();
+    protected RegistrantList mSimPhonebookChangedRegistrants = new RegistrantList();
+    protected RegistrantList mSimPhonebookRecordsReceivedRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1084,5 +1088,37 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForBarringInfoChanged(Handler h) {
         mBarringInfoChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSimPhonebookChanged(Handler h, int what, Object obj) {
+        mSimPhonebookChangedRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSimPhonebookChanged(Handler h) {
+        mSimPhonebookChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSimPhonebookRecordsReceived(Handler h, int what, Object obj) {
+        mSimPhonebookRecordsReceivedRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSimPhonebookRecordsReceived(Handler h) {
+        mSimPhonebookRecordsReceivedRegistrants.remove(h);
+    }
+
+    @Override
+    public void getSimPhonebookRecords(Message result) {
+    }
+
+    @Override
+    public void getSimPhonebookCapacity(Message result) {
+    }
+
+    @Override
+    public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
     }
 }
