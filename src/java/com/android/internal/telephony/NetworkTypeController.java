@@ -612,15 +612,14 @@ public class NetworkTypeController extends StateMachine {
                     // ignored
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
-                    if (!mIsPhysicalChannelConfig16Supported) {
-                        // ignore
-                        break;
+                    if (mIsPhysicalChannelConfig16Supported) {
+                        mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
+                        if (mIsTimerResetEnabledForLegacyStateRRCIdle && !isPhysicalLinkActive()) {
+                            resetAllTimers();
+                        }
                     }
-                    mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
-                    if (mIsTimerResetEnabledForLegacyStateRRCIdle && !isPhysicalLinkActive()) {
-                        resetAllTimers();
-                        updateOverrideNetworkType();
-                    }
+                    // Update in case of LTE/LTE+ switch
+                    updateOverrideNetworkType();
                     break;
                 case EVENT_PHYSICAL_LINK_STATE_CHANGED:
                     AsyncResult ar = (AsyncResult) msg.obj;
