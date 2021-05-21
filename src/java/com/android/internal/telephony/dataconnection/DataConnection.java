@@ -1354,6 +1354,7 @@ public class DataConnection extends StateMachine {
         mApnContexts.clear();
         mApnSetting = null;
         mUnmeteredUseOnly = false;
+        mMmsUseOnly = false;
         mEnterpriseUse = false;
         mRestrictedNetworkOverride = false;
         mDcFailCause = DataFailCause.NONE;
@@ -1688,6 +1689,14 @@ public class DataConnection extends StateMachine {
     private boolean mUnmeteredUseOnly = false;
 
     /**
+     * Indicates if this data connection was established for MMS use only. This is true only when
+     * mobile data is disabled but the user allows sending and receiving MMS messages. If the data
+     * enabled settings indicate that MMS data is allowed unconditionally, MMS can be sent when data
+     * is disabled even if it is a metered APN type.
+     */
+    private boolean mMmsUseOnly = false;
+
+    /**
      * Indicates if when this connection was established we had a restricted/privileged
      * NetworkRequest and needed it to overcome data-enabled limitations.
      *
@@ -1793,6 +1802,18 @@ public class DataConnection extends StateMachine {
     }
 
     /**
+     * @return True if this data connection should only be used for MMS purposes.
+     */
+    private boolean isMmsUseOnly() {
+        // MMS use only if data is disabled, MMS is allowed unconditionally, and MMS is the only
+        // APN type for this data connection.
+        DataEnabledSettings des = mPhone.getDataEnabledSettings();
+        boolean mmsAllowedUnconditionally = !des.isDataEnabled() && des.isMmsAlwaysAllowed();
+        boolean mmsApnOnly = isApnContextAttached(ApnSetting.TYPE_MMS, true);
+        return mmsAllowedUnconditionally && mmsApnOnly;
+    }
+
+    /**
      * Check if this data connection supports enterprise use. We call this when the data connection
      * becomes active or when we want to reevaluate the conditions to decide if we need to update
      * the network agent capabilities.
@@ -1818,22 +1839,21 @@ public class DataConnection extends StateMachine {
     public NetworkCapabilities getNetworkCapabilities() {
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        boolean hasInternet = false;
         boolean unmeteredApns = false;
 
-        if (mApnSetting != null && !mEnterpriseUse) {
-            final String[] types = ApnSetting.getApnTypesStringFromBitmask(
-                    mApnSetting.getApnTypeBitmask() & ~mDisabledApnTypeBitMask).split(",");
-            for (String type : types) {
-                if (!mRestrictedNetworkOverride && mUnmeteredUseOnly
-                        && ApnSettingUtils.isMeteredApnType(
-                                ApnSetting.getApnTypesBitmaskFromString(type), mPhone)) {
-                    log("Dropped the metered " + type + " for the unmetered data call.");
+        if (mApnSetting != null && !mEnterpriseUse && !mMmsUseOnly) {
+            final int[] types = ApnSetting.getApnTypesFromBitmask(
+                    mApnSetting.getApnTypeBitmask() & ~mDisabledApnTypeBitMask);
+            for (int type : types) {
+                if ((!mRestrictedNetworkOverride && mUnmeteredUseOnly)
+                        && ApnSettingUtils.isMeteredApnType(type, mPhone)) {
+                    log("Dropped the metered " + ApnSetting.getApnTypeString(type)
+                            + " type for the unmetered data call.");
                     continue;
                 }
                 switch (type) {
-                    case ApnSetting.TYPE_ALL_STRING: {
-                        hasInternet = true;
+                    case ApnSetting.TYPE_ALL: {
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
@@ -1843,56 +1863,52 @@ public class DataConnection extends StateMachine {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
                         break;
                     }
-                    case ApnSetting.TYPE_DEFAULT_STRING: {
-                        hasInternet = true;
+                    case ApnSetting.TYPE_DEFAULT: {
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                         break;
                     }
-                    case ApnSetting.TYPE_MMS_STRING: {
+                    case ApnSetting.TYPE_MMS: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
                         break;
                     }
-                    case ApnSetting.TYPE_SUPL_STRING: {
+                    case ApnSetting.TYPE_SUPL: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
                         break;
                     }
-                    case ApnSetting.TYPE_DUN_STRING: {
+                    case ApnSetting.TYPE_DUN: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
                         break;
                     }
-                    case ApnSetting.TYPE_FOTA_STRING: {
+                    case ApnSetting.TYPE_FOTA: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
                         break;
                     }
-                    case ApnSetting.TYPE_IMS_STRING: {
+                    case ApnSetting.TYPE_IMS: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
                         break;
                     }
-                    case ApnSetting.TYPE_CBS_STRING: {
+                    case ApnSetting.TYPE_CBS: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
                         break;
                     }
-                    case ApnSetting.TYPE_IA_STRING: {
+                    case ApnSetting.TYPE_IA: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
                         break;
                     }
-                    case ApnSetting.TYPE_EMERGENCY_STRING: {
+                    case ApnSetting.TYPE_EMERGENCY: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
                         break;
                     }
-                    case ApnSetting.TYPE_MCX_STRING: {
+                    case ApnSetting.TYPE_MCX: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MCX);
                         break;
                     }
-                    case ApnSetting.TYPE_XCAP_STRING: {
+                    case ApnSetting.TYPE_XCAP: {
                         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
                         break;
                     }
                     default:
                 }
-            }
-
-            if (hasInternet) {
-                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             }
 
             if (!ApnSettingUtils.isMetered(mApnSetting, mPhone)) {
@@ -1915,6 +1931,15 @@ public class DataConnection extends StateMachine {
 
         if (mEnterpriseUse) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
+        }
+
+        if (mMmsUseOnly) {
+            if (ApnSettingUtils.isMeteredApnType(ApnSetting.TYPE_MMS, mPhone)) {
+                log("Adding unmetered capability for the unmetered MMS-only data connection");
+                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+            }
+            log("Adding MMS capability for the MMS-only data connection");
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
         }
 
         if (mRestrictedNetworkOverride) {
@@ -2825,11 +2850,13 @@ public class DataConnection extends StateMachine {
             }
 
             mUnmeteredUseOnly = isUnmeteredUseOnly();
+            mMmsUseOnly = isMmsUseOnly();
             mEnterpriseUse = isEnterpriseUse();
 
             if (DBG) {
                 log("mRestrictedNetworkOverride = " + mRestrictedNetworkOverride
                         + ", mUnmeteredUseOnly = " + mUnmeteredUseOnly
+                        + ", mMmsUseOnly = " + mMmsUseOnly
                         + ", mEnterpriseUse = " + mEnterpriseUse);
             }
 
@@ -3294,6 +3321,8 @@ public class DataConnection extends StateMachine {
                                 DataConnection.this);
                     }
 
+                    mMmsUseOnly = isMmsUseOnly();
+
                     retVal = HANDLED;
                     break;
                 }
@@ -3628,6 +3657,22 @@ public class DataConnection extends StateMachine {
         return new ArrayList<>(mApnContexts.keySet());
     }
 
+    /**
+     * Return whether there is an ApnContext for the given type in this DataConnection.
+     * @param type APN type to check
+     * @param exclusive true if the given APN type should be the only APN type that exists
+     * @return True if there is an ApnContext for the given type
+     */
+    private boolean isApnContextAttached(@ApnType int type, boolean exclusive) {
+        boolean attached = mApnContexts.keySet().stream()
+                .map(ApnContext::getApnTypeBitmask)
+                .anyMatch(bitmask -> bitmask == type);
+        if (exclusive) {
+            attached &= mApnContexts.size() == 1;
+        }
+        return attached;
+    }
+
     /** Get the network agent of the data connection */
     @Nullable
     DcNetworkAgent getNetworkAgent() {
@@ -3952,6 +3997,7 @@ public class DataConnection extends StateMachine {
         pw.println("mUserData=" + mUserData);
         pw.println("mRestrictedNetworkOverride=" + mRestrictedNetworkOverride);
         pw.println("mUnmeteredUseOnly=" + mUnmeteredUseOnly);
+        pw.println("mMmsUseOnly=" + mMmsUseOnly);
         pw.println("mEnterpriseUse=" + mEnterpriseUse);
         pw.println("mUnmeteredOverride=" + mUnmeteredOverride);
         pw.println("mCongestedOverride=" + mCongestedOverride);
