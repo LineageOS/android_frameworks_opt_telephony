@@ -129,6 +129,7 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -5978,6 +5979,100 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    @Override
+    public void getSimPhonebookRecords(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            android.hardware.radio.V1_6.IRadio.castFrom(radioProxy);
+                try {
+                    radioProxy16.getSimPhonebookRecords(rr.mSerial);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "getPhonebookRecords", e);
+                }
+            } else {
+                riljLog("Unsupported API in lower than version 1.6 radio HAL" );
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void getSimPhonebookCapacity(Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+            }
+
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                            android.hardware.radio.V1_6.IRadio.castFrom(radioProxy);
+                try {
+                    radioProxy16.getSimPhonebookCapacity(rr.mSerial);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "getPhonebookRecords", e);
+                }
+            } else {
+                riljLog("Unsupported API in lower than version 1.6 radio HAL" );
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                        + " with " + phonebookRecord.toString());
+            }
+
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
+                android.hardware.radio.V1_6.IRadio radioProxy16 =
+                        android.hardware.radio.V1_6.IRadio.castFrom(radioProxy);
+
+                android.hardware.radio.V1_6.PhonebookRecordInfo pbRecordInfo =
+                        phonebookRecord.toPhonebookRecordInfo();
+                try {
+                     radioProxy16.updateSimPhonebookRecords(rr.mSerial, pbRecordInfo);
+                } catch (RemoteException | RuntimeException e) {
+                    handleRadioProxyExceptionForRR(rr, "updatePhonebookRecord", e);
+                }
+            } else {
+                riljLog("Unsupported API in lower than version 1.6 radio HAL" );
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+            }
+        }
+    }
+
     //***** Private Methods
     /** Helper that gets V1.6 of the radio interface OR sends back REQUEST_NOT_SUPPORTED */
     @Nullable private android.hardware.radio.V1_6.IRadio getRadioV16(Message msg) {
@@ -6955,6 +7050,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
                 return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP";
+            case RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS:
+                return "RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS";
+            case RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD:
+                return "RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD";
+            case RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY:
+                return "RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY";
             default: return "<unknown request>";
         }
     }
@@ -7074,6 +7175,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "RIL_UNSOL_REGISTRATION_FAILED";
             case RIL_UNSOL_BARRING_INFO_CHANGED:
                 return "RIL_UNSOL_BARRING_INFO_CHANGED";
+            case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED:
+                return "RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
+            case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED:
+                return "RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
             default:
                 return "<unknown response>";
         }
