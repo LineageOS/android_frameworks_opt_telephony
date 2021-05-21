@@ -2707,6 +2707,10 @@ public class GsmCdmaPhone extends Phone {
         Rlog.i(LOG_TAG, "syncClirSetting: " + CLIR_KEY + getSubId() + "=" + clirSetting);
         if (clirSetting >= 0) {
             mCi.setCLIR(clirSetting, null);
+        } else {
+            // if there is no preference set, ensure the CLIR is updated to the default value in
+            // order to ensure that CLIR values in the RIL are not carried over during SIM swap.
+            mCi.setCLIR(CommandsInterface.CLIR_DEFAULT, null);
         }
     }
 
