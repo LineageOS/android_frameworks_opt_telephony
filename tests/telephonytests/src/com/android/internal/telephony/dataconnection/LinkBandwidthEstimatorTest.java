@@ -585,7 +585,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     }
 
     @Test
-    public void testUseHighTxRxByteEdgeThenUnknownNetwork() throws Exception {
+    public void testEdgeThenLteShouldIgnoreTransitionStats() throws Exception {
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
         processAllMessages();
         mNri = new NetworkRegistrationInfo.Builder()
@@ -594,7 +594,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         when(mServiceState.getNetworkRegistrationInfo(anyInt(), anyInt())).thenReturn(mNri);
         mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
         processAllMessages();
-        for (int i = 0; i < BW_STATS_COUNT_THRESHOLD + 5; i++) {
+        for (int i = 0; i < BW_STATS_COUNT_THRESHOLD * 2; i++) {
             addTxBytes(12_000L);
             addRxBytes(24_000L);
             addElapsedTime(5_100);
@@ -608,24 +608,28 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         LinkBandwidthEstimator.NetworkBandwidth network = mLBE.lookupNetwork("310260", 366, "EDGE");
 
         assertEquals(0, network.getCount(LINK_TX, 1));
-        assertEquals(BW_STATS_COUNT_THRESHOLD + 4, network.getCount(LINK_RX, 1));
-        assertEquals(24_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD + 4),
+        assertEquals(BW_STATS_COUNT_THRESHOLD * 2 - 1, network.getCount(LINK_RX, 1));
+        assertEquals(24_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD * 2 - 1),
                 network.getValue(LINK_RX, 1));
 
         mNri = new NetworkRegistrationInfo.Builder()
-                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UNKNOWN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
                 .build();
         when(mServiceState.getNetworkRegistrationInfo(anyInt(), anyInt())).thenReturn(mNri);
-        mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
-        processAllMessages();
-        for (int i = 0; i < 5; i++) {
+        for (int i = BW_STATS_COUNT_THRESHOLD * 2; i < BW_STATS_COUNT_THRESHOLD * 4; i++) {
+            addTxBytes(1_200_000L);
+            addRxBytes(2_400_000L);
             addElapsedTime(5_100);
             moveTimeForward(5_100);
             processAllMessages();
+            mLBE.obtainMessage(MSG_MODEM_ACTIVITY_RETURNED, new ModemActivityInfo(
+                    i * 5_100L, 0, 0, TX_TIME_2_MS, i * RX_TIME_2_MS * 10)).sendToTarget();
+            processAllMessages();
         }
-        network = mLBE.lookupNetwork("310260", 366, "UNKNOWN");
+        network = mLBE.lookupNetwork("310260", 366, "LTE");
 
-        assertEquals(0, network.getCount(LINK_RX, 1));
+        assertEquals(BW_STATS_COUNT_THRESHOLD * 2 - 2, network.getCount(LINK_RX, 1));
+        assertEquals(0, network.getCount(LINK_TX, 1));
     }
 
 
