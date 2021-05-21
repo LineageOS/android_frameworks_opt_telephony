@@ -222,6 +222,7 @@ public class DataServiceManager extends Handler {
             mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
             mLastBoundPackageName = getDataServicePackageName();
+            removeMessages(EVENT_WATCHDOG_TIMEOUT);
 
             try {
                 service.linkToDeath(mDeathRecipient, 0);
@@ -231,11 +232,9 @@ public class DataServiceManager extends Handler {
                 mIDataService.registerForUnthrottleApn(mPhone.getPhoneId(),
                         new CellularDataServiceCallback("unthrottleApn"));
             } catch (RemoteException e) {
-                mDeathRecipient.binderDied();
                 loge("Remote exception. " + e);
                 return;
             }
-            removeMessages(EVENT_WATCHDOG_TIMEOUT);
             mServiceBindingChangedRegistrants.notifyResult(true);
         }
         @Override

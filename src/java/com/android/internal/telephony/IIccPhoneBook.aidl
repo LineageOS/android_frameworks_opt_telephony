@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+
+import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.AdnRecord;
 
 /**
@@ -68,49 +71,20 @@ interface IIccPhoneBook {
             String newTag, String newPhoneNumber,
             String pin2);
 
-
-
     /**
      * Replace oldAdn with newAdn in ADN-like record in EF
      *
      * getAdnRecordsInEf must be called at least once before this function,
      * otherwise an error will be returned
      *
-     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
-     * @param oldTag adn tag to be replaced
-     * @param oldPhoneNumber adn number to be replaced
-     *        Set both oldTag and oldPhoneNubmer to "" means to replace an
-     *        empty record, aka, insert new record
-     * @param newTag adn tag to be stored
-     * @param newPhoneNumber adn number ot be stored
-     *        Set both newTag and newPhoneNubmer to "" means to replace the old
-     *        record with empty one, aka, delete old record
-     * @param pin2 required to update EF_FDN, otherwise must be null
      * @param subId user preferred subId
-     * @return true for success
-     */
-    boolean updateAdnRecordsInEfBySearchForSubscriber(int subId, int efid,
-            String oldTag, String oldPhoneNumber,
-            String newTag, String newPhoneNumber,
-            String pin2);
-    /**
-     * Update an ADN-like EF record by record index
-     *
-     * This is useful for iteration the whole ADN file, such as write the whole
-     * phone book or erase/format the whole phonebook
-     *
      * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
-     * @param newTag adn tag to be stored
-     * @param newPhoneNumber adn number to be stored
-     *        Set both newTag and newPhoneNubmer to "" means to replace the old
-     *        record with empty one, aka, delete old record
-     * @param index is 1-based adn record index to be updated
+     * @param values including ADN,EMAIL,ANR to be updated
      * @param pin2 required to update EF_FDN, otherwise must be null
      * @return true for success
      */
-    boolean updateAdnRecordsInEfByIndex(int efid, String newTag,
-            String newPhoneNumber, int index,
-            String pin2);
+    boolean updateAdnRecordsInEfBySearchForSubscriber(int subId,
+            int efid, in ContentValues values, String pin2);
 
     /**
      * Update an ADN-like EF record by record index
@@ -118,19 +92,15 @@ interface IIccPhoneBook {
      * This is useful for iteration the whole ADN file, such as write the whole
      * phone book or erase/format the whole phonebook
      *
+     * @param subId user preferred subId
      * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
-     * @param newTag adn tag to be stored
-     * @param newPhoneNumber adn number to be stored
-     *        Set both newTag and newPhoneNubmer to "" means to replace the old
-     *        record with empty one, aka, delete old record
+     * @param values including ADN,EMAIL,ANR to be updated
      * @param index is 1-based adn record index to be updated
      * @param pin2 required to update EF_FDN, otherwise must be null
-     * @param subId user preferred subId
      * @return true for success
      */
-    boolean updateAdnRecordsInEfByIndexForSubscriber(int subId, int efid, String newTag,
-            String newPhoneNumber, int index,
-            String pin2);
+    boolean updateAdnRecordsInEfByIndexForSubscriber(int subId, int efid, in ContentValues values,
+            int index, String pin2);
 
     /**
      * Get the max munber of records in efid
@@ -157,4 +127,11 @@ interface IIccPhoneBook {
     @UnsupportedAppUsage
     int[] getAdnRecordsSizeForSubscriber(int subId, int efid);
 
+    /**
+     * Get the capacity of ADN records
+     *
+     * @param subId user preferred subId
+     * @return AdnCapacity
+     */
+    AdnCapacity getAdnRecordsCapacityForSubscriber(int subId);
 }
