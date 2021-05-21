@@ -106,6 +106,7 @@ import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -378,6 +379,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * The Telephony config.xml values pertinent to ImsPhoneCallTracker.
      */
     private Config mConfig = null;
+
+    /**
+     * Whether D2D has been force enabled via the d2d telephony command.
+     */
+    private boolean mDeviceToDeviceForceEnabled = false;
 
     /**
      * Network callback used to schedule the handover check when a wireless network connects.
@@ -1030,10 +1036,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         maybeConfigureRtpHeaderExtensions();
-
-        if (mCarrierConfigLoaded) {
-            mImsManager.updateImsServiceConfig();
-        }
+        updateImsServiceConfig();
         // For compatibility with apps that still use deprecated intent
         sendImsServiceStateIntent(ImsManager.ACTION_IMS_SERVICE_UP);
     }
@@ -1045,7 +1048,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Where device to device communication is available, ensure that the
         // supported RTP header extension types defined in {@link RtpTransport} are
         // set as the offered RTP header extensions for this device.
-        if (mConfig != null && mConfig.isD2DCommunicationSupported && mSupportD2DUsingRtp) {
+        if (mDeviceToDeviceForceEnabled
+                || (mConfig != null && mConfig.isD2DCommunicationSupported
+                && mSupportD2DUsingRtp)) {
             ArraySet<RtpHeaderExtensionType> types = new ArraySet<>();
             if (mSupportSdpForRtpHeaderExtensions) {
                 types.add(RtpTransport.CALL_STATE_RTP_HEADER_EXTENSION_TYPE);
@@ -1062,6 +1067,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 loge("maybeConfigureRtpHeaderExtensions: failed to set extensions; " + e);
             }
         }
+    }
+
+    /**
+     * Used via the telephony shell command to force D2D to be enabled.
+     * @param isEnabled {@code true} if D2D is force enabled.
+     */
+    public void setDeviceToDeviceForceEnabled(boolean isEnabled) {
+        mDeviceToDeviceForceEnabled = isEnabled;
+        maybeConfigureRtpHeaderExtensions();
     }
 
     private void stopListeningForCalls() {
@@ -1445,6 +1459,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return;
         }
 
+        Phone defaultPhone = getPhone().getDefaultPhone();
+        if (defaultPhone != null && defaultPhone.getIccCard() != null) {
+            IccCardConstants.State state = defaultPhone.getIccCard().getState();
+            // Bypass until PIN/PUK lock is removed as to ensure that we do not push a config down
+            // when the device is still locked. A CARRIER_CONFIG_CHANGED indication will be sent
+            // once the device moves to ready.
+            if (state != null && (!state.iccCardExist() || state.isPinLocked())) {
+                loge("cacheCarrierConfiguration: card state is not ready, skipping. State= "
+                        + state);
+                mCarrierConfigLoaded = false;
+                return;
+            }
+        }
+
         PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
         if (carrierConfig == null) {
             loge("cacheCarrierConfiguration: Empty carrier config.");
@@ -1454,9 +1482,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mCarrierConfigLoaded = true;
 
         updateCarrierConfigCache(carrierConfig);
-        if (mImsManager != null) {
-            mImsManager.updateImsServiceConfig();
-        }
+        updateImsServiceConfig();
         // Check for changes due to carrier config.
         maybeConfigureRtpHeaderExtensions();
     }
@@ -3204,9 +3230,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (mShouldUpdateImsConfigOnDisconnect) {
                 // Ensure we update the IMS config when the call is disconnected; we delayed this
                 // because a video call was paused.
-                if (mImsManager != null) {
-                    mImsManager.updateImsServiceConfig();
-                }
+                updateImsServiceConfig();
                 mShouldUpdateImsConfigOnDisconnect = false;
             }
 
@@ -3944,7 +3968,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     || item == ImsConfig.ConfigConstants.LVC_SETTING_ENABLED)) {
                 // Update Ims Service state to make sure updated provisioning values take effect
                 // immediately.
-                mImsManager.updateImsServiceConfig();
+                updateImsServiceConfig();
             }
         }
 
@@ -4433,7 +4457,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         pw.println(" mIsConferenceEventPackageHandlingEnabled=" + mIsConferenceEventPackageEnabled);
         pw.println(" mSupportCepOnPeer=" + mSupportCepOnPeer);
         if (mConfig != null) {
-            pw.println(" isDeviceToDeviceCommsSupported= " + mConfig.isD2DCommunicationSupported);
+            pw.print(" isDeviceToDeviceCommsSupported= " + mConfig.isD2DCommunicationSupported);
+            pw.println("(forceEnabled=" + mDeviceToDeviceForceEnabled + ")");
             if (mConfig.isD2DCommunicationSupported) {
                 pw.println(" mSupportD2DUsingRtp= " + mSupportD2DUsingRtp);
                 pw.println(" mSupportSdpForRtpHeaderExtensions= "
@@ -4795,9 +4820,17 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 && reason != DataEnabledSettings.REASON_REGISTERED && mCarrierConfigLoaded) {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.
-            if (mImsManager != null) {
-                mImsManager.updateImsServiceConfig();
-            }
+            updateImsServiceConfig();
+        }
+    }
+
+    /**
+     * If the ImsService is currently connected and we have loaded the carrier config, proceed to
+     * trigger the update of the configuration sent to the ImsService.
+     */
+    private void updateImsServiceConfig() {
+        if (mImsManager != null && mCarrierConfigLoaded) {
+            mImsManager.updateImsServiceConfig();
         }
     }
 

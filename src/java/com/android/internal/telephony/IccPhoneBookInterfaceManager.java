@@ -17,26 +17,32 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.text.TextUtils;
 
+import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.SimPhonebookRecordCache;
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.telephony.Rlog;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.List;
 
 /**
- * SimPhoneBookInterfaceManager to provide an inter-process communication to
+ * IccPhoneBookInterfaceManager to provide an inter-process communication to
  * access ADN-like SIM records.
  */
 public class IccPhoneBookInterfaceManager {
@@ -48,6 +54,7 @@ public class IccPhoneBookInterfaceManager {
     protected Phone mPhone;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected AdnRecordCache mAdnCache;
+    protected SimPhonebookRecordCache mSimPbRecordCache;
 
     protected static final int EVENT_GET_SIZE_DONE = 1;
     protected static final int EVENT_LOAD_DONE = 2;
@@ -118,9 +125,13 @@ public class IccPhoneBookInterfaceManager {
         if (r != null) {
             mAdnCache = r.getAdnCache();
         }
+
+        mSimPbRecordCache = new SimPhonebookRecordCache(
+                phone.getContext(), phone.getPhoneId(), phone.mCi);
     }
 
     public void dispose() {
+        mSimPbRecordCache.dispose();
     }
 
     public void updateIccRecords(IccRecords iccRecords) {
@@ -141,60 +152,81 @@ public class IccPhoneBookInterfaceManager {
         Rlog.e(LOG_TAG, "[IccPbInterfaceManager] " + msg);
     }
 
+    private AdnRecord generateAdnRecordWithOldTagByContentValues(ContentValues values) {
+        if (values == null) {
+            return null;
+        }
+        final String oldTag = values.getAsString(IccProvider.STR_TAG);
+        final String oldPhoneNumber = values.getAsString(IccProvider.STR_NUMBER);
+        final String oldEmail = values.getAsString(IccProvider.STR_EMAILS);
+        final String oldAnr = values.getAsString(IccProvider.STR_ANRS);;
+        String[] oldEmailArray = TextUtils.isEmpty(oldEmail)
+                ? null : getEmailStringArray(oldEmail);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getAnrStringArray(oldAnr);
+        return new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
+    }
+
+    private AdnRecord generateAdnRecordWithNewTagByContentValues(ContentValues values) {
+        if (values == null) {
+            return null;
+        }
+        final String newTag = values.getAsString(IccProvider.STR_NEW_TAG);
+        final String newPhoneNumber = values.getAsString(IccProvider.STR_NEW_NUMBER);
+        final String newEmail = values.getAsString(IccProvider.STR_NEW_EMAILS);
+        final String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
+        String[] newEmailArray = TextUtils.isEmpty(newEmail)
+                ? null : getEmailStringArray(newEmail);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getAnrStringArray(newAnr);
+        return new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
+    }
+
     /**
      * Replace oldAdn with newAdn in ADN-like record in EF
      *
      * getAdnRecordsInEf must be called at least once before this function,
-     * otherwise an error will be returned. Currently the email field
-     * if set in the ADN record is ignored.
+     * otherwise an error will be returned.
      * throws SecurityException if no WRITE_CONTACTS permission
      *
      * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
-     * @param oldTag adn tag to be replaced
-     * @param oldPhoneNumber adn number to be replaced
-     *        Set both oldTag and oldPhoneNubmer to "" means to replace an
-     *        empty record, aka, insert new record
-     * @param newTag adn tag to be stored
-     * @param newPhoneNumber adn number ot be stored
-     *        Set both newTag and newPhoneNubmer to "" means to replace the old
-     *        record with empty one, aka, delete old record
+     * @param values old adn tag,  phone number, email and anr to be replaced
+     *        new adn tag,  phone number, email and anr to be stored
      * @param pin2 required to update EF_FDN, otherwise must be null
      * @return true for success
      */
-    public boolean
-    updateAdnRecordsInEfBySearch (int efid,
-            String oldTag, String oldPhoneNumber,
-            String newTag, String newPhoneNumber, String pin2) {
-
+    public boolean updateAdnRecordsInEfBySearchForSubscriber(int efid, ContentValues values,
+            String pin2) {
 
         if (mPhone.getContext().checkCallingOrSelfPermission(
-                android.Manifest.permission.WRITE_CONTACTS)
-            != PackageManager.PERMISSION_GRANTED) {
-            throw new SecurityException(
-                    "Requires android.permission.WRITE_CONTACTS permission");
+                android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Requires android.permission.WRITE_CONTACTS permission");
         }
 
-
-        if (DBG) logd("updateAdnRecordsInEfBySearch: efid=0x" +
-                Integer.toHexString(efid).toUpperCase() + " ("+ Rlog.pii(LOG_TAG, oldTag) + "," +
-                Rlog.pii(LOG_TAG, oldPhoneNumber) + ")" + "==>" + " ("+ Rlog.pii(LOG_TAG, newTag) +
-                "," + Rlog.pii(LOG_TAG, newPhoneNumber) + ")"+ " pin2=" + Rlog.pii(LOG_TAG, pin2));
-
         efid = updateEfForIccType(efid);
+
+        if (DBG) {
+            logd("updateAdnRecordsWithContentValuesInEfBySearch: efid=" + efid + ", values = " +
+                values + ", pin2=" + pin2);
+        }
 
         checkThread();
         Request updateRequest = new Request();
         synchronized (updateRequest) {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
-            AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
-            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            if (mAdnCache != null) {
-                mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+            AdnRecord oldAdn = generateAdnRecordWithOldTagByContentValues(values);
+            AdnRecord newAdn = generateAdnRecordWithNewTagByContentValues(values);
+            if (usesPbCache(efid)) {
+                mSimPbRecordCache.updateSimPbAdnBySearch(oldAdn, newAdn, response);
                 waitForResult(updateRequest);
                 return (boolean) updateRequest.mResult;
             } else {
-                loge("Failure while trying to update by search due to uninitialised adncache");
-                return false;
+                if (mAdnCache != null) {
+                    mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                    waitForResult(updateRequest);
+                    return (boolean) updateRequest.mResult;
+                } else {
+                    loge("Failure while trying to update by search due to uninitialised adncache");
+                    return false;
+                }
             }
         }
     }
@@ -210,15 +242,14 @@ public class IccPhoneBookInterfaceManager {
      * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
      * @param newTag adn tag to be stored
      * @param newPhoneNumber adn number to be stored
-     *        Set both newTag and newPhoneNubmer to "" means to replace the old
+     *        Set both newTag and newPhoneNumber to "" means to replace the old
      *        record with empty one, aka, delete old record
      * @param index is 1-based adn record index to be updated
      * @param pin2 required to update EF_FDN, otherwise must be null
      * @return true for success
      */
     public boolean
-    updateAdnRecordsInEfByIndex(int efid, String newTag,
-            String newPhoneNumber, int index, String pin2) {
+    updateAdnRecordsInEfByIndex(int efid, ContentValues values, int index, String pin2) {
 
         if (mPhone.getContext().checkCallingOrSelfPermission(
                 android.Manifest.permission.WRITE_CONTACTS)
@@ -226,25 +257,30 @@ public class IccPhoneBookInterfaceManager {
             throw new SecurityException(
                     "Requires android.permission.WRITE_CONTACTS permission");
         }
-
-        if (DBG) logd("updateAdnRecordsInEfByIndex: efid=0x" +
-                Integer.toHexString(efid).toUpperCase() + " Index=" + index + " ==> " + "(" +
-                Rlog.pii(LOG_TAG, newTag) + "," + Rlog.pii(LOG_TAG, newPhoneNumber) + ")" +
-                " pin2=" + Rlog.pii(LOG_TAG, pin2));
-
+        efid = updateEfForIccType(efid);
+        if (DBG) {
+            logd("updateAdnRecordsInEfByIndex: efid=" + efid + ", values = " +
+                values + " index=" + index + ", pin2=" + pin2);
+        }
 
         checkThread();
         Request updateRequest = new Request();
         synchronized (updateRequest) {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
-            AdnRecord newAdn = new AdnRecord(efid, index, newTag, newPhoneNumber);
-            if (mAdnCache != null) {
-                mAdnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
+            AdnRecord newAdn = generateAdnRecordWithNewTagByContentValues(values);
+            if (usesPbCache(efid)) {
+                mSimPbRecordCache.updateSimPbAdnByRecordId(index, newAdn, response);
                 waitForResult(updateRequest);
                 return (boolean) updateRequest.mResult;
             } else {
-                loge("Failure while trying to update by index due to uninitialised adncache");
-                return false;
+                if (mAdnCache != null) {
+                    mAdnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
+                    waitForResult(updateRequest);
+                    return (boolean) updateRequest.mResult;
+                } else {
+                    loge("Failure while trying to update by index due to uninitialised adncache");
+                    return false;
+                }
             }
         }
     }
@@ -301,13 +337,20 @@ public class IccPhoneBookInterfaceManager {
         Request loadRequest = new Request();
         synchronized (loadRequest) {
             Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE, loadRequest);
-            if (mAdnCache != null) {
-                mAdnCache.requestLoadAllAdnLike(efid, mAdnCache.extensionEfForEf(efid), response);
+            if (usesPbCache(efid)) {
+                mSimPbRecordCache.requestLoadAllPbRecords(response);
                 waitForResult(loadRequest);
                 return (List<AdnRecord>) loadRequest.mResult;
             } else {
-                loge("Failure while trying to load from SIM due to uninitialised adncache");
-                return null;
+                if (mAdnCache != null) {
+                    mAdnCache.requestLoadAllAdnLike(efid,
+                            mAdnCache.extensionEfForEf(efid), response);
+                    waitForResult(loadRequest);
+                    return (List<AdnRecord>) loadRequest.mResult;
+                } else {
+                    loge("Failure while trying to load from SIM due to uninitialised adncache");
+                    return null;
+                }
             }
         }
     }
@@ -344,5 +387,67 @@ public class IccPhoneBookInterfaceManager {
         }
         return efid;
     }
-}
 
+    private String[] getEmailStringArray(String str) {
+        return str != null ? str.split(",") : null;
+    }
+
+    private String[] getAnrStringArray(String str) {
+        return str != null ? str.split(":") : null;
+    }
+
+    /**
+     * Get the capacity of ADN records
+     *
+     * @return AdnCapacity
+     */
+    public AdnCapacity getAdnRecordsCapacity() {
+        if (DBG) logd("getAdnRecordsCapacity" );
+        if (mPhone.getContext().checkCallingOrSelfPermission(
+                android.Manifest.permission.READ_CONTACTS)
+                != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException(
+                    "Requires android.permission.READ_CONTACTS permission");
+        }
+        int phoneId = mPhone.getPhoneId();
+
+        UiccProfile profile = UiccController.getInstance().getUiccProfileForPhone(phoneId);
+
+        if (profile != null) {
+            IccCardConstants.State cardstate = profile.getState();
+            if (cardstate == IccCardConstants.State.READY
+                    || cardstate == IccCardConstants.State.LOADED) {
+                checkThread();
+                AdnCapacity capacity = mSimPbRecordCache.isEnabled()
+                        ? mSimPbRecordCache.getAdnCapacity() : null;
+                if (capacity == null) {
+                    loge("Adn capacity is null");
+                    return null;
+                }
+
+                if (DBG) logd("getAdnRecordsCapacity on slot " + phoneId
+                        + ": max adn=" + capacity.getMaxAdnCount()
+                        + ", used adn=" + capacity.getUsedAdnCount()
+                        + ", max email=" + capacity.getMaxEmailCount()
+                        + ", used email=" + capacity.getUsedEmailCount()
+                        + ", max anr=" + capacity.getMaxAnrCount()
+                        + ", used anr=" + capacity.getUsedAnrCount()
+                        + ", max name length="+ capacity.getMaxNameLength()
+                        + ", max number length =" + capacity.getMaxNumberLength()
+                        + ", max email length =" + capacity.getMaxEmailLength()
+                        + ", max anr length =" + capacity.getMaxAnrLength());
+                return capacity;
+            } else {
+                logd("No UICC when getAdnRecordsCapacity.");
+            }
+        } else {
+            logd("sim state is not ready when getAdnRecordsCapacity.");
+        }
+        return null;
+    }
+
+    private boolean usesPbCache(int efid) {
+        return mSimPbRecordCache.isEnabled() &&
+                    (efid == IccConstants.EF_PBR || efid == IccConstants.EF_ADN);
+    }
+}

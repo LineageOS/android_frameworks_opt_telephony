@@ -202,7 +202,6 @@ public class NetworkRegistrationManager extends Handler {
                         new NetworkRegStateCallback());
             } catch (RemoteException exception) {
                 // Remote exception means that the binder already died.
-                mDeathRecipient.binderDied();
                 logd("RemoteException " + exception);
             }
         }

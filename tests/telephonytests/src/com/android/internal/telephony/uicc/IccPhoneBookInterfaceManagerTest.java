@@ -15,28 +15,31 @@
  */
 package com.android.internal.telephony.uicc;
 
-import android.os.HandlerThread;
-import android.os.Message;
-import android.os.AsyncResult;
-
-import com.android.internal.telephony.IccPhoneBookInterfaceManager;
-import com.android.internal.telephony.TelephonyTest;
-
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 
+import android.content.ContentValues;
+import android.os.HandlerThread;
+import android.os.Message;
+import android.os.AsyncResult;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.IccPhoneBookInterfaceManager;
+import com.android.internal.telephony.IccProvider;
+import com.android.internal.telephony.TelephonyTest;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.anyInt;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,6 +50,8 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
     private AdnRecordCache mAdnRecordCache;
     @Mock
     private AdnRecord mAdnRecord;
+    @Mock
+    private SimPhonebookRecordCache mSimPhonebookRecordCache;
     private IccPhoneBookInterfaceManager mIccPhoneBookInterfaceMgr;
     private IccPhoneBookInterfaceManagerHandler mIccPhoneBookInterfaceManagerHandler;
     private List<AdnRecord> mAdnList = Arrays.asList(mAdnRecord);
@@ -82,9 +87,19 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
             }
         }).when(mAdnRecordCache).requestLoadAllAdnLike(anyInt(), anyInt(), (Message) anyObject());
 
+        doAnswer(invocation -> {
+            Message response = (Message) invocation.getArguments()[0];
+            //set result for load ADN EF
+            AsyncResult.forMessage(response).result = mAdnList;
+            response.sendToTarget();
+            return null;
+        }).when(mSimPhonebookRecordCache).requestLoadAllPbRecords((Message)anyObject());
         mIccPhoneBookInterfaceManagerHandler = new IccPhoneBookInterfaceManagerHandler(TAG);
         mIccPhoneBookInterfaceManagerHandler.start();
+
         waitUntilReady();
+        replaceInstance(IccPhoneBookInterfaceManager.class,
+                "mSimPbRecordCache", mIccPhoneBookInterfaceMgr, mSimPhonebookRecordCache);
     }
 
     @After
@@ -93,9 +108,11 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
         mIccPhoneBookInterfaceManagerHandler.join();
         super.tearDown();
     }
+
     @Test
     @SmallTest
     public void testAdnEFLoadWithFailure() {
+        doReturn(false).when(mSimPhonebookRecordCache).isEnabled();
         List<AdnRecord> adnListResult = mIccPhoneBookInterfaceMgr.getAdnRecordsInEf(
                 IccConstants.EF_ADN);
         assertEquals(mAdnList, adnListResult);
@@ -115,5 +132,89 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
         assertNull(adnListResultNew);
         //verify the previous read is not got affected
         assertEquals(mAdnList, adnListResult);
+    }
+
+    @Test
+    @SmallTest
+    public void testAdnEFLoadByPbCacheWithFailure() {
+        doReturn(true).when(mSimPhonebookRecordCache).isEnabled();
+        List<AdnRecord> adnListResult = mIccPhoneBookInterfaceMgr.getAdnRecordsInEf(
+                IccConstants.EF_ADN);
+        assertEquals(mAdnList, adnListResult);
+        //mock a ADN Ef load failure
+        doAnswer(invocation -> {
+            Message response = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(response).exception = new RuntimeException();
+            response.sendToTarget();
+            return null;
+        }).when(mSimPhonebookRecordCache).requestLoadAllPbRecords((Message) anyObject());
+        List<AdnRecord> adnListResultNew = mIccPhoneBookInterfaceMgr.getAdnRecordsInEf(
+                IccConstants.EF_ADN);
+        //the later read return null due to exception
+        assertNull(adnListResultNew);
+        //verify the previous read is not got affected
+        assertEquals(mAdnList, adnListResult);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateAdnRecord() {
+        doReturn(false).when(mSimPhonebookRecordCache).isEnabled();
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Message response = (Message) invocation.getArguments()[4];
+                //set result for update ADN EF
+                AsyncResult.forMessage(response).exception = null;
+                response.sendToTarget();
+                return null;
+            }
+        }).when(mAdnRecordCache).updateAdnBySearch(
+            anyInt(), any(), any(),
+            any(), (Message) anyObject());
+
+        ContentValues values = new ContentValues();
+        values.put(IccProvider.STR_TAG, "");
+        values.put(IccProvider.STR_NUMBER, "");
+        values.put(IccProvider.STR_EMAILS, "");
+        values.put(IccProvider.STR_ANRS, "");
+        values.put(IccProvider.STR_NEW_TAG, "test");
+        values.put(IccProvider.STR_NEW_NUMBER, "123456");
+        values.put(IccProvider.STR_NEW_EMAILS, "");
+        values.put(IccProvider.STR_NEW_ANRS, "");
+
+        boolean result = mIccPhoneBookInterfaceMgr.updateAdnRecordsInEfBySearchForSubscriber(
+                IccConstants.EF_ADN, values , null);
+
+        assertTrue(result);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateAdnRecordByPbCache() {
+        doReturn(true).when(mSimPhonebookRecordCache).isEnabled();
+        doAnswer(invocation -> {
+            Message response = (Message) invocation.getArguments()[2];
+            //set result for update ADN EF
+            AsyncResult.forMessage(response).exception = null;
+            response.sendToTarget();
+            return null;
+        }).when(mSimPhonebookRecordCache).updateSimPbAdnBySearch(any(),
+            any(), (Message) anyObject());
+
+        ContentValues values = new ContentValues();
+        values.put(IccProvider.STR_TAG, "");
+        values.put(IccProvider.STR_NUMBER, "");
+        values.put(IccProvider.STR_EMAILS, "");
+        values.put(IccProvider.STR_ANRS, "");
+        values.put(IccProvider.STR_NEW_TAG, "test");
+        values.put(IccProvider.STR_NEW_NUMBER, "123456");
+        values.put(IccProvider.STR_NEW_EMAILS, "");
+        values.put(IccProvider.STR_NEW_ANRS, "");
+
+        boolean result = mIccPhoneBookInterfaceMgr.updateAdnRecordsInEfBySearchForSubscriber(
+                IccConstants.EF_ADN, values , "12");
+
+        assertTrue(result);
     }
 }

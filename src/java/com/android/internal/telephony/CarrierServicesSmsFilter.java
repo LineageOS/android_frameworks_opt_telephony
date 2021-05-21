@@ -27,6 +27,7 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.CarrierMessagingServiceWrapper;
 import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallback;
 import android.service.carrier.MessagePdu;
+import android.telephony.AnomalyReporter;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -40,6 +41,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Filters incoming SMS with carrier services.
@@ -58,6 +61,10 @@ public class CarrierServicesSmsFilter {
 
     /** onFilterComplete timeout. */
     public static final int FILTER_COMPLETE_TIMEOUT_MS = 10 * 60 * 1000; //10 minutes
+
+    /** SMS anomaly uuid -- CarrierMessagingService did not respond */
+    private static final UUID sAnomalyNoResponseFromCarrierMessagingService =
+            UUID.fromString("94095e8e-b516-4065-a8be-e05b84071002");
 
     private final Context mContext;
     private final Phone mPhone;
@@ -95,7 +102,8 @@ public class CarrierServicesSmsFilter {
     }
 
     /**
-     * @return {@code true} if the SMS was handled by carrier services.
+     * @return {@code true} if the SMS was handled by a carrier application or an ImsService
+     * implementing RCS features.
      */
     @VisibleForTesting
     public boolean filter() {
@@ -104,10 +112,10 @@ public class CarrierServicesSmsFilter {
         if (carrierAppForFiltering.isPresent()) {
             smsFilterPackages.add(carrierAppForFiltering.get());
         }
-        String carrierImsPackage = CarrierSmsUtils.getCarrierImsPackageForIntent(mContext, mPhone,
+        String imsRcsPackage = CarrierSmsUtils.getImsRcsPackageForIntent(mContext, mPhone,
                 new Intent(CarrierMessagingService.SERVICE_INTERFACE));
-        if (carrierImsPackage != null) {
-            smsFilterPackages.add(carrierImsPackage);
+        if (imsRcsPackage != null) {
+            smsFilterPackages.add(imsRcsPackage);
         }
 
         if (mFilterAggregator != null) {
@@ -122,7 +130,7 @@ public class CarrierServicesSmsFilter {
             mFilterAggregator = new FilterAggregator(numPackages);
             //start the timer
             mCallbackTimeoutHandler.sendMessageDelayed(mCallbackTimeoutHandler
-                            .obtainMessage(EVENT_ON_FILTER_COMPLETE_NOT_CALLED),
+                            .obtainMessage(EVENT_ON_FILTER_COMPLETE_NOT_CALLED, mFilterAggregator),
                     FILTER_COMPLETE_TIMEOUT_MS);
             for (String smsFilterPackage : smsFilterPackages) {
                 filterWithPackage(smsFilterPackage, mFilterAggregator);
@@ -302,7 +310,7 @@ public class CarrierServicesSmsFilter {
             if (!mIsOnFilterCompleteCalled) {
                 mIsOnFilterCompleteCalled = true;
                 mCarrierMessagingServiceWrapper.disconnect();
-                mFilterAggregator.onFilterComplete(result);
+                mFilterAggregator.onFilterComplete(result, this);
             }
         }
 
@@ -343,9 +351,10 @@ public class CarrierServicesSmsFilter {
             mFilterResult = CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT;
         }
 
-        void onFilterComplete(int result) {
+        void onFilterComplete(int result, CarrierSmsFilterCallback callback) {
             synchronized (mFilterLock) {
                 mNumPendingFilters--;
+                mCallbacks.remove(callback);
                 combine(result);
                 if (mNumPendingFilters == 0) {
                     // Calling identity was the CarrierMessagingService in this callback, change it
@@ -393,6 +402,12 @@ public class CarrierServicesSmsFilter {
                 case EVENT_ON_FILTER_COMPLETE_NOT_CALLED:
                     mLocalLog.log("CarrierServicesSmsFilter: onFilterComplete timeout: not"
                             + " called before " + FILTER_COMPLETE_TIMEOUT_MS + " milliseconds.");
+                    FilterAggregator filterAggregator = (FilterAggregator) msg.obj;
+                    String packages = filterAggregator.mCallbacks.stream()
+                            .map(callback -> callback.mPackageName)
+                            .collect(Collectors.joining(", "));
+                    AnomalyReporter.reportAnomaly(sAnomalyNoResponseFromCarrierMessagingService,
+                            "No response from " + packages);
                     handleFilterCallbacksTimeout();
                     break;
             }
