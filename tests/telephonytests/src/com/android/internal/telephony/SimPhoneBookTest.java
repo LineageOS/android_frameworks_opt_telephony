@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.test.suitebuilder.annotation.Suppress;
 
+import com.android.internal.telephony.IccProvider;
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.IccConstants;
 
@@ -38,15 +41,17 @@ public class SimPhoneBookTest extends TestCase {
                                 .get());
         assertNotNull(simPhoneBook);
 
-        int size[] = simPhoneBook.getAdnRecordsSize(IccConstants.EF_ADN);
+        final int subId = SubscriptionManager.getDefaultSubscriptionId();
+        int size[] = simPhoneBook.getAdnRecordsSizeForSubscriber(subId, IccConstants.EF_ADN);
         assertNotNull(size);
         assertEquals(3, size.length);
         assertEquals(size[0] * size[2], size[1]);
         assertTrue(size[2] >= 100);
 
-        List<AdnRecord> adnRecordList = simPhoneBook.getAdnRecordsInEf(IccConstants.EF_ADN);
+        List<AdnRecord> adnRecordList =
+                simPhoneBook.getAdnRecordsInEfForSubscriber(subId, IccConstants.EF_ADN);
         // do it twice cause the second time shall read from cache only
-        adnRecordList = simPhoneBook.getAdnRecordsInEf(IccConstants.EF_ADN);
+        adnRecordList = simPhoneBook.getAdnRecordsInEfForSubscriber(subId, IccConstants.EF_ADN);
         assertNotNull(adnRecordList);
 
         // Test for phone book update
@@ -75,37 +80,66 @@ public class SimPhoneBookTest extends TestCase {
         String pin2 = null;
 
         // udpate by index
-        boolean success = simPhoneBook.updateAdnRecordsInEfByIndex(IccConstants.EF_ADN,
-                firstAdn.getAlphaTag(), firstAdn.getNumber(), adnIndex, pin2);
-        adnRecordList = simPhoneBook.getAdnRecordsInEf(IccConstants.EF_ADN);
-         AdnRecord tmpAdn = adnRecordList.get(listIndex);
+        ContentValues values = new ContentValues();
+        values.put(IccProvider.STR_NEW_TAG, firstAdn.getAlphaTag());
+        values.put(IccProvider.STR_NEW_NUMBER, firstAdn.getNumber());
+        values.put(IccProvider.STR_NEW_EMAILS, "");
+        values.put(IccProvider.STR_NEW_ANRS, "");
+        boolean success = simPhoneBook.updateAdnRecordsInEfByIndexForSubscriber(subId,
+                IccConstants.EF_ADN, values, adnIndex, pin2);
+        adnRecordList =
+                simPhoneBook.getAdnRecordsInEfForSubscriber(subId, IccConstants.EF_ADN);
+        AdnRecord tmpAdn = adnRecordList.get(listIndex);
         assertTrue(success);
         assertTrue(firstAdn.isEqual(tmpAdn));
 
         // replace by search
-        success = simPhoneBook.updateAdnRecordsInEfBySearch(IccConstants.EF_ADN,
-                firstAdn.getAlphaTag(), firstAdn.getNumber(),
-                secondAdn.getAlphaTag(), secondAdn.getNumber(), pin2);
-        adnRecordList = simPhoneBook.getAdnRecordsInEf(IccConstants.EF_ADN);
+        ContentValues values2 = new ContentValues();
+        values.put(IccProvider.STR_TAG, firstAdn.getAlphaTag());
+        values.put(IccProvider.STR_NUMBER, firstAdn.getNumber());
+        values.put(IccProvider.STR_EMAILS, "");
+        values.put(IccProvider.STR_ANRS, "");
+        values.put(IccProvider.STR_NEW_TAG, secondAdn.getAlphaTag());
+        values.put(IccProvider.STR_NEW_NUMBER, secondAdn.getNumber());
+        values.put(IccProvider.STR_NEW_EMAILS, "");
+        values.put(IccProvider.STR_NEW_ANRS, "");
+        success = simPhoneBook.updateAdnRecordsInEfBySearchForSubscriber(subId,
+                IccConstants.EF_ADN, values2, pin2);
+        adnRecordList =
+                simPhoneBook.getAdnRecordsInEfForSubscriber(subId, IccConstants.EF_ADN);
         tmpAdn = adnRecordList.get(listIndex);
         assertTrue(success);
         assertFalse(firstAdn.isEqual(tmpAdn));
         assertTrue(secondAdn.isEqual(tmpAdn));
 
         // erase be search
-        success = simPhoneBook.updateAdnRecordsInEfBySearch(IccConstants.EF_ADN,
-                secondAdn.getAlphaTag(), secondAdn.getNumber(),
-                emptyAdn.getAlphaTag(), emptyAdn.getNumber(), pin2);
-        adnRecordList = simPhoneBook.getAdnRecordsInEf(IccConstants.EF_ADN);
+        ContentValues values3 = new ContentValues();
+        values.put(IccProvider.STR_TAG, secondAdn.getAlphaTag());
+        values.put(IccProvider.STR_NUMBER, secondAdn.getNumber());
+        values.put(IccProvider.STR_EMAILS, "");
+        values.put(IccProvider.STR_ANRS, "");
+        values.put(IccProvider.STR_NEW_TAG, emptyAdn.getAlphaTag());
+        values.put(IccProvider.STR_NEW_NUMBER, emptyAdn.getNumber());
+        values.put(IccProvider.STR_NEW_EMAILS, "");
+        values.put(IccProvider.STR_NEW_ANRS, "");
+        success = simPhoneBook.updateAdnRecordsInEfBySearchForSubscriber(subId,
+                IccConstants.EF_ADN, values3, pin2);
+        adnRecordList =
+                simPhoneBook.getAdnRecordsInEfForSubscriber(subId, IccConstants.EF_ADN);
         tmpAdn = adnRecordList.get(listIndex);
         assertTrue(success);
         assertTrue(tmpAdn.isEmpty());
 
         // restore the orginial adn
-        success = simPhoneBook.updateAdnRecordsInEfByIndex(IccConstants.EF_ADN,
-                originalAdn.getAlphaTag(), originalAdn.getNumber(), adnIndex,
-                pin2);
-        adnRecordList = simPhoneBook.getAdnRecordsInEf(IccConstants.EF_ADN);
+        ContentValues values4 = new ContentValues();
+        values.put(IccProvider.STR_NEW_TAG, originalAdn.getAlphaTag());
+        values.put(IccProvider.STR_NEW_NUMBER, originalAdn.getNumber());
+        values.put(IccProvider.STR_NEW_EMAILS, "");
+        values.put(IccProvider.STR_NEW_ANRS, "");
+        success = simPhoneBook.updateAdnRecordsInEfByIndexForSubscriber(subId,
+                IccConstants.EF_ADN, values4, adnIndex, pin2);
+        adnRecordList =
+                simPhoneBook.getAdnRecordsInEfForSubscriber(subId, IccConstants.EF_ADN);
         tmpAdn = adnRecordList.get(listIndex);
         assertTrue(success);
         assertTrue(originalAdn.isEqual(tmpAdn));
