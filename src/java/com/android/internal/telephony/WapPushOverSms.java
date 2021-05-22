@@ -27,7 +27,6 @@ import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
 import android.compat.annotation.UnsupportedAppUsage;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -317,8 +316,8 @@ public class WapPushOverSms implements ServiceConnection {
      *         {@link Activity#RESULT_OK} if the message has been broadcast
      *         to applications
      */
-    public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler,
-            String address, int subId, long messageId) {
+    public int dispatchWapPdu(byte[] pdu, InboundSmsHandler.SmsBroadcastReceiver receiver,
+            InboundSmsHandler handler, String address, int subId, long messageId) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         if (result.statusCode != Activity.RESULT_OK) {
             return result.statusCode;
