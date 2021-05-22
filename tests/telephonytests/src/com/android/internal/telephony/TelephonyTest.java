@@ -116,7 +116,6 @@ import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.server.pm.PackageManagerService;
 import com.android.server.pm.permission.LegacyPermissionManagerService;
-import com.android.server.pm.permission.PermissionManagerService;
 
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -213,8 +212,6 @@ public abstract class TelephonyTest {
     protected PackageManagerService mMockPackageManager;
     @Mock
     protected LegacyPermissionManagerService mMockLegacyPermissionManager;
-    @Mock
-    protected PermissionManagerService mMockPermissionManager;
 
     protected NetworkRegistrationInfo mNetworkRegistrationInfo =
             new NetworkRegistrationInfo.Builder()
@@ -659,8 +656,7 @@ public abstract class TelephonyTest {
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
         mServiceManagerMockedServices.put("package", mMockPackageManager);
         mServiceManagerMockedServices.put("legacy_permission", mMockLegacyPermissionManager);
-        mServiceManagerMockedServices.put("permissionmgr", mMockPermissionManager);
-        logd("mMockPermissionManager replaced");
+        logd("mMockLegacyPermissionManager replaced");
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
                 .when(mTransportManager).getAvailableTransports();
