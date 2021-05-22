@@ -68,6 +68,8 @@ public class InboundSmsTracker {
     private String mDeleteWhere;
     private String[] mDeleteWhereArgs;
 
+    // BroadcastReceiver associated with this tracker
+    private InboundSmsHandler.SmsBroadcastReceiver mSmsBroadcastReceiver;
     /**
      * Copied from SmsMessageBase#getDisplayOriginatingAddress used for blocking messages.
      * DisplayAddress could be email address if this message was from an email gateway, otherwise
@@ -508,5 +510,17 @@ public class InboundSmsTracker {
 
     public @InboundSmsHandler.SmsSource int getSource() {
         return mSmsSource;
+    }
+
+    /**
+     * Get/create the SmsBroadcastReceiver corresponding to the current tracker.
+     */
+    public InboundSmsHandler.SmsBroadcastReceiver getSmsBroadcastReceiver(
+            InboundSmsHandler handler) {
+        // lazy initialization
+        if (mSmsBroadcastReceiver == null) {
+            mSmsBroadcastReceiver = handler.new SmsBroadcastReceiver(this);
+        }
+        return mSmsBroadcastReceiver;
     }
 }
