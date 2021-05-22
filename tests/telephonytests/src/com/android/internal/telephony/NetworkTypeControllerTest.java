@@ -478,7 +478,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
         broadcastCarrierConfigs();
 
-
         mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
                 new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
@@ -563,6 +562,23 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+    }
+
+    @Test
+    public void testPhysicalChannelChangeFromLteToLteCa() throws Exception {
+        testTransitionToCurrentStateLegacy();
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        updateOverrideNetworkType();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        doReturn(true).when(mServiceState).isUsingCarrierAggregation();
+        doReturn(new int[] {30000}).when(mServiceState).getCellBandwidths();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+        processAllMessages();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
+                mNetworkTypeController.getOverrideNetworkType());
     }
 
     @Test
