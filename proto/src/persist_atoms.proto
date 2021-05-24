@@ -87,6 +87,12 @@ message PersistAtoms {
 
     /* Last Android build fingerprint. This usually changes after system OTA. */
     optional string build_fingerprint = 21;
+
+    /* Summary of received network requests. */
+    repeated NetworkRequests network_requests = 22;
+
+    /* Timestamp of last network_requests pull. */
+    optional int64 network_requests_pull_timestamp_millis = 23;
 }
 
 // The canonical versions of the following enums live in:
@@ -260,4 +266,10 @@ message ImsRegistrationStats {
 
     // Internal use only
     optional int64 last_used_millis = 10001;
+}
+
+message NetworkRequests {
+    optional int32 carrier_id = 1;
+    optional int32 enterprise_request_count = 2;
+    optional int32 enterprise_release_count = 3;
 }
