@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -127,6 +128,27 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     // Delay between dynamic ImsService queries.
     private static final int DELAY_DYNAMIC_QUERY_MS = 5000;
+
+    private static ImsResolver sInstance;
+
+    /**
+     * Create the ImsResolver Service singleton instance.
+     */
+    public static void make(Context context, String defaultMmTelPackageName,
+            String defaultRcsPackageName, int numSlots, ImsFeatureBinderRepository repo) {
+        if (sInstance == null) {
+            sInstance = new ImsResolver(context, defaultMmTelPackageName, defaultRcsPackageName,
+                    numSlots, repo);
+        }
+    }
+
+    /**
+     * @return The ImsResolver Service instance. May be {@code null} if no ImsResolver was created
+     * due to IMS not being supported.
+     */
+    public static @Nullable ImsResolver getInstance() {
+        return sInstance;
+    }
 
     private static class OverrideConfig {
         public final int slotId;
@@ -830,7 +852,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             return false;
         }
         // Config exists, but the carrier ImsService also needs to support this feature
-        ImsServiceInfo info = getImsServiceInfoFromCache(carrierPackage);
+        return doesCachedImsServiceExist(carrierPackage, slotId, featureType);
+    }
+
+    /**
+     * Check the cached ImsServices that exist on this device to determine if there is a ImsService
+     * with the same package name that matches the provided configuration.
+     */
+    // not synchronized, access in handler ONLY.
+    private boolean doesCachedImsServiceExist(String packageName, int slotId,
+            @ImsFeature.FeatureType int featureType) {
+        // Config exists, but the carrier ImsService also needs to support this feature
+        ImsServiceInfo info = getImsServiceInfoFromCache(packageName);
         return info != null && info.getSupportedFeatures().stream().anyMatch(
                 feature -> feature.slotId == slotId && feature.featureType == featureType);
     }
@@ -857,6 +890,94 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             Log.w(TAG, "getImsServiceConfiguration: exception=" + e.getMessage());
             return null;
         }
+    }
+    /**
+     * Resolves the PackageName of the ImsService that is configured to be bound for the slotId and
+     * FeatureType specified and returns it.
+     * <p>
+     * If there is a PackageName that is configured, but there is no application on the device that
+     * fulfills that configuration, this method will also return {@code null} as the ImsService will
+     * not be bound.
+     *
+     * @param slotId The slot ID that the request is for.
+     * @param featureType The ImsService feature type that the request is for.
+     * @return The package name of the ImsService that will be bound from telephony for the provided
+     * slot id and featureType.
+     */
+    public String getConfiguredImsServicePackageName(int slotId,
+            @ImsFeature.FeatureType int featureType) {
+        if (slotId < 0 || slotId >= mNumSlots || featureType <= ImsFeature.FEATURE_INVALID
+                || featureType >= ImsFeature.FEATURE_MAX) {
+            Log.w(TAG, "getResolvedImsServicePackageName received invalid parameters - slot: "
+                    + slotId + ", feature: " + featureType);
+            return null;
+        }
+        CompletableFuture<String> packageNameFuture = new CompletableFuture<>();
+        if (mHandler.getLooper().isCurrentThread()) {
+            // If we are on the same thread as the Handler's looper, run the internal method
+            // directly.
+            packageNameFuture.complete(getConfiguredImsServicePackageNameInternal(slotId,
+                    featureType));
+        } else {
+            mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType) + "], starting query...");
+            Log.d(TAG, "getResolvedImsServicePackageName: [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType) + "], starting query...");
+            mHandler.post(() -> {
+                try {
+                    packageNameFuture.complete(getConfiguredImsServicePackageNameInternal(slotId,
+                            featureType));
+                } catch (Exception e) {
+                    // Catch all Exceptions to ensure we do not block indefinitely in the case of an
+                    // unexpected error.
+                    packageNameFuture.completeExceptionally(e);
+                }
+            });
+        }
+        try {
+            String packageName = packageNameFuture.get();
+            mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType)
+                    + "], async query complete with package name: " + packageName);
+            Log.d(TAG, "getResolvedImsServicePackageName: [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType)
+                    + "], async query complete with package name: " + packageName);
+            return packageName;
+        } catch (Exception e) {
+            mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType) + "] -> Exception: " + e);
+            Log.w(TAG, "getResolvedImsServicePackageName: [" + slotId + ", "
+                    + ImsFeature.FEATURE_LOG_MAP.get(featureType) + "] returned Exception: " + e);
+            return null;
+        }
+    }
+
+    /**
+     * @return the package name for the configured carrier ImsService if it exists on the device and
+     * supports the supplied slotId and featureType. If no such configuration exists, fall back to
+     * the device ImsService. If neither exist, then return {@code null};
+     */
+    // Not synchronized, access on Handler ONLY!
+    private String getConfiguredImsServicePackageNameInternal(int slotId,
+            @ImsFeature.FeatureType int featureType) {
+        // If a carrier ImsService is configured to be used for the provided slotId and
+        // featureType, then return that one.
+        String carrierPackage = getCarrierConfiguredPackageName(slotId, featureType);
+        if (!TextUtils.isEmpty(carrierPackage)
+                && doesCachedImsServiceExist(carrierPackage, slotId, featureType)) {
+            return carrierPackage;
+        }
+        // If there is no carrier ImsService configured for that configuration, then
+        // return the device's default ImsService for the provided slotId and
+        // featureType.
+        String devicePackage = getDeviceConfiguration(featureType);
+        if (!TextUtils.isEmpty(devicePackage)
+                && doesCachedImsServiceExist(devicePackage, slotId, featureType)) {
+            return devicePackage;
+        }
+        // There is no ImsService configuration that exists for the slotId and
+        // featureType.
+        return null;
     }
 
     private void putImsController(int slotId, int feature, ImsServiceController controller) {
