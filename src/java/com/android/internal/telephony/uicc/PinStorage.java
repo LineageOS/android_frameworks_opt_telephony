@@ -757,7 +757,7 @@ public class PinStorage extends Handler {
             logv("Deleting PIN for slot %d (if existed)", slotId);
         }
 
-        mLastCommitResult = result && editor.commit();
+        mLastCommitResult = editor.commit() && result;
         return mLastCommitResult;
     }
 
