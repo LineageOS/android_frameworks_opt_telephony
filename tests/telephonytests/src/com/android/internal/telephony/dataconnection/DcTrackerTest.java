@@ -94,6 +94,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -2791,5 +2792,21 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mDataConnection).bringUp(any(ApnContext.class), anyInt(), anyInt(),
                 any(Message.class), anyInt(), eq(DcTracker.REQUEST_TYPE_HANDOVER), anyInt(),
                 anyBoolean());
+    }
+
+    @Test
+    public void testDataUnthrottled() throws Exception {
+        DataThrottler mockedDataThrottler = Mockito.mock(DataThrottler.class);
+        replaceInstance(DcTracker.class, "mDataThrottler", mDct, mockedDataThrottler);
+        mDct.enableApn(ApnSetting.TYPE_IMS, DcTracker.REQUEST_TYPE_NORMAL, null);
+        sendInitializationEvents();
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_APN_UNTHROTTLED,
+                new AsyncResult(null, FAKE_APN3, null)));
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        verify(mockedDataThrottler).setRetryTime(
+                eq(ApnSetting.TYPE_IMS),
+                eq(RetryManager.NO_SUGGESTED_RETRY_DELAY),
+                eq(DcTracker.REQUEST_TYPE_NORMAL));
     }
 }
