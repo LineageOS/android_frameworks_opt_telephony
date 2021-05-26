@@ -709,7 +709,16 @@ public class EmergencyNumberTracker extends Handler {
         if (number == null) {
             return false;
         }
-        number = PhoneNumberUtils.stripSeparators(number);
+
+        // Do not treat SIP address as emergency number
+        if (PhoneNumberUtils.isUriNumber(number)) {
+            return false;
+        }
+
+        // Strip the separators from the number before comparing it
+        // to the list.
+        number = PhoneNumberUtils.extractNetworkPortionAlt(number);
+
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             for (EmergencyNumber num : mEmergencyNumberList) {
                 // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
@@ -935,6 +944,9 @@ public class EmergencyNumberTracker extends Handler {
         // If the number passed in is null, just return false:
         if (number == null) return false;
 
+        /// M: preprocess number for emergency check @{
+        // Move following logic to isEmergencyNumber()
+
         // If the number passed in is a SIP address, return false, since the
         // concept of "emergency numbers" is only meaningful for calls placed
         // over the cell network.
@@ -942,13 +954,14 @@ public class EmergencyNumberTracker extends Handler {
         // since the whole point of extractNetworkPortionAlt() is to filter out
         // any non-dialable characters (which would turn 'abc911def@example.com'
         // into '911', for example.))
-        if (PhoneNumberUtils.isUriNumber(number)) {
-            return false;
-        }
+        //if (PhoneNumberUtils.isUriNumber(number)) {
+        //    return false;
+        //}
 
         // Strip the separators from the number before comparing it
         // to the list.
-        number = PhoneNumberUtils.extractNetworkPortionAlt(number);
+        //number = PhoneNumberUtils.extractNetworkPortionAlt(number);
+        /// @}
 
         String emergencyNumbers = "";
         int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
