@@ -30,6 +30,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
+import static com.android.internal.telephony.TelephonyStatsLog.TELEPHONY_NETWORK_REQUESTS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
 
@@ -49,6 +50,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequests;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
@@ -118,6 +120,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(DATA_CALL_SESSION, POLICY_PULL_DAILY);
             registerAtom(IMS_REGISTRATION_STATS, POLICY_PULL_DAILY);
             registerAtom(IMS_REGISTRATION_TERMINATION, POLICY_PULL_DAILY);
+            registerAtom(TELEPHONY_NETWORK_REQUESTS, POLICY_PULL_DAILY);
 
             Rlog.d(TAG, "registered");
         } else {
@@ -167,6 +170,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullImsRegistrationStats(data);
             case IMS_REGISTRATION_TERMINATION:
                 return pullImsRegistrationTermination(data);
+            case TELEPHONY_NETWORK_REQUESTS:
+                return pullTelephonyNetworkRequests(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -363,6 +368,18 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
+    private int pullTelephonyNetworkRequests(List<StatsEvent> data) {
+        NetworkRequests[] persistAtoms = mStorage.getNetworkRequests(MIN_COOLDOWN_MILLIS);
+        if (persistAtoms != null) {
+            Arrays.stream(persistAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "TELEPHONY_NETWORK_REQUESTS pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */
     private void registerAtom(int atomId, @Nullable StatsManager.PullAtomMetadata policy) {
         mStatsManager.setPullAtomCallback(atomId, policy, ConcurrentUtils.DIRECT_EXECUTOR, this);
@@ -534,6 +551,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 termination.extraCode,
                 termination.extraMessage,
                 termination.count);
+    }
+
+    private static StatsEvent buildStatsEvent(NetworkRequests networkRequests) {
+        return TelephonyStatsLog.buildStatsEvent(
+                TELEPHONY_NETWORK_REQUESTS,
+                networkRequests.carrierId,
+                networkRequests.enterpriseRequestCount,
+                networkRequests.enterpriseReleaseCount);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
