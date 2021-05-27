@@ -2377,7 +2377,6 @@ public class ServiceStateTracker extends Handler {
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
-                boolean nrHasChanged = false;
 
                 if (DBG) {
                     log("handlePollStateResultMessage: PS cellular. " + networkRegState);
@@ -2389,23 +2388,10 @@ public class ServiceStateTracker extends Handler {
                 if (serviceState == ServiceState.STATE_OUT_OF_SERVICE) {
                     mLastPhysicalChannelConfigList = null;
                 }
-                nrHasChanged |= updateNrFrequencyRangeFromPhysicalChannelConfigs(
-                        mLastPhysicalChannelConfigList, mNewSS);
-                nrHasChanged |= updateNrStateFromPhysicalChannelConfigs(
-                        mLastPhysicalChannelConfigList, mNewSS);
-                setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
-
-                if (nrHasChanged) {
-                    TelephonyMetrics.getInstance().writeServiceStateChanged(
-                            mPhone.getPhoneId(), mSS);
-                    mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
-                    mServiceStateStats.onServiceStateChanged(mSS);
-                }
 
                 mPSEmergencyOnly = networkRegState.isEmergencyEnabled();
                 mEmergencyOnly = (mCSEmergencyOnly || mPSEmergencyOnly);
                 if (mPhone.isPhoneTypeGsm()) {
-
                     mNewReasonDataDenied = networkRegState.getRejectCause();
                     mNewMaxDataCalls = dataSpecificStates.maxDataCalls;
                     mGsmDataRoaming = regCodeIsRoaming(registrationState);
@@ -3512,6 +3498,12 @@ public class ServiceStateTracker extends Handler {
             mPhone.mTelephonyTester.overrideServiceState(mNewSS);
         }
 
+        NetworkRegistrationInfo networkRegState = mNewSS.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+        updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+        setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
+
         if (DBG) {
             log("Poll ServiceState done: "
                     + " oldSS=[" + mSS + "] newSS=[" + mNewSS + "]"
@@ -3843,9 +3835,7 @@ public class ServiceStateTracker extends Handler {
             mPhone.getContext().getContentResolver()
                     .insert(getUriForSubscriptionId(mPhone.getSubId()),
                             getContentValuesForServiceState(mSS));
-        }
 
-        if (hasChanged || hasNrStateChanged) {
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
             mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
             mServiceStateStats.onServiceStateChanged(mSS);
