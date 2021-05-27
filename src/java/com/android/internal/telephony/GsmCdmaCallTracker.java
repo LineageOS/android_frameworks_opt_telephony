@@ -43,9 +43,9 @@ import android.text.TextUtils;
 import android.util.EventLog;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
-import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -282,6 +282,11 @@ public class GsmCdmaCallTracker extends CallTracker {
         UUSInfo uusInfo = dialArgs.uusInfo;
         Bundle intentExtras = dialArgs.intentExtras;
         boolean isEmergencyCall = dialArgs.isEmergency;
+        if (isEmergencyCall) {
+            clirMode = CommandsInterface.CLIR_SUPPRESSION;
+            if (Phone.DEBUG_PHONE) log("dial gsm emergency call, set clirModIe=" + clirMode);
+
+        }
 
         // note that this triggers call state changed notif
         clearDisconnected();
@@ -301,6 +306,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             // and we need to make sure the foreground call is clear
             // for the newly dialed connection
             switchWaitingOrHoldingAndActive();
+
             // This is a hack to delay DIAL so that it is sent out to RIL only after
             // EVENT_SWITCH_RESULT is received. We've seen failures when adding a new call to
             // multi-way conference calls due to DIAL being sent out before SWITCH is processed
@@ -333,6 +339,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                     TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
         }
         mHangupPendingMO = false;
+
         mMetrics.writeRilDial(mPhone.getPhoneId(), mPendingMO, clirMode, uusInfo);
         mPhone.getVoiceCallSessionStats().onRilDial(mPendingMO);
 
@@ -345,6 +352,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             // and will mark it as dropped.
             pollCallsWhenSafe();
         } else {
+
             // Always unmute when initiating a new call
             setMute(false);
 
@@ -404,6 +412,11 @@ public class GsmCdmaCallTracker extends CallTracker {
         int clirMode = dialArgs.clirMode;
         Bundle intentExtras = dialArgs.intentExtras;
         boolean isEmergencyCall = dialArgs.isEmergency;
+
+        if (isEmergencyCall) {
+            clirMode = CommandsInterface.CLIR_SUPPRESSION;
+            if (Phone.DEBUG_PHONE) log("dial cdma emergency call, set clirModIe=" + clirMode);
+        }
 
         // note that this triggers call state changed notif
         clearDisconnected();
