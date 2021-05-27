@@ -165,6 +165,9 @@ public abstract class SMSDispatcher extends Handler {
     /** SMS anomaly uuid -- CarrierMessagingService did not respond */
     private static final UUID sAnomalyNoResponseFromCarrierMessagingService =
             UUID.fromString("279d9fbc-462d-4fc2-802c-bf21ddd9dd90");
+    /** SMS anomaly uuid -- CarrierMessagingService unexpected callback */
+    private static final UUID sAnomalyUnexpectedCallback =
+            UUID.fromString("0103b6d2-ad07-4d86-9102-14341b9074ef");
 
     /**
      * Message reference for a CONCATENATED_8_BIT_REFERENCE or
@@ -542,6 +545,7 @@ public abstract class SMSDispatcher extends Handler {
      */
     protected final class SmsSenderCallback implements CarrierMessagingCallback {
         private final SmsSender mSmsSender;
+        private boolean mCallbackCalled = false;
 
         public SmsSenderCallback(SmsSender smsSender) {
             mSmsSender = smsSender;
@@ -552,6 +556,13 @@ public abstract class SMSDispatcher extends Handler {
          */
         @Override
         public void onSendSmsComplete(int result, int messageRef) {
+            if (mCallbackCalled) {
+                logWithLocalLog("onSendSmsComplete: unexpected call");
+                AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
+                        "Unexpected onSendSmsComplete");
+                return;
+            }
+            mCallbackCalled = true;
             final long identity = Binder.clearCallingIdentity();
             try {
                 mSmsSender.mCarrierMessagingServiceWrapper.disconnect();
@@ -692,6 +703,7 @@ public abstract class SMSDispatcher extends Handler {
      */
     private final class MultipartSmsSenderCallback implements CarrierMessagingCallback {
         private final MultipartSmsSender mSmsSender;
+        private boolean mCallbackCalled = false;
 
         MultipartSmsSenderCallback(MultipartSmsSender smsSender) {
             mSmsSender = smsSender;
@@ -707,6 +719,13 @@ public abstract class SMSDispatcher extends Handler {
          */
         @Override
         public void onSendMultipartSmsComplete(int result, int[] messageRefs) {
+            if (mCallbackCalled) {
+                logWithLocalLog("onSendMultipartSmsComplete: unexpected call");
+                AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
+                        "Unexpected onSendMultipartSmsComplete");
+                return;
+            }
+            mCallbackCalled = true;
             mSmsSender.removeTimeout();
             mSmsSender.mCarrierMessagingServiceWrapper.disconnect();
 

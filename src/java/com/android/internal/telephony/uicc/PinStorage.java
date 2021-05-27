@@ -757,7 +757,7 @@ public class PinStorage extends Handler {
             logv("Deleting PIN for slot %d (if existed)", slotId);
         }
 
-        mLastCommitResult = result && editor.commit();
+        mLastCommitResult = editor.commit() && result;
         return mLastCommitResult;
     }
 
@@ -937,13 +937,21 @@ public class PinStorage extends Handler {
 
     /** Returns if the PIN cache is allowed for a given slot. */
     private boolean isCacheAllowed(int slotId) {
-        // Check overall device support
+        return isCacheAllowedByDevice() && isCacheAllowedByCarrier(slotId);
+    }
+
+    /** Returns if the PIN cache is allowed by the device. */
+    private boolean isCacheAllowedByDevice() {
         if (!mContext.getResources().getBoolean(
                 R.bool.config_allow_pin_storage_for_unattended_reboot)) {
             logv("Pin caching disabled in resources");
             return false;
         }
-        // Check carrier configuration
+        return true;
+    }
+
+    /** Returns if the PIN cache is allowed by carrier for a given slot. */
+    private boolean isCacheAllowedByCarrier(int slotId) {
         PersistableBundle config = null;
         CarrierConfigManager configManager =
                 mContext.getSystemService(CarrierConfigManager.class);
@@ -1161,6 +1169,11 @@ public class PinStorage extends Handler {
         pw.println(" mIsDeviceLocked=" + mIsDeviceLocked);
         pw.println(" isLongTermSecretKey=" + (boolean) (mLongTermSecretKey != null));
         pw.println(" isShortTermSecretKey=" + (boolean) (mShortTermSecretKey != null));
+        pw.println(" isCacheAllowedByDevice=" + isCacheAllowedByDevice());
+        int slotCount = getSlotCount();
+        for (int i = 0; i < slotCount; i++) {
+            pw.println(" isCacheAllowedByCarrier[" + i + "]=" + isCacheAllowedByCarrier(i));
+        }
         if (VDBG) {
             SparseArray<StoredPin> storedPins = loadPinInformation();
             for (int i = 0; i < storedPins.size(); i++) {
