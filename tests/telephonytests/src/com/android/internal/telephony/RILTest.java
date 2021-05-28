@@ -116,7 +116,6 @@ import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_6.IRadio;
-import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
@@ -203,8 +202,6 @@ public class RILTest extends TelephonyTest {
     private TelephonyManager mTelephonyManager;
     @Mock
     private IRadio mRadioProxy;
-    @Mock
-    private IOemHook mOemHookProxy;
 
     private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
     private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
@@ -316,7 +313,6 @@ public class RILTest extends TelephonyTest {
             Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
         mRILUnderTest = spy(mRILInstance);
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
-        doReturn(mOemHookProxy).when(mRILUnderTest).getOemHookProxy(any());
 
         try {
             replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
@@ -1381,22 +1377,6 @@ public class RILTest extends TelephonyTest {
         verify(mRadioProxy).getBarringInfo(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_BARRING_INFO);
-    }
-
-    @Test
-    public void testInvokeOemRilRequestStrings() throws Exception {
-        String[] strings = new String[]{"a", "b", "c"};
-        mRILUnderTest.invokeOemRilRequestStrings(strings, obtainMessage());
-        verify(mOemHookProxy).sendRequestStrings(
-                mSerialNumberCaptor.capture(), eq(new ArrayList<>(Arrays.asList(strings))));
-    }
-
-    @Test
-    public void testInvokeOemRilRequestRaw() throws Exception {
-        byte[] data = new byte[]{1, 2, 3};
-        mRILUnderTest.invokeOemRilRequestRaw(data, obtainMessage());
-        verify(mOemHookProxy).sendRequestRaw(
-                mSerialNumberCaptor.capture(), eq(mRILUnderTest.primitiveArrayToArrayList(data)));
     }
 
     private Message obtainMessage() {
