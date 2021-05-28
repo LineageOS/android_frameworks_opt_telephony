@@ -2716,11 +2716,26 @@ public class DcTracker extends Handler {
             DctConstants.State state = apnContext.getState();
             switch(state) {
                 case CONNECTING:
-                case CONNECTED:
-                    if (DBG) log("onEnableApn: APN in " + state + " state. Exit now.");
                     if (onHandoverCompleteMsg != null) {
-                        sendHandoverCompleteMsg(onHandoverCompleteMsg, false, mTransportType,
+                        if (DBG) {
+                            log("onEnableApn: already in CONNECTING state. Handover request "
+                                    + "will be responded after connected.");
+                        }
+                        addHandoverCompleteMsg(onHandoverCompleteMsg, apnType);
+                    } else {
+                        if (DBG) log("onEnableApn: in CONNECTING state. Exit now.");
+                    }
+                    return;
+                case CONNECTED:
+                    if (onHandoverCompleteMsg != null) {
+                        sendHandoverCompleteMsg(onHandoverCompleteMsg, true, mTransportType,
                                 false);
+                        if (DBG) {
+                            log("onEnableApn: already in CONNECTED state. Consider as handover "
+                                    + "succeeded");
+                        }
+                    } else {
+                        if (DBG) log("onEnableApn: APN in CONNECTED state. Exit now.");
                     }
                     return;
                 case IDLE:

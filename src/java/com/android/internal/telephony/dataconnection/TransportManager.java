@@ -320,9 +320,11 @@ public class TransportManager extends Handler {
      * @param transport The transport. Must be WWAN or WLAN.
      */
     private synchronized void setCurrentTransport(@ApnType int apnType, int transport) {
-        mCurrentTransports.put(apnType, transport);
-        logl("setCurrentTransport: apnType=" + ApnSetting.getApnTypeString(apnType)
-                + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
+        Integer previousTransport = mCurrentTransports.put(apnType, transport);
+        if (previousTransport == null || previousTransport != transport) {
+            logl("setCurrentTransport: apnType=" + ApnSetting.getApnTypeString(apnType)
+                    + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
+        }
     }
 
     private boolean isHandoverPending() {
