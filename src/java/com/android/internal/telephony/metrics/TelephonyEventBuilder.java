@@ -226,4 +226,11 @@ public class TelephonyEventBuilder {
         mEvent.networkCapabilities = networkCapabilities;
         return this;
     }
+
+    /** Set radio state. */
+    public TelephonyEventBuilder setRadioState(int radioState) {
+        mEvent.type = TelephonyEvent.Type.RADIO_STATE_CHANGED;
+        mEvent.radioState = radioState;
+        return this;
+    }
 }
