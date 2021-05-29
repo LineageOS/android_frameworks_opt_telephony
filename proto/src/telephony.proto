@@ -853,6 +853,9 @@ message TelephonyEvent {
 
     // Signal strength
     SIGNAL_STRENGTH = 23;
+
+    // Radio state change event
+    RADIO_STATE_CHANGED = 24;
   }
 
   enum ApnType {
@@ -899,6 +902,20 @@ message TelephonyEvent {
 
     /** The validation is passed. */
     NETWORK_VALIDATION_STATE_PASSED = 3;
+  }
+
+  enum RadioState {
+    /** Radio state is unknown or invalid. */
+    RADIO_STATE_UNKNOWN = 0;
+
+    /** Radio is explicitly off (e.g. airplane mode). */
+    RADIO_STATE_OFF = 1;
+
+    /** Radio is on. */
+    RADIO_STATE_ON = 2;
+
+    /** Radio power unavailable (eg, modem resetting or not booted). */
+    RADIO_STATE_UNAVAILABLE = 3;
   }
 
   message DataSwitch {
@@ -1845,6 +1862,9 @@ message TelephonyEvent {
   //  (datapol.semantic_type) = ST_SOFTWARE_ID,
   //  (datapol.qualifier) = { is_public: true }
   //]
+
+  // Radio state for the given phone_id
+  optional RadioState radio_state = 29;
 }
 
 message ActiveSubscriptionInfo {
