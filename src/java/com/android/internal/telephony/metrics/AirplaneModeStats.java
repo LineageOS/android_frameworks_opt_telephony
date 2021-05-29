@@ -17,6 +17,7 @@
 package com.android.internal.telephony.metrics;
 
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.TelephonyManager.UNKNOWN_CARRIER_ID;
 
 import static com.android.internal.telephony.TelephonyStatsLog.AIRPLANE_MODE;
 
@@ -113,6 +114,6 @@ public class AirplaneModeStats extends ContentObserver {
         int phoneId = dataSubId != INVALID_SUBSCRIPTION_ID
                 ? SubscriptionManager.getPhoneId(dataSubId) : 0;
         Phone phone = PhoneFactory.getPhone(phoneId);
-        return phone != null ? phone.getCarrierId() : INVALID_SUBSCRIPTION_ID;
+        return phone != null ? phone.getCarrierId() : UNKNOWN_CARRIER_ID;
     }
 }
