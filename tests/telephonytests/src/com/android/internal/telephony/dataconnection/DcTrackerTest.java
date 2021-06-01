@@ -2361,6 +2361,12 @@ public class DcTrackerTest extends TelephonyTest {
         return (boolean) field.get(mDct);
     }
 
+    private Map<Integer, List<Message>> getHandoverCompletionMessages() throws Exception {
+        Field field = DcTracker.class.getDeclaredField(("mHandoverCompletionMsgs"));
+        field.setAccessible(true);
+        return (Map<Integer, List<Message>>) field.get(mDct);
+    }
+
     private void setUpTempNotMetered() {
         doReturn((int) TelephonyManager.NETWORK_TYPE_BITMASK_NR)
                 .when(mPhone).getRadioAccessFamily();
@@ -2808,5 +2814,30 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(ApnSetting.TYPE_IMS),
                 eq(RetryManager.NO_SUGGESTED_RETRY_DELAY),
                 eq(DcTracker.REQUEST_TYPE_NORMAL));
+    }
+
+    @Test
+    public void testHandlingSecondHandoverRequest() throws Exception {
+        initApns(ApnSetting.TYPE_IMS_STRING, new String[]{ApnSetting.TYPE_IMS_STRING});
+        setUpDataConnection();
+        SparseArray<ApnContext> apnContextsByType = Mockito.mock(SparseArray.class);
+        ConcurrentHashMap<String, ApnContext> apnContexts = Mockito.mock(ConcurrentHashMap.class);
+        doReturn(mApnContext).when(apnContextsByType).get(eq(ApnSetting.TYPE_IMS));
+        doReturn(mApnContext).when(apnContexts).get(eq(ApnSetting.TYPE_IMS_STRING));
+        doReturn(false).when(mApnContext).isConnectable();
+        doReturn(DctConstants.State.CONNECTING).when(mApnContext).getState();
+        replaceInstance(DcTracker.class, "mApnContextsByType", mDct, apnContextsByType);
+        replaceInstance(DcTracker.class, "mApnContexts", mDct, apnContexts);
+
+        sendInitializationEvents();
+
+        logd("Sending EVENT_ENABLE_APN");
+        // APN id 0 is APN_TYPE_DEFAULT
+        Message msg = mDct.obtainMessage(12345);
+        mDct.enableApn(ApnSetting.TYPE_IMS, DcTracker.REQUEST_TYPE_HANDOVER, msg);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        Map<Integer, List<Message>> msgs = getHandoverCompletionMessages();
+        // Make sure the messages was queued properly instead of fired right away.
+        assertTrue(msgs.get(ApnSetting.TYPE_IMS).contains(msg));
     }
 }
