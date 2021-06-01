@@ -1848,6 +1848,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Check whether the radio is off for thermal reason.
+     *
+     * @return {@code true} only if thermal mitigation is one of the reason for which radio is off.
+     */
+    public boolean isRadioOffForThermalMitigation() {
+        ServiceStateTracker sst = getServiceStateTracker();
+        return sst != null && sst.getRadioPowerOffReasons()
+                .contains(Phone.RADIO_POWER_REASON_THERMAL);
+    }
+
+    /**
      * Retrieves the EmergencyNumberTracker of the phone instance.
      */
     public EmergencyNumberTracker getEmergencyNumberTracker() {
