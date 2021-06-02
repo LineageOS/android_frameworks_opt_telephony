@@ -1387,7 +1387,11 @@ public class GsmCdmaPhone extends Phone {
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
 
-        Phone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mPhoneId, mContext);
+        // Bypass WiFi Only WFC check if this is an emergency call - we should still try to
+        // place over cellular if possible.
+        if (!isEmergency) {
+            Phone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mPhoneId, mContext);
+        }
         if (imsPhone != null && !allowWpsOverIms && !useImsForCall && isWpsCall
                 && imsPhone.getCallTracker() instanceof ImsPhoneCallTracker) {
             logi("WPS call placed over CS; disconnecting all IMS calls..");
