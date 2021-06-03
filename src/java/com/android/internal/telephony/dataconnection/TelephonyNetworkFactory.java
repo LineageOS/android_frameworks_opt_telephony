@@ -40,6 +40,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
+import com.android.internal.telephony.metrics.NetworkRequestsStats;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -230,6 +231,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
      */
     private void requestNetworkInternal(NetworkRequest networkRequest,
             @RequestNetworkType int requestType, int transport, Message onHandoverCompleteMsg) {
+        NetworkRequestsStats.addNetworkRequest(networkRequest, mSubscriptionId);
         if (mPhone.getDcTracker(transport) != null) {
             mPhone.getDcTracker(transport).requestNetwork(networkRequest, requestType,
                     onHandoverCompleteMsg);
@@ -239,6 +241,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private void releaseNetworkInternal(NetworkRequest networkRequest,
                                         @ReleaseNetworkType int releaseType,
                                         int transport) {
+        NetworkRequestsStats.addNetworkRelease(networkRequest, mSubscriptionId);
         if (mPhone.getDcTracker(transport) != null) {
             mPhone.getDcTracker(transport).releaseNetwork(networkRequest, releaseType);
         }
