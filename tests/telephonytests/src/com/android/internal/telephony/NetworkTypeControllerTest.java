@@ -709,11 +709,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
         mNetworkTypeController.sendMessage(EVENT_PREFERRED_NETWORK_MODE_CHANGED);
         processAllMessages();
-        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
-                mNetworkTypeController.getOverrideNetworkType());
-
-        mNetworkTypeController.sendMessage(EVENT_DATA_RAT_CHANGED);
-        processAllMessages();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
     }
