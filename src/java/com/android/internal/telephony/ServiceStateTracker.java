@@ -25,10 +25,8 @@ import static com.android.internal.telephony.uicc.IccRecords.CARRIER_NAME_DISPLA
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -249,6 +247,12 @@ public class ServiceStateTracker extends Handler {
     /** Signal strength poll rate. */
     private static final int POLL_PERIOD_MILLIS = 20 * 1000;
 
+    /**
+     * The time we wait for IMS to deregister before executing a pending radio power off request.
+     */
+    @VisibleForTesting
+    public static final int DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT = 3 * 1000;
+
     /** Waiting period before recheck gprs and voice registration. */
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
 
@@ -288,6 +292,7 @@ public class ServiceStateTracker extends Handler {
     public    static final int EVENT_ICC_CHANGED                       = 42;
     protected static final int EVENT_GET_CELL_INFO_LIST                = 43;
     protected static final int EVENT_UNSOL_CELL_INFO_LIST              = 44;
+    // Only sent if the IMS state is moving from true -> false
     protected static final int EVENT_CHANGE_IMS_STATE                  = 45;
     protected static final int EVENT_IMS_STATE_CHANGED                 = 46;
     protected static final int EVENT_IMS_STATE_DONE                    = 47;
@@ -301,9 +306,11 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_CELL_LOCATION_RESPONSE            = 56;
     protected static final int EVENT_CARRIER_CONFIG_CHANGED            = 57;
     private static final int EVENT_POLL_STATE_REQUEST                  = 58;
-    private static final int EVENT_SET_SIGNAL_STRENGTH_UPDATE_REQUEST = 59;
+    private static final int EVENT_SET_SIGNAL_STRENGTH_UPDATE_REQUEST  = 59;
     private static final int EVENT_CLEAR_SIGNAL_STRENGTH_UPDATE_REQUEST = 60;
-    private static final int EVENT_ON_DEVICE_IDLE_STATE_CHANGED        = 61;
+    private static final int EVENT_ON_DEVICE_IDLE_STATE_CHANGED         = 61;
+    // Timeout event used when delaying radio power off to wait for IMS deregistration to happen.
+    private static final int EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT    = 62;
 
     /**
      * The current service state.
@@ -338,12 +345,8 @@ public class ServiceStateTracker extends Handler {
     private CarrierDisplayNameResolver mCdnr;
 
     private boolean mImsRegistrationOnOff = false;
-    private boolean mAlarmSwitch = false;
     /** Radio is disabled by carrier. Radio power will not be override if this field is set */
     private boolean mRadioDisabledByCarrier = false;
-    private PendingIntent mRadioOffIntent = null;
-    private static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
-    private boolean mPowerOffDelayNeed = true;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mDeviceShuttingDown = false;
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
@@ -590,9 +593,6 @@ public class ServiceStateTracker extends Handler {
             if (intent.getAction().equals(Intent.ACTION_LOCALE_CHANGED)) {
                 // Update emergency string or operator name, polling service state.
                 pollState();
-            } else if (intent.getAction().equals(ACTION_RADIO_OFF)) {
-                mAlarmSwitch = false;
-                powerOffRadioSafely();
             } else if (intent.getAction().equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
                 String lastKnownNetworkCountry = intent.getStringExtra(
                         TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY);
@@ -726,14 +726,7 @@ public class ServiceStateTracker extends Handler {
         Context context = mPhone.getContext();
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_LOCALE_CHANGED);
-        context.registerReceiver(mIntentReceiver, filter);
-        filter = new IntentFilter();
-        filter.addAction(ACTION_RADIO_OFF);
-        context.registerReceiver(mIntentReceiver, filter);
-        filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        context.registerReceiver(mIntentReceiver, filter);
-        filter = new IntentFilter();
         filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
         context.registerReceiver(mIntentReceiver, filter);
 
@@ -873,6 +866,7 @@ public class ServiceStateTracker extends Handler {
         mCi.unregisterForImsNetworkStateChanged(this);
         mPhone.getCarrierActionAgent().unregisterForCarrierAction(this,
                 CARRIER_ACTION_SET_RADIO_ENABLED);
+        mPhone.getContext().unregisterReceiver(mIntentReceiver);
         if (mCSST != null) {
             mCSST.dispose();
             mCSST = null;
@@ -1835,6 +1829,12 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_ON_DEVICE_IDLE_STATE_CHANGED: {
                 updateReportingCriteria(getCarrierConfig());
+                break;
+            }
+
+            case EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT: {
+                if (DBG) log("EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT triggered");
+                powerOffRadioSafely();
                 break;
             }
 
@@ -3065,22 +3065,14 @@ public class ServiceStateTracker extends Handler {
     protected void setPowerStateToDesired(boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
         if (DBG) {
-            String tmpLog = "mDeviceShuttingDown=" + mDeviceShuttingDown +
+            String tmpLog = "setPowerStateToDesired: mDeviceShuttingDown=" + mDeviceShuttingDown +
                     ", mDesiredPowerState=" + mDesiredPowerState +
                     ", getRadioState=" + mCi.getRadioState() +
-                    ", mPowerOffDelayNeed=" + mPowerOffDelayNeed +
-                    ", mAlarmSwitch=" + mAlarmSwitch +
-                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier;
+                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier +
+                    ", IMS reg state=" + mImsRegistrationOnOff +
+                    ", pending radio off=" + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
             log(tmpLog);
             mRadioPowerLog.log(tmpLog);
-        }
-
-        if (mAlarmSwitch) {
-            if(DBG) log("mAlarmSwitch == true");
-            Context context = mPhone.getContext();
-            AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            am.cancel(mRadioOffIntent);
-            mAlarmSwitch = false;
         }
 
         // If we want it on and it's off, turn it on
@@ -3090,30 +3082,50 @@ public class ServiceStateTracker extends Handler {
         } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON) {
             // If it's on and available and we want it off gracefully
-            if (mPowerOffDelayNeed) {
-                if (mImsRegistrationOnOff && !mAlarmSwitch) {
-                    if(DBG) log("mImsRegistrationOnOff == true");
-                    Context context = mPhone.getContext();
-                    AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-
-                    Intent intent = new Intent(ACTION_RADIO_OFF);
-                    mRadioOffIntent = PendingIntent.getBroadcast(
-                            context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
-
-                    mAlarmSwitch = true;
-                    if (DBG) log("Alarm setting");
-                    am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                            SystemClock.elapsedRealtime() + 3000, mRadioOffIntent);
-                } else {
-                    powerOffRadioSafely();
-                }
+            if (mImsRegistrationOnOff) {
+                if (DBG) log("setPowerStateToDesired: delaying power off until IMS dereg.");
+                startDelayRadioOffWaitingForImsDeregTimeout();
+                // Return early here as we do not want to hit the cancel timeout code below.
+                return;
             } else {
+                if (DBG) log("setPowerStateToDesired: powering off");
                 powerOffRadioSafely();
             }
         } else if (mDeviceShuttingDown
                 && (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE)) {
+            // !mDesiredPowerState condition above will happen first if the radio is on, so we will
+            // see the following: (delay for IMS dereg) -> RADIO_POWER_OFF ->
+            // RADIO_POWER_UNAVAILABLE
             mCi.requestShutdown(null);
         }
+        // Cancel any pending timeouts because the state has been re-evaluated.
+        cancelDelayRadioOffWaitingForImsDeregTimeout();
+    }
+
+    /**
+     * Cancel the EVENT_POWER_OFF_RADIO_DELAYED event if it is currently pending to be completed.
+     * @return true if there was a pending timeout message in the queue, false otherwise.
+     */
+    private void cancelDelayRadioOffWaitingForImsDeregTimeout() {
+        if (hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT)) {
+            if (DBG) log("cancelDelayRadioOffWaitingForImsDeregTimeout: cancelling.");
+            removeMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
+        }
+    }
+
+    /**
+     * Start a timer to turn off the radio if IMS does not move to deregistered after the
+     * radio power off event occurred. If this event already exists in the message queue, then
+     * ignore the new request and use the existing one.
+     */
+    private void startDelayRadioOffWaitingForImsDeregTimeout() {
+        if (hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT)) {
+            if (DBG) log("startDelayRadioOffWaitingForImsDeregTimeout: timer exists, ignoring");
+            return;
+        }
+        if (DBG) log("startDelayRadioOffWaitingForImsDeregTimeout: starting timer");
+        sendEmptyMessageDelayed(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT,
+                DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT);
     }
 
     protected void onUpdateIccAvailability() {
@@ -3236,22 +3248,12 @@ public class ServiceStateTracker extends Handler {
     public void setImsRegistrationState(final boolean registered) {
         log("setImsRegistrationState: {registered=" + registered
                 + " mImsRegistrationOnOff=" + mImsRegistrationOnOff
-                + " mAlarmSwitch=" + mAlarmSwitch
                 + "}");
 
+
         if (mImsRegistrationOnOff && !registered) {
-            if (mAlarmSwitch) {
-                mImsRegistrationOnOff = registered;
-
-                final Context context = mPhone.getContext();
-                final AlarmManager am =
-                        (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-                am.cancel(mRadioOffIntent);
-                mAlarmSwitch = false;
-
-                sendMessage(obtainMessage(EVENT_CHANGE_IMS_STATE));
-                return;
-            }
+            // moving to deregistered, only send this event if we need to re-evaluate
+            sendMessage(obtainMessage(EVENT_CHANGE_IMS_STATE));
         }
         mImsRegistrationOnOff = registered;
     }
@@ -4926,7 +4928,9 @@ public class ServiceStateTracker extends Handler {
                                     Phone.REASON_RADIO_TURNED_OFF);
                         }
                     }
-                    if (DBG) log("Data disconnected, turn off radio right away.");
+                    if (DBG) {
+                        log("powerOffRadioSafely: Data disconnected, turn off radio now.");
+                    }
                     hangupAndPowerOff();
                 } else {
                     // hang up all active voice calls first
@@ -4944,7 +4948,10 @@ public class ServiceStateTracker extends Handler {
 
                     if (dds != mPhone.getSubId()
                             && !ProxyController.getInstance().areAllDataDisconnected(dds)) {
-                        if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
+                        if (DBG) {
+                            log("powerOffRadioSafely: Data is active on DDS.  Wait for all data "
+                                    + "disconnect");
+                        }
                         // Data is not disconnected on DDS. Wait for the data disconnect complete
                         // before sending the RADIO_POWER off.
                         ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
@@ -4955,10 +4962,14 @@ public class ServiceStateTracker extends Handler {
                     msg.what = EVENT_SET_RADIO_POWER_OFF;
                     msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
                     if (sendMessageDelayed(msg, 30000)) {
-                        if (DBG) log("Wait upto 30s for data to disconnect, then turn off radio.");
+                        if (DBG) {
+                            log("powerOffRadioSafely: Wait up to 30s for data to disconnect, "
+                                    + "then turn off radio.");
+                        }
                         mPendingRadioPowerOffAfterDataOff = true;
                     } else {
-                        log("Cannot send delayed Msg, turn off radio right away.");
+                        log("powerOffRadioSafely: Cannot send delayed Msg, turn off radio right"
+                                + " away.");
                         hangupAndPowerOff();
                         mPendingRadioPowerOffAfterDataOff = false;
                     }
@@ -5480,9 +5491,9 @@ public class ServiceStateTracker extends Handler {
         pw.flush();
         pw.println(" mImsRegistered=" + mImsRegistered);
         pw.println(" mImsRegistrationOnOff=" + mImsRegistrationOnOff);
-        pw.println(" mAlarmSwitch=" + mAlarmSwitch);
+        pw.println(" pending radio off event="
+                + hasMessages(DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT));
         pw.println(" mRadioDisabledByCarrier" + mRadioDisabledByCarrier);
-        pw.println(" mPowerOffDelayNeed=" + mPowerOffDelayNeed);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
         pw.println(" mLteRsrpBoost=" + mLteRsrpBoost);

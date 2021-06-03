@@ -902,6 +902,19 @@ public abstract class TelephonyTest {
                 mockTelephonyManager).getCarrierPrivilegeStatus(anyInt());
     }
 
+    protected final void waitForDelayedHandlerAction(Handler h, long delayMillis,
+            long timeoutMillis) {
+        final CountDownLatch lock = new CountDownLatch(1);
+        h.postDelayed(lock::countDown, delayMillis);
+        while (lock.getCount() > 0) {
+            try {
+                lock.await(delayMillis + timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                // do nothing
+            }
+        }
+    }
+
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {
         final CountDownLatch lock = new CountDownLatch(1);
         h.post(lock::countDown);
