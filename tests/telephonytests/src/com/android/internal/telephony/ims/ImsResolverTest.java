@@ -194,6 +194,39 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     /**
+     * Add a device ImsService and ensure that querying ImsResolver to see if an ImsService is
+     * configured succeeds.
+     */
+    @Test
+    @SmallTest
+    public void testIsDeviceImsServiceConfigured() throws Exception {
+        setupResolver(1 /*numSlots*/, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
+                TEST_DEVICE_DEFAULT_NAME.getPackageName());
+        HashSet<String> features = new HashSet<>();
+        features.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
+        features.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        features.add(ImsResolver.METADATA_RCS_FEATURE);
+        setupPackageQuery(TEST_DEVICE_DEFAULT_NAME, features, true);
+        setupController();
+
+        // Complete package manager lookup and cache.
+        startBindCarrierConfigAlreadySet();
+
+        // device package name should be returned for both features.
+        final Boolean[] isConfigured = new Boolean[1];
+        // Calling this method will block us until the looper processes the command, so use
+        // runWithLooper to allow the message to be processed.
+        mLooper.runWithLooper(() ->
+                isConfigured[0] = mTestImsResolver.isImsServiceConfiguredForFeature(0,
+                        ImsFeature.FEATURE_MMTEL));
+        assertTrue(isConfigured[0]);
+        mLooper.runWithLooper(() ->
+                isConfigured[0] = mTestImsResolver.isImsServiceConfiguredForFeature(0,
+                        ImsFeature.FEATURE_RCS));
+        assertTrue(isConfigured[0]);
+    }
+
+    /**
      * Add a device ImsService and ensure that querying the configured ImsService for all features
      * reports the device ImsService.
      */
@@ -227,7 +260,7 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     /**
-     * Add in the case that there is no device or carrier ImsService found, we return null for
+     * In the case that there is no device or carrier ImsService found, we return null for
      * configuration queries.
      */
     @Test
@@ -255,7 +288,7 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     /**
-     * Add in the case that there is no device or carrier ImsService configured, we return null for
+     * In the case that there is no device or carrier ImsService configured, we return null for
      * configuration queries.
      */
     @Test
