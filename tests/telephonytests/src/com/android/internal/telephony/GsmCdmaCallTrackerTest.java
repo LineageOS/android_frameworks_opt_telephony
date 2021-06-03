@@ -32,6 +32,7 @@ import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.emergency.EmergencyNumber;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -55,6 +56,7 @@ import org.mockito.Mock;
 public class GsmCdmaCallTrackerTest extends TelephonyTest {
     private static final int VOICE_CALL_STARTED_EVENT = 0;
     private static final int VOICE_CALL_ENDED_EVENT = 1;
+    private static final String TEST_DIAL_STRING = "54321";
     private String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
     /* Handler class initiated at the HandlerThread */
     private GsmCdmaCallTracker mCTUT;
@@ -81,6 +83,16 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mCTUT = null;
         super.tearDown();
+    }
+
+    @Test
+    @SmallTest
+    public void testCLIRMode() throws Exception {
+        DialArgs dialArgs = new DialArgs.Builder().setIsEmergency(true).build();
+        mCTUT.dialGsm(TEST_DIAL_STRING, dialArgs);
+        verify(mSimulatedCommandsVerifier).dial(eq(TEST_DIAL_STRING), eq(true),
+                isA(EmergencyNumber.class), eq(false), eq(CommandsInterface.CLIR_SUPPRESSION),
+                        eq((UUSInfo) null), isA(Message.class));
     }
 
     @Test
