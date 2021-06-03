@@ -62,6 +62,7 @@ import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.RadioPowerState;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
@@ -96,6 +97,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -2763,8 +2765,10 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void handleRadioPowerStateChange() {
-        Rlog.d(LOG_TAG, "handleRadioPowerStateChange, state= " + mCi.getRadioState());
-        mNotifier.notifyRadioPowerStateChanged(this, mCi.getRadioState());
+        @RadioPowerState int newState = mCi.getRadioState();
+        Rlog.d(LOG_TAG, "handleRadioPowerStateChange, state= " + newState);
+        mNotifier.notifyRadioPowerStateChanged(this, newState);
+        TelephonyMetrics.getInstance().writeRadioState(mPhoneId, newState);
     }
 
     @Override
