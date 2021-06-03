@@ -36,8 +36,10 @@ import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -64,6 +66,8 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -84,6 +88,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private final ArraySet<NetworkRequest> mAllNetworkRequestSet = new ArraySet<>();
     // List of requests active in DcTracker
     private final ArrayList<NetworkRequest> mNetworkRequestList = new ArrayList<>();
+    // List of complete messages associated with the network requests
+    private final Map<NetworkRequest, Message> mNetworkRequestMessageMap = new HashMap<>();
 
     private TelephonyNetworkFactory mTelephonyNetworkFactoryUT;
     private int mRequestId = 0;
@@ -162,8 +168,10 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
         doAnswer(invocation -> {
             final NetworkRequest req = (NetworkRequest) invocation.getArguments()[0];
+            final Message msg = (Message) invocation.getArguments()[2];
             mNetworkRequestList.add(req);
             mAllNetworkRequestSet.add(req);
+            mNetworkRequestMessageMap.put(req, msg);
             return null;
         }).when(mDcTracker).requestNetwork(any(), anyInt(), any());
 
@@ -424,4 +432,50 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         verify(mDcTracker, times(1)).requestNetwork(any(), eq(1), any());
     }
 
+    @Test
+    @SmallTest
+    public void testNetworkRequestReleasedDuringHandover() throws Exception {
+        createMockedTelephonyComponents();
+        doReturn(0).when(mSubscriptionController).getSubIdUsingPhoneId(0);
+        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
+                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
+
+        activatePhoneInPhoneSwitcher(0, true);
+        makeDefaultInternetRequest();
+
+        NetworkRequest mmsNetworkRequest = makeSubSpecificMmsRequest(0);
+        processAllMessages();
+
+        Field f = TelephonyNetworkFactory.class.getDeclaredField("mInternalHandler");
+        f.setAccessible(true);
+        Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
+
+        HandoverCallback handoverCallback = mock(HandoverCallback.class);
+        //Mockito.reset(mDcTracker);
+        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByApnType(anyString());
+        doReturn(true).when(mDataConnection).isActive();
+
+        HandoverParams hp = new HandoverParams(ApnSetting.TYPE_MMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, handoverCallback);
+        AsyncResult ar = new AsyncResult(null, hp, null);
+        h.sendMessage(h.obtainMessage(5 /* EVENT_DATA_HANDOVER_NEEDED */, ar));
+        processAllMessages();
+
+        // Now release the network request while handover is still ongoing.
+        mTelephonyNetworkFactoryUT.releaseNetworkFor(mmsNetworkRequest);
+        processAllMessages();
+
+        Message msg = mNetworkRequestMessageMap.get(mmsNetworkRequest);
+
+        Bundle bundle = msg.getData();
+        bundle.putParcelable("extra_network_request", mmsNetworkRequest);
+        bundle.putBoolean("extra_success", true);
+        bundle.putInt("extra_transport_type", AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        bundle.putBoolean("extra_handover_failure_fallback", false);
+        h.sendMessage(msg);
+        processAllMessages();
+
+        // Ensure the release is called one more time after the normal release
+        verify(mDcTracker, times(2)).releaseNetwork(any(), eq(1));
+    }
 }
