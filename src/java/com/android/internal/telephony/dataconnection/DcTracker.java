@@ -659,8 +659,6 @@ public class DcTracker extends Handler {
 
     private SparseArray<ApnContext> mApnContextsByType = new SparseArray<ApnContext>();
 
-    private int mDisconnectPendingCount = 0;
-
     private ArrayList<DataProfile> mLastDataProfileList = new ArrayList<>();
 
     /** RAT name ===> (downstream, upstream) bandwidth values from carrier config. */
@@ -1722,9 +1720,7 @@ public class DcTracker extends Handler {
         // TODO: Do we need mRequestedApnType?
         mRequestedApnType = ApnSetting.TYPE_DEFAULT;
 
-        log("cleanUpAllConnectionsInternal: mDisconnectPendingCount = "
-                + mDisconnectPendingCount);
-        if (detach && mDisconnectPendingCount == 0) {
+        if (areAllDataDisconnected()) {
             notifyAllDataDisconnected();
         }
 
@@ -1824,7 +1820,6 @@ public class DcTracker extends Handler {
                         }
 
                         apnContext.setState(DctConstants.State.DISCONNECTING);
-                        mDisconnectPendingCount++;
                     }
                 } else {
                     // apn is connected but no reference to the data connection.
@@ -3283,26 +3278,18 @@ public class DcTracker extends Handler {
     private void onDisconnectDone(ApnContext apnContext) {
         if(DBG) log("onDisconnectDone: EVENT_DISCONNECT_DONE apnContext=" + apnContext);
         apnContext.setState(DctConstants.State.IDLE);
-        // if all data connection are gone, check whether Airplane mode request was
-        // pending.
-        if (areAllDataDisconnected()) {
-            if (mPhone.getServiceStateTracker().processPendingRadioPowerOffAfterDataOff()) {
-                if (DBG) log("onDisconnectDone: radio will be turned off, no retries");
-                // Radio will be turned off. No need to retry data setup
-                apnContext.setApnSetting(null);
-                apnContext.setDataConnection(null);
+        // If all data connection are gone, check whether Airplane mode request was pending.
+        if (areAllDataDisconnected()
+                && mPhone.getServiceStateTracker().processPendingRadioPowerOffAfterDataOff()) {
+            if (DBG) log("onDisconnectDone: radio will be turned off, no retries");
+            // Radio will be turned off. No need to retry data setup
+            apnContext.setApnSetting(null);
+            apnContext.setDataConnection(null);
 
-                // Need to notify disconnect as well, in the case of switching Airplane mode.
-                // Otherwise, it would cause 30s delayed to turn on Airplane mode.
-                if (mDisconnectPendingCount > 0) {
-                    mDisconnectPendingCount--;
-                }
-
-                if (mDisconnectPendingCount == 0) {
-                    notifyAllDataDisconnected();
-                }
-                return;
-            }
+            // Need to notify disconnect as well, in the case of switching Airplane mode.
+            // Otherwise, it would cause 30s delayed to turn on Airplane mode.
+            notifyAllDataDisconnected();
+            return;
         }
         // If APN is still enabled, try to bring it back up automatically
         if (mAttached.get() && apnContext.isReady() && retryAfterDisconnected(apnContext)) {
@@ -3343,10 +3330,7 @@ public class DcTracker extends Handler {
             }
         }
 
-        if (mDisconnectPendingCount > 0)
-            mDisconnectPendingCount--;
-
-        if (mDisconnectPendingCount == 0) {
+        if (areAllDataDisconnected()) {
             apnContext.setConcurrentVoiceAndDataAllowed(
                     mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed());
             notifyAllDataDisconnected();
@@ -3399,7 +3383,7 @@ public class DcTracker extends Handler {
     public boolean areAllDataDisconnected() {
         for (DataConnection dc : mDataConnections.values()) {
             if (!dc.isInactive()) {
-                if (DBG) log("areAllDataDisconnected false due to DC: " + dc);
+                if (DBG) log("areAllDataDisconnected false due to DC: " + dc.getName());
                 return false;
             }
         }
@@ -4776,8 +4760,7 @@ public class DcTracker extends Handler {
 
         mRequestedApnType = ApnSetting.TYPE_DEFAULT;
 
-        if (DBG) log("mDisconnectPendingCount = " + mDisconnectPendingCount);
-        if (detach && mDisconnectPendingCount == 0) {
+        if (areAllDataDisconnected()) {
             notifyAllDataDisconnected();
         }
     }
