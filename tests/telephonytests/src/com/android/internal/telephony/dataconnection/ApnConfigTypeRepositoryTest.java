@@ -75,7 +75,7 @@ public class ApnConfigTypeRepositoryTest {
         //Priorities must be integers
         apnConfigStringArray.add("default:10a");
 
-        //Key isn't case sensitive, which means that this prority should be taken
+        //Key isn't case sensitive, which means that this priority should be taken
         apnConfigStringArray.add("fotA:10");
 
         mCarrierConfig.putStringArray(CarrierConfigManager.KEY_APN_PRIORITY_STRING_ARRAY,
@@ -87,11 +87,17 @@ public class ApnConfigTypeRepositoryTest {
     }
 
     private void checkDefaults(ApnConfigTypeRepository repository) {
-        assertEquals(0, repository.getByType(ApnSetting.TYPE_DEFAULT).getPriority());
+        assertEquals(0, repository.getByType(ApnSetting.TYPE_ENTERPRISE).getPriority());
+        assertEquals(1, repository.getByType(ApnSetting.TYPE_DEFAULT).getPriority());
+        assertEquals(2, repository.getByType(ApnSetting.TYPE_MMS).getPriority());
         assertEquals(2, repository.getByType(ApnSetting.TYPE_SUPL).getPriority());
+        assertEquals(2, repository.getByType(ApnSetting.TYPE_DUN).getPriority());
         assertEquals(3, repository.getByType(ApnSetting.TYPE_HIPRI).getPriority());
+        assertEquals(2, repository.getByType(ApnSetting.TYPE_IMS).getPriority());
         assertEquals(2, repository.getByType(ApnSetting.TYPE_CBS).getPriority());
+        assertEquals(2, repository.getByType(ApnSetting.TYPE_IA).getPriority());
         assertEquals(2, repository.getByType(ApnSetting.TYPE_EMERGENCY).getPriority());
+        assertEquals(3, repository.getByType(ApnSetting.TYPE_MCX).getPriority());
         assertEquals(3, repository.getByType(ApnSetting.TYPE_XCAP).getPriority());
     }
 }
