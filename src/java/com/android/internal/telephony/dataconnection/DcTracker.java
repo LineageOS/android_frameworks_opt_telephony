@@ -3387,6 +3387,7 @@ public class DcTracker extends Handler {
     public boolean areAllDataDisconnected() {
         for (DataConnection dc : mDataConnections.values()) {
             if (!dc.isInactive()) {
+                if (DBG) log("areAllDataDisconnected false due to DC: " + dc);
                 return false;
             }
         }
@@ -4223,6 +4224,7 @@ public class DcTracker extends Handler {
     private void notifyAllDataDisconnected() {
         sEnableFailFastRefCounter = 0;
         mFailFast = false;
+        log("notify all data disconnected");
         mAllDataDisconnectedRegistrants.notifyRegistrants();
     }
 
@@ -4230,7 +4232,6 @@ public class DcTracker extends Handler {
         mAllDataDisconnectedRegistrants.addUnique(h, what, null);
 
         if (areAllDataDisconnected()) {
-            log("notify All Data Disconnected");
             notifyAllDataDisconnected();
         }
     }
