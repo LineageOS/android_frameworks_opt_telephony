@@ -1123,6 +1123,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             connection.getCall().detach(connection);
         }
         mConnections.clear();
+        // Pending MO was added to mConnections previously, so it has already been disconnected
+        // above. Remove all references to it.
+        mPendingMO = null;
         updatePhoneState();
     }
 
