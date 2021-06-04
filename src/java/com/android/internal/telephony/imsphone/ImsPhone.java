@@ -1506,6 +1506,12 @@ public class ImsPhone extends ImsPhoneBase {
                         isUssdRequest,
                         this);
                 onNetworkInitiatedUssd(mmi);
+        } else if (isUssdError) {
+            ImsPhoneMmiCode mmi;
+            mmi = ImsPhoneMmiCode.newNetworkInitiatedUssd(ussdMessage,
+                    true,
+                    this);
+            mmi.onUssdFinishedError();
         }
     }
 
