@@ -760,7 +760,7 @@ public class LinkBandwidthEstimator extends Handler {
             int coldStartErrPercent = calculateErrorPercent(mStaticBwKbps, mBwSampleKbps);
 
             TelephonyMetrics.getInstance().writeBandwidthStats(mLink, mDataRat, getNrMode(mDataRat),
-                    mSignalLevel, bwEstExtErrPercent, coldStartErrPercent, mAvgUsedKbps);
+                    mSignalLevel, bwEstExtErrPercent, coldStartErrPercent, mBwSampleKbps);
 
             StringBuilder sb = new StringBuilder();
             logd(sb.append(mLink)
