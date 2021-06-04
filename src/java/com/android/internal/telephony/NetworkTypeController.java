@@ -480,6 +480,7 @@ public class NetworkTypeController extends StateMachine {
             if (DBG) log("DefaultState: process " + getEventName(msg.what));
             switch (msg.what) {
                 case EVENT_UPDATE:
+                case EVENT_PREFERRED_NETWORK_MODE_CHANGED:
                     resetAllTimers();
                     transitionToCurrentState();
                     break;
@@ -538,11 +539,6 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                     resetAllTimers();
                     transitionTo(mLegacyState);
-                    break;
-                case EVENT_PREFERRED_NETWORK_MODE_CHANGED:
-                    resetAllTimers();
-                    // Don't transition to current state. If anything significant changes,
-                    // a new broadcast will be sent to update the state then.
                     break;
                 default:
                     throw new RuntimeException("Received invalid event: " + msg.what);
