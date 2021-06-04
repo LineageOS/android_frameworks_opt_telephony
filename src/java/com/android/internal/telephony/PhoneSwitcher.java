@@ -256,7 +256,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_EMERGENCY_TOGGLE               = 105;
     private static final int EVENT_RADIO_CAPABILITY_CHANGED       = 106;
     private static final int EVENT_OPPT_DATA_SUB_CHANGED          = 107;
-    private static final int EVENT_RADIO_AVAILABLE                = 108;
+    private static final int EVENT_RADIO_ON                       = 108;
     // A call has either started or ended. If an emergency ended and DDS is overridden using
     // mEmergencyOverride, start the countdown to remove the override using the message
     // EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE. The only exception to this is if the device moves to
@@ -283,6 +283,9 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_PROCESS_SIM_STATE_CHANGE       = 119;
     @VisibleForTesting
     public static final int EVENT_IMS_RADIO_TECH_CHANGED          = 120;
+
+    // List of events triggers re-evaluations
+    private static final String EVALUATION_REASON_RADIO_ON = "EVENT_RADIO_ON";
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -493,7 +496,7 @@ public class PhoneSwitcher extends Handler {
         }
 
         if (mActiveModemCount > 0) {
-            PhoneFactory.getPhone(0).mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+            PhoneFactory.getPhone(0).mCi.registerForOn(this, EVENT_RADIO_ON, null);
         }
 
         TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager)
@@ -644,9 +647,9 @@ public class PhoneSwitcher extends Handler {
                 setOpportunisticDataSubscription(subId, needValidation, callback);
                 break;
             }
-            case EVENT_RADIO_AVAILABLE: {
+            case EVENT_RADIO_ON: {
                 updateHalCommandToUse();
-                onEvaluate(REQUESTS_UNCHANGED, "EVENT_RADIO_AVAILABLE");
+                onEvaluate(REQUESTS_UNCHANGED, EVALUATION_REASON_RADIO_ON);
                 break;
             }
             case EVENT_IMS_RADIO_TECH_CHANGED:
@@ -1037,7 +1040,10 @@ public class PhoneSwitcher extends Handler {
             notifyPreferredDataSubIdChanged();
         }
 
-        if (diffDetected) {
+        // Always force DDS when radio on. This is to handle the corner cases that modem and android
+        // DDS are out of sync after APM, AP should force DDS when radio on. long term solution
+        // should be having API to query preferred data modem to detect the out-of-sync scenarios.
+        if (diffDetected || EVALUATION_REASON_RADIO_ON.equals(reason)) {
             log("evaluating due to " + sb.toString());
             if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
                 // With HAL_COMMAND_PREFERRED_DATA, all phones are assumed to allow PS attach.
