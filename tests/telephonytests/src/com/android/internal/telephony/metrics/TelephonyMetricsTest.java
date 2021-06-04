@@ -898,7 +898,7 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(NUM_SIGNAL_LEVEL - 1, stats.perRatTx[0].perLevel.length);
         assertEquals(2, stats.perRatTx[0].perLevel[0].count);
         assertEquals(0, stats.perRatTx[0].perLevel[0].signalLevel);
-        assertEquals(500_000, stats.perRatTx[0].perLevel[0].avgBwKbps);
+        assertEquals(400_000, stats.perRatTx[0].perLevel[0].avgBwKbps);
         assertEquals(40, stats.perRatTx[0].perLevel[0].staticBwErrorPercent);
         assertEquals(30, stats.perRatTx[0].perLevel[0].bwEstErrorPercent);
     }

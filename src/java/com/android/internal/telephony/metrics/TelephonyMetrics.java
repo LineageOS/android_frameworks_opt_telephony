@@ -2951,11 +2951,11 @@ public class TelephonyMetrics {
      * Write bandwidth estimator stats
      */
     public synchronized void writeBandwidthStats(int link, int rat, int nrMode,
-            int signalLevel, int bwEstExtErrPercent, int coldStartErrPercent, int avgUsedKbps) {
+            int signalLevel, int bwEstExtErrPercent, int coldStartErrPercent, int bwKbps) {
         BwEstimationStats stats = lookupEstimationStats(link, rat, nrMode);
         stats.mBwEstErrorAcc[signalLevel] += Math.abs(bwEstExtErrPercent);
         stats.mStaticBwErrorAcc[signalLevel] += Math.abs(coldStartErrPercent);
-        stats.mAvgBwKbps[signalLevel] = avgUsedKbps;
+        stats.mBwAccKbps[signalLevel] += bwKbps;
         stats.mCount[signalLevel]++;
     }
 
@@ -2993,7 +2993,7 @@ public class TelephonyMetrics {
         final int mNrMode;
         final long[] mBwEstErrorAcc = new long[NUM_SIGNAL_LEVEL];
         final long[] mStaticBwErrorAcc = new long[NUM_SIGNAL_LEVEL];
-        final int[] mAvgBwKbps = new int[NUM_SIGNAL_LEVEL];
+        final long[] mBwAccKbps = new long[NUM_SIGNAL_LEVEL];
         final int[] mCount = new int[NUM_SIGNAL_LEVEL];
 
         BwEstimationStats(int radioTechnology, int nrMode) {
@@ -3006,9 +3006,9 @@ public class TelephonyMetrics {
             StringBuilder sb = new StringBuilder();
             return sb.append(LinkBandwidthEstimator.getDataRatName(mRadioTechnology, mNrMode))
                     .append("\n Count\n").append(printValues(mCount))
-                    .append("\n AvgKbps\n").append(printValues(mAvgBwKbps))
-                    .append("\n BwEst Error\n").append(printAvgError(mBwEstErrorAcc, mCount))
-                    .append("\n StaticBw Error\n").append(printAvgError(mStaticBwErrorAcc, mCount))
+                    .append("\n AvgKbps\n").append(printAvgValues(mBwAccKbps, mCount))
+                    .append("\n BwEst Error\n").append(printAvgValues(mBwEstErrorAcc, mCount))
+                    .append("\n StaticBw Error\n").append(printAvgValues(mStaticBwErrorAcc, mCount))
                     .toString();
         }
 
@@ -3020,10 +3020,10 @@ public class TelephonyMetrics {
             return sb.toString();
         }
 
-        private String printAvgError(long[] stats, int[] count) {
+        private String printAvgValues(long[] stats, int[] count) {
             StringBuilder sb = new StringBuilder();
             for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
-                int avgStat = calculateAvgError(stats[k], count[k]);
+                int avgStat = calculateAvg(stats[k], count[k]);
                 sb.append(" " + avgStat);
             }
             return sb.toString();
@@ -3050,16 +3050,16 @@ public class TelephonyMetrics {
                 BandwidthEstimatorStats.PerLevel stats = new BandwidthEstimatorStats.PerLevel();
                 stats.signalLevel = level;
                 stats.count = count;
-                stats.avgBwKbps = mAvgBwKbps[level];
-                stats.staticBwErrorPercent = calculateAvgError(mStaticBwErrorAcc[level], count);
-                stats.bwEstErrorPercent = calculateAvgError(mBwEstErrorAcc[level], count);
+                stats.avgBwKbps = calculateAvg(mBwAccKbps[level], count);
+                stats.staticBwErrorPercent = calculateAvg(mStaticBwErrorAcc[level], count);
+                stats.bwEstErrorPercent = calculateAvg(mBwEstErrorAcc[level], count);
                 return stats;
             }
             return null;
         }
 
-        private int calculateAvgError(long errorAccPercent, int count) {
-            return (count > 0) ? (int) (errorAccPercent / count) : 0;
+        private int calculateAvg(long acc, int count) {
+            return (count > 0) ? (int) (acc / count) : 0;
         }
     }
 
