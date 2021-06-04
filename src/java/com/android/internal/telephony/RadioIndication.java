@@ -1275,46 +1275,56 @@ public class RadioIndication extends IRadioIndication.Stub {
 
     private void physicalChannelConfigsIndication(List<? extends Object> configs) {
         List<PhysicalChannelConfig> response = new ArrayList<>(configs.size());
-        for (Object obj : configs) {
-            if (obj instanceof android.hardware.radio.V1_2.PhysicalChannelConfig) {
-                android.hardware.radio.V1_2.PhysicalChannelConfig config =
-                        (android.hardware.radio.V1_2.PhysicalChannelConfig) obj;
+        try {
+            for (Object obj : configs) {
+                if (obj instanceof android.hardware.radio.V1_2.PhysicalChannelConfig) {
+                    android.hardware.radio.V1_2.PhysicalChannelConfig config =
+                            (android.hardware.radio.V1_2.PhysicalChannelConfig) obj;
 
-                response.add(new PhysicalChannelConfig.Builder()
-                        .setCellConnectionStatus(
-                                convertConnectionStatusFromCellConnectionStatus(config.status))
-                        .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlink)
-                        .build());
-            } else if (obj instanceof android.hardware.radio.V1_4.PhysicalChannelConfig) {
-                android.hardware.radio.V1_4.PhysicalChannelConfig config =
-                        (android.hardware.radio.V1_4.PhysicalChannelConfig) obj;
-                PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
-                setFrequencyRangeOrChannelNumber(builder, config);
-                response.add(builder.setCellConnectionStatus(
-                        convertConnectionStatusFromCellConnectionStatus(config.base.status))
-                        .setCellBandwidthDownlinkKhz(config.base.cellBandwidthDownlink)
-                        .setNetworkType(ServiceState.rilRadioTechnologyToNetworkType(config.rat))
-                        .setPhysicalCellId(config.physicalCellId)
-                        .setContextIds(config.contextIds.stream().mapToInt(x -> x).toArray())
-                        .build());
-            } else if (obj instanceof android.hardware.radio.V1_6.PhysicalChannelConfig) {
-                android.hardware.radio.V1_6.PhysicalChannelConfig config =
-                        (android.hardware.radio.V1_6.PhysicalChannelConfig) obj;
-                PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
-                setBandToBuilder(builder, config);
-                response.add(builder.setCellConnectionStatus(
-                        convertConnectionStatusFromCellConnectionStatus(config.status))
-                        .setDownlinkChannelNumber(config.downlinkChannelNumber)
-                        .setUplinkChannelNumber(config.uplinkChannelNumber)
-                        .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlinkKhz)
-                        .setCellBandwidthUplinkKhz(config.cellBandwidthUplinkKhz)
-                        .setNetworkType(ServiceState.rilRadioTechnologyToNetworkType(config.rat))
-                        .setPhysicalCellId(config.physicalCellId)
-                        .setContextIds(config.contextIds.stream().mapToInt(x -> x).toArray())
-                        .build());
-            } else {
-                mRil.riljLoge("Unsupported PhysicalChannelConfig " + obj);
+                    response.add(new PhysicalChannelConfig.Builder()
+                            .setCellConnectionStatus(
+                                    convertConnectionStatusFromCellConnectionStatus(config.status))
+                            .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlink)
+                            .build());
+                } else if (obj instanceof android.hardware.radio.V1_4.PhysicalChannelConfig) {
+                    android.hardware.radio.V1_4.PhysicalChannelConfig config =
+                            (android.hardware.radio.V1_4.PhysicalChannelConfig) obj;
+                    PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
+                    setFrequencyRangeOrChannelNumber(builder, config);
+                    response.add(builder.setCellConnectionStatus(
+                            convertConnectionStatusFromCellConnectionStatus(config.base.status))
+                            .setCellBandwidthDownlinkKhz(config.base.cellBandwidthDownlink)
+                            .setNetworkType(
+                                    ServiceState.rilRadioTechnologyToNetworkType(config.rat))
+                            .setPhysicalCellId(config.physicalCellId)
+                            .setContextIds(config.contextIds.stream().mapToInt(x -> x).toArray())
+                            .build());
+                } else if (obj instanceof android.hardware.radio.V1_6.PhysicalChannelConfig) {
+                    android.hardware.radio.V1_6.PhysicalChannelConfig config =
+                            (android.hardware.radio.V1_6.PhysicalChannelConfig) obj;
+                    PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
+                    setBandToBuilder(builder, config);
+                    response.add(builder.setCellConnectionStatus(
+                            convertConnectionStatusFromCellConnectionStatus(config.status))
+                            .setDownlinkChannelNumber(config.downlinkChannelNumber)
+                            .setUplinkChannelNumber(config.uplinkChannelNumber)
+                            .setCellBandwidthDownlinkKhz(config.cellBandwidthDownlinkKhz)
+                            .setCellBandwidthUplinkKhz(config.cellBandwidthUplinkKhz)
+                            .setNetworkType(
+                                    ServiceState.rilRadioTechnologyToNetworkType(config.rat))
+                            .setPhysicalCellId(config.physicalCellId)
+                            .setContextIds(config.contextIds.stream().mapToInt(x -> x).toArray())
+                            .build());
+                } else {
+                    mRil.riljLoge("Unsupported PhysicalChannelConfig " + obj);
+                }
             }
+        } catch (IllegalArgumentException iae) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("918f0970-9aa9-4bcd-a28e-e49a83fe77d5"),
+                    "Invalid PhysicalChannelConfig reported by HAL");
+            mRil.riljLoge("Invalid PhysicalChannelConfig " + iae);
+            return;
         }
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
