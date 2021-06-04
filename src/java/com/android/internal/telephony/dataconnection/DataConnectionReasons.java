@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import com.android.internal.annotations.VisibleForTesting;
+
 import java.util.HashSet;
 
 /**
@@ -70,7 +72,14 @@ public class DataConnectionReasons {
         return mDataDisallowedReasonSet.size() == 0;
     }
 
-    boolean contains(DataDisallowedReasonType reason) {
+    /**
+     * Check if it contains a certain disallowed reason.
+     *
+     * @param reason The disallowed reason to check.
+     * @return {@code true} if the provided reason matches one of the disallowed reasons.
+     */
+    @VisibleForTesting
+    public boolean contains(DataDisallowedReasonType reason) {
         return mDataDisallowedReasonSet.contains(reason);
     }
 
@@ -137,7 +146,10 @@ public class DataConnectionReasons {
         DATA_SERVICE_NOT_READY(true),
         // Qualified networks service does not allow certain types of APN brought up on either
         // cellular or IWLAN.
-        DISABLED_BY_QNS(true);
+        DISABLED_BY_QNS(true),
+        // Data is throttled. The network explicitly requested device not to establish data
+        // connection for a certain period.
+        DATA_THROTTLED(true);
 
         private boolean mIsHardReason;
 
