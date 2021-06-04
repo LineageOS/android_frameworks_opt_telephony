@@ -6739,8 +6739,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "GET_CURRENT_CALLS";
             case RIL_REQUEST_DIAL:
                 return "DIAL";
-            case RIL_REQUEST_EMERGENCY_DIAL:
-                return "EMERGENCY_DIAL";
             case RIL_REQUEST_GET_IMSI:
                 return "GET_IMSI";
             case RIL_REQUEST_HANGUP:
@@ -6854,208 +6852,223 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_QUERY_AVAILABLE_BAND_MODE:
                 return "QUERY_AVAILABLE_BAND_MODE";
             case RIL_REQUEST_STK_GET_PROFILE:
-                return "REQUEST_STK_GET_PROFILE";
+                return "STK_GET_PROFILE";
             case RIL_REQUEST_STK_SET_PROFILE:
-                return "REQUEST_STK_SET_PROFILE";
+                return "STK_SET_PROFILE";
             case RIL_REQUEST_STK_SEND_ENVELOPE_COMMAND:
-                return "REQUEST_STK_SEND_ENVELOPE_COMMAND";
+                return "STK_SEND_ENVELOPE_COMMAND";
             case RIL_REQUEST_STK_SEND_TERMINAL_RESPONSE:
-                return "REQUEST_STK_SEND_TERMINAL_RESPONSE";
+                return "STK_SEND_TERMINAL_RESPONSE";
             case RIL_REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM:
-                return "REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM";
-            case RIL_REQUEST_EXPLICIT_CALL_TRANSFER: return "REQUEST_EXPLICIT_CALL_TRANSFER";
+                return "STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM";
+            case RIL_REQUEST_EXPLICIT_CALL_TRANSFER:
+                return "EXPLICIT_CALL_TRANSFER";
             case RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE:
-                return "REQUEST_SET_PREFERRED_NETWORK_TYPE";
+                return "SET_PREFERRED_NETWORK_TYPE";
             case RIL_REQUEST_GET_PREFERRED_NETWORK_TYPE:
-                return "REQUEST_GET_PREFERRED_NETWORK_TYPE";
+                return "GET_PREFERRED_NETWORK_TYPE";
             case RIL_REQUEST_GET_NEIGHBORING_CELL_IDS:
-                return "REQUEST_GET_NEIGHBORING_CELL_IDS";
+                return "GET_NEIGHBORING_CELL_IDS";
             case RIL_REQUEST_SET_LOCATION_UPDATES:
-                return "REQUEST_SET_LOCATION_UPDATES";
+                return "SET_LOCATION_UPDATES";
             case RIL_REQUEST_CDMA_SET_SUBSCRIPTION_SOURCE:
-                return "RIL_REQUEST_CDMA_SET_SUBSCRIPTION_SOURCE";
+                return "CDMA_SET_SUBSCRIPTION_SOURCE";
             case RIL_REQUEST_CDMA_SET_ROAMING_PREFERENCE:
-                return "RIL_REQUEST_CDMA_SET_ROAMING_PREFERENCE";
+                return "CDMA_SET_ROAMING_PREFERENCE";
             case RIL_REQUEST_CDMA_QUERY_ROAMING_PREFERENCE:
-                return "RIL_REQUEST_CDMA_QUERY_ROAMING_PREFERENCE";
+                return "CDMA_QUERY_ROAMING_PREFERENCE";
             case RIL_REQUEST_SET_TTY_MODE:
-                return "RIL_REQUEST_SET_TTY_MODE";
+                return "SET_TTY_MODE";
             case RIL_REQUEST_QUERY_TTY_MODE:
-                return "RIL_REQUEST_QUERY_TTY_MODE";
+                return "QUERY_TTY_MODE";
             case RIL_REQUEST_CDMA_SET_PREFERRED_VOICE_PRIVACY_MODE:
-                return "RIL_REQUEST_CDMA_SET_PREFERRED_VOICE_PRIVACY_MODE";
+                return "CDMA_SET_PREFERRED_VOICE_PRIVACY_MODE";
             case RIL_REQUEST_CDMA_QUERY_PREFERRED_VOICE_PRIVACY_MODE:
-                return "RIL_REQUEST_CDMA_QUERY_PREFERRED_VOICE_PRIVACY_MODE";
+                return "CDMA_QUERY_PREFERRED_VOICE_PRIVACY_MODE";
             case RIL_REQUEST_CDMA_FLASH:
-                return "RIL_REQUEST_CDMA_FLASH";
+                return "CDMA_FLASH";
             case RIL_REQUEST_CDMA_BURST_DTMF:
-                return "RIL_REQUEST_CDMA_BURST_DTMF";
-            case RIL_REQUEST_CDMA_SEND_SMS:
-                return "RIL_REQUEST_CDMA_SEND_SMS";
-            case RIL_REQUEST_CDMA_SMS_ACKNOWLEDGE:
-                return "RIL_REQUEST_CDMA_SMS_ACKNOWLEDGE";
-            case RIL_REQUEST_GSM_GET_BROADCAST_CONFIG:
-                return "RIL_REQUEST_GSM_GET_BROADCAST_CONFIG";
-            case RIL_REQUEST_GSM_SET_BROADCAST_CONFIG:
-                return "RIL_REQUEST_GSM_SET_BROADCAST_CONFIG";
-            case RIL_REQUEST_CDMA_GET_BROADCAST_CONFIG:
-                return "RIL_REQUEST_CDMA_GET_BROADCAST_CONFIG";
-            case RIL_REQUEST_CDMA_SET_BROADCAST_CONFIG:
-                return "RIL_REQUEST_CDMA_SET_BROADCAST_CONFIG";
-            case RIL_REQUEST_GSM_BROADCAST_ACTIVATION:
-                return "RIL_REQUEST_GSM_BROADCAST_ACTIVATION";
+                return "CDMA_BURST_DTMF";
             case RIL_REQUEST_CDMA_VALIDATE_AND_WRITE_AKEY:
-                return "RIL_REQUEST_CDMA_VALIDATE_AND_WRITE_AKEY";
+                return "CDMA_VALIDATE_AND_WRITE_AKEY";
+            case RIL_REQUEST_CDMA_SEND_SMS:
+                return "CDMA_SEND_SMS";
+            case RIL_REQUEST_CDMA_SMS_ACKNOWLEDGE:
+                return "CDMA_SMS_ACKNOWLEDGE";
+            case RIL_REQUEST_GSM_GET_BROADCAST_CONFIG:
+                return "GSM_GET_BROADCAST_CONFIG";
+            case RIL_REQUEST_GSM_SET_BROADCAST_CONFIG:
+                return "GSM_SET_BROADCAST_CONFIG";
+            case RIL_REQUEST_GSM_BROADCAST_ACTIVATION:
+                return "GSM_BROADCAST_ACTIVATION";
+            case RIL_REQUEST_CDMA_GET_BROADCAST_CONFIG:
+                return "CDMA_GET_BROADCAST_CONFIG";
+            case RIL_REQUEST_CDMA_SET_BROADCAST_CONFIG:
+                return "CDMA_SET_BROADCAST_CONFIG";
             case RIL_REQUEST_CDMA_BROADCAST_ACTIVATION:
-                return "RIL_REQUEST_CDMA_BROADCAST_ACTIVATION";
+                return "CDMA_BROADCAST_ACTIVATION";
             case RIL_REQUEST_CDMA_SUBSCRIPTION:
-                return "RIL_REQUEST_CDMA_SUBSCRIPTION";
+                return "CDMA_SUBSCRIPTION";
             case RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM:
-                return "RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM";
+                return "CDMA_WRITE_SMS_TO_RUIM";
             case RIL_REQUEST_CDMA_DELETE_SMS_ON_RUIM:
-                return "RIL_REQUEST_CDMA_DELETE_SMS_ON_RUIM";
+                return "CDMA_DELETE_SMS_ON_RUIM";
             case RIL_REQUEST_DEVICE_IDENTITY:
-                return "RIL_REQUEST_DEVICE_IDENTITY";
-            case RIL_REQUEST_GET_SMSC_ADDRESS:
-                return "RIL_REQUEST_GET_SMSC_ADDRESS";
-            case RIL_REQUEST_SET_SMSC_ADDRESS:
-                return "RIL_REQUEST_SET_SMSC_ADDRESS";
+                return "DEVICE_IDENTITY";
             case RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE:
-                return "REQUEST_EXIT_EMERGENCY_CALLBACK_MODE";
+                return "EXIT_EMERGENCY_CALLBACK_MODE";
+            case RIL_REQUEST_GET_SMSC_ADDRESS:
+                return "GET_SMSC_ADDRESS";
+            case RIL_REQUEST_SET_SMSC_ADDRESS:
+                return "SET_SMSC_ADDRESS";
             case RIL_REQUEST_REPORT_SMS_MEMORY_STATUS:
-                return "RIL_REQUEST_REPORT_SMS_MEMORY_STATUS";
+                return "REPORT_SMS_MEMORY_STATUS";
             case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING:
-                return "RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING";
+                return "REPORT_STK_SERVICE_IS_RUNNING";
             case RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE:
-                return "RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE";
+                return "CDMA_GET_SUBSCRIPTION_SOURCE";
             case RIL_REQUEST_ISIM_AUTHENTICATION:
-                return "RIL_REQUEST_ISIM_AUTHENTICATION";
+                return "ISIM_AUTHENTICATION";
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU:
-                return "RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU";
+                return "ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU";
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS:
-                return "RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS";
+                return "STK_SEND_ENVELOPE_WITH_STATUS";
             case RIL_REQUEST_VOICE_RADIO_TECH:
-                return "RIL_REQUEST_VOICE_RADIO_TECH";
+                return "VOICE_RADIO_TECH";
             case RIL_REQUEST_GET_CELL_INFO_LIST:
-                return "RIL_REQUEST_GET_CELL_INFO_LIST";
+                return "GET_CELL_INFO_LIST";
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE:
-                return "RIL_REQUEST_SET_CELL_INFO_LIST_RATE";
+                return "SET_CELL_INFO_LIST_RATE";
             case RIL_REQUEST_SET_INITIAL_ATTACH_APN:
-                return "RIL_REQUEST_SET_INITIAL_ATTACH_APN";
-            case RIL_REQUEST_SET_DATA_PROFILE:
-                return "RIL_REQUEST_SET_DATA_PROFILE";
+                return "SET_INITIAL_ATTACH_APN";
             case RIL_REQUEST_IMS_REGISTRATION_STATE:
-                return "RIL_REQUEST_IMS_REGISTRATION_STATE";
+                return "IMS_REGISTRATION_STATE";
             case RIL_REQUEST_IMS_SEND_SMS:
-                return "RIL_REQUEST_IMS_SEND_SMS";
+                return "IMS_SEND_SMS";
             case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC:
-                return "RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC";
+                return "SIM_TRANSMIT_APDU_BASIC";
             case RIL_REQUEST_SIM_OPEN_CHANNEL:
-                return "RIL_REQUEST_SIM_OPEN_CHANNEL";
+                return "SIM_OPEN_CHANNEL";
             case RIL_REQUEST_SIM_CLOSE_CHANNEL:
-                return "RIL_REQUEST_SIM_CLOSE_CHANNEL";
+                return "SIM_CLOSE_CHANNEL";
             case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL:
-                return "RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL";
+                return "SIM_TRANSMIT_APDU_CHANNEL";
             case RIL_REQUEST_NV_READ_ITEM:
-                return "RIL_REQUEST_NV_READ_ITEM";
+                return "NV_READ_ITEM";
             case RIL_REQUEST_NV_WRITE_ITEM:
-                return "RIL_REQUEST_NV_WRITE_ITEM";
+                return "NV_WRITE_ITEM";
             case RIL_REQUEST_NV_WRITE_CDMA_PRL:
-                return "RIL_REQUEST_NV_WRITE_CDMA_PRL";
+                return "NV_WRITE_CDMA_PRL";
             case RIL_REQUEST_NV_RESET_CONFIG:
-                return "RIL_REQUEST_NV_RESET_CONFIG";
+                return "NV_RESET_CONFIG";
             case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
-                return "RIL_REQUEST_SET_UICC_SUBSCRIPTION";
+                return "SET_UICC_SUBSCRIPTION";
             case RIL_REQUEST_ALLOW_DATA:
-                return "RIL_REQUEST_ALLOW_DATA";
+                return "ALLOW_DATA";
             case RIL_REQUEST_GET_HARDWARE_CONFIG:
                 return "GET_HARDWARE_CONFIG";
             case RIL_REQUEST_SIM_AUTHENTICATION:
-                return "RIL_REQUEST_SIM_AUTHENTICATION";
+                return "SIM_AUTHENTICATION";
+            case RIL_REQUEST_GET_DC_RT_INFO:
+                return "GET_DC_RT_INFO";
+            case RIL_REQUEST_SET_DC_RT_INFO_RATE:
+                return "SET_DC_RT_INFO_RATE";
+            case RIL_REQUEST_SET_DATA_PROFILE:
+                return "SET_DATA_PROFILE";
             case RIL_REQUEST_SHUTDOWN:
-                return "RIL_REQUEST_SHUTDOWN";
-            case RIL_REQUEST_SET_RADIO_CAPABILITY:
-                return "RIL_REQUEST_SET_RADIO_CAPABILITY";
+                return "SHUTDOWN";
             case RIL_REQUEST_GET_RADIO_CAPABILITY:
-                return "RIL_REQUEST_GET_RADIO_CAPABILITY";
+                return "GET_RADIO_CAPABILITY";
+            case RIL_REQUEST_SET_RADIO_CAPABILITY:
+                return "SET_RADIO_CAPABILITY";
             case RIL_REQUEST_START_LCE:
-                return "RIL_REQUEST_START_LCE";
+                return "START_LCE";
             case RIL_REQUEST_STOP_LCE:
-                return "RIL_REQUEST_STOP_LCE";
+                return "STOP_LCE";
             case RIL_REQUEST_PULL_LCEDATA:
-                return "RIL_REQUEST_PULL_LCEDATA";
+                return "PULL_LCEDATA";
             case RIL_REQUEST_GET_ACTIVITY_INFO:
-                return "RIL_REQUEST_GET_ACTIVITY_INFO";
+                return "GET_ACTIVITY_INFO";
             case RIL_REQUEST_SET_ALLOWED_CARRIERS:
-                return "RIL_REQUEST_SET_ALLOWED_CARRIERS";
+                return "SET_ALLOWED_CARRIERS";
             case RIL_REQUEST_GET_ALLOWED_CARRIERS:
-                return "RIL_REQUEST_GET_ALLOWED_CARRIERS";
-            case RIL_REQUEST_SET_SIM_CARD_POWER:
-                return "RIL_REQUEST_SET_SIM_CARD_POWER";
+                return "GET_ALLOWED_CARRIERS";
             case RIL_REQUEST_SEND_DEVICE_STATE:
-                return "RIL_REQUEST_SEND_DEVICE_STATE";
+                return "SEND_DEVICE_STATE";
             case RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER:
-                return "RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER";
-            case RIL_RESPONSE_ACKNOWLEDGEMENT:
-                return "RIL_RESPONSE_ACKNOWLEDGEMENT";
+                return "SET_UNSOLICITED_RESPONSE_FILTER";
+            case RIL_REQUEST_SET_SIM_CARD_POWER:
+                return "SET_SIM_CARD_POWER";
             case RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION:
-                return "RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION";
+                return "SET_CARRIER_INFO_IMSI_ENCRYPTION";
             case RIL_REQUEST_START_NETWORK_SCAN:
-                return "RIL_REQUEST_START_NETWORK_SCAN";
+                return "START_NETWORK_SCAN";
             case RIL_REQUEST_STOP_NETWORK_SCAN:
-                return "RIL_REQUEST_STOP_NETWORK_SCAN";
-            case RIL_REQUEST_GET_SLOT_STATUS:
-                return "RIL_REQUEST_GET_SLOT_STATUS";
-            case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
-                return "RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING";
+                return "STOP_NETWORK_SCAN";
             case RIL_REQUEST_START_KEEPALIVE:
-                return "RIL_REQUEST_START_KEEPALIVE";
+                return "START_KEEPALIVE";
             case RIL_REQUEST_STOP_KEEPALIVE:
-                return "RIL_REQUEST_STOP_KEEPALIVE";
-            case RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA:
-                return "RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA";
-            case RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA:
-                return "RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA";
+                return "STOP_KEEPALIVE";
             case RIL_REQUEST_ENABLE_MODEM:
-                return "RIL_REQUEST_ENABLE_MODEM";
+                return "ENABLE_MODEM";
             case RIL_REQUEST_GET_MODEM_STATUS:
-                return "RIL_REQUEST_GET_MODEM_STATUS";
-            case RIL_REQUEST_ENABLE_UICC_APPLICATIONS:
-                return "RIL_REQUEST_ENABLE_UICC_APPLICATIONS";
-            case RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT:
-                return "RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT";
-            case RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS:
-                return "RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS";
+                return "GET_MODEM_STATUS";
             case RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE:
-                return "RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE";
-            case RIL_REQUEST_GET_BARRING_INFO:
-                return "RIL_REQUEST_GET_BARRING_INFO";
-            case RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION:
-                return "RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION";
-            case RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY:
-                return "RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY";
-            case RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED:
-                return "RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED";
-            case RIL_REQUEST_ALLOCATE_PDU_SESSION_ID:
-                return "RIL_REQUEST_ALLOCATE_PDU_SESSION_ID";
-            case RIL_REQUEST_RELEASE_PDU_SESSION_ID:
-                return "RIL_REQUEST_RELEASE_PDU_SESSION_ID";
-            case RIL_REQUEST_START_HANDOVER:
-                return "RIL_REQUEST_START_HANDOVER";
-            case RIL_REQUEST_CANCEL_HANDOVER:
-                return "RIL_REQUEST_CANCEL_HANDOVER";
-            case RIL_REQUEST_SET_DATA_THROTTLING:
-                return "RIL_REQUEST_SET_DATA_THROTTLING";
-            case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP:
-                return "RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP";
-            case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
-                return "RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP";
-            case RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS:
-                return "RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS";
-            case RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD:
-                return "RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD";
+                return "CDMA_SEND_SMS_EXPECT_MORE";
             case RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY:
-                return "RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY";
+                return "GET_SIM_PHONEBOOK_CAPACITY";
+            case RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS:
+                return "GET_SIM_PHONEBOOK_RECORDS";
+            case RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD:
+                return "UPDATE_SIM_PHONEBOOK_RECORD";
+            case RIL_REQUEST_GET_SLOT_STATUS:
+                return "GET_SLOT_STATUS";
+            case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
+                return "SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING";
+            case RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA:
+                return "SET_SIGNAL_STRENGTH_REPORTING_CRITERIA";
+            case RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA:
+                return "SET_LINK_CAPACITY_REPORTING_CRITERIA";
+            case RIL_REQUEST_SET_PREFERRED_DATA_MODEM:
+                return "SET_PREFERRED_DATA_MODEM";
+            case RIL_REQUEST_EMERGENCY_DIAL:
+                return "EMERGENCY_DIAL";
+            case RIL_REQUEST_GET_PHONE_CAPABILITY:
+                return "GET_PHONE_CAPABILITY";
+            case RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG:
+                return "SWITCH_DUAL_SIM_CONFIG";
+            case RIL_REQUEST_ENABLE_UICC_APPLICATIONS:
+                return "ENABLE_UICC_APPLICATIONS";
+            case RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT:
+                return "GET_UICC_APPLICATIONS_ENABLEMENT";
+            case RIL_REQUEST_SET_SYSTEM_SELECTION_CHANNELS:
+                return "SET_SYSTEM_SELECTION_CHANNELS";
+            case RIL_REQUEST_GET_BARRING_INFO:
+                return "GET_BARRING_INFO";
+            case RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION:
+                return "ENTER_SIM_DEPERSONALIZATION";
+            case RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY:
+                return "ENABLE_NR_DUAL_CONNECTIVITY";
+            case RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED:
+                return "IS_NR_DUAL_CONNECTIVITY_ENABLED";
+            case RIL_REQUEST_ALLOCATE_PDU_SESSION_ID:
+                return "ALLOCATE_PDU_SESSION_ID";
+            case RIL_REQUEST_RELEASE_PDU_SESSION_ID:
+                return "RELEASE_PDU_SESSION_ID";
+            case RIL_REQUEST_START_HANDOVER:
+                return "START_HANDOVER";
+            case RIL_REQUEST_CANCEL_HANDOVER:
+                return "CANCEL_HANDOVER";
+            case RIL_REQUEST_GET_SYSTEM_SELECTION_CHANNELS:
+                return "GET_SYSTEM_SELECTION_CHANNELS";
+            case RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES:
+                return "GET_HAL_DEVICE_CAPABILITIES";
+            case RIL_REQUEST_SET_DATA_THROTTLING:
+                return "SET_DATA_THROTTLING";
+            case RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP:
+                return "SET_ALLOWED_NETWORK_TYPES_BITMAP";
+            case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
+                return "GET_ALLOWED_NETWORK_TYPES_BITMAP";
             default: return "<unknown request>";
         }
     }
@@ -7126,7 +7139,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESEND_INCALL_MUTE:
                 return "UNSOL_RESEND_INCALL_MUTE";
             case RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-                return "CDMA_SUBSCRIPTION_SOURCE_CHANGED";
+                return "UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED";
             case RIL_UNSOl_CDMA_PRL_CHANGED:
                 return "UNSOL_CDMA_PRL_CHANGED";
             case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE:
@@ -7140,13 +7153,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
                 return "UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED";
             case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED:
-                return "RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED";
+                return "UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED";
             case RIL_UNSOL_SRVCC_STATE_NOTIFY:
                 return "UNSOL_SRVCC_STATE_NOTIFY";
             case RIL_UNSOL_HARDWARE_CONFIG_CHANGED:
-                return "RIL_UNSOL_HARDWARE_CONFIG_CHANGED";
+                return "UNSOL_HARDWARE_CONFIG_CHANGED";
+            case RIL_UNSOL_DC_RT_INFO_CHANGED:
+                return "UNSOL_DC_RT_INFO_CHANGED";
             case RIL_UNSOL_RADIO_CAPABILITY:
-                return "RIL_UNSOL_RADIO_CAPABILITY";
+                return "UNSOL_RADIO_CAPABILITY";
             case RIL_UNSOL_ON_SS:
                 return "UNSOL_ON_SS";
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY:
@@ -7158,27 +7173,29 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_MODEM_RESTART:
                 return "UNSOL_MODEM_RESTART";
             case RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION:
-                return "RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION";
+                return "UNSOL_CARRIER_INFO_IMSI_ENCRYPTION";
             case RIL_UNSOL_NETWORK_SCAN_RESULT:
-                return "RIL_UNSOL_NETWORK_SCAN_RESULT";
-            case RIL_UNSOL_ICC_SLOT_STATUS:
-                return "RIL_UNSOL_ICC_SLOT_STATUS";
+                return "UNSOL_NETWORK_SCAN_RESULT";
             case RIL_UNSOL_KEEPALIVE_STATUS:
-                return "RIL_UNSOL_KEEPALIVE_STATUS";
-            case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
-                return "RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG";
-            case RIL_UNSOL_EMERGENCY_NUMBER_LIST:
-                return "RIL_UNSOL_EMERGENCY_NUMBER_LIST";
-            case RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED:
-                return "RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED";
-            case RIL_UNSOL_REGISTRATION_FAILED:
-                return "RIL_UNSOL_REGISTRATION_FAILED";
-            case RIL_UNSOL_BARRING_INFO_CHANGED:
-                return "RIL_UNSOL_BARRING_INFO_CHANGED";
+                return "UNSOL_KEEPALIVE_STATUS";
+            case RIL_UNSOL_UNTHROTTLE_APN:
+                return "UNSOL_UNTHROTTLE_APN";
             case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED:
-                return "RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
+                return "UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
             case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED:
-                return "RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
+                return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
+            case RIL_UNSOL_ICC_SLOT_STATUS:
+                return "UNSOL_ICC_SLOT_STATUS";
+            case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
+                return "UNSOL_PHYSICAL_CHANNEL_CONFIG";
+            case RIL_UNSOL_EMERGENCY_NUMBER_LIST:
+                return "UNSOL_EMERGENCY_NUMBER_LIST";
+            case RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED:
+                return "UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED";
+            case RIL_UNSOL_REGISTRATION_FAILED:
+                return "UNSOL_REGISTRATION_FAILED";
+            case RIL_UNSOL_BARRING_INFO_CHANGED:
+                return "UNSOL_BARRING_INFO_CHANGED";
             default:
                 return "<unknown response>";
         }
