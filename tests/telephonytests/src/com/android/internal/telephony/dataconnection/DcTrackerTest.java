@@ -69,6 +69,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
@@ -2681,5 +2682,16 @@ public class DcTrackerTest extends TelephonyTest {
                 eq(ApnSetting.TYPE_IMS),
                 eq(RetryManager.NO_SUGGESTED_RETRY_DELAY),
                 eq(DcTracker.REQUEST_TYPE_NORMAL));
+    }
+
+    @Test
+    public void testNotifyDataDisconnected() {
+        // Verify notify data disconnected on DCT constructor, initialized in setUp()
+        ArgumentCaptor<PreciseDataConnectionState> captor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(13)).notifyDataConnection(captor.capture());
+        for (PreciseDataConnectionState state : captor.getAllValues()) {
+            assertEquals(TelephonyManager.DATA_DISCONNECTED, state.getState());
+        }
     }
 }
