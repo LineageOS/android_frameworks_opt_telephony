@@ -34,7 +34,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.net.module.util.LinkPropertiesUtils;
-import com.android.net.module.util.LinkPropertiesUtils.CompareResult;
+import com.android.net.module.util.LinkPropertiesUtils.CompareOrUpdateResult;
 import com.android.net.module.util.NetUtils;
 import com.android.telephony.Rlog;
 
@@ -45,6 +45,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Data Connection Controller which is a package visible class and controls
@@ -299,9 +300,16 @@ public class DcController extends Handler {
                                             result.oldLp, result.newLp)) {
                                 // If the same address type was removed and
                                 // added we need to cleanup
-                                CompareResult<LinkAddress> car =
-                                        LinkPropertiesUtils.compareAddresses(result.oldLp,
-                                                result.newLp);
+                                CompareOrUpdateResult<Integer, LinkAddress> car =
+                                        new CompareOrUpdateResult(
+                                                result.oldLp != null
+                                                        ? result.oldLp.getLinkAddresses() : null,
+                                                result.newLp != null
+                                                        ? result.newLp.getLinkAddresses() : null,
+                                                (la) -> Objects.hash(((LinkAddress) la)
+                                                                .getAddress(),
+                                                        ((LinkAddress) la).getPrefixLength(),
+                                                        ((LinkAddress) la).getScope()));
                                 if (DBG) {
                                     log("onDataStateChanged: oldLp=" + result.oldLp
                                             + " newLp=" + result.newLp + " car=" + car);
