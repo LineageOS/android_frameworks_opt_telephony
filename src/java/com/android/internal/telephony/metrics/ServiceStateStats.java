@@ -132,23 +132,24 @@ public class ServiceStateStats {
     }
 
     /**
-     * Returns the band used from the given phone and RAT, or {@code 0} if it is invalid or cannot
+     * Returns the band used from the given phone, or {@code 0} if it is invalid or cannot
      * be determined.
      */
-    static int getBand(Phone phone, @NetworkType int rat) {
+    static int getBand(Phone phone) {
         ServiceState serviceState = getServiceStateForPhone(phone);
-        return getBand(serviceState, rat);
+        return getBand(serviceState);
     }
 
     /**
-     * Returns the band used from the given service state and RAT, or {@code 0} if it is invalid or
+     * Returns the band used from the given service state, or {@code 0} if it is invalid or
      * cannot be determined.
      */
-    static int getBand(@Nullable ServiceState serviceState, @NetworkType int rat) {
+    static int getBand(@Nullable ServiceState serviceState) {
         if (serviceState == null) {
             return 0; // Band unknown
         }
         int chNumber = serviceState.getChannelNumber();
+        @NetworkType int rat = serviceState.getDataNetworkType();
         int band;
         switch (rat) {
             case TelephonyManager.NETWORK_TYPE_GSM:
