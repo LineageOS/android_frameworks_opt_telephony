@@ -189,11 +189,15 @@ public class ServiceStateStats {
         return copy;
     }
 
+    /**
+     * Returns {@code true} if modem radio is turned off (e.g. airplane mode).
+     *
+     * <p>Currently this is approximated by voice service state being {@code STATE_POWER_OFF}.
+     */
     private static boolean isModemOff(ServiceState state) {
-        // NOTE: Wifi calls can be made in airplane mode, where voice reg state is POWER_OFF but
-        // data reg state is IN_SERVICE. In this case, service state should still be tracked.
-        return state.getVoiceRegState() == ServiceState.STATE_POWER_OFF
-                && state.getDataRegState() == ServiceState.STATE_POWER_OFF;
+        // TODO(b/189335473): we should get this info from phone's radio power state, which is
+        // updated separately
+        return state.getVoiceRegState() == ServiceState.STATE_POWER_OFF;
     }
 
     private static @NetworkType int getVoiceRat(Phone phone, ServiceState state) {
