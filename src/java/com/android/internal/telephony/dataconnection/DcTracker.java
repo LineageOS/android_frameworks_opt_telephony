@@ -1865,6 +1865,9 @@ public class DcTracker extends Handler {
             apnContext.setDataConnection(null);
         }
 
+        // If there is any outstanding handover request, we need to respond it.
+        sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false, false);
+
         // Make sure reconnection alarm is cleaned up if there is no ApnContext
         // associated to the connection.
         if (dataConnection != null) {
