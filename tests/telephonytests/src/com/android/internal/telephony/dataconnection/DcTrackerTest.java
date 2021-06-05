@@ -70,6 +70,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
@@ -1058,6 +1059,77 @@ public class DcTrackerTest extends TelephonyTest {
                 anyInt(), any(), any(), anyBoolean(), any(Message.class));
         assertEquals(DctConstants.State.IDLE, mDct.getState(ApnSetting.TYPE_DEFAULT_STRING));
         assertEquals(DctConstants.State.CONNECTED, mDct.getState(ApnSetting.TYPE_MMS_STRING));
+    }
+
+    @Test
+    @MediumTest
+    public void testTrySetupDataMmsAlwaysAllowedDataDisabled() {
+        mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{ApnSetting.TYPE_DEFAULT_STRING, ApnSetting.TYPE_MMS_STRING});
+        mApnSettingContentProvider.setFakeApn1Types("mms,xcap,default");
+        mDct.enableApn(ApnSetting.TYPE_MMS, DcTracker.REQUEST_TYPE_NORMAL, null);
+        sendInitializationEvents();
+
+        // Verify MMS was set up and is connected
+        ArgumentCaptor<DataProfile> dpCaptor = ArgumentCaptor.forClass(DataProfile.class);
+        verify(mSimulatedCommandsVerifier).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
+                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                anyInt(), any(), any(), anyBoolean(), any(Message.class));
+        verifyDataProfile(dpCaptor.getValue(), FAKE_APN1, 0,
+                ApnSetting.TYPE_MMS | ApnSetting.TYPE_XCAP | ApnSetting.TYPE_DEFAULT,
+                1, NETWORK_TYPE_LTE_BITMASK);
+        assertEquals(DctConstants.State.CONNECTED, mDct.getState(ApnSetting.TYPE_MMS_STRING));
+
+        // Verify DC has all capabilities specified in fakeApn1Types
+        Map<Integer, ApnContext> apnContexts = mDct.getApnContexts().stream().collect(
+                Collectors.toMap(ApnContext::getApnTypeBitmask, x -> x));
+        assertTrue(apnContexts.get(ApnSetting.TYPE_MMS).getDataConnection()
+                .getNetworkCapabilities().hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS));
+        assertTrue(apnContexts.get(ApnSetting.TYPE_MMS).getDataConnection()
+                .getNetworkCapabilities().hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP));
+        assertTrue(apnContexts.get(ApnSetting.TYPE_MMS).getDataConnection()
+                .getNetworkCapabilities().hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_INTERNET));
+
+        // Disable mobile data
+        doReturn(false).when(mDataEnabledSettings).isDataEnabled();
+        doReturn(false).when(mDataEnabledSettings).isDataEnabled(anyInt());
+        doReturn(false).when(mDataEnabledSettings).isMmsAlwaysAllowed();
+        mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_OVERRIDE_RULES_CHANGED).sendToTarget();
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        // Expected tear down all metered DataConnections
+        waitForMs(200);
+        verify(mSimulatedCommandsVerifier).deactivateDataCall(
+                anyInt(), eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+        assertEquals(DctConstants.State.IDLE, mDct.getState(ApnSetting.TYPE_MMS_STRING));
+
+        // Allow MMS unconditionally
+        clearInvocations(mSimulatedCommandsVerifier);
+        doReturn(true).when(mDataEnabledSettings).isMmsAlwaysAllowed();
+        doReturn(true).when(mDataEnabledSettings).isDataEnabled(ApnSetting.TYPE_MMS);
+        mDct.obtainMessage(DctConstants.EVENT_DATA_ENABLED_OVERRIDE_RULES_CHANGED).sendToTarget();
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+
+        // Verify MMS was set up and is connected
+        waitForMs(200);
+        verify(mSimulatedCommandsVerifier).setupDataCall(
+                eq(AccessNetworkType.EUTRAN), dpCaptor.capture(),
+                eq(false), eq(false), eq(DataService.REQUEST_REASON_NORMAL), any(),
+                anyInt(), any(), any(), anyBoolean(), any(Message.class));
+        assertEquals(DctConstants.State.CONNECTED, mDct.getState(ApnSetting.TYPE_MMS_STRING));
+
+        // Ensure MMS data connection has the MMS capability only.
+        apnContexts = mDct.getApnContexts().stream().collect(
+                Collectors.toMap(ApnContext::getApnTypeBitmask, x -> x));
+        assertTrue(apnContexts.get(ApnSetting.TYPE_MMS).getDataConnection()
+                .getNetworkCapabilities().hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS));
+        assertFalse(apnContexts.get(ApnSetting.TYPE_MMS).getDataConnection()
+                .getNetworkCapabilities().hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP));
+        assertFalse(apnContexts.get(ApnSetting.TYPE_MMS).getDataConnection()
+                .getNetworkCapabilities().hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_INTERNET));
     }
 
     @Test
@@ -2850,5 +2922,16 @@ public class DcTrackerTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, never()).setupDataCall(
                 anyInt(), any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(),
                 anyInt(), any(), any(), anyBoolean(), any(Message.class));
+    }
+
+    @Test
+    public void testNotifyDataDisconnected() {
+        // Verify notify data disconnected on DCT constructor, initialized in setUp()
+        ArgumentCaptor<PreciseDataConnectionState> captor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(13)).notifyDataConnection(captor.capture());
+        for (PreciseDataConnectionState state : captor.getAllValues()) {
+            assertEquals(TelephonyManager.DATA_DISCONNECTED, state.getState());
+        }
     }
 }
