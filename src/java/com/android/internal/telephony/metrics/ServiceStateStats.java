@@ -132,23 +132,24 @@ public class ServiceStateStats {
     }
 
     /**
-     * Returns the band used from the given phone and RAT, or {@code 0} if it is invalid or cannot
+     * Returns the band used from the given phone, or {@code 0} if it is invalid or cannot
      * be determined.
      */
-    static int getBand(Phone phone, @NetworkType int rat) {
+    static int getBand(Phone phone) {
         ServiceState serviceState = getServiceStateForPhone(phone);
-        return getBand(serviceState, rat);
+        return getBand(serviceState);
     }
 
     /**
-     * Returns the band used from the given service state and RAT, or {@code 0} if it is invalid or
+     * Returns the band used from the given service state, or {@code 0} if it is invalid or
      * cannot be determined.
      */
-    static int getBand(@Nullable ServiceState serviceState, @NetworkType int rat) {
+    static int getBand(@Nullable ServiceState serviceState) {
         if (serviceState == null) {
             return 0; // Band unknown
         }
         int chNumber = serviceState.getChannelNumber();
+        @NetworkType int rat = serviceState.getDataNetworkType();
         int band;
         switch (rat) {
             case TelephonyManager.NETWORK_TYPE_GSM:
@@ -189,11 +190,15 @@ public class ServiceStateStats {
         return copy;
     }
 
+    /**
+     * Returns {@code true} if modem radio is turned off (e.g. airplane mode).
+     *
+     * <p>Currently this is approximated by voice service state being {@code STATE_POWER_OFF}.
+     */
     private static boolean isModemOff(ServiceState state) {
-        // NOTE: Wifi calls can be made in airplane mode, where voice reg state is POWER_OFF but
-        // data reg state is IN_SERVICE. In this case, service state should still be tracked.
-        return state.getVoiceRegState() == ServiceState.STATE_POWER_OFF
-                && state.getDataRegState() == ServiceState.STATE_POWER_OFF;
+        // TODO(b/189335473): we should get this info from phone's radio power state, which is
+        // updated separately
+        return state.getVoiceRegState() == ServiceState.STATE_POWER_OFF;
     }
 
     private static @NetworkType int getVoiceRat(Phone phone, ServiceState state) {
