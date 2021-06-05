@@ -430,8 +430,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // should only be accessed from handler
     private SparseArray<Map<Integer, String>> mCarrierServices;
     // Package name of the default device services, Maps ImsFeature -> packageName.
-    // should only be accessed from handler
-    private Map<Integer, String> mDeviceServices;
+    // Must synchronize on this object to access.
+    private final Map<Integer, String> mDeviceServices = new ArrayMap<>();
     // Persistent Logging
     private final LocalLog mEventLog = new LocalLog(50);
 
@@ -564,7 +564,6 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         mReceiverContext = context.createContextAsUser(UserHandle.ALL, 0 /*flags*/);
 
         mCarrierServices = new SparseArray<>(mNumSlots);
-        mDeviceServices = new ArrayMap<>();
         setDeviceConfiguration(defaultMmTelPackageName, ImsFeature.FEATURE_EMERGENCY_MMTEL);
         setDeviceConfiguration(defaultMmTelPackageName, ImsFeature.FEATURE_MMTEL);
         setDeviceConfiguration(defaultRcsPackageName, ImsFeature.FEATURE_RCS);
@@ -778,14 +777,16 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return true;
     }
 
-    // not synchronized, access through handler ONLY.
     private String getDeviceConfiguration(@ImsFeature.FeatureType int featureType) {
-        return mDeviceServices.getOrDefault(featureType, "");
+        synchronized (mDeviceServices) {
+            return mDeviceServices.getOrDefault(featureType, "");
+        }
     }
 
-    // not synchronized, access in handler ONLY.
     private void setDeviceConfiguration(String name, @ImsFeature.FeatureType int featureType) {
-        mDeviceServices.put(featureType, name);
+        synchronized (mDeviceServices) {
+            mDeviceServices.put(featureType, name);
+        }
     }
 
     // not synchronized, access in handler ONLY.
@@ -891,6 +892,26 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             return null;
         }
     }
+
+    /**
+     * Determines if there is a valid ImsService configured for the specified ImsFeature.
+     * @param slotId The slot ID to check for.
+     * @param featureType The ImsFeature featureType to check for.
+     * @return true if there is an ImsService configured for the specified ImsFeature type, false
+     * if there is not.
+     */
+    public boolean isImsServiceConfiguredForFeature(int slotId,
+            @ImsFeature.FeatureType int featureType) {
+        if (!TextUtils.isEmpty(getDeviceConfiguration(featureType))) {
+            // Shortcut a little bit here - instead of dynamically looking up the configured
+            // package name, which can be a long operation depending on the state, just return true
+            // if there is a configured device ImsService for the requested feature because that
+            // means there will always be at least a device configured ImsService.
+            return true;
+        }
+        return !TextUtils.isEmpty(getConfiguredImsServicePackageName(slotId, featureType));
+    }
+
     /**
      * Resolves the PackageName of the ImsService that is configured to be bound for the slotId and
      * FeatureType specified and returns it.
@@ -913,16 +934,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             return null;
         }
         CompletableFuture<String> packageNameFuture = new CompletableFuture<>();
+        final long startTimeMs = System.currentTimeMillis();
         if (mHandler.getLooper().isCurrentThread()) {
             // If we are on the same thread as the Handler's looper, run the internal method
             // directly.
             packageNameFuture.complete(getConfiguredImsServicePackageNameInternal(slotId,
                     featureType));
         } else {
-            mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
-                    + ImsFeature.FEATURE_LOG_MAP.get(featureType) + "], starting query...");
-            Log.d(TAG, "getResolvedImsServicePackageName: [" + slotId + ", "
-                    + ImsFeature.FEATURE_LOG_MAP.get(featureType) + "], starting query...");
             mHandler.post(() -> {
                 try {
                     packageNameFuture.complete(getConfiguredImsServicePackageNameInternal(slotId,
@@ -936,12 +954,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
         try {
             String packageName = packageNameFuture.get();
-            mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
-                    + ImsFeature.FEATURE_LOG_MAP.get(featureType)
-                    + "], async query complete with package name: " + packageName);
-            Log.d(TAG, "getResolvedImsServicePackageName: [" + slotId + ", "
-                    + ImsFeature.FEATURE_LOG_MAP.get(featureType)
-                    + "], async query complete with package name: " + packageName);
+            long timeDiff = System.currentTimeMillis() - startTimeMs;
+            if (timeDiff > 50) {
+                // Took an unusually long amount of time (> 50 ms), so log it.
+                mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
+                        + ImsFeature.FEATURE_LOG_MAP.get(featureType)
+                        + "], async query complete, took " + timeDiff + " ms with package name: "
+                        + packageName);
+                Log.w(TAG, "getResolvedImsServicePackageName: [" + slotId + ", "
+                        + ImsFeature.FEATURE_LOG_MAP.get(featureType)
+                        + "], async query complete, took " + timeDiff + " ms with package name: "
+                        + packageName);
+            }
             return packageName;
         } catch (Exception e) {
             mEventLog.log("getResolvedImsServicePackageName - [" + slotId + ", "
@@ -1093,7 +1117,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     private boolean isDeviceService(ImsServiceInfo info) {
         if (info == null) return false;
-        return mDeviceServices.containsValue(info.name.getPackageName());
+        synchronized (mDeviceServices) {
+            return mDeviceServices.containsValue(info.name.getPackageName());
+        }
     }
 
     private List<Integer> getSlotsForActiveCarrierService(ImsServiceInfo info) {
@@ -1711,8 +1737,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         pw.increaseIndent();
         pw.println("Device:");
         pw.increaseIndent();
-        for (Integer i : mDeviceServices.keySet()) {
-            pw.println(ImsFeature.FEATURE_LOG_MAP.get(i) + " -> " + mDeviceServices.get(i));
+        synchronized (mDeviceServices) {
+            for (Integer i : mDeviceServices.keySet()) {
+                pw.println(ImsFeature.FEATURE_LOG_MAP.get(i) + " -> " + mDeviceServices.get(i));
+            }
         }
         pw.decreaseIndent();
         pw.println("Carrier: ");

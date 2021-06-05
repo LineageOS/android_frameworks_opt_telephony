@@ -85,6 +85,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 @TestableLooper.RunWithLooper
 public class PhoneSwitcherTest extends TelephonyTest {
     private static final int ACTIVE_PHONE_SWITCH = 1;
+    private static final int EVENT_RADIO_ON = 108;
     private static final int EVENT_MODEM_COMMAND_DONE = 112;
 
     @Mock
@@ -527,6 +528,12 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // SetDataAllowed should never be triggered.
         verify(mCommandsInterface0, never()).setDataAllowed(anyBoolean(), any());
         verify(mCommandsInterface1, never()).setDataAllowed(anyBoolean(), any());
+
+        // Set preferred data modem should be triggered after radio on or available.
+        clearInvocations(mMockRadioConfig);
+        Message.obtain(mPhoneSwitcher, EVENT_RADIO_ON, res).sendToTarget();
+        processAllMessages();
+        verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
     }
 
     @Test
