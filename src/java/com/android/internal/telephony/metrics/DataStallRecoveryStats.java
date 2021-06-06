@@ -43,7 +43,8 @@ public class DataStallRecoveryStats {
 
         int carrierId = phone.getCarrierId();
         int rat = getRat(phone);
-        int band = ServiceStateStats.getBand(phone, rat);
+        int band = rat == TelephonyManager.NETWORK_TYPE_IWLAN
+                ? 0 : ServiceStateStats.getBand(phone);
         // the number returned here matches the SignalStrength enum we have
         int signalStrength = phone.getSignalStrength().getLevel();
         boolean isOpportunistic = getIsOpportunistic(phone);

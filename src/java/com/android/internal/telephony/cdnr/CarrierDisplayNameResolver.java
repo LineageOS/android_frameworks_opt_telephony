@@ -480,7 +480,8 @@ public class CarrierDisplayNameResolver {
             if (DBG) {
                 Rlog.d(TAG, "CarrierName override by Cross-SIM Calling " + data);
             }
-        } else if (getCombinedRegState(getServiceState()) == ServiceState.STATE_IN_SERVICE) {
+        } else if (mPhone.getServiceStateTracker().getCombinedRegState(getServiceState())
+                == ServiceState.STATE_IN_SERVICE) {
             if (mPhone.isWifiCallingEnabled()) {
                 data = getCarrierDisplayNameFromWifiCallingOverride(data);
                 if (DBG) {
@@ -628,14 +629,5 @@ public class CarrierDisplayNameResolver {
             if (TextUtils.isEmpty(name)) return name;
             return String.format(mDataFormat, name.trim());
         }
-    }
-
-    /**
-     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed.
-     * @param ss service state.
-     */
-    private static int getCombinedRegState(ServiceState ss) {
-        if (ss.getState() != ServiceState.STATE_IN_SERVICE) return ss.getDataRegistrationState();
-        return ss.getState();
     }
 }

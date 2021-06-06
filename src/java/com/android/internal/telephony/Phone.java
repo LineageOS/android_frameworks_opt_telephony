@@ -4651,10 +4651,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         boolean isEmergencyCallOnly = false;
         for (Phone phone : PhoneFactory.getPhones()) {
             if (phone != null) {
-                ServiceState ss = phone.getServiceStateTracker().getServiceState();
-                // One of the phone is in service, hence the device is not emergency call only.
-                if (ss.getState() == ServiceState.STATE_IN_SERVICE
-                        || ss.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE) {
+                ServiceStateTracker sst = phone.getServiceStateTracker();
+                ServiceState ss = sst.getServiceState();
+                // Combined reg state is in service, hence the device is not emergency call only.
+                if (sst.getCombinedRegState(ss) == ServiceState.STATE_IN_SERVICE) {
                     return false;
                 }
                 isEmergencyCallOnly |= ss.isEmergencyOnly();
