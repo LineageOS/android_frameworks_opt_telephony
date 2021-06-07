@@ -18,17 +18,23 @@ package com.android.internal.telephony;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
+
 import android.hardware.radio.V1_6.NrSignalStrength;
 import android.os.Parcel;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrength;
 import android.telephony.CellSignalStrengthNr;
-import android.test.AndroidTestCase;
+import android.telephony.ServiceState;
 
 import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class CellSignalStrengthNrTest extends AndroidTestCase {
+public class CellSignalStrengthNrTest extends TelephonyTest {
     private static final int CSIRSRP = -123;
     private static final int CSIRSRQ = -11;
     private static final int ANOTHER_CSIRSRP = -111;
@@ -50,6 +56,19 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
     private static final int SSRSRP = -112;
     private static final int SSRSRQ = -13;
     private static final int SSSINR = 32;
+
+    @Mock
+    ServiceState mSS;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp(this.getClass().getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
+    }
 
     private List<Integer> getCsiCqiList() {
         return CSICQI_REPORT.stream()
@@ -219,5 +238,20 @@ public class CellSignalStrengthNrTest extends AndroidTestCase {
         assertThat(anotherCss.getSsRsrp()).isEqualTo(SSRSRP);
         assertThat(anotherCss.getSsRsrq()).isEqualTo(SSRSRQ);
         assertThat(anotherCss.getSsSinr()).isEqualTo(SSSINR);
+    }
+
+    @Test
+    public void testLevel() {
+        CellSignalStrengthNr css = new CellSignalStrengthNr(CSIRSRP, CSIRSRQ, CSISINR, SSRSRP,
+                SSRSRQ, SSSINR);
+
+        // No keys in the bundle - should use RSRP and default levels.
+        css.updateLevel(null, null);
+        assertEquals(0 /* NONE or UNKNOWN */, css.getLevel());
+
+        doReturn(10).when(mSS).getArfcnRsrpBoost();
+        // Add rsrp boost and level should change to 1 - POOR
+        css.updateLevel(null, mSS);
+        assertEquals(1 /* MODERATE */, css.getLevel());
     }
 }
