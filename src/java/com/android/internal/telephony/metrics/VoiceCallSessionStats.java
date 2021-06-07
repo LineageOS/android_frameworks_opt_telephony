@@ -519,11 +519,7 @@ public class VoiceCallSessionStats {
 
     private void updateRatTracker(ServiceState state) {
         @NetworkType int rat = getRat(state);
-        boolean isWifiCall =
-                mPhone.getImsPhone() != null
-                        && mPhone.getImsPhone().isWifiCallingEnabled()
-                        && state.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN;
-        int band = isWifiCall ? 0 : ServiceStateStats.getBand(state);
+        int band = ServiceStateStats.getBand(state, rat);
 
         mRatUsage.add(mPhone.getCarrierId(), rat, getTimeMillis(), getConnectionIds());
         for (int i = 0; i < mCallProtos.size(); i++) {
