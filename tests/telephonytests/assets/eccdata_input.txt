@@ -1,0 +1,15 @@
+revision: 1
+countries {
+  iso_code: "US"
+  eccs {
+    phone_number: "54321"
+    types: POLICE
+    types: AMBULANCE
+    types: FIRE
+    types: MARINE_GUARD
+    types: MOUNTAIN_RESCUE
+    types: MIEC
+    types: AIEC
+  }
+  ecc_fallback: "911"
+}
