@@ -1872,12 +1872,6 @@ public class ImsResolverTest extends ImsTestBase {
             fail("Unable to create looper from handler.");
         }
 
-        ArgumentCaptor<BroadcastReceiver> receiversCaptor =
-                ArgumentCaptor.forClass(BroadcastReceiver.class);
-        verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
-        mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
-        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
-        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
         mTestImsResolver.setSubscriptionManagerProxy(mTestSubscriptionManagerProxy);
         mTestImsResolver.setTelephonyManagerProxy(mTestTelephonyManagerProxy);
         when(mMockQueryManagerFactory.create(any(Context.class),
@@ -1929,6 +1923,12 @@ public class ImsResolverTest extends ImsTestBase {
      */
     private void startBindCarrierConfigAlreadySet() {
         mTestImsResolver.initialize();
+        ArgumentCaptor<BroadcastReceiver> receiversCaptor =
+                ArgumentCaptor.forClass(BroadcastReceiver.class);
+        verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
+        mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
+        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
         ArgumentCaptor<ImsServiceFeatureQueryManager.Listener> queryManagerCaptor =
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
@@ -1944,6 +1944,12 @@ public class ImsResolverTest extends ImsTestBase {
      */
     private void startBindNoCarrierConfig(int numSlots) {
         mTestImsResolver.initialize();
+        ArgumentCaptor<BroadcastReceiver> receiversCaptor =
+                ArgumentCaptor.forClass(BroadcastReceiver.class);
+        verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
+        mTestPackageBroadcastReceiver = receiversCaptor.getAllValues().get(0);
+        mTestCarrierConfigReceiver = receiversCaptor.getAllValues().get(1);
+        mTestBootCompleteReceiver = receiversCaptor.getAllValues().get(2);
         ArgumentCaptor<ImsServiceFeatureQueryManager.Listener> queryManagerCaptor =
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
