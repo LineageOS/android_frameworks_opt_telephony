@@ -2075,7 +2075,15 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    boolean isPermanentFailure(@DataFailureCause int dcFailCause) {
+    /**
+     * Check if the data fail cause is a permanent failure (i.e. Frameworks will not retry data
+     * setup).
+     *
+     * @param dcFailCause The data fail cause
+     * @return {@code true} if the data fail cause is a permanent failure.
+     */
+    @VisibleForTesting
+    public boolean isPermanentFailure(@DataFailureCause int dcFailCause) {
         return (DataFailCause.isPermanentFailure(mPhone.getContext(), dcFailCause,
                 mPhone.getSubId())
                 && (mAttached.get() == false || dcFailCause != DataFailCause.SIGNAL_LOST));
