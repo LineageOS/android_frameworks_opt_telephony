@@ -64,6 +64,24 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private static final String EMERGENCY_NUMBER_DB_OTA_FILE = "eccdata_ota";
     private static final int CONFIG_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION = 99999;
     private static final String CONFIG_EMERGENCY_NUMBER_ADDRESS = "54321";
+    private static final String CONFIG_EMERGENCY_NUMBER_COUNTRY = "us";
+    private static final String CONFIG_EMERGENCY_NUMBER_MNC = "";
+    private static final int CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES =
+            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
+                    | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
+                    | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE
+                    | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD
+                    | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE
+                    | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC
+                    | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AIEC;
+    private static final ArrayList<String> CONFIG_EMERGENCY_NUMBER_SERVICE_URNS =
+            new ArrayList<String>();
+    private static final EmergencyNumber CONFIG_EMERGENCY_NUMBER = new EmergencyNumber(
+            CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    CONFIG_EMERGENCY_NUMBER_MNC, CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
     private static final int OTA_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION = 999999;
     private static final String OTA_EMERGENCY_NUMBER_ADDRESS = "98765";
 
@@ -206,6 +224,10 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         }
     }
 
+    private boolean hasDbEmergencyNumber(EmergencyNumber number, List<EmergencyNumber> list) {
+        return list.contains(number);
+    }
+
     private boolean hasDbEmergencyNumber(String number, List<EmergencyNumber> list) {
         boolean foundDbNumber = false;
         for (EmergencyNumber num : list) {
@@ -332,15 +354,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
         processAllMessages();
-
-        boolean hasDatabaseNumber = false;
-        for (EmergencyNumber number : mEmergencyNumberTrackerMock.getEmergencyNumberList()) {
-            if (number.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
-                hasDatabaseNumber = true;
-                break;
-            }
-        }
-        assertTrue(hasDatabaseNumber);
+        assertTrue(hasDbEmergencyNumber(CONFIG_EMERGENCY_NUMBER,
+                mEmergencyNumberTrackerMock.getEmergencyNumberList()));
     }
 
     /**
@@ -357,7 +372,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
         // Emergency Number Db is cached per country, given the country is empty at this time,
         // we should not expect any db number there.
-        assertFalse(hasDbEmergencyNumber(CONFIG_EMERGENCY_NUMBER_ADDRESS,
+        assertFalse(hasDbEmergencyNumber(CONFIG_EMERGENCY_NUMBER,
                 mEmergencyNumberTrackerMock.getEmergencyNumberList()));
 
         // Set up the OTA database file folder as sdcard for testing purposes
