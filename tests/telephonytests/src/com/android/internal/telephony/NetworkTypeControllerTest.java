@@ -29,6 +29,7 @@ import android.os.Looper;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
@@ -46,6 +47,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -62,6 +65,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
     private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
     private static final int EVENT_INITIALIZE = 12;
+    private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED = 13;
 
     private NetworkTypeController mNetworkTypeController;
     private PersistableBundle mBundle;
@@ -303,6 +307,52 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
         assertEquals("connected_mmwave", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateNrConnectedMmwaveWithAdditionalBandAndNoMmwave()
+            throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_HIGH).when(mServiceState).getNrFrequencyRange();
+        mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
+                new int[]{41});
+        PhysicalChannelConfig physicalChannelConfig = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setBand(41)
+                .build();
+        List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = new ArrayList<>();
+        mLastPhysicalChannelConfigList.add(physicalChannelConfig);
+        doReturn(mLastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+        broadcastCarrierConfigs();
+
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateNrConnectedWithNoAdditionalBandAndNoMmwave()
+            throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_HIGH).when(mServiceState).getNrFrequencyRange();
+        mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
+                new int[]{41});
+        PhysicalChannelConfig physicalChannelConfig = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setBand(2)
+                .build();
+        List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = new ArrayList<>();
+        mLastPhysicalChannelConfigList.add(physicalChannelConfig);
+        doReturn(mLastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+        broadcastCarrierConfigs();
+
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
     }
 
     @Test
