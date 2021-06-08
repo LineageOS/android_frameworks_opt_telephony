@@ -3695,6 +3695,7 @@ public class SubscriptionController extends ISub.Stub {
         if (!hasIdentifierAccess) {
             result.clearIccId();
             result.clearCardString();
+            result.clearGroupUuid();
         }
         return result;
     }
