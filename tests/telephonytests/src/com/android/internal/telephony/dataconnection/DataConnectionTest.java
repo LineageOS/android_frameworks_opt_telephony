@@ -788,7 +788,7 @@ public class DataConnectionTest extends TelephonyTest {
 
         assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN));
-        assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
+        assertTrue("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         assertFalse("capabilities: " + getNetworkCapabilities(), getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL));
