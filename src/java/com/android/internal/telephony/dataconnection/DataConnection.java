@@ -1928,12 +1928,13 @@ public class DataConnection extends StateMachine {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
 
-        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
         if (mEnterpriseUse) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        }
+
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
         if (mMmsUseOnly) {
