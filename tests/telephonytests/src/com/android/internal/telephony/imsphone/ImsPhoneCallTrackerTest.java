@@ -29,6 +29,7 @@ import static junit.framework.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
@@ -569,6 +570,12 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         // Now fake the ImsService crashing
         mCTUT.hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        try {
+            // ensure new calls are not blocked by any lingering state after crash.
+            mCTUT.checkForDialIssues();
+        } catch (CallStateException e) {
+            fail("checkForDialIssues should not generate a CallStateException: " + e.getMessage());
+        }
     }
 
     /**
@@ -635,15 +642,30 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
     }
 
-    @FlakyTest
-    @Ignore
     @Test
     @SmallTest
     public void testImsMOCallDial() {
         startOutgoingCall();
         //call established
         mImsCallListener.onCallProgressing(mSecondImsCall);
+        processAllMessages();
         assertEquals(Call.State.ALERTING, mCTUT.mForegroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMoCallCrash() {
+        startOutgoingCall();
+        // Now fake the ImsService crashing
+        mCTUT.hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
+        processAllMessages();
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        try {
+            // ensure new calls are not blocked by any lingering state after crash.
+            mCTUT.checkForDialIssues();
+        } catch (CallStateException e) {
+            fail("checkForDialIssues should not generate a CallStateException: " + e.getMessage());
+        }
     }
 
     private void startOutgoingCall() {
@@ -658,6 +680,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
+        processAllMessages();
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
         assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
     }
