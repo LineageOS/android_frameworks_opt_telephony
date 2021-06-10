@@ -396,22 +396,32 @@ public class EmergencyNumberTracker extends Handler {
         for (int typeData : eccInfo.types) {
             switch (typeData) {
                 case EccInfo.Type.POLICE:
-                    emergencyServiceCategoryBitmask = emergencyServiceCategoryBitmask == 0
-                            ? EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE
-                            : emergencyServiceCategoryBitmask
-                            | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE;
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE;
                     break;
                 case EccInfo.Type.AMBULANCE:
-                    emergencyServiceCategoryBitmask = emergencyServiceCategoryBitmask == 0
-                            ? EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE
-                            : emergencyServiceCategoryBitmask
-                            | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE;
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE;
                     break;
                 case EccInfo.Type.FIRE:
-                    emergencyServiceCategoryBitmask = emergencyServiceCategoryBitmask == 0
-                            ? EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE
-                            : emergencyServiceCategoryBitmask
-                            | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE;
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE;
+                    break;
+                case EccInfo.Type.MARINE_GUARD:
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD;
+                    break;
+                case EccInfo.Type.MOUNTAIN_RESCUE:
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE;
+                    break;
+                case EccInfo.Type.MIEC:
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC;
+                    break;
+                case EccInfo.Type.AIEC:
+                    emergencyServiceCategoryBitmask |=
+                            EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AIEC;
                     break;
                 default:
                     // Ignores unknown types.
