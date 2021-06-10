@@ -1716,7 +1716,6 @@ public class ServiceStateTracker extends Handler {
                         log("EVENT_PHYSICAL_CHANNEL_CONFIG: size=" + list.size() + " list="
                                 + list);
                     }
-                    mPhone.notifyPhysicalChannelConfig(list);
                     mLastPhysicalChannelConfigList = list;
                     boolean hasChanged = false;
                     if (updateNrStateFromPhysicalChannelConfigs(list, mSS)) {
@@ -1730,6 +1729,7 @@ public class ServiceStateTracker extends Handler {
                     hasChanged |= RatRatcheter
                             .updateBandwidths(getBandwidthsFromConfigs(list), mSS);
 
+                    mPhone.notifyPhysicalChannelConfig(list);
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged) {
                         mPhone.notifyServiceStateChanged(mSS);

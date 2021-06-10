@@ -478,7 +478,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
         broadcastCarrierConfigs();
 
-
         mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
                 new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
@@ -563,6 +562,81 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
 
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+    }
+
+    @Test
+    public void testEventPhysicalChannelChangeFromLteToLteCaInLegacyState() throws Exception {
+        testTransitionToCurrentStateLegacy();
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        updateOverrideNetworkType();
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        doReturn(true).when(mServiceState).isUsingCarrierAggregation();
+        doReturn(new int[] {30000}).when(mServiceState).getCellBandwidths();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+        processAllMessages();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testEventPhysicalChannelChangeFromLteToLteCaInLteConnectedState() throws Exception {
+        // Remove RRC idle/RRC connected from 5G override
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING,
+                "connected_mmwave:5G_Plus,connected:5G");
+        broadcastCarrierConfigs();
+
+        // Transition to LTE connected state
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
+                new AsyncResult(null, DcController.PHYSICAL_LINK_ACTIVE, null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // LTE -> LTE+
+        doReturn(true).when(mServiceState).isUsingCarrierAggregation();
+        doReturn(new int[] {30000}).when(mServiceState).getCellBandwidths();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+        processAllMessages();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
+                mNetworkTypeController.getOverrideNetworkType());
+    }
+
+    @Test
+    public void testEventPhysicalChannelChangeFromLteToLteCaInIdleState() throws Exception {
+        // Remove RRC idle/RRC connected from 5G override
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING,
+                "connected_mmwave:5G_Plus,connected:5G");
+        broadcastCarrierConfigs();
+
+        // Transition to idle state
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
+                new AsyncResult(null, DcController.PHYSICAL_LINK_NOT_ACTIVE, null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // LTE -> LTE+
+        doReturn(true).when(mServiceState).isUsingCarrierAggregation();
+        doReturn(new int[] {30000}).when(mServiceState).getCellBandwidths();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+        processAllMessages();
+
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
+                mNetworkTypeController.getOverrideNetworkType());
     }
 
     @Test
