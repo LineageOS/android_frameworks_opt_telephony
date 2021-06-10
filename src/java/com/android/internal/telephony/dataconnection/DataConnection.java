@@ -1022,7 +1022,7 @@ public class DataConnection extends StateMachine {
     private void onRquestHandoverFailed(ConnectionParams cp) {
         sendMessage(obtainMessage(EVENT_CANCEL_HANDOVER));
         notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+                DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
     }
 
     private void requestHandover(boolean inCorrectState, DataConnection srcDc,
@@ -1395,6 +1395,9 @@ public class DataConnection extends StateMachine {
         } else if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
             result.mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+        } else if (resultCode == DataServiceCallback.RESULT_ERROR_TEMPORARILY_UNAVAILABLE) {
+            result = SetupResult.ERROR_DATA_SERVICE_SPECIFIC_ERROR;
+            result.mFailCause = DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE;
         } else if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_ARG) {
             result = SetupResult.ERROR_INVALID_ARG;
             result.mFailCause = DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER;
@@ -1925,12 +1928,13 @@ public class DataConnection extends StateMachine {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
 
-        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
         if (mEnterpriseUse) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        }
+
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
         if (mMmsUseOnly) {
@@ -2755,7 +2759,9 @@ public class DataConnection extends StateMachine {
                             // failure cause and determine if we need to retry this APN later
                             // or not.
                             mInactiveState.setEnterNotificationParams(cp, result.mFailCause,
-                                    dataCallResponse.getHandoverFailureMode());
+                                    dataCallResponse != null
+                                            ? dataCallResponse.getHandoverFailureMode()
+                                            : DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN);
                             transitionTo(mInactiveState);
                             break;
                         case ERROR_STALE:
@@ -3633,6 +3639,9 @@ public class DataConnection extends StateMachine {
          * The value 0 means retry should be done ASAP.
          * The value of Long.MAX_VALUE(0x7fffffffffffffff) means no retry.
          */
+        if (response == null) {
+            return RetryManager.NO_SUGGESTED_RETRY_DELAY;
+        }
 
         long suggestedRetryTime = response.getRetryDurationMillis();
 

@@ -1499,9 +1499,12 @@ public class DcTracker extends Handler {
             }
 
             // If the request is restricted and there are only soft disallowed reasons (e.g. data
-            // disabled, data roaming disabled) existing, we should allow the data.
+            // disabled, data roaming disabled) existing, we should allow the data. ENTERPRISE is
+            // an exception and should not be treated as restricted for this purpose; it should be
+            // treated same as DEFAULT.
             if (apnContext != null
                     && apnContext.hasRestrictedRequests(true)
+                    && !apnContext.getApnType().equals(ApnSetting.TYPE_ENTERPRISE_STRING)
                     && !reasons.allowed()) {
                 reasons.add(DataAllowedReasonType.RESTRICTED_REQUEST);
             }
@@ -2075,7 +2078,15 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    boolean isPermanentFailure(@DataFailureCause int dcFailCause) {
+    /**
+     * Check if the data fail cause is a permanent failure (i.e. Frameworks will not retry data
+     * setup).
+     *
+     * @param dcFailCause The data fail cause
+     * @return {@code true} if the data fail cause is a permanent failure.
+     */
+    @VisibleForTesting
+    public boolean isPermanentFailure(@DataFailureCause int dcFailCause) {
         return (DataFailCause.isPermanentFailure(mPhone.getContext(), dcFailCause,
                 mPhone.getSubId())
                 && (mAttached.get() == false || dcFailCause != DataFailCause.SIGNAL_LOST));
