@@ -2831,6 +2831,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(mApnContext).when(apnContextsByType).get(eq(ApnSetting.TYPE_IMS));
         doReturn(mApnContext).when(apnContexts).get(eq(ApnSetting.TYPE_IMS_STRING));
         doReturn(false).when(mApnContext).isConnectable();
+        doReturn(false).when(mDataEnabledSettings).isDataEnabled(anyInt());
         doReturn(DctConstants.State.DISCONNECTING).when(mApnContext).getState();
         replaceInstance(DcTracker.class, "mApnContextsByType", mDct, apnContextsByType);
         replaceInstance(DcTracker.class, "mApnContexts", mDct, apnContexts);
@@ -2852,6 +2853,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(DctConstants.State.RETRYING).when(mApnContext).getState();
         // Data now is disconnected
         doReturn(true).when(mApnContext).isConnectable();
+        doReturn(true).when(mDataEnabledSettings).isDataEnabled(anyInt());
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE,
                 new AsyncResult(Pair.create(mApnContext, 0), null, null)));
 
