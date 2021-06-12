@@ -25,6 +25,9 @@ import static android.security.keystore.KeyProperties.PURPOSE_ENCRYPT;
 
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__CACHED_PIN_DISCARDED;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_COUNT_NOT_MATCHING_AFTER_REBOOT;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_DECRYPTION_ERROR;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_ENCRYPTION_ERROR;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_REQUIRED_AFTER_REBOOT;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_STORED_FOR_VERIFICATION;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE;
@@ -125,6 +128,7 @@ public class PinStorage extends Handler {
     private static final String SHARED_PREFS_NAME = "pinstorage_prefs";
     private static final String SHARED_PREFS_AVAILABLE_PIN_BASE_KEY = "encrypted_pin_available_";
     private static final String SHARED_PREFS_REBOOT_PIN_BASE_KEY = "encrypted_pin_reboot_";
+    private static final String SHARED_PREFS_STORED_PINS = "stored_pins";
 
     // Events
     private static final int ICC_CHANGED_EVENT = 1;
@@ -347,6 +351,9 @@ public class PinStorage extends Handler {
                     PIN_STORAGE_EVENT__EVENT__PIN_REQUIRED_AFTER_REBOOT, notAvailableCount);
         }
 
+        // Save number of PINs to generate metrics after reboot
+        saveNumberOfCachedPins(storedCount);
+
         return result;
     }
 
@@ -407,7 +414,7 @@ public class PinStorage extends Handler {
         mShortTermSecretKey =
                 initializeSecretKey(KEYSTORE_ALIAS_SHORT_TERM, /*createIfAbsent=*/ false);
 
-        boolean otaReboot = false;
+        int verificationReadyCount = 0;
         int slotCount = getSlotCount();
         for (int slotId = 0; slotId < slotCount; slotId++) {
             // Read PIN information from storage
@@ -434,11 +441,21 @@ public class PinStorage extends Handler {
             if (storedPin.status == PinStatus.REBOOT_READY) {
                 storedPin.status = PinStatus.VERIFICATION_READY;
                 savePinInformation(slotId, storedPin);
-                otaReboot = true;
+                verificationReadyCount++;
             }
         }
-        if (otaReboot) {
+        if (verificationReadyCount > 0) {
             startTimer(TIMER_VALUE_AFTER_OTA_MILLIS);
+        }
+
+        // Generate metrics for PINs that had been stored before reboot, but are not available
+        // after. This can happen if there is an excessive delay in unlocking the device (short
+        // term key expires), but also if a new SIM card without PIN is present.
+        int prevCachedPinCount = saveNumberOfCachedPins(0);
+        if (prevCachedPinCount > verificationReadyCount) {
+            TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                    PIN_STORAGE_EVENT__EVENT__PIN_COUNT_NOT_MATCHING_AFTER_REBOOT,
+                    prevCachedPinCount - verificationReadyCount);
         }
     }
 
@@ -483,6 +500,9 @@ public class PinStorage extends Handler {
         // the status of the PIN as needed.
         deleteSecretKey(KEYSTORE_ALIAS_SHORT_TERM);
         mShortTermSecretKey = null;
+
+        // Reset number of stored PINs (applicable if timer expired before unattended reboot).
+        saveNumberOfCachedPins(0);
 
         // Write metrics about number of discarded PINs
         if (discardedPin > 0) {
@@ -892,6 +912,19 @@ public class PinStorage extends Handler {
         }
     }
 
+    /**
+     * Saves the number of cached PINs ready for verification after reboot and returns the
+     * previous value.
+     */
+    private int saveNumberOfCachedPins(int storedCount) {
+        SharedPreferences sharedPrefs =
+                mContext.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
+
+        int previousValue = sharedPrefs.getInt(SHARED_PREFS_STORED_PINS, 0);
+        sharedPrefs.edit().putInt(SHARED_PREFS_STORED_PINS, storedCount).commit();
+        return previousValue;
+    }
+
     private boolean startTimer(int duration) {
         removeMessages(TIMER_EXPIRATION_EVENT);
         return duration > 0 ? sendEmptyMessageDelayed(TIMER_EXPIRATION_EVENT, duration) : true;
@@ -1118,6 +1151,8 @@ public class PinStorage extends Handler {
             return EncryptedPin.toByteArray(encryptedPin);
         } catch (Exception e) {
             loge("Encrypt exception", e);
+            TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                    PIN_STORAGE_EVENT__EVENT__PIN_ENCRYPTION_ERROR, 1);
         }
         return new byte[0];
     }
@@ -1141,6 +1176,8 @@ public class PinStorage extends Handler {
             }
         } catch (Exception e) {
             loge("Decrypt exception", e);
+            TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                    PIN_STORAGE_EVENT__EVENT__PIN_DECRYPTION_ERROR, 1);
         }
         return new byte[0];
     }
