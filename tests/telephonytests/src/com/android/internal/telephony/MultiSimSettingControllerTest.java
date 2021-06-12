@@ -51,6 +51,7 @@ import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
 import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -63,6 +64,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -133,6 +135,8 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(true).when(mSubControllerMock).isOpportunistic(5);
         doReturn(1).when(mPhoneMock1).getSubId();
         doReturn(2).when(mPhoneMock2).getSubId();
+        mPhoneMock1.mCi = mSimulatedCommands;
+        mPhoneMock2.mCi = mSimulatedCommands;
         List<SubscriptionInfo> infoList = Arrays.asList(mSubInfo1, mSubInfo2);
         doReturn(infoList).when(mSubControllerMock)
                 .getActiveSubscriptionInfoList(anyString(), nullable(String.class));
@@ -164,7 +168,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testTestSubInfoChangeBeforeAllSubReady() throws Exception {
+    public void testSubInfoChangeBeforeAllSubReady() throws Exception {
         doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mSubControllerMock)
                 .getDefaultDataSubId();
         doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mSubControllerMock)
@@ -197,6 +201,50 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         verify(mSubControllerMock).setDefaultVoiceSubId(1);
         verify(mSubControllerMock).setDefaultSmsSubId(1);
         verifyDismissIntentSent();
+    }
+
+    @Test
+    public void testSubInfoChangeAfterRadioUnavailable() throws Exception {
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0, 1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 2);
+        processAllMessages();
+
+        // Notify radio unavailable.
+        replaceInstance(BaseCommands.class, "mState", mSimulatedCommands,
+                TelephonyManager.RADIO_POWER_UNAVAILABLE);
+        mMultiSimSettingControllerUT.obtainMessage(
+                MultiSimSettingController.EVENT_RADIO_STATE_CHANGED).sendToTarget();
+
+        // Mark all subs as inactive.
+        doReturn(false).when(mSubControllerMock).isActiveSubId(1);
+        doReturn(false).when(mSubControllerMock).isActiveSubId(2);
+        doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(1);
+        doReturn(SubscriptionManager.INVALID_PHONE_INDEX).when(mSubControllerMock).getPhoneId(2);
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mPhoneMock1).getSubId();
+        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mPhoneMock2).getSubId();
+        List<SubscriptionInfo> infoList = new ArrayList<>();
+        doReturn(infoList).when(mSubControllerMock).getActiveSubscriptionInfoList(anyString(),
+                nullable(String.class));
+        doReturn(new int[]{}).when(mSubControllerMock).getActiveSubIdList(anyBoolean());
+        clearInvocations(mSubControllerMock);
+
+        // The below sub info change should be ignored.
+        mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
+        processAllMessages();
+        verify(mSubControllerMock, never()).setDefaultDataSubId(anyInt());
+        verify(mSubControllerMock, never()).setDefaultVoiceSubId(anyInt());
+        verify(mSubControllerMock, never()).setDefaultSmsSubId(anyInt());
+
+        // Send all sub ready notification
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        processAllMessages();
+
+        // Everything should be set to invalid since nothing is active.
+        verify(mSubControllerMock).setDefaultDataSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        verify(mSubControllerMock)
+                .setDefaultVoiceSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        verify(mSubControllerMock).setDefaultSmsSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
     }
 
     @Test
