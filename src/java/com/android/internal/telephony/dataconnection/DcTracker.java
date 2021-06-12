@@ -1626,8 +1626,7 @@ public class DcTracker extends Handler {
             }
 
             // Check if it fails because of the existing data is still disconnecting.
-            if (dataConnectionReasons.containsOnly(
-                    DataDisallowedReasonType.DATA_IS_DISCONNECTING)
+            if (dataConnectionReasons.contains(DataDisallowedReasonType.DATA_IS_DISCONNECTING)
                     && isHandoverPending(apnContext.getApnTypeBitmask())) {
                 // Normally we don't retry when isDataAllow() returns false, because that's consider
                 // pre-condition not met, for example, data not enabled by the user, or airplane
@@ -2459,7 +2458,6 @@ public class DcTracker extends Handler {
         }
 
         mAutoAttachEnabled.set(false);
-        setDefaultDataRoamingEnabled();
         setDefaultPreferredApnIfNeeded();
         read5GConfiguration();
         registerSettingsObserver();
@@ -2499,6 +2497,7 @@ public class DcTracker extends Handler {
         readConfiguration();
 
         if (mSimState == TelephonyManager.SIM_STATE_LOADED) {
+            setDefaultDataRoamingEnabled();
             createAllApnList();
             setDataProfilesAsNeeded();
             setInitialAttachApn();
