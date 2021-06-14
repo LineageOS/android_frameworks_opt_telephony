@@ -581,6 +581,14 @@ public interface PhoneInternalInterface {
     }
 
     /**
+     * Sets the radio power on for a test emergency number.
+     *
+     * @param isSelectedPhoneForEmergencyCall true means this phone / modem is selected to place
+     *                                  emergency call after turning power on.
+     */
+    default void setRadioPowerOnForTestEmergencyCall(boolean isSelectedPhoneForEmergencyCall) {}
+
+    /**
      * Sets the radio power on/off state with option to specify whether it's for emergency call
      * (off is sometimes called "airplane mode"). Current state can be gotten via
      * {@link #getServiceState()}.{@link
