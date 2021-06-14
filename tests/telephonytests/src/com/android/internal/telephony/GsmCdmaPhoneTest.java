@@ -1436,6 +1436,19 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSetRadioPowerOnForTestEmergencyCall() {
+        mPhoneUT.setRadioPower(false);
+        verify(mSST).setRadioPowerForReason(false, false, false, false,
+                Phone.RADIO_POWER_REASON_USER);
+
+        mPhoneUT.setRadioPowerOnForTestEmergencyCall(false);
+        verify(mSST).clearAllRadioOffReasons();
+        verify(mSST).setRadioPowerForReason(eq(true), eq(false), anyBoolean(), eq(false),
+                eq(Phone.RADIO_POWER_REASON_USER));
+    }
+
+    @Test
+    @SmallTest
     public void testReapplyUiccApplicationEnablementRetry() throws Exception {
         mPhoneUT.mCi = mMockCi;
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
