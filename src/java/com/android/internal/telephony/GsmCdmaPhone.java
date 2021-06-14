@@ -2292,7 +2292,8 @@ public class GsmCdmaPhone extends Phone {
             extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
 
             final TelecomManager telecomManager = TelecomManager.from(mContext);
-            telecomManager.placeCall(Uri.parse(PhoneAccount.SCHEME_TEL + cfNumber), extras);
+            telecomManager.placeCall(
+                    Uri.fromParts(PhoneAccount.SCHEME_TEL, cfNumber, null), extras);
 
             AsyncResult.forMessage(onComplete, CommandsInterface.SS_STATUS_UNKNOWN, null);
             onComplete.sendToTarget();
@@ -2457,7 +2458,8 @@ public class GsmCdmaPhone extends Phone {
             extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
 
             final TelecomManager telecomManager = TelecomManager.from(mContext);
-            telecomManager.placeCall(Uri.parse(PhoneAccount.SCHEME_TEL + cwPrefix), extras);
+            telecomManager.placeCall(
+                    Uri.fromParts(PhoneAccount.SCHEME_TEL, cwPrefix, null), extras);
 
             AsyncResult.forMessage(onComplete, CommandsInterface.SS_STATUS_UNKNOWN, null);
             onComplete.sendToTarget();
