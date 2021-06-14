@@ -1095,6 +1095,14 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
+     * Clear all the radio off reasons. This should be done when turning radio off for genuine or
+     * test emergency calls.
+     */
+    public void clearAllRadioOffReasons() {
+        sRadioPowerOffReasons.clear();
+    }
+
+    /**
      * Turn on or off radio power.
      */
     public final void setRadioPower(boolean power) {
@@ -1116,7 +1124,7 @@ public class ServiceStateTracker extends Handler {
      * Turn on or off radio power with option to specify whether it's for emergency call and specify
      * a reason for setting the power state.
      * More details check {@link PhoneInternalInterface#setRadioPower(
-     * boolean, boolean, boolean, boolean, String)}.
+     * boolean, boolean, boolean, boolean, int)}.
      */
     public void setRadioPowerForReason(boolean power, boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply, int reason) {
@@ -1125,7 +1133,7 @@ public class ServiceStateTracker extends Handler {
 
         if (power) {
             if (forEmergencyCall) {
-                sRadioPowerOffReasons.clear();
+                clearAllRadioOffReasons();
             } else {
                 sRadioPowerOffReasons.remove(reason);
             }
