@@ -433,8 +433,7 @@ public class PhoneSwitcher extends Handler {
         NetworkFactory networkFactory = new PhoneSwitcherNetworkRequestListener(looper, context,
                 builder.build(), this);
         // we want to see all requests
-        networkFactory.setScoreFilter(101);
-        networkFactory.register();
+        networkFactory.registerIgnoringScore();
 
         updateHalCommandToUse();
 
