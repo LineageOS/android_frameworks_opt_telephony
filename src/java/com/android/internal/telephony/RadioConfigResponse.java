@@ -314,6 +314,7 @@ public class RadioConfigResponse extends IRadioConfigResponse.Stub {
                 Rlog.d(TAG, "CAPABILITY_SLICING_CONFIG_SUPPORTED");
                 caps.add(CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
                 Rlog.d(TAG, "CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED");
+            } else {
                 caps.add(CAPABILITY_SIM_PHONEBOOK_IN_MODEM);
                 Rlog.d(TAG, "CAPABILITY_SIM_PHONEBOOK_IN_MODEM");
             }
