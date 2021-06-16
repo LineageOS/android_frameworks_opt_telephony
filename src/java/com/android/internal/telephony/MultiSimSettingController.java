@@ -82,6 +82,8 @@ public class MultiSimSettingController extends Handler {
     private static final int EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED = 6;
     private static final int EVENT_CARRIER_CONFIG_CHANGED            = 7;
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED          = 8;
+    @VisibleForTesting
+    public static final int EVENT_RADIO_STATE_CHANGED                = 9;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"PRIMARY_SUB_"},
@@ -294,6 +296,16 @@ public class MultiSimSettingController extends Handler {
             case EVENT_MULTI_SIM_CONFIG_CHANGED:
                 int activeModems = (int) ((AsyncResult) msg.obj).result;
                 onMultiSimConfigChanged(activeModems);
+                break;
+            case EVENT_RADIO_STATE_CHANGED:
+                for (Phone phone : PhoneFactory.getPhones()) {
+                    if (phone.mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                        if (DBG) log("Radio unavailable. Clearing sub info initialized flag.");
+                        mSubInfoInitialized = false;
+                        break;
+                    }
+                }
+                break;
         }
     }
 
@@ -335,6 +347,9 @@ public class MultiSimSettingController extends Handler {
     private void onAllSubscriptionsLoaded() {
         if (DBG) log("onAllSubscriptionsLoaded");
         mSubInfoInitialized = true;
+        for (Phone phone : PhoneFactory.getPhones()) {
+            phone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
+        }
         reEvaluateAll();
     }
 
@@ -423,6 +438,9 @@ public class MultiSimSettingController extends Handler {
         // subscription change.
         for (int phoneId = activeModems; phoneId < mCarrierConfigLoadedSubIds.length; phoneId++) {
             mCarrierConfigLoadedSubIds[phoneId] = INVALID_SUBSCRIPTION_ID;
+        }
+        for (Phone phone : PhoneFactory.getPhones()) {
+            phone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
         }
     }
 
