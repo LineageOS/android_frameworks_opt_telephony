@@ -72,6 +72,8 @@ public class RadioConfigResponseTest extends TelephonyTest {
                 caps.contains(TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING));
         assertFalse(
                 caps.contains(TelephonyManager.CAPABILITY_SLICING_CONFIG_SUPPORTED));
+        assertTrue(
+                caps.contains(TelephonyManager.CAPABILITY_SIM_PHONEBOOK_IN_MODEM));
     }
 
     @Test
@@ -88,5 +90,7 @@ public class RadioConfigResponseTest extends TelephonyTest {
                 caps.contains(TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING));
         assertTrue(
                 caps.contains(TelephonyManager.CAPABILITY_SLICING_CONFIG_SUPPORTED));
+        assertFalse(
+                caps.contains(TelephonyManager.CAPABILITY_SIM_PHONEBOOK_IN_MODEM));
     }
 }
