@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -137,6 +138,63 @@ public class ImsPhoneCallTest extends TelephonyTest {
         mImsCallUT.update(null, mImsCall, Call.State.ACTIVE);
         verify(mImsPhone, times(1)).stopRingbackTone();
         assertEquals(Call.State.ACTIVE, mImsCallUT.getState());
+    }
+
+    /**
+     * Verifies we can handle starting ringback between call state changes.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateRingBackToneBetweenStateChange() {
+        mMediaProfile.mAudioDirection = ImsStreamMediaProfile.DIRECTION_SEND_RECEIVE;
+        mImsCallProfile.mMediaProfile = mMediaProfile;
+
+        // This call state change should NOT start ringback since it the direction is wrong.
+        mImsCallUT.update(null, mImsCall, Call.State.ALERTING);
+        verify(mImsPhone, never()).startRingbackTone();
+        assertEquals(Call.State.ALERTING, mImsCallUT.getState());
+
+        // Simulate a change to the profile without a state change.
+        mMediaProfile.mAudioDirection = ImsStreamMediaProfile.DIRECTION_INACTIVE;
+        mImsCallUT.maybeChangeRingbackState(mImsCall);
+        verify(mImsPhone, times(1)).startRingbackTone();
+
+        // And then assume the call goes active, which would stop the ringback.
+        mImsCallUT.update(null, mImsCall, Call.State.ACTIVE);
+        verify(mImsPhone, times(1)).stopRingbackTone();
+        assertEquals(Call.State.ACTIVE, mImsCallUT.getState());
+    }
+
+    /**
+     * Verifies we can handle ringback start/stop entirely between call state changes.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateRingBackToneBetweenStateChangeTwo() {
+        mMediaProfile.mAudioDirection = ImsStreamMediaProfile.DIRECTION_SEND_RECEIVE;
+        mImsCallProfile.mMediaProfile = mMediaProfile;
+
+        // This call state change should NOT start ringback since it the direction is wrong.
+        mImsCallUT.update(null, mImsCall, Call.State.ALERTING);
+        verify(mImsPhone, never()).startRingbackTone();
+        assertEquals(Call.State.ALERTING, mImsCallUT.getState());
+
+        // Simulate a change to the profile without a state change.
+        mMediaProfile.mAudioDirection = ImsStreamMediaProfile.DIRECTION_INACTIVE;
+        mImsCallUT.maybeChangeRingbackState(mImsCall);
+        verify(mImsPhone, times(1)).startRingbackTone();
+
+        // Simulate another change to the profile without a state change.
+        mMediaProfile.mAudioDirection = ImsStreamMediaProfile.DIRECTION_SEND_RECEIVE;
+        mImsCallUT.maybeChangeRingbackState(mImsCall);
+        verify(mImsPhone, times(1)).stopRingbackTone();
+
+        // And then assume the call goes active, which should not impact ringback state.
+        mImsCallUT.update(null, mImsCall, Call.State.ACTIVE);
+        assertEquals(Call.State.ACTIVE, mImsCallUT.getState());
+        // Should still have only started and stopped once
+        verify(mImsPhone, times(1)).startRingbackTone();
+        verify(mImsPhone, times(1)).stopRingbackTone();
     }
 
     @Test
