@@ -1646,7 +1646,9 @@ public class DcTracker extends Handler {
 
             if (DBG) log(str.toString());
             apnContext.requestLog(str.toString());
-            sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false, false);
+            if (requestType == REQUEST_TYPE_HANDOVER) {
+                sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false, false);
+            }
             return;
         }
 
@@ -1671,8 +1673,10 @@ public class DcTracker extends Handler {
                 String str = "trySetupData: X No APN found retValue=false";
                 if (DBG) log(str);
                 apnContext.requestLog(str);
-                sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false,
-                        false);
+                if (requestType == REQUEST_TYPE_HANDOVER) {
+                    sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false,
+                            false);
+                }
                 return;
             } else {
                 apnContext.setWaitingApns(waitingApns);
@@ -1683,7 +1687,8 @@ public class DcTracker extends Handler {
             }
         }
 
-        if (!setupData(apnContext, radioTech, requestType)) {
+        if (!setupData(apnContext, radioTech, requestType)
+                && requestType == REQUEST_TYPE_HANDOVER) {
             sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false, false);
         }
     }
