@@ -3080,7 +3080,8 @@ public class DcTracker extends Handler {
             Log.wtf(mLogTag, "bad failure mode: "
                     + DataCallResponse.failureModeToString(handoverFailureMode));
         } else if (handoverFailureMode
-                != DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER) {
+                != DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER
+                && cause != DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE) {
             sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), success,
                     fallbackOnFailedHandover);
         }
