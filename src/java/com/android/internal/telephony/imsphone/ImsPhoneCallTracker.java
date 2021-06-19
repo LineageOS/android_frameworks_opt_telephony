@@ -2579,6 +2579,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (ignoreState) {
             conn.updateAddressDisplay(imsCall);
             conn.updateExtras(imsCall);
+            // Some devices will change the audio direction between major call state changes, so we
+            // need to check whether to start or stop ringback
+            conn.maybeChangeRingbackState();
 
             maybeSetVideoCallProvider(conn, imsCall);
             return;
