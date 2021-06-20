@@ -854,6 +854,14 @@ public class ImsPhoneConnection extends Connection implements
         return updateParent || updateAddressDisplay || updateMediaCapabilities || updateExtras;
     }
 
+    /**
+     * Re-evaluate whether ringback should be playing.
+     */
+    public void maybeChangeRingbackState() {
+        Rlog.i(LOG_TAG, "maybeChangeRingbackState");
+        mParent.maybeChangeRingbackState(mImsCall);
+    }
+
     @Override
     public int getPreciseDisconnectCause() {
         return mPreciseDisconnectCause;
