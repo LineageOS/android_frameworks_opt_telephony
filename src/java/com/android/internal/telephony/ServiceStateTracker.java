@@ -1083,8 +1083,7 @@ public class ServiceStateTracker extends Handler {
     /**
      * @return the current reasons for which the radio is off.
      */
-    @VisibleForTesting
-    public Set<Integer> getRadioPowerOffReasonsForTest() {
+    public Set<Integer> getRadioPowerOffReasons() {
         return sRadioPowerOffReasons;
     }
 
