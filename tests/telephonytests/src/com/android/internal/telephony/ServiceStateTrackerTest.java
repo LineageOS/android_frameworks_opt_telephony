@@ -269,11 +269,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitUntilReady();
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
-        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
-        mContext.sendBroadcast(intent);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-
         // Override SPN related resource
         mContextFixture.putResource(
                 com.android.internal.R.string.lockscreen_carrier_default,
@@ -334,6 +329,12 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     15, /* SIGNAL_STRENGTH_GOOD */
                     30  /* SIGNAL_STRENGTH_GREAT */
                 });
+
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
+        mContext.sendBroadcast(intent);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
         logd("ServiceStateTrackerTest -Setup!");
     }
 
