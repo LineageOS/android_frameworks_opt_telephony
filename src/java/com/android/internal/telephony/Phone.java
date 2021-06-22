@@ -452,7 +452,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected boolean mIsCarrierNrSupported = false;
 
     private boolean mUnitTestMode;
-    private CarrierPrivilegesTracker mCarrierPrivilegesTracker = null;
 
     protected VoiceCallSessionStats mVoiceCallSessionStats;
     protected SmsStats mSmsStats;
@@ -613,7 +612,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mSimActivationTracker = mTelephonyComponentFactory
                 .inject(SimActivationTracker.class.getName())
                 .makeSimActivationTracker(this);
-        mCarrierPrivilegesTracker = new CarrierPrivilegesTracker(mLooper, this, mContext);
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         }
@@ -4706,7 +4704,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /** @hide */
     public CarrierPrivilegesTracker getCarrierPrivilegesTracker() {
-        return mCarrierPrivilegesTracker;
+        return null;
     }
 
     public boolean useSsOverIms(Message onComplete) {
