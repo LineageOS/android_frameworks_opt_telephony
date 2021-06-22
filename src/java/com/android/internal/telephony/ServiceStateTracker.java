@@ -6320,8 +6320,7 @@ public class ServiceStateTracker extends Handler {
                 continue;
             }
             for (SignalThresholdInfo info : record.mRequest.getSignalThresholdInfos()) {
-                if (ran == info.getRadioAccessNetworkType()
-                        && measurement == info.getSignalMeasurementType()) {
+                if (isRanAndSignalMeasurementTypeMatch(ran, measurement, info)) {
                     for (int appThreshold : info.getThresholds()) {
                         target.add(appThreshold);
                     }
@@ -6352,12 +6351,44 @@ public class ServiceStateTracker extends Handler {
         sendMessage(obtainMessage(EVENT_ON_DEVICE_IDLE_STATE_CHANGED, isDeviceIdle));
     }
 
+    boolean shouldEnableSignalThresholdForAppRequest(
+            @AccessNetworkConstants.RadioAccessNetworkType int ran,
+            @SignalThresholdInfo.SignalMeasurementType int measurement,
+            int subId,
+            boolean isDeviceIdle) {
+        for (SignalRequestRecord record : mSignalRequestRecords) {
+            if (subId != record.mSubId) {
+                continue;
+            }
+            for (SignalThresholdInfo info : record.mRequest.getSignalThresholdInfos()) {
+                if (isRanAndSignalMeasurementTypeMatch(ran, measurement, info)
+                        && (!isDeviceIdle || isSignalReportRequestedWhileIdle(record.mRequest))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isRanAndSignalMeasurementTypeMatch(
+            @AccessNetworkConstants.RadioAccessNetworkType int ran,
+            @SignalThresholdInfo.SignalMeasurementType int measurement,
+            SignalThresholdInfo info) {
+        return ran == info.getRadioAccessNetworkType()
+                && measurement == info.getSignalMeasurementType();
+    }
+
+    private static boolean isSignalReportRequestedWhileIdle(SignalStrengthUpdateRequest request) {
+        return request.isSystemThresholdReportingRequestedWhileIdle()
+                || request.isReportingRequestedWhileIdle();
+    }
+
     private class SignalRequestRecord implements IBinder.DeathRecipient {
         final int mSubId; // subId the request originally applied to
         final int mCallingUid;
         final SignalStrengthUpdateRequest mRequest;
 
-        SignalRequestRecord(int subId, int uid, SignalStrengthUpdateRequest request) {
+        SignalRequestRecord(int subId, int uid, @NonNull SignalStrengthUpdateRequest request) {
             this.mCallingUid = uid;
             this.mSubId = subId;
             this.mRequest = request;
@@ -6372,8 +6403,7 @@ public class ServiceStateTracker extends Handler {
     private void updateAlwaysReportSignalStrength() {
         final int curSubId = mPhone.getSubId();
         boolean alwaysReport = mSignalRequestRecords.stream().anyMatch(
-                srr -> srr.mSubId == curSubId && (srr.mRequest.isReportingRequestedWhileIdle()
-                        || srr.mRequest.isSystemThresholdReportingRequestedWhileIdle()));
+                srr -> srr.mSubId == curSubId && isSignalReportRequestedWhileIdle(srr.mRequest));
 
         // TODO(b/177924721): TM#setAlwaysReportSignalStrength will be removed and we will not
         // worry about unset flag which was set by other client.
