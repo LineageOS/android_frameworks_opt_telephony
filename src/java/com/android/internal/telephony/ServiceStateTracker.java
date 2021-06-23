@@ -581,19 +581,17 @@ public class ServiceStateTracker extends Handler {
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+            final String action = intent.getAction();
+            if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
                 int phoneId = intent.getExtras().getInt(CarrierConfigManager.EXTRA_SLOT_INDEX);
                 // Ignore the carrier config changed if the phoneId is not matched.
                 if (phoneId == mPhone.getPhoneId()) {
                     sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
                 }
-                return;
-            }
-
-            if (intent.getAction().equals(Intent.ACTION_LOCALE_CHANGED)) {
+            } else if (action.equals(Intent.ACTION_LOCALE_CHANGED)) {
                 // Update emergency string or operator name, polling service state.
                 pollState();
-            } else if (intent.getAction().equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
+            } else if (action.equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
                 String lastKnownNetworkCountry = intent.getStringExtra(
                         TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY);
                 if (!mLastKnownNetworkCountry.equals(lastKnownNetworkCountry)) {
