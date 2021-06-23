@@ -132,8 +132,6 @@ public class ImsResolverTest extends ImsTestBase {
     public void tearDown() throws Exception {
         mTestImsResolver.destroy();
         mTestImsResolver = null;
-        mLooper.destroy();
-        mLooper = null;
         super.tearDown();
     }
 
@@ -646,7 +644,7 @@ public class ImsResolverTest extends ImsTestBase {
         setConfigCarrierStringMmTelRcs(0, null);
         startBindCarrierConfigAlreadySet();
 
-        mLooper.processAllMessages();
+        processAllMessages();
         verify(mMockQueryManager, never()).startQuery(any(), any());
         verify(controller, never()).bind(any());
         verify(controller, never()).unbind();
@@ -673,7 +671,7 @@ public class ImsResolverTest extends ImsTestBase {
 
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         // There is no carrier override set, so make sure that the ImsServiceController binds
         // to all SIMs.
@@ -706,7 +704,7 @@ public class ImsResolverTest extends ImsTestBase {
 
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         // There is no carrier override set, so make sure that the ImsServiceController binds
         // to all SIMs.
@@ -720,7 +718,7 @@ public class ImsResolverTest extends ImsTestBase {
         // Change number of SIMs and verify the features in the ImsServiceController are changed
         // as well
         PhoneConfigurationManager.notifyMultiSimConfigChange(1);
-        mLooper.processAllMessages();
+        processAllMessages();
         featureSet = convertToHashSet(features, 0);
         verify(controller).changeImsServiceFeatures(featureSet);
         verify(controller, never()).unbind();
@@ -748,7 +746,7 @@ public class ImsResolverTest extends ImsTestBase {
 
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         // There is no carrier override set, so make sure that the ImsServiceController binds
         // to all SIMs.
@@ -807,7 +805,7 @@ public class ImsResolverTest extends ImsTestBase {
                 convertToFeatureSlotPairs(0, ImsResolver.METADATA_RCS_FEATURE);
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
         // ensure that startQuery was called
         verify(mMockQueryManager, times(1)).startQuery(eq(TEST_DEVICE_DEFAULT_NAME),
                 any(String.class));
@@ -817,7 +815,7 @@ public class ImsResolverTest extends ImsTestBase {
 
         mDynamicQueryListener.onComplete(TEST_DEVICE_DEFAULT_NAME, deviceFeatures1);
         mDynamicQueryListener.onComplete(TEST_DEVICE2_DEFAULT_NAME, deviceFeatures2);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         verify(deviceController, times(2)).bind(eq(deviceFeatures1));
         verify(deviceController2, times(1)).bind(eq(deviceFeatures2));
@@ -935,7 +933,7 @@ public class ImsResolverTest extends ImsTestBase {
         // Move to single SIM and verify the features in the ImsServiceController are changed as
         // well.
         PhoneConfigurationManager.notifyMultiSimConfigChange(1);
-        mLooper.processAllMessages();
+        processAllMessages();
         carrierFeatures = new HashSet<>();
         carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(0, ImsFeature.FEATURE_RCS));
         verify(carrierController).changeImsServiceFeatures(carrierFeatures);
@@ -966,7 +964,7 @@ public class ImsResolverTest extends ImsTestBase {
 
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         // There is no carrier override set, so make sure that the ImsServiceController binds
         // to all SIMs.
@@ -1583,7 +1581,7 @@ public class ImsResolverTest extends ImsTestBase {
         info.add(getResolveInfo(TEST_CARRIER_DEFAULT_NAME, new HashSet<>(), true));
         // Boot complete has happened and the carrier ImsService is now available.
         mTestBootCompleteReceiver.onReceive(null, new Intent(Intent.ACTION_BOOT_COMPLETED));
-        mLooper.processAllMessages();
+        processAllMessages();
         setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 1);
 
         // Verify that all features that have been defined for the carrier override are bound
@@ -1680,7 +1678,7 @@ public class ImsResolverTest extends ImsTestBase {
         assertEquals(TEST_DEVICE_DEFAULT_NAME, deviceController.getComponentName());
 
         mTestImsResolver.imsServiceBindPermanentError(TEST_CARRIER_DEFAULT_NAME);
-        mLooper.processAllMessages();
+        processAllMessages();
         verify(carrierController).unbind();
         // Verify that the device ImsService features are changed to include the ones previously
         // taken by the carrier app.
@@ -1711,7 +1709,7 @@ public class ImsResolverTest extends ImsTestBase {
         setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         Set<String> featureResult = new HashSet<>();
         featureResult.add(ImsResolver.METADATA_MMTEL_FEATURE);
@@ -1748,7 +1746,7 @@ public class ImsResolverTest extends ImsTestBase {
         setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         Set<String> featureResult = new HashSet<>();
         featureResult.add(ImsResolver.METADATA_RCS_FEATURE);
@@ -1789,7 +1787,7 @@ public class ImsResolverTest extends ImsTestBase {
         setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet1 =
                 convertToHashSet(features1, 0);
@@ -1830,7 +1828,7 @@ public class ImsResolverTest extends ImsTestBase {
         setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
 
         startBindNoCarrierConfig(1);
-        mLooper.processAllMessages();
+        processAllMessages();
 
         verify(deviceController1, never()).bind(any());
         verify(deviceController1, never()).unbind();
@@ -1868,6 +1866,7 @@ public class ImsResolverTest extends ImsTestBase {
                 numSlots, mMockRepo);
         try {
             mLooper = new TestableLooper(mTestImsResolver.getHandler().getLooper());
+            monitorTestableLooper(mLooper);
         } catch (Exception e) {
             fail("Unable to create looper from handler.");
         }
@@ -1877,7 +1876,7 @@ public class ImsResolverTest extends ImsTestBase {
         when(mMockQueryManagerFactory.create(any(Context.class),
                 any(ImsServiceFeatureQueryManager.Listener.class))).thenReturn(mMockQueryManager);
         mTestImsResolver.setImsDynamicQueryManagerFactory(mMockQueryManagerFactory);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     private void setupPackageQuery(List<ResolveInfo> infos) {
@@ -1935,7 +1934,7 @@ public class ImsResolverTest extends ImsTestBase {
         mDynamicQueryListener = queryManagerCaptor.getValue();
         when(mMockQueryManager.startQuery(any(ComponentName.class), any(String.class)))
                 .thenReturn(true);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     /**
@@ -1954,7 +1953,7 @@ public class ImsResolverTest extends ImsTestBase {
                 ArgumentCaptor.forClass(ImsServiceFeatureQueryManager.Listener.class);
         verify(mMockQueryManagerFactory).create(any(Context.class), queryManagerCaptor.capture());
         mDynamicQueryListener = queryManagerCaptor.getValue();
-        mLooper.processAllMessages();
+        processAllMessages();
         // For ease of testing, slotId = subId
         for (int i = 0; i < numSlots; i++) {
             sendCarrierConfigChanged(i, i);
@@ -1963,19 +1962,19 @@ public class ImsResolverTest extends ImsTestBase {
 
     private void setupDynamicQueryFeatures(ComponentName name,
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> features, int times) {
-        mLooper.processAllMessages();
+        processAllMessages();
         // ensure that startQuery was called
         verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onComplete(name, features);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     private void setupDynamicQueryFeaturesFailure(ComponentName name, int times) {
-        mLooper.processAllMessages();
+        processAllMessages();
         // ensure that startQuery was called
         verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onPermanentError(name);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     public void packageChanged(String packageName) {
@@ -1985,7 +1984,7 @@ public class ImsResolverTest extends ImsTestBase {
         addPackageIntent.setData(new Uri.Builder().scheme("package").opaquePart(packageName)
                 .build());
         mTestPackageBroadcastReceiver.onReceive(null, addPackageIntent);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     public void packageRemoved(String packageName) {
@@ -1994,7 +1993,7 @@ public class ImsResolverTest extends ImsTestBase {
         removePackageIntent.setData(new Uri.Builder().scheme("package")
                 .opaquePart(TEST_CARRIER_DEFAULT_NAME.getPackageName()).build());
         mTestPackageBroadcastReceiver.onReceive(null, removePackageIntent);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     private void setImsServiceControllerFactory(Map<String, ImsServiceController> controllerMap) {
@@ -2114,7 +2113,7 @@ public class ImsResolverTest extends ImsTestBase {
         carrierConfigIntent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, subId);
         carrierConfigIntent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, slotId);
         mTestCarrierConfigReceiver.onReceive(null, carrierConfigIntent);
-        mLooper.processAllMessages();
+        processAllMessages();
     }
 
     private void setConfigCarrierStringMmTelRcs(int subId, String packageName) {
