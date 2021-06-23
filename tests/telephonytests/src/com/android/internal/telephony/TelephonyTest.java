@@ -471,6 +471,9 @@ public abstract class TelephonyTest {
                 BlockedNumberContract.AUTHORITY, mFakeBlockedNumberContentProvider);
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
+        mCT.mForegroundCall = new GsmCdmaCall(mCT);
+        mCT.mBackgroundCall = new GsmCdmaCall(mCT);
+        mCT.mRingingCall = new GsmCdmaCall(mCT);
         doReturn(mUiccCard).when(mPhone).getUiccCard();
         doReturn(mUiccProfile).when(mUiccCard).getUiccProfile();
 
