@@ -112,6 +112,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
     private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
     private static final int EVENT_SET_ICC_LOCK_ENABLED = 3;
+    private static final int EVENT_SILENT_REDIAL_CONNECTION_CHANGED = 4;
 
     private void switchToGsm() {
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_GSM);
@@ -637,6 +638,31 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testHandlePinMmi() {
         assertFalse(mPhoneUT.handlePinMmi("1234567890"));
+    }
+
+    /**
+     * Verifies that silent redial connection changes are raised on the phone itself, not on the
+     * ImsPhone.
+     */
+    @Test
+    @SmallTest
+    public void testSilentRedialNotify() {
+        mPhoneUT.setAreThreadChecksEnabled(false);
+        mPhoneUT.registerForRedialConnectionChanged(mTestHandler,
+                EVENT_SILENT_REDIAL_CONNECTION_CHANGED, null);
+
+        // Raise a silent redial on the GsmCdmaPhone.
+        Phone.SilentRedialParam params = new Phone.SilentRedialParam("6505551212", 0, null);
+        AsyncResult result = new AsyncResult(null, params, null);
+        Message.obtain(mPhoneUT, Phone.EVENT_INITIATE_SILENT_REDIAL, result).sendToTarget();
+        processAllMessages();
+
+        // We expect our test handler to have the registered redial connection changed event
+        // raised on it.
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler).sendMessageDelayed(messageCaptor.capture(), anyLong());
+        assertEquals(1, messageCaptor.getAllValues().size());
+        assertEquals(EVENT_SILENT_REDIAL_CONNECTION_CHANGED, messageCaptor.getValue().what);
     }
 
     @Test
