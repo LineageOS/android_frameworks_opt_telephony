@@ -887,22 +887,22 @@ public class SubscriptionController extends ISub.Stub {
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
+        List<SubscriptionInfo> subList;
         try {
-            List<SubscriptionInfo> subList = null;
             subList = getSubInfo(null, null);
-            if (subList != null) {
-                if (VDBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
-                subList.stream().map(
-                        subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
-                                callingPackage, callingFeatureId, "getAllSubInfoList"))
-                        .collect(Collectors.toList());
-            } else {
-                if (VDBG) logd("[getAllSubInfoList]- no info return");
-            }
-            return subList;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+        if (subList != null) {
+            if (VDBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
+            subList.stream().map(
+                    subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
+                            callingPackage, callingFeatureId, "getAllSubInfoList"))
+                    .collect(Collectors.toList());
+        } else {
+            if (VDBG) logd("[getAllSubInfoList]- no info return");
+        }
+        return subList;
     }
 
     private List<SubscriptionInfo> makeCacheListCopyWithLock(List<SubscriptionInfo> cacheSubList) {
