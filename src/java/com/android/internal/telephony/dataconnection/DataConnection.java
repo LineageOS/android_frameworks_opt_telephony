@@ -79,6 +79,7 @@ import android.util.Pair;
 import android.util.TimeUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CarrierPrivilegesTracker;
 import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
@@ -2575,9 +2576,11 @@ public class DataConnection extends StateMachine {
             // this connection are going away.
             mRestrictedNetworkOverride = shouldRestrictNetwork();
 
-            mPhone.getCarrierPrivilegesTracker()
-                    .registerCarrierPrivilegesListener(
+            CarrierPrivilegesTracker carrierPrivTracker = mPhone.getCarrierPrivilegesTracker();
+            if (carrierPrivTracker != null) {
+                carrierPrivTracker.registerCarrierPrivilegesListener(
                             getHandler(), EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
+            }
             notifyDataConnectionState();
             mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
         }
@@ -2920,7 +2923,10 @@ public class DataConnection extends StateMachine {
 
             mVcnManager.removeVcnNetworkPolicyChangeListener(mVcnPolicyChangeListener);
 
-            mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
+            CarrierPrivilegesTracker carrierPrivTracker = mPhone.getCarrierPrivilegesTracker();
+            if (carrierPrivTracker != null) {
+                carrierPrivTracker.unregisterCarrierPrivilegesListener(getHandler());
+            }
         }
 
         @Override
