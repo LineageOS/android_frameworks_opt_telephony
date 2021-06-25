@@ -7,12 +7,15 @@ android_library {
 
     srcs: ["**/*.java"],
 
+    libs: [
+        "telephony-common",
+    ],
+
     static_libs: [
         "androidx.annotation_annotation",
         "guava",
         "junit",
         "mockito-target-minus-junit4",
-        "telephony-common",
         "truth-prebuilt",
     ],
 
