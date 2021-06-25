@@ -36,7 +36,7 @@ public class DataStallRecoveryStats {
      * @param phone
      */
     public static void onDataStallEvent(@DcTracker.RecoveryAction int recoveryAction,
-            Phone phone) {
+            Phone phone, boolean isRecovered, int durationMillis) {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone = phone.getDefaultPhone();
         }
@@ -50,7 +50,8 @@ public class DataStallRecoveryStats {
         boolean isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
 
         TelephonyStatsLog.write(TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED, carrierId, rat,
-                signalStrength, recoveryAction, isOpportunistic, isMultiSim, band);
+                signalStrength, recoveryAction, isOpportunistic, isMultiSim, band, isRecovered,
+                durationMillis);
     }
 
     /** Returns the RAT used for data (including IWLAN). */

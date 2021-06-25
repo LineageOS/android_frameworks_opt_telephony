@@ -4973,6 +4973,14 @@ public class DcTracker extends Handler {
         private long mTimeLastRecoveryStartMs;
         // Whether current network good or not
         private boolean mIsValidNetwork;
+        // Whether data stall happened or not.
+        private boolean mWasDataStall;
+        // Whether the result of last action(RADIO_RESTART) reported.
+        private boolean mLastActionReported;
+        // The real time for data stall start.
+        private long mDataStallStartMs;
+        // Last data stall action.
+        private @RecoveryAction int mLastAction;
 
         public DataStallRecoveryHandler() {
             reset();
@@ -4981,6 +4989,36 @@ public class DcTracker extends Handler {
         public void reset() {
             mTimeLastRecoveryStartMs = 0;
             putRecoveryAction(RECOVERY_ACTION_GET_DATA_CALL_LIST);
+        }
+
+        private void setNetworkValidationState(boolean isValid) {
+            // Validation status is true and was not data stall.
+            if (isValid && !mWasDataStall) {
+                return;
+            }
+
+            if (!mWasDataStall) {
+                mWasDataStall = true;
+                mDataStallStartMs = SystemClock.elapsedRealtime();
+                if (DBG) log("data stall: start time = " + mDataStallStartMs);
+                return;
+            }
+
+            if (!mLastActionReported) {
+                int timeDuration = (int) (SystemClock.elapsedRealtime() - mDataStallStartMs);
+                if (DBG) {
+                    log("data stall: lastaction = " + mLastAction + ", isRecovered = "
+                            + isValid + ", mTimeDuration = " + timeDuration);
+                }
+                DataStallRecoveryStats.onDataStallEvent(mLastAction, mPhone, isValid,
+                                                        timeDuration);
+                mLastActionReported = true;
+            }
+
+            if (isValid) {
+                mLastActionReported = false;
+                mWasDataStall = false;
+            }
         }
 
         public boolean isAggressiveRecovery() {
@@ -5059,7 +5097,8 @@ public class DcTracker extends Handler {
                         mPhone.getPhoneId(), signalStrength);
                 TelephonyMetrics.getInstance().writeDataStallEvent(
                         mPhone.getPhoneId(), recoveryAction);
-                DataStallRecoveryStats.onDataStallEvent(recoveryAction, mPhone);
+                mLastAction = recoveryAction;
+                mLastActionReported = false;
                 broadcastDataStallDetected(recoveryAction);
 
                 switch (recoveryAction) {
@@ -5103,6 +5142,7 @@ public class DcTracker extends Handler {
         }
 
         public void processNetworkStatusChanged(boolean isValid) {
+            setNetworkValidationState(isValid);
             if (isValid) {
                 mIsValidNetwork = true;
                 reset();
