@@ -1417,6 +1417,7 @@ public class DataConnection extends StateMachine {
         } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
                 && !mDcController.isDefaultDataActive()) {
             if (DBG) log("No default data connection currently active");
+            mCid = response.getId();
             result = SetupResult.ERROR_NO_DEFAULT_CONNECTION;
             result.mFailCause = DataFailCause.NO_DEFAULT_DATA;
         } else {
