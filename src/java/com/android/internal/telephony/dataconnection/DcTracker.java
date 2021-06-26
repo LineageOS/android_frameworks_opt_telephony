@@ -1647,7 +1647,12 @@ public class DcTracker extends Handler {
             if (DBG) log(str.toString());
             apnContext.requestLog(str.toString());
             if (requestType == REQUEST_TYPE_HANDOVER) {
-                sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false, false);
+                // If fails due to latest preference already changed back to source transport, then
+                // just fallback (will not attempt handover anymore, and will not tear down the
+                // data connection on source transport.
+                boolean fallback = dataConnectionReasons.contains(
+                        DataDisallowedReasonType.ON_OTHER_TRANSPORT);
+                sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false, fallback);
             }
             return;
         }
