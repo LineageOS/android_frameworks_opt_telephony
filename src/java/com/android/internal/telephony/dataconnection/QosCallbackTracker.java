@@ -206,15 +206,19 @@ public class QosCallbackTracker {
 
         for (final QosBearerFilter sessionFilter : qosBearerSession.getQosBearerFilterList()) {
            if (!sessionFilter.getLocalAddresses().isEmpty()
-                   && !sessionFilter.getRemoteAddresses().isEmpty()) {
+                   && !sessionFilter.getRemoteAddresses().isEmpty()
+                   && sessionFilter.getLocalPortRange().isValid()
+                   && sessionFilter.getRemotePortRange().isValid()) {
                if (matchesByRemoteAndLocalAddress(sessionFilter, filter)) {
                    qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
                }
-           } else if (!sessionFilter.getRemoteAddresses().isEmpty()) {
+           } else if (!sessionFilter.getRemoteAddresses().isEmpty()
+                   && sessionFilter.getRemotePortRange().isValid()) {
                if (matchesByRemoteAddress(sessionFilter, filter)) {
                    qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
                }
-           } else if (!sessionFilter.getLocalAddresses().isEmpty()) {
+           } else if (!sessionFilter.getLocalAddresses().isEmpty()
+                   && sessionFilter.getLocalPortRange().isValid()) {
                if (matchesByLocalAddress(sessionFilter, filter)) {
                    qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
                }
