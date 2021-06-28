@@ -58,6 +58,7 @@ import android.net.NetworkPolicyManager;
 import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -2981,5 +2982,20 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         // Ensure handover is not completed yet
         verify(handler, never()).sendMessageDelayed(any(), anyLong());
+    }
+
+    @Test
+    public void testPreferenceChangedFallback() {
+        Handler handler = Mockito.mock(Handler.class);
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mTransportManager)
+                .getPreferredTransport(anyInt());
+        Message handoverCompleteMessage = Message.obtain(handler);
+        addHandoverCompleteMsg(handoverCompleteMessage, ApnSetting.TYPE_IMS);
+        initApns(ApnSetting.TYPE_IMS_STRING, new String[]{ApnSetting.TYPE_IMS_STRING});
+        mDct.enableApn(ApnSetting.TYPE_IMS, DcTracker.REQUEST_TYPE_HANDOVER,
+                handoverCompleteMessage);
+        waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        Bundle bundle = handoverCompleteMessage.getData();
+        assertTrue(bundle.getBoolean("extra_handover_failure_fallback"));
     }
 }
