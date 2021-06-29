@@ -86,7 +86,7 @@ public class DcNetworkAgent extends NetworkAgent {
 
     public final DcKeepaliveTracker keepaliveTracker = new DcKeepaliveTracker();
 
-    private final QosCallbackTracker mQosCallbackTracker = new QosCallbackTracker(this);
+    private final QosCallbackTracker mQosCallbackTracker;
 
     private final Executor mQosCallbackExecutor = Executors.newSingleThreadExecutor();
 
@@ -119,6 +119,7 @@ public class DcNetworkAgent extends NetworkAgent {
         } else {
             loge("The connection does not have a valid link properties.");
         }
+        mQosCallbackTracker = new QosCallbackTracker(this);
     }
 
     private @NetworkType int getNetworkType() {
