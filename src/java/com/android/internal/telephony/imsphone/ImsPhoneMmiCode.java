@@ -346,8 +346,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return dialString;
     }
 
-    static ImsPhoneMmiCode
-    newNetworkInitiatedUssd(String ussdMessage, boolean isUssdRequest, ImsPhone phone) {
+    public static ImsPhoneMmiCode newNetworkInitiatedUssd(String ussdMessage,
+            boolean isUssdRequest, ImsPhone phone) {
         ImsPhoneMmiCode ret;
 
         ret = new ImsPhoneMmiCode(phone);
@@ -1194,12 +1194,10 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      *
      * The radio has reset, and this is still pending
      */
-
-    void
-    onUssdFinishedError() {
+    public void onUssdFinishedError() {
         if (mState == State.PENDING) {
             mState = State.FAILED;
-            if (mMessage.length() == 0) {
+            if (TextUtils.isEmpty(mMessage)) {
                 mMessage = mContext.getText(com.android.internal.R.string.mmiError);
             }
             Rlog.d(LOG_TAG, "onUssdFinishedError: mmi=" + this);
