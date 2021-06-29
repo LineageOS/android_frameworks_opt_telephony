@@ -44,7 +44,7 @@ import java.util.Map;
  * {@hide}
  */
 public class QosCallbackTracker {
-    private static final String LOG_TAG = QosCallbackTracker.class.getSimpleName();
+    @NonNull private final String mTag;
     @NonNull private final DcNetworkAgent mDcNetworkAgent;
     @NonNull private final Map<Integer, QosBearerSession> mQosBearerSessions;
 
@@ -59,6 +59,7 @@ public class QosCallbackTracker {
         mQosBearerSessions = new HashMap<>();
         mCallbacksToFilter = new HashMap<>();
         mDcNetworkAgent = dcNetworkAgent;
+        mTag = "QosCallbackTracker" + "-" + mDcNetworkAgent.getNetwork().getNetId();
     }
 
     /**
@@ -256,12 +257,15 @@ public class QosCallbackTracker {
             mDcNetworkAgent.notifyQosSessionAvailable(
                     callbackId, session.getQosBearerSessionId(), nrQosAttr);
         }
+
+        logd("sendSessionAvailable, callbackId=" + callbackId);
     }
 
     private void sendSessionLost(final int callbackId, @NonNull final QosBearerSession session) {
         mDcNetworkAgent.notifyQosSessionLost(callbackId, session.getQosBearerSessionId(),
                 session.getQos() instanceof EpsQos ?
                 QosSession.TYPE_EPS_BEARER : QosSession.TYPE_NR_BEARER);
+        logd("sendSessionLost, callbackId=" + callbackId);
     }
 
     public interface IFilter {
@@ -275,6 +279,6 @@ public class QosCallbackTracker {
      * @param s is string log
      */
     private void logd(String s) {
-        Rlog.d(LOG_TAG, s);
+        Rlog.d(mTag, s);
     }
 }
