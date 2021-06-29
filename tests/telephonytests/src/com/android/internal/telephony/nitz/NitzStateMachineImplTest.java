@@ -93,7 +93,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                 SLOT_INDEX, mFakeDeviceState, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
                 mFakeTimeServiceHelper);
 
-        TelephonyTest.logd("NewNitzStateMachineImplTest -Setup!");
+        TelephonyTest.logd("NitzStateMachineImplTest -Setup!");
     }
 
     @After
