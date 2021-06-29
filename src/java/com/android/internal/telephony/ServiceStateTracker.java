@@ -664,8 +664,13 @@ public class ServiceStateTracker extends Handler {
 
         mCdnr = new CarrierDisplayNameResolver(mPhone);
 
-        mEriManager = TelephonyComponentFactory.getInstance().inject(EriManager.class.getName())
-                .makeEriManager(mPhone, EriManager.ERI_FROM_XML);
+        // Create EriManager only if phone supports CDMA
+        if (UiccController.isCdmaSupported(mPhone.getContext())) {
+            mEriManager = TelephonyComponentFactory.getInstance().inject(EriManager.class.getName())
+                    .makeEriManager(mPhone, EriManager.ERI_FROM_XML);
+        } else {
+            mEriManager = null;
+        }
 
         mRatRatcheter = new RatRatcheter(mPhone);
         mVoiceCapable = ((TelephonyManager) mPhone.getContext()
@@ -2146,11 +2151,13 @@ public class ServiceStateTracker extends Handler {
                     }
                 }
 
-                int roamingIndicator = mNewSS.getCdmaRoamingIndicator();
-                mNewSS.setCdmaEriIconIndex(mEriManager.getCdmaEriIconIndex(roamingIndicator,
-                        mDefaultRoamingIndicator));
-                mNewSS.setCdmaEriIconMode(mEriManager.getCdmaEriIconMode(roamingIndicator,
-                        mDefaultRoamingIndicator));
+                if (mEriManager != null) {
+                    int roamingIndicator = mNewSS.getCdmaRoamingIndicator();
+                    mNewSS.setCdmaEriIconIndex(mEriManager.getCdmaEriIconIndex(roamingIndicator,
+                            mDefaultRoamingIndicator));
+                    mNewSS.setCdmaEriIconMode(mEriManager.getCdmaEriIconMode(roamingIndicator,
+                            mDefaultRoamingIndicator));
+                }
 
                 // NOTE: Some operator may require overriding mCdmaRoaming
                 // (set by the modem), depending on the mRoamingIndicator.
@@ -3934,7 +3941,7 @@ public class ServiceStateTracker extends Handler {
             boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null &&
                     mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null;
             if (!hasBrandOverride && (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
-                    && (mEriManager.isEriFileLoaded())
+                    && (mEriManager != null && mEriManager.isEriFileLoaded())
                     && (!ServiceState.isPsOnlyTech(mSS.getRilVoiceRadioTechnology())
                     || mPhone.getContext().getResources().getBoolean(com.android.internal.R
                     .bool.config_LTE_eri_for_network_name))) {
@@ -5142,8 +5149,10 @@ public class ServiceStateTracker extends Handler {
         log("CarrierConfigChange " + config);
 
         // Load the ERI based on carrier config. Carrier might have their specific ERI.
-        mEriManager.loadEriFile();
-        mCdnr.updateEfForEri(getOperatorNameFromEri());
+        if (mEriManager != null) {
+            mEriManager.loadEriFile();
+            mCdnr.updateEfForEri(getOperatorNameFromEri());
+        }
 
         updateLteEarfcnLists(config);
         updateReportingCriteria(config);
@@ -5972,7 +5981,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     String getCdmaEriText(int roamInd, int defRoamInd) {
-        return mEriManager.getCdmaEriText(roamInd, defRoamInd);
+        return mEriManager != null ? mEriManager.getCdmaEriText(roamInd, defRoamInd) : "no ERI";
     }
 
     private void updateOperatorNamePattern(PersistableBundle config) {

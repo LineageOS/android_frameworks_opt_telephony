@@ -43,6 +43,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
@@ -263,6 +264,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
         doReturn(true).when(mPhone).areAllDataDisconnected();
+
+        doReturn(true).when(mPackageManager)
+                .hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
 
         mSSTTestHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSSTTestHandler.start();
