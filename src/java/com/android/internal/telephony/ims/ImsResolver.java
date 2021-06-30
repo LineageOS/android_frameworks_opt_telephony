@@ -433,7 +433,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // Must synchronize on this object to access.
     private final Map<Integer, String> mDeviceServices = new ArrayMap<>();
     // Persistent Logging
-    private final LocalLog mEventLog = new LocalLog(50);
+    private final LocalLog mEventLog = new LocalLog(32);
 
     private boolean mBootCompletedHandlerRan = false;
     private boolean mCarrierConfigReceived = false;

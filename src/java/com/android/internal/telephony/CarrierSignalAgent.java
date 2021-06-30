@@ -126,7 +126,7 @@ public class CarrierSignalAgent extends Handler {
     private static final Map<String, String> COMPAT_ACTION_TO_NEW_MAP = NEW_ACTION_TO_COMPAT_MAP
             .entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
 
-    private final LocalLog mErrorLocalLog = new LocalLog(20);
+    private final LocalLog mErrorLocalLog = new LocalLog(16);
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {

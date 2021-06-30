@@ -394,9 +394,9 @@ public class ApnContext {
         }
     }
 
-    private final LocalLog mLocalLog = new LocalLog(150);
+    private final LocalLog mLocalLog = new LocalLog(128);
     private final ArraySet<NetworkRequest> mNetworkRequests = new ArraySet<>();
-    private final LocalLog mStateLocalLog = new LocalLog(50);
+    private final LocalLog mStateLocalLog = new LocalLog(32);
 
     public void requestLog(String str) {
         synchronized (mLocalLog) {
