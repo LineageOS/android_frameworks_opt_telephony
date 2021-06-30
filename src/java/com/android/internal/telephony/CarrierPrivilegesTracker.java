@@ -218,7 +218,7 @@ public class CarrierPrivilegesTracker extends Handler {
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mPhone = phone;
-        mLocalLog = new LocalLog(100);
+        mLocalLog = new LocalLog(64);
 
         IntentFilter certFilter = new IntentFilter();
         certFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);

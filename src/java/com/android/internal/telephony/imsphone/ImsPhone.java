@@ -267,7 +267,7 @@ public class ImsPhone extends ImsPhoneBase {
 
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
-    private final LocalLog mRegLocalLog = new LocalLog(100);
+    private final LocalLog mRegLocalLog = new LocalLog(64);
     private TelephonyMetrics mMetrics;
 
     // The helper class to receive and store the MmTel registration status updated.

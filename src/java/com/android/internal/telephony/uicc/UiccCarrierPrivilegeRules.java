@@ -196,7 +196,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private Message mLoadedCallback;
     // LocalLog buffer to hold important status messages for debugging.
-    private LocalLog mStatusMessage = new LocalLog(100);
+    private LocalLog mStatusMessage = new LocalLog(64);
     private int mChannelId; // Channel Id for communicating with UICC.
     private int mRetryCount;  // Number of retries for open logical channel.
     private boolean mCheckedRules = false;  // Flag that used to mark whether get rules from ARA-D.
