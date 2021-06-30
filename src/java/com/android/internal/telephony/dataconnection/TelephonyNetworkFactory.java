@@ -52,7 +52,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     public final String LOG_TAG;
     protected static final boolean DBG = true;
 
-    private static final int REQUEST_LOG_SIZE = 40;
+    private static final int REQUEST_LOG_SIZE = 32;
 
     private static final int ACTION_NO_OP   = 0;
     private static final int ACTION_REQUEST = 1;

@@ -241,7 +241,7 @@ public class ImsServiceController {
     private ImsServiceConnection mImsServiceConnection;
     // Only added or removed, never accessed on purpose.
     private Set<ImsFeatureStatusCallback> mFeatureStatusCallbacks = new HashSet<>();
-    private final LocalLog mLocalLog = new LocalLog(10);
+    private final LocalLog mLocalLog = new LocalLog(8);
 
     protected final Object mLock = new Object();
     protected final Context mContext;

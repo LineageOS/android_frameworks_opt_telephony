@@ -902,9 +902,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private final FeatureConnector<ImsManager> mImsManagerConnector;
 
     // Used exclusively for IMS Registration related events for logging.
-    private final LocalLog mRegLocalLog = new LocalLog(100);
+    private final LocalLog mRegLocalLog = new LocalLog(64);
     // Used for important operational related events for logging.
-    private final LocalLog mOperationLocalLog = new LocalLog(100);
+    private final LocalLog mOperationLocalLog = new LocalLog(64);
 
     //***** Events
 

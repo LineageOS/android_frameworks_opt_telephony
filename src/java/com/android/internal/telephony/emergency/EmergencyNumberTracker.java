@@ -112,11 +112,11 @@ public class EmergencyNumberTracker extends Handler {
     private List<EmergencyNumber> mEmergencyNumberListFromTestMode = new ArrayList<>();
     private List<EmergencyNumber> mEmergencyNumberList = new ArrayList<>();
 
-    private final LocalLog mEmergencyNumberListDatabaseLocalLog = new LocalLog(20);
-    private final LocalLog mEmergencyNumberListRadioLocalLog = new LocalLog(20);
-    private final LocalLog mEmergencyNumberListPrefixLocalLog = new LocalLog(20);
-    private final LocalLog mEmergencyNumberListTestModeLocalLog = new LocalLog(20);
-    private final LocalLog mEmergencyNumberListLocalLog = new LocalLog(20);
+    private final LocalLog mEmergencyNumberListDatabaseLocalLog = new LocalLog(16);
+    private final LocalLog mEmergencyNumberListRadioLocalLog = new LocalLog(16);
+    private final LocalLog mEmergencyNumberListPrefixLocalLog = new LocalLog(16);
+    private final LocalLog mEmergencyNumberListTestModeLocalLog = new LocalLog(16);
+    private final LocalLog mEmergencyNumberListLocalLog = new LocalLog(16);
 
     /** Event indicating the update for the emergency number list from the radio. */
     private static final int EVENT_UNSOL_EMERGENCY_NUMBER_LIST = 1;

@@ -382,11 +382,11 @@ public class ServiceStateTracker extends Handler {
 
     private final LocaleTracker mLocaleTracker;
 
-    private final LocalLog mRoamingLog = new LocalLog(10);
-    private final LocalLog mAttachLog = new LocalLog(10);
-    private final LocalLog mPhoneTypeLog = new LocalLog(10);
-    private final LocalLog mRatLog = new LocalLog(20);
-    private final LocalLog mRadioPowerLog = new LocalLog(20);
+    private final LocalLog mRoamingLog = new LocalLog(8);
+    private final LocalLog mAttachLog = new LocalLog(8);
+    private final LocalLog mPhoneTypeLog = new LocalLog(8);
+    private final LocalLog mRatLog = new LocalLog(16);
+    private final LocalLog mRadioPowerLog = new LocalLog(16);
     private final LocalLog mCdnrLogs = new LocalLog(64);
 
     private Pattern mOperatorNameStringPattern;

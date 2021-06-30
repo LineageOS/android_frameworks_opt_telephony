@@ -282,7 +282,7 @@ public class PhoneSwitcher extends Handler {
 
     protected RadioConfig mRadioConfig;
 
-    private final static int MAX_LOCAL_LOG_LINES = 30;
+    private static final int MAX_LOCAL_LOG_LINES = 32;
 
     // Default timeout value of network validation in millisecond.
     private final static int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;

@@ -336,8 +336,8 @@ public class DcTracker extends Handler {
 
     private AsyncChannel mReplyAc = new AsyncChannel();
 
-    private final LocalLog mDataRoamingLeakageLog = new LocalLog(50);
-    private final LocalLog mApnSettingsInitializationLog = new LocalLog(50);
+    private final LocalLog mDataRoamingLeakageLog = new LocalLog(32);
+    private final LocalLog mApnSettingsInitializationLog = new LocalLog(32);
 
     /* 5G connection reevaluation watchdog alarm constants */
     private long mWatchdogTimeMs = 1000 * 60 * 60;
