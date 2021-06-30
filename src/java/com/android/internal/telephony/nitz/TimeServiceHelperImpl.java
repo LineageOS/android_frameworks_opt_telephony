@@ -43,8 +43,8 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
     private final TimeDetector mTimeDetector;
     private final TimeZoneDetector mTimeZoneDetector;
 
-    private final LocalLog mTimeZoneLog = new LocalLog(30, false /* mUseLocalTimestamps */);
-    private final LocalLog mTimeLog = new LocalLog(30, false /* mUseLocalTimestamps */);
+    private final LocalLog mTimeZoneLog = new LocalLog(32, false /* mUseLocalTimestamps */);
+    private final LocalLog mTimeLog = new LocalLog(32, false /* mUseLocalTimestamps */);
 
     /**
      * Records the last time zone suggestion made. Used to avoid sending duplicate suggestions to

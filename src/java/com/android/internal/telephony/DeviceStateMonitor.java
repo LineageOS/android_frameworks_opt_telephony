@@ -92,7 +92,7 @@ public class DeviceStateMonitor extends Handler {
 
     private final Phone mPhone;
 
-    private final LocalLog mLocalLog = new LocalLog(100);
+    private final LocalLog mLocalLog = new LocalLog(64);
 
     private final RegistrantList mPhysicalChannelConfigRegistrants = new RegistrantList();
 

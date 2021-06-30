@@ -433,7 +433,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // should only be accessed from handler
     private Map<Integer, String> mDeviceServices;
     // Persistent Logging
-    private final LocalLog mEventLog = new LocalLog(50);
+    private final LocalLog mEventLog = new LocalLog(32);
 
     private boolean mBootCompletedHandlerRan = false;
 
