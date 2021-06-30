@@ -1228,7 +1228,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     onUssdFinishedError() {
         if (mState == State.PENDING) {
             mState = State.FAILED;
-            if (mMessage.length() == 0) {
+            if (TextUtils.isEmpty(mMessage)) {
                 mMessage = mContext.getText(com.android.internal.R.string.mmiError);
             }
             Rlog.d(LOG_TAG, "onUssdFinishedError");
