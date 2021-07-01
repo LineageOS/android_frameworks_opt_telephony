@@ -2907,8 +2907,6 @@ public class GsmCdmaPhone extends Phone {
                 break;
 
             case EVENT_CARRIER_CONFIG_CHANGED:
-                // Obtain new radio capabilities from the modem, since some are SIM-dependent
-                mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
                 // Only check for the voice radio tech if it not going to be updated by the voice
                 // registration changes.
                 if (!mContext.getResources().getBoolean(
@@ -2927,7 +2925,8 @@ public class GsmCdmaPhone extends Phone {
 
                 updateNrSettingsAfterCarrierConfigChanged(b);
                 loadAllowedNetworksFromSubscriptionDatabase();
-                updateAllowedNetworkTypes(null);
+                // Obtain new radio capabilities from the modem, since some are SIM-dependent
+                mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
                 break;
 
             case EVENT_SET_ROAMING_PREFERENCE_DONE:
