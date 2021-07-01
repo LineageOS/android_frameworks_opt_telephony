@@ -458,7 +458,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final String ALLOWED_NETWORK_TYPES_TEXT_ENABLE_2G = "enable_2g";
     private static final int INVALID_ALLOWED_NETWORK_TYPES = -1;
     protected boolean mIsCarrierNrSupported = false;
-
+    protected boolean mIsAllowedNetworkTypesLoadedFromDb = false;
     private boolean mUnitTestMode;
     private CarrierPrivilegesTracker mCarrierPrivilegesTracker = null;
 
@@ -2314,6 +2314,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Loads the allowed network type from subscription database.
      */
     public void loadAllowedNetworksFromSubscriptionDatabase() {
+        mIsAllowedNetworkTypesLoadedFromDb = false;
         // Try to load ALLOWED_NETWORK_TYPES from SIMINFO.
         if (SubscriptionController.getInstance() == null) {
             return;
@@ -2353,6 +2354,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     }
                 }
             }
+            mIsAllowedNetworkTypesLoadedFromDb = true;
         } catch (NumberFormatException e) {
             Rlog.e(LOG_TAG, "allowedNetworkTypes NumberFormat exception" + e);
         }
@@ -2425,8 +2427,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             loge("setAllowedNetworkTypes: Invalid allowed network type reason: " + reason);
             return;
         }
-        if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
-            loge("setAllowedNetworkTypes: Invalid subscriptionId: " + subId);
+        if (!SubscriptionManager.isUsableSubscriptionId(subId)
+                || !mIsAllowedNetworkTypesLoadedFromDb) {
+            loge("setAllowedNetworkTypes: no sim or network type is not loaded. SubscriptionId: "
+                    + subId + ", isNetworkTypeLoaded" + mIsAllowedNetworkTypesLoadedFromDb);
             return;
         }
         String mapAsString = "";
@@ -4376,7 +4380,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void sendSubscriptionSettings(boolean restoreNetworkSelection) {
         // Send settings down
-        updateAllowedNetworkTypes(null);
+        if (mIsAllowedNetworkTypesLoadedFromDb) {
+            updateAllowedNetworkTypes(null);
+        }
 
         if (restoreNetworkSelection) {
             restoreSavedNetworkSelection(null);
