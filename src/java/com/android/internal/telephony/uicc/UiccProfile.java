@@ -121,6 +121,7 @@ public class UiccProfile extends IccCard {
     private RegistrantList mOperatorBrandOverrideRegistrants = new RegistrantList();
 
     private final int mPhoneId;
+    private final PinStorage mPinStorage;
 
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 1;
     private static final int EVENT_ICC_LOCKED = 2;
@@ -280,7 +281,7 @@ public class UiccProfile extends IccCard {
                         // An error occurred during automatic PIN verification. At this point,
                         // clear the cache and propagate the state.
                         loge("An error occurred during internal PIN verification");
-                        UiccController.getInstance().getPinStorage().clearPin(mPhoneId);
+                        mPinStorage.clearPin(mPhoneId);
                         updateExternalState();
                     } else {
                         log("Internal PIN verification was successful!");
@@ -320,6 +321,7 @@ public class UiccProfile extends IccCard {
             // for RadioConfig<1.2 eid is not known when the EuiccCard is constructed
             ((EuiccCard) mUiccCard).registerForEidReady(mHandler, EVENT_EID_READY, null);
         }
+        mPinStorage = UiccController.getInstance().getPinStorage();
 
         update(c, ci, ics);
         ci.registerForOffOrNotAvailable(mHandler, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
@@ -625,7 +627,7 @@ public class UiccProfile extends IccCard {
                 // If the PIN code is required and an available cached PIN is available, intercept
                 // the update of external state and perform an internal PIN verification.
                 if (lockedState == IccCardConstants.State.PIN_REQUIRED) {
-                    String pin = UiccController.getInstance().getPinStorage().getPin(mPhoneId);
+                    String pin = mPinStorage.getPin(mPhoneId);
                     if (!pin.isEmpty()) {
                         log("PIN_REQUIRED[" + mPhoneId + "] - Cache present");
                         mCi.supplyIccPin(pin, mHandler.obtainMessage(EVENT_SUPPLY_ICC_PIN_DONE));
