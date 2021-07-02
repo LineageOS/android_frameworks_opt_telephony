@@ -274,15 +274,18 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     SubscriptionManager.INVALID_SUBSCRIPTION_ID);
             int slotSimState = mTelephonyManagerProxy.getSimState(mContext, slotId);
             if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
-                    && slotSimState != TelephonyManager.SIM_STATE_ABSENT) {
+                    && (slotSimState != TelephonyManager.SIM_STATE_ABSENT
+                    && slotSimState != TelephonyManager.SIM_STATE_NOT_READY)) {
                 // We only care about carrier config updates that happen when a slot is known to be
-                // absent or populated and the carrier config has been loaded.
+                // absent, the subscription is disabled (not ready), or populated and the carrier
+                // config has been loaded.
                 Log.i(TAG, "Received CCC for slot " + slotId + " and sim state "
                         + slotSimState + ", ignoring.");
                 return;
             }
 
-            Log.i(TAG, "Received Carrier Config Changed for SlotId: " + slotId);
+            Log.i(TAG, "Received Carrier Config Changed for SlotId: " + slotId
+                    + ", sim state: " + slotSimState);
 
             mHandler.obtainMessage(HANDLER_CONFIG_CHANGED, slotId).sendToTarget();
         }
