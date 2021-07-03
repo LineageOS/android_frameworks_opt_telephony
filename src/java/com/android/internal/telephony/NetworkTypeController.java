@@ -150,6 +150,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPhysicalChannelConfig16Supported;
     private Boolean mIsNrAdvancedAllowedByPco = false;
     private int mNrAdvancedCapablePcoId = 0;
+    private boolean mIsUsingUserDataForRrcDetection = false;
 
     /**
      * NetworkTypeController constructor.
@@ -279,6 +280,13 @@ public class NetworkTypeController extends StateMachine {
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+                mIsUsingUserDataForRrcDetection = b.getBoolean(
+                        CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
+                if (mIsPhysicalChannelConfig16Supported && mIsUsingUserDataForRrcDetection) {
+                    mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                            .registerForPhysicalLinkStateChanged(getHandler(),
+                                    EVENT_PHYSICAL_LINK_STATE_CHANGED);
+                }
             }
         }
         createTimerRules(nrIconConfiguration, overrideTimerRule, overrideSecondaryTimerRule);
@@ -503,7 +511,7 @@ public class NetworkTypeController extends StateMachine {
                     // ignored
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
-                    if (mIsPhysicalChannelConfig16Supported) {
+                    if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
                     }
                     break;
@@ -608,7 +616,7 @@ public class NetworkTypeController extends StateMachine {
                     // ignored
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
-                    if (mIsPhysicalChannelConfig16Supported) {
+                    if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
                         if (mIsTimerResetEnabledForLegacyStateRRCIdle && !isPhysicalLinkActive()) {
                             resetAllTimers();
@@ -680,7 +688,7 @@ public class NetworkTypeController extends StateMachine {
                     // ignore
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
-                    if (mIsPhysicalChannelConfig16Supported) {
+                    if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
                         if (isNrNotRestricted()) {
                             // NOT_RESTRICTED_RRC_IDLE -> NOT_RESTRICTED_RRC_CON
@@ -764,7 +772,7 @@ public class NetworkTypeController extends StateMachine {
                     // ignore
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
-                    if (mIsPhysicalChannelConfig16Supported) {
+                    if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
                         if (isNrNotRestricted()) {
                             // NOT_RESTRICTED_RRC_CON -> NOT_RESTRICTED_RRC_IDLE
@@ -856,7 +864,7 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
-                    if (mIsPhysicalChannelConfig16Supported) {
+                    if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkState = getPhysicalLinkStateFromPhysicalChannelConfig();
                     }
                     updateNrAdvancedState();
@@ -1186,6 +1194,10 @@ public class NetworkTypeController extends StateMachine {
         } catch (ArrayIndexOutOfBoundsException e) {
             return "EVENT_NOT_DEFINED";
         }
+    }
+
+    private boolean isUsingPhysicalChannelConfigForRrcDetection() {
+        return mIsPhysicalChannelConfig16Supported && !mIsUsingUserDataForRrcDetection;
     }
 
     protected void log(String s) {
