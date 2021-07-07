@@ -520,6 +520,7 @@ public class UiccController extends Handler {
                     break;
                 case EVENT_RADIO_UNAVAILABLE:
                     if (DBG) log("EVENT_RADIO_UNAVAILABLE, dispose card");
+                    sLastSlotStatus = null;
                     UiccSlot uiccSlot = getUiccSlotForPhone(phoneId);
                     if (uiccSlot != null) {
                         uiccSlot.onRadioStateUnavailable();
