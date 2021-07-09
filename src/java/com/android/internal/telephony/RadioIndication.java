@@ -1132,8 +1132,8 @@ public class RadioIndication extends IRadioIndication.Stub {
             @NetworkRegistrationInfo.Domain int domain,
             int causeCode, int additionalCauseCode) {
         mRil.processIndication(indicationType);
-
-        if (cellIdentity == null
+        CellIdentity ci = CellIdentity.create(cellIdentity);
+        if (ci == null
                 || TextUtils.isEmpty(chosenPlmn)
                 || (domain & NetworkRegistrationInfo.DOMAIN_CS_PS) == 0
                 || (domain & ~NetworkRegistrationInfo.DOMAIN_CS_PS) != 0
@@ -1146,8 +1146,6 @@ public class RadioIndication extends IRadioIndication.Stub {
             mRil.riljLoge("Invalid registrationFailed indication");
             return;
         }
-
-        CellIdentity ci = CellIdentity.create(cellIdentity);
 
         mRil.mRegistrationFailedRegistrant.notifyRegistrant(
                 new AsyncResult(
