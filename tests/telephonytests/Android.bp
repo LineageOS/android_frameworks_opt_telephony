@@ -21,6 +21,7 @@ android_test {
         "android.test.runner",
         "ims-common",
         "unsupportedappusage",
+        "telephony-common",
     ],
 
     static_libs: [
@@ -32,7 +33,6 @@ android_test {
         "platform-test-annotations",
         "services.core",
         "services.net",
-        "telephony-common",
         "truth-prebuilt",
         "testables",
     ],
