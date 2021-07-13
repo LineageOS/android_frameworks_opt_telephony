@@ -1457,6 +1457,12 @@ public class DcTracker extends Handler {
                     apnContext.getApnTypeBitmask()) && requestType != REQUEST_TYPE_HANDOVER) {
                 reasons.add(DataDisallowedReasonType.ON_OTHER_TRANSPORT);
             }
+
+            // Check if the device is under data throttling.
+            long retryTime = mDataThrottler.getRetryTime(apnContext.getApnTypeBitmask());
+            if (retryTime > SystemClock.elapsedRealtime()) {
+                reasons.add(DataDisallowedReasonType.DATA_THROTTLED);
+            }
         }
 
         boolean isDataEnabled = apnContext == null ? mDataEnabledSettings.isDataEnabled()
