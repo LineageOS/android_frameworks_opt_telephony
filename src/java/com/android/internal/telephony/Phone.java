@@ -4254,8 +4254,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         Phone imsPhone = mImsPhone;
         if (imsPhone != null) {
             imsPhone.getImsRegistrationState(callback);
+        } else {
+            callback.accept(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
         }
-        callback.accept(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
     }
 
 
