@@ -45,9 +45,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.lang.reflect.Field;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
@@ -175,10 +175,10 @@ public class TransportManagerTest extends TelephonyTest {
         verify(mTestHandler, never()).sendMessageAtTime(any(Message.class), anyLong());
     }
 
-    private LinkedList<List<QualifiedNetworks>> getAvailableNetworksList() throws Exception {
-        Field f = TransportManager.class.getDeclaredField("mAvailableNetworksList");
+    private ArrayDeque<List<QualifiedNetworks>> getQueuedNetworksList() throws Exception {
+        Field f = TransportManager.class.getDeclaredField("mQueuedNetworksList");
         f.setAccessible(true);
-        return (LinkedList<List<QualifiedNetworks>>) f.get(mTransportManager);
+        return (ArrayDeque<List<QualifiedNetworks>>) f.get(mTransportManager);
     }
 
     @Test
@@ -235,7 +235,7 @@ public class TransportManagerTest extends TelephonyTest {
         verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
                 anyLong());
 
-        LinkedList<List<QualifiedNetworks>> listQueue = getAvailableNetworksList();
+        ArrayDeque<List<QualifiedNetworks>> listQueue = getQueuedNetworksList();
         // Verify the list has been queued.
         assertEquals(1, listQueue.size());
 
@@ -245,7 +245,7 @@ public class TransportManagerTest extends TelephonyTest {
                 mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
         processAllMessages();
 
-        listQueue = getAvailableNetworksList();
+        listQueue = getQueuedNetworksList();
         // Verify the queue is empty.
         assertEquals(0, listQueue.size());
 

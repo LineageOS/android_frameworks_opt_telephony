@@ -477,7 +477,7 @@ public class AccessNetworksManager extends Handler {
             pw.println("APN type "
                     + ApnSetting.getApnTypeStringInternal(mAvailableNetworks.keyAt(i))
                     + ": [" + Arrays.stream(mAvailableNetworks.valueAt(i))
-                    .mapToObj(type -> AccessNetworkType.toString(type))
+                    .mapToObj(AccessNetworkType::toString)
                     .collect(Collectors.joining(",")) + "]");
         }
         pw.decreaseIndent();
