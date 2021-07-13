@@ -342,11 +342,11 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private void onDataHandoverNeeded(@ApnType int apnType, int targetTransport,
                                       HandoverParams handoverParams) {
-        log("onDataHandoverNeeded: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
+        log("onDataHandoverNeeded: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", target transport="
                 + AccessNetworkConstants.transportTypeToString(targetTransport));
         if (mTransportManager.getCurrentTransport(apnType) == targetTransport) {
-            log("APN type " + ApnSetting.getApnTypeStringInternal(apnType) + " is already on "
+            log("APN type " + ApnSetting.getApnTypeString(apnType) + " is already on "
                     + AccessNetworkConstants.transportTypeToString(targetTransport));
             return;
         }
@@ -362,7 +362,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                 DcTracker dcTracker = mPhone.getDcTracker(currentTransport);
                 if (dcTracker != null) {
                     DataConnection dc = dcTracker.getDataConnectionByApnType(
-                            ApnSetting.getApnTypeStringInternal(apnType));
+                            ApnSetting.getApnTypeString(apnType));
                     if (dc != null && (dc.isActive())) {
                         Message onCompleteMsg = mInternalHandler.obtainMessage(
                                 EVENT_DATA_HANDOVER_COMPLETED);
@@ -371,7 +371,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                         mPendingHandovers.put(onCompleteMsg, handoverParams);
                         requestNetworkInternal(networkRequest, DcTracker.REQUEST_TYPE_HANDOVER,
                                 targetTransport, onCompleteMsg);
-                        log("Requested handover " + ApnSetting.getApnTypeStringInternal(apnType)
+                        log("Requested handover " + ApnSetting.getApnTypeString(apnType)
                                 + " to "
                                 + AccessNetworkConstants.transportTypeToString(targetTransport));
                         handoverPending = true;

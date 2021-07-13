@@ -1096,7 +1096,7 @@ public class DcTracker extends Handler {
                             .setApnTypeBitmask(bitmask).buildWithoutCheck())
                     .setNetworkType(getDataRat())
                     .build());
-            log("initApnContexts: apnContext=" + ApnSetting.getApnTypeStringInternal(
+            log("initApnContexts: apnContext=" + ApnSetting.getApnTypeString(
                     apnConfigType.getType()));
         }
         mPrioritySortedApnContexts.sort((c1, c2) -> c2.getPriority() - c1.getPriority());
@@ -1437,6 +1437,19 @@ public class DcTracker extends Handler {
         }
 
         if (apnContext != null) {
+            if (mPhone.getTransportManager().getPreferredTransport(
+                    apnContext.getApnTypeBitmask())
+                    == AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
+                // If QNS explicitly specified this APN type is not allowed on either cellular or
+                // IWLAN, we should not allow data setup.
+                reasons.add(DataDisallowedReasonType.DISABLED_BY_QNS);
+            } else if (mTransportType != mPhone.getTransportManager().getPreferredTransport(
+                    apnContext.getApnTypeBitmask())) {
+                // If the latest preference has already switched to other transport, we should not
+                // allow data setup.
+                reasons.add(DataDisallowedReasonType.ON_OTHER_TRANSPORT);
+            }
+
             // If the transport has been already switched to the other transport, we should not
             // allow the data setup. The only exception is the handover case, where we setup
             // handover data connection before switching the transport.
@@ -1578,6 +1591,15 @@ public class DcTracker extends Handler {
         String logStr = "trySetupData for APN type " + apnContext.getApnType() + ", reason: "
                 + apnContext.getReason() + ", requestType=" + requestTypeToString(requestType)
                 + ". " + dataConnectionReasons.toString();
+        if (dataConnectionReasons.contains(DataDisallowedReasonType.DISABLED_BY_QNS)
+                || dataConnectionReasons.contains(DataDisallowedReasonType.ON_OTHER_TRANSPORT)) {
+            logStr += ", current transport=" + AccessNetworkConstants.transportTypeToString(
+                    mPhone.getTransportManager().getCurrentTransport(
+                            apnContext.getApnTypeBitmask()));
+            logStr += ", preferred transport=" + AccessNetworkConstants.transportTypeToString(
+                    mPhone.getTransportManager().getPreferredTransport(
+                            apnContext.getApnTypeBitmask()));
+        }
         if (DBG) log(logStr);
         apnContext.requestLog(logStr);
         if (!isDataAllowed) {
@@ -1898,7 +1920,7 @@ public class DcTracker extends Handler {
         if (defaultPreferredApn != null
                 && defaultPreferredApn.canHandleType(mRequestedApnType)) {
             log("setDefaultPreferredApnIfNeeded: For APN type "
-                    + ApnSetting.getApnTypeStringInternal(mRequestedApnType)
+                    + ApnSetting.getApnTypeString(mRequestedApnType)
                     + " found default apnSetting "
                     + defaultPreferredApn);
 
@@ -2674,7 +2696,7 @@ public class DcTracker extends Handler {
             return;
         }
 
-        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
+        String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", request type=" + requestTypeToString(requestType);
         if (DBG) log(str);
         apnContext.requestLog(str);
@@ -2743,7 +2765,7 @@ public class DcTracker extends Handler {
         }
 
         boolean cleanup = false;
-        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeStringInternal(apnType)
+        String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", release type=" + releaseTypeToString(releaseType);
         if (DBG) log(str);
         apnContext.requestLog(str);
@@ -3716,7 +3738,7 @@ public class DcTracker extends Handler {
             for(ApnSetting p : mAllApnSettings) {
                 if (p.getId() == pos && p.canHandleType(mRequestedApnType)) {
                     log("getPreferredApn: For APN type "
-                            + ApnSetting.getApnTypeStringInternal(mRequestedApnType)
+                            + ApnSetting.getApnTypeString(mRequestedApnType)
                             + " found apnSetting " + p);
                     cursor.close();
                     return p;
@@ -5113,9 +5135,9 @@ public class DcTracker extends Handler {
                         EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP,
                             mSentSinceLastRecv);
                         if (DBG) log("doRecovery() cleanup all connections");
-                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeStringInternal(
+                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeString(
                                 ApnSetting.TYPE_DEFAULT)));
-                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeStringInternal(
+                        cleanUpConnection(mApnContexts.get(ApnSetting.getApnTypeString(
                                 ApnSetting.TYPE_ENTERPRISE)));
                         putRecoveryAction(RECOVERY_ACTION_REREGISTER);
                         break;

@@ -684,6 +684,8 @@ public class DcTrackerTest extends TelephonyTest {
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.DATA_STALL_RECOVERY_ON_BAD_NETWORK, 0);
 
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mTransportManager)
+                .getPreferredTransport(anyInt());
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn(true).when(mSST).getDesiredPowerState();
         doReturn(true).when(mSST).getPowerStateFromCarrier();

@@ -162,8 +162,8 @@ public class ApnSettingUtils {
                     + Arrays.toString(meteredApnSet.toArray()));
         }
 
-        if (meteredApnSet.contains(ApnSetting.getApnTypeStringInternal(apnType))) {
-            if (DBG) Rlog.d(LOG_TAG, ApnSetting.getApnTypeStringInternal(apnType) + " is metered.");
+        if (meteredApnSet.contains(ApnSetting.getApnTypeString(apnType))) {
+            if (DBG) Rlog.d(LOG_TAG, ApnSetting.getApnTypeString(apnType) + " is metered.");
             return true;
         } else if (apnType == ApnSetting.TYPE_ALL) {
             // Assuming no configuration error, if at least one APN type is
@@ -174,7 +174,7 @@ public class ApnSettingUtils {
             }
         }
 
-        if (DBG) Rlog.d(LOG_TAG, ApnSetting.getApnTypeStringInternal(apnType) + " is not metered.");
+        if (DBG) Rlog.d(LOG_TAG, ApnSetting.getApnTypeString(apnType) + " is not metered.");
         return false;
     }
 
