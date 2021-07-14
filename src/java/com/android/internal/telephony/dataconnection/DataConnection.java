@@ -1008,6 +1008,12 @@ public class DataConnection extends StateMachine {
         }
     }
 
+    private void onRquestHandoverFailed(ConnectionParams cp) {
+        sendMessage(obtainMessage(EVENT_CANCEL_HANDOVER));
+        notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
+                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+    }
+
     private void requestHandover(boolean inCorrectState, DataConnection srcDc,
             @DataServiceCallback.ResultCode int resultCode,
             ConnectionParams cp, Message msg, DataProfile dp, boolean isModemRoaming,
@@ -1025,8 +1031,7 @@ public class DataConnection extends StateMachine {
                             + "srcdc = null");
                 }
             }
-            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            onRquestHandoverFailed(cp);
             return;
         } else if (!isResultCodeSuccess(resultCode)) {
             if (DBG) {
@@ -1034,8 +1039,7 @@ public class DataConnection extends StateMachine {
                         + "setupDataCall will not be called, result code = "
                         + DataServiceCallback.resultCodeToString(resultCode));
             }
-            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            onRquestHandoverFailed(cp);
             return;
         }
 
@@ -1060,8 +1064,7 @@ public class DataConnection extends StateMachine {
         if (linkProperties == null || linkProperties.getLinkAddresses().isEmpty()) {
             loge("requestHandover: Can't find link properties of handover data connection. dc="
                     + srcDc);
-            notifyConnectCompleted(cp, DataFailCause.UNKNOWN,
-                    DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN, false);
+            onRquestHandoverFailed(cp);
             return;
         }
 
@@ -1381,6 +1384,9 @@ public class DataConnection extends StateMachine {
         } else if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
             result.mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+        } else if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_ARG) {
+            result = SetupResult.ERROR_INVALID_ARG;
+            result.mFailCause = DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER;
         } else if (response.getCause() != 0) {
             if (response.getCause() == DataFailCause.RADIO_NOT_AVAILABLE) {
                 result = SetupResult.ERROR_RADIO_NOT_AVAILABLE;
@@ -2720,6 +2726,10 @@ public class DataConnection extends StateMachine {
                 case EVENT_START_HANDOVER_ON_TARGET:
                     //called after startHandover on target transport
                     ((Consumer<Boolean>) msg.obj).accept(true /* is in correct state*/);
+                    retVal = HANDLED;
+                    break;
+                case EVENT_CANCEL_HANDOVER:
+                    transitionTo(mInactiveState);
                     retVal = HANDLED;
                     break;
                 default:
