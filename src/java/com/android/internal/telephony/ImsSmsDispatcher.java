@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.content.Context;
 import android.os.Binder;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.provider.Telephony.Sms.Intents;
@@ -169,8 +170,14 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         mTrackers.remove(token);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
-                        tracker.mRetryCount += 1;
-                        sendSms(tracker);
+                        if (tracker.mRetryCount < MAX_SEND_RETRIES) {
+                            tracker.mRetryCount += 1;
+                            sendMessageDelayed(
+                                    obtainMessage(EVENT_SEND_RETRY, tracker), SEND_RETRY_DELAY);
+                        } else {
+                            tracker.onFailed(mContext, reason, networkReasonCode);
+                            mTrackers.remove(token);
+                        }
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
                         tracker.mRetryCount += 1;
@@ -259,6 +266,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             }
         }
     };
+
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_SEND_RETRY:
+                logd("SMS retry..");
+                sendSms((SmsTracker) msg.obj);
+                break;
+            default:
+                super.handleMessage(msg);
+        }
+    }
 
     public ImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController,
             FeatureConnectorFactory factory) {
@@ -416,7 +435,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         boolean isRetry = tracker.mRetryCount > 0;
         String format = getFormat();
 
-        if (SmsConstants.FORMAT_3GPP.equals(format) && tracker.mRetryCount > 0) {
+        if (SmsConstants.FORMAT_3GPP.equals(format) && isRetry) {
             // per TS 23.040 Section 9.2.3.6:  If TP-MTI SMS-SUBMIT (0x01) type
             //   TP-RD (bit 2) is 1 for retry
             //   and TP-MR is set to previously failed sms TP-MR

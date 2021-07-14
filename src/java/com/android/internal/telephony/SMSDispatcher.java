@@ -111,7 +111,7 @@ public abstract class SMSDispatcher extends Handler {
     protected static final int EVENT_SEND_SMS_COMPLETE = 2;
 
     /** Retry sending a previously failed SMS message */
-    private static final int EVENT_SEND_RETRY = 3;
+    protected static final int EVENT_SEND_RETRY = 3;
 
     /** Confirmation required for sending a large number of messages. */
     private static final int EVENT_SEND_LIMIT_REACHED_CONFIRMATION = 4;
@@ -151,9 +151,10 @@ public abstract class SMSDispatcher extends Handler {
     protected final TelephonyManager mTelephonyManager;
 
     /** Maximum number of times to retry sending a failed SMS. */
-    private static final int MAX_SEND_RETRIES = 3;
+    protected static final int MAX_SEND_RETRIES = 3;
     /** Delay before next send attempt on a failed SMS, in milliseconds. */
-    private static final int SEND_RETRY_DELAY = 2000;
+    @VisibleForTesting
+    public static final int SEND_RETRY_DELAY = 2000;
     /** Message sending queue limit */
     private static final int MO_MSG_QUEUE_LIMIT = 5;
 
