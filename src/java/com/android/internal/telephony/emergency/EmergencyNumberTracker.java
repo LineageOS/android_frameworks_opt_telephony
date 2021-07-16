@@ -457,7 +457,7 @@ public class EmergencyNumberTracker extends Handler {
             }
             EmergencyNumber.mergeSameNumbersInEmergencyNumberList(updatedAssetEmergencyNumberList);
         } catch (IOException ex) {
-            loge("Cache asset emergency database failure: " + ex);
+            logw("Cache asset emergency database failure: " + ex);
         } finally {
             // close quietly by catching non-runtime exceptions.
             if (inputStream != null) {
@@ -1141,6 +1141,10 @@ public class EmergencyNumberTracker extends Handler {
 
     private static void logd(String str) {
         Rlog.d(TAG, str);
+    }
+
+    private static void logw(String str) {
+        Rlog.w(TAG, str);
     }
 
     private static void loge(String str) {
