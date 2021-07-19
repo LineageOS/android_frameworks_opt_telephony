@@ -38,6 +38,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -46,6 +47,7 @@ import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.NattKeepalivePacketData;
+import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -1317,6 +1319,29 @@ public class DataConnectionTest extends TelephonyTest {
         doReturn(PhoneConstants.State.RINGING).when(mCT).getState();
         mDc.sendMessage(DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED);
         waitForMs(100);
+        assertTrue(isSuspended());
+    }
+
+    @Test
+    public void testDataCreatedWhenOutOfService() throws Exception {
+        serviceStateChangedEvent(ServiceState.STATE_OUT_OF_SERVICE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+        ArgumentCaptor<NetworkCapabilities> ncCaptor =
+                ArgumentCaptor.forClass(NetworkCapabilities.class);
+        doReturn(mock(Network.class)).when(mConnectivityManager).registerNetworkAgent(
+                any(), any(), any(), ncCaptor.capture(), any(), any(), anyInt());
+
+        doReturn(mApn1).when(mApnContext).getApnSetting();
+        doReturn(ApnSetting.TYPE_DEFAULT).when(mApnContext).getApnTypeBitmask();
+        doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
+        connectEvent(true);
+        waitForMs(100);
+
+        NetworkCapabilities nc = ncCaptor.getValue();
+        // The network must be created with NOT_SUSPENDED capability.
+        assertTrue(nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED));
+
+        // But it's final state must be suspended.
         assertTrue(isSuspended());
     }
 
