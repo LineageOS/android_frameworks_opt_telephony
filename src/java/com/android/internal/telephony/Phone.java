@@ -451,7 +451,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final String ALLOWED_NETWORK_TYPES_TEXT_ENABLE_2G = "enable_2g";
     private static final int INVALID_ALLOWED_NETWORK_TYPES = -1;
     protected boolean mIsCarrierNrSupported = false;
-
+    protected boolean mIsAllowedNetworkTypesLoadedFromDb = false;
     private boolean mUnitTestMode;
 
     protected VoiceCallSessionStats mVoiceCallSessionStats;
@@ -2304,6 +2304,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Loads the allowed network type from subscription database.
      */
     public void loadAllowedNetworksFromSubscriptionDatabase() {
+        mIsAllowedNetworkTypesLoadedFromDb = false;
         // Try to load ALLOWED_NETWORK_TYPES from SIMINFO.
         if (SubscriptionController.getInstance() == null) {
             return;
@@ -2343,6 +2344,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     }
                 }
             }
+            mIsAllowedNetworkTypesLoadedFromDb = true;
         } catch (NumberFormatException e) {
             Rlog.e(LOG_TAG, "allowedNetworkTypes NumberFormat exception" + e);
         }
@@ -2410,8 +2412,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void setAllowedNetworkTypes(@TelephonyManager.AllowedNetworkTypesReason int reason,
             @TelephonyManager.NetworkTypeBitMask long networkTypes, Message response) {
+        int subId = getSubId();
         if (!TelephonyManager.isValidAllowedNetworkTypesReason(reason)) {
-            Rlog.e(LOG_TAG, "Invalid allowed network type reason: " + reason);
+            loge("setAllowedNetworkTypes: Invalid allowed network type reason: " + reason);
+            return;
+        }
+        if (!SubscriptionManager.isUsableSubscriptionId(subId)
+                || !mIsAllowedNetworkTypesLoadedFromDb) {
+            loge("setAllowedNetworkTypes: no sim or network type is not loaded. SubscriptionId: "
+                    + subId + ", isNetworkTypeLoaded" + mIsAllowedNetworkTypesLoadedFromDb);
             return;
         }
         String mapAsString = "";
@@ -2422,10 +2431,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                             + mAllowedNetworkTypesForReasons.get(key))
                     .collect(Collectors.joining(","));
         }
-        SubscriptionManager.setSubscriptionProperty(getSubId(),
+        SubscriptionManager.setSubscriptionProperty(subId,
                 SubscriptionManager.ALLOWED_NETWORK_TYPES,
                 mapAsString);
-        logd("SubId" + getSubId() + ",setAllowedNetworkTypes " + mapAsString);
+        logd("setAllowedNetworkTypes: SubId" + subId + ",setAllowedNetworkTypes " + mapAsString);
 
         updateAllowedNetworkTypes(response);
         notifyAllowedNetworkTypesChanged(reason);
@@ -4349,7 +4358,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public void sendSubscriptionSettings(boolean restoreNetworkSelection) {
         // Send settings down
-        updateAllowedNetworkTypes(null);
+        if (mIsAllowedNetworkTypesLoadedFromDb) {
+            updateAllowedNetworkTypes(null);
+        }
 
         if (restoreNetworkSelection) {
             restoreSavedNetworkSelection(null);
