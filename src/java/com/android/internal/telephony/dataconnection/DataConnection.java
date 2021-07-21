@@ -2919,11 +2919,6 @@ public class DataConnection extends StateMachine {
 
                 mDisabledApnTypeBitMask |= getDisallowedApnTypes();
                 updateLinkPropertiesHttpProxy();
-                // The suspended state is only meaningful when data is in active state. We need to
-                // make sure the suspended state is correct as soon as we enter active state.
-                // After this, the network agent will be created with the correct suspended state
-                // (i.e. NOT_SUSPENDED capability).
-                updateSuspendState();
                 mNetworkAgent = new DcNetworkAgent(DataConnection.this, mPhone, mScore,
                         configBuilder.build(), provider, mTransportType);
 
