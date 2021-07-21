@@ -792,8 +792,8 @@ public class SubscriptionInfoUpdater extends Handler {
             if (DBG) logd("SubInfo Initialized");
             sIsSubInfoInitialized = true;
             mSubscriptionController.notifySubInfoReady();
-            MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
         }
+        MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
     }
 
     /**
