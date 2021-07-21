@@ -2316,6 +2316,7 @@ public class DcTracker extends Handler {
         // TODO: It'd be nice to only do this if the changed entrie(s)
         // match the current operator.
         if (DBG) log("onApnChanged: createAllApnList and cleanUpAllConnections");
+        mDataThrottler.reset();
         setDefaultPreferredApnIfNeeded();
         createAllApnList();
         setDataProfilesAsNeeded();
