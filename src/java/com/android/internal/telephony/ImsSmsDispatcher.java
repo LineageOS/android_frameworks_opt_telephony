@@ -180,6 +180,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         }
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK:
+                        // Skip MAX_SEND_RETRIES checking here. It allows CSFB after
+                        // SEND_STATUS_ERROR_RETRY up to MAX_SEND_RETRIES even.
                         tracker.mRetryCount += 1;
                         mTrackers.remove(token);
                         fallbackToPstn(tracker);
