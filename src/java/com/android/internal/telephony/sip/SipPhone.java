@@ -43,6 +43,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.telephony.Rlog;
 
 import java.text.ParseException;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
@@ -192,7 +193,9 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
-    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
+    public Connection dial(String dialString, DialArgs dialArgs,
+            Consumer<Phone> chosenPhoneConsumer) throws CallStateException {
+        chosenPhoneConsumer.accept(this);
         synchronized (SipPhone.class) {
             return dialInternal(dialString, dialArgs.videoState);
         }

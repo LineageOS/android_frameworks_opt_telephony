@@ -38,6 +38,7 @@ import com.android.internal.telephony.PhoneConstants.DataState;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Internal interface used to control the phone; SDK developers cannot
@@ -489,12 +490,33 @@ public interface PhoneInternalInterface {
      *
      * @param dialString The dial string.
      * @param dialArgs Parameters to perform the dial with.
+     * @param chosenPhone The Phone (either GsmCdmaPhone or ImsPhone) that has been chosen to dial
+     *                    this number. This is used for any setup that should occur before dial
+     *                    actually occurs.
      * @exception CallStateException if a new outgoing call is not currently
      *                possible because no more call slots exist or a call exists
      *                that is dialing, alerting, ringing, or waiting. Other
      *                errors are handled asynchronously.
      */
-    Connection dial(String dialString, @NonNull DialArgs dialArgs) throws CallStateException;
+    Connection dial(String dialString, @NonNull DialArgs dialArgs,
+            Consumer<Phone> chosenPhone) throws CallStateException;
+
+    /**
+     * Initiate a new voice connection. This happens asynchronously, so you
+     * cannot assume the audio path is connected (or a call index has been
+     * assigned) until PhoneStateChanged notification has occurred.
+     *
+     * @param dialString The dial string.
+     * @param dialArgs Parameters to perform the dial with.
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     */
+    default Connection dial(String dialString, @NonNull DialArgs dialArgs)
+            throws CallStateException {
+        return dial(dialString, dialArgs, (phone) -> {});
+    }
 
     /**
      * Initiate a new conference connection. This happens asynchronously, so you

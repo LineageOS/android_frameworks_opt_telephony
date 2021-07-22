@@ -737,6 +737,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 break;
 
             case EVENT_INITIATE_SILENT_REDIAL:
+                // This is an ImsPhone -> GsmCdmaPhone redial
+                // See ImsPhone#initiateSilentRedial
                 Rlog.d(LOG_TAG, "Event EVENT_INITIATE_SILENT_REDIAL Received");
                 ar = (AsyncResult) msg.obj;
                 if ((ar.exception == null) && (ar.result != null)) {
@@ -747,6 +749,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
                         Connection cn = dialInternal(dialString, dialArgs);
+                        // The ImsPhoneConnection that is owned by the ImsPhone is currently the
+                        // one with a callback registered to TelephonyConnection. Notify the
+                        // redial happened over that Phone so that it can be replaced with the
+                        // new GSM/CDMA Connection.
                         Rlog.d(LOG_TAG, "Notify redial connection changed cn: " + cn);
                         if (mImsPhone != null) {
                             // Don't care it is null or not.
