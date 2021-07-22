@@ -235,7 +235,7 @@ public class CellularNetworkValidator {
      */
     public boolean isValidationFeatureSupported() {
         return PhoneConfigurationManager.getInstance().getCurrentPhoneCapability()
-                .validationBeforeSwitchSupported;
+                .isNetworkValidationBeforeSwitchSupported();
     }
 
     @VisibleForTesting
