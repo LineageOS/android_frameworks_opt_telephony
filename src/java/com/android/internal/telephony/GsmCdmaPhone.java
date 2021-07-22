@@ -3028,26 +3028,6 @@ public class GsmCdmaPhone extends Phone {
                 }
             break;
 
-            case EVENT_GET_IMEI_DONE:
-                ar = (AsyncResult)msg.obj;
-
-                if (ar.exception != null) {
-                    break;
-                }
-
-                mImei = (String)ar.result;
-            break;
-
-            case EVENT_GET_IMEISV_DONE:
-                ar = (AsyncResult)msg.obj;
-
-                if (ar.exception != null) {
-                    break;
-                }
-
-                mImeiSv = (String)ar.result;
-            break;
-
             case EVENT_USSD:
                 ar = (AsyncResult)msg.obj;
 
