@@ -210,6 +210,14 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 2);
         processAllMessages();
 
+        // Ensure all subscription loaded only updates state once
+        clearInvocations(mSubControllerMock);
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        processAllMessages();
+        verify(mSubControllerMock, never()).setDefaultDataSubId(anyInt());
+        verify(mSubControllerMock, never()).setDefaultVoiceSubId(anyInt());
+        verify(mSubControllerMock, never()).setDefaultSmsSubId(anyInt());
+
         // Notify radio unavailable.
         replaceInstance(BaseCommands.class, "mState", mSimulatedCommands,
                 TelephonyManager.RADIO_POWER_UNAVAILABLE);
