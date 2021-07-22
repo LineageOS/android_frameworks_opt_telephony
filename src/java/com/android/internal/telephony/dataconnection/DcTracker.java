@@ -352,6 +352,9 @@ public class DcTracker extends Handler {
     private boolean mNrSaSub6Unmetered = false;
     private boolean mNrNsaRoamingUnmetered = false;
 
+    // it effect the PhysicalLinkStateChanged
+    private boolean mLteEndcUsingUserDataForRrcDetection = false;
+
     // stats per data call recovery event
     private DataStallRecoveryStats mDataStallRecoveryStats;
 
@@ -5597,13 +5600,21 @@ public class DcTracker extends Handler {
                         CarrierConfigManager.KEY_UNMETERED_NR_SA_SUB6_BOOL);
                 mNrNsaRoamingUnmetered = b.getBoolean(
                         CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
+                mLteEndcUsingUserDataForRrcDetection = b.getBoolean(
+                        CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
             }
         }
         updateLinkBandwidths(bandwidths, useLte);
     }
 
+    public boolean getLteEndcUsingUserDataForIdleDetection() {
+        return mLteEndcUsingUserDataForRrcDetection;
+    }
+
     /**
      * Register for physical link state (i.e. RRC state) changed event.
+     * if {@link CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
+     * then physical link state is focusing on "internet data connection" instead of RRC state.
      *
      * @param h The handler
      * @param what The event
