@@ -515,6 +515,10 @@ public class SmsController extends ISmsImplBase {
             Uri messageUri, String scAddress, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (!getCallingPackage().equals(callingPkg)) {
+            throw new SecurityException("sendStoredText: Package " + callingPkg
+                    + "does not belong to " + Binder.getCallingUid());
+        }
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendStoredText(callingPkg, callingAttributionTag, messageUri, scAddress,
                     sentIntent, deliveryIntent);
