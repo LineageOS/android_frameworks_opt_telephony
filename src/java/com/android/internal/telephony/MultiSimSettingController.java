@@ -341,16 +341,18 @@ public class MultiSimSettingController extends Handler {
     }
 
     /**
-     * Upon initialization, update defaults and mobile data enabling.
+     * Upon initialization or radio available, update defaults and mobile data enabling.
      * Should only be triggered once.
      */
     private void onAllSubscriptionsLoaded() {
-        if (DBG) log("onAllSubscriptionsLoaded");
-        mSubInfoInitialized = true;
-        for (Phone phone : PhoneFactory.getPhones()) {
-            phone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
+        if (DBG) log("onAllSubscriptionsLoaded: mSubInfoInitialized=" + mSubInfoInitialized);
+        if (!mSubInfoInitialized) {
+            mSubInfoInitialized = true;
+            for (Phone phone : PhoneFactory.getPhones()) {
+                phone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
+            }
+            reEvaluateAll();
         }
-        reEvaluateAll();
     }
 
     /**
@@ -445,11 +447,16 @@ public class MultiSimSettingController extends Handler {
     }
 
     /**
-     * Wait for subInfo initialization (after boot up) and carrier config load for all active
-     * subscriptions before re-evaluate multi SIM settings.
+     * Wait for subInfo initialization (after boot up or radio unavailable) and carrier config load
+     * for all active subscriptions before re-evaluate multi SIM settings.
      */
     private boolean isReadyToReevaluate() {
-        return mSubInfoInitialized && isCarrierConfigLoadedForAllSub();
+        boolean carrierConfigsLoaded = isCarrierConfigLoadedForAllSub();
+        if (DBG) {
+            log("isReadyToReevaluate: subInfoInitialized=" + mSubInfoInitialized
+                    + ", carrierConfigsLoaded=" + carrierConfigsLoaded);
+        }
+        return mSubInfoInitialized && carrierConfigsLoaded;
     }
 
     private void reEvaluateAll() {
