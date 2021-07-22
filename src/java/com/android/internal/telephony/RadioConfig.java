@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.PhoneCapability.DEVICE_NR_CAPABILITY_NSA;
+import static android.telephony.PhoneCapability.DEVICE_NR_CAPABILITY_SA;
+
 import static com.android.internal.telephony.RILConstants.RADIO_NOT_AVAILABLE;
 import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HAL_DEVICE_CAPABILITIES;
@@ -45,6 +48,7 @@ import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -77,6 +81,7 @@ public class RadioConfig extends Handler {
     private final SparseArray<RILRequest> mRequestList = new SparseArray<RILRequest>();
     /* default work source which will blame phone process */
     private final WorkSource mDefaultWorkSource;
+    private final int[] mDeviceNrCapabilities;
     private static RadioConfig sRadioConfig;
     private static final Object sLock = new Object();
 
@@ -108,6 +113,24 @@ public class RadioConfig extends Handler {
 
         mDefaultWorkSource = new WorkSource(context.getApplicationInfo().uid,
                 context.getPackageName());
+
+        boolean is5gStandalone = context.getResources().getBoolean(
+                com.android.internal.R.bool.config_telephony5gStandalone);
+        boolean is5gNonStandalone = context.getResources().getBoolean(
+                com.android.internal.R.bool.config_telephony5gNonStandalone);
+
+        if (!is5gStandalone && !is5gNonStandalone) {
+            mDeviceNrCapabilities = new int[0];
+        } else {
+            List<Integer> list = new ArrayList<>();
+            if (is5gNonStandalone) {
+                list.add(DEVICE_NR_CAPABILITY_NSA);
+            }
+            if (is5gStandalone) {
+                list.add(DEVICE_NR_CAPABILITY_SA);
+            }
+            mDeviceNrCapabilities = list.stream().mapToInt(Integer::valueOf).toArray();
+        }
     }
 
     /**
@@ -561,6 +584,13 @@ public class RadioConfig extends Handler {
                 }
             }
         }
+    }
+
+    /**
+     * Returns the device's nr capability.
+     */
+    public int[] getDeviceNrCapabilities() {
+        return mDeviceNrCapabilities;
     }
 
     static ArrayList<IccSlotStatus> convertHalSlotStatus(

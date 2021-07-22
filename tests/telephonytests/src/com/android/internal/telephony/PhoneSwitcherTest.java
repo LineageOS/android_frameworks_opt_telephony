@@ -123,7 +123,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
 
-        PhoneCapability phoneCapability = new PhoneCapability(1, 1, 0, null, false);
+        PhoneCapability phoneCapability = new PhoneCapability(1, 1, null, false, new int[0]);
         doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
 
         doReturn(Call.State.ACTIVE).when(mActiveCall).getState();

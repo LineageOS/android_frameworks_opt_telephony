@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -35,23 +36,25 @@ public class PhoneCapabilityTest {
     public void basicTests() throws Exception {
         int maxActiveVoiceCalls = 1;
         int maxActiveData = 2;
-        int max5G = 3;
         ModemInfo modemInfo = new ModemInfo(1, 2, true, false);
         List<ModemInfo> logicalModemList = new ArrayList<>();
         logicalModemList.add(modemInfo);
+        int[] deviceNrCapabilities = new int[]{PhoneCapability.DEVICE_NR_CAPABILITY_SA};
 
-        PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G,
-                logicalModemList, false);
+        PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData,
+                logicalModemList, false, deviceNrCapabilities);
 
-        assertEquals(maxActiveVoiceCalls, capability.maxActiveVoiceCalls);
-        assertEquals(maxActiveData, capability.maxActiveData);
-        assertEquals(max5G, capability.max5G);
-        assertEquals(1, capability.logicalModemList.size());
-        assertEquals(modemInfo, capability.logicalModemList.get(0));
-        PhoneCapability toCompare = new PhoneCapability(
-                maxActiveVoiceCalls + 1, maxActiveData - 1, max5G, logicalModemList, false);
-        assertEquals(capability, new PhoneCapability(
-                maxActiveVoiceCalls, maxActiveData, max5G, logicalModemList, false));
+        assertEquals(maxActiveVoiceCalls, capability.getMaxActiveVoiceSubscriptions());
+        assertEquals(maxActiveData, capability.getMaxActiveDataSubscriptions());
+        assertEquals(1, capability.getLogicalModemList().size());
+        assertEquals(modemInfo, capability.getLogicalModemList().get(0));
+        assertArrayEquals(deviceNrCapabilities, capability.getDeviceNrCapabilities());
+
+        PhoneCapability toCompare = new PhoneCapability(maxActiveVoiceCalls + 1, maxActiveData - 1,
+                logicalModemList, false, deviceNrCapabilities);
+        assertEquals(capability,
+                new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
+                        false, deviceNrCapabilities));
         assertNotEquals(capability, toCompare);
     }
 
@@ -60,24 +63,24 @@ public class PhoneCapabilityTest {
     public void parcelReadWrite() throws Exception {
         int maxActiveVoiceCalls = 1;
         int maxActiveData = 2;
-        int max5G = 3;
         ModemInfo modemInfo = new ModemInfo(1, 2, true, false);
         List<ModemInfo> logicalModemList = new ArrayList<>();
         logicalModemList.add(modemInfo);
+        int[] deviceNrCapabilities = new int[]{};
 
-        PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData, max5G,
-                logicalModemList, false);
+        PhoneCapability capability = new PhoneCapability(maxActiveVoiceCalls, maxActiveData,
+                logicalModemList, false, deviceNrCapabilities);
 
         Parcel parcel = Parcel.obtain();
         capability.writeToParcel(parcel, 0);
         parcel.setDataPosition(0);
         PhoneCapability toCompare = PhoneCapability.CREATOR.createFromParcel(parcel);
 
-        assertEquals(maxActiveVoiceCalls, toCompare.maxActiveVoiceCalls);
-        assertEquals(maxActiveData, toCompare.maxActiveData);
-        assertEquals(max5G, toCompare.max5G);
-        assertEquals(1, toCompare.logicalModemList.size());
-        assertEquals(modemInfo, toCompare.logicalModemList.get(0));
+        assertEquals(maxActiveVoiceCalls, toCompare.getMaxActiveVoiceSubscriptions());
+        assertEquals(maxActiveData, toCompare.getMaxActiveDataSubscriptions());
+        assertEquals(1, toCompare.getLogicalModemList().size());
+        assertEquals(modemInfo, toCompare.getLogicalModemList().get(0));
+        assertArrayEquals(deviceNrCapabilities, toCompare.getDeviceNrCapabilities());
         assertEquals(capability, toCompare);
     }
 }
