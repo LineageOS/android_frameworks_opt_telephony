@@ -126,6 +126,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1326,8 +1327,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public Connection dial(String dialString, @NonNull DialArgs dialArgs)
-            throws CallStateException {
+    public Connection dial(String dialString, @NonNull DialArgs dialArgs,
+            Consumer<Phone> chosenPhoneConsumer) throws CallStateException {
         if (!isPhoneTypeGsm() && dialArgs.uusInfo != null) {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
@@ -1410,6 +1411,7 @@ public class GsmCdmaPhone extends Phone {
                 || useImsForEmergency) {
             try {
                 if (DBG) logd("Trying IMS PS call");
+                chosenPhoneConsumer.accept(imsPhone);
                 return imsPhone.dial(dialString, dialArgs);
             } catch (CallStateException e) {
                 if (DBG) logd("IMS PS call exception " + e +
@@ -1466,6 +1468,7 @@ public class GsmCdmaPhone extends Phone {
             mCi.testingEmergencyCall();
         }
 
+        chosenPhoneConsumer.accept(this);
         return dialInternal(dialString, dialArgs);
     }
 
