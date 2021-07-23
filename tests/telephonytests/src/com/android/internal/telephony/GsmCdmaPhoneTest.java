@@ -1622,4 +1622,33 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(LinkCapacityEstimate.INVALID, lce3.getUplinkCapacityKbps());
         assertEquals(LinkCapacityEstimate.LCE_TYPE_COMBINED, lce3.getType());
     }
+
+    @Test
+    @SmallTest
+    public void testLoadAllowedNetworksFromSubscriptionDatabase_loadTheNullValue_isLoadedTrue() {
+        int subId = 1;
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+
+        doReturn(null).when(mSubscriptionController).getSubscriptionProperty(anyInt(),
+                eq(SubscriptionManager.ALLOWED_NETWORK_TYPES));
+
+        mPhoneUT.loadAllowedNetworksFromSubscriptionDatabase();
+
+        assertEquals(true,  mPhoneUT.isAllowedNetworkTypesLoadedFromDb());
+    }
+
+    @Test
+    @SmallTest
+    public void testLoadAllowedNetworksFromSubscriptionDatabase_subIdNotValid_isLoadedFalse() {
+        int subId = -1;
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+
+        when(mSubscriptionController.getSubscriptionProperty(anyInt(),
+                eq(SubscriptionManager.ALLOWED_NETWORK_TYPES))).thenReturn(null);
+
+
+        mPhoneUT.loadAllowedNetworksFromSubscriptionDatabase();
+
+        assertEquals(false, mPhoneUT.isAllowedNetworkTypesLoadedFromDb());
+    }
 }
