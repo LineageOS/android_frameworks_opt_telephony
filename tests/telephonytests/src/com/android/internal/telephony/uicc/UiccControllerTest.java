@@ -21,6 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
@@ -60,6 +62,7 @@ public class UiccControllerTest extends TelephonyTest {
     private static final int ICC_CHANGED_EVENT = 0;
     private static final int EVENT_GET_ICC_STATUS_DONE = 3;
     private static final int EVENT_GET_SLOT_STATUS_DONE = 4;
+    private static final int EVENT_SIM_REFRESH = 8;
     private static final int EVENT_EID_READY = 9;
     @Mock
     private Handler mMockedHandler;
@@ -73,6 +76,8 @@ public class UiccControllerTest extends TelephonyTest {
     private UiccCard mMockCard;
     @Mock
     private EuiccCard mMockEuiccCard;
+    @Mock
+    private UiccProfile mMockProfile;
 
     private IccCardApplicationStatus composeUiccApplicationStatus(
             IccCardApplicationStatus.AppType appType,
@@ -630,5 +635,23 @@ public class UiccControllerTest extends TelephonyTest {
         // since EID is known and we've gotten card status, the default eUICC card ID should be set
         assertEquals(mUiccControllerUT.convertToPublicCardId(knownEidFromApdu),
                 mUiccControllerUT.getCardIdForDefaultEuicc());
+    }
+
+    @Test
+    public void testSimRefresh() {
+        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
+        doReturn(mMockCard).when(mMockSlot).getUiccCard();
+        doReturn(mMockProfile).when(mMockCard).getUiccProfile();
+
+        doReturn(true).when(mMockCard).resetAppWithAid(nullable(String.class), eq(true));
+        IccRefreshResponse resp = new IccRefreshResponse();
+        resp.refreshResult = IccRefreshResponse.REFRESH_RESULT_RESET;
+        AsyncResult ar = new AsyncResult(null, resp, null);
+        Message msg = Message.obtain(mUiccControllerUT, EVENT_SIM_REFRESH, ar);
+        mUiccControllerUT.handleMessage(msg);
+        processAllMessages();
+
+        // verify that updateIccAvailability() is called on refresh with RESET
+        verify(mMockProfile).updateIccAvailability(true);
     }
 }
