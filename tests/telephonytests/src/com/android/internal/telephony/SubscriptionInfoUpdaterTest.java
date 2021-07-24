@@ -246,8 +246,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         verify(mConfigManager, never()).updateConfigForPhoneId(eq(FAKE_PHONE_ID_1),
                 eq(IccCardConstants.INTENT_VALUE_ICC_NOT_READY));
-        verify(mSubscriptionController).clearSubInfoRecord(FAKE_PHONE_ID_1);
-        verify(mSubscriptionController).notifySubscriptionInfoChanged();
+        verify(mSubscriptionController, never()).clearSubInfoRecord(FAKE_PHONE_ID_1);
+        verify(mSubscriptionController, never()).notifySubscriptionInfoChanged();
     }
 
     @Test
