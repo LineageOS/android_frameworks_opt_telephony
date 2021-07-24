@@ -1163,6 +1163,7 @@ public class UiccController extends Handler {
         }
 
         if (changed && resp.refreshResult == IccRefreshResponse.REFRESH_RESULT_RESET) {
+            uiccCard.getUiccProfile().updateIccAvailability(true);
             // If there is any change on RESET, reset carrier config as well. From carrier config
             // perspective, this is treated the same as sim state unknown
             CarrierConfigManager configManager = (CarrierConfigManager)

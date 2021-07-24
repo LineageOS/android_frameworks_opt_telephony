@@ -523,7 +523,10 @@ public class UiccProfile extends IccCard {
         }
     }
 
-    private void updateIccAvailability(boolean allAppsChanged) {
+    /**
+     * ICC availability/state changed. Update corresponding fields and external state if needed.
+     */
+    public void updateIccAvailability(boolean allAppsChanged) {
         synchronized (mLock) {
             UiccCardApplication newApp;
             IccRecords newRecords = null;
