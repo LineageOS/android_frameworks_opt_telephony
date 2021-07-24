@@ -29,6 +29,7 @@ import android.telephony.DataFailCause;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
@@ -89,8 +90,8 @@ public class DcController extends Handler {
     /**
      * Aggregated physical link state from all data connections. This reflects the device's RRC
      * connection state.
-     * // TODO: Instead of tracking the RRC state here, we should make PhysicalChannelConfig work in
-     *          S.
+     * If {@link CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
+     * then This reflects "internet data connection" instead of RRC state.
      */
     private @PhysicalLinkState int mPhysicalLinkState = PHYSICAL_LINK_UNKNOWN;
 
@@ -229,6 +230,7 @@ public class DcController extends Handler {
 
         boolean isAnyDataCallDormant = false;
         boolean isAnyDataCallActive = false;
+        boolean isInternetDataCallActive = false;
 
         for (DataCallResponse newState : dcsList) {
 
@@ -248,6 +250,11 @@ public class DcController extends Handler {
                 if (DBG) {
                     log("onDataStateChanged: Found ConnId=" + newState.getId()
                             + " newState=" + newState.toString());
+                }
+                if (apnContexts.stream().anyMatch(
+                        i -> ApnSetting.TYPE_DEFAULT_STRING.equals(i.getApnType()))
+                        && newState.getLinkStatus() == DataConnActiveStatus.ACTIVE) {
+                    isInternetDataCallActive = true;
                 }
                 if (newState.getLinkStatus() == DataConnActiveStatus.INACTIVE) {
                     if (mDct.isCleanupRequired.get()) {
@@ -359,8 +366,12 @@ public class DcController extends Handler {
 
         if (mDataServiceManager.getTransportType()
                 == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-            int physicalLinkState = isAnyDataCallActive
-                    ? PHYSICAL_LINK_ACTIVE : PHYSICAL_LINK_NOT_ACTIVE;
+            boolean isPhysicalLinkStateFocusingOnInternetData =
+                    mDct.getLteEndcUsingUserDataForIdleDetection();
+            int physicalLinkState =
+                    (isPhysicalLinkStateFocusingOnInternetData
+                            ? isInternetDataCallActive : isAnyDataCallActive)
+                            ? PHYSICAL_LINK_ACTIVE : PHYSICAL_LINK_NOT_ACTIVE;
             if (mPhysicalLinkState != physicalLinkState) {
                 mPhysicalLinkState = physicalLinkState;
                 mPhysicalLinkStateChangedRegistrants.notifyResult(mPhysicalLinkState);
@@ -408,11 +419,13 @@ public class DcController extends Handler {
 
     /**
      * Register for physical link state (i.e. RRC state) changed event.
-     *
+     * if {@link CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
+     * then physical link state is focusing on "internet data connection" instead of RRC state.
      * @param h The handler
      * @param what The event
      */
-    void registerForPhysicalLinkStateChanged(Handler h, int what) {
+    @VisibleForTesting
+    public void registerForPhysicalLinkStateChanged(Handler h, int what) {
         mPhysicalLinkStateChangedRegistrants.addUnique(h, what, null);
     }
 
