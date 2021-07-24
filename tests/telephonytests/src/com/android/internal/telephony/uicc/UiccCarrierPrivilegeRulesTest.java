@@ -42,7 +42,10 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -561,9 +564,11 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         // Select files
+        AtomicReference<String> currentFileId = new AtomicReference<>();
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
+                currentFileId.set((String) invocation.getArguments()[6]);
                 Message message = (Message) invocation.getArguments()[7];
                 AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
                 message.obj = ar;
@@ -573,85 +578,44 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xA4), eq(0x00),
                 eq(0x04), eq(0x02), anyString(), any(Message.class));
 
-        // Read binary - ODF
-        String odf = "A706300404025207";
+        // Read binary - since params are identical across files, we need to keep track of which
+        // file was selected most recently and give back that content.
+        Map<String, String> binaryContent =
+                new HashMap<>() {
+                    {
+                        // ODF
+                        put("5031", "A706300404025207");
+                        // DODF
+                        put(
+                                "5207",
+                                "A1293000300F0C0D4750205345204163632043746CA1143012060A2A864886FC6B"
+                                        + "81480101300404024200");
+                        // ACMF
+                        put("4200", "301004080102030405060708300404024300");
+                        // ACRF
+                        put("4300", "3010A0080406FFFFFFFFFFFF300404024310");
+                        // ACCF
+                        put(
+                                "4310",
+                                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51"
+                                        + "465350302204204C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EA"
+                                        + "FE8226079EF6F676FD1859");
+                    }
+                };
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(odf));
+                IccIoResult iir =
+                        new IccIoResult(0x90, 0x00,
+                                IccUtils.hexStringToBytes(binaryContent.get(currentFileId.get())));
                 AsyncResult ar = new AsyncResult(null, iir, null);
                 message.obj = ar;
                 message.sendToTarget();
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("5031"), any(Message.class));
-
-        // Read binary - DODF
-        String dodf =
-                "A1293000300F0C0D4750205345204163632043746CA11"
-                        + "43012060A2A864886FC6B81480101300404024200";
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(dodf));
-                AsyncResult ar = new AsyncResult(null, iir, null);
-                message.obj = ar;
-                message.sendToTarget();
-                return null;
-            }
-        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("5207"), any(Message.class));
-
-        // Read binary - ACMF
-        String acmf = "301004080102030405060708300404024300";
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(acmf));
-                AsyncResult ar = new AsyncResult(null, iir, null);
-                message.obj = ar;
-                message.sendToTarget();
-                return null;
-            }
-        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("4200"), any(Message.class));
-
-        // Read binary - ACRF
-        String acrf = "3010A0080406FFFFFFFFFFFF300404024310";
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(acrf));
-                AsyncResult ar = new AsyncResult(null, iir, null);
-                message.obj = ar;
-                message.sendToTarget();
-                return null;
-            }
-        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("4300"), any(Message.class));
-
-        // Read binary - ACCF
-        String accf =
-                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB514653503022042"
-                        + "04C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859";
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(accf));
-                AsyncResult ar = new AsyncResult(null, iir, null);
-                message.obj = ar;
-                message.sendToTarget();
-                return null;
-            }
-        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("4310"), any(Message.class));
-
+                eq(0x00), eq(0x00), eq(""), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -706,9 +670,11 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         }).when(mUiccProfile).iccOpenLogicalChannel(anyString(), anyInt(), any(Message.class));
 
         // Select files
+        AtomicReference<String> currentFileId = new AtomicReference<>();
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
+                currentFileId.set((String) invocation.getArguments()[6]);
                 Message message = (Message) invocation.getArguments()[7];
                 AsyncResult ar = new AsyncResult(null, new int[]{2}, null);
                 message.obj = ar;
@@ -718,52 +684,37 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xA4), eq(0x00),
                 eq(0x04), eq(0x02), anyString(), any(Message.class));
 
-        // Read binary ODF failed
+        // Read binary - since params are identical across files, we need to keep track of which
+        // file was selected most recently and give back that content.
+        Map<String, String> binaryContent =
+                new HashMap<>() {
+                    {
+                        // ODF fails
+                        put("5031", "");
+                        // ACRF
+                        put("4300", "3010A0080406FFFFFFFFFFFF300404024310");
+                        // ACCF
+                        put(
+                                "4310",
+                                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51"
+                                        + "465350302204204C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EA"
+                                        + "FE8226079EF6F676FD1859");
+                    }
+                };
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, new byte[]{});
+                IccIoResult iir =
+                        new IccIoResult(0x90, 0x00,
+                                IccUtils.hexStringToBytes(binaryContent.get(currentFileId.get())));
                 AsyncResult ar = new AsyncResult(null, iir, null);
                 message.obj = ar;
                 message.sendToTarget();
                 return null;
             }
         }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("5031"), any(Message.class));
-
-        // Read binary - ACRF
-        String acrf = "3010A0080406FFFFFFFFFFFF300404024310";
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(acrf));
-                AsyncResult ar = new AsyncResult(null, iir, null);
-                message.obj = ar;
-                message.sendToTarget();
-                return null;
-            }
-        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("4300"), any(Message.class));
-
-        // Read binary - ACCF
-        String accf =
-                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB514653503022042"
-                        + "04C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EAFE8226079EF6F676FD1859";
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Message message = (Message) invocation.getArguments()[7];
-                IccIoResult iir = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes(accf));
-                AsyncResult ar = new AsyncResult(null, iir, null);
-                message.obj = ar;
-                message.sendToTarget();
-                return null;
-            }
-        }).when(mUiccProfile).iccTransmitApduLogicalChannel(anyInt(), eq(0x00), eq(0xB0), eq(0x00),
-                eq(0x00), eq(0x00), eq("4310"), any(Message.class));
-
+                eq(0x00), eq(0x00), eq(""), any(Message.class));
 
         doAnswer(new Answer<Void>() {
             @Override

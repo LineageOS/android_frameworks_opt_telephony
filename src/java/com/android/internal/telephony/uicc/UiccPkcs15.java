@@ -90,7 +90,7 @@ public class UiccPkcs15 extends Handler {
         private void readBinary() {
             if (mChannelId >=0 ) {
                 mUiccProfile.iccTransmitApduLogicalChannel(mChannelId, 0x00, 0xB0, 0x00, 0x00, 0x00,
-                        mFileId, obtainMessage(EVENT_READ_BINARY_DONE));
+                        "", obtainMessage(EVENT_READ_BINARY_DONE));
             } else {
                 log("EF based");
             }
