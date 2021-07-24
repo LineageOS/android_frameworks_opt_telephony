@@ -925,7 +925,9 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
+    public Connection dial(String dialString, DialArgs dialArgs,
+            Consumer<Phone> chosenPhoneConsumer) throws CallStateException {
+        chosenPhoneConsumer.accept(this);
         return dialInternal(dialString, dialArgs, null);
     }
 
@@ -1894,6 +1896,7 @@ public class ImsPhone extends ImsPhoneBase {
                 }
                 break;
             case EVENT_INITIATE_VOLTE_SILENT_REDIAL: {
+                // This is a CS -> IMS redial
                 if (VDBG) logd("EVENT_INITIATE_VOLTE_SILENT_REDIAL");
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null && ar.result != null) {
@@ -1906,6 +1909,10 @@ public class ImsPhone extends ImsPhoneBase {
                     try {
                         Connection cn = dial(dialString,
                                 updateDialArgsForVolteSilentRedial(dialArgs, causeCode));
+                        // The GSM/CDMA Connection that is owned by the GsmCdmaPhone is currently
+                        // the one with a callback registered to TelephonyConnection. Notify the
+                        // redial happened over that Phone so that it can be replaced with the
+                        // new ImsPhoneConnection.
                         Rlog.d(LOG_TAG, "Notify volte redial connection changed cn: " + cn);
                         if (mDefaultPhone != null) {
                             // don't care it is null or not.
