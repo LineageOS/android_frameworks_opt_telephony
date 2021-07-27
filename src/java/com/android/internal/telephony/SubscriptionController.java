@@ -33,8 +33,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -545,9 +543,6 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.NUMBER));
         int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.DATA_ROAMING));
-        // Get the blank bitmap for this SubInfoRecord
-        Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
-                com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
         String mcc = cursor.getString(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.MCC_STRING));
         String mnc = cursor.getString(cursor.getColumnIndexOrThrow(
@@ -615,10 +610,10 @@ public class SubscriptionController extends ISub.Stub {
             number = line1Number;
         }
         SubscriptionInfo info = new SubscriptionInfo(id, iccId, simSlotIndex, displayName,
-                carrierName, nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc,
-                countryIso, isEmbedded, accessRules, cardId, publicCardId, isOpportunistic,
-                groupUUID, false /* isGroupDisabled */, carrierId, profileClass, subType,
-                groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled);
+                carrierName, nameSource, iconTint, number, dataRoaming, /* icon= */ null,
+                mcc, mnc, countryIso, isEmbedded, accessRules, cardId, publicCardId,
+                isOpportunistic, groupUUID, /* isGroupDisabled= */ false , carrierId, profileClass,
+                subType, groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
     }
