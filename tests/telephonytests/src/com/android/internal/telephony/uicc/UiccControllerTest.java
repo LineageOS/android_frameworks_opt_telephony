@@ -651,7 +651,7 @@ public class UiccControllerTest extends TelephonyTest {
         mUiccControllerUT.handleMessage(msg);
         processAllMessages();
 
-        // verify that updateIccAvailability() is called on refresh with RESET
-        verify(mMockProfile).updateIccAvailability(true);
+        // verify that onSimReset() is called on refresh with RESET
+        verify(mMockProfile).onSimReset();
     }
 }
