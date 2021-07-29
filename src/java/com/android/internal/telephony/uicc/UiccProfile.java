@@ -524,9 +524,17 @@ public class UiccProfile extends IccCard {
     }
 
     /**
+     * This function is called on SIM_REFRESH of type RESET
+     */
+    public void onSimReset() {
+        mLastReportedNumOfUiccApplications = 0;
+        updateIccAvailability(true);
+    }
+
+    /**
      * ICC availability/state changed. Update corresponding fields and external state if needed.
      */
-    public void updateIccAvailability(boolean allAppsChanged) {
+    private void updateIccAvailability(boolean allAppsChanged) {
         synchronized (mLock) {
             UiccCardApplication newApp;
             IccRecords newRecords = null;
