@@ -2315,7 +2315,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Loads the allowed network type from subscription database.
      */
     public void loadAllowedNetworksFromSubscriptionDatabase() {
-        mIsAllowedNetworkTypesLoadedFromDb = false;
         // Try to load ALLOWED_NETWORK_TYPES from SIMINFO.
         if (SubscriptionController.getInstance() == null) {
             return;
@@ -2324,6 +2323,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         String result = SubscriptionController.getInstance().getSubscriptionProperty(
                 getSubId(),
                 SubscriptionManager.ALLOWED_NETWORK_TYPES);
+        // After fw load network type from DB, do unlock if subId is valid.
+        mIsAllowedNetworkTypesLoadedFromDb = SubscriptionManager.isValidSubscriptionId(getSubId());
         if (result == null) {
             return;
         }
@@ -2355,7 +2356,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     }
                 }
             }
-            mIsAllowedNetworkTypesLoadedFromDb = true;
         } catch (NumberFormatException e) {
             Rlog.e(LOG_TAG, "allowedNetworkTypes NumberFormat exception" + e);
         }
@@ -2426,12 +2426,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         int subId = getSubId();
         if (!TelephonyManager.isValidAllowedNetworkTypesReason(reason)) {
             loge("setAllowedNetworkTypes: Invalid allowed network type reason: " + reason);
+            AsyncResult.forMessage(response, null,
+                    new CommandException(CommandException.Error.INVALID_ARGUMENTS));
+            response.sendToTarget();
             return;
         }
         if (!SubscriptionManager.isUsableSubscriptionId(subId)
                 || !mIsAllowedNetworkTypesLoadedFromDb) {
             loge("setAllowedNetworkTypes: no sim or network type is not loaded. SubscriptionId: "
                     + subId + ", isNetworkTypeLoaded" + mIsAllowedNetworkTypesLoadedFromDb);
+            AsyncResult.forMessage(response, null,
+                    new CommandException(CommandException.Error.MISSING_RESOURCE));
+            response.sendToTarget();
             return;
         }
         String mapAsString = "";
@@ -5036,5 +5042,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private static String pii(String s) {
         return Rlog.pii(LOG_TAG, s);
+    }
+
+    /**
+     * Used in unit tests to set whether the AllowedNetworkTypes is loaded from Db.  Should not
+     * be used otherwise.
+     *
+     * @return {@code true} if the AllowedNetworkTypes is loaded from Db,
+     * {@code false} otherwise.
+     */
+    @VisibleForTesting
+    public boolean isAllowedNetworkTypesLoadedFromDb() {
+        return mIsAllowedNetworkTypesLoadedFromDb;
     }
 }
