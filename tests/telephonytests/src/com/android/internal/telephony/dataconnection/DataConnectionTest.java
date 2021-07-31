@@ -30,6 +30,7 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_P
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
@@ -89,6 +90,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.Consumer;
 
 public class DataConnectionTest extends TelephonyTest {
     private static final int DEFAULT_DC_CID = 10;
@@ -1358,5 +1360,24 @@ public class DataConnectionTest extends TelephonyTest {
         // retry timer).
         verify(mDataThrottler).setRetryTime(eq(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL),
                 eq(RetryManager.NO_SUGGESTED_RETRY_DELAY), eq(DcTracker.REQUEST_TYPE_NORMAL));
+    }
+
+    @Test
+    public void testDataHandoverFailed() throws Exception {
+        doReturn(mDefaultDc).when(mDcTracker).getDataConnectionByApnType(anyString());
+
+        doAnswer(invocation -> {
+            final Consumer<Integer> consumer = (Consumer<Integer>) invocation.getArguments()[0];
+            consumer.accept(DataServiceCallback.RESULT_SUCCESS);
+            return null;
+        }).when(mDefaultDc).startHandover(any(Consumer.class));
+
+        replaceInstance(ConnectionParams.class, "mRequestType", mCp,
+                DcTracker.REQUEST_TYPE_HANDOVER);
+        assertTrue(mDc.isInactive());
+        connectEvent(false);
+
+        // Make sure the data connection is still in inactive state
+        assertTrue(mDc.isInactive());
     }
 }
