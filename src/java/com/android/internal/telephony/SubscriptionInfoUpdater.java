@@ -419,13 +419,8 @@ public class SubscriptionInfoUpdater extends Handler {
         UiccSlot uiccSlot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
         String iccId = (uiccSlot != null) ? IccUtils.stripTrailingFs(uiccSlot.getIccId()) : null;
         if (!TextUtils.isEmpty(iccId)) {
-            // Call updateSubscriptionInfoByIccId() only if was
-            // not done earlier from SIM Locked event
-            if (sIccId[phoneId] == null) {
-                sIccId[phoneId] = iccId;
-
-                updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
-            }
+            sIccId[phoneId] = iccId;
+            updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
         }
 
         cardIds.add(getCardIdFromPhoneId(phoneId));
