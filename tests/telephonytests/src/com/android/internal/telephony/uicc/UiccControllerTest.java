@@ -21,8 +21,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
@@ -635,23 +633,5 @@ public class UiccControllerTest extends TelephonyTest {
         // since EID is known and we've gotten card status, the default eUICC card ID should be set
         assertEquals(mUiccControllerUT.convertToPublicCardId(knownEidFromApdu),
                 mUiccControllerUT.getCardIdForDefaultEuicc());
-    }
-
-    @Test
-    public void testSimRefresh() {
-        mUiccControllerUT.mUiccSlots[0] = mMockSlot;
-        doReturn(mMockCard).when(mMockSlot).getUiccCard();
-        doReturn(mMockProfile).when(mMockCard).getUiccProfile();
-
-        doReturn(true).when(mMockCard).resetAppWithAid(nullable(String.class), eq(true));
-        IccRefreshResponse resp = new IccRefreshResponse();
-        resp.refreshResult = IccRefreshResponse.REFRESH_RESULT_RESET;
-        AsyncResult ar = new AsyncResult(null, resp, null);
-        Message msg = Message.obtain(mUiccControllerUT, EVENT_SIM_REFRESH, ar);
-        mUiccControllerUT.handleMessage(msg);
-        processAllMessages();
-
-        // verify that onSimReset() is called on refresh with RESET
-        verify(mMockProfile).onSimReset();
     }
 }
