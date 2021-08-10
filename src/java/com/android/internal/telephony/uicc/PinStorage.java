@@ -250,14 +250,14 @@ public class PinStorage extends Handler {
     }
 
     /**
-     * Return the cached pin for the {@code slotId}, or an empty string if it is not available.
+     * Return the cached pin for the SIM card identified by {@code slotId} and {@code iccid}, or
+     * an empty string if it is not available.
      *
      * The method returns the PIN only if the state is VERIFICATION_READY. If the PIN is found,
      * its state changes to AVAILABLE, so that it cannot be retrieved a second time during the
      * same boot cycle. If the PIN verification fails, it will be removed after the failed attempt.
      */
-    public synchronized String getPin(int slotId) {
-        String iccid = getIccid(slotId);
+    public synchronized String getPin(int slotId, String iccid) {
         if (!validateSlotId(slotId) || !validateIccid(iccid)) {
             return "";
         }
@@ -874,7 +874,7 @@ public class PinStorage extends Handler {
     private void verifyPendingPin(int slotId) {
         // We intentionally invoke getPin() here, as it updates the status and makes sure that
         // same PIN is not used more than once
-        String pin = getPin(slotId);
+        String pin = getPin(slotId, getIccid(slotId));
         if (pin.isEmpty()) {
             // PIN is not available for verification: return.
             return;
