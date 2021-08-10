@@ -424,6 +424,12 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendBroadcast(Intent intent, String receiverPermission, Bundle initialExtras) {
+            logd("sendBroadcast called for " + intent.getAction());
+            sendBroadcast(intent);
+        }
+
+        @Override
         public void sendOrderedBroadcast(Intent intent, String receiverPermission) {
             logd("sendOrderedBroadcast called for " + intent.getAction());
             sendBroadcast(intent);
