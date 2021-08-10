@@ -632,7 +632,7 @@ public class UiccProfile extends IccCard {
                 // If the PIN code is required and an available cached PIN is available, intercept
                 // the update of external state and perform an internal PIN verification.
                 if (lockedState == IccCardConstants.State.PIN_REQUIRED) {
-                    String pin = mPinStorage.getPin(mPhoneId);
+                    String pin = mPinStorage.getPin(mPhoneId, mIccRecords.getFullIccId());
                     if (!pin.isEmpty()) {
                         log("PIN_REQUIRED[" + mPhoneId + "] - Cache present");
                         mCi.supplyIccPin(pin, mHandler.obtainMessage(EVENT_SUPPLY_ICC_PIN_DONE));
