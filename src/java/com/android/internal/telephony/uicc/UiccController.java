@@ -1103,12 +1103,16 @@ public class UiccController extends Handler {
                 options.toBundle());
     }
 
-    private boolean slotStatusChanged(ArrayList<IccSlotStatus> slotStatusList) {
+    /**
+     * Check if slot status has changed from the last received one
+     */
+    @VisibleForTesting
+    public boolean slotStatusChanged(ArrayList<IccSlotStatus> slotStatusList) {
         if (sLastSlotStatus == null || sLastSlotStatus.size() != slotStatusList.size()) {
             return true;
         }
-        for (IccSlotStatus iccSlotStatus : slotStatusList) {
-            if (!sLastSlotStatus.contains(iccSlotStatus)) {
+        for (int i = 0; i < slotStatusList.size(); i++) {
+            if (!sLastSlotStatus.get(i).equals(slotStatusList.get(i))) {
                 return true;
             }
         }
