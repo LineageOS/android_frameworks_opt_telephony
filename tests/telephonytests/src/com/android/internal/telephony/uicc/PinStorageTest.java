@@ -108,7 +108,7 @@ public class PinStorageTest extends TelephonyTest {
     public void storePin_withoutReboot_pinCannotBeRetrieved() {
         mPinStorage.storePin("1234", 0);
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -118,7 +118,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -130,7 +130,7 @@ public class PinStorageTest extends TelephonyTest {
         mPinStorage = new PinStorage(mContext);
         mPinStorage.mShortTermSecretKeyDurationMinutes = 0;
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -144,8 +144,8 @@ public class PinStorageTest extends TelephonyTest {
         simulateReboot();
 
         // PIN can be retrieved only once after unattended reboot
-        assertThat(mPinStorage.getPin(0)).isEqualTo("1234");
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("1234");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -164,7 +164,7 @@ public class PinStorageTest extends TelephonyTest {
         simulateReboot();
 
         // PIN cannot  be retrieved
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -181,7 +181,7 @@ public class PinStorageTest extends TelephonyTest {
         moveTimeForward(60000);
         processAllMessages();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
 
         // Simulate a second unattended reboot to make sure that PIN was deleted.
         result = mPinStorage.prepareUnattendedReboot();
@@ -189,7 +189,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -205,7 +205,7 @@ public class PinStorageTest extends TelephonyTest {
         processAllMessages();
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -221,12 +221,12 @@ public class PinStorageTest extends TelephonyTest {
         // Switch to a different ICCID in the device after the reboot
         doReturn(ICCID_2).when(mPhone).getFullIccSerialNumber();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_2)).isEqualTo("");
 
         // Switch back to the initial ICCID to make sure that PIN was deleted.
         doReturn(ICCID_1).when(mPhone).getFullIccSerialNumber();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -240,7 +240,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -254,7 +254,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("5678");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("5678");
     }
 
     @Test
@@ -267,7 +267,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -280,7 +280,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -293,7 +293,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_INVALID)).isEqualTo("");
     }
 
     @Test
@@ -309,7 +309,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -328,7 +328,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -346,7 +346,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -369,7 +369,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -389,7 +389,7 @@ public class PinStorageTest extends TelephonyTest {
 
         simulateReboot();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 
     @Test
@@ -409,6 +409,6 @@ public class PinStorageTest extends TelephonyTest {
         mContext.sendBroadcast(intent);
         processAllMessages();
 
-        assertThat(mPinStorage.getPin(0)).isEqualTo("");
+        assertThat(mPinStorage.getPin(0, ICCID_1)).isEqualTo("");
     }
 }
