@@ -36,7 +36,6 @@ import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -463,16 +462,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
         // Now release the network request while handover is still ongoing.
         mTelephonyNetworkFactoryUT.releaseNetworkFor(mmsNetworkRequest);
-        processAllMessages();
-
-        Message msg = mNetworkRequestMessageMap.get(mmsNetworkRequest);
-
-        Bundle bundle = msg.getData();
-        bundle.putParcelable("extra_network_request", mmsNetworkRequest);
-        bundle.putBoolean("extra_success", true);
-        bundle.putInt("extra_transport_type", AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-        bundle.putBoolean("extra_handover_failure_fallback", false);
-        h.sendMessage(msg);
         processAllMessages();
 
         // Ensure the release is called one more time after the normal release

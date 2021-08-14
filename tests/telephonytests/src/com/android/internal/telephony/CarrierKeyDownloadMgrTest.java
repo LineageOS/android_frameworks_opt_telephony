@@ -34,6 +34,7 @@ import android.content.Intent;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -328,14 +329,14 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testAlarmRenewal() {
         CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        int slotId = mPhone.getPhoneId();
-        PersistableBundle bundle = carrierConfigManager.getConfigForSubId(slotId);
+        int slotIndex = SubscriptionManager.getSlotIndex(mPhone.getSubId());
+        PersistableBundle bundle = carrierConfigManager.getConfigForSubId(slotIndex);
         bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
         bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
 
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
-        Intent mIntent = new Intent("com.android.internal.telephony.carrier_key_download_alarm"
-                + slotId);
+        Intent mIntent = new Intent("com.android.internal.telephony.carrier_key_download_alarm");
+        mIntent.putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, slotIndex);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
         assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);

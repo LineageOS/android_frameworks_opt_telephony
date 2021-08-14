@@ -29,6 +29,7 @@ import static junit.framework.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
@@ -569,6 +570,12 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         // Now fake the ImsService crashing
         mCTUT.hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        try {
+            // ensure new calls are not blocked by any lingering state after crash.
+            mCTUT.checkForDialIssues();
+        } catch (CallStateException e) {
+            fail("checkForDialIssues should not generate a CallStateException: " + e.getMessage());
+        }
     }
 
     /**
@@ -635,15 +642,30 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
     }
 
-    @FlakyTest
-    @Ignore
     @Test
     @SmallTest
     public void testImsMOCallDial() {
         startOutgoingCall();
         //call established
         mImsCallListener.onCallProgressing(mSecondImsCall);
+        processAllMessages();
         assertEquals(Call.State.ALERTING, mCTUT.mForegroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMoCallCrash() {
+        startOutgoingCall();
+        // Now fake the ImsService crashing
+        mCTUT.hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
+        processAllMessages();
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
+        try {
+            // ensure new calls are not blocked by any lingering state after crash.
+            mCTUT.checkForDialIssues();
+        } catch (CallStateException e) {
+            fail("checkForDialIssues should not generate a CallStateException: " + e.getMessage());
+        }
     }
 
     private void startOutgoingCall() {
@@ -658,6 +680,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
+        processAllMessages();
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
         assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
     }
@@ -1281,13 +1304,23 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     }
 
     /**
-     * Ensures when D2D communication is supported that we register the expected D2D RTP header
-     * extension types.
+     * Ensures when both RTP and SDP is supported that we register the expected header extension
+     * types.
      * @throws Exception
      */
     @Test
     @SmallTest
     public void testConfigureRtpHeaderExtensionTypes() throws Exception {
+
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_DEVICE_TO_DEVICE_COMMUNICATION_USING_RTP_BOOL,
+                true);
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL,
+                true);
+        // Hacky but ImsPhoneCallTracker caches carrier config, so necessary.
+        mCTUT.updateCarrierConfigCache(mContextFixture.getCarrierConfigBundle());
+
         ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
         config.isD2DCommunicationSupported = true;
         mCTUT.setConfig(config);
@@ -1300,6 +1333,35 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(2, types.size());
         assertTrue(types.contains(RtpTransport.CALL_STATE_RTP_HEADER_EXTENSION_TYPE));
         assertTrue(types.contains(RtpTransport.DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE));
+    }
+
+    /**
+     * Ensures when SDP is not supported (by RTP is) we don't register any extensions.
+     * @throws Exception
+     */
+    @Test
+    @SmallTest
+    public void testRtpButNoSdp() throws Exception {
+
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_DEVICE_TO_DEVICE_COMMUNICATION_USING_RTP_BOOL,
+                true);
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL,
+                false);
+        // Hacky but ImsPhoneCallTracker caches carrier config, so necessary.
+        mCTUT.updateCarrierConfigCache(mContextFixture.getCarrierConfigBundle());
+
+        ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
+        config.isD2DCommunicationSupported = true;
+        mCTUT.setConfig(config);
+        mConnectorListener.connectionReady(mImsManager);
+
+        // Expect to get offered header extensions since d2d is supported.
+        verify(mImsManager).setOfferedRtpHeaderExtensionTypes(
+                mRtpHeaderExtensionTypeCaptor.capture());
+        Set<RtpHeaderExtensionType> types = mRtpHeaderExtensionTypeCaptor.getValue();
+        assertEquals(0, types.size());
     }
 
     /**

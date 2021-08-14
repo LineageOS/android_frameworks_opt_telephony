@@ -23,7 +23,6 @@ import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.app.AppOpsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -31,6 +30,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
+import android.os.UserHandle;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
@@ -48,7 +48,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final Context mContext;
-    private final AppOpsManager mAppOps;
 
     public PhoneSubInfoController(Context context) {
         ServiceRegisterer phoneSubServiceRegisterer = TelephonyFrameworkInitializer
@@ -58,7 +57,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             phoneSubServiceRegisterer.register(this);
         }
         mContext = context;
-        mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
     }
 
     @Deprecated
@@ -143,7 +141,10 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
 
     public String getSubscriberIdForSubscriber(int subId, String callingPackage,
             String callingFeatureId) {
-        String message = "getSubscriberId";
+        String message = "getSubscriberIdForSubscriber";
+
+        enforceCallingPackage(callingPackage, Binder.getCallingUid(), message);
+
         long identity = Binder.clearCallingIdentity();
         boolean isActive;
         try {
@@ -264,6 +265,17 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return PhoneFactory.getPhone(phoneId);
     }
 
+    private boolean enforceIccSimChallengeResponsePermission(Context context, int subId,
+            String callingPackage, String callingFeatureId, String message) {
+        if (TelephonyPermissions.checkCallingOrSelfUseIccAuthWithDeviceIdentifier(context,
+                callingPackage, callingFeatureId, message)) {
+            return true;
+        }
+        if (VDBG) log("No USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER permission.");
+        enforcePrivilegedPermissionOrCarrierPrivilege(subId, message);
+        return true;
+    }
+
     /**
      * Make sure caller has either read privileged phone permission or carrier privilege.
      *
@@ -288,6 +300,28 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private void enforceModifyPermission() {
         mContext.enforceCallingOrSelfPermission(MODIFY_PHONE_STATE,
                 "Requires MODIFY_PHONE_STATE");
+    }
+
+    /**
+     * Make sure the caller is the calling package itself
+     *
+     * @throws SecurityException if the caller is not the calling package
+     */
+    private void enforceCallingPackage(String callingPackage, int callingUid, String message) {
+        int packageUid = -1;
+        PackageManager pm = mContext.createContextAsUser(
+                UserHandle.getUserHandleForUid(callingUid), 0).getPackageManager();
+        if (pm != null) {
+            try {
+                packageUid = pm.getPackageUid(callingPackage, 0);
+            } catch (PackageManager.NameNotFoundException e) {
+                // packageUid is -1
+            }
+        }
+        if (packageUid != callingUid) {
+            throw new SecurityException(message + ": Package " + callingPackage
+                    + " does not belong to " + callingUid);
+        }
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -370,8 +404,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                 });
     }
 
-    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data)
-            throws RemoteException {
+    @Override
+    public String getIccSimChallengeResponse(int subId, int appType, int authType, String data,
+            String callingPackage, String callingFeatureId) throws RemoteException {
         CallPhoneMethodHelper<String> toExecute = (phone)-> {
             UiccCard uiccCard = phone.getUiccCard();
             if (uiccCard == null) {
@@ -396,12 +431,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             return uiccApp.getIccRecords().getIccSimChallengeResponse(authType, data);
         };
 
-        return callPhoneMethodWithPermissionCheck(subId, null, null, "getIccSimChallengeResponse",
-                toExecute,
-                (aContext, aSubId, aCallingPackage, aCallingFeatureId, aMessage) -> {
-                    enforcePrivilegedPermissionOrCarrierPrivilege(aSubId, aMessage);
-                    return true;
-                });
+        return callPhoneMethodWithPermissionCheck(subId, callingPackage, callingFeatureId,
+                "getIccSimChallengeResponse", toExecute,
+                this::enforceIccSimChallengeResponsePermission);
     }
 
     public String getGroupIdLevel1ForSubscriber(int subId, String callingPackage,

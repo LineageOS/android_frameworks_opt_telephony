@@ -34,7 +34,7 @@ import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
-import android.telephony.data.SliceInfo;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -1875,8 +1875,8 @@ public interface CommandsInterface {
      */
     void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
             boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
-            SliceInfo sliceInfo, TrafficDescriptor trafficDescriptor, boolean matchAllRuleAllowed,
-            Message result);
+            NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
+            boolean matchAllRuleAllowed, Message result);
 
     /**
      * Deactivate packet data connection
@@ -2638,7 +2638,6 @@ public interface CommandsInterface {
      */
     default void cancelHandover(Message result, int callId) {};
 
-
     /**
      * Control the data throttling at modem.
      *
@@ -2651,6 +2650,14 @@ public interface CommandsInterface {
      */
     default void setDataThrottling(Message result, WorkSource workSource,
             int dataThrottlingAction, long completionWindowMillis) {};
+
+    /**
+     * Request to get the current slicing configuration including URSP rules and
+     * NSSAIs (configured, allowed and rejected).
+     *
+     * @param result Message that will be sent back to handler.
+     */
+    default void getSlicingConfig(Message result) {};
 
    /**
      * Request the SIM phonebook records of all activated UICC applications

@@ -29,7 +29,7 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
-import android.telephony.data.SliceInfo;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 
 import com.android.internal.telephony.CommandException;
@@ -160,7 +160,7 @@ public class CellularDataService extends DataService {
         @Override
         public void setupDataCall(int accessNetworkType, DataProfile dataProfile,
                 boolean isRoaming, boolean allowRoaming, int reason, LinkProperties linkProperties,
-                int pduSessionId, SliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
+                int pduSessionId, NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
                 boolean matchAllRuleAllowed, DataServiceCallback callback) {
             if (DBG) log("setupDataCall " + getSlotIndex());
 

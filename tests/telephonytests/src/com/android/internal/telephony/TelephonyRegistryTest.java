@@ -29,7 +29,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -65,7 +65,6 @@ import com.android.server.TelephonyRegistry;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -92,20 +91,16 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private int mSrvccState = -1;
     private int mRadioPowerState = RADIO_POWER_UNAVAILABLE;
     private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
+    private TelephonyRegistry.ConfigurationProvider mMockConfigurationProvider;
     private CellLocation mCellLocation;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
     private static final Set<Integer> READ_PHONE_STATE_EVENTS;
     static {
         READ_PHONE_STATE_EVENTS = new HashSet<>();
-        READ_PHONE_STATE_EVENTS.add(
-                TelephonyCallback.EVENT_CALL_FORWARDING_INDICATOR_CHANGED);
-        READ_PHONE_STATE_EVENTS.add(
-                TelephonyCallback.EVENT_MESSAGE_WAITING_INDICATOR_CHANGED);
-        READ_PHONE_STATE_EVENTS.add(
-                TelephonyCallback.EVENT_EMERGENCY_NUMBER_LIST_CHANGED);
-        READ_PHONE_STATE_EVENTS.add(
-                TelephonyCallback.EVENT_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGED);
+        READ_PHONE_STATE_EVENTS.add(TelephonyCallback.EVENT_CALL_FORWARDING_INDICATOR_CHANGED);
+        READ_PHONE_STATE_EVENTS.add(TelephonyCallback.EVENT_MESSAGE_WAITING_INDICATOR_CHANGED);
+        READ_PHONE_STATE_EVENTS.add(TelephonyCallback.EVENT_EMERGENCY_NUMBER_LIST_CHANGED);
     }
 
     // All events contribute to TelephonyRegistry#isPrecisePhoneStatePermissionRequired
@@ -139,6 +134,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
         READ_PRIVILEGED_PHONE_STATE_EVENTS.add( TelephonyCallback.EVENT_RADIO_POWER_STATE_CHANGED);
         READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
                 TelephonyCallback.EVENT_VOICE_ACTIVATION_STATE_CHANGED);
+        READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
+                TelephonyCallback.EVENT_ALLOWED_NETWORK_TYPE_LIST_CHANGED);
     }
 
     // All events contribute to TelephonyRegistry#isActiveEmergencySessionPermissionRequired
@@ -198,17 +195,17 @@ public class TelephonyRegistryTest extends TelephonyTest {
         @Override
         public void onLinkCapacityEstimateChanged(
                 List<LinkCapacityEstimate> linkCapacityEstimateList) {
-            mLinkCapacityEstimateList =  linkCapacityEstimateList;
-        }
-
-        @Override
-        public void onPhysicalChannelConfigChanged(@NonNull List<PhysicalChannelConfig> configs) {
-            mPhysicalChannelConfigs = configs;
+            mLinkCapacityEstimateList = linkCapacityEstimateList;
         }
 
         @Override
         public void onCellLocationChanged(CellLocation location) {
             mCellLocation = location;
+        }
+
+        @Override
+        public void onPhysicalChannelConfigChanged(@NonNull List<PhysicalChannelConfig> configs) {
+            mPhysicalChannelConfigs = configs;
         }
     }
 
@@ -227,12 +224,21 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("TelephonyRegistryTest");
-        TelephonyRegistry.ConfigurationProvider mockConfigurationProvider =
-                mock(TelephonyRegistry.ConfigurationProvider.class);
-        when(mockConfigurationProvider.getRegistrationLimit()).thenReturn(-1);
-        when(mockConfigurationProvider.isRegistrationLimitEnabledInPlatformCompat(anyInt()))
+        mMockConfigurationProvider = mock(TelephonyRegistry.ConfigurationProvider.class);
+        when(mMockConfigurationProvider.getRegistrationLimit()).thenReturn(-1);
+        when(mMockConfigurationProvider.isRegistrationLimitEnabledInPlatformCompat(anyInt()))
                 .thenReturn(false);
-        mTelephonyRegistry = new TelephonyRegistry(mContext, mockConfigurationProvider);
+        when(mMockConfigurationProvider.isCallStateReadPhoneStateEnforcedInPlatformCompat(
+                anyString(), any())).thenReturn(false);
+        when(mMockConfigurationProvider.isActiveDataSubIdReadPhoneStateEnforcedInPlatformCompat(
+                anyString(), any())).thenReturn(false);
+        when(mMockConfigurationProvider.isCellInfoReadPhoneStateEnforcedInPlatformCompat(
+                anyString(), any())).thenReturn(false);
+        when(mMockConfigurationProvider.isDisplayInfoReadPhoneStateEnforcedInPlatformCompat(
+                anyString(), any())).thenReturn(false);
+        when(mMockConfigurationProvider.isDisplayInfoNrAdvancedSupported(
+                anyString(), any())).thenReturn(false);
+        mTelephonyRegistry = new TelephonyRegistry(mContext, mMockConfigurationProvider);
         addTelephonyRegistryService();
         mTelephonyCallback = new TelephonyCallbackWrapper();
         mTelephonyCallback.init(mSimpleExecutor);
@@ -487,19 +493,41 @@ public class TelephonyRegistryTest extends TelephonyTest {
         assertSecurityExceptionThrown(
                 READ_PHONE_STATE_EVENTS.stream().mapToInt(i -> i).toArray());
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE);
         assertSecurityExceptionNotThrown(
                 READ_PHONE_STATE_EVENTS.stream().mapToInt(i -> i).toArray());
     }
 
     /**
+     * Test enforcement of READ_PHONE_STATE for call state related events.
+     */
+    @Test
+    public void testCallStateChangedPermission() {
+        int[] events = new int[] {TelephonyCallback.EVENT_CALL_STATE_CHANGED,
+                TelephonyCallback.EVENT_LEGACY_CALL_STATE_CHANGED};
+        // Disable change ID for READ_PHONE_STATE enforcement
+        when(mMockConfigurationProvider.isCallStateReadPhoneStateEnforcedInPlatformCompat(
+                anyString(), any())).thenReturn(false);
+        // Start without READ_PHONE_STATE permission
+        mContextFixture.addCallingOrSelfPermission("");
+        assertSecurityExceptionNotThrown(events);
+        // Grant permission
+        mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE);
+        assertSecurityExceptionNotThrown(events);
+        //Enable READ_PHONE_STATE enforcement
+        when(mMockConfigurationProvider.isCallStateReadPhoneStateEnforcedInPlatformCompat(
+                anyString(), any())).thenReturn(true);
+        assertSecurityExceptionNotThrown(events);
+        // revoke READ_PHONE_STATE permission
+        mContextFixture.removeCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE);
+        assertSecurityExceptionThrown(events);
+
+    }
+
+    /**
      * Test listen to events that require READ_PRECISE_PHONE_STATE permission.
      */
-    // FIXME(b/159082270) - Simply not granting location permission doesn't fix the test because
-    // Location is soft-denied to apps that aren't in the foreground, and soft-denial currently
-    // short-circuits the test.
-    @Ignore("Skip due to b/159082270")
     @Test
     public void testReadPrecisePhoneStatePermission() {
         // Clear all permission grants for test.
@@ -514,7 +542,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         assertSecurityExceptionThrown(
                 READ_PRECISE_PHONE_STATE_EVENTS.stream().mapToInt(i -> i).toArray());
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.READ_PRECISE_PHONE_STATE);
         assertSecurityExceptionNotThrown(
@@ -555,7 +583,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         assertSecurityExceptionThrown(
                 READ_PRIVILEGED_PHONE_STATE_EVENTS.stream().mapToInt(i -> i).toArray());
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         assertSecurityExceptionNotThrown(
@@ -572,7 +600,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         assertSecurityExceptionThrown(
                 READ_ACTIVE_EMERGENCY_SESSION_EVENTS.stream().mapToInt(i -> i).toArray());
 
-        // Grant permssion
+        // Grant permission
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.READ_ACTIVE_EMERGENCY_SESSION);
         assertSecurityExceptionNotThrown(
@@ -615,7 +643,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 .queryLocalInterface(anyString());
 
         UserInfo userInfo = new UserInfo(UserHandle.myUserId(), "" /* name */, 0 /* flags */);
-        doReturn(userInfo).when(mIActivityManager).getCurrentUser();
+        doReturn(userInfo.id).when(mIActivityManager).getCurrentUserId();
 
         doReturn(true).when(mLocationManager).isLocationEnabledForUser(any(UserHandle.class));
 
@@ -639,6 +667,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         // Broadcast ACTION_USER_SWITCHED for the current user Id + 1. Callback shouldn't be
         // triggered.
         userInfo.id++;
+        doReturn(userInfo.id).when(mIActivityManager).getCurrentUserId();
         mCellLocation = null;
         mContext.sendBroadcast(new Intent(Intent.ACTION_USER_SWITCHED));
 

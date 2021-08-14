@@ -27,6 +27,7 @@ import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.CarrierMessagingServiceWrapper;
 import android.service.carrier.CarrierMessagingServiceWrapper.CarrierMessagingCallback;
 import android.service.carrier.MessagePdu;
+import android.telephony.AnomalyReporter;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -40,10 +41,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Filters incoming SMS with carrier services.
- * <p> A new instance must be created for filtering each message.
+ *
+ * <p>A new instance must be created for filtering each message.
+ *
+ * <p>Note that if a carrier services app is unavailable at the time a message is received because
+ * credential-encrypted storage is unavailable and it is not direct-boot aware, and the message ends
+ * up being handled by a filter further down the chain, that message will not be redelivered to the
+ * carrier app once the user unlocks the storage.
  */
 public class CarrierServicesSmsFilter {
     protected static final boolean DBG = true;
@@ -52,6 +61,10 @@ public class CarrierServicesSmsFilter {
 
     /** onFilterComplete timeout. */
     public static final int FILTER_COMPLETE_TIMEOUT_MS = 10 * 60 * 1000; //10 minutes
+
+    /** SMS anomaly uuid -- CarrierMessagingService did not respond */
+    private static final UUID sAnomalyNoResponseFromCarrierMessagingService =
+            UUID.fromString("94095e8e-b516-4065-a8be-e05b84071002");
 
     private final Context mContext;
     private final Phone mPhone;
@@ -117,7 +130,7 @@ public class CarrierServicesSmsFilter {
             mFilterAggregator = new FilterAggregator(numPackages);
             //start the timer
             mCallbackTimeoutHandler.sendMessageDelayed(mCallbackTimeoutHandler
-                            .obtainMessage(EVENT_ON_FILTER_COMPLETE_NOT_CALLED),
+                            .obtainMessage(EVENT_ON_FILTER_COMPLETE_NOT_CALLED, mFilterAggregator),
                     FILTER_COMPLETE_TIMEOUT_MS);
             for (String smsFilterPackage : smsFilterPackages) {
                 filterWithPackage(smsFilterPackage, mFilterAggregator);
@@ -239,11 +252,12 @@ public class CarrierServicesSmsFilter {
         void filterSms(CarrierSmsFilterCallback smsFilterCallback) {
             mSmsFilterCallback = smsFilterCallback;
             if (!mCarrierMessagingServiceWrapper.bindToCarrierMessagingService(
-                    mContext, mPackageName, ()-> onServiceReady())) {
-                loge("CarrierSmsFilter::filterSms: bindService() for failed for " + mPackageName);
-                smsFilterCallback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
+                    mContext, mPackageName, runnable -> runnable.run(), ()-> onServiceReady())) {
+                loge("CarrierSmsFilter::filterSms: bindService() failed for " + mPackageName);
+                smsFilterCallback.onReceiveSmsComplete(
+                        CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             } else {
-                logv("CarrierSmsFilter::filterSms: bindService() for succeeded for "
+                logv("CarrierSmsFilter::filterSms: bindService() succeeded for "
                         + mPackageName);
             }
         }
@@ -255,12 +269,12 @@ public class CarrierServicesSmsFilter {
         private void onServiceReady() {
             try {
                 log("onServiceReady: calling filterSms on " + mPackageName);
-                mCarrierMessagingServiceWrapper.filterSms(
+                mCarrierMessagingServiceWrapper.receiveSms(
                         new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
-                        mPhone.getSubId(), mSmsFilterCallback);
+                        mPhone.getSubId(), runnable -> runnable.run(), mSmsFilterCallback);
             } catch (RuntimeException e) {
                 loge("Exception filtering the SMS with " + mPackageName + ": " + e);
-                mSmsFilterCallback.onFilterComplete(
+                mSmsFilterCallback.onReceiveSmsComplete(
                         CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
@@ -288,15 +302,15 @@ public class CarrierServicesSmsFilter {
          * This method should be called only once.
          */
         @Override
-        public void onFilterComplete(int result) {
+        public void onReceiveSmsComplete(int result) {
             log("CarrierSmsFilterCallback::onFilterComplete: Called from " + mPackageName
                     + " with result: " + result);
             // in the case that timeout has already passed and triggered, but the initial callback
             // is run afterwards, we should not follow through
             if (!mIsOnFilterCompleteCalled) {
                 mIsOnFilterCompleteCalled = true;
-                mCarrierMessagingServiceWrapper.disposeConnection(mContext);
-                mFilterAggregator.onFilterComplete(result);
+                mCarrierMessagingServiceWrapper.disconnect();
+                mFilterAggregator.onFilterComplete(result, this);
             }
         }
 
@@ -337,9 +351,10 @@ public class CarrierServicesSmsFilter {
             mFilterResult = CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT;
         }
 
-        void onFilterComplete(int result) {
+        void onFilterComplete(int result, CarrierSmsFilterCallback callback) {
             synchronized (mFilterLock) {
                 mNumPendingFilters--;
+                mCallbacks.remove(callback);
                 combine(result);
                 if (mNumPendingFilters == 0) {
                     // Calling identity was the CarrierMessagingService in this callback, change it
@@ -387,6 +402,12 @@ public class CarrierServicesSmsFilter {
                 case EVENT_ON_FILTER_COMPLETE_NOT_CALLED:
                     mLocalLog.log("CarrierServicesSmsFilter: onFilterComplete timeout: not"
                             + " called before " + FILTER_COMPLETE_TIMEOUT_MS + " milliseconds.");
+                    FilterAggregator filterAggregator = (FilterAggregator) msg.obj;
+                    String packages = filterAggregator.mCallbacks.stream()
+                            .map(callback -> callback.mPackageName)
+                            .collect(Collectors.joining(", "));
+                    AnomalyReporter.reportAnomaly(sAnomalyNoResponseFromCarrierMessagingService,
+                            "No response from " + packages);
                     handleFilterCallbacksTimeout();
                     break;
             }
@@ -395,7 +416,7 @@ public class CarrierServicesSmsFilter {
         private void handleFilterCallbacksTimeout() {
             for (CarrierSmsFilterCallback callback : mFilterAggregator.mCallbacks) {
                 log("handleFilterCallbacksTimeout: calling onFilterComplete");
-                callback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
+                callback.onReceiveSmsComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
     }

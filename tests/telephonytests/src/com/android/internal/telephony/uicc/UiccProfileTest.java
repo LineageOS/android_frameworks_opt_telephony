@@ -19,6 +19,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -561,12 +562,18 @@ public class UiccProfileTest extends TelephonyTest {
         String fakeBrand = "operator";
 
         mUiccProfile.getApplicationIndex(0).getIccRecords().mIccId = fakeIccId;
-        doReturn(fakeIccId).when(mSubscriptionInfo).getIccId();
-        doReturn(mSubscriptionInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfoForSimSlotIndex(eq(0), any(), any());
 
+        doReturn(false).when(mSubscriptionController)
+                .checkPhoneIdAndIccIdMatch(anyInt(), anyString());
         mUiccProfile.setOperatorBrandOverride(fakeBrand);
         String brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
+                .getString("operator_branding_" + fakeIccId, null);
+        assertNotEquals(fakeBrand, brandInSharedPreference);
+
+        doReturn(true).when(mSubscriptionController)
+                .checkPhoneIdAndIccIdMatch(anyInt(), anyString());
+        mUiccProfile.setOperatorBrandOverride(fakeBrand);
+        brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
                 .getString("operator_branding_" + fakeIccId, null);
         assertEquals(fakeBrand, brandInSharedPreference);
     }

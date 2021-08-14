@@ -58,7 +58,7 @@ import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.UserManager;
-import android.permission.PermissionManager;
+import android.permission.LegacyPermissionManager;
 import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -90,6 +90,7 @@ import com.android.internal.telephony.dataconnection.DataEnabledOverride;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataThrottler;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
@@ -114,7 +115,7 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.server.pm.PackageManagerService;
-import com.android.server.pm.permission.PermissionManagerService;
+import com.android.server.pm.permission.LegacyPermissionManagerService;
 
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -210,7 +211,7 @@ public abstract class TelephonyTest {
     @Mock
     protected PackageManagerService mMockPackageManager;
     @Mock
-    protected PermissionManagerService mMockPermissionManager;
+    protected LegacyPermissionManagerService mMockLegacyPermissionManager;
 
     protected NetworkRegistrationInfo mNetworkRegistrationInfo =
             new NetworkRegistrationInfo.Builder()
@@ -321,6 +322,8 @@ public abstract class TelephonyTest {
     protected WifiInfo mWifiInfo;
     @Mock
     protected ImsStats mImsStats;
+    @Mock
+    protected LinkBandwidthEstimator mLinkBandwidthEstimator;
     @Mock
     protected PinStorage mPinStorage;
     @Mock
@@ -453,7 +456,7 @@ public abstract class TelephonyTest {
         TelephonyManager.disableServiceHandleCaching();
         SubscriptionController.disableCaching();
         // For testing do not allow Log.WTF as it can cause test process to crash
-        Log.setWtfHandler((tagString, what, system) -> logd("WTF captured, ignoring. Tag: "
+        Log.setWtfHandler((tagString, what, system) -> Log.d(TAG, "WTF captured, ignoring. Tag: "
                 + tagString + ", exception: " + what));
 
         mPhones = new Phone[] {mPhone};
@@ -540,6 +543,8 @@ public abstract class TelephonyTest {
                 .makeDataEnabledSettings(nullable(Phone.class));
         doReturn(mEriManager).when(mTelephonyComponentFactory)
                 .makeEriManager(nullable(Phone.class), anyInt());
+        doReturn(mLinkBandwidthEstimator).when(mTelephonyComponentFactory)
+                .makeLinkBandwidthEstimator(nullable(Phone.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
@@ -570,6 +575,7 @@ public abstract class TelephonyTest {
         doReturn(mSmsStats).when(mPhone).getSmsStats();
         doReturn(mImsStats).when(mImsPhone).getImsStats();
         mIccSmsInterfaceManager.mDispatchersController = mSmsDispatchersController;
+        doReturn(mLinkBandwidthEstimator).when(mPhone).getLinkBandwidthEstimator();
         doReturn(mCellIdentity).when(mPhone).getCurrentCellIdentity();
         doReturn(mCellLocation).when(mCellIdentity).asCellLocation();
 
@@ -580,6 +586,7 @@ public abstract class TelephonyTest {
                 eq(UiccController.APP_FAM_3GPP2));
         doReturn(mUiccCardApplicationIms).when(mUiccController).getUiccCardApplication(anyInt(),
                 eq(UiccController.APP_FAM_IMS));
+        doReturn(mUiccCard).when(mUiccController).getUiccCard(anyInt());
 
         doAnswer(new Answer<IccRecords>() {
             public IccRecords answer(InvocationOnMock invocation) {
@@ -648,8 +655,8 @@ public abstract class TelephonyTest {
         mSST.mRestrictedState = mRestrictedState;
         mServiceManagerMockedServices.put("connectivity_metrics_logger", mConnMetLoggerBinder);
         mServiceManagerMockedServices.put("package", mMockPackageManager);
-        mServiceManagerMockedServices.put("permissionmgr", mMockPermissionManager);
-        logd("mMockPermissionManager replaced");
+        mServiceManagerMockedServices.put("legacy_permission", mMockLegacyPermissionManager);
+        logd("mMockLegacyPermissionManager replaced");
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
                 .when(mTransportManager).getAvailableTransports();
@@ -858,12 +865,21 @@ public abstract class TelephonyTest {
 
         // TelephonyPermissions uses a SystemAPI to check if the calling package meets any of the
         // generic requirements for device identifier access (currently READ_PRIVILEGED_PHONE_STATE,
-        // appop, and device / profile owner checks. This sets up the PermissionManager to return
+        // appop, and device / profile owner checks). This sets up the PermissionManager to return
         // that access requirements are met.
         setIdentifierAccess(true);
-        PermissionManager permissionManager = new PermissionManager(mContext, null,
-                mMockPermissionManager);
-        doReturn(permissionManager).when(mContext).getSystemService(eq(Context.PERMISSION_SERVICE));
+        LegacyPermissionManager legacyPermissionManager =
+                new LegacyPermissionManager(mMockLegacyPermissionManager);
+        doReturn(legacyPermissionManager).when(mContext)
+                .getSystemService(Context.LEGACY_PERMISSION_SERVICE);
+        // Also make sure all appop checks fails, to not interfere tests. Tests should explicitly
+        // mock AppOpManager to return allowed/default mode. Note by default a mock returns 0 which
+        // is MODE_ALLOWED, hence this setup is necessary.
+        doReturn(AppOpsManager.MODE_IGNORED).when(mAppOpsManager).noteOpNoThrow(
+                /* op= */ anyString(), /* uid= */ anyInt(),
+                /* packageName= */ nullable(String.class),
+                /* attributionTag= */ nullable(String.class),
+                /* message= */ nullable(String.class));
 
         // TelephonyPermissions queries DeviceConfig to determine if the identifier access
         // restrictions should be enabled; this results in a NPE when DeviceConfig uses
@@ -890,9 +906,13 @@ public abstract class TelephonyTest {
 
     protected void setIdentifierAccess(boolean hasAccess) {
         doReturn(hasAccess ? PackageManager.PERMISSION_GRANTED
-                : PackageManager.PERMISSION_DENIED).when(
-                mMockPermissionManager).checkDeviceIdentifierAccess(any(), any(), any(), anyInt(),
-                anyInt());
+                : PackageManager.PERMISSION_DENIED).when(mMockLegacyPermissionManager)
+                .checkDeviceIdentifierAccess(any(), any(), any(), anyInt(), anyInt());
+    }
+
+    protected void setPhoneNumberAccess(int value) {
+        doReturn(value).when(mMockLegacyPermissionManager).checkPhoneNumberAccess(any(), any(),
+                any(), anyInt(), anyInt());
     }
 
     protected void setCarrierPrivileges(boolean hasCarrierPrivileges) {

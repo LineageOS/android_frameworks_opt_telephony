@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.AppOpsManager;
-import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.UserHandle;
@@ -92,7 +91,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
                 eq(android.Manifest.permission.RECEIVE_WAP_PUSH),
                 eq(AppOpsManager.OPSTR_RECEIVE_WAP_PUSH),
                 nullable(Bundle.class),
-                isNull(BroadcastReceiver.class),
+                isNull(InboundSmsHandler.SmsBroadcastReceiver.class),
                 eq(UserHandle.SYSTEM),
                 anyInt());
         Intent intent = intentArgumentCaptor.getValue();
@@ -147,7 +146,7 @@ public class WapPushOverSmsTest extends TelephonyTest {
                 any(String.class),
                 any(String.class),
                 any(Bundle.class),
-                any(BroadcastReceiver.class),
+                any(InboundSmsHandler.SmsBroadcastReceiver.class),
                 any(UserHandle.class),
                 anyInt());
     }

@@ -58,6 +58,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.NetworkSlicingConfig;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
@@ -2820,16 +2821,16 @@ public class RadioResponse extends IRadioResponse.Stub {
             if (responseInfo.error == RadioError.NONE) {
                 final int sleepModeTimeMs = activityInfo.sleepModeTimeMs;
                 final int idleModeTimeMs = activityInfo.idleModeTimeMs;
-                int [] txModeTimeMs = new int[ModemActivityInfo.TX_POWER_LEVELS];
-                for (int i = 0; i < ModemActivityInfo.TX_POWER_LEVELS; i++) {
+                int [] txModeTimeMs = new int[ModemActivityInfo.getNumTxPowerLevels()];
+                for (int i = 0; i < ModemActivityInfo.getNumTxPowerLevels(); i++) {
                     txModeTimeMs[i] = activityInfo.txmModetimeMs[i];
                 }
                 final int rxModeTimeMs = activityInfo.rxModeTimeMs;
                 ret = new ModemActivityInfo(SystemClock.elapsedRealtime(), sleepModeTimeMs,
                         idleModeTimeMs, txModeTimeMs, rxModeTimeMs);
             } else {
-                ret = new ModemActivityInfo(0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS],
-                        0);
+                ret = new ModemActivityInfo(0, 0, 0,
+                        new int[ModemActivityInfo.getNumTxPowerLevels()], 0);
                 responseInfo.error = RadioError.NONE;
             }
             sendMessageResponse(rr.mResult, ret);
@@ -3176,10 +3177,11 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse_1_6(info);
 
         if (rr != null) {
+            NetworkSlicingConfig ret = new NetworkSlicingConfig(slicingConfig);
             if (info.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, slicingConfig);
+                sendMessageResponse(rr.mResult, ret);
             }
-            mRil.processResponseDone_1_6(rr, info, slicingConfig);
+            mRil.processResponseDone_1_6(rr, info, ret);
         }
     }
 }

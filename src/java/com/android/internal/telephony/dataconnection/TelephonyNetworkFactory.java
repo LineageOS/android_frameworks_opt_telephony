@@ -40,6 +40,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
+import com.android.internal.telephony.metrics.NetworkRequestsStats;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -230,6 +231,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
      */
     private void requestNetworkInternal(NetworkRequest networkRequest,
             @RequestNetworkType int requestType, int transport, Message onHandoverCompleteMsg) {
+        NetworkRequestsStats.addNetworkRequest(networkRequest, mSubscriptionId);
         if (mPhone.getDcTracker(transport) != null) {
             mPhone.getDcTracker(transport).requestNetwork(networkRequest, requestType,
                     onHandoverCompleteMsg);
@@ -239,6 +241,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private void releaseNetworkInternal(NetworkRequest networkRequest,
                                         @ReleaseNetworkType int releaseType,
                                         int transport) {
+        NetworkRequestsStats.addNetworkRelease(networkRequest, mSubscriptionId);
         if (mPhone.getDcTracker(transport) != null) {
             mPhone.getDcTracker(transport).releaseNetwork(networkRequest, releaseType);
         }
@@ -335,8 +338,16 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         logl("onReleaseNetworkFor " + networkRequest + " applied " + applied);
 
         if (applied) {
-            int transport = getTransportTypeFromNetworkRequest(networkRequest);
-            releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_NORMAL, transport);
+            // Most of the time, the network request only exists in one of the DcTracker, but in the
+            // middle of handover, the network request temporarily exists in both DcTrackers. If
+            // connectivity service releases the network request while handover is ongoing, we need
+            // to remove network requests from both DcTrackers.
+            // Note that this part will be refactored in T, where we won't even have DcTracker at
+            // all.
+            releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_NORMAL,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_NORMAL,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
         }
     }
 
@@ -439,12 +450,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
             if (mNetworkRequests.containsKey(networkRequest)) {
                 // Update it with the target transport.
                 mNetworkRequests.put(networkRequest, targetTransport);
-            } else {
-                log("Network request was released before handover is completed. Now"
-                        + " we need to release this network request. "
-                        + networkRequest);
-                releaseNetworkInternal(networkRequest, DcTracker.RELEASE_TYPE_NORMAL,
-                        targetTransport);
             }
         } else {
             // If handover fails and requires to fallback, the context of target transport needs to

@@ -49,7 +49,7 @@ import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
-import android.telephony.data.SliceInfo;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -1149,7 +1149,8 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendSMSExpectMore (String smscPDU, String pdu, Message result) {
-        unimplemented(result);
+        SimulatedCommandsVerifier.getInstance().sendSMSExpectMore(smscPDU, pdu, result);
+        resultSuccess(result, new SmsResponse(0 /*messageRef*/, null, SmsResponse.NO_ERROR_CODE));
     }
 
     @Override
@@ -1191,8 +1192,8 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
             boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
-            SliceInfo sliceInfo, TrafficDescriptor trafficDescriptor, boolean matchAllRuleAllowed,
-            Message result) {
+            NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
+            boolean matchAllRuleAllowed, Message result) {
 
         SimulatedCommandsVerifier.getInstance().setupDataCall(accessNetworkType, dataProfile,
                 isRoaming, allowRoaming, reason, linkProperties, pduSessionId, sliceInfo,
@@ -2437,6 +2438,12 @@ public class SimulatedCommands extends BaseCommands
     public void releasePduSessionId(Message message, int pduSessionId) {
         SimulatedCommandsVerifier.getInstance().releasePduSessionId(message, pduSessionId);
         resultSuccess(message, null);
+    }
+
+    @Override
+    public void getSlicingConfig(Message result) {
+        SimulatedCommandsVerifier.getInstance().getSlicingConfig(result);
+        resultSuccess(result, null);
     }
 
     @VisibleForTesting

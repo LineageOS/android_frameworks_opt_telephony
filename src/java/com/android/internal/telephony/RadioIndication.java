@@ -49,6 +49,8 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
@@ -68,8 +70,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRI
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOl_CDMA_PRL_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED;
 
 import android.hardware.radio.V1_0.CdmaCallWaiting;
 import android.hardware.radio.V1_0.CdmaInformationRecord;
@@ -88,8 +88,8 @@ import android.hardware.radio.V1_0.StkCcUnsolSsResult;
 import android.hardware.radio.V1_0.SuppSvcNotification;
 import android.hardware.radio.V1_2.CellConnectionStatus;
 import android.hardware.radio.V1_6.IRadioIndication;
-import android.hardware.radio.V1_6.PhysicalChannelConfig.Band;
 import android.hardware.radio.V1_6.PhonebookRecordInfo;
+import android.hardware.radio.V1_6.PhysicalChannelConfig.Band;
 import android.os.AsyncResult;
 import android.os.RemoteException;
 import android.sysprop.TelephonyProperties;
@@ -116,9 +116,9 @@ import com.android.internal.telephony.cdma.SmsMessageConverter;
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
 
 import java.util.ArrayList;

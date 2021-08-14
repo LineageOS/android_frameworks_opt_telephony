@@ -198,21 +198,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         mServiceStateStats.incTimeMillis(100L);
         mServiceStateStats.conclude();
 
-        // Duration for Wifi calling should be counted and there should not be any switch
-        ArgumentCaptor<CellularServiceState> captor =
-                ArgumentCaptor.forClass(CellularServiceState.class);
-        verify(mPersistAtomsStorage)
-                .addCellularServiceStateAndCellularDataServiceSwitch(captor.capture(), eq(null));
-        CellularServiceState state = captor.getValue();
-        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, state.voiceRat);
-        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, state.dataRat);
-        assertEquals(ServiceState.ROAMING_TYPE_NOT_ROAMING, state.voiceRoamingType);
-        assertEquals(ServiceState.ROAMING_TYPE_NOT_ROAMING, state.dataRoamingType);
-        assertFalse(state.isEndc);
-        assertEquals(0, state.simSlotIndex);
-        assertFalse(state.isMultiSim);
-        assertEquals(CARRIER1_ID, state.carrierId);
-        assertEquals(100L, state.totalTimeMillis);
+        // There should be no new switches, service states, or added durations
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 

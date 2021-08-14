@@ -29,6 +29,7 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_D
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
+import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.NUM_SIGNAL_LEVEL;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -59,8 +60,11 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
 import com.android.internal.telephony.nano.TelephonyProto;
+import com.android.internal.telephony.nano.TelephonyProto.BandwidthEstimatorStats;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
+import com.android.internal.telephony.nano.TelephonyProto.NrMode;
 import com.android.internal.telephony.nano.TelephonyProto.RadioAccessTechnology;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
@@ -871,5 +875,40 @@ public class TelephonyMetricsTest extends TelephonyTest {
         assertEquals(false, event.imsCapabilities.voiceOverLte);
         assertEquals(false, event.imsCapabilities.videoOverLte);
         assertEquals(false, event.imsCapabilities.utOverLte);
+    }
+
+
+    // Test write Bandwidth Stats
+    @Test
+    @SmallTest
+    public void testWriteBandwidthStats() throws Exception {
+        addBandwidthStats(LinkBandwidthEstimator.LINK_TX, TelephonyManager.NETWORK_TYPE_LTE,
+                NrMode.NR_NSA_MMWAVE);
+        addBandwidthStats(LinkBandwidthEstimator.LINK_RX, TelephonyManager.NETWORK_TYPE_LTE,
+                NrMode.NR_NSA_MMWAVE);
+        addBandwidthStats(LinkBandwidthEstimator.LINK_RX, TelephonyManager.NETWORK_TYPE_NR,
+                NrMode.NR_SA_MMWAVE);
+        TelephonyLog log = buildProto();
+
+        BandwidthEstimatorStats stats = log.bandwidthEstimatorStats;
+        assertEquals(1, stats.perRatTx.length);
+        assertEquals(2, stats.perRatRx.length);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.perRatTx[0].rat);
+        assertEquals(NrMode.NR_NSA_MMWAVE, stats.perRatTx[0].nrMode);
+        assertEquals(NUM_SIGNAL_LEVEL - 1, stats.perRatTx[0].perLevel.length);
+        assertEquals(2, stats.perRatTx[0].perLevel[0].count);
+        assertEquals(0, stats.perRatTx[0].perLevel[0].signalLevel);
+        assertEquals(400_000, stats.perRatTx[0].perLevel[0].avgBwKbps);
+        assertEquals(40, stats.perRatTx[0].perLevel[0].staticBwErrorPercent);
+        assertEquals(30, stats.perRatTx[0].perLevel[0].bwEstErrorPercent);
+    }
+
+    private void addBandwidthStats(int link, int dataRat, int nrMode) {
+        for (int i = 0; i < NUM_SIGNAL_LEVEL - 1; i++) {
+            mMetrics.writeBandwidthStats(link, dataRat, nrMode,
+                    i, 20, 30, 300_000);
+            mMetrics.writeBandwidthStats(link, dataRat, nrMode,
+                    i, 40, 50, 500_000);
+        }
     }
 }

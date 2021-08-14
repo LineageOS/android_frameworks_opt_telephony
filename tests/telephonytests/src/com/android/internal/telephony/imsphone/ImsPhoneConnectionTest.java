@@ -15,6 +15,9 @@
  */
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.ims.ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB;
+import static android.telephony.ims.ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB;
+
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
@@ -27,8 +30,10 @@ import static org.mockito.Mockito.anyChar;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -40,16 +45,21 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsStreamMediaProfile;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.ims.ImsCall;
+import com.android.ims.ImsException;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaCall;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -62,10 +72,14 @@ import org.mockito.stubbing.Answer;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class ImsPhoneConnectionTest extends TelephonyTest {
+    private static final int TIMEOUT_MILLIS = 5000;
+
     private ImsPhoneConnection mConnectionUT;
     private Bundle mBundle = new Bundle();
     @Mock
@@ -428,5 +442,42 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         mBundle.putStringArrayList(ImsCallProfile.EXTRA_FORWARDED_NUMBER, forwardedNumber);
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertEquals(forwardedNumber, mConnectionUT.getForwardedNumber());
+    }
+
+    @Test
+    @SmallTest
+    public void testReportMediaCodecChange() throws InterruptedException, ImsException {
+        ImsCall imsCall = mock(ImsCall.class);
+        ImsStreamMediaProfile mediaProfile = new ImsStreamMediaProfile();
+        ImsCallProfile profile = new ImsCallProfile();
+        profile.mMediaProfile = mediaProfile;
+        mediaProfile.mAudioQuality = AUDIO_QUALITY_AMR_WB;
+        when(imsCall.getLocalCallProfile()).thenReturn(profile);
+
+        // Blech; mocks required which are unrelated to this test
+        when(mImsCT.getPhone()).thenReturn(mImsPhone);
+        VoiceCallSessionStats stats = mock(VoiceCallSessionStats.class);
+        when(mImsPhone.getVoiceCallSessionStats()).thenReturn(stats);
+
+        mConnectionUT = new ImsPhoneConnection(mImsPhone, imsCall, mImsCT, mForeGroundCall, false);
+        mConnectionUT.setTelephonyMetrics(mock(TelephonyMetrics.class));
+        CountDownLatch latch = new CountDownLatch(1);
+        boolean[] receivedCountCallback = new boolean[1];
+        mConnectionUT.addListener(new Connection.ListenerBase() {
+            @Override
+            public void onMediaAttributesChanged() {
+                receivedCountCallback[0] = true;
+                latch.countDown();
+            }
+        });
+
+        mConnectionUT.updateMediaCapabilities(imsCall);
+
+        // Make an update to the media caps
+        mediaProfile.mAudioQuality = AUDIO_QUALITY_EVS_SWB;
+        mConnectionUT.updateMediaCapabilities(imsCall);
+
+        latch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+        assertTrue(receivedCountCallback[0]);
     }
 }

@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.gsm;
 
+import static junit.framework.Assert.fail;
+
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -93,6 +95,16 @@ public class GsmMmiCodeTest extends TelephonyTest {
         mGsmMmiCode = GsmMmiCode.newFromDialString(TEST_DIAL_STRING_NON_EMERGENCY_NUMBER,
                 mGsmCdmaPhoneUT, null, null);
         assertTrue(mGsmMmiCode == null);
+    }
+
+    @Test
+    public void testNoCrashOnEmptyMessage() {
+        GsmMmiCode mmi = GsmMmiCode.newNetworkInitiatedUssd(null, true, mGsmCdmaPhoneUT, null);
+        try {
+            mmi.onUssdFinishedError();
+        } catch (Exception e) {
+            fail("Shouldn't crash!!!");
+        }
     }
 
     private void setCarrierSupportsCallerIdVerticalServiceCodesCarrierConfig() {

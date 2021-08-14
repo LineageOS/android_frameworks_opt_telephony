@@ -60,7 +60,6 @@ import android.hardware.radio.V1_6.OptionalDnn;
 import android.hardware.radio.V1_6.OptionalOsAppId;
 import android.hardware.radio.V1_6.OptionalSliceInfo;
 import android.hardware.radio.V1_6.OptionalTrafficDescriptor;
-import android.hardware.radio.deprecated.V1_0.IOemHook;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.LinkAddress;
@@ -109,9 +108,9 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.Qos;
 import android.telephony.data.QosBearerSession;
-import android.telephony.data.SliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 import android.text.TextUtils;
@@ -262,12 +261,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     Set<Integer> mDisabledRadioServices = new HashSet();
 
-    /**
-     * A set that records if oem hook service is disabled in hal for
-     * a specific phone id slot to avoid further getService request.
-     */
-    Set<Integer> mDisabledOemHookServices = new HashSet();
-
     /* default work source which will blame phone process */
     private WorkSource mRILDefaultWorkSource;
 
@@ -283,9 +276,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     RadioResponse mRadioResponse;
     RadioIndication mRadioIndication;
     volatile IRadio mRadioProxy = null;
-    OemHookResponse mOemHookResponse;
-    OemHookIndication mOemHookIndication;
-    volatile IOemHook mOemHookProxy = null;
     final AtomicLong mRadioProxyCookie = new AtomicLong(0);
     final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
@@ -431,7 +421,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         switch(rr.mRequest) {
             case RIL_REQUEST_GET_ACTIVITY_INFO:
                 timeoutResponse = new ModemActivityInfo(
-                        0, 0, 0, new int [ModemActivityInfo.TX_POWER_LEVELS], 0);
+                        0, 0, 0, new int [ModemActivityInfo.getNumTxPowerLevels()], 0);
                 break;
         };
         return timeoutResponse;
@@ -448,7 +438,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private synchronized void resetProxyAndRequestList() {
         mRadioProxy = null;
-        mOemHookProxy = null;
 
         // increment the cookie so that death notification can be ignored
         mRadioProxyCookie.incrementAndGet();
@@ -460,7 +449,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         clearRequestList(RADIO_NOT_AVAILABLE, false);
 
         getRadioProxy(null);
-        getOemHookProxy(null);
     }
 
     /** Set a radio HAL fallback compatibility override. */
@@ -599,63 +587,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (active) {
             // Try to connect to RIL services and set response functions.
             getRadioProxy(null);
-            getOemHookProxy(null);
         } else {
             resetProxyAndRequestList();
         }
-    }
-
-    /** Returns an {@link IOemHook} instance or null if the service is not available. */
-    @VisibleForTesting
-    public synchronized IOemHook getOemHookProxy(Message result) {
-        if (!SubscriptionManager.isValidPhoneId((mPhoneId))) return null;
-        if (!mIsCellularSupported) {
-            if (RILJ_LOGV) riljLog("getOemHookProxy: Not calling getService(): wifi-only");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
-            return null;
-        }
-
-        if (mOemHookProxy != null) {
-            return mOemHookProxy;
-        }
-
-        try {
-            if (mDisabledOemHookServices.contains(mPhoneId)) {
-                riljLoge("getOemHookProxy: mOemHookProxy for " + HIDL_SERVICE_NAME[mPhoneId]
-                        + " is disabled");
-            } else {
-                mOemHookProxy = IOemHook.getService(HIDL_SERVICE_NAME[mPhoneId], true);
-                if (mOemHookProxy != null) {
-                    // not calling linkToDeath() as ril service runs in the same process and death
-                    // notification for that should be sufficient
-                    mOemHookProxy.setResponseFunctions(mOemHookResponse, mOemHookIndication);
-                } else {
-                    mDisabledOemHookServices.add(mPhoneId);
-                    riljLoge("getOemHookProxy: mOemHookProxy for " + HIDL_SERVICE_NAME[mPhoneId]
-                            + " is disabled");
-                }
-            }
-        } catch (NoSuchElementException e) {
-            mOemHookProxy = null;
-            riljLoge("IOemHook service is not on the device HAL: " + e);
-        }  catch (RemoteException e) {
-            mOemHookProxy = null;
-            riljLoge("OemHookProxy getService/setResponseFunctions: " + e);
-        }
-
-        if (mOemHookProxy == null) {
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
-        }
-
-        return mOemHookProxy;
     }
 
     //***** Constructors
@@ -689,8 +623,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         mRadioResponse = new RadioResponse(this);
         mRadioIndication = new RadioIndication(this);
-        mOemHookResponse = new OemHookResponse(this);
-        mOemHookIndication = new OemHookIndication(this);
         mRilHandler = new RilHandler();
         mRadioProxyDeathRecipient = new RadioProxyDeathRecipient();
 
@@ -714,7 +646,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // set radio callback; needed to set RadioIndication callback (should be done after
         // wakelock stuff is initialized above as callbacks are received on separate binder threads)
         getRadioProxy(null);
-        getOemHookProxy(null);
 
         if (RILJ_LOGD) {
             riljLog("Radio HAL version: " + mRadioVersion);
@@ -1805,7 +1736,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
         long messageId = ((SMSDispatcher.SmsTracker) result.obj).mMessageId;
         if (RILJ_LOGV) {
-            Rlog.d(RILJ_LOG_TAG, "getOutgoingSmsMessageId messageId: " + messageId);
+            Rlog.d(RILJ_LOG_TAG, "getOutgoingSmsMessageId "
+                    + SmsController.formatCrossStackMessageId(messageId));
         }
         return messageId;
     }
@@ -1931,7 +1863,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return dpi;
     }
 
-    private static OptionalSliceInfo convertToHalSliceInfo(@Nullable SliceInfo sliceInfo) {
+    private static OptionalSliceInfo convertToHalSliceInfo(@Nullable NetworkSliceInfo sliceInfo) {
         OptionalSliceInfo optionalSliceInfo = new OptionalSliceInfo();
         if (sliceInfo == null) {
             return optionalSliceInfo;
@@ -1957,15 +1889,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 new android.hardware.radio.V1_6.TrafficDescriptor();
 
         OptionalDnn optionalDnn = new OptionalDnn();
-        if (trafficDescriptor.getDnn() != null) {
-            optionalDnn.value(trafficDescriptor.getDnn());
+        if (trafficDescriptor.getDataNetworkName() != null) {
+            optionalDnn.value(trafficDescriptor.getDataNetworkName());
         }
         td.dnn = optionalDnn;
 
         OptionalOsAppId optionalOsAppId = new OptionalOsAppId();
         if (trafficDescriptor.getOsAppId() != null) {
             android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
-            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId().getBytes());
+            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId());
             optionalOsAppId.value(osAppId);
         }
         td.osAppId = optionalOsAppId;
@@ -2052,8 +1984,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
             boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
-            SliceInfo sliceInfo, TrafficDescriptor trafficDescriptor, boolean matchAllRuleAllowed,
-            Message result) {
+            NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
+            boolean matchAllRuleAllowed, Message result) {
         IRadio radioProxy = getRadioProxy(result);
 
         if (radioProxy != null) {
@@ -3068,58 +3000,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    // TODO(b/171260715) Remove when HAL definition is removed
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
-        IOemHook oemHookProxy = getOemHookProxy(response);
-        if (oemHookProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_OEM_HOOK_RAW, response,
-                    mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                        + "[" + IccUtils.bytesToHexString(data) + "]");
-            }
-
-            try {
-                oemHookProxy.sendRequestRaw(rr.mSerial, primitiveArrayToArrayList(data));
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestRaw", e);
-            }
-        } else {
-            // OEM Hook service is disabled for P and later devices.
-            // Deprecated OEM Hook APIs will perform no-op before being removed.
-            if (RILJ_LOGD) riljLog("Radio Oem Hook Service is disabled for P and later devices. ");
-        }
     }
 
+    // TODO(b/171260715) Remove when HAL definition is removed
     @Override
     public void invokeOemRilRequestStrings(String[] strings, Message result) {
-        IOemHook oemHookProxy = getOemHookProxy(result);
-        if (oemHookProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_OEM_HOOK_STRINGS, result,
-                    mRILDefaultWorkSource);
-
-            String logStr = "";
-            for (int i = 0; i < strings.length; i++) {
-                logStr = logStr + strings[i] + " ";
-            }
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " strings = "
-                        + logStr);
-            }
-
-            try {
-                oemHookProxy.sendRequestStrings(rr.mSerial,
-                        new ArrayList<String>(Arrays.asList(strings)));
-            } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "invokeOemRilRequestStrings", e);
-            }
-        } else {
-            // OEM Hook service is disabled for P and later devices.
-            // Deprecated OEM Hook APIs will perform no-op before being removed.
-            if (RILJ_LOGD) riljLog("Radio Oem Hook Service is disabled for P and later devices. ");
-        }
     }
 
     @Override
@@ -5574,8 +5463,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "setCarrierInfoForImsiEncryption", e);
                 }
-            }
-            else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
+            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
                 android.hardware.radio.V1_1.IRadio radioProxy11 =
                         (android.hardware.radio.V1_1.IRadio ) radioProxy;
 
@@ -5973,6 +5861,32 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         } else {
             if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "cancelHandover: REQUEST_NOT_SUPPORTED");
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void getSlicingConfig(Message result) {
+        android.hardware.radio.V1_6.IRadio radioProxy16 = getRadioV16(result);
+
+        if (radioProxy16 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SLICING_CONFIG, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            try {
+                radioProxy16.getSlicingConfig(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "getSlicingConfig", e);
+            }
+        } else {
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "getSlicingConfig: REQUEST_NOT_SUPPORTED");
             AsyncResult.forMessage(result, null,
                     CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
             result.sendToTarget();
@@ -7015,12 +6929,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "GET_MODEM_STATUS";
             case RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE:
                 return "CDMA_SEND_SMS_EXPECT_MORE";
-            case RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY:
-                return "GET_SIM_PHONEBOOK_CAPACITY";
-            case RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS:
-                return "GET_SIM_PHONEBOOK_RECORDS";
-            case RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD:
-                return "UPDATE_SIM_PHONEBOOK_RECORD";
             case RIL_REQUEST_GET_SLOT_STATUS:
                 return "GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
@@ -7069,6 +6977,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "SET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
                 return "GET_ALLOWED_NETWORK_TYPES_BITMAP";
+            case RIL_REQUEST_GET_SLICING_CONFIG:
+                return "GET_SLICING_CONFIG";
+            case RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS:
+                return "GET_SIM_PHONEBOOK_RECORDS";
+            case RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD:
+                return "UPDATE_SIM_PHONEBOOK_RECORD";
+            case RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY:
+                return "GET_SIM_PHONEBOOK_CAPACITY";
             default: return "<unknown request>";
         }
     }
@@ -7180,10 +7096,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "UNSOL_KEEPALIVE_STATUS";
             case RIL_UNSOL_UNTHROTTLE_APN:
                 return "UNSOL_UNTHROTTLE_APN";
-            case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED:
-                return "UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
-            case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED:
-                return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
             case RIL_UNSOL_ICC_SLOT_STATUS:
                 return "UNSOL_ICC_SLOT_STATUS";
             case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
@@ -7196,6 +7108,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "UNSOL_REGISTRATION_FAILED";
             case RIL_UNSOL_BARRING_INFO_CHANGED:
                 return "UNSOL_BARRING_INFO_CHANGED";
+            case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED:
+                return "UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
+            case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED:
+                return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
             default:
                 return "<unknown response>";
         }
@@ -7613,7 +7529,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         List<LinkAddress> laList = new ArrayList<>();
         List<QosBearerSession> qosSessions = new ArrayList<>();
-        SliceInfo sliceInfo = null;
+        NetworkSliceInfo sliceInfo = null;
         List<TrafficDescriptor> trafficDescriptors = new ArrayList<>();
 
         if (dcResult instanceof android.hardware.radio.V1_0.SetupDataCallResult) {
@@ -7780,17 +7696,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 .build();
     }
 
-    private static SliceInfo convertToSliceInfo(OptionalSliceInfo optionalSliceInfo) {
+    private static NetworkSliceInfo convertToSliceInfo(OptionalSliceInfo optionalSliceInfo) {
         if (optionalSliceInfo.getDiscriminator() == OptionalSliceInfo.hidl_discriminator.noinit) {
             return null;
         }
 
         android.hardware.radio.V1_6.SliceInfo si = optionalSliceInfo.value();
-        SliceInfo.Builder builder =
-                new SliceInfo.Builder()
+        NetworkSliceInfo.Builder builder =
+                new NetworkSliceInfo.Builder()
                 .setSliceServiceType(si.sst)
                 .setMappedHplmnSliceServiceType(si.mappedHplmnSst);
-        if (si.sliceDifferentiator != SliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
+        if (si.sliceDifferentiator != NetworkSliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
             builder
                 .setSliceDifferentiator(si.sliceDifferentiator)
                 .setMappedHplmnSliceDifferentiator(si.mappedHplmnSD);
@@ -7802,9 +7718,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
             android.hardware.radio.V1_6.TrafficDescriptor td) {
         String dnn = td.dnn.getDiscriminator() == OptionalDnn.hidl_discriminator.noinit
                 ? null : td.dnn.value();
-        String osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
-                ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
-        return new TrafficDescriptor(dnn, osAppId);
+        byte[] osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
+                ? null : arrayListToPrimitiveArray(td.osAppId.value().osAppId);
+        TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
+        if (dnn != null) {
+            builder.setDataNetworkName(dnn);
+        }
+        if (osAppId != null) {
+            builder.setOsAppId(osAppId);
+        }
+        return builder.build();
     }
 
     /**
