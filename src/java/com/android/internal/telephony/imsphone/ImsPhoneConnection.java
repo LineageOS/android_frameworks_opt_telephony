@@ -47,6 +47,7 @@ import android.text.TextUtils;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsException;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -149,7 +150,7 @@ public class ImsPhoneConnection extends Connection implements
     private static final int EVENT_DTMF_DELAY_DONE = 5;
 
     //***** Constants
-    private static final int PAUSE_DELAY_MILLIS = 3 * 1000;
+    @VisibleForTesting static final int PAUSE_DELAY_MILLIS = 3 * 1000;
     private static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
 
     //***** Inner Classes
