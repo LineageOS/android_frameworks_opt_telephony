@@ -18,6 +18,7 @@ package com.android.internal.telephony.metrics;
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -71,34 +72,34 @@ public class PersistAtomsStorage {
     private static final int SAVE_TO_FILE_DELAY_FOR_GET_MILLIS = 500;
 
     /** Maximum number of call sessions to store between pulls. */
-    private static final int MAX_NUM_CALL_SESSIONS = 50;
+    private final int mMaxNumVoiceCallSessions;
 
     /**
      * Maximum number of SMS to store between pulls. Incoming messages and outgoing messages are
      * counted separately.
      */
-    private static final int MAX_NUM_SMS = 25;
+    private final int mMaxNumSms;
 
     /**
      * Maximum number of carrier ID mismatch events stored on the device to avoid sending duplicated
      * metrics.
      */
-    private static final int MAX_CARRIER_ID_MISMATCH = 40;
+    private final int mMaxNumCarrierIdMismatches;
 
     /** Maximum number of data call sessions to store during pulls. */
-    private static final int MAX_NUM_DATA_CALL_SESSIONS = 15;
+    private final int mMaxNumDataCallSessions;
 
     /** Maximum number of service states to store between pulls. */
-    private static final int MAX_NUM_CELLULAR_SERVICE_STATES = 50;
+    private final int mMaxNumCellularServiceStates;
 
     /** Maximum number of data service switches to store between pulls. */
-    private static final int MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES = 50;
+    private final int mMaxNumCellularDataSwitches;
 
     /** Maximum number of IMS registration stats to store between pulls. */
-    private static final int MAX_NUM_IMS_REGISTRATION_STATS = 10;
+    private final int mMaxNumImsRegistrationStats;
 
     /** Maximum number of IMS registration terminations to store between pulls. */
-    private static final int MAX_NUM_IMS_REGISTRATION_TERMINATIONS = 10;
+    private final int mMaxNumImsRegistrationTerminations;
 
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected final PersistAtoms mAtoms;
@@ -124,6 +125,28 @@ public class PersistAtomsStorage {
 
     public PersistAtomsStorage(Context context) {
         mContext = context;
+
+        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_RAM_LOW)) {
+            Rlog.i(TAG, "Low RAM device");
+            mMaxNumVoiceCallSessions = 10;
+            mMaxNumSms = 5;
+            mMaxNumCarrierIdMismatches = 8;
+            mMaxNumDataCallSessions = 5;
+            mMaxNumCellularServiceStates = 10;
+            mMaxNumCellularDataSwitches = 5;
+            mMaxNumImsRegistrationStats = 5;
+            mMaxNumImsRegistrationTerminations = 5;
+        } else {
+            mMaxNumVoiceCallSessions = 50;
+            mMaxNumSms = 25;
+            mMaxNumCarrierIdMismatches = 40;
+            mMaxNumDataCallSessions = 15;
+            mMaxNumCellularServiceStates = 50;
+            mMaxNumCellularDataSwitches = 50;
+            mMaxNumImsRegistrationStats = 10;
+            mMaxNumImsRegistrationTerminations = 10;
+        }
+
         mAtoms = loadAtomsFromFile();
         mVoiceCallRatTracker = VoiceCallRatTracker.fromProto(mAtoms.voiceCallRatUsage);
 
@@ -136,7 +159,7 @@ public class PersistAtomsStorage {
     /** Adds a call to the storage. */
     public synchronized void addVoiceCallSession(VoiceCallSession call) {
         mAtoms.voiceCallSession =
-                insertAtRandomPlace(mAtoms.voiceCallSession, call, MAX_NUM_CALL_SESSIONS);
+                insertAtRandomPlace(mAtoms.voiceCallSession, call, mMaxNumVoiceCallSessions);
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
         Rlog.d(TAG, "Add new voice call session: " + call.toString());
@@ -151,7 +174,7 @@ public class PersistAtomsStorage {
 
     /** Adds an incoming SMS to the storage. */
     public synchronized void addIncomingSms(IncomingSms sms) {
-        mAtoms.incomingSms = insertAtRandomPlace(mAtoms.incomingSms, sms, MAX_NUM_SMS);
+        mAtoms.incomingSms = insertAtRandomPlace(mAtoms.incomingSms, sms, mMaxNumSms);
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
         // To be removed
@@ -169,7 +192,7 @@ public class PersistAtomsStorage {
             }
         }
 
-        mAtoms.outgoingSms = insertAtRandomPlace(mAtoms.outgoingSms, sms, MAX_NUM_SMS);
+        mAtoms.outgoingSms = insertAtRandomPlace(mAtoms.outgoingSms, sms, mMaxNumSms);
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
         // To be removed
@@ -187,7 +210,7 @@ public class PersistAtomsStorage {
             state.lastUsedMillis = getWallTimeMillis();
             mAtoms.cellularServiceState =
                     insertAtRandomPlace(
-                            mAtoms.cellularServiceState, state, MAX_NUM_CELLULAR_SERVICE_STATES);
+                            mAtoms.cellularServiceState, state, mMaxNumCellularServiceStates);
         }
 
         if (serviceSwitch != null) {
@@ -201,7 +224,7 @@ public class PersistAtomsStorage {
                         insertAtRandomPlace(
                                 mAtoms.cellularDataServiceSwitch,
                                 serviceSwitch,
-                                MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
+                                mMaxNumCellularDataSwitches);
             }
         }
 
@@ -211,7 +234,7 @@ public class PersistAtomsStorage {
     /** Adds a data call session to the storage. */
     public synchronized void addDataCallSession(DataCallSession dataCall) {
         mAtoms.dataCallSession =
-                insertAtRandomPlace(mAtoms.dataCallSession, dataCall, MAX_NUM_DATA_CALL_SESSIONS);
+                insertAtRandomPlace(mAtoms.dataCallSession, dataCall, mMaxNumDataCallSessions);
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
@@ -228,14 +251,14 @@ public class PersistAtomsStorage {
         }
         // Add the new CarrierIdMismatch at the end of the array, so that the same atom will not be
         // sent again in future.
-        if (mAtoms.carrierIdMismatch.length == MAX_CARRIER_ID_MISMATCH) {
+        if (mAtoms.carrierIdMismatch.length == mMaxNumCarrierIdMismatches) {
             System.arraycopy(
                     mAtoms.carrierIdMismatch,
                     1,
                     mAtoms.carrierIdMismatch,
                     0,
-                    MAX_CARRIER_ID_MISMATCH - 1);
-            mAtoms.carrierIdMismatch[MAX_CARRIER_ID_MISMATCH - 1] = carrierIdMismatch;
+                    mMaxNumCarrierIdMismatches - 1);
+            mAtoms.carrierIdMismatch[mMaxNumCarrierIdMismatches - 1] = carrierIdMismatch;
         } else {
             int newLength = mAtoms.carrierIdMismatch.length + 1;
             mAtoms.carrierIdMismatch = Arrays.copyOf(mAtoms.carrierIdMismatch, newLength);
@@ -263,7 +286,7 @@ public class PersistAtomsStorage {
             stats.lastUsedMillis = getWallTimeMillis();
             mAtoms.imsRegistrationStats =
                     insertAtRandomPlace(
-                            mAtoms.imsRegistrationStats, stats, MAX_NUM_IMS_REGISTRATION_STATS);
+                            mAtoms.imsRegistrationStats, stats, mMaxNumImsRegistrationStats);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
@@ -280,7 +303,7 @@ public class PersistAtomsStorage {
                     insertAtRandomPlace(
                             mAtoms.imsRegistrationTermination,
                             termination,
-                            MAX_NUM_IMS_REGISTRATION_TERMINATIONS);
+                            mMaxNumImsRegistrationTerminations);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
@@ -514,39 +537,41 @@ public class PersistAtomsStorage {
                     sanitizeAtoms(atoms.voiceCallRatUsage, VoiceCallRatUsage.class);
             atoms.voiceCallSession =
                     sanitizeAtoms(
-                            atoms.voiceCallSession, VoiceCallSession.class, MAX_NUM_CALL_SESSIONS);
-            atoms.incomingSms = sanitizeAtoms(atoms.incomingSms, IncomingSms.class, MAX_NUM_SMS);
-            atoms.outgoingSms = sanitizeAtoms(atoms.outgoingSms, OutgoingSms.class, MAX_NUM_SMS);
+                            atoms.voiceCallSession,
+                            VoiceCallSession.class,
+                            mMaxNumVoiceCallSessions);
+            atoms.incomingSms = sanitizeAtoms(atoms.incomingSms, IncomingSms.class, mMaxNumSms);
+            atoms.outgoingSms = sanitizeAtoms(atoms.outgoingSms, OutgoingSms.class, mMaxNumSms);
             atoms.carrierIdMismatch =
                     sanitizeAtoms(
                             atoms.carrierIdMismatch,
                             CarrierIdMismatch.class,
-                            MAX_CARRIER_ID_MISMATCH);
+                            mMaxNumCarrierIdMismatches);
             atoms.dataCallSession =
                     sanitizeAtoms(
                             atoms.dataCallSession,
                             DataCallSession.class,
-                            MAX_NUM_DATA_CALL_SESSIONS);
+                            mMaxNumDataCallSessions);
             atoms.cellularServiceState =
                     sanitizeAtoms(
                             atoms.cellularServiceState,
                             CellularServiceState.class,
-                            MAX_NUM_CELLULAR_SERVICE_STATES);
+                            mMaxNumCellularServiceStates);
             atoms.cellularDataServiceSwitch =
                     sanitizeAtoms(
                             atoms.cellularDataServiceSwitch,
                             CellularDataServiceSwitch.class,
-                            MAX_NUM_CELLULAR_DATA_SERVICE_SWITCHES);
+                            mMaxNumCellularDataSwitches);
             atoms.imsRegistrationStats =
                     sanitizeAtoms(
                             atoms.imsRegistrationStats,
                             ImsRegistrationStats.class,
-                            MAX_NUM_IMS_REGISTRATION_STATS);
+                            mMaxNumImsRegistrationStats);
             atoms.imsRegistrationTermination =
                     sanitizeAtoms(
                             atoms.imsRegistrationTermination,
                             ImsRegistrationTermination.class,
-                            MAX_NUM_IMS_REGISTRATION_TERMINATIONS);
+                            mMaxNumImsRegistrationTerminations);
             atoms.networkRequests = sanitizeAtoms(atoms.networkRequests, NetworkRequests.class);
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
