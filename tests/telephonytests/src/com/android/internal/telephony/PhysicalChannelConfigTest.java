@@ -39,6 +39,7 @@ public class PhysicalChannelConfigTest {
     private static final int CELL_BANDWIDTH = 12345;
     private static final int FREQUENCY_RANGE = 1;
     private static final int CHANNEL_NUMBER = 1234;
+    private static final int CHANNEL_NUMBER_UNKNOWN = PhysicalChannelConfig.CHANNEL_NUMBER_UNKNOWN;
     private static final int[] CONTEXT_IDS = new int[] {123, 555, 1, 0};
     private static final int PHYSICAL_CELL_ID = 502;
     private static final int BAND = 1;
@@ -138,6 +139,25 @@ public class PhysicalChannelConfigTest {
 
         assertThat(mPhysicalChannelConfig.getFrequencyRange()).isEqualTo(
                 ServiceState.FREQUENCY_RANGE_HIGH);
+    }
+
+    @Test
+    public void testUplinkFrequencyForNrArfcnWithUnknownChannelNumber(){
+        setUpPhysicalChannelConfig(NETWORK_TYPE_NR, AccessNetworkConstants.NgranBands.BAND_1,
+                CHANNEL_NUMBER, CHANNEL_NUMBER_UNKNOWN, ServiceState.FREQUENCY_RANGE_MID);
+
+        assertThat(mPhysicalChannelConfig.getUplinkFrequencyKhz()).isEqualTo(INVALID_FREQUENCY);
+    }
+
+    @Test
+    public void testUplinkFrequencyForNrArfcn(){
+        setUpPhysicalChannelConfig(NETWORK_TYPE_NR, AccessNetworkConstants.NgranBands.BAND_1,
+                CHANNEL_NUMBER, CHANNEL_NUMBER, ServiceState.FREQUENCY_RANGE_MID);
+
+        // 3GPP TS 38.104 Table 5.4.2.1-1, {@link AccessNetworkUtils#getFrequencyFromNrArfcn}.
+        // Formula of NR-ARFCN convert to actual frequency:
+        // Actual frequency(kHz) = (RANGE_OFFSET + GLOBAL_KHZ * (ARFCN - ARFCN_OFFSET))
+        assertThat(mPhysicalChannelConfig.getUplinkFrequencyKhz()).isEqualTo(6170);
     }
 
     @Test
