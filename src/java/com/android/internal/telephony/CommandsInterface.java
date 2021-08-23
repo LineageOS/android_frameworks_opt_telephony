@@ -1599,6 +1599,17 @@ public interface CommandsInterface {
     default void isNrDualConnectivityEnabled(Message message, WorkSource workSource) {}
 
     /**
+     * Enable or disable Voice over NR (VoNR)
+     * @param enabled enable or disable VoNR.
+     */
+    default void setVoNrEnabled(boolean enabled, Message message, WorkSource workSource) {}
+
+    /**
+     * Is voice over NR enabled
+     */
+    default void isVoNrEnabled(Message message, WorkSource workSource) {}
+
+    /**
      * Request to enable/disable network state change notifications when
      * location information (lac and/or cid) has changed.
      *
