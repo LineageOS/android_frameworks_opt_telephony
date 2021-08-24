@@ -2264,7 +2264,7 @@ public class ServiceStateTracker extends Handler {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
 
         // Check if any APN is preferred on IWLAN.
-        boolean isIwlanPreferred = mTransportManager.isAnyApnPreferredOnIwlan();
+        boolean isIwlanPreferred = mTransportManager.isAnyApnOnIwlan();
         serviceState.setIwlanPreferred(isIwlanPreferred);
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
