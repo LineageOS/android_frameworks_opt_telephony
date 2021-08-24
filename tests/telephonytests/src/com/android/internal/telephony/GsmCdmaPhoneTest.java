@@ -168,6 +168,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void testGetServiceState() {
         ServiceState serviceState = new ServiceState();
         mSST.mSS = serviceState;
+        doReturn(serviceState).when(mSST).getServiceState();
         assertEquals(serviceState, mPhoneUT.getServiceState());
     }
 
@@ -238,6 +239,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         serviceState.setIwlanPreferred(true);
 
         mSST.mSS = serviceState;
+        doReturn(serviceState).when(mSST).getServiceState();
         mPhoneUT.mSST = mSST;
 
         ServiceState mergedServiceState = mPhoneUT.getServiceState();
@@ -320,6 +322,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         serviceState.setIwlanPreferred(true);
 
         mSST.mSS = serviceState;
+        doReturn(serviceState).when(mSST).getServiceState();
         mPhoneUT.mSST = mSST;
 
         ServiceState mergedServiceState = mPhoneUT.getServiceState();

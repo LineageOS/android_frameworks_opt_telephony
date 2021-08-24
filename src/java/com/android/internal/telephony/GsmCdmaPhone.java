@@ -578,13 +578,14 @@ public class GsmCdmaPhone extends Phone {
     public ServiceState getServiceState() {
         if (mSST == null || mSST.mSS.getState() != ServiceState.STATE_IN_SERVICE) {
             if (mImsPhone != null) {
-                return mergeServiceStates((mSST == null) ? new ServiceState() : mSST.mSS,
+                return mergeServiceStates((mSST == null)
+                                ? new ServiceState() : mSST.getServiceState(),
                         mImsPhone.getServiceState());
             }
         }
 
         if (mSST != null) {
-            return mSST.mSS;
+            return mSST.getServiceState();
         } else {
             // avoid potential NPE in EmergencyCallHelper during Phone switch
             return new ServiceState();
