@@ -44,8 +44,6 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import java.lang.reflect.Field;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -175,12 +173,9 @@ public class TransportManagerTest extends TelephonyTest {
         verify(mTestHandler, never()).sendMessageAtTime(any(Message.class), anyLong());
     }
 
-    private ArrayDeque<List<QualifiedNetworks>> getQueuedNetworksList() throws Exception {
-        Field f = TransportManager.class.getDeclaredField("mQueuedNetworksList");
-        f.setAccessible(true);
-        return (ArrayDeque<List<QualifiedNetworks>>) f.get(mTransportManager);
-    }
-
+    // Test that QNS updates the preference from LTE -> IWLAN -> LTE -> IWLAN. While the first
+    // handover is ongoing, we want to make sure the ping-pong IWLAN->LTE->IWLAN event does not
+    // trigger two more unnecessary handover requests.
     @Test
     @SmallTest
     public void testBackToBackHandoverNeeded() throws Exception {
@@ -231,13 +226,19 @@ public class TransportManagerTest extends TelephonyTest {
                 new AsyncResult(null, networkList, null)).sendToTarget();
         processAllMessages();
 
+        // Before handover is completed, update the available networks again.
+        // This time change the order of qualified networks by putting IWLAN first
+        networkList = new ArrayList<>(Arrays.asList(
+                new QualifiedNetworks(ApnSetting.TYPE_IMS,
+                        new int[]{AccessNetworkType.IWLAN, AccessNetworkType.UTRAN,
+                                AccessNetworkType.EUTRAN})));
+        mTransportManager.obtainMessage(1 /* EVENT_QUALIFIED_NETWORKS_CHANGED */,
+                new AsyncResult(null, networkList, null)).sendToTarget();
+        processAllMessages();
+
         // Verify handover needed event was sent only once (for the previous change)
         verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
                 anyLong());
-
-        ArrayDeque<List<QualifiedNetworks>> listQueue = getQueuedNetworksList();
-        // Verify the list has been queued.
-        assertEquals(1, listQueue.size());
 
         // Notify handover succeeded.
         params.callback.onCompleted(true, false);
@@ -245,12 +246,8 @@ public class TransportManagerTest extends TelephonyTest {
                 mTransportManager.getCurrentTransport(ApnSetting.TYPE_IMS));
         processAllMessages();
 
-        listQueue = getQueuedNetworksList();
-        // Verify the queue is empty.
-        assertEquals(0, listQueue.size());
-
-        // Verify handover 2nd needed event was sent
-        verify(mTestHandler, times(2)).sendMessageAtTime(messageArgumentCaptor.capture(),
+        // Verify handover 2nd needed event was NOT sent
+        verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
                 anyLong());
     }
 }
