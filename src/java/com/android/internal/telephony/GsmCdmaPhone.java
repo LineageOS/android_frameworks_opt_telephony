@@ -2765,10 +2765,6 @@ public class GsmCdmaPhone extends Phone {
         if (!isPhoneTypeGsm()) {
             mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
         }
-
-        // If this is on APM off, SIM may already be loaded. Send setPreferredNetworkType
-        // request to RIL to preserve user setting across APM toggling
-        setPreferredNetworkTypeIfSimLoaded();
     }
 
     private void handleRadioOffOrNotAvailable() {
