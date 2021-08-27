@@ -1907,7 +1907,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     public void singleWifiCall_preferred() {
         setServiceStateWithWifiCalling(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
         doReturn(mImsPhone).when(mPhone).getImsPhone();
-        doReturn(true).when(mImsPhone).isWifiCallingEnabled();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -1955,7 +1955,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     public void singleWifiCall_airPlaneMode() {
         setServiceStateWithWifiCalling(mServiceState, TelephonyManager.NETWORK_TYPE_UNKNOWN);
         doReturn(mImsPhone).when(mPhone).getImsPhone();
-        doReturn(true).when(mImsPhone).isWifiCallingEnabled();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
