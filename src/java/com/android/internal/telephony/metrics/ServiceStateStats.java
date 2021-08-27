@@ -29,6 +29,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.telephony.Rlog;
@@ -55,6 +56,23 @@ public class ServiceStateStats {
         TimestampedServiceState lastState =
                 mLastState.getAndUpdate(
                         state -> new TimestampedServiceState(state.mServiceState, now));
+        addServiceState(lastState, now);
+    }
+
+    /** Updates service state when IMS voice registration changes. */
+    public void onImsVoiceRegistrationChanged() {
+        final long now = getTimeMillis();
+        TimestampedServiceState lastState =
+                mLastState.getAndUpdate(
+                        state -> {
+                            if (state.mServiceState == null) {
+                                return new TimestampedServiceState(null, now);
+                            }
+                            CellularServiceState newServiceState = copyOf(state.mServiceState);
+                            newServiceState.voiceRat =
+                                    getVoiceRat(mPhone, getServiceStateForPhone(mPhone));
+                            return new TimestampedServiceState(newServiceState, now);
+                        });
         addServiceState(lastState, now);
     }
 
@@ -205,18 +223,21 @@ public class ServiceStateStats {
     }
 
     /**
-     * Returns the current voice RAT from the service state, or {@link
-     * TelephonyManager#NETWORK_TYPE_IWLAN} if the phone has Wifi calling in use.
+     * Returns the current voice RAT from IMS registration if present, otherwise from the service
+     * state.
      */
-    public static @NetworkType int getVoiceRat(Phone phone, @Nullable ServiceState state) {
+    static @NetworkType int getVoiceRat(Phone phone, @Nullable ServiceState state) {
         if (state == null) {
             return TelephonyManager.NETWORK_TYPE_UNKNOWN;
         }
-        boolean isWifiCall =
-                phone.getImsPhone() != null
-                        && phone.getImsPhone().isWifiCallingEnabled()
-                        && state.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN;
-        return isWifiCall ? TelephonyManager.NETWORK_TYPE_IWLAN : state.getVoiceNetworkType();
+        ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
+        if (imsPhone != null) {
+            @NetworkType int imsVoiceRat = imsPhone.getImsStats().getImsVoiceRadioTech();
+            if (imsVoiceRat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                return imsVoiceRat;
+            }
+        }
+        return state.getVoiceNetworkType();
     }
 
     /**
@@ -233,7 +254,7 @@ public class ServiceStateStats {
     }
 
     /** Returns PS (data) RAT used by WWAN. */
-    private static @NetworkType int getDataRat(ServiceState state) {
+    static @NetworkType int getDataRat(ServiceState state) {
         final NetworkRegistrationInfo wwanRegInfo =
                 state.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS,
