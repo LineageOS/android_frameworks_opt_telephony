@@ -1325,7 +1325,7 @@ public class DataConnection extends StateMachine {
     /**
      * Clear all settings called when entering mInactiveState.
      */
-    private void clearSettings() {
+    private synchronized void clearSettings() {
         if (DBG) log("clearSettings");
 
         mCreateTime = -1;
@@ -3835,7 +3835,7 @@ public class DataConnection extends StateMachine {
     }
 
     /** Doesn't print mApnList of ApnContext's which would be recursive */
-    public String toStringSimple() {
+    public synchronized String toStringSimple() {
         return getName() + ": State=" + getCurrentState().getName()
                 + " mApnSetting=" + mApnSetting + " RefCount=" + mApnContexts.size()
                 + " mCid=" + mCid + " mCreateTime=" + mCreateTime
