@@ -278,4 +278,22 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         assertEquals(new ArrayList<String>(Arrays.asList(forwardedNumber)),
                 connection.getForwardedNumber());
     }
+
+    @Test @SmallTest
+    public void testForwardedNumberEmptyNull() {
+        mDC.state = DriverCall.State.INCOMING;
+        mDC.forwardedNumber = "";
+        connection = new GsmCdmaConnection(mPhone, mDC, mCT, 0);
+        assertNull(connection.getForwardedNumber());
+        mDC.forwardedNumber = null;
+        connection.update(mDC);
+        assertNull(connection.getForwardedNumber());
+
+        mDC.forwardedNumber = null;
+        connection = new GsmCdmaConnection(mPhone, mDC, mCT, 0);
+        assertNull(connection.getForwardedNumber());
+        mDC.forwardedNumber = "";
+        connection.update(mDC);
+        assertNull(connection.getForwardedNumber());
+    }
 }
