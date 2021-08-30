@@ -2547,6 +2547,7 @@ public class DcTracker extends Handler {
         if (mSimState == TelephonyManager.SIM_STATE_ABSENT) {
             onSimAbsent();
         } else if (mSimState == TelephonyManager.SIM_STATE_LOADED) {
+            mDataThrottler.reset();
             if (mConfigReady) {
                 createAllApnList();
                 setDataProfilesAsNeeded();
