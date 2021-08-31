@@ -2907,7 +2907,20 @@ public class DcTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
 
         // Verify unthrottling
-        verify(mDataThrottler).reset();
+        verify(mDataThrottler, times(2)).reset();
+    }
+
+    @Test
+    public void testDataUnthrottledOnSimStateChanged() throws Exception {
+        initApns(ApnSetting.TYPE_IMS_STRING, new String[]{ApnSetting.TYPE_IMS_STRING});
+        replaceInstance(DcTracker.class, "mDataThrottler", mDct, mDataThrottler);
+
+        mDct.enableApn(ApnSetting.TYPE_IMS, DcTracker.REQUEST_TYPE_NORMAL, null);
+        sendInitializationEvents();
+        sendSimStateUpdated("testDataUnthrottledOnSimStateChanged");
+
+        // Verify unthrottling
+        verify(mDataThrottler, times(2)).reset();
     }
 
     @Test
