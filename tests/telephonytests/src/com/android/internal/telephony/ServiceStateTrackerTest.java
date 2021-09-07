@@ -287,6 +287,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 com.android.internal.R.array.wfcSpnFormats,
                 WIFI_CALLING_FORMATTERS);
 
+        // Start with power off delay disabled.
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 0);
+
         mBundle.putBoolean(
                 CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
         mBundle.putInt(CarrierConfigManager.KEY_WFC_SPN_FORMAT_IDX_INT, 0);
@@ -1940,6 +1944,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @SmallTest
     public void testImsRegisteredDelayShutDown() throws Exception {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
         sst.setImsRegistrationState(true);
         mSimulatedCommands.setRadioPowerFailResponse(false);
         sst.setRadioPower(true);
@@ -1959,8 +1965,27 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testImsRegisteredNoDelayShutDown() throws Exception {
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        // The radio power off delay time is 0, so there should should be no delay.
+        sst.setImsRegistrationState(true);
+        mSimulatedCommands.setRadioPowerFailResponse(false);
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // Turn off the radio and ensure radio power is off
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+    }
+
+    @Test
+    @SmallTest
     public void testImsRegisteredDelayShutDownTimeout() throws Exception {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
         sst.setImsRegistrationState(true);
         mSimulatedCommands.setRadioPowerFailResponse(false);
         sst.setRadioPower(true);
@@ -1976,7 +2001,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // move to off.
         // Timeout for IMS reg + some extra time to remove race conditions
         waitForDelayedHandlerAction(mSSTTestHandler.getThreadHandler(),
-                ServiceStateTracker.DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT + 100, 1000);
+                sst.getRadioPowerOffDelayTimeoutForImsRegistration() + 1000, 1000);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
     }
@@ -1985,6 +2010,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @SmallTest
     public void testImsRegisteredAPMOnOffToggle() throws Exception {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
         sst.setImsRegistrationState(true);
         mSimulatedCommands.setRadioPowerFailResponse(false);
         sst.setRadioPower(true);
@@ -2000,7 +2027,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // Ensure the timeout was cancelled and we still see radio power is on.
         // Timeout for IMS reg + some extra time to remove race conditions
         waitForDelayedHandlerAction(mSSTTestHandler.getThreadHandler(),
-                ServiceStateTracker.DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT + 100, 1000);
+                sst.getRadioPowerOffDelayTimeoutForImsRegistration() + 1000, 1000);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
     }
