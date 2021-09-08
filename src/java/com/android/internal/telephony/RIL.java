@@ -73,6 +73,7 @@ import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.provider.Settings;
 import android.service.carrier.CarrierIdentifier;
@@ -254,6 +255,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
     final Integer mPhoneId;
+
+    private static final String PROPERTY_IS_VONR_ENABLED = "persist.radio.is_vonr_enabled_";
 
     /**
      * A set that records if radio service is disabled in hal for
@@ -3573,6 +3576,46 @@ public class RIL extends BaseCommands implements CommandsInterface {
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "enableNRDualConnectivity", e);
             }
+        }
+    }
+
+    private void setVoNrEnabled(boolean enabled) {
+        SystemProperties.set(PROPERTY_IS_VONR_ENABLED + mPhoneId, String.valueOf(enabled));
+    }
+
+    private boolean isVoNrEnabled() {
+        return SystemProperties.getBoolean(PROPERTY_IS_VONR_ENABLED + mPhoneId, true);
+    }
+
+    /**
+     * Is voice over NR enabled
+     */
+    @Override
+    public void isVoNrEnabled(Message result, WorkSource workSource) {
+        boolean isEnabled = isVoNrEnabled();
+        if (result != null) {
+            AsyncResult.forMessage(result, isEnabled, null);
+            result.sendToTarget();
+        }
+    }
+
+    /**
+     * Enable or disable Voice over NR (VoNR)
+     * @param enabled enable or disable VoNR.
+     */
+    @Override
+    public void setVoNrEnabled(boolean enabled, Message result, WorkSource workSource) {
+        setVoNrEnabled(enabled);
+        /* calling a query api to let HAL know that VoNREnabled state is updated.
+           This is a temporary work around as new HIDL API is not allowed.
+           HAL can check the value of PROPERTY_IS_VONR_ENABLED property to determine
+           if there is any change whenever it receives isNrDualConnectivityEnabled request.
+           This behavior will be removed in Android T.
+         */
+        isNrDualConnectivityEnabled(null, workSource);
+        if (result != null) {
+            AsyncResult.forMessage(result, null, null);
+            result.sendToTarget();
         }
     }
 
