@@ -709,6 +709,10 @@ public class SubscriptionController extends ISub.Stub {
             subList = getSubInfo(null, null);
             if (subList != null) {
                 if (VDBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
+                subList.stream().map(
+                        subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
+                                callingPackage, "getAllSubInfoList"))
+                        .collect(Collectors.toList());
             } else {
                 if (VDBG) logd("[getAllSubInfoList]- no info return");
             }
@@ -3721,6 +3725,7 @@ public class SubscriptionController extends ISub.Stub {
         if (!hasIdentifierAccess) {
             result.clearIccId();
             result.clearCardString();
+            result.clearGroupUuid();
         }
         return result;
     }
