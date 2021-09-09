@@ -419,11 +419,11 @@ public class DataConnectionTest extends TelephonyTest {
         assertEquals("spmode.ne.jp", dpCaptor.getValue().getApn());
         if (tdCaptor.getValue() != null) {
             if (mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE) {
-                assertEquals(null, tdCaptor.getValue().getDnn());
+                assertEquals(null, tdCaptor.getValue().getDataNetworkName());
                 assertTrue(tdCaptor.getValue().getOsAppId()
                         .contains(ApnSetting.TYPE_ENTERPRISE_STRING));
             } else {
-                assertEquals("spmode.ne.jp", tdCaptor.getValue().getDnn());
+                assertEquals("spmode.ne.jp", tdCaptor.getValue().getDataNetworkName());
                 assertEquals(null, tdCaptor.getValue().getOsAppId());
             }
         }

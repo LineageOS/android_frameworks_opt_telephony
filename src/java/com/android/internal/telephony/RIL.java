@@ -1957,8 +1957,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 new android.hardware.radio.V1_6.TrafficDescriptor();
 
         OptionalDnn optionalDnn = new OptionalDnn();
-        if (trafficDescriptor.getDnn() != null) {
-            optionalDnn.value(trafficDescriptor.getDnn());
+        if (trafficDescriptor.getDataNetworkName() != null) {
+            optionalDnn.value(trafficDescriptor.getDataNetworkName());
         }
         td.dnn = optionalDnn;
 
@@ -6058,18 +6058,44 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 android.hardware.radio.V1_6.PhonebookRecordInfo pbRecordInfo =
                         phonebookRecord.toPhonebookRecordInfo();
                 try {
-                     radioProxy16.updateSimPhonebookRecords(rr.mSerial, pbRecordInfo);
+                    radioProxy16.updateSimPhonebookRecords(rr.mSerial, pbRecordInfo);
                 } catch (RemoteException | RuntimeException e) {
                     handleRadioProxyExceptionForRR(rr, "updatePhonebookRecord", e);
                 }
             } else {
-                riljLog("Unsupported API in lower than version 1.6 radio HAL" );
+                riljLog("Unsupported API in lower than version 1.6 radio HAL");
                 if (result != null) {
                     AsyncResult.forMessage(result, null,
-                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                     result.sendToTarget();
                 }
             }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void getSlicingConfig(Message result) {
+        android.hardware.radio.V1_6.IRadio radioProxy16 = getRadioV16(result);
+
+        if (radioProxy16 != null) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SLICING_CONFIG, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            try {
+                radioProxy16.getSlicingConfig(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "getSlicingConfig", e);
+            }
+        } else {
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "getSlicingConfig: REQUEST_NOT_SUPPORTED");
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
         }
     }
 
@@ -7069,6 +7095,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "SET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_ALLOWED_NETWORK_TYPES_BITMAP:
                 return "GET_ALLOWED_NETWORK_TYPES_BITMAP";
+            case RIL_REQUEST_GET_SLICING_CONFIG:
+                return "GET_SLICING_CONFIG";
             default: return "<unknown request>";
         }
     }
@@ -7804,7 +7832,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 ? null : td.dnn.value();
         String osAppId = td.osAppId.getDiscriminator() == OptionalOsAppId.hidl_discriminator.noinit
                 ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
-        return new TrafficDescriptor(dnn, osAppId);
+        TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
+        if (dnn != null) {
+            builder.setDataNetworkName(dnn);
+        }
+        if (osAppId != null) {
+            builder.setOsAppId(osAppId);
+        }
+        return builder.build();
     }
 
     /**
