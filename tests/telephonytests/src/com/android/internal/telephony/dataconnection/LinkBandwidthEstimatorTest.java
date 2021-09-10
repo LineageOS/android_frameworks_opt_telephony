@@ -634,7 +634,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
 
 
     @Test
-    public void testVeryHighByteCountReturnNonNegativeValue() throws Exception {
+    public void testVeryHighRxLinkBandwidthEstimationIgnored() throws Exception {
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
         processAllMessages();
         mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
@@ -650,11 +650,12 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             processAllMessages();
         }
 
+        // This will result in link bandwidth estimation value 128Gbps which is too high for LTE.
+        // So it will be ignored by the estimator.
         LinkBandwidthEstimator.NetworkBandwidth network = mLBE.lookupNetwork("310260", 366, "LTE");
 
-        assertEquals(BW_STATS_COUNT_THRESHOLD + 4, network.getCount(LINK_RX, 1));
+        assertEquals(0, network.getCount(LINK_RX, 1));
         assertEquals(0, network.getValue(LINK_TX, 1));
-        assertEquals(16_000_000_000L * 8 / 1024 * (BW_STATS_COUNT_THRESHOLD + 4),
-                network.getValue(LINK_RX, 1));
+        assertEquals(0, network.getValue(LINK_RX, 1));
     }
 }
