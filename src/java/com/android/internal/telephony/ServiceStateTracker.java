@@ -439,7 +439,7 @@ public class ServiceStateTracker extends Handler {
                 // just went from invalid to valid subId, so notify with current service
                 // state in case our service state was never broadcasted (we don't notify
                 // service states when the subId is invalid)
-                mPhone.notifyServiceStateChanged(mSS);
+                mPhone.notifyServiceStateChanged(mPhone.getServiceState());
             }
 
             boolean restoreSelection = !context.getResources().getBoolean(
@@ -1731,7 +1731,7 @@ public class ServiceStateTracker extends Handler {
                     mPhone.notifyPhysicalChannelConfig(list);
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged) {
-                        mPhone.notifyServiceStateChanged(mSS);
+                        mPhone.notifyServiceStateChanged(mPhone.getServiceState());
                         TelephonyMetrics.getInstance().writeServiceStateChanged(
                                 mPhone.getPhoneId(), mSS);
                         mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
@@ -3679,12 +3679,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
-
-        // swap mSS and mNewSS to put new state in mSS
-        ServiceState tss = mSS;
-        mSS = mNewSS;
-        mNewSS = tss;
-        // clean slate for next time
+        mSS = new ServiceState(mNewSS);
         mNewSS.setStateOutOfService();
 
         mCellIdentity = primaryCellIdentity;

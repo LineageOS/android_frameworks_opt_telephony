@@ -2360,7 +2360,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
                 new AsyncResult(sst.mPollingContext, voiceResult, null)));
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertTrue(Arrays.equals(new int[0], sst.mSS.getCellBandwidths()));
+        assertEquals(0, sst.mSS.getCellBandwidths().length);
     }
 
     @Test
