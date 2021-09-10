@@ -1660,6 +1660,7 @@ public class DataConnection extends StateMachine {
             if (!uplinkUpdated) {
                 mUplinkBandwidth = values.second;
             }
+            mUplinkBandwidth = Math.min(mUplinkBandwidth, mDownlinkBandwidth);
         }
     }
 
