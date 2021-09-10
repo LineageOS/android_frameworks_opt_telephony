@@ -1731,7 +1731,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * version scoped to their packages
      */
     protected void notifyServiceStateChangedP(ServiceState ss) {
-        AsyncResult ar = new AsyncResult(null, ss, null);
+        AsyncResult ar = new AsyncResult(null, new ServiceState(ss), null);
         mServiceStateRegistrants.notifyRegistrants(ar);
 
         mNotifier.notifyServiceState(this);
