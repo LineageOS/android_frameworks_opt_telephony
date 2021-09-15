@@ -335,10 +335,10 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     }
 
     private void mockUiccWithCarrierApp() {
-        when(mUiccController.getUiccCard(mPhone.getPhoneId())).thenReturn(mUiccCard);
+        when(mUiccController.getUiccPort(mPhone.getPhoneId())).thenReturn(mUiccPort);
         List<String> carrierPackages = new ArrayList<>();
         carrierPackages.add(CARRIER_APP_PACKAGE_NAME);
-        when(mUiccCard.getCarrierPackageNamesForIntent(
+        when(mUiccPort.getCarrierPackageNamesForIntent(
                 any(PackageManager.class), any(Intent.class))).thenReturn(carrierPackages);
     }
 

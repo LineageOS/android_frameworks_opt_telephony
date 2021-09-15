@@ -116,7 +116,7 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
 
         // Card state's changed to restricted. Broadcast should be sent.
         card.update(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_RESTRICTED));
+                makeCardStatus(CardState.CARDSTATE_RESTRICTED), 0);
         uiccLauncher.handleMessage(msg);
 
         broadcast_count++;
@@ -131,7 +131,7 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
 
         // Card state's changed from restricted. Broadcast should be sent.
         card.update(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_PRESENT));
+                makeCardStatus(CardState.CARDSTATE_PRESENT), 0);
         uiccLauncher.handleMessage(msg);
 
         broadcast_count++;
