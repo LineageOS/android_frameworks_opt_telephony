@@ -41,9 +41,11 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
 import com.android.internal.telephony.uicc.euicc.EuiccCardErrorException;
+import com.android.internal.telephony.uicc.euicc.EuiccPort;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 
 import java.io.FileDescriptor;
@@ -210,6 +212,18 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         return null;
     }
 
+    private EuiccPort getEuiccPort(String cardId, int portIdx) {
+        EuiccCard card = getEuiccCard(cardId);
+        if (card == null) {
+            return null;
+        }
+        UiccPort port = card.getUiccPort(portIdx);
+        if (port != null) {
+            return (EuiccPort) port;
+        }
+        return null;
+    }
+
     private int getResultCode(Throwable e) {
         if (e instanceof EuiccCardErrorException) {
             return ((EuiccCardErrorException) e).getErrorCode();
@@ -231,8 +245,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -263,7 +277,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getAllProfiles(cardCb, mEuiccMainThreadHandler);
+        port.getAllProfiles(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -280,8 +294,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -311,7 +325,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     }
                 };
 
-        card.getProfile(iccid, cardCb, mEuiccMainThreadHandler);
+        port.getProfile(iccid, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -328,8 +342,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
@@ -359,7 +373,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.disableProfile(iccid, refresh, cardCb, mEuiccMainThreadHandler);
+        port.disableProfile(iccid, refresh, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -376,8 +390,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -411,7 +425,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     }
                 };
 
-                card.switchToProfile(iccid, refresh, switchCb, mEuiccMainThreadHandler);
+                port.switchToProfile(iccid, refresh, switchCb, mEuiccMainThreadHandler);
             }
 
             @Override
@@ -425,7 +439,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getProfile(iccid, profileCb, mEuiccMainThreadHandler);
+        port.getProfile(iccid, profileCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -442,8 +456,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
@@ -473,7 +487,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.setNickname(iccid, nickname, cardCb, mEuiccMainThreadHandler);
+        port.setNickname(iccid, nickname, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -490,8 +504,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
@@ -525,7 +539,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.deleteProfile(iccid, cardCb, mEuiccMainThreadHandler);
+        port.deleteProfile(iccid, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -542,8 +556,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
@@ -577,7 +591,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.resetMemory(options, cardCb, mEuiccMainThreadHandler);
+        port.resetMemory(options, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -594,8 +608,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -625,7 +639,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getDefaultSmdpAddress(cardCb, mEuiccMainThreadHandler);
+        port.getDefaultSmdpAddress(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -642,8 +656,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -673,7 +687,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getSmdsAddress(cardCb, mEuiccMainThreadHandler);
+        port.getSmdsAddress(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -690,8 +704,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
@@ -721,7 +735,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.setDefaultSmdpAddress(address, cardCb, mEuiccMainThreadHandler);
+        port.setDefaultSmdpAddress(address, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -738,8 +752,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -770,7 +784,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getRulesAuthTable(cardCb, mEuiccMainThreadHandler);
+        port.getRulesAuthTable(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -787,8 +801,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -818,7 +832,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getEuiccChallenge(cardCb, mEuiccMainThreadHandler);
+        port.getEuiccChallenge(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -835,8 +849,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -866,7 +880,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getEuiccInfo1(cardCb, mEuiccMainThreadHandler);
+        port.getEuiccInfo1(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -883,8 +897,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -914,7 +928,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.getEuiccInfo2(cardCb, mEuiccMainThreadHandler);
+        port.getEuiccInfo2(cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -932,8 +946,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -963,7 +977,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.authenticateServer(matchingId, serverSigned1, serverSignature1, euiccCiPkIdToBeUsed,
+        port.authenticateServer(matchingId, serverSigned1, serverSignature1, euiccCiPkIdToBeUsed,
                 serverCertificate, cardCb, mEuiccMainThreadHandler);
     }
 
@@ -982,8 +996,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -1013,7 +1027,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.prepareDownload(hashCc, smdpSigned2, smdpSignature2, smdpCertificate, cardCb,
+        port.prepareDownload(hashCc, smdpSigned2, smdpSignature2, smdpCertificate, cardCb,
                 mEuiccMainThreadHandler);
     }
 
@@ -1031,8 +1045,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -1066,7 +1080,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.loadBoundProfilePackage(boundProfilePackage, cardCb, mEuiccMainThreadHandler);
+        port.loadBoundProfilePackage(boundProfilePackage, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -1083,8 +1097,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -1114,7 +1128,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.cancelSession(transactionId, reason, cardCb, mEuiccMainThreadHandler);
+        port.cancelSession(transactionId, reason, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -1131,8 +1145,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -1163,7 +1177,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             }
         };
 
-        card.listNotifications(events, cardCb, mEuiccMainThreadHandler);
+        port.listNotifications(events, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -1180,8 +1194,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -1212,7 +1226,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     }
                 };
 
-        card.retrieveNotificationList(events, cardCb, mEuiccMainThreadHandler);
+        port.retrieveNotificationList(events, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -1229,8 +1243,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
@@ -1261,7 +1275,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     }
                 };
 
-        card.retrieveNotification(seqNumber, cardCb, mEuiccMainThreadHandler);
+        port.retrieveNotification(seqNumber, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override
@@ -1278,8 +1292,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccCard card = getEuiccCard(cardId);
-        if (card == null) {
+        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
@@ -1310,7 +1324,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
                     }
                 };
 
-        card.removeNotificationFromList(seqNumber, cardCb, mEuiccMainThreadHandler);
+        port.removeNotificationFromList(seqNumber, cardCb, mEuiccMainThreadHandler);
     }
 
     @Override

@@ -131,7 +131,7 @@ public class UiccSlot extends Handler {
                 }
             } else {
                 if (mUiccCard != null) {
-                    mUiccCard.update(mContext, mCi, ics);
+                    mUiccCard.update(mContext, mCi, ics, phoneId);
                 }
             }
             mLastRadioState = radioState;
@@ -268,6 +268,7 @@ public class UiccSlot extends Handler {
         if (mIccId != null) {
             return mIccId;
         } else if (mUiccCard != null) {
+            //TODO In case of MEP and both ports are active, so which IccId will be returned.
             return mUiccCard.getIccId();
         } else {
             return null;

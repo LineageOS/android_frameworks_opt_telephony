@@ -89,6 +89,9 @@ import java.util.Set;
  *                        UiccCard
  *                            #
  *                            |
+ *                        UiccPort[]
+ *                            #
+ *                            |
  *                       UiccProfile
  *                          #   #
  *                          |   ------------------
@@ -267,9 +270,16 @@ public class UiccController extends Handler {
      * @param slotId the slot index to check
      * @return the associated phone ID or -1
      */
-    public int getPhoneIdFromSlotId(int slotId) {
+    // TODO In case of MEP, pass port index as well, so that proper phoneId can be retrieved.
+    public int getPhoneIdFromSlotId(int slotId/*, int portIdx*/) {
         for (int i = 0; i < mPhoneIdToSlotId.length; i++) {
             if (mPhoneIdToSlotId[i] == slotId) {
+                /*// In case of MEP, slotId can be same for different phoneIds.
+                // So add condition check for portIdx as well.
+                UiccPort uiccPort = getUiccPortForPhone(mPhoneIdToSlotId[i]);
+                if (uiccPort != null && uiccPort.getPortIdx() == portIdx) {
+                    return i;
+                }*/
                 return i;
             }
         }
@@ -307,6 +317,36 @@ public class UiccController extends Handler {
     }
 
     /**
+     * Return the UiccPort associated with the given phoneId or null if no phoneId is associated.
+     * @param phoneId the phoneId to check
+     */
+    public UiccPort getUiccPort(int phoneId) {
+        synchronized (mLock) {
+            return getUiccPortForPhone(phoneId);
+        }
+    }
+
+    /**
+     * API to get UiccPort corresponding to given physical slot index and port index
+     * @param slotId index of physical slot on the device
+     * @param portIdx index of port on the card
+     * @return UiccPort object corresponding to given physical slot index and port index;
+     * null if port does not exist.
+     */
+    public UiccPort getUiccPortForSlot(int slotId, int portIdx) {
+        synchronized (mLock) {
+            UiccSlot slot = getUiccSlot(slotId);
+            if (slot != null) {
+                UiccCard uiccCard = slot.getUiccCard();
+                if (uiccCard != null) {
+                    return uiccCard.getUiccPort(portIdx);
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
      * API to get UiccCard corresponding to given physical slot index
      * @param slotId index of physical slot on the device
      * @return UiccCard object corresponting to given physical slot index; null if card is
@@ -340,6 +380,26 @@ public class UiccController extends Handler {
     }
 
     /**
+     * API to get UiccPort corresponding to given phone id
+     * @return UiccPort object corresponding to given phone id; null if there is no card present for
+     * the phone id
+     */
+    public UiccPort getUiccPortForPhone(int phoneId) {
+        synchronized (mLock) {
+            if (isValidPhoneIndex(phoneId)) {
+                UiccSlot uiccSlot = getUiccSlotForPhone(phoneId);
+                if (uiccSlot != null) {
+                    UiccCard uiccCard = uiccSlot.getUiccCard();
+                    if (uiccCard != null) {
+                        return uiccCard.getUiccPortForPhone(phoneId);
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
      * API to get UiccProfile corresponding to given phone id
      * @return UiccProfile object corresponding to given phone id; null if there is no card/profile
      * present for the phone id
@@ -347,8 +407,8 @@ public class UiccController extends Handler {
     public UiccProfile getUiccProfileForPhone(int phoneId) {
         synchronized (mLock) {
             if (isValidPhoneIndex(phoneId)) {
-                UiccCard uiccCard = getUiccCardForPhone(phoneId);
-                return uiccCard != null ? uiccCard.getUiccProfile() : null;
+                UiccPort uiccPort = getUiccPortForPhone(phoneId);
+                return uiccPort != null ? uiccPort.getUiccProfile() : null;
             }
             return null;
         }
@@ -622,9 +682,9 @@ public class UiccController extends Handler {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public UiccCardApplication getUiccCardApplication(int phoneId, int family) {
         synchronized (mLock) {
-            UiccCard uiccCard = getUiccCardForPhone(phoneId);
-            if (uiccCard != null) {
-                return uiccCard.getApplication(family);
+            UiccPort uiccPort = getUiccPortForPhone(phoneId);
+            if (uiccPort != null) {
+                return uiccPort.getApplication(family);
             }
             return null;
         }
@@ -1148,16 +1208,22 @@ public class UiccController extends Handler {
             return;
         }
 
+        UiccPort uiccPort = getUiccPortForPhone(index);
+        if (uiccPort == null) {
+            Rlog.e(LOG_TAG, "onSimRefresh: refresh on null port : " + index);
+            return;
+        }
+
         boolean changed = false;
         switch(resp.refreshResult) {
             // Reset the required apps when we know about the refresh so that
             // anyone interested does not get stale state.
             case IccRefreshResponse.REFRESH_RESULT_RESET:
-                changed = uiccCard.resetAppWithAid(resp.aid, true /* reset */);
+                changed = uiccPort.resetAppWithAid(resp.aid, true /* reset */);
                 break;
             case IccRefreshResponse.REFRESH_RESULT_INIT:
                 // don't dispose CatService on SIM REFRESH of type INIT
-                changed = uiccCard.resetAppWithAid(resp.aid, false /* initialize */);
+                changed = uiccPort.resetAppWithAid(resp.aid, false /* initialize */);
                 break;
             default:
                 return;

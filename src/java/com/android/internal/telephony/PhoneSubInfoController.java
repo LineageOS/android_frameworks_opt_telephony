@@ -37,8 +37,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
 
 import com.android.internal.telephony.uicc.IsimRecords;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.telephony.Rlog;
 
 public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
@@ -408,13 +408,13 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     public String getIccSimChallengeResponse(int subId, int appType, int authType, String data,
             String callingPackage, String callingFeatureId) throws RemoteException {
         CallPhoneMethodHelper<String> toExecute = (phone)-> {
-            UiccCard uiccCard = phone.getUiccCard();
-            if (uiccCard == null) {
-                loge("getIccSimChallengeResponse() UiccCard is null");
+            UiccPort uiccPort = phone.getUiccPort();
+            if (uiccPort == null) {
+                loge("getIccSimChallengeResponse() uiccPort is null");
                 return null;
             }
 
-            UiccCardApplication uiccApp = uiccCard.getApplicationByType(appType);
+            UiccCardApplication uiccApp = uiccPort.getApplicationByType(appType);
             if (uiccApp == null) {
                 loge("getIccSimChallengeResponse() no app with specified type -- " + appType);
                 return null;
