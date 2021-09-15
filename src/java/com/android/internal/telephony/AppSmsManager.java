@@ -204,8 +204,8 @@ public class AppSmsManager {
                     // do nothing
                 }
                 // Remove from mTokenMap and mPackageMap
-                iterator.remove();
                 mPackageMap.remove(entry.getValue().packageName);
+                iterator.remove();
             }
         }
     }
