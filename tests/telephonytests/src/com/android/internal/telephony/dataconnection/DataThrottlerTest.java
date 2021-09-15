@@ -60,8 +60,6 @@ public class DataThrottlerTest extends TelephonyTest {
     @Mock
     private DataThrottler.Callback mMockChangedCallback2;
 
-    private static final int DEFAULT_APN_TYPE = ApnSetting.TYPE_DEFAULT & ~(ApnSetting.TYPE_HIPRI);
-
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
@@ -97,16 +95,9 @@ public class DataThrottlerTest extends TelephonyTest {
         processAllMessages();
         expectedStatuses.add(List.of(
                 new ThrottleStatus.Builder()
-                        .setSlotIndex(0)
-                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .setApnType(ApnSetting.TYPE_HIPRI)
-                        .setThrottleExpiryTimeMillis(1234567890L)
-                        .setRetryType(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
-                        .build(),
-                new ThrottleStatus.Builder()
                     .setSlotIndex(0)
                     .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                    .setApnType(DEFAULT_APN_TYPE)
+                    .setApnType(ApnSetting.TYPE_DEFAULT)
                     .setThrottleExpiryTimeMillis(1234567890L)
                     .setRetryType(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION)
                     .build())
@@ -124,13 +115,6 @@ public class DataThrottlerTest extends TelephonyTest {
                 new ThrottleStatus.Builder()
                         .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .setApnType(ApnSetting.TYPE_HIPRI)
-                        .setThrottleExpiryTimeMillis(13579L)
-                        .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
-                        .build(),
-                new ThrottleStatus.Builder()
-                        .setSlotIndex(0)
-                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                         .setApnType(ApnSetting.TYPE_DUN)
                         .setThrottleExpiryTimeMillis(13579L)
                         .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
@@ -138,7 +122,7 @@ public class DataThrottlerTest extends TelephonyTest {
                 new ThrottleStatus.Builder()
                         .setSlotIndex(0)
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .setApnType(DEFAULT_APN_TYPE)
+                        .setApnType(ApnSetting.TYPE_DEFAULT)
                         .setThrottleExpiryTimeMillis(13579L)
                         .setRetryType(ThrottleStatus.RETRY_TYPE_HANDOVER)
                         .build())
