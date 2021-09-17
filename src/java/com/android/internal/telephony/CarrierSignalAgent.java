@@ -212,7 +212,7 @@ public class CarrierSignalAgent extends Handler {
                 .getSystemService(Context.CARRIER_CONFIG_SERVICE);
         PersistableBundle b = null;
         if (configManager != null) {
-            b = configManager.getConfig();
+            b = configManager.getConfigForSubId(mPhone.getSubId());
         }
         if (b != null) {
             synchronized (mCachedWakeSignalConfigs) {
