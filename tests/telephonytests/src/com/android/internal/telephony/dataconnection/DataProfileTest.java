@@ -16,127 +16,98 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+
+import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.RILConstants;
 
-import junit.framework.TestCase;
+import org.junit.Test;
 
-public class DataProfileTest extends TestCase {
+public class DataProfileTest {
 
-    private ApnSetting mApn1 = ApnSetting.makeApnSetting(
-            2163,                   // id
-            "44010",                // numeric
-            "sp-mode",              // name
-            "fake_apn",             // apn
-            null,                     // proxy
-            -1,                     // port
-            null,                     // mmsc
-            null,                     // mmsproxy
-            -1,                     // mmsport
-            "user",                 // user
-            "passwd",               // password
-            -1,                     // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
-            ApnSetting.PROTOCOL_IPV6,                 // protocol
-            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
-            true,                   // carrier_enabled
-            0,                      // networktype_bitmask
-            1234,                   // profile_id
-            false,                  // modem_cognitive
-            321,                    // max_conns
-            456,                    // wait_time
-            789,                    // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn1 = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("44010")
+            .setEntryName("sp-mode")
+            .setApnName("fake_apn")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IPV6)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(0)
+            .setProfileId(1234)
+            .setMaxConns(321)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
 
-    private ApnSetting mApn2 = ApnSetting.makeApnSetting(
-            2163,                   // id
-            "44010",                // numeric
-            "sp-mode",              // name
-            "fake_apn",             // apn
-            null,                     // proxy
-            -1,                     // port
-            null,                     // mmsc
-            null,                     // mmsproxy
-            -1,                     // mmsport
-            "user",                 // user
-            "passwd",               // password
-            -1,                     // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
-            ApnSetting.PROTOCOL_IP,                 // protocol
-            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
-            true,                   // carrier_enabled
-            0,                      // networktype_bitmask
-            1234,                   // profile_id
-            false,                  // modem_cognitive
-            111,                    // max_conns
-            456,                    // wait_time
-            789,                    // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn2 = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("44010")
+            .setEntryName("sp-mode")
+            .setApnName("fake_apn")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IP)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(0)
+            .setProfileId(1234)
+            .setMaxConns(111)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
 
-    private ApnSetting mApn3 = ApnSetting.makeApnSetting(
-            2163,                   // id
-            "44010",                // numeric
-            "sp-mode",              // name
-            "fake_apn",             // apn
-            null,                     // proxy
-            -1,                     // port
-            null,                     // mmsc
-            null,                     // mmsproxy
-            -1,                     // mmsport
-            "user",                 // user
-            "passwd",               // password
-            -1,                     // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
-            ApnSetting.PROTOCOL_IP,                 // protocol
-            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
-            true,                   // carrier_enabled
-            276600,                      // networktype_bitmask
-            1234,                   // profile_id
-            false,                  // modem_cognitive
-            111,                    // max_conns
-            456,                    // wait_time
-            789,                    // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn3 = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("44010")
+            .setEntryName("sp-mode")
+            .setApnName("fake_apn")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IP)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(276600)
+            .setProfileId(1234)
+            .setMaxConns(111)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
 
-    private ApnSetting mApn4 = ApnSetting.makeApnSetting(
-            2163,                   // id
-            "44010",                // numeric
-            "sp-mode",              // name
-            "fake_apn",             // apn
-            null,                   // proxy
-            -1,                     // port
-            null,                   // mmsc
-            null,                   // mmsproxy
-            -1,                     // mmsport
-            "user",                 // user
-            "passwd",               // password
-            -1,                     // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,   // types
-            ApnSetting.PROTOCOL_IP,                 // protocol
-            ApnSetting.PROTOCOL_IP,                 // roaming_protocol
-            true,                   // carrier_enabled
-            10360,                  // networktype_bitmask
-            1234,                   // profile_id
-            false,                  // modem_cognitive
-            111,                    // max_conns
-            456,                    // wait_time
-            789,                    // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn4 = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("44010")
+            .setEntryName("sp-mode")
+            .setApnName("fake_apn")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IP)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(10360)
+            .setProfileId(1234)
+            .setMaxConns(111)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
 
-    @SmallTest
+    @Test
     public void testCreateFromApnSetting() throws Exception {
-        DataProfile dp = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
+        DataProfile dp = new DataProfile.Builder()
+                .setApnSetting(mApn1)
+                .setPreferred(false)
+                .build();
         assertEquals(mApn1.getProfileId(), dp.getProfileId());
         assertEquals(mApn1.getApnName(), dp.getApn());
         assertEquals(mApn1.getProtocol(), dp.getProtocolType());
@@ -150,9 +121,12 @@ public class DataProfileTest extends TestCase {
         assertFalse(dp.isPreferred());
     }
 
-    @SmallTest
+    @Test
     public void testCreateFromApnSettingWithNetworkTypeBitmask() throws Exception {
-        DataProfile dp = DcTracker.createDataProfile(mApn3, mApn3.getProfileId(), false);
+        DataProfile dp = new DataProfile.Builder()
+                .setApnSetting(mApn3)
+                .setPreferred(false)
+                .build();
         assertEquals(mApn3.getProfileId(), dp.getProfileId());
         assertEquals(mApn3.getApnName(), dp.getApn());
         assertEquals(mApn3.getProtocol(), dp.getProtocolType());
@@ -164,17 +138,47 @@ public class DataProfileTest extends TestCase {
         assertEquals(mApn3.isEnabled(), dp.isEnabled());
         int expectedBearerBitmap = mApn3.getNetworkTypeBitmask();
         assertEquals(expectedBearerBitmap, dp.getBearerBitmask());
-        dp = DcTracker.createDataProfile(mApn4, mApn4.getProfileId(), false);
+        dp = new DataProfile.Builder()
+                .setApnSetting(mApn4)
+                .setPreferred(false)
+                .build();
         assertEquals(2, dp.getType());  // TYPE_3GPP2
     }
 
-    @SmallTest
+    @Test
     public void testEquals() throws Exception {
-        DataProfile dp1 = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
-        DataProfile dp2 = DcTracker.createDataProfile(mApn1, mApn1.getProfileId(), false);
+        DataProfile dp1 = new DataProfile.Builder()
+                .setApnSetting(mApn1)
+                .setPreferred(false)
+                .build();
+        DataProfile dp2 = new DataProfile.Builder()
+                .setApnSetting(mApn1)
+                .setPreferred(false)
+                .build();
         assertEquals(dp1, dp2);
 
-        dp2 = DcTracker.createDataProfile(mApn2, mApn2.getProfileId(), false);
-        assertFalse(dp1.equals(dp2));
+        dp2 = new DataProfile.Builder()
+                .setApnSetting(mApn2)
+                .setPreferred(false)
+                .build();
+        assertNotEquals(dp1, dp2);
+    }
+
+    @Test
+    public void testParcel() {
+        DataProfile dp = new DataProfile.Builder()
+                .setApnSetting(mApn1)
+                .setPreferred(false)
+                .build();
+
+        Parcel parcel = Parcel.obtain();
+        dp.writeToParcel(parcel, 0 /* flags */);
+        parcel.setDataPosition(0);
+
+        DataProfile fromParcel = DataProfile.CREATOR.createFromParcel(parcel);
+
+        assertEquals(dp, fromParcel);
+
+        parcel.recycle();
     }
 }
