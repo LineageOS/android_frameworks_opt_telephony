@@ -94,6 +94,7 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
 import android.telephony.data.DataProfile;
+import android.telephony.data.ThrottleStatus;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -443,6 +444,19 @@ public class DcTracker extends Handler {
         }
     };
 
+    private class ThrottleStatusChangedCallback implements DataThrottler.Callback {
+        @Override
+        public void onThrottleStatusChanged(List<ThrottleStatus> throttleStatuses) {
+            for (ThrottleStatus status : throttleStatuses) {
+                if (status.getThrottleType() == ThrottleStatus.THROTTLE_TYPE_NONE) {
+                    setupDataOnConnectableApn(mApnContextsByType.get(status.getApnType()),
+                            Phone.REASON_DATA_UNTHROTTLED,
+                            RetryFailures.ALWAYS);
+                }
+            }
+        }
+    }
+
     private NetworkPolicyManager mNetworkPolicyManager;
     private final NetworkPolicyManager.SubscriptionCallback mSubscriptionCallback =
             new NetworkPolicyManager.SubscriptionCallback() {
@@ -714,6 +728,8 @@ public class DcTracker extends Handler {
 
     private final DataThrottler mDataThrottler;
 
+    private final ThrottleStatusChangedCallback mThrottleStatusCallback;
+
     /**
      * Request network completion message map. Key is the APN type, value is the list of completion
      * messages to be sent. Using a list because there might be multiple network requests for
@@ -789,6 +805,9 @@ public class DcTracker extends Handler {
 
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         registerSettingsObserver();
+
+        mThrottleStatusCallback = new ThrottleStatusChangedCallback();
+        mDataThrottler.registerForThrottleStatusChanges(mThrottleStatusCallback);
     }
 
     @VisibleForTesting
@@ -803,6 +822,7 @@ public class DcTracker extends Handler {
         mTransportType = 0;
         mDataServiceManager = null;
         mDataThrottler = null;
+        mThrottleStatusCallback = null;
     }
 
     public void registerServiceStateTrackerEvents() {
@@ -2534,9 +2554,6 @@ public class DcTracker extends Handler {
                 @ApnType int apnTypes = apnSetting.getApnTypeBitmask();
                 mDataThrottler.setRetryTime(apnTypes, RetryManager.NO_SUGGESTED_RETRY_DELAY,
                         REQUEST_TYPE_NORMAL);
-                // After data unthrottled, we should see if it's possible to bring up the data
-                // again.
-                setupDataOnAllConnectableApns(Phone.REASON_DATA_UNTHROTTLED, RetryFailures.ALWAYS);
             } else {
                 loge("EVENT_APN_UNTHROTTLED: Invalid APN passed: " + apn);
             }
