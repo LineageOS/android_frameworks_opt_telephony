@@ -38,7 +38,6 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.QosBearerSession;
-import android.util.ArrayMap;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
@@ -57,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -92,7 +92,7 @@ public class DcNetworkAgent extends NetworkAgent {
     private final LocalLog mNetCapsLocalLog = new LocalLog(32);
 
     // For interface duplicate detection. Key is the net id, value is the interface name in string.
-    private static Map<Integer, String> sInterfaceNames = new ArrayMap<>();
+    private static Map<Integer, String> sInterfaceNames = new ConcurrentHashMap<>();
 
     DcNetworkAgent(DataConnection dc, Phone phone, int score, NetworkAgentConfig config,
             NetworkProvider networkProvider, int transportType) {
