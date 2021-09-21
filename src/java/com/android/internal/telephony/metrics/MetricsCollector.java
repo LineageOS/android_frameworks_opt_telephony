@@ -60,6 +60,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implements statsd pullers for Telephony.
@@ -101,6 +103,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private PersistAtomsStorage mStorage;
     private final StatsManager mStatsManager;
     private final AirplaneModeStats mAirplaneModeStats;
+    private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
@@ -180,6 +183,19 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Returns the {@link PersistAtomsStorage} backing the puller. */
     public PersistAtomsStorage getAtomsStorage() {
         return mStorage;
+    }
+
+    /**
+     * Registers a {@link DataCallSessionStats} which will be pinged for on-going data calls when
+     * data call atoms are pulled.
+     */
+    public void registerOngoingDataCallStat(DataCallSessionStats call) {
+        mOngoingDataCallStats.add(call);
+    }
+
+    /** Unregisters a {@link DataCallSessionStats} when it no longer handles an active data call. */
+    public void unregisterOngoingDataCallStat(DataCallSessionStats call) {
+        mOngoingDataCallStats.remove(call);
     }
 
     private static int pullSimSlotState(List<StatsEvent> data) {
@@ -299,6 +315,11 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     private int pullDataCallSession(List<StatsEvent> data) {
+        // Include ongoing data call segments
+        for (DataCallSessionStats stats : mOngoingDataCallStats) {
+            stats.conclude();
+        }
+
         DataCallSession[] dataCallSessions = mStorage.getDataCallSessions(MIN_COOLDOWN_MILLIS);
         if (dataCallSessions != null) {
             Arrays.stream(dataCallSessions)
