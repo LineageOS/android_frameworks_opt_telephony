@@ -3190,6 +3190,12 @@ public class ServiceStateTracker extends Handler {
             mRadioPowerLog.log(tmpLog);
         }
 
+        if (mDesiredPowerState && mDeviceShuttingDown) {
+            log("setPowerStateToDesired powering on of radio failed because the device is " +
+                    "powering off");
+            return;
+        }
+
         // If we want it on and it's off, turn it on
         if (mDesiredPowerState && !mRadioDisabledByCarrier
                 && (forceApply || mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF)) {
