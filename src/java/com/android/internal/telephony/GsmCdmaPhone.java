@@ -89,6 +89,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
@@ -334,6 +335,10 @@ public class GsmCdmaPhone extends Phone {
             mDcTrackers.put(transport, dcTracker);
             mTransportManager.registerDataThrottler(dcTracker.getDataThrottler());
         }
+
+        mDataNetworkController = mTelephonyComponentFactory.inject(
+                DataNetworkController.class.getName())
+                .makeDataNetworkController(this, getLooper());
 
         mCarrierResolver = mTelephonyComponentFactory.inject(CarrierResolver.class.getName())
                 .makeCarrierResolver(this);
