@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.doReturn;
 
 import android.net.Uri;
+import android.os.Parcel;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
@@ -40,7 +41,6 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.List;
 
 public class ApnSettingTest extends TelephonyTest {
@@ -67,32 +67,16 @@ public class ApnSettingTest extends TelephonyTest {
     }
 
     private static ApnSetting createApnSettingInternal(int apnTypeBitmask, boolean carrierEnabled) {
-        return ApnSetting.makeApnSetting(
-                2163,                   // id
-                "44010",                // numeric
-                "sp-mode",              // name
-                "spmode.ne.jp",         // apn
-                null,                   // proxy
-                -1,                     // port
-                null,                   // mmsc
-                null,                   // mmsproxy
-                -1,                     // mmsport
-                "",                     // user
-                "",                     // password
-                -1,                     // authtype
-                apnTypeBitmask,         // types
-                ApnSetting.PROTOCOL_IP, // protocol
-                ApnSetting.PROTOCOL_IP, // roaming_protocol
-                carrierEnabled,         // carrier_enabled
-                0,                      // networktype_bitmask
-                0,                      // profile_id
-                false,                  // modem_cognitive
-                0,                      // max_conns
-                0,                      // wait_time
-                0,                      // max_conns_time
-                0,                      // mtu
-                -1,                     // mvno_type
-                "");                    // mnvo_match_data
+        return new ApnSetting.Builder()
+                .setId(2163)
+                .setOperatorNumeric("44010")
+                .setEntryName("sp-mode")
+                .setApnName("fake_apn")
+                .setApnTypeBitmask(apnTypeBitmask)
+                .setProtocol(ApnSetting.PROTOCOL_IP)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+                .setCarrierEnabled(carrierEnabled)
+                .build();
     }
 
     private static void assertApnSettingsEqual(List<ApnSetting> a1, List<ApnSetting> a2) {
@@ -124,200 +108,12 @@ public class ApnSettingTest extends TelephonyTest {
         assertEquals(a1.getMaxConns(), a2.getMaxConns());
         assertEquals(a1.getWaitTime(), a2.getWaitTime());
         assertEquals(a1.getMaxConnsTime(), a2.getMaxConnsTime());
-        assertEquals(a1.getMtu(), a2.getMtu());
+        assertEquals(a1.getMtuV4(), a2.getMtuV4());
         assertEquals(a1.getMvnoType(), a2.getMvnoType());
         assertEquals(a1.getMvnoMatchData(), a2.getMvnoMatchData());
         assertEquals(a1.getNetworkTypeBitmask(), a2.getNetworkTypeBitmask());
         assertEquals(a1.getApnSetId(), a2.getApnSetId());
         assertEquals(a1.getSkip464Xlat(), a2.getSkip464Xlat());
-    }
-
-    @Test
-    @SmallTest
-    public void testFromString() {
-        final int dunTypesBitmask = ApnSetting.TYPE_DUN;
-        final int mmsTypesBitmask = ApnSetting.TYPE_MMS | ApnSetting.TYPE_ALL;
-
-        ApnSetting expectedApn;
-        String testString;
-
-        // A real-world v1 example string.
-        testString = "Vodafone IT,web.omnitel.it,,,,,,,,,222,10,,DUN";
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "22210", "Vodafone IT", "web.omnitel.it", "", -1, null, "", -1, "", "", 0,
-                dunTypesBitmask, ApnSetting.PROTOCOL_IP, ApnSetting.PROTOCOL_IP, true,
-                0, 0, false, 0, 0, 0, 0, -1, "");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v2 string.
-        testString = "[ApnSettingV2] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14";
-        int networkTypeBitmask = 1 << (13 - 1);
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, -1, "");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v2 string with spaces.
-        testString = "[ApnSettingV2] Name,apn, ,,,,,,,,123,45,,mms|*,IPV6, IP,true,14";
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, -1, "");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v3 string.
-        testString = "[ApnSettingV3] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14,,,,,,,spn,testspn";
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v4 string with network type bitmask.
-        testString =
-                "[ApnSettingV4] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,6";
-        networkTypeBitmask = 1 << (6 - 1);
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        testString =
-                "[ApnSettingV4] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,"
-                        + "4|5|6|7|8|12|13|14|19";
-        // The value was calculated by adding "4|5|6|7|8|12|13|14|19".
-        networkTypeBitmask = 276728;
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v4 string with network type bitmask and compatible bearer bitmask.
-        testString =
-                "[ApnSettingV4] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,8,,,,,,,spn,testspn, 6";
-        networkTypeBitmask = 1 << (6 - 1);
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v4 string with network type bitmask and incompatible bearer bitmask.
-        testString =
-                "[ApnSettingV4] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,9,,,,,,,spn,testspn, 6";
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0,
-                0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v5 string with apnSetId=0
-        testString =
-                "[ApnSettingV5] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,0";
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn");
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v5 string with apnSetId=3
-        testString =
-                "[ApnSettingV5] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,3";
-        expectedApn = ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn", 3, -1, -1);
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v6 string with carrierId=100
-        testString =
-            "[ApnSettingV5] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,3,"
-                + "100";
-        expectedApn = ApnSetting.makeApnSetting(
-            -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-            mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-            0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn", 3, 100, -1);
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // A v7 string with skip_464xlat=1
-        testString =
-            "[ApnSettingV7] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,0,,,,,,,spn,testspn,0,3,"
-                + "-1, 1";
-        expectedApn = ApnSetting.makeApnSetting(
-            -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-            mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-            0, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn", 3, -1, 1);
-        assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
-
-        // Return no apn if insufficient fields given.
-        testString = "[ApnSettingV3] Name,apn,,,,,,,,,123, 45,,mms|*";
-        assertEquals(null, ApnSetting.fromString(testString));
-
-        testString = "Name,apn,,,,,,,,,123, 45,";
-        assertEquals(null, ApnSetting.fromString(testString));
-    }
-
-    @Test
-    @SmallTest
-    public void testArrayFromString() {
-        final int mmsTypesBitmask = ApnSetting.TYPE_MMS;
-        // Test a multiple v3 string.
-        String testString =
-                "[ApnSettingV3] Name,apn,,,,,,,,,123,45,,mms,IPV6,IP,true,14,,,,,,,spn,testspn";
-        testString +=
-                " ;[ApnSettingV3] Name1,apn1,,,,,,,,,123,46,,mms,IPV6,IP,true,12,,,,,,,gid,testGid";
-        testString +=
-                " ;[ApnSettingV3] Name1,apn2,,,,,,,,,123,46,,mms,IPV6,IP,true,12,,,,,,,,";
-        testString +=
-                " ;[ApnSettingV5] Name1,apn2,,,,,,,,,123,46,,mms,IPV6,IP,true,0,,,,,,,,,,3";
-        List<ApnSetting> expectedApns = new ArrayList<ApnSetting>();
-        expectedApns.add(ApnSetting.makeApnSetting(
-                -1, "12345", "Name", "apn", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                1 << (13 - 1), 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "testspn"));
-        expectedApns.add(ApnSetting.makeApnSetting(
-                -1, "12346", "Name1", "apn1", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                1 << (12 - 1), 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_GID, "testGid"));
-        expectedApns.add(ApnSetting.makeApnSetting(
-                -1, "12346", "Name1", "apn2", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                1 << (12 - 1), 0, false, 0, 0, 0, 0, -1, ""));
-        expectedApns.add(ApnSetting.makeApnSetting(
-                -1, "12346", "Name1", "apn2", "", -1, null, "", -1, "", "", 0,
-                mmsTypesBitmask, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                0, 0, false, 0, 0, 0, 0, -1, "", 3, -1, -1));
-        assertApnSettingsEqual(expectedApns, ApnSetting.arrayFromString(testString));
-    }
-
-    @Test
-    @SmallTest
-    public void testToString() {
-        // Use default apn_set_id constructor.
-        ApnSetting apn = ApnSetting.makeApnSetting(
-                99, "12345", "Name", "apn", null, 10,
-                null, null, -1, "user", "password", 0,
-                ApnSetting.TYPE_DEFAULT, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                4096, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "");
-        String expected = "[ApnSettingV7] Name, 99, 12345, apn, null, "
-                + "null, null, null, 10, 0, hipri | default, "
-                + "IPV6, IP, true, 0, false, 0, 0, 0, 0, spn, , false, 4096, 0, -1, -1";
-        assertEquals(expected, apn.toString());
-
-        final int networkTypeBitmask = 1 << (14 - 1);
-        apn = ApnSetting.makeApnSetting(
-                99, "12345", "Name", "apn", null, 10,
-                null, null, -1, "user", "password", 0,
-                ApnSetting.TYPE_DEFAULT, ApnSetting.PROTOCOL_IPV6, ApnSetting.PROTOCOL_IP, true,
-                networkTypeBitmask, 0, false, 0, 0, 0, 0, ApnSetting.MVNO_TYPE_SPN, "", 3, -1, 1);
-        expected = "[ApnSettingV7] Name, 99, 12345, apn, null, "
-                + "null, null, null, 10, 0, hipri | default, "
-                + "IPV6, IP, true, 0, false, 0, 0, 0, 0, spn, , false, 8192, 3, -1, 1";
-        assertEquals(expected, apn.toString());
     }
 
     @Test
@@ -652,59 +448,32 @@ public class ApnSettingTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testEqualsRoamingProtocol() {
-        ApnSetting apn1 = ApnSetting.makeApnSetting(
-                1234,
-                "310260",
-                "",
-                "ims",
-                null,
-                -1,
-                null,
-                null,
-                -1,
-                "",
-                "",
-                -1,
-                ApnSetting.TYPE_IMS,
-                ApnSetting.PROTOCOL_IPV6,
-                -1,
-                true,
-                ServiceState.convertBearerBitmaskToNetworkTypeBitmask(131071),
-                0,
-                false,
-                0,
-                0,
-                0,
-                1440,
-                -1,
-                "");
+        ApnSetting apn1 = new ApnSetting.Builder()
+                .setId(1234)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask(
+                        ServiceState.convertBearerBitmaskToNetworkTypeBitmask(131071))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
 
-        ApnSetting apn2 = ApnSetting.makeApnSetting(
-                1235,
-                "310260",
-                "",
-                "ims",
-                null,
-                -1,
-                null,
-                null,
-                -1,
-                "",
-                "",
-                -1,
-                ApnSetting.TYPE_IMS,
-                ApnSetting.PROTOCOL_IPV6,
-                ApnSetting.PROTOCOL_IPV6,
-                true,
-                ServiceState.convertBearerBitmaskToNetworkTypeBitmask(131072),
-                0,
-                false,
-                0,
-                0,
-                0,
-                1440,
-                -1,
-                "");
+        ApnSetting apn2 = new ApnSetting.Builder()
+                .setId(1235)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask(
+                        ServiceState.convertBearerBitmaskToNetworkTypeBitmask(131072))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
 
         assertTrue(apn1.equals(apn2, false));
         assertFalse(apn1.equals(apn2, true));
@@ -713,61 +482,32 @@ public class ApnSettingTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testCanHandleNetwork() {
-        ApnSetting apn1 = ApnSetting.makeApnSetting(
-                1234,
-                "310260",
-                "",
-                "ims",
-                null,
-                -1,
-                null,
-                null,
-                -1,
-                "",
-                "",
-                -1,
-                ApnSetting.TYPE_IMS,
-                ApnSetting.PROTOCOL_IPV6,
-                -1,
-                true,
-                (int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS),
-                0,
-                false,
-                0,
-                0,
-                0,
-                1440,
-                -1,
-                "");
+        ApnSetting apn1 = new ApnSetting.Builder()
+                .setId(1234)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
 
-        ApnSetting apn2 = ApnSetting.makeApnSetting(
-                1235,
-                "310260",
-                "",
-                "ims",
-                null,
-                -1,
-                null,
-                null,
-                -1,
-                "",
-                "",
-                -1,
-                ApnSetting.TYPE_IMS,
-                ApnSetting.PROTOCOL_IPV6,
-                ApnSetting.PROTOCOL_IPV6,
-                true,
-                (int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS),
-                0,
-                false,
-                0,
-                0,
-                0,
-                1440,
-                -1,
-                "");
+        ApnSetting apn2 = new ApnSetting.Builder()
+                .setId(1235)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
 
         assertFalse(apn1.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_1xRTT));
         assertTrue(apn1.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_LTE));
@@ -779,5 +519,20 @@ public class ApnSettingTest extends TelephonyTest {
         assertTrue(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_EDGE));
 
         assertTrue(apn2.canSupportNetworkType(TelephonyManager.NETWORK_TYPE_GSM));
+    }
+
+    @Test
+    public void testParcel() {
+        ApnSetting apn = createApnSetting(ApnSetting.TYPE_DEFAULT);
+
+        Parcel parcel = Parcel.obtain();
+        apn.writeToParcel(parcel, 0 /* flags */);
+        parcel.setDataPosition(0);
+
+        ApnSetting fromParcel = ApnSetting.CREATOR.createFromParcel(parcel);
+
+        assertEquals(apn, fromParcel);
+
+        parcel.recycle();
     }
 }

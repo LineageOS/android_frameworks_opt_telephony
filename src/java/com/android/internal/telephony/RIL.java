@@ -697,6 +697,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private void handleRadioProxyExceptionForRR(RILRequest rr, String caller, Exception e) {
         riljLoge(caller + ": " + e);
+        e.printStackTrace();
         resetProxyAndRequestList();
     }
 
@@ -1809,8 +1810,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         dpi.protocol = ApnSetting.getProtocolStringFromInt(dp.getProtocolType());
         dpi.roamingProtocol = ApnSetting.getProtocolStringFromInt(dp.getRoamingProtocolType());
         dpi.authType = dp.getAuthType();
-        dpi.user = dp.getUserName();
-        dpi.password = dp.getPassword();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
@@ -1843,8 +1844,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         dpi.protocol = dp.getProtocolType();
         dpi.roamingProtocol = dp.getRoamingProtocolType();
         dpi.authType = dp.getAuthType();
-        dpi.user = dp.getUserName();
-        dpi.password = dp.getPassword();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
@@ -1940,8 +1941,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         dpi.protocol = dp.getProtocolType();
         dpi.roamingProtocol = dp.getRoamingProtocolType();
         dpi.authType = dp.getAuthType();
-        dpi.user = dp.getUserName();
-        dpi.password = dp.getPassword();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
