@@ -1394,9 +1394,7 @@ public class DataConnection extends StateMachine {
                 result.mFailCause = DataFailCause.getFailCause(response.getCause());
             }
         } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
-                && mDcController.getActiveDcByCid(response.getId()) != null
-                && mDcController.getTrafficDescriptorsForCid(response.getId())
-                        .equals(response.getTrafficDescriptors())) {
+                && mDcController.getActiveDcByCid(response.getId()) != null) {
             if (DBG) log("DataConnection already exists for cid: " + response.getId());
             result = SetupResult.ERROR_DUPLICATE_CID;
             result.mFailCause = DataFailCause.DUPLICATE_CID;
