@@ -16,48 +16,26 @@
 
 package com.android.internal.telephony;
 
-import android.hardware.radio.config.V1_2.IRadioConfigIndication;
-import android.os.AsyncResult;
-
-import com.android.internal.telephony.uicc.IccSlotStatus;
-import com.android.telephony.Rlog;
-
-import java.util.ArrayList;
-
 /**
  * This class is the implementation of IRadioConfigIndication interface.
  */
-public class RadioConfigIndication extends IRadioConfigIndication.Stub {
-    private final RadioConfig mRadioConfig;
-    private static final String TAG = "RadioConfigIndication";
+public class RadioConfigIndication {
+    private RadioConfigIndicationHidl mRadioConfigIndicationHidl;
+    private RadioConfigIndicationAidl mRadioConfigIndicationAidl;
 
-    public RadioConfigIndication(RadioConfig radioConfig) {
-        mRadioConfig = radioConfig;
-    }
-
-    /**
-     * Unsolicited indication for slot status changed
-     */
-    public void simSlotsStatusChanged(int indicationType,
-            ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus> slotStatus) {
-        ArrayList<IccSlotStatus> ret = RadioConfig.convertHalSlotStatus(slotStatus);
-        Rlog.d(TAG, "[UNSL]< " + " UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
-        if (mRadioConfig.mSimSlotStatusRegistrant != null) {
-            mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
-                    new AsyncResult(null, ret, null));
+    public RadioConfigIndication(RadioConfig radioConfig, HalVersion halVersion) {
+        if (halVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_2_0)) {
+            mRadioConfigIndicationAidl = new RadioConfigIndicationAidl(radioConfig);
+        } else {
+            mRadioConfigIndicationHidl = new RadioConfigIndicationHidl(radioConfig);
         }
     }
 
-    /**
-     * Unsolicited indication for slot status changed
-     */
-    public void simSlotsStatusChanged_1_2(int indicationType,
-            ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus> slotStatus) {
-        ArrayList<IccSlotStatus> ret = RadioConfig.convertHalSlotStatus_1_2(slotStatus);
-        Rlog.d(TAG, "[UNSL]< " + " UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
-        if (mRadioConfig.mSimSlotStatusRegistrant != null) {
-            mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
-                    new AsyncResult(null, ret, null));
-        }
+    public android.hardware.radio.config.V1_2.IRadioConfigIndication getV1() {
+        return mRadioConfigIndicationHidl;
+    }
+
+    public android.hardware.radio.config.IRadioConfigIndication getV2() {
+        return mRadioConfigIndicationAidl;
     }
 }
