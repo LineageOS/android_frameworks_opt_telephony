@@ -28,7 +28,6 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.DataFailCause;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
-import android.telephony.data.TrafficDescriptor;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.DctConstants;
@@ -87,9 +86,6 @@ public class DcController extends Handler {
     final ArrayList<DataConnection> mDcListAll = new ArrayList<>();
     // @GuardedBy("mDcListAll")
     private final HashMap<Integer, DataConnection> mDcListActiveByCid = new HashMap<>();
-    // @GuardedBy("mTrafficDescriptorsByCid")
-    private final HashMap<Integer, List<TrafficDescriptor>> mTrafficDescriptorsByCid =
-            new HashMap<>();
 
     /**
      * Aggregated physical link state from all data connections. This reflects the device's RRC
@@ -142,9 +138,6 @@ public class DcController extends Handler {
             mDcListActiveByCid.remove(dc.mCid);
             mDcListAll.remove(dc);
         }
-        synchronized (mTrafficDescriptorsByCid) {
-            mTrafficDescriptorsByCid.remove(dc.mCid);
-        }
     }
 
     public void addActiveDcByCid(DataConnection dc) {
@@ -154,7 +147,6 @@ public class DcController extends Handler {
         synchronized (mDcListAll) {
             mDcListActiveByCid.put(dc.mCid, dc);
         }
-        updateTrafficDescriptorsForCid(dc.mCid, dc.getTrafficDescriptors());
     }
 
     DataConnection getActiveDcByCid(int cid) {
@@ -170,9 +162,6 @@ public class DcController extends Handler {
                 log("removeActiveDcByCid removedDc=null dc=" + dc);
             }
         }
-        synchronized (mTrafficDescriptorsByCid) {
-            mTrafficDescriptorsByCid.remove(dc.mCid);
-        }
     }
 
     boolean isDefaultDataActive() {
@@ -180,18 +169,6 @@ public class DcController extends Handler {
             return mDcListActiveByCid.values().stream()
                     .anyMatch(dc -> dc.getApnContexts().stream()
                             .anyMatch(apn -> apn.getApnTypeBitmask() == ApnSetting.TYPE_DEFAULT));
-        }
-    }
-
-    List<TrafficDescriptor> getTrafficDescriptorsForCid(int cid) {
-        synchronized (mTrafficDescriptorsByCid) {
-            return mTrafficDescriptorsByCid.get(cid);
-        }
-    }
-
-    void updateTrafficDescriptorsForCid(int cid, List<TrafficDescriptor> tds) {
-        synchronized (mTrafficDescriptorsByCid) {
-            mTrafficDescriptorsByCid.put(cid, tds);
         }
     }
 
@@ -230,29 +207,19 @@ public class DcController extends Handler {
         }
 
         // Create hashmap of cid to DataCallResponse
-        HashMap<Integer, DataCallResponse> dataCallResponseListByCid = new HashMap<>();
+        HashMap<Integer, DataCallResponse> dataCallResponseListByCid =
+                new HashMap<Integer, DataCallResponse>();
         for (DataCallResponse dcs : dcsList) {
             dataCallResponseListByCid.put(dcs.getId(), dcs);
         }
 
-        // Add a DC that is active but not in the dcsList to the list of DC's to retry
-        ArrayList<DataConnection> dcsToRetry = new ArrayList<>();
+        // Add a DC that is active but not in the
+        // dcsList to the list of DC's to retry
+        ArrayList<DataConnection> dcsToRetry = new ArrayList<DataConnection>();
         for (DataConnection dc : dcListActiveByCid.values()) {
-            DataCallResponse response = dataCallResponseListByCid.get(dc.mCid);
-            if (response == null) {
+            if (dataCallResponseListByCid.get(dc.mCid) == null) {
                 if (DBG) log("onDataStateChanged: add to retry dc=" + dc);
                 dcsToRetry.add(dc);
-            } else {
-                List<TrafficDescriptor> oldTds = getTrafficDescriptorsForCid(dc.mCid);
-                List<TrafficDescriptor> newTds = response.getTrafficDescriptors();
-                if (oldTds.equals(newTds)) {
-                    if (DBG) {
-                        log("onDataStateChanged: add to retry due to TD changed dc=" + dc
-                                + ", oldTds=" + oldTds + ", newTds=" + newTds);
-                    }
-                    updateTrafficDescriptorsForCid(dc.mCid, newTds);
-                    dcsToRetry.add(dc);
-                }
             }
         }
         if (DBG) log("onDataStateChanged: dcsToRetry=" + dcsToRetry);
@@ -482,15 +449,9 @@ public class DcController extends Handler {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
         synchronized (mDcListAll) {
-            sb.append("mDcListAll=").append(mDcListAll)
-                    .append(" mDcListActiveByCid=").append(mDcListActiveByCid);
+            return "mDcListAll=" + mDcListAll + " mDcListActiveByCid=" + mDcListActiveByCid;
         }
-        synchronized (mTrafficDescriptorsByCid) {
-            sb.append("mTrafficDescriptorsByCid=").append(mTrafficDescriptorsByCid);
-        }
-        return sb.toString();
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -498,9 +459,6 @@ public class DcController extends Handler {
         synchronized (mDcListAll) {
             pw.println(" mDcListAll=" + mDcListAll);
             pw.println(" mDcListActiveByCid=" + mDcListActiveByCid);
-        }
-        synchronized (mTrafficDescriptorsByCid) {
-            pw.println(" mTrafficDescriptorsByCid=" + mTrafficDescriptorsByCid);
         }
     }
 }
