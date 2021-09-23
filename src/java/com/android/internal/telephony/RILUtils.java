@@ -16,6 +16,14 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE;
+import static android.telephony.TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED;
+import static android.telephony.TelephonyManager.CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE;
+import static android.telephony.TelephonyManager.CAPABILITY_SIM_PHONEBOOK_IN_MODEM;
+import static android.telephony.TelephonyManager.CAPABILITY_SLICING_CONFIG_SUPPORTED;
+import static android.telephony.TelephonyManager.CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING;
+import static android.telephony.TelephonyManager.CAPABILITY_USES_ALLOWED_NETWORK_TYPES_BITMASK;
+
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOCATE_PDU_SESSION_ID;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOW_DATA;
@@ -286,6 +294,8 @@ import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.ClosedSubscriberGroupInfo;
 import android.telephony.LinkCapacityEstimate;
+import android.telephony.ModemInfo;
+import android.telephony.PhoneCapability;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessSpecifier;
@@ -322,6 +332,7 @@ import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.telephony.Rlog;
@@ -334,7 +345,9 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -3741,6 +3754,105 @@ public class RILUtils {
                 .replace(PhoneNumberUtils.WILD, '?');
     }
 
+    /**
+     * Convert array of SimSlotStatus to IccSlotStatus
+     * @param o object that represents array/list of SimSlotStatus
+     * @return ArrayList of IccSlotStatus
+     */
+    public static ArrayList<IccSlotStatus> convertHalSlotStatus(Object o) {
+        ArrayList<IccSlotStatus> response = new ArrayList<>();
+        if (o instanceof android.hardware.radio.config.SimSlotStatus[]) {
+            final android.hardware.radio.config.SimSlotStatus[] halSlotStatusArray =
+                    (android.hardware.radio.config.SimSlotStatus[]) o;
+            for (android.hardware.radio.config.SimSlotStatus slotStatus : halSlotStatusArray) {
+                IccSlotStatus iccSlotStatus = new IccSlotStatus();
+                iccSlotStatus.setCardState(slotStatus.cardState);
+                iccSlotStatus.setSlotState(slotStatus.portInfo[0].portState);
+                iccSlotStatus.logicalSlotIndex = slotStatus.portInfo[0].logicalSlotId;
+                iccSlotStatus.atr = slotStatus.atr;
+                iccSlotStatus.iccid = slotStatus.portInfo[0].iccId;
+                iccSlotStatus.eid = slotStatus.eid;
+                response.add(iccSlotStatus);
+            }
+        } else if (o instanceof ArrayList) {
+            final ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus> halSlotStatusArray =
+                    (ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus>) o;
+            for (android.hardware.radio.config.V1_0.SimSlotStatus slotStatus : halSlotStatusArray) {
+                IccSlotStatus iccSlotStatus = new IccSlotStatus();
+                iccSlotStatus.setCardState(slotStatus.cardState);
+                iccSlotStatus.setSlotState(slotStatus.slotState);
+                iccSlotStatus.logicalSlotIndex = slotStatus.logicalSlotId;
+                iccSlotStatus.atr = slotStatus.atr;
+                iccSlotStatus.iccid = slotStatus.iccid;
+                response.add(iccSlotStatus);
+            }
+        } else if (o instanceof ArrayList) {
+            final ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus> halSlotStatusArray =
+                    (ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus>) o;
+            for (android.hardware.radio.config.V1_2.SimSlotStatus slotStatus : halSlotStatusArray) {
+                IccSlotStatus iccSlotStatus = new IccSlotStatus();
+                iccSlotStatus.setCardState(slotStatus.base.cardState);
+                iccSlotStatus.setSlotState(slotStatus.base.slotState);
+                iccSlotStatus.logicalSlotIndex = slotStatus.base.logicalSlotId;
+                iccSlotStatus.atr = slotStatus.base.atr;
+                iccSlotStatus.iccid = slotStatus.base.iccid;
+                iccSlotStatus.eid = slotStatus.eid;
+                response.add(iccSlotStatus);
+            }
+        }
+        return response;
+    }
+
+    /**
+     * Convert int[] list to SlotPortMapping[]
+     * @param list int[] of slots mapping
+     * @return SlotPortMapping[] of slots mapping
+     */
+    public static android.hardware.radio.config.SlotPortMapping[] convertSimSlotsMapping(
+            int[] list) {
+        android.hardware.radio.config.SlotPortMapping[] res =
+                new android.hardware.radio.config.SlotPortMapping[list.length];
+        for (int i : list) {
+            res[i] = new android.hardware.radio.config.SlotPortMapping();
+            res[i].portId = i;
+        }
+        return res;
+    }
+
+
+    /**
+     * Convert PhoneCapability to telephony PhoneCapability.
+     * @param deviceNrCapabilities device's nr capability array
+     * @param o PhoneCapability to convert
+     * @return converted PhoneCapability
+     */
+    public static PhoneCapability convertHalPhoneCapability(int[] deviceNrCapabilities, Object o) {
+        int maxActiveVoiceCalls = 0;
+        int maxActiveData = 0;
+        boolean validationBeforeSwitchSupported = false;
+        List<ModemInfo> logicalModemList = new ArrayList<>();
+        if (o instanceof android.hardware.radio.config.PhoneCapability) {
+            final android.hardware.radio.config.PhoneCapability phoneCapability =
+                    (android.hardware.radio.config.PhoneCapability) o;
+            maxActiveData = phoneCapability.maxActiveData;
+            validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
+            for (int modemId : phoneCapability.logicalModemIds) {
+                logicalModemList.add(new ModemInfo(modemId));
+            }
+        } else if (o instanceof android.hardware.radio.config.V1_1.PhoneCapability) {
+            final android.hardware.radio.config.V1_1.PhoneCapability phoneCapability =
+                    (android.hardware.radio.config.V1_1.PhoneCapability) o;
+            maxActiveData = phoneCapability.maxActiveData;
+            validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
+            for (android.hardware.radio.config.V1_1.ModemInfo modemInfo :
+                    phoneCapability.logicalModemList) {
+                logicalModemList.add(new ModemInfo(modemInfo.modemId));
+            }
+        }
+        return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
+                validationBeforeSwitchSupported, deviceNrCapabilities);
+    }
+
     /** Append the data to the end of an ArrayList */
     public static void appendPrimitiveArrayToArrayList(byte[] src, ArrayList<Byte> dst) {
         for (byte b : src) {
@@ -4144,7 +4256,8 @@ public class RILUtils {
                 return "GET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_SLICING_CONFIG:
                 return "GET_SLICING_CONFIG";
-            default: return "<unknown request>";
+            default:
+                return "<unknown request " + request + ">";
         }
     }
 
@@ -4278,5 +4391,52 @@ public class RILUtils {
             default:
                 return "<unknown response>";
         }
+    }
+
+    /**
+     * Create capabilities based off of the radio hal version and feature set configurations.
+     * @param radioHalVersion radio hal version
+     * @param modemReducedFeatureSet1 reduced feature set
+     * @return set of capabilities
+     */
+    @VisibleForTesting
+    public static Set<String> getCaps(HalVersion radioHalVersion, boolean modemReducedFeatureSet1) {
+        final Set<String> caps = new HashSet<>();
+
+        if (radioHalVersion.equals(RIL.RADIO_HAL_VERSION_UNKNOWN)) {
+            // If the Radio HAL is UNKNOWN, no capabilities will present themselves.
+            loge("Radio Hal Version is UNKNOWN!");
+        }
+
+        logd("Radio Hal Version = " + radioHalVersion.toString());
+        if (radioHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) {
+            caps.add(CAPABILITY_USES_ALLOWED_NETWORK_TYPES_BITMASK);
+            logd("CAPABILITY_USES_ALLOWED_NETWORK_TYPES_BITMASK");
+
+            if (!modemReducedFeatureSet1) {
+                caps.add(CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE);
+                logd("CAPABILITY_SECONDARY_LINK_BANDWIDTH_VISIBLE");
+                caps.add(CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE);
+                logd("CAPABILITY_NR_DUAL_CONNECTIVITY_CONFIGURATION_AVAILABLE");
+                caps.add(CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING);
+                logd("CAPABILITY_THERMAL_MITIGATION_DATA_THROTTLING");
+                caps.add(CAPABILITY_SLICING_CONFIG_SUPPORTED);
+                logd("CAPABILITY_SLICING_CONFIG_SUPPORTED");
+                caps.add(CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+                logd("CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED");
+            } else {
+                caps.add(CAPABILITY_SIM_PHONEBOOK_IN_MODEM);
+                logd("CAPABILITY_SIM_PHONEBOOK_IN_MODEM");
+            }
+        }
+        return caps;
+    }
+
+    private static void logd(String log) {
+        Rlog.d("RILUtils", log);
+    }
+
+    private static void loge(String log) {
+        Rlog.e("RILUtils", log);
     }
 }
