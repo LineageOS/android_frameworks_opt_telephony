@@ -31,6 +31,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
+import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.util.State;
@@ -90,6 +91,8 @@ public class DataNetwork extends StateMachine {
     /** The current transport of the data network. Could be WWAN or WLAN. */
     private @TransportType int mTransport;
 
+    private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers;
+
     /** The network agent associated with this data network. */
     private final TelephonyNetworkAgent mNetworkAgent;
 
@@ -114,17 +117,20 @@ public class DataNetwork extends StateMachine {
      * @param phone The phone instance.
      * @param looper The looper to be used by the state machine. Currently the handler thread is the
      * phone process's main thread.
+     * @param dataServiceManagers Data service managers.
      * @param transport The initial transport.
      * @param dataProfile The data profile for establishing the data network.
      */
-    public DataNetwork(@NonNull Phone phone, @NonNull Looper looper, @TransportType int transport,
-            @NonNull DataProfile dataProfile) {
+    public DataNetwork(@NonNull Phone phone, @NonNull Looper looper,
+            @NonNull SparseArray<DataServiceManager> dataServiceManagers,
+            @TransportType int transport, @NonNull DataProfile dataProfile) {
         super("DataNetwork", looper);
         mPhone = phone;
         mTransport = transport;
         mLogTag = "DN-" + sId.incrementAndGet() + "-"
                 + ((transport == TRANSPORT_TYPE_WWAN) ? "C" : "I");
 
+        mDataServiceManagers = dataServiceManagers;
         mDataProfile = dataProfile;
         mNetworkAgent = new TelephonyNetworkAgent(mPhone, looper, this);
 
