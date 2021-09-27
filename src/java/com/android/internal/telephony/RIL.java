@@ -4705,6 +4705,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Whether the device modem supports reporting the EID in either the slot or card status or
+     * through ATR.
+     * @return true if the modem supports EID.
+     */
+    @Override
+    public boolean supportsEid() {
+        // EID should be supported as long as HAL >= 1.2.
+        //  - in HAL 1.2 we have EID through ATR
+        //  - in later HAL versions we also have EID through slot / card status.
+        return mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2);
+    }
+
     @Override
     public void setDataAllowed(boolean allowed, Message result) {
         IRadio radioProxy = getRadioProxy(result);
