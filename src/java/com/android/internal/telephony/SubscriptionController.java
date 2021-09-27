@@ -31,6 +31,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -95,7 +96,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Implementation of the ISub interface.
@@ -1334,6 +1334,12 @@ public class SubscriptionController extends ISub.Stub {
             String selection = SubscriptionManager.ICC_ID + "=?";
             String[] args;
             if (isSubscriptionForRemoteSim(subscriptionType)) {
+                PackageManager packageManager = mContext.getPackageManager();
+                if (!packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) {
+                    logel("[addSubInfo] Remote SIM can only be added when FEATURE_AUTOMOTIVE"
+                            + " is supported");
+                    return -1;
+                }
                 selection += " AND " + SubscriptionManager.SUBSCRIPTION_TYPE + "=?";
                 args = new String[]{uniqueId, Integer.toString(subscriptionType)};
             } else {
