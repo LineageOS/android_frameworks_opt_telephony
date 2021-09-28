@@ -329,8 +329,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void disableProfile(String callingPackage, String cardId, String iccid, boolean refresh,
-            IDisableProfileCallback callback) {
+    public void disableProfile(String callingPackage, String cardId, String iccid, int portIndex,
+            boolean refresh, IDisableProfileCallback callback) {
         try {
             checkCallingPackage(callingPackage);
         } catch (SecurityException se) {
@@ -342,12 +342,12 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getEuiccPort(cardId, portIndex);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
             } catch (RemoteException exception) {
-                loge("disableProfile callback failure.", exception);
+                loge("disableProfile callback failure for portIndex: " + portIndex , exception);
             }
             return;
         }
@@ -377,8 +377,8 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
-    public void switchToProfile(String callingPackage, String cardId, String iccid, boolean refresh,
-            ISwitchToProfileCallback callback) {
+    public void switchToProfile(String callingPackage, String cardId, String iccid, int portIndex,
+            boolean refresh, ISwitchToProfileCallback callback) {
         try {
             checkCallingPackage(callingPackage);
         } catch (SecurityException se) {
@@ -390,12 +390,12 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getEuiccPort(cardId, portIndex);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
             } catch (RemoteException exception) {
-                loge("switchToProfile callback failure.", exception);
+                loge("switchToProfile callback failure for portIndex :" + portIndex, exception);
             }
             return;
         }
