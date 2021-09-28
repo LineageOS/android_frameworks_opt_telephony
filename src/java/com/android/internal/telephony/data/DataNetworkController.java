@@ -1,0 +1,229 @@
+/*
+ * Copyright 2021 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.android.internal.telephony.data;
+
+import android.annotation.NonNull;
+import android.annotation.StringDef;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.os.SystemProperties;
+import android.telephony.AccessNetworkConstants;
+import android.util.IndentingPrintWriter;
+import android.util.LocalLog;
+import android.util.SparseArray;
+
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.RIL;
+import com.android.telephony.Rlog;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * DataNetworkController in the central module of the telephony data stack. It is responsible to
+ * create and manage all the mobile data networks.
+ */
+public class DataNetworkController extends Handler {
+    public static final String SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE =
+            "ro.telephony.iwlan_operation_mode";
+
+    @Retention(RetentionPolicy.SOURCE)
+    @StringDef(prefix = {"IWLAN_OPERATION_MODE_"},
+            value = {
+                    IWLAN_OPERATION_MODE_DEFAULT,
+                    IWLAN_OPERATION_MODE_LEGACY,
+                    IWLAN_OPERATION_MODE_AP_ASSISTED})
+    public @interface IwlanOperationMode {}
+
+    /**
+     * IWLAN default mode. On device that has IRadio 1.4 or above, it means
+     * {@link #IWLAN_OPERATION_MODE_AP_ASSISTED}. On device that has IRadio 1.3 or below, it means
+     * {@link #IWLAN_OPERATION_MODE_LEGACY}.
+     */
+    public static final String IWLAN_OPERATION_MODE_DEFAULT = "default";
+
+    /**
+     * IWLAN legacy mode. IWLAN is completely handled by the modem, and when the device is on
+     * IWLAN, modem reports IWLAN as a RAT.
+     */
+    public static final String IWLAN_OPERATION_MODE_LEGACY = "legacy";
+
+    /**
+     * IWLAN application processor assisted mode. IWLAN is handled by the bound IWLAN data service
+     * and network service separately.
+     */
+    public static final String IWLAN_OPERATION_MODE_AP_ASSISTED = "AP-assisted";
+
+    private final Phone mPhone;
+    private final String mLogTag;
+    private final LocalLog mLocalLog = new LocalLog(128);
+
+    private final @NonNull DataConfigManager mDataConfigManager;
+    private final @NonNull DataSettingsManager mDataSettingsManager;
+    private final @NonNull DataProfileManager mDataProfileManager;
+    private final @NonNull DataStallMonitor mDataStallMonitor;
+    private final @NonNull DataScheduler mDataScheduler;
+    private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers =
+            new SparseArray<>();
+
+    /**
+     * The current data network list, including the ones that are connected, connecting, or
+     * disconnecting.
+     */
+    private final List<DataNetwork> mDataNetworkList = new ArrayList<>();
+
+    /**
+     * Contain the last 10 data networks that were connected. This is for debugging purposes only.
+     */
+    private final List<DataNetwork> mHistoricalDataNetworkList = new ArrayList<>();
+
+    /**
+     * Constructor
+     *
+     * @param phone The phone instance.
+     * @param looper The looper to be used by the handler. Currently the handler thread is the
+     * phone process's main thread.
+     */
+    public DataNetworkController(Phone phone, Looper looper) {
+        super(looper);
+        mPhone = phone;
+        mLogTag = "DNC-" + mPhone.getPhoneId();
+
+        mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                new DataServiceManager(mPhone, looper, AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
+        if (!isIwlanLegacyMode()) {
+            mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                    new DataServiceManager(mPhone, looper,
+                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
+        }
+        mDataConfigManager = new DataConfigManager(mPhone, looper);
+        mDataSettingsManager = new DataSettingsManager(mPhone, looper);
+        mDataProfileManager = new DataProfileManager(mPhone, looper);
+        mDataStallMonitor = new DataStallMonitor(mPhone, looper);
+        mDataScheduler = new DataScheduler(mPhone, looper);
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+
+    }
+
+    /**
+     * @return Data config manager instance.
+     */
+    public @NonNull DataConfigManager getDataConfigManager() {
+        return mDataConfigManager;
+    }
+
+    /**
+     * @return {@code true} if the device operates in IWLAN legacy mode, otherwise {@code false}. In
+     * legacy mode, IWLAN registration state is reported through cellular
+     * {@link android.telephony.NetworkRegistrationInfo}.
+     */
+    public boolean isIwlanLegacyMode() {
+        // Get IWLAN operation mode from the system property. If the system property is configured
+        // to default or not configured, the mode is tied to IRadio version. For 1.4 or above, it's
+        // AP-assisted mode, for 1.3 or below, it's legacy mode.
+        String mode = SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE);
+
+        if (mode.equals(IWLAN_OPERATION_MODE_AP_ASSISTED)) {
+            return false;
+        } else if (mode.equals(IWLAN_OPERATION_MODE_LEGACY)) {
+            return true;
+        }
+
+        return mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
+    }
+
+    /**
+     * Log debug messages.
+     * @param s debug messages
+     */
+    private void log(@NonNull String s) {
+        Rlog.d(mLogTag, s);
+    }
+
+    /**
+     * Log error messages.
+     * @param s error messages
+     */
+    private void loge(@NonNull String s) {
+        Rlog.e(mLogTag, s);
+    }
+
+    /**
+     * Log debug messages and also log into the local log.
+     * @param s debug messages
+     */
+    private void logl(@NonNull String s) {
+        log(s);
+        mLocalLog.log(s);
+    }
+
+    /**
+     * Dump the state of DataNetworkController
+     *
+     * @param fd File descriptor
+     * @param printWriter Print writer
+     * @param args Arguments
+     */
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println(DataNetworkController.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
+        pw.increaseIndent();
+        pw.println("IWLAN operation mode="
+                + SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE));
+        pw.println("Current data networks:");
+        pw.increaseIndent();
+        for (DataNetwork dn : mDataNetworkList) {
+            dn.dump(fd, printWriter, args);
+        }
+        pw.decreaseIndent();
+        pw.println("Historical connected data networks:");
+        pw.increaseIndent();
+        for (DataNetwork dn: mHistoricalDataNetworkList) {
+            // Do not print networks which is already in current network list.
+            if (!mDataNetworkList.contains(dn)) {
+                dn.dump(fd, printWriter, args);
+            }
+        }
+        pw.decreaseIndent();
+
+        pw.println("Local logs:");
+        pw.increaseIndent();
+        mLocalLog.dump(fd, pw, args);
+        pw.decreaseIndent();
+
+        pw.println("-------------------------------------");
+        mDataProfileManager.dump(fd, pw, args);
+        pw.println("-------------------------------------");
+        mDataScheduler.dump(fd, pw, args);
+        pw.println("-------------------------------------");
+        mDataSettingsManager.dump(fd, pw, args);
+        pw.println("-------------------------------------");
+        mDataStallMonitor.dump(fd, pw, args);
+        pw.println("-------------------------------------");
+        mDataConfigManager.dump(fd, pw, args);
+
+        pw.decreaseIndent();
+    }
+}

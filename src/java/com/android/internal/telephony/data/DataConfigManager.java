@@ -203,12 +203,12 @@ public class DataConfigManager extends Handler {
      * Dump the state of DataConfigManager
      *
      * @param fd File descriptor
-     * @param printwriter Print writer
+     * @param printWriter Print writer
      * @param args Arguments
      */
-    public void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
-        IndentingPrintWriter pw = new IndentingPrintWriter(printwriter, "  ");
-        pw.println("DataConfigManager-" + mPhone.getPhoneId() + ":");
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println(DataConfigManager.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
         pw.increaseIndent();
         pw.println("Network capability priority:");
         pw.increaseIndent();
