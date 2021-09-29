@@ -16,12 +16,12 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
+
 import android.hardware.radio.deprecated.V1_0.IOemHookIndication;
 import android.os.AsyncResult;
 
 import java.util.ArrayList;
-
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
 
 /**
  * Class containing oem hook indication callbacks
@@ -40,7 +40,7 @@ public class OemHookIndication extends IOemHookIndication.Stub {
     public void oemHookRaw(int indicationType, ArrayList<Byte> data) {
         mRil.processIndication(indicationType);
 
-        byte[] response = RIL.arrayListToPrimitiveArray(data);
+        byte[] response = RILUtils.arrayListToPrimitiveArray(data);
         if (RIL.RILJ_LOGD) {
             mRil.unsljLogvRet(RIL_UNSOL_OEM_HOOK_RAW,
                     com.android.internal.telephony.uicc.IccUtils.bytesToHexString(response));

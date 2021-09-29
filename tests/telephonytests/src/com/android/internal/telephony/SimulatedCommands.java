@@ -61,7 +61,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.LastCallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.RILUtils;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
@@ -69,12 +69,12 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.AdnCapacity;
-import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
-import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -1218,7 +1218,7 @@ public class SimulatedCommands extends BaseCommands
             }
         }
 
-        DataCallResponse response = RIL.convertDataCallResult(mSetupDataCallResult);
+        DataCallResponse response = RILUtils.convertHalDataCallResult(mSetupDataCallResult);
         if (mDcSuccess) {
             resultSuccess(result, response);
         } else {

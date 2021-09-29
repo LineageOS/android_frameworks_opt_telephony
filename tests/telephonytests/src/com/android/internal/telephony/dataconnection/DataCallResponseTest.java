@@ -28,6 +28,7 @@ import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.EpsQos;
+import android.telephony.data.Qos;
 import android.telephony.data.TrafficDescriptor;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -56,7 +57,8 @@ public class DataCallResponseTest extends AndroidTestCase {
                         Arrays.asList(InetAddresses.parseNumericAddress(FAKE_PCSCF_ADDRESS)))
                 .setMtuV4(1440)
                 .setMtuV6(1440)
-                .setDefaultQos(new EpsQos())
+                .setDefaultQos(new EpsQos(
+                        new Qos.QosBandwidth(-1, -1), new Qos.QosBandwidth(-1, -1), -1))
                 .setQosBearerSessions(new ArrayList<>())
                 .setTrafficDescriptors(
                         Arrays.asList(new TrafficDescriptor(FAKE_DNN, FAKE_OS_APP_ID)))

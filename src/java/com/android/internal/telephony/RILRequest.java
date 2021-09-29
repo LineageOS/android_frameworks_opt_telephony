@@ -238,7 +238,7 @@ public class RILRequest {
         final Message result = mResult;
         if (RIL.RILJ_LOGD) {
             Rlog.d(LOG_TAG, serialString() + "< "
-                    + RIL.requestToString(mRequest)
+                    + RILUtils.requestToString(mRequest)
                     + " error: " + ex + " ret=" + RIL.retToString(mRequest, ret)
                     + " result=" + result);
         }
