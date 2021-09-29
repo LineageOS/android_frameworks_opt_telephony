@@ -128,7 +128,7 @@ public class CarrierServiceBindHelper {
     };
 
     public CarrierServiceBindHelper(Context context) {
-        mContext = context;
+        mContext = context.createContextAsUser(Process.myUserHandle(), 0);
 
         updateBindingsAndSimStates();
 
@@ -283,13 +283,13 @@ public class CarrierServiceBindHelper {
 
             String error;
             try {
-                if (mContext.createContextAsUser(Process.myUserHandle(), 0)
-                        .bindService(carrierService,
-                                Context.BIND_AUTO_CREATE
+                if (mContext.bindService(
+                        carrierService,
+                        Context.BIND_AUTO_CREATE
                                 | Context.BIND_FOREGROUND_SERVICE
                                 | Context.BIND_INCLUDE_CAPABILITIES,
-                                (r) -> mHandler.post(r),
-                                connection)) {
+                        (r) -> mHandler.post(r),
+                        connection)) {
                     logdWithLocalLog("service bound");
                     mServiceBound = true;
                     return;
@@ -350,12 +350,7 @@ public class CarrierServiceBindHelper {
             if (mServiceBound) {
                 logdWithLocalLog("Unbinding from carrier app");
                 mServiceBound = false;
-                try {
-                    mContext.unbindService(connection);
-                } catch (IllegalArgumentException e) {
-                    //TODO(b/151328766): Figure out why we unbind without binding
-                    logeWithLocalLog("Tried to unbind without binding e=" + e);
-                }
+                mContext.unbindService(connection);
             } else {
                 logdWithLocalLog("Not bound, skipping unbindService call");
             }
