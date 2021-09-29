@@ -27,21 +27,24 @@ import android.net.NetworkScore;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.DataFailureCause;
+import android.telephony.DataFailCause;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.util.IState;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -76,6 +79,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  */
 public class DataNetwork extends StateMachine {
+    /** Event for attaching a network request. */
+    private static final int EVENT_ATTACH_NETWORK_REQUEST = 1;
+
+    /** Event for detaching a network request. */
+    private static final int EVENT_DETACH_NETWORK_REQUEST = 2;
+
     private final @NonNull Phone mPhone;
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
@@ -87,6 +96,9 @@ public class DataNetwork extends StateMachine {
     private final HandoverState mHandoverState = new HandoverState();
     private final DisconnectingState mDisconnectingState = new DisconnectingState();
     private final DisconnectedState mDisconnectedState = new DisconnectedState();
+
+    /** The callback to receives data network state update. */
+    private final @NonNull DataNetworkCallback mDataNetworkCallback;
 
     /** The current transport of the data network. Could be WWAN or WLAN. */
     private @TransportType int mTransport;
@@ -109,7 +121,27 @@ public class DataNetwork extends StateMachine {
     private @NonNull LinkProperties mLinkProperties;
 
     /** The network requests associated with this data network */
-    private @NonNull List<TelephonyNetworkRequest> mAttachedNetworkRequestList = new ArrayList<>();
+    private @NonNull Set<TelephonyNetworkRequest> mAttachedNetworkRequestList = new ArraySet<>();
+
+    /** The cause for data disconnected */
+    private @DataFailureCause int mFailCause = DataFailCause.NONE;
+
+    /**
+     * The interface for data network callback.
+     */
+    public interface DataNetworkCallback {
+        /**
+         * Called when data network enters {@link ConnectedState}.
+         */
+        void onConnected();
+
+        /**
+         * Called when data network enters {@link DisconnectedState}.
+         *
+         * @param cause The disconnected failure cause.
+         */
+        void onDisconnected(@DataFailureCause int cause);
+    }
 
     /**
      * Constructor
@@ -120,12 +152,15 @@ public class DataNetwork extends StateMachine {
      * @param dataServiceManagers Data service managers.
      * @param transport The initial transport.
      * @param dataProfile The data profile for establishing the data network.
+     * @param callback The callback to receives data network state update.
      */
     public DataNetwork(@NonNull Phone phone, @NonNull Looper looper,
             @NonNull SparseArray<DataServiceManager> dataServiceManagers,
-            @TransportType int transport, @NonNull DataProfile dataProfile) {
+            @TransportType int transport, @NonNull DataProfile dataProfile,
+            @NonNull DataNetworkCallback callback) {
         super("DataNetwork", looper);
         mPhone = phone;
+        mDataNetworkCallback = callback;
         mTransport = transport;
         mLogTag = "DN-" + sId.incrementAndGet() + "-"
                 + ((transport == TRANSPORT_TYPE_WWAN) ? "C" : "I");
@@ -164,6 +199,19 @@ public class DataNetwork extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
+            TelephonyNetworkRequest networkRequest = null;
+            switch (msg.what) {
+                case EVENT_ATTACH_NETWORK_REQUEST:
+                    networkRequest = (TelephonyNetworkRequest) msg.obj;
+                    mAttachedNetworkRequestList.add(networkRequest);
+                    networkRequest.setAttachedNetwork(DataNetwork.this);
+                    break;
+                case EVENT_DETACH_NETWORK_REQUEST:
+                    networkRequest = (TelephonyNetworkRequest) msg.obj;
+                    mAttachedNetworkRequestList.remove(networkRequest);
+                    networkRequest.setAttachedNetwork(null);
+                    break;
+            }
             return HANDLED;
         }
     }
@@ -198,6 +246,7 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             mNetworkAgent.markConnected();
+            mDataNetworkCallback.onConnected();
         }
 
         @Override
@@ -206,6 +255,14 @@ public class DataNetwork extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
+            TelephonyNetworkRequest networkRequest = null;
+            switch (msg.what) {
+                case EVENT_ATTACH_NETWORK_REQUEST:
+                    networkRequest = (TelephonyNetworkRequest) msg.obj;
+                    mAttachedNetworkRequestList.add(networkRequest);
+                    networkRequest.setAttachedNetwork(DataNetwork.this);
+                    return HANDLED;
+            }
             return NOT_HANDLED;
         }
     }
@@ -260,10 +317,59 @@ public class DataNetwork extends StateMachine {
     private final class DisconnectedState extends State {
         @Override
         public void enter() {
-            // Immediately discard all the unprocessed events.
-            quitNow();
-            mNetworkAgent.unregister();
+            // Gracefully handle all the un-processed events then quit the state machine.
+            // quit() throws a QUIT event to the end of message queue. All the events before quit()
+            // will be processed. Events after quit() will not be processed.
+            quit();
         }
+    }
+
+    @Override
+    protected void unhandledMessage(Message msg) {
+        IState state = getCurrentState();
+        loge("Unhandled message " + msg.what + " in state "
+                + (state == null ? "null" : state.getName()));
+    }
+
+    // This is the called after all events are handled.
+    @Override
+    protected void onQuitting() {
+            mNetworkAgent.unregister();
+    }
+
+    /**
+     * Attach the network request to this data network.
+     * @param networkRequest Network request to attach.
+     *
+     * @return {@code false} if the data network cannot be attached (i.e. not in the right state.)
+     */
+    public boolean attachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        // Check if the data network is in the right state. Note that because this check is outside
+        // of the handler, it's possible that the state at this point is "connecting", but when
+        // EVENT_ATTACH_NETWORK_REQUEST is actually processed, the state has entered "disconnected".
+        // In that case, the request will just be throw back to the unsatisfied pool.
+        if (getCurrentState() == null || getCurrentState() == mDisconnectingState
+                || getCurrentState() == mDisconnectedState) {
+            return false;
+        }
+        sendMessage(obtainMessage(EVENT_ATTACH_NETWORK_REQUEST, networkRequest));
+        return true;
+    }
+
+    /**
+     * Detach the network request from this data network. Note that this will not tear down the
+     * network.
+     * @param networkRequest Network request to detach.
+     *
+     * @return {@code false} if failed (i.e. The data network has disconnected. It can't process
+     * more events.)
+     */
+    public boolean detachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        if (getCurrentState() == null || getCurrentState() == mDisconnectedState) {
+            return false;
+        }
+        sendMessage(obtainMessage(EVENT_DETACH_NETWORK_REQUEST, networkRequest));
+        return true;
     }
 
     /**
@@ -302,6 +408,13 @@ public class DataNetwork extends StateMachine {
     public @NonNull NetworkProvider getNetworkProvider() {
         // TODO: Should not be null.
         return null;
+    }
+
+    /**
+     * @return The data profile of this data network.
+     */
+    public @NonNull DataProfile getDataProfile() {
+        return mDataProfile;
     }
 
     /**
