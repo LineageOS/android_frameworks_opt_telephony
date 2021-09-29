@@ -92,6 +92,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
@@ -246,12 +247,6 @@ public class ServiceStateTracker extends Handler {
 
     /** Signal strength poll rate. */
     private static final int POLL_PERIOD_MILLIS = 20 * 1000;
-
-    /**
-     * The time we wait for IMS to deregister before executing a pending radio power off request.
-     */
-    @VisibleForTesting
-    public static final int DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT = 3 * 1000;
 
     /** Waiting period before recheck gprs and voice registration. */
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
@@ -863,6 +858,16 @@ public class ServiceStateTracker extends Handler {
         mDeviceShuttingDown = true;
         mDesiredPowerState = false;
         setPowerStateToDesired();
+    }
+
+    /**
+     * @return the timeout value in milliseconds that the framework will delay a pending radio power
+     * off command while waiting for an IMS deregistered indication.
+     */
+    @VisibleForTesting
+    public int getRadioPowerOffDelayTimeoutForImsRegistration() {
+        return mPhone.getContext().getResources().getInteger(
+                R.integer.config_delay_for_ims_dereg_millis);
     }
 
     public void dispose() {
@@ -3158,7 +3163,7 @@ public class ServiceStateTracker extends Handler {
         } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON) {
             // If it's on and available and we want it off gracefully
-            if (mImsRegistrationOnOff) {
+            if (mImsRegistrationOnOff && getRadioPowerOffDelayTimeoutForImsRegistration() > 0) {
                 if (DBG) log("setPowerStateToDesired: delaying power off until IMS dereg.");
                 startDelayRadioOffWaitingForImsDeregTimeout();
                 // Return early here as we do not want to hit the cancel timeout code below.
@@ -3201,7 +3206,7 @@ public class ServiceStateTracker extends Handler {
         }
         if (DBG) log("startDelayRadioOffWaitingForImsDeregTimeout: starting timer");
         sendEmptyMessageDelayed(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT,
-                DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT);
+                getRadioPowerOffDelayTimeoutForImsRegistration());
     }
 
     protected void onUpdateIccAvailability() {
@@ -5605,7 +5610,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mImsRegistered=" + mImsRegistered);
         pw.println(" mImsRegistrationOnOff=" + mImsRegistrationOnOff);
         pw.println(" pending radio off event="
-                + hasMessages(DELAY_RADIO_OFF_FOR_IMS_DEREG_TIMEOUT));
+                + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT));
         pw.println(" mRadioDisabledByCarrier" + mRadioDisabledByCarrier);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
