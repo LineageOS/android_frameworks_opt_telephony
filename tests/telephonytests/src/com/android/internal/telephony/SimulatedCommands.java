@@ -69,12 +69,12 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.AdnCapacity;
-import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
-import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.internal.telephony.uicc.ReceivedPhonebookRecords;
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -85,6 +85,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
     private static final String LOG_TAG = "SimulatedCommands";
+    private boolean mSupportsEid = true;
 
     private enum SimLockState {
         NONE,
@@ -2465,6 +2466,15 @@ public class SimulatedCommands extends BaseCommands
         mSimPhonebookRecordsReceivedRegistrants.notifyRegistrants(
                 new AsyncResult(null,
                 new ReceivedPhonebookRecords(4, phonebookRecordInfoGroup), null));
+    }
+
+    public void setSupportsEid(boolean supportsEid) {
+        mSupportsEid = supportsEid;
+    }
+
+    @Override
+    public boolean supportsEid() {
+        return mSupportsEid;
     }
 
     @Override

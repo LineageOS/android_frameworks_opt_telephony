@@ -712,7 +712,7 @@ public class UiccController extends Handler {
             slotId = index;
         }
 
-        if (eidIsNotSupported(status)) {
+        if (!mCis[0].supportsEid()) {
             // we will never get EID from the HAL, so set mDefaultEuiccCardId to UNSUPPORTED_CARD_ID
             if (DBG) log("eid is not supported");
             mDefaultEuiccCardId = UNSUPPORTED_CARD_ID;
@@ -772,15 +772,6 @@ public class UiccController extends Handler {
 
         if (DBG) log("Notifying IccChangedRegistrants");
         mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
-    }
-
-    /**
-     * Returns true if EID is not supproted.
-     */
-    private boolean eidIsNotSupported(IccCardStatus status) {
-        // if card status does not contain slot ID, we know we are on HAL < 1.2, so EID will never
-        // be available
-        return status.physicalSlotIndex == INVALID_SLOT_ID;
     }
 
     /**
