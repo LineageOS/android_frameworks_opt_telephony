@@ -448,6 +448,9 @@ public class UiccControllerTest extends TelephonyTest {
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
         // make it seem like EID is not supported by setting physical slot = -1 like on HAL < 1.2
+
+        mSimulatedCommands.setSupportsEid(false);
+
         ics.physicalSlotIndex = UiccController.INVALID_SLOT_ID;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
@@ -456,6 +459,8 @@ public class UiccControllerTest extends TelephonyTest {
         // assert that the default eUICC card Id is UNSUPPORTED_CARD_ID
         assertEquals(TelephonyManager.UNSUPPORTED_CARD_ID,
                 mUiccControllerUT.getCardIdForDefaultEuicc());
+
+        mSimulatedCommands.setSupportsEid(true);
     }
 
     /**
