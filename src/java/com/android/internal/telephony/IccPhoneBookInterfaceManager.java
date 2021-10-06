@@ -38,8 +38,8 @@ import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.telephony.Rlog;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * IccPhoneBookInterfaceManager to provide an inter-process communication to
@@ -167,6 +167,11 @@ public class IccPhoneBookInterfaceManager {
     }
 
     private AdnRecord generateAdnRecordWithNewTagByContentValues(ContentValues values) {
+        return generateAdnRecordWithNewTagByContentValues(0, 0, values);
+    }
+
+    private AdnRecord generateAdnRecordWithNewTagByContentValues(
+            int efId, int recordNumber, ContentValues values) {
         if (values == null) {
             return null;
         }
@@ -177,7 +182,8 @@ public class IccPhoneBookInterfaceManager {
         String[] newEmailArray = TextUtils.isEmpty(newEmail)
                 ? null : getEmailStringArray(newEmail);
         String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getAnrStringArray(newAnr);
-        return new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
+        return new AdnRecord(
+                efId, recordNumber, newTag, newPhoneNumber, newEmailArray, newAnrArray);
     }
 
     /**
@@ -257,7 +263,6 @@ public class IccPhoneBookInterfaceManager {
             throw new SecurityException(
                     "Requires android.permission.WRITE_CONTACTS permission");
         }
-        efid = updateEfForIccType(efid);
         if (DBG) {
             logd("updateAdnRecordsInEfByIndex: efid=" + efid + ", values = " +
                 values + " index=" + index + ", pin2=" + pin2);
@@ -267,7 +272,7 @@ public class IccPhoneBookInterfaceManager {
         Request updateRequest = new Request();
         synchronized (updateRequest) {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
-            AdnRecord newAdn = generateAdnRecordWithNewTagByContentValues(values);
+            AdnRecord newAdn = generateAdnRecordWithNewTagByContentValues(efid, index, values);
             if (usesPbCache(efid)) {
                 mSimPbRecordCache.updateSimPbAdnByRecordId(index, newAdn, response);
                 waitForResult(updateRequest);
