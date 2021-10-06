@@ -88,7 +88,6 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
-import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
@@ -485,22 +484,22 @@ public class DataConnection extends StateMachine {
         return new LinkProperties(mLinkProperties);
     }
 
-    boolean isInactive() {
-        return getCurrentState() == mInactiveState;
-    }
-
     boolean isSuspended() {
         // Data can only be (temporarily) suspended while data is in active state
         if (getCurrentState() != mActiveState) return false;
 
+        // never set suspend for emergency apn
+        if (mApnSetting != null && mApnSetting.isEmergencyApn()) {
+            return false;
+        }
+
         // if we are not in-service change to SUSPENDED
-        final ServiceStateTracker sst = mPhone.getServiceStateTracker();
-        if (sst.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
+        if (mDataRegState != ServiceState.STATE_IN_SERVICE) {
             return true;
         }
 
         // check for voice call and concurrency issues
-        if (!sst.isConcurrentVoiceAndDataAllowed()) {
+        if (!mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
             return mPhone.getCallTracker().getState() != PhoneConstants.State.IDLE;
         }
 
@@ -515,6 +514,11 @@ public class DataConnection extends StateMachine {
     @VisibleForTesting
     public boolean isActive() {
         return getCurrentState() == mActiveState;
+    }
+
+    @VisibleForTesting
+    public boolean isInactive() {
+        return getCurrentState() == mInactiveState;
     }
 
     boolean isActivating() {
