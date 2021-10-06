@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.hardware.radio.V1_6.PhonebookCapacity;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -53,21 +52,6 @@ public class AdnCapacity implements Parcelable {
         mMaxNumberLength = maxNumberLength;
         mMaxEmailLength = maxEmailLength;
         mMaxAnrLength = maxAnrLength;
-    }
-
-    public AdnCapacity(PhonebookCapacity pbCap) {
-        if (pbCap != null) {
-            mMaxAdnCount = pbCap.maxAdnRecords;
-            mUsedAdnCount = pbCap.usedAdnRecords;
-            mMaxEmailCount = pbCap.maxEmailRecords;
-            mUsedEmailCount = pbCap.usedEmailRecords;
-            mMaxAnrCount = pbCap.maxAdditionalNumberRecords;
-            mUsedAnrCount = pbCap.usedAdditionalNumberRecords;
-            mMaxNameLength = pbCap.maxNameLen;
-            mMaxNumberLength = pbCap.maxNumberLen;
-            mMaxEmailLength = pbCap.maxEmailLen;
-            mMaxAnrLength = pbCap.maxAdditionalNumberLen;
-        }
     }
 
     public int getMaxAdnCount() {

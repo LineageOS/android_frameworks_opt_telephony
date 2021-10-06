@@ -109,7 +109,6 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
-import com.android.internal.telephony.cdma.SmsMessageConverter;
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -242,7 +241,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                                       android.hardware.radio.V1_0.SignalStrength signalStrength) {
         mRil.processIndication(indicationType);
 
-        SignalStrength ssInitial = new SignalStrength(signalStrength);
+        SignalStrength ssInitial = RILUtils.convertHalSignalStrength(signalStrength);
 
         SignalStrength ss = mRil.fixupSignalStrength10(ssInitial);
         // Note this is set to "verbose" because it happens frequently
@@ -292,7 +291,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                                       android.hardware.radio.V1_2.SignalStrength signalStrength) {
         mRil.processIndication(indicationType);
 
-        SignalStrength ss = new SignalStrength(signalStrength);
+        SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
         // Note this is set to "verbose" because it happens frequently
         if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
@@ -309,7 +308,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         mRil.processIndication(indicationType);
 
-        SignalStrength ss = new SignalStrength(signalStrength);
+        SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
 
         if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
@@ -326,7 +325,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         mRil.processIndication(indicationType);
 
-        SignalStrength ss = new SignalStrength(signalStrength);
+        SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
 
         if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
@@ -367,6 +366,7 @@ public class RadioIndication extends IRadioIndication.Stub {
      */
     public void currentEmergencyNumberList(int indicationType,
             ArrayList<android.hardware.radio.V1_4.EmergencyNumber> emergencyNumberList) {
+        mRil.processIndication(indicationType);
         List<EmergencyNumber> response = new ArrayList<>(emergencyNumberList.size());
 
         for (android.hardware.radio.V1_4.EmergencyNumber emergencyNumberHal
@@ -535,9 +535,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
 
-        // todo: conversion from CdmaSmsMessage to SmsMessage should be contained in this class so
-        // that usage of auto-generated HAL classes is limited to this file
-        SmsMessage sms = SmsMessageConverter.newSmsMessageFromCdmaSmsMessage(msg);
+        SmsMessage sms = new SmsMessage(RILUtils.convertHalCdmaSmsMessage(msg));
         if (mRil.mCdmaSmsRegistrant != null) {
             mRil.mCdmaSmsRegistrant.notifyRegistrant(new AsyncResult(null, sms, null));
         }
@@ -1068,24 +1066,24 @@ public class RadioIndication extends IRadioIndication.Stub {
     }
 
     /**
-     * Indicates the content of all the used records in the SIM phonebook..
+     * Indicates the content of all the used records in the SIM phonebook.
      * @param indicationType RadioIndicationType
+     * @param status Status of PbReceivedStatus
      * @param records Content of the SIM phonebook records
      */
     public void simPhonebookRecordsReceived(int indicationType, byte status,
             ArrayList<PhonebookRecordInfo> records) {
         mRil.processIndication(indicationType);
 
-        List<SimPhonebookRecord> simPhonebookRecords = new ArrayList<SimPhonebookRecord>();
+        List<SimPhonebookRecord> simPhonebookRecords = new ArrayList<>();
 
         for (PhonebookRecordInfo record : records) {
-            simPhonebookRecords.add(new SimPhonebookRecord(record));
+            simPhonebookRecords.add(RILUtils.convertHalPhonebookRecordInfo(record));
         }
 
         if (RIL.RILJ_LOGD) {
             mRil.unsljLogRet(RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED,
-                    "status = " + status +
-                    " received " + records.size() + " records");
+                    "status = " + status + " received " + records.size() + " records");
         }
 
         mRil.mSimPhonebookRecordsReceivedRegistrants.notifyRegistrants(
@@ -1108,7 +1106,7 @@ public class RadioIndication extends IRadioIndication.Stub {
             @NetworkRegistrationInfo.Domain int domain,
             int causeCode, int additionalCauseCode) {
         mRil.processIndication(indicationType);
-        CellIdentity ci = CellIdentity.create(cellIdentity);
+        CellIdentity ci = RILUtils.convertHalCellIdentity(cellIdentity);
         if (ci == null
                 || TextUtils.isEmpty(chosenPlmn)
                 || (domain & NetworkRegistrationInfo.DOMAIN_CS_PS) == 0
@@ -1124,11 +1122,8 @@ public class RadioIndication extends IRadioIndication.Stub {
         }
 
         mRil.mRegistrationFailedRegistrant.notifyRegistrant(
-                new AsyncResult(
-                        null,
-                        new RegistrationFailedEvent(ci, chosenPlmn, domain,
-                                causeCode, additionalCauseCode),
-                        null));
+                new AsyncResult(null, new RegistrationFailedEvent(ci, chosenPlmn, domain,
+                        causeCode, additionalCauseCode), null));
     }
 
     /**
@@ -1152,8 +1147,8 @@ public class RadioIndication extends IRadioIndication.Stub {
             return;
         }
 
-        CellIdentity ci = CellIdentity.create(cellIdentity);
-        BarringInfo cbi = BarringInfo.create(cellIdentity, barringInfos);
+        BarringInfo cbi = new BarringInfo(RILUtils.convertHalCellIdentity(cellIdentity),
+                RILUtils.convertHalBarringInfoList(barringInfos));
 
         mRil.mBarringInfoChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, cbi, null));
@@ -1177,35 +1172,6 @@ public class RadioIndication extends IRadioIndication.Stub {
                 break;
             default:
                 mRil.riljLoge("Unsupported frequency type " + config.rfInfo.getDiscriminator());
-        }
-    }
-
-    /**
-     * Set the band from the physical channel config.
-     *
-     * @param builder the builder of {@link PhysicalChannelConfig}.
-     * @param config physical channel config from ril.
-     */
-    public void setBandToBuilder(PhysicalChannelConfig.Builder builder,
-            android.hardware.radio.V1_6.PhysicalChannelConfig config) {
-
-        android.hardware.radio.V1_6.PhysicalChannelConfig.Band band = config.band;
-
-        switch (band.getDiscriminator()) {
-            case Band.hidl_discriminator.geranBand:
-                builder.setBand(band.geranBand());
-                break;
-            case Band.hidl_discriminator.utranBand:
-                builder.setBand(band.utranBand());
-                break;
-            case Band.hidl_discriminator.eutranBand:
-                builder.setBand(band.eutranBand());
-                break;
-            case Band.hidl_discriminator.ngranBand:
-                builder.setBand(band.ngranBand());
-                break;
-            default:
-                mRil.riljLoge("Unsupported band type " + band.getDiscriminator());
         }
     }
 
@@ -1239,7 +1205,22 @@ public class RadioIndication extends IRadioIndication.Stub {
                     android.hardware.radio.V1_6.PhysicalChannelConfig config =
                             (android.hardware.radio.V1_6.PhysicalChannelConfig) obj;
                     PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
-                    setBandToBuilder(builder, config);
+                    switch (config.band.getDiscriminator()) {
+                        case Band.hidl_discriminator.geranBand:
+                            builder.setBand(config.band.geranBand());
+                            break;
+                        case Band.hidl_discriminator.utranBand:
+                            builder.setBand(config.band.utranBand());
+                            break;
+                        case Band.hidl_discriminator.eutranBand:
+                            builder.setBand(config.band.eutranBand());
+                            break;
+                        case Band.hidl_discriminator.ngranBand:
+                            builder.setBand(config.band.ngranBand());
+                            break;
+                        default:
+                            mRil.riljLoge("Unsupported band " + config.band.getDiscriminator());
+                    }
                     response.add(builder.setCellConnectionStatus(
                             RILUtils.convertHalCellConnectionStatus(config.status))
                             .setDownlinkChannelNumber(config.downlinkChannelNumber)
