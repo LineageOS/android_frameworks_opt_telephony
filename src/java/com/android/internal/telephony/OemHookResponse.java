@@ -16,9 +16,9 @@
 
 package com.android.internal.telephony;
 
-import android.hardware.radio.deprecated.V1_0.IOemHookResponse;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioResponseInfo;
+import android.hardware.radio.deprecated.V1_0.IOemHookResponse;
 
 import java.util.ArrayList;
 
@@ -42,7 +42,7 @@ public class OemHookResponse extends IOemHookResponse.Stub {
         if (rr != null) {
             byte[] ret = null;
             if (responseInfo.error == RadioError.NONE) {
-                ret = RIL.arrayListToPrimitiveArray(data);
+                ret = RILUtils.arrayListToPrimitiveArray(data);
                 RadioResponse.sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone(rr, responseInfo, ret);
