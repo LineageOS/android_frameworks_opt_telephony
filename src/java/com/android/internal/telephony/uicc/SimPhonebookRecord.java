@@ -16,15 +16,12 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.hardware.radio.V1_6.PhonebookRecordInfo;
-import android.text.TextUtils;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.util.ArrayUtils;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * Represents a Phonebook entry from the SIM.
@@ -39,7 +36,6 @@ public class SimPhonebookRecord {
     private String[] mEmails;
     private String[] mAdditionalNumbers;
 
-    // Instance methods
     public SimPhonebookRecord (int recordIndex, String alphaTag, String number,
                String[] emails, String[] adNumbers) {
         mRecordIndex = recordIndex;
@@ -49,42 +45,11 @@ public class SimPhonebookRecord {
         if (adNumbers != null) {
             mAdditionalNumbers = new String[adNumbers.length];
             for (int i = 0 ; i < adNumbers.length; i++) {
-                mAdditionalNumbers[i] =
-                        convertRecordFormatToNumber(adNumbers[i]);
+                mAdditionalNumbers[i] = convertRecordFormatToNumber(adNumbers[i]);
             }
         }
     }
 
-    public SimPhonebookRecord(PhonebookRecordInfo recInfo) {
-        mRecordIndex = recInfo.recordId;
-        mAlphaTag = recInfo.name;
-        mNumber = recInfo.number;
-        mEmails = recInfo.emails == null ? null
-                : recInfo.emails.toArray(new String[recInfo.emails.size()]);
-        mAdditionalNumbers = recInfo.additionalNumbers == null ? null
-                : recInfo.additionalNumbers.toArray(
-                        new String[recInfo.additionalNumbers.size()]);
-    }
-
-    public SimPhonebookRecord() {}
-
-    public PhonebookRecordInfo toPhonebookRecordInfo() {
-        PhonebookRecordInfo pbRecordInfo = new PhonebookRecordInfo();
-        pbRecordInfo.recordId = mRecordIndex;
-        pbRecordInfo.name = convertNullToEmptyString(mAlphaTag);
-        pbRecordInfo.number = convertNullToEmptyString(convertNumberToRecordFormat(mNumber));
-        if (mEmails != null) {
-            for (String email : mEmails) {
-                pbRecordInfo.emails.add(email);
-            }
-        }
-        if (mAdditionalNumbers != null) {
-            for (String addNum : mAdditionalNumbers) {
-                pbRecordInfo.additionalNumbers.add(convertNumberToRecordFormat(addNum));
-            }
-        }
-        return pbRecordInfo;
-    }
     public int getRecordIndex() {
         return mRecordIndex;
     }
@@ -112,19 +77,6 @@ public class SimPhonebookRecord {
         return input == null ? null : input.replace( 'e', PhoneNumberUtils.WAIT )
                 .replace( 'T', PhoneNumberUtils.PAUSE )
                 .replace( '?', PhoneNumberUtils.WILD );
-    }
-
-    /**
-     * convert the GSM pause/wild/wait character to the phone number in the SIM pb record format
-     */
-    private static String convertNumberToRecordFormat(String input) {
-        return input == null ? null : input.replace(PhoneNumberUtils.WAIT, 'e')
-                .replace(PhoneNumberUtils.PAUSE, 'T')
-                .replace(PhoneNumberUtils.WILD, '?');
-    }
-
-    private static String convertNullToEmptyString(String string) {
-        return string != null ? string : "";
     }
 
     public boolean isEmpty() {
@@ -158,17 +110,8 @@ public class SimPhonebookRecord {
         private String[] mAdditionalNumbers;
 
         public SimPhonebookRecord build() {
-            SimPhonebookRecord record = new SimPhonebookRecord();
-            record.mAlphaTag = mAlphaTag;
-            record.mRecordIndex = mRecordIndex;
-            record.mNumber = mNumber;
-            if (mEmails != null) {
-                record.mEmails = mEmails;
-            }
-            if (mAdditionalNumbers != null) {
-                record.mAdditionalNumbers = mAdditionalNumbers;
-            }
-            return record;
+            return new SimPhonebookRecord(mRecordIndex, mAlphaTag, mNumber, mEmails,
+                    mAdditionalNumbers);
         }
 
         public Builder setRecordIndex(int index) {
