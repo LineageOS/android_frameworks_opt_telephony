@@ -42,6 +42,7 @@ import android.util.StatsEvent;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
@@ -191,14 +192,12 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             return StatsManager.PULL_SKIP;
         }
 
-        StatsEvent e =
-                StatsEvent.newBuilder()
-                        .setAtomId(SIM_SLOT_STATE)
-                        .writeInt(state.numActiveSlots)
-                        .writeInt(state.numActiveSims)
-                        .writeInt(state.numActiveEsims)
-                        .build();
-        data.add(e);
+        data.add(
+                TelephonyStatsLog.buildStatsEvent(
+                        SIM_SLOT_STATE,
+                        state.numActiveSlots,
+                        state.numActiveSims,
+                        state.numActiveEsims));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -214,12 +213,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             rafSupported |= phone.getRadioAccessFamily();
         }
 
-        StatsEvent e =
-                StatsEvent.newBuilder()
-                        .setAtomId(SUPPORTED_RADIO_ACCESS_FAMILY)
-                        .writeLong(rafSupported)
-                        .build();
-        data.add(e);
+        data.add(TelephonyStatsLog.buildStatsEvent(SUPPORTED_RADIO_ACCESS_FAMILY, rafSupported));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -231,11 +225,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             // All phones should have the same version of the carrier ID table, so only query the
             // first one.
             int version = phones[0].getCarrierIdListVersion();
-            data.add(
-                    StatsEvent.newBuilder()
-                            .setAtomId(CARRIER_ID_TABLE_VERSION)
-                            .writeInt(version)
-                            .build());
+            data.add(TelephonyStatsLog.buildStatsEvent(CARRIER_ID_TABLE_VERSION, version));
             return StatsManager.PULL_SUCCESS;
         }
     }
@@ -396,217 +386,179 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     private static StatsEvent buildStatsEvent(CellularDataServiceSwitch serviceSwitch) {
-        return StatsEvent.newBuilder()
-                .setAtomId(CELLULAR_DATA_SERVICE_SWITCH)
-                .writeInt(serviceSwitch.ratFrom)
-                .writeInt(serviceSwitch.ratTo)
-                .writeInt(serviceSwitch.simSlotIndex)
-                .writeBoolean(serviceSwitch.isMultiSim)
-                .writeInt(serviceSwitch.carrierId)
-                .writeInt(serviceSwitch.switchCount)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                CELLULAR_DATA_SERVICE_SWITCH,
+                serviceSwitch.ratFrom,
+                serviceSwitch.ratTo,
+                serviceSwitch.simSlotIndex,
+                serviceSwitch.isMultiSim,
+                serviceSwitch.carrierId,
+                serviceSwitch.switchCount);
     }
 
     private static StatsEvent buildStatsEvent(CellularServiceState state) {
-        return StatsEvent.newBuilder()
-                .setAtomId(CELLULAR_SERVICE_STATE)
-                .writeInt(state.voiceRat)
-                .writeInt(state.dataRat)
-                .writeInt(state.voiceRoamingType)
-                .writeInt(state.dataRoamingType)
-                .writeBoolean(state.isEndc)
-                .writeInt(state.simSlotIndex)
-                .writeBoolean(state.isMultiSim)
-                .writeInt(state.carrierId)
-                .writeInt(
-                        (int)
-                                (round(state.totalTimeMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                CELLULAR_SERVICE_STATE,
+                state.voiceRat,
+                state.dataRat,
+                state.voiceRoamingType,
+                state.dataRoamingType,
+                state.isEndc,
+                state.simSlotIndex,
+                state.isMultiSim,
+                state.carrierId,
+                (int) (round(state.totalTimeMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
-        return StatsEvent.newBuilder()
-                .setAtomId(VOICE_CALL_RAT_USAGE)
-                .writeInt(usage.carrierId)
-                .writeInt(usage.rat)
-                .writeLong(
-                        round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS)
-                .writeLong(usage.callCount)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                VOICE_CALL_RAT_USAGE,
+                usage.carrierId,
+                usage.rat,
+                round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS,
+                usage.callCount);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallSession session) {
-        return StatsEvent.newBuilder()
-                .setAtomId(VOICE_CALL_SESSION)
-                .writeInt(session.bearerAtStart)
-                .writeInt(session.bearerAtEnd)
-                .writeInt(session.direction)
-                .writeInt(session.setupDuration)
-                .writeBoolean(session.setupFailed)
-                .writeInt(session.disconnectReasonCode)
-                .writeInt(session.disconnectExtraCode)
-                .writeString(session.disconnectExtraMessage)
-                .writeInt(session.ratAtStart)
-                .writeInt(session.ratAtEnd)
-                .writeLong(session.ratSwitchCount)
-                .writeLong(session.codecBitmask)
-                .writeInt(session.concurrentCallCountAtStart)
-                .writeInt(session.concurrentCallCountAtEnd)
-                .writeInt(session.simSlotIndex)
-                .writeBoolean(session.isMultiSim)
-                .writeBoolean(session.isEsim)
-                .writeInt(session.carrierId)
-                .writeBoolean(session.srvccCompleted)
-                .writeLong(session.srvccFailureCount)
-                .writeLong(session.srvccCancellationCount)
-                .writeBoolean(session.rttEnabled)
-                .writeBoolean(session.isEmergency)
-                .writeBoolean(session.isRoaming)
+        return TelephonyStatsLog.buildStatsEvent(
+                VOICE_CALL_SESSION,
+                session.bearerAtStart,
+                session.bearerAtEnd,
+                session.direction,
+                session.setupDuration,
+                session.setupFailed,
+                session.disconnectReasonCode,
+                session.disconnectExtraCode,
+                session.disconnectExtraMessage,
+                session.ratAtStart,
+                session.ratAtEnd,
+                session.ratSwitchCount,
+                session.codecBitmask,
+                session.concurrentCallCountAtStart,
+                session.concurrentCallCountAtEnd,
+                session.simSlotIndex,
+                session.isMultiSim,
+                session.isEsim,
+                session.carrierId,
+                session.srvccCompleted,
+                session.srvccFailureCount,
+                session.srvccCancellationCount,
+                session.rttEnabled,
+                session.isEmergency,
+                session.isRoaming,
                 // workaround: dimension required for keeping multiple pulled atoms
-                .writeInt(sRandom.nextInt())
+                sRandom.nextInt(),
                 // New fields introduced in Android S
-                .writeInt(session.signalStrengthAtEnd)
-                .writeInt(session.bandAtEnd)
-                .writeInt(session.setupDurationMillis)
-                .writeInt(session.mainCodecQuality)
-                .writeBoolean(session.videoEnabled)
-                .writeInt(session.ratAtConnected)
-                .writeBoolean(session.isMultiparty)
-                .build();
+                session.signalStrengthAtEnd,
+                session.bandAtEnd,
+                session.setupDurationMillis,
+                session.mainCodecQuality,
+                session.videoEnabled,
+                session.ratAtConnected,
+                session.isMultiparty);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {
-        return StatsEvent.newBuilder()
-                .setAtomId(INCOMING_SMS)
-                .writeInt(sms.smsFormat)
-                .writeInt(sms.smsTech)
-                .writeInt(sms.rat)
-                .writeInt(sms.smsType)
-                .writeInt(sms.totalParts)
-                .writeInt(sms.receivedParts)
-                .writeBoolean(sms.blocked)
-                .writeInt(sms.error)
-                .writeBoolean(sms.isRoaming)
-                .writeInt(sms.simSlotIndex)
-                .writeBoolean(sms.isMultiSim)
-                .writeBoolean(sms.isEsim)
-                .writeInt(sms.carrierId)
-                .writeLong(sms.messageId)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                INCOMING_SMS,
+                sms.smsFormat,
+                sms.smsTech,
+                sms.rat,
+                sms.smsType,
+                sms.totalParts,
+                sms.receivedParts,
+                sms.blocked,
+                sms.error,
+                sms.isRoaming,
+                sms.simSlotIndex,
+                sms.isMultiSim,
+                sms.isEsim,
+                sms.carrierId,
+                sms.messageId);
     }
 
     private static StatsEvent buildStatsEvent(OutgoingSms sms) {
-        return StatsEvent.newBuilder()
-                .setAtomId(OUTGOING_SMS)
-                .writeInt(sms.smsFormat)
-                .writeInt(sms.smsTech)
-                .writeInt(sms.rat)
-                .writeInt(sms.sendResult)
-                .writeInt(sms.errorCode)
-                .writeBoolean(sms.isRoaming)
-                .writeBoolean(sms.isFromDefaultApp)
-                .writeInt(sms.simSlotIndex)
-                .writeBoolean(sms.isMultiSim)
-                .writeBoolean(sms.isEsim)
-                .writeInt(sms.carrierId)
-                .writeLong(sms.messageId)
-                .writeInt(sms.retryId)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                OUTGOING_SMS,
+                sms.smsFormat,
+                sms.smsTech,
+                sms.rat,
+                sms.sendResult,
+                sms.errorCode,
+                sms.isRoaming,
+                sms.isFromDefaultApp,
+                sms.simSlotIndex,
+                sms.isMultiSim,
+                sms.isEsim,
+                sms.carrierId,
+                sms.messageId,
+                sms.retryId);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {
-        return StatsEvent.newBuilder()
-                .setAtomId(DATA_CALL_SESSION)
-                .writeInt(dataCallSession.dimension)
-                .writeBoolean(dataCallSession.isMultiSim)
-                .writeBoolean(dataCallSession.isEsim)
-                .writeInt(0) // profile is deprecated, so we default to 0
-                .writeInt(dataCallSession.apnTypeBitmask)
-                .writeInt(dataCallSession.carrierId)
-                .writeBoolean(dataCallSession.isRoaming)
-                .writeInt(dataCallSession.ratAtEnd)
-                .writeBoolean(dataCallSession.oosAtEnd)
-                .writeLong(dataCallSession.ratSwitchCount)
-                .writeBoolean(dataCallSession.isOpportunistic)
-                .writeInt(dataCallSession.ipType)
-                .writeBoolean(dataCallSession.setupFailed)
-                .writeInt(dataCallSession.failureCause)
-                .writeInt(dataCallSession.suggestedRetryMillis)
-                .writeInt(dataCallSession.deactivateReason)
-                .writeLong(round(
-                        dataCallSession.durationMinutes, DURATION_BUCKET_MILLIS / MINUTE_IN_MILLIS))
-                .writeBoolean(dataCallSession.ongoing)
-                .writeInt(dataCallSession.bandAtEnd)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                DATA_CALL_SESSION,
+                dataCallSession.dimension,
+                dataCallSession.isMultiSim,
+                dataCallSession.isEsim,
+                0, // profile is deprecated, so we default to 0
+                dataCallSession.apnTypeBitmask,
+                dataCallSession.carrierId,
+                dataCallSession.isRoaming,
+                dataCallSession.ratAtEnd,
+                dataCallSession.oosAtEnd,
+                dataCallSession.ratSwitchCount,
+                dataCallSession.isOpportunistic,
+                dataCallSession.ipType,
+                dataCallSession.setupFailed,
+                dataCallSession.failureCause,
+                dataCallSession.suggestedRetryMillis,
+                dataCallSession.deactivateReason,
+                round(dataCallSession.durationMinutes, DURATION_BUCKET_MILLIS / MINUTE_IN_MILLIS),
+                dataCallSession.ongoing,
+                dataCallSession.bandAtEnd);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {
-        return StatsEvent.newBuilder()
-                .setAtomId(IMS_REGISTRATION_STATS)
-                .writeInt(stats.carrierId)
-                .writeInt(stats.simSlotIndex)
-                .writeInt(stats.rat)
-                .writeInt(
-                        (int)
-                                (round(stats.registeredMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.voiceCapableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.voiceAvailableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.smsCapableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.smsAvailableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.videoCapableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.videoAvailableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.utCapableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .writeInt(
-                        (int)
-                                (round(stats.utAvailableMillis, DURATION_BUCKET_MILLIS)
-                                        / SECOND_IN_MILLIS))
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                IMS_REGISTRATION_STATS,
+                stats.carrierId,
+                stats.simSlotIndex,
+                stats.rat,
+                (int) (round(stats.registeredMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.voiceCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int)
+                        (round(stats.voiceAvailableMillis, DURATION_BUCKET_MILLIS)
+                                / SECOND_IN_MILLIS),
+                (int) (round(stats.smsCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.smsAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.videoCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int)
+                        (round(stats.videoAvailableMillis, DURATION_BUCKET_MILLIS)
+                                / SECOND_IN_MILLIS),
+                (int) (round(stats.utCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                (int) (round(stats.utAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
-        return StatsEvent.newBuilder()
-                .setAtomId(IMS_REGISTRATION_TERMINATION)
-                .writeInt(termination.carrierId)
-                .writeBoolean(termination.isMultiSim)
-                .writeInt(termination.ratAtEnd)
-                .writeBoolean(termination.setupFailed)
-                .writeInt(termination.reasonCode)
-                .writeInt(termination.extraCode)
-                .writeString(termination.extraMessage)
-                .writeInt(termination.count)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                IMS_REGISTRATION_TERMINATION,
+                termination.carrierId,
+                termination.isMultiSim,
+                termination.ratAtEnd,
+                termination.setupFailed,
+                termination.reasonCode,
+                termination.extraCode,
+                termination.extraMessage,
+                termination.count);
     }
 
     private static StatsEvent buildStatsEvent(NetworkRequests networkRequests) {
-        return StatsEvent.newBuilder()
-                .setAtomId(TELEPHONY_NETWORK_REQUESTS)
-                .writeInt(networkRequests.carrierId)
-                .writeInt(networkRequests.enterpriseRequestCount)
-                .writeInt(networkRequests.enterpriseReleaseCount)
-                .build();
+        return TelephonyStatsLog.buildStatsEvent(
+                TELEPHONY_NETWORK_REQUESTS,
+                networkRequests.carrierId,
+                networkRequests.enterpriseRequestCount,
+                networkRequests.enterpriseReleaseCount);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */

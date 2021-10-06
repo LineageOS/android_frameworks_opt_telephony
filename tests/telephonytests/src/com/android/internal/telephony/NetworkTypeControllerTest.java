@@ -302,6 +302,27 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testTransitionToCurrentStateIdle_usingUserDataForRrcDetection() throws Exception {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL, true);
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        broadcastCarrierConfigs();
+        processAllMessages();
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
+                new AsyncResult(null, DcController.PHYSICAL_LINK_NOT_ACTIVE, null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+
+        processAllMessages();
+
+        assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
+    }
+
+    @Test
     public void testTransitionToCurrentStateLteConnected() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
@@ -319,6 +340,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
                 TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        broadcastCarrierConfigs();
         processAllMessages();
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
@@ -327,6 +349,28 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
+        assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateLteConnected_usingUserDataForRrcDetection()
+            throws Exception {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL, true);
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        broadcastCarrierConfigs();
+        processAllMessages();
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
+                new AsyncResult(null, DcController.PHYSICAL_LINK_ACTIVE, null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+
+        processAllMessages();
+
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
     }
 
@@ -564,6 +608,30 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
     }
 
+
+    @Test
+    public void testUsingUserDataForRrcDetection_FromNrConnectedMmwaveToLteConnected()
+            throws Exception {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL, true);
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        broadcastCarrierConfigs();
+        processAllMessages();
+        testTransitionToCurrentStateNrConnectedMmwave();
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
+                new AsyncResult(null, DcController.PHYSICAL_LINK_ACTIVE, null));
+        mNetworkTypeController.sendMessage(EVENT_NR_FREQUENCY_CHANGED);
+        mNetworkTypeController.sendMessage(EVENT_NR_STATE_CHANGED);
+
+        processAllMessages();
+
+        assertEquals("not_restricted_rrc_con", getCurrentState().getName());
+    }
+
     @Test
     public void testEventPhysicalChannelChangeFromLteToLteCaInLegacyState() throws Exception {
         testTransitionToCurrentStateLegacy();
@@ -662,6 +730,26 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         setPhysicalLinkState(false);
         mNetworkTypeController.sendMessage(EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED);
+
+        processAllMessages();
+
+        assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
+    }
+
+    @Test
+    public void testEventPhysicalLinkStateChanged_UsingUserDataForRrcDetection()
+            throws Exception {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL, true);
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
+        broadcastCarrierConfigs();
+        processAllMessages();
+        testTransitionToCurrentStateLteConnected_usingUserDataForRrcDetection();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        mNetworkTypeController.sendMessage(EVENT_PHYSICAL_LINK_STATE_CHANGED,
+                new AsyncResult(null, DcController.PHYSICAL_LINK_NOT_ACTIVE, null));
 
         processAllMessages();
 

@@ -430,9 +430,7 @@ public class ApnContext {
 
     public void releaseNetwork(NetworkRequest networkRequest, @ReleaseNetworkType int type) {
         synchronized (mRefCountLock) {
-            if (mNetworkRequests.contains(networkRequest) == false) {
-                logl("releaseNetwork can't find this request (" + networkRequest + ")");
-            } else {
+            if (mNetworkRequests.contains(networkRequest)) {
                 mNetworkRequests.remove(networkRequest);
                 if (mDataConnection != null) {
                     // New network request added. Should re-evaluate properties of

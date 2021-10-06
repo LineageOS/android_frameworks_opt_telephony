@@ -381,10 +381,12 @@ public class UiccCarrierPrivilegeRules extends Handler {
             PackageManager packageManager, int uid) {
         String[] packages = packageManager.getPackagesForUid(uid);
 
-        for (String pkg : packages) {
-            int accessStatus = getCarrierPrivilegeStatus(packageManager, pkg);
-            if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
-                return accessStatus;
+        if (packages != null) {
+            for (String pkg : packages) {
+                int accessStatus = getCarrierPrivilegeStatus(packageManager, pkg);
+                if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
+                    return accessStatus;
+                }
             }
         }
         return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;

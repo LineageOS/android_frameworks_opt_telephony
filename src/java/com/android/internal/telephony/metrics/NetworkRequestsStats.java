@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
@@ -28,8 +30,12 @@ import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequests;
 public class NetworkRequestsStats {
     private NetworkRequestsStats() { }
 
-    /** Generate metrics when enterprise network request occurs. */
-    public static void addEnterpriseRequest(int subId) {
+    /** Generate metrics when network request occurs. */
+    public static void addNetworkRequest(NetworkRequest networkRequest, int subId) {
+        if (!networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)) {
+            // Currently only handle enterprise
+            return;
+        }
         NetworkRequests networkRequests = new NetworkRequests();
         networkRequests.carrierId = getCarrierId(subId);
         networkRequests.enterpriseRequestCount = 1;
@@ -38,8 +44,12 @@ public class NetworkRequestsStats {
         storage.addNetworkRequests(networkRequests);
     }
 
-    /** Generate metrics when enterprise network release occurs. */
-    public static void addEnterpriseRelease(int subId) {
+    /** Generate metrics when network release occurs. */
+    public static void addNetworkRelease(NetworkRequest networkRequest, int subId) {
+        if (!networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)) {
+            // Currently only handle enterprise
+            return;
+        }
         NetworkRequests networkRequests = new NetworkRequests();
         networkRequests.carrierId = getCarrierId(subId);
         networkRequests.enterpriseReleaseCount = 1;

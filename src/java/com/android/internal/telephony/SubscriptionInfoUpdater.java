@@ -419,13 +419,8 @@ public class SubscriptionInfoUpdater extends Handler {
         UiccSlot uiccSlot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
         String iccId = (uiccSlot != null) ? IccUtils.stripTrailingFs(uiccSlot.getIccId()) : null;
         if (!TextUtils.isEmpty(iccId)) {
-            // Call updateSubscriptionInfoByIccId() only if was
-            // not done earlier from SIM Locked event
-            if (sIccId[phoneId] == null) {
-                sIccId[phoneId] = iccId;
-
-                updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
-            }
+            sIccId[phoneId] = iccId;
+            updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
         }
 
         cardIds.add(getCardIdFromPhoneId(phoneId));
@@ -458,6 +453,8 @@ public class SubscriptionInfoUpdater extends Handler {
             // as equivalent to ABSENT, once the rest of the system can handle it.
             sIccId[phoneId] = ICCID_STRING_FOR_NO_SIM;
             updateSubscriptionInfoByIccId(phoneId, false /* updateEmbeddedSubs */);
+        } else {
+            sIccId[phoneId] = null;
         }
 
         broadcastSimStateChanged(phoneId, IccCardConstants.INTENT_VALUE_ICC_NOT_READY,
@@ -718,7 +715,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionController.clearSubInfoRecord(phoneId);
 
         // If SIM is not absent, insert new record or update existing record.
-        if (!ICCID_STRING_FOR_NO_SIM.equals(sIccId[phoneId])) {
+        if (!ICCID_STRING_FOR_NO_SIM.equals(sIccId[phoneId]) && sIccId[phoneId] != null) {
             logd("updateSubscriptionInfoByIccId: adding subscription info record: iccid: "
                     + sIccId[phoneId] + ", phoneId:" + phoneId);
             mSubscriptionManager.addSubscriptionInfoRecord(sIccId[phoneId], phoneId);
@@ -1128,12 +1125,10 @@ public class SubscriptionInfoUpdater extends Handler {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected void broadcastSimStateChanged(int phoneId, String state, String reason) {
+        // Note: This intent is way deprecated and is only being kept around because there's no
+        // graceful way to deprecate a sticky broadcast that has a lot of listeners.
+        // DO NOT add any new extras to this broadcast -- it is not protected by any permissions.
         Intent i = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        // TODO - we'd like this intent to have a single snapshot of all sim state,
-        // but until then this should not use REPLACE_PENDING or we may lose
-        // information
-        // i.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
-        //         | Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         i.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
         i.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, state);

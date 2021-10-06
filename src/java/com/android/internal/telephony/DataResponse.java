@@ -22,7 +22,7 @@ import android.hardware.radio.data.IRadioDataResponse;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.data.DataCallResponse;
-import android.telephony.data.SlicingConfig;
+import android.telephony.data.NetworkSlicingConfig;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 
@@ -128,7 +128,7 @@ public class DataResponse extends IRadioDataResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SlicingConfig ret = RILUtils.convertHalSlicingConfig(slicingConfig);
+            NetworkSlicingConfig ret = RILUtils.convertHalSlicingConfig(slicingConfig);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }

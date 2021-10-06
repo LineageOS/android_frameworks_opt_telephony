@@ -24,6 +24,9 @@ import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_INACTIVE_SUBSCRIPTION;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_SUCCESS;
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 
 import static java.util.Arrays.copyOf;
 
@@ -57,8 +60,14 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
+import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.LocalLog;
 
+import com.android.ims.ImsException;
+import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
 import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
@@ -166,6 +175,7 @@ public class PhoneSwitcher extends Handler {
     private final LocalLog mLocalLog;
     protected PhoneState[] mPhoneStates;
     protected int[] mPhoneSubscriptions;
+    private boolean mIsRegisteredForImsRadioTechChange;
     @VisibleForTesting
     protected final CellularNetworkValidator mValidator;
     private int mPendingSwitchSubId = INVALID_SUBSCRIPTION_ID;
@@ -246,7 +256,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_EMERGENCY_TOGGLE               = 105;
     private static final int EVENT_RADIO_CAPABILITY_CHANGED       = 106;
     private static final int EVENT_OPPT_DATA_SUB_CHANGED          = 107;
-    private static final int EVENT_RADIO_AVAILABLE                = 108;
+    private static final int EVENT_RADIO_ON                       = 108;
     // A call has either started or ended. If an emergency ended and DDS is overridden using
     // mEmergencyOverride, start the countdown to remove the override using the message
     // EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE. The only exception to this is if the device moves to
@@ -271,6 +281,11 @@ public class PhoneSwitcher extends Handler {
     public static final int EVENT_MULTI_SIM_CONFIG_CHANGED        = 117;
     private static final int EVENT_NETWORK_AVAILABLE              = 118;
     private static final int EVENT_PROCESS_SIM_STATE_CHANGE       = 119;
+    @VisibleForTesting
+    public static final int EVENT_IMS_RADIO_TECH_CHANGED          = 120;
+
+    // List of events triggers re-evaluations
+    private static final String EVALUATION_REASON_RADIO_ON = "EVENT_RADIO_ON";
 
     // Depending on version of IRadioConfig, we need to send either RIL_REQUEST_ALLOW_DATA if it's
     // 1.0, or RIL_REQUEST_SET_PREFERRED_DATA if it's 1.1 or later. So internally mHalCommandToUse
@@ -290,6 +305,7 @@ public class PhoneSwitcher extends Handler {
     private Boolean mHasRegisteredDefaultNetworkChangeCallback = false;
 
     private ConnectivityManager mConnectivityManager;
+    private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
 
     private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
 
@@ -312,7 +328,40 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
+    private RegistrationManager.RegistrationCallback mRegistrationCallback =
+            new RegistrationManager.RegistrationCallback() {
+        @Override
+        public void onRegistered(ImsRegistrationAttributes attributes) {
+            int imsRegistrationTech = attributes.getRegistrationTechnology();
+            if (imsRegistrationTech != mImsRegistrationTech) {
+                mImsRegistrationTech = imsRegistrationTech;
+                sendMessage(obtainMessage(EVENT_IMS_RADIO_TECH_CHANGED));
+            }
+        }
+
+        @Override
+        public void onUnregistered(ImsReasonInfo info) {
+            if (mImsRegistrationTech != REGISTRATION_TECH_NONE) {
+                mImsRegistrationTech = REGISTRATION_TECH_NONE;
+                sendMessage(obtainMessage(EVENT_IMS_RADIO_TECH_CHANGED));
+            }
+        }
+    };
+
     private final DefaultNetworkCallback mDefaultNetworkCallback = new DefaultNetworkCallback();
+
+    /**
+     * Interface to get ImsRegistrationTech. It's a wrapper of ImsManager#getRegistrationTech,
+     * to make it mock-able in unittests.
+     */
+    public interface ImsRegTechProvider {
+        /** Get IMS registration tech. */
+        @ImsRegistrationImplBase.ImsRegistrationTech int get(Context context, int phoneId);
+    }
+
+    @VisibleForTesting
+    public ImsRegTechProvider mImsRegTechProvider =
+            (context, phoneId) -> ImsManager.getInstance(context, phoneId).getRegistrationTech();
 
     /**
      * Method to get singleton instance.
@@ -333,6 +382,27 @@ public class PhoneSwitcher extends Handler {
         return sPhoneSwitcher;
     }
 
+    /**
+     * Whether this phone IMS registration is on its original network. This result impacts
+     * whether we want to do DDS switch to the phone having voice call.
+     * If it's registered on IWLAN or cross SIM in multi-SIM case, return false. Otherwise,
+     * return true.
+     */
+    private boolean isImsOnOriginalNetwork(Phone phone) {
+        if (phone == null) return false;
+        int phoneId = phone.getPhoneId();
+        if (!SubscriptionManager.isValidPhoneId(phoneId)) return false;
+
+        int imsRegTech = mImsRegTechProvider.get(mContext, phoneId);
+        // If IMS is registered on IWLAN or cross SIM, return false.
+        boolean isOnOriginalNetwork = (imsRegTech != REGISTRATION_TECH_IWLAN)
+                && (imsRegTech != REGISTRATION_TECH_CROSS_SIM);
+        if (!isOnOriginalNetwork) {
+            log("IMS call on IWLAN or cross SIM. Call will be ignored for DDS switch");
+        }
+        return isOnOriginalNetwork;
+    }
+
     private boolean isPhoneInVoiceCallChanged() {
         int oldPhoneIdInVoiceCall = mPhoneIdInVoiceCall;
         // If there's no active call, the value will become INVALID_PHONE_INDEX
@@ -340,7 +410,8 @@ public class PhoneSwitcher extends Handler {
         // subscription.
         mPhoneIdInVoiceCall = SubscriptionManager.INVALID_PHONE_INDEX;
         for (Phone phone : PhoneFactory.getPhones()) {
-            if (isPhoneInVoiceCall(phone) || isPhoneInVoiceCall(phone.getImsPhone())) {
+            if (isPhoneInVoiceCall(phone) || (isPhoneInVoiceCall(phone.getImsPhone())
+                    && isImsOnOriginalNetwork(phone))) {
                 mPhoneIdInVoiceCall = phone.getPhoneId();
                 break;
             }
@@ -352,6 +423,35 @@ public class PhoneSwitcher extends Handler {
             return true;
         } else {
             return false;
+        }
+    }
+
+    private void registerForImsRadioTechChange(Context context, int phoneId) {
+        try {
+            ImsManager.getInstance(context, phoneId).addRegistrationCallback(
+                    mRegistrationCallback, this::post);
+            mIsRegisteredForImsRadioTechChange = true;
+        } catch (ImsException imsException) {
+            mIsRegisteredForImsRadioTechChange = false;
+        }
+    }
+
+    private void registerForImsRadioTechChange() {
+        // register for radio tech change to listen to radio tech handover.
+        if (!mIsRegisteredForImsRadioTechChange) {
+            for (int i = 0; i < mActiveModemCount; i++) {
+                registerForImsRadioTechChange(mContext, i);
+            }
+        }
+    }
+
+    private void evaluateIfDataSwitchIsNeeded(String reason) {
+        if (onEvaluate(REQUESTS_UNCHANGED, reason)) {
+            logDataSwitchEvent(mPreferredDataSubId.get(),
+                    TelephonyEvent.EventState.EVENT_STATE_START,
+                    DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
+            registerDefaultNetworkChangeCallback(mPreferredDataSubId.get(),
+                    DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
         }
     }
 
@@ -389,13 +489,14 @@ public class PhoneSwitcher extends Handler {
                 }
                 PhoneFactory.getPhone(i).getDataEnabledSettings().registerForDataEnabledChanged(
                         this, EVENT_DATA_ENABLED_CHANGED, null);
+                registerForImsRadioTechChange(context, i);
             }
             Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
         }
 
         if (mActiveModemCount > 0) {
-            PhoneFactory.getPhone(0).mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+            PhoneFactory.getPhone(0).mCi.registerForOn(this, EVENT_RADIO_ON, null);
         }
 
         TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager)
@@ -546,16 +647,31 @@ public class PhoneSwitcher extends Handler {
                 setOpportunisticDataSubscription(subId, needValidation, callback);
                 break;
             }
-            case EVENT_RADIO_AVAILABLE: {
+            case EVENT_RADIO_ON: {
                 updateHalCommandToUse();
-                onEvaluate(REQUESTS_UNCHANGED, "EVENT_RADIO_AVAILABLE");
+                onEvaluate(REQUESTS_UNCHANGED, EVALUATION_REASON_RADIO_ON);
                 break;
             }
+            case EVENT_IMS_RADIO_TECH_CHANGED:
+                // register for radio tech change to listen to radio tech handover in case previous
+                // attempt was not successful
+                registerForImsRadioTechChange();
+                // If the phoneId in voice call didn't change, do nothing.
+                if (!isPhoneInVoiceCallChanged()) {
+                    break;
+                }
+                evaluateIfDataSwitchIsNeeded("EVENT_IMS_RADIO_TECH_CHANGED");
+                break;
+
             case EVENT_PRECISE_CALL_STATE_CHANGED: {
-                log("EVENT_PRECISE_CALL_STATE_CHANGED");
+                // register for radio tech change to listen to radio tech handover in case previous
+                // attempt was not successful
+                registerForImsRadioTechChange();
 
                 // If the phoneId in voice call didn't change, do nothing.
-                if (!isPhoneInVoiceCallChanged()) break;
+                if (!isPhoneInVoiceCallChanged()) {
+                    break;
+                }
 
                 if (!isAnyVoiceCallActiveOnDevice()) {
                     for (int i = 0; i < mActiveModemCount; i++) {
@@ -582,16 +698,12 @@ public class PhoneSwitcher extends Handler {
                         mEmergencyOverride.mPendingOriginatingCall = false;
                     }
                 }
+                evaluateIfDataSwitchIsNeeded("EVENT_PRECISE_CALL_STATE_CHANGED");
+                break;
             }
-            // fall through
+
             case EVENT_DATA_ENABLED_CHANGED:
-                if (onEvaluate(REQUESTS_UNCHANGED, "EVENT_PRECISE_CALL_STATE_CHANGED")) {
-                    logDataSwitchEvent(mPreferredDataSubId.get(),
-                            TelephonyEvent.EventState.EVENT_STATE_START,
-                            DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
-                    registerDefaultNetworkChangeCallback(mPreferredDataSubId.get(),
-                            DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
-                }
+                evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
                 break;
             case EVENT_NETWORK_VALIDATION_DONE: {
                 int subId = msg.arg1;
@@ -730,6 +842,7 @@ public class PhoneSwitcher extends Handler {
 
             Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
+            registerForImsRadioTechChange(mContext, phoneId);
         }
     }
 
@@ -927,7 +1040,10 @@ public class PhoneSwitcher extends Handler {
             notifyPreferredDataSubIdChanged();
         }
 
-        if (diffDetected) {
+        // Always force DDS when radio on. This is to handle the corner cases that modem and android
+        // DDS are out of sync after APM, AP should force DDS when radio on. long term solution
+        // should be having API to query preferred data modem to detect the out-of-sync scenarios.
+        if (diffDetected || EVALUATION_REASON_RADIO_ON.equals(reason)) {
             log("evaluating due to " + sb.toString());
             if (mHalCommandToUse == HAL_COMMAND_PREFERRED_DATA) {
                 // With HAL_COMMAND_PREFERRED_DATA, all phones are assumed to allow PS attach.

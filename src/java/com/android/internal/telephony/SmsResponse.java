@@ -59,8 +59,7 @@ public class SmsResponse {
         String ret = "{ mMessageRef = " + mMessageRef
                         + ", mErrorCode = " + mErrorCode
                 + ", mAckPdu = " + mAckPdu
-                + ", mMessageId = " + mMessageId
-                        + "}";
+                + ", " + SmsController.formatCrossStackMessageId(mMessageId) + "}";
         return ret;
     }
 }

@@ -33,6 +33,7 @@ import android.app.AppOpsManager;
 import android.app.DownloadManager;
 import android.app.KeyguardManager;
 import android.app.NotificationManager;
+import android.app.UiModeManager;
 import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -82,6 +83,7 @@ import android.telephony.euicc.EuiccManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.mock.MockContext;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -99,6 +101,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Controls a test {@link Context} as would be provided by the Android framework to an
@@ -195,6 +198,9 @@ public class ContextFixture implements TestFixture<Context> {
                 Intent serviceIntent,
                 ServiceConnection connection,
                 int flags) {
+            if (mMockBindingFailureForPackage.contains(serviceIntent.getPackage())) {
+                return false;
+            }
             if (mServiceByServiceConnection.containsKey(connection)) {
                 throw new RuntimeException("ServiceConnection already bound: " + connection);
             }
@@ -216,10 +222,11 @@ public class ContextFixture implements TestFixture<Context> {
         public void unbindService(
                 ServiceConnection connection) {
             IInterface service = mServiceByServiceConnection.remove(connection);
-            if (service == null) {
-                throw new RuntimeException("ServiceConnection not found: " + connection);
+            if (service != null) {
+                connection.onServiceDisconnected(mComponentNameByService.get(service));
+            } else {
+                logd("unbindService: ServiceConnection not found: " + connection);
             }
-            connection.onServiceDisconnected(mComponentNameByService.get(service));
         }
 
         @Override
@@ -271,6 +278,7 @@ public class ContextFixture implements TestFixture<Context> {
                 case Context.DISPLAY_SERVICE:
                 case Context.POWER_SERVICE:
                 case Context.PERMISSION_SERVICE:
+                case Context.LEGACY_PERMISSION_SERVICE:
                     // These are final classes so cannot be mocked,
                     // return real services.
                     return TestApplication.getAppContext().getSystemService(name);
@@ -299,18 +307,20 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.POWER_WHITELIST_MANAGER;
             } else if (serviceClass == SystemConfigManager.class) {
                 return Context.SYSTEM_CONFIG_SERVICE;
-            } else if (serviceClass == CarrierConfigManager.class){
-                return Context.CARRIER_CONFIG_SERVICE;
             } else if (serviceClass == ActivityManager.class) {
                 return Context.ACTIVITY_SERVICE;
+            } else if (serviceClass == LocationManager.class) {
+                return Context.LOCATION_SERVICE;
+            } else if (serviceClass == CarrierConfigManager.class) {
+                return Context.CARRIER_CONFIG_SERVICE;
             } else if (serviceClass == TelephonyManager.class) {
                 return Context.TELEPHONY_SERVICE;
+            } else if (serviceClass == UiModeManager.class) {
+                return Context.UI_MODE_SERVICE;
             } else if (serviceClass == KeyguardManager.class) {
                 return Context.KEYGUARD_SERVICE;
             } else if (serviceClass == VcnManager.class) {
                 return Context.VCN_MANAGEMENT_SERVICE;
-            } else if (serviceClass == LocationManager.class) {
-                return Context.LOCATION_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -466,6 +476,12 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendBroadcastMultiplePermissions(Intent intent,
+                String[] includePermissions, String[] excludePermissions) {
+            sendBroadcast(intent);
+        }
+
+        @Override
         public Context createContextAsUser(UserHandle user, int flags) {
             return this;
         }
@@ -613,6 +629,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final Map<ComponentName, IntentFilter> mIntentFilterByComponentName = new HashMap<>();
     private final Map<IInterface, ComponentName> mComponentNameByService =
             new HashMap<IInterface, ComponentName>();
+    private final Set<String> mMockBindingFailureForPackage = new HashSet();
     private final Map<ServiceConnection, IInterface> mServiceByServiceConnection =
             new HashMap<ServiceConnection, IInterface>();
     private final Multimap<String, BroadcastReceiver> mBroadcastReceiversByAction =
@@ -629,7 +646,6 @@ public class ContextFixture implements TestFixture<Context> {
     // The application context is the most important object this class provides to the system
     // under test.
     private final Context mContext = spy(new FakeContext());
-
     // We then create a spy on the application context allowing standard Mockito-style
     // when(...) logic to be used to add specific little responses where needed.
 
@@ -657,13 +673,14 @@ public class ContextFixture implements TestFixture<Context> {
         mock(TelephonyRegistryManager.class);
     private final SystemConfigManager mSystemConfigManager = mock(SystemConfigManager.class);
     private final PowerWhitelistManager mPowerWhitelistManager = mock(PowerWhitelistManager.class);
+    private final LocationManager mLocationManager = mock(LocationManager.class);
     private final KeyguardManager mKeyguardManager = mock(KeyguardManager.class);
     private final VcnManager mVcnManager = mock(VcnManager.class);
-    private final LocationManager mLocationManager = mock(LocationManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
     private final Configuration mConfiguration = new Configuration();
+    private final DisplayMetrics mDisplayMetrics = new DisplayMetrics();
     private final SharedPreferences mSharedPreferences = PreferenceManager
             .getDefaultSharedPreferences(TestApplication.getAppContext());
     private final MockContentResolver mContentResolver = new MockContentResolver();
@@ -718,6 +735,8 @@ public class ContextFixture implements TestFixture<Context> {
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
+        mDisplayMetrics.density = 2.25f;
+        doReturn(mDisplayMetrics).when(mResources).getDisplayMetrics();
         mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
         // Settings caches the provider after first get/set call, this is needed to make sure
         // Settings is using mContentProvider as the cached provider across all tests.
@@ -776,6 +795,10 @@ public class ContextFixture implements TestFixture<Context> {
         mServiceByComponentName.put(name, service);
         mServiceByPackageName.put(packageName, service);
         mComponentNameByService.put(service, name);
+    }
+
+    public void mockBindingFailureForPackage(String packageName) {
+        mMockBindingFailureForPackage.add(packageName);
     }
 
     private List<ResolveInfo> doQueryIntentServices(Intent intent, int flags) {

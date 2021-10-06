@@ -24,7 +24,9 @@ import android.telecom.Log;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Responsible for facilitating device-to-device communication between both ends of a call.
@@ -36,6 +38,7 @@ public class Communicator implements TransportProtocol.Callback {
      */
     public interface Callback {
         void onMessagesReceived(@NonNull Set<Message> messages);
+        void onD2DAvailabilitychanged(boolean isAvailable);
     }
 
     public static final int MESSAGE_CALL_RADIO_ACCESS_TYPE = 1;
@@ -106,6 +109,9 @@ public class Communicator implements TransportProtocol.Callback {
 
     public Communicator(@NonNull List<TransportProtocol> transportProtocols,
             @NonNull Callback callback) {
+        Log.i(this, "Initializing communicator with transports: %s",
+                transportProtocols.stream().map(p -> p.getClass().getSimpleName()).collect(
+                        Collectors.joining(",")));
         mTransportProtocols.addAll(transportProtocols);
         mTransportProtocols.forEach(p -> p.setCallback(this));
         mCallback = callback;
@@ -121,10 +127,11 @@ public class Communicator implements TransportProtocol.Callback {
 
     /**
      * Handles state changes for a call.
-     * @param c The call in question.
+     * @param id The call in question.
      * @param state The new state.
      */
-    public void onStateChanged(Connection c, @Connection.ConnectionState int state) {
+    public void onStateChanged(String id, @Connection.ConnectionState int state) {
+        Log.i(this, "onStateChanged: id=%s, newState=%d", id, state);
         if (state == Connection.STATE_ACTIVE) {
             // Protocol negotiation can start as we are active
             if (mActiveTransport == null && !mIsNegotiationAttempted) {
@@ -152,6 +159,7 @@ public class Communicator implements TransportProtocol.Callback {
         Log.i(this, "onNegotiationSuccess: %s negotiated; setting active.",
                 protocol.getClass().getSimpleName());
         mIsNegotiated = true;
+        notifyD2DStatus(true /* isAvailable */);
     }
 
     /**
@@ -204,6 +212,7 @@ public class Communicator implements TransportProtocol.Callback {
         if (mActiveTransport == null) {
             // No more protocols, exit.
             Log.i(this, "negotiateNextProtocol: no remaining transports.");
+            notifyD2DStatus(false /* isAvailable */);
             return;
         }
         Log.i(this, "negotiateNextProtocol: trying %s",
@@ -218,7 +227,11 @@ public class Communicator implements TransportProtocol.Callback {
     private TransportProtocol getNextCandidateProtocol() {
         TransportProtocol candidateProtocol = null;
         if (mActiveTransport == null) {
-            candidateProtocol = mTransportProtocols.get(0);
+            if (mTransportProtocols.size() > 0) {
+                candidateProtocol = mTransportProtocols.get(0);
+            } else {
+                mIsNegotiated = false;
+            }
         } else {
             for (int ix = 0; ix < mTransportProtocols.size(); ix++) {
                 TransportProtocol protocol = mTransportProtocols.get(ix);
@@ -232,6 +245,17 @@ public class Communicator implements TransportProtocol.Callback {
             }
         }
         return candidateProtocol;
+    }
+
+    /**
+     * Notifies listeners (okay, {@link com.android.services.telephony.TelephonyConnection} when
+     * the availability of D2D communication changes.
+     * @param isAvailable {@code true} if D2D is available, {@code false} otherwise.
+     */
+    private void notifyD2DStatus(boolean isAvailable) {
+        if (mCallback != null) {
+            mCallback.onD2DAvailabilitychanged(isAvailable);
+        }
     }
 
     public static String messageToString(int messageType) {
@@ -290,5 +314,34 @@ public class Communicator implements TransportProtocol.Callback {
                 return "";
         }
         return "";
+    }
+
+    /**
+     * Test method used to force a transport type to be the active transport.
+     * @param transport The transport to activate.
+     */
+    public void setTransportActive(@NonNull String transport) {
+        Optional<TransportProtocol> tp = mTransportProtocols.stream()
+                .filter(t -> t.getClass().getSimpleName().equals(transport))
+                .findFirst();
+        if (!tp.isPresent()) {
+            Log.w(this, "setTransportActive: %s is not a valid transport.");
+            return;
+        }
+
+        mTransportProtocols.stream()
+                .filter(p -> p != tp.get())
+                .forEach(t -> t.forceNotNegotiated());
+        tp.get().forceNegotiated();
+        mActiveTransport = tp.get();
+        mIsNegotiated = true;
+        Log.i(this, "setTransportActive: %s has been forced active.", transport);
+    }
+
+    /**
+     * @return the list of {@link TransportProtocol} which are configured at the current time.
+     */
+    public @NonNull List<TransportProtocol> getTransportProtocols() {
+        return mTransportProtocols;
     }
 }

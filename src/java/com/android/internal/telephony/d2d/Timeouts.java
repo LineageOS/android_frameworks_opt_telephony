@@ -107,7 +107,7 @@ public final class Timeouts {
      * @return
      */
     public static long getDtmfNegotiationTimeoutMillis(ContentResolver cr) {
-        return get(cr, "dtmf_negotiation_timeout_millis", 1000L);
+        return get(cr, "dtmf_negotiation_timeout_millis", 3000L);
     }
 
     /**

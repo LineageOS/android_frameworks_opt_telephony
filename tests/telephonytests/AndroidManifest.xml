@@ -40,4 +40,5 @@
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"/>
     <uses-permission android:name="android.permission.BIND_TELEPHONY_NETWORK_SERVICE"/>
     <uses-permission android:name="android.permission.BIND_TELEPHONY_DATA_SERVICE"/>
+    <uses-permission android:name="android.permission.BATTERY_STATS"/>
 </manifest>

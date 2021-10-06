@@ -528,6 +528,9 @@ public class UiccProfile extends IccCard {
         }
     }
 
+    /**
+     * ICC availability/state changed. Update corresponding fields and external state if needed.
+     */
     private void updateIccAvailability(boolean allAppsChanged) {
         synchronized (mLock) {
             UiccCardApplication newApp;
@@ -1771,21 +1774,6 @@ public class UiccProfile extends IccCard {
     }
 
     /**
-     * Make sure the iccid in SIM record matches the current active subId. If not, return false.
-     * When SIM switching in eSIM is happening, there are rare cases that setOperatorBrandOverride
-     * is called on old subId while new iccid is already loaded on SIM record. For those cases
-     * setOperatorBrandOverride would apply to the wrong (new) iccid. This check is to avoid it.
-     */
-    private boolean checkSubIdAndIccIdMatch(String iccid) {
-        if (TextUtils.isEmpty(iccid)) return false;
-        SubscriptionInfo subInfo = SubscriptionController.getInstance()
-                .getActiveSubscriptionInfoForSimSlotIndex(
-                        getPhoneId(), mContext.getOpPackageName(), null);
-        return subInfo != null && IccUtils.stripTrailingFs(subInfo.getIccId()).equals(
-                IccUtils.stripTrailingFs(iccid));
-    }
-
-    /**
      * Sets the overridden operator brand.
      */
     public boolean setOperatorBrandOverride(String brand) {
@@ -1796,7 +1784,7 @@ public class UiccProfile extends IccCard {
         if (TextUtils.isEmpty(iccId)) {
             return false;
         }
-        if (!checkSubIdAndIccIdMatch(iccId)) {
+        if (!SubscriptionController.getInstance().checkPhoneIdAndIccIdMatch(getPhoneId(), iccId)) {
             loge("iccId doesn't match current active subId.");
             return false;
         }

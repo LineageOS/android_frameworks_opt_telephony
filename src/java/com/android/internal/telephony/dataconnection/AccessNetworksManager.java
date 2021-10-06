@@ -41,10 +41,10 @@ import android.telephony.data.IQualifiedNetworksServiceCallback;
 import android.telephony.data.QualifiedNetworksService;
 import android.telephony.data.ThrottleStatus;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -194,7 +194,6 @@ public class AccessNetworksManager extends Handler {
                 registerDataThrottlersFirstTime();
 
             } catch (RemoteException e) {
-                mDeathRecipient.binderDied();
                 loge("Remote exception. " + e);
             }
         }

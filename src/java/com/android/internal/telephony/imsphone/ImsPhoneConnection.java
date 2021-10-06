@@ -17,6 +17,7 @@
 package com.android.internal.telephony.imsphone;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.Uri;
@@ -39,6 +40,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.AudioCodecAttributes;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.RtpHeaderExtensionType;
@@ -47,6 +49,7 @@ import android.text.TextUtils;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsException;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -140,6 +143,12 @@ public class ImsPhoneConnection extends Connection implements
      * calls.
      */
     private boolean mIsLocalVideoCapable = true;
+
+    /**
+     * When the call is in a disconnected, state, will be set to the {@link ImsReasonInfo}
+     * associated with the disconnection, if known.
+     */
+    private ImsReasonInfo mImsReasonInfo;
 
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
@@ -303,6 +312,10 @@ public class ImsPhoneConnection extends Connection implements
         }
     }
 
+    @VisibleForTesting
+    public void setTelephonyMetrics(TelephonyMetrics tm) {
+        mMetrics = tm;
+    }
 
     public void dispose() {
     }
@@ -841,6 +854,14 @@ public class ImsPhoneConnection extends Connection implements
         return updateParent || updateAddressDisplay || updateMediaCapabilities || updateExtras;
     }
 
+    /**
+     * Re-evaluate whether ringback should be playing.
+     */
+    public void maybeChangeRingbackState() {
+        Rlog.i(LOG_TAG, "maybeChangeRingbackState");
+        mParent.maybeChangeRingbackState(mImsCall);
+    }
+
     @Override
     public int getPreciseDisconnectCause() {
         return mPreciseDisconnectCause;
@@ -1071,6 +1092,8 @@ public class ImsPhoneConnection extends Connection implements
                 }
             }
 
+            boolean mediaAttributesChanged = false;
+
             // Metrics for audio codec
             if (localCallProfile != null
                     && localCallProfile.mMediaProfile.mAudioQuality != mAudioCodec) {
@@ -1078,6 +1101,7 @@ public class ImsPhoneConnection extends Connection implements
                 mMetrics.writeAudioCodecIms(mOwner.mPhone.getPhoneId(), imsCall.getCallSession());
                 mOwner.getPhone().getVoiceCallSessionStats().onAudioCodecChanged(this, mAudioCodec);
                 changed = true;
+                mediaAttributesChanged = true;
             }
 
             if (localCallProfile != null
@@ -1089,13 +1113,22 @@ public class ImsPhoneConnection extends Connection implements
                         - audioCodecAttributes.getBitrateRangeKbps().getUpper()) > THRESHOLD) {
                     mAudioCodecBitrateKbps = audioCodecAttributes.getBitrateRangeKbps().getUpper();
                     changed = true;
+                    mediaAttributesChanged = true;
                 }
                 if (Math.abs(mAudioCodecBandwidthKhz
                         - audioCodecAttributes.getBandwidthRangeKhz().getUpper()) > THRESHOLD) {
                     mAudioCodecBandwidthKhz =
                             audioCodecAttributes.getBandwidthRangeKhz().getUpper();
                     changed = true;
+                    mediaAttributesChanged = true;
                 }
+            }
+
+            if (mediaAttributesChanged) {
+                Rlog.i(LOG_TAG, "updateMediaCapabilities: mediate attributes changed: codec = "
+                        + mAudioCodec + ", bitRate=" + mAudioCodecBitrateKbps + ", bandwidth="
+                        + mAudioCodecBandwidthKhz);
+                notifyMediaAttributesChanged();
             }
 
             int newAudioQuality =
@@ -1420,6 +1453,14 @@ public class ImsPhoneConnection extends Connection implements
     }
 
     /**
+     * Indicates whether current phone connection is cross sim calling or not
+     * @return boolean: true if cross sim calling, false otherwise
+     */
+    public boolean isCrossSimCall() {
+        return mImsCall != null && mImsCall.isCrossSimCall();
+    }
+
+    /**
      * Handles notifications from the {@link ImsVideoCallProviderWrapper} of session modification
      * responses received.
      *
@@ -1565,6 +1606,23 @@ public class ImsPhoneConnection extends Connection implements
             return Collections.EMPTY_SET;
         }
         return mImsCall.getCallProfile().getAcceptedRtpHeaderExtensionTypes();
+    }
+
+    /**
+     * For a connection being disconnected, sets the {@link ImsReasonInfo} which describes the
+     * reason for the disconnection.
+     * @param imsReasonInfo The IMS reason info.
+     */
+    public void setImsReasonInfo(@Nullable ImsReasonInfo imsReasonInfo) {
+        mImsReasonInfo = imsReasonInfo;
+    }
+
+    /**
+     * @return the {@link ImsReasonInfo} describing why this connection disconnected, or
+     * {@code null} otherwise.
+     */
+    public @Nullable ImsReasonInfo getImsReasonInfo() {
+        return mImsReasonInfo;
     }
 
     /**

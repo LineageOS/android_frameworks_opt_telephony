@@ -559,6 +559,9 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.USER_ALERTING_NO_ANSWER:
                 return DisconnectCause.TIMED_OUT;
 
+            case CallFailCause.RADIO_OFF:
+                return DisconnectCause.POWER_OFF;
+
             case CallFailCause.ACCESS_CLASS_BLOCKED:
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:

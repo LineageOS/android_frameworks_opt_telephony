@@ -105,6 +105,7 @@ public abstract class Connection {
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
+        public void onMediaAttributesChanged();
         public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants);
         public void onCallSubstateChanged(int callSubstate);
         public void onMultipartyStateChanged(boolean isMultiParty);
@@ -150,6 +151,8 @@ public abstract class Connection {
                 android.telecom.Connection.VideoProvider videoProvider) {}
         @Override
         public void onAudioQualityChanged(int audioQuality) {}
+        @Override
+        public void onMediaAttributesChanged() {}
         @Override
         public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants) {}
         @Override
@@ -1097,6 +1100,15 @@ public abstract class Connection {
         mAudioQuality = audioQuality;
         for (Listener l : mListeners) {
             l.onAudioQualityChanged(mAudioQuality);
+        }
+    }
+
+    /**
+     * Notifies interested parties of changes to the media attributes of the call.
+     */
+    public void notifyMediaAttributesChanged() {
+        for (Listener l: mListeners) {
+            l.onMediaAttributesChanged();
         }
     }
 

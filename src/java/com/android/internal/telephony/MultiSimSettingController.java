@@ -724,8 +724,9 @@ public class MultiSimSettingController extends Handler {
         if (mPrimarySubList.size() == 1 && change == PRIMARY_SUB_REMOVED
                 && (!dataSelected || !smsSelected || !voiceSelected)) {
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
-        } else if (mPrimarySubList.size() > 1 && isUserVisibleChange(change)) {
-            // If change is SWAPPED_IN_GROUP or MARKED_OPPT orINITIALIZED, don't ask user again.
+        } else if (mPrimarySubList.size() > 1 && (isUserVisibleChange(change)
+                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected))) {
+            // If change is SWAPPED_IN_GROUP or MARKED_OPPT, don't ask user again.
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
         }
 
