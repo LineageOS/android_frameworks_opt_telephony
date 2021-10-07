@@ -42,6 +42,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.LocalLog;
 import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccPort;
 
 import org.junit.After;
 import org.junit.Before;
@@ -66,6 +67,8 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
     private CarrierServicesSmsFilter.CarrierServicesSmsFilterCallbackInterface mFilterCallback;
     @Mock
     private UiccCard mUiccCard;
+    @Mock
+    private UiccPort mUiccPort;
     @Mock
     private ICarrierMessagingService.Stub mICarrierAppMessagingService;
     @Mock
@@ -178,10 +181,10 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
     }
 
     private void mockUiccWithCarrierApp() {
-        when(mUiccController.getUiccCard(mPhone.getPhoneId())).thenReturn(mUiccCard);
+        when(mUiccController.getUiccPort(mPhone.getPhoneId())).thenReturn(mUiccPort);
         List<String> carrierPackages = new ArrayList<>();
         carrierPackages.add(CARRIER_APP_PACKAGE_NAME);
-        when(mUiccCard.getCarrierPackageNamesForIntent(
+        when(mUiccPort.getCarrierPackageNamesForIntent(
                 any(PackageManager.class), any(Intent.class))).thenReturn(carrierPackages);
     }
 
