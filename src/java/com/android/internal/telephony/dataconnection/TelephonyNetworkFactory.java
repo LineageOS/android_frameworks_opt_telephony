@@ -232,9 +232,14 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private void requestNetworkInternal(NetworkRequest networkRequest,
             @RequestNetworkType int requestType, int transport, Message onHandoverCompleteMsg) {
         NetworkRequestsStats.addNetworkRequest(networkRequest, mSubscriptionId);
-        if (mPhone.getDcTracker(transport) != null) {
-            mPhone.getDcTracker(transport).requestNetwork(networkRequest, requestType,
-                    onHandoverCompleteMsg);
+
+        if (false/*mPhone.isUsingNewDataStack()*/) {
+            mPhone.getDataNetworkController().addNetworkRequest(networkRequest);
+        } else {
+            if (mPhone.getDcTracker(transport) != null) {
+                mPhone.getDcTracker(transport).requestNetwork(networkRequest, requestType,
+                        onHandoverCompleteMsg);
+            }
         }
     }
 
@@ -242,8 +247,12 @@ public class TelephonyNetworkFactory extends NetworkFactory {
                                         @ReleaseNetworkType int releaseType,
                                         int transport) {
         NetworkRequestsStats.addNetworkRelease(networkRequest, mSubscriptionId);
-        if (mPhone.getDcTracker(transport) != null) {
-            mPhone.getDcTracker(transport).releaseNetwork(networkRequest, releaseType);
+        if (false/*mPhone.isUsingNewDataStack()*/) {
+            mPhone.getDataNetworkController().removeNetworkRequest(networkRequest);
+        } else {
+            if (mPhone.getDcTracker(transport) != null) {
+                mPhone.getDcTracker(transport).releaseNetwork(networkRequest, releaseType);
+            }
         }
     }
 

@@ -61,7 +61,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.LastCallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.RILUtils;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
@@ -1220,7 +1220,7 @@ public class SimulatedCommands extends BaseCommands
             }
         }
 
-        DataCallResponse response = RIL.convertDataCallResult(mSetupDataCallResult);
+        DataCallResponse response = RILUtils.convertHalDataCallResult(mSetupDataCallResult);
         if (mDcSuccess) {
             resultSuccess(result, response);
         } else {

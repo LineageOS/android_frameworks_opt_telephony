@@ -16,13 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -32,12 +28,11 @@ import android.annotation.NonNull;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.Network;
-import android.net.NetworkAgent;
 import android.telephony.data.EpsBearerQosSessionAttributes;
 import android.telephony.data.EpsQos;
+import android.telephony.data.Qos;
 import android.telephony.data.QosBearerFilter;
 import android.telephony.data.QosBearerSession;
-
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -48,15 +43,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -123,7 +115,8 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         halEpsQos.uplink.maxBitrateKbps = ulMbr;
         halEpsQos.uplink.guaranteedBitrateKbps = ulGbr;
 
-        return new EpsQos(halEpsQos);
+        return new EpsQos(
+                new Qos.QosBandwidth(dlMbr, dlGbr), new Qos.QosBandwidth(ulMbr, ulGbr), 4);
     }
 
     private QosBearerFilter createIpv4QosFilter(String localAddress,
@@ -131,7 +124,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         return new QosBearerFilter(
                 Arrays.asList(
                         new LinkAddress(InetAddresses.parseNumericAddress(localAddress), 32)),
-                new ArrayList<LinkAddress>(), localPort, null, QosBearerFilter.QOS_PROTOCOL_TCP,
+                new ArrayList<>(), localPort, null, QosBearerFilter.QOS_PROTOCOL_TCP,
                 7, 987, 678, QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, precedence);
     }
 
