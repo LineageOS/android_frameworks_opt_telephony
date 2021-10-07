@@ -25,6 +25,7 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -72,7 +73,6 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -519,6 +519,28 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         } catch (CallStateException e) {
             fail();
         }
+    }
+
+    @Test
+    @SmallTest
+    public void testClirCs() {
+        mPhoneUT.mCi = mMockCi;
+        // Start out with no preference set and ensure CommandsInterface receives setClir with
+        // the default set.
+        mPhoneUT.sendEmptyMessage(Phone.EVENT_REGISTERED_TO_NETWORK);
+        processAllMessages();
+        verify(mMockCi).setCLIR(eq(CommandsInterface.CLIR_DEFAULT), any());
+        // Now set the CLIR mode explicitly
+        mPhoneUT.setOutgoingCallerIdDisplay(CommandsInterface.CLIR_SUPPRESSION, null);
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi).setCLIR(eq(CommandsInterface.CLIR_SUPPRESSION), messageCaptor.capture());
+        Message message = messageCaptor.getValue();
+        assertNotNull(message);
+        message.obj = AsyncResult.forMessage(message);
+        // Now Call registered to network again and the CLIR mode sent should reflect the new value.
+        mPhoneUT.sendEmptyMessage(Phone.EVENT_REGISTERED_TO_NETWORK);
+        processAllMessages();
+        verify(mMockCi).setCLIR(eq(CommandsInterface.CLIR_SUPPRESSION), any());
     }
 
     @Test
@@ -1602,5 +1624,34 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         LinkCapacityEstimate lce3 = captor.getValue().get(0);
         assertEquals(LinkCapacityEstimate.INVALID, lce3.getUplinkCapacityKbps());
         assertEquals(LinkCapacityEstimate.LCE_TYPE_COMBINED, lce3.getType());
+    }
+
+    @Test
+    @SmallTest
+    public void testLoadAllowedNetworksFromSubscriptionDatabase_loadTheNullValue_isLoadedTrue() {
+        int subId = 1;
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+
+        doReturn(null).when(mSubscriptionController).getSubscriptionProperty(anyInt(),
+                eq(SubscriptionManager.ALLOWED_NETWORK_TYPES));
+
+        mPhoneUT.loadAllowedNetworksFromSubscriptionDatabase();
+
+        assertEquals(true,  mPhoneUT.isAllowedNetworkTypesLoadedFromDb());
+    }
+
+    @Test
+    @SmallTest
+    public void testLoadAllowedNetworksFromSubscriptionDatabase_subIdNotValid_isLoadedFalse() {
+        int subId = -1;
+        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+
+        when(mSubscriptionController.getSubscriptionProperty(anyInt(),
+                eq(SubscriptionManager.ALLOWED_NETWORK_TYPES))).thenReturn(null);
+
+
+        mPhoneUT.loadAllowedNetworksFromSubscriptionDatabase();
+
+        assertEquals(false, mPhoneUT.isAllowedNetworkTypesLoadedFromDb());
     }
 }

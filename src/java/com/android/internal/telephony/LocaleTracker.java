@@ -85,10 +85,12 @@ public class LocaleTracker extends Handler {
      * <p> This broadcast is not effective on user build.
      *
      * <p>Example: To override the current country <code>
+     * adb root
      * adb shell am broadcast -a com.android.internal.telephony.action.COUNTRY_OVERRIDE
      * --es country us </code>
      *
      * <p> To remove the override <code>
+     * adb root
      * adb shell am broadcast -a com.android.internal.telephony.action.COUNTRY_OVERRIDE
      * --ez reset true</code>
      */

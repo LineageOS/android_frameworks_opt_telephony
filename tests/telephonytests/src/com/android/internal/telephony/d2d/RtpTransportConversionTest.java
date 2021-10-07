@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 
 import android.os.Handler;
 import android.telephony.ims.RtpHeaderExtension;
-import android.telephony.ims.RtpHeaderExtensionType;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArraySet;
 
@@ -84,7 +83,7 @@ public class RtpTransportConversionTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        mRtpTransport = new RtpTransport(mRtpAdapter, mTimeoutsAdapter, mHandler);
+        mRtpTransport = new RtpTransport(mRtpAdapter, mTimeoutsAdapter, mHandler, true /* sdp */);
         mRtpTransport.setCallback(mCallback);
 
         when(mRtpAdapter.getAcceptedRtpHeaderExtensions()).thenReturn(

@@ -983,14 +983,20 @@ public class RetryManagerTest extends TelephonyTest {
     }
 
     /**
-     * Test the scenario where modem suggests the same retry for too many times
+     * Test the scenario that network suggests the same retry for too many times
      */
     @Test
     @SmallTest
-    public void testRetryManagerModemSuggestedRetryTooManyTimes() throws Exception {
+    public void testRetryNetworkSuggestedRetryTooManyTimes() throws Exception {
 
         mBundle.putStringArray(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_STRINGS,
                 new String[]{"mms:2000,3000", "default:1000,4000,7000,9000"});
+
+        int maxRetryCount = 10;
+
+        mBundle.putInt(CarrierConfigManager
+                        .KEY_CARRIER_DATA_CALL_RETRY_NETWORK_REQUESTED_MAX_COUNT_INT,
+                maxRetryCount);
 
         ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
         ApnSetting myApn1 = ApnSetting.makeApnSetting(mApn1);
@@ -1011,26 +1017,14 @@ public class RetryManagerTest extends TelephonyTest {
         delay = rm.getDelayForNextApn(false);
         assertEquals(1000, delay);
 
-        nextApn = rm.getNextApnSetting();
-        assertTrue(nextApn.equals(mApn1));
-        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
-                .getRetryTime(ApnSetting.TYPE_DEFAULT);
-        delay = rm.getDelayForNextApn(false);
-        assertRange(2450, 2500, delay);
-
-        nextApn = rm.getNextApnSetting();
-        assertTrue(nextApn.equals(mApn1));
-        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
-                .getRetryTime(ApnSetting.TYPE_DEFAULT);
-        delay = rm.getDelayForNextApn(false);
-        assertRange(2450, 2500, delay);
-
-        nextApn = rm.getNextApnSetting();
-        assertTrue(nextApn.equals(mApn1));
-        doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
-                .getRetryTime(ApnSetting.TYPE_DEFAULT);
-        delay = rm.getDelayForNextApn(false);
-        assertRange(2450, 2500, delay);
+        for (int i = 0; i < maxRetryCount; i++) {
+            nextApn = rm.getNextApnSetting();
+            assertTrue(nextApn.equals(mApn1));
+            doReturn(2500 + SystemClock.elapsedRealtime()).when(mDataThrottler)
+                    .getRetryTime(ApnSetting.TYPE_DEFAULT);
+            delay = rm.getDelayForNextApn(false);
+            assertRange(2450, 2500, delay);
+        }
 
         nextApn = rm.getNextApnSetting();
         assertTrue(nextApn.equals(mApn1));

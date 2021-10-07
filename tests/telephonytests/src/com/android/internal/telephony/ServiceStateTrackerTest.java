@@ -90,6 +90,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.text.TextUtils;
@@ -161,6 +162,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private static final String CARRIER_NAME_DISPLAY_NO_SERVICE = "No service";
     private static final String CARRIER_NAME_DISPLAY_EMERGENCY_CALL = "emergency call";
     private static final String WIFI_CALLING_VOICE_FORMAT = "%s wifi calling";
+    private static final String CROSS_SIM_CALLING_VOICE_FORMAT = "%s Cross-SIM Calling";
     private static final String WIFI_CALLING_DATA_FORMAT = "%s wifi data";
     private static final String WIFI_CALLING_FLIGHT_MODE_FORMAT = "%s flight mode";
 
@@ -2783,6 +2785,40 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN)).isTrue();
         assertThat(b.getString(TelephonyManager.EXTRA_PLMN)).isEqualTo(plmn);
         assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
+    }
+
+    @Test
+    public void testUpdateSpnDisplay_spnNotEmptyAndCrossSimCallingEnabled_showSpnOnly() {
+        // GSM phone
+
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // In Service
+        ServiceState ss = new ServiceState();
+        ss.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        ss.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        sst.mSS = ss;
+
+        // cross-sim-calling is enable
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM).when(mImsPhone)
+                .getImsRegistrationTech();
+        String[] formats = {CROSS_SIM_CALLING_VOICE_FORMAT, "%s"};
+        Resources r = mContext.getResources();
+        doReturn(formats).when(r).getStringArray(anyInt());
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Only spn should be shown
+        String spn = mBundle.getString(CarrierConfigManager.KEY_CARRIER_NAME_STRING);
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getString(TelephonyManager.EXTRA_SPN))
+                .isEqualTo(String.format(CROSS_SIM_CALLING_VOICE_FORMAT, spn));
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_SPN)).isTrue();
+        assertThat(b.getString(TelephonyManager.EXTRA_DATA_SPN))
+                .isEqualTo(String.format(CROSS_SIM_CALLING_VOICE_FORMAT, spn));
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isFalse();
     }
 
     @Test

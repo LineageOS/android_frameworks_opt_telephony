@@ -325,6 +325,17 @@ public class CellBroadcastServiceManager {
         pw.println("CellBroadcastServiceManager:");
         pw.println(" mEnabled=" + mEnabled);
         pw.println(" mCellBroadcastServicePackage=" + mCellBroadcastServicePackage);
+        if (mEnabled) {
+            try {
+                if (sServiceConnection != null && sServiceConnection.mService != null) {
+                    sServiceConnection.mService.dump(fd, args);
+                } else {
+                    pw.println(" sServiceConnection is null");
+                }
+            } catch (RemoteException e) {
+                pw.println(" mService.dump() threw RemoteException e: " + e.toString());
+            }
+        }
         mLocalLog.dump(fd, pw, args);
         pw.flush();
     }

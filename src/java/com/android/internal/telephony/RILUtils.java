@@ -275,12 +275,12 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.EpsQos;
 import android.telephony.data.NetworkSliceInfo;
+import android.telephony.data.NetworkSlicingConfig;
 import android.telephony.data.NrQos;
 import android.telephony.data.Qos;
 import android.telephony.data.QosBearerFilter;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.RouteSelectionDescriptor;
-import android.telephony.data.SlicingConfig;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.UrspRule;
 import android.text.TextUtils;
@@ -464,8 +464,8 @@ public class RILUtils {
         dpi.protocol = ApnSetting.getProtocolStringFromInt(dp.getProtocolType());
         dpi.roamingProtocol = ApnSetting.getProtocolStringFromInt(dp.getRoamingProtocolType());
         dpi.authType = dp.getAuthType();
-        dpi.user = dp.getUserName();
-        dpi.password = dp.getPassword();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
@@ -498,8 +498,8 @@ public class RILUtils {
         dpi.protocol = dp.getProtocolType();
         dpi.roamingProtocol = dp.getRoamingProtocolType();
         dpi.authType = dp.getAuthType();
-        dpi.user = dp.getUserName();
-        dpi.password = dp.getPassword();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
@@ -536,8 +536,8 @@ public class RILUtils {
         dpi.protocol = dp.getProtocolType();
         dpi.roamingProtocol = dp.getRoamingProtocolType();
         dpi.authType = dp.getAuthType();
-        dpi.user = dp.getUserName();
-        dpi.password = dp.getPassword();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
@@ -610,7 +610,7 @@ public class RILUtils {
                 new android.hardware.radio.V1_6.OptionalOsAppId();
         if (trafficDescriptor.getOsAppId() != null) {
             android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
-            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId().getBytes());
+            osAppId.osAppId = primitiveArrayToArrayList(trafficDescriptor.getOsAppId());
             optionalOsAppId.value(osAppId);
         }
         td.osAppId = optionalOsAppId;
@@ -1593,7 +1593,7 @@ public class RILUtils {
             builder.setDataNetworkName(dnn);
         }
         if (osAppId != null) {
-            builder.setOsAppId(osAppId);
+            builder.setOsAppId(osAppId.getBytes());
         }
         return builder.build();
     }
@@ -1607,17 +1607,17 @@ public class RILUtils {
             builder.setDataNetworkName(dnn);
         }
         if (osAppId != null) {
-            builder.setOsAppId(osAppId);
+            builder.setOsAppId(osAppId.getBytes());
         }
         return builder.build();
     }
 
     /**
-     * Convert SlicingConfig defined in radio/1.6/types.hal to SlicingConfig
+     * Convert SlicingConfig defined in radio/1.6/types.hal to NetworkSlicingConfig
      * @param sc SlicingConfig defined in radio/1.6/types.hal
-     * @return The converted SlicingConfig
+     * @return The converted NetworkSlicingConfig
      */
-    public static SlicingConfig convertHalSlicingConfig(
+    public static NetworkSlicingConfig convertHalSlicingConfig(
             android.hardware.radio.V1_6.SlicingConfig sc) {
         List<UrspRule> urspRules = sc.urspRules.stream().map(ur -> new UrspRule(ur.precedence,
                 ur.trafficDescriptors.stream().map(RILUtils::convertHalTrafficDescriptor)
@@ -1628,16 +1628,16 @@ public class RILUtils {
                                 .collect(Collectors.toList()),
                         rsd.dnn)).collect(Collectors.toList())))
                 .collect(Collectors.toList());
-        return new SlicingConfig(urspRules, sc.sliceInfo.stream().map(RILUtils::convertHalSliceInfo)
-                .collect(Collectors.toList()));
+        return new NetworkSlicingConfig(urspRules, sc.sliceInfo.stream()
+                .map(RILUtils::convertHalSliceInfo).collect(Collectors.toList()));
     }
 
     /**
-     * Convert SlicingConfig defined in SlicingConfig.aidl to SlicingConfig
+     * Convert SlicingConfig defined in SlicingConfig.aidl to NetworkSlicingConfig
      * @param sc SlicingConfig defined in SlicingConfig.aidl
-     * @return The converted SlicingConfig
+     * @return The converted NetworkSlicingConfig
      */
-    public static SlicingConfig convertHalSlicingConfig(
+    public static NetworkSlicingConfig convertHalSlicingConfig(
             android.hardware.radio.data.SlicingConfig sc) {
         List<UrspRule> urspRules = new ArrayList<>();
         for (android.hardware.radio.data.UrspRule ur : sc.urspRules) {
@@ -1661,7 +1661,7 @@ public class RILUtils {
         for (android.hardware.radio.data.SliceInfo si : sc.sliceInfo) {
             sliceInfo.add(convertHalSliceInfo(si));
         }
-        return new SlicingConfig(urspRules, sliceInfo);
+        return new NetworkSlicingConfig(urspRules, sliceInfo);
     }
 
     private static Qos.QosBandwidth convertHalQosBandwidth(

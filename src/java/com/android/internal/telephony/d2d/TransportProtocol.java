@@ -70,4 +70,14 @@ public interface TransportProtocol {
      * @param messages the messages to send via the transport.
      */
     void sendMessages(Set<Communicator.Message> messages);
+
+    /**
+     * Forces this transport to be in a negotiated state.
+     */
+    void forceNegotiated();
+
+    /**
+     * Forces this transport to be in a non-negotiated state.
+     */
+    void forceNotNegotiated();
 }

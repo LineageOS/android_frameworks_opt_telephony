@@ -1004,9 +1004,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void pcoData(int indicationType, PcoDataInfo pco) {
         mRil.processIndication(indicationType);
 
-        PcoData response = new PcoData(pco.cid,
-                pco.bearerProto,
-                pco.pcoId,
+        PcoData response = new PcoData(pco.cid, pco.bearerProto, pco.pcoId,
                 RILUtils.arrayListToPrimitiveArray(pco.contents));
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PCO_DATA, response);

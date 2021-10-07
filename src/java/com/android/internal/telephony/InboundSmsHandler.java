@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static android.os.PowerWhitelistManager.REASON_EVENT_MMS;
+import static android.os.PowerWhitelistManager.REASON_EVENT_SMS;
+import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED;
 import static android.provider.Telephony.Sms.Intents.RESULT_SMS_DATABASE_ERROR;
 import static android.provider.Telephony.Sms.Intents.RESULT_SMS_DISPATCH_FAILURE;
 import static android.provider.Telephony.Sms.Intents.RESULT_SMS_INVALID_URI;
@@ -183,6 +186,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Update the sms tracker */
     public static final int EVENT_UPDATE_TRACKER = 8;
 
+    /** BroadcastReceiver timed out waiting for an intent */
+    public static final int EVENT_RECEIVER_TIMEOUT = 9;
+
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
 
@@ -206,8 +212,10 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     // The notitfication tag used when showing a notification. The combination of notification tag
     // and notification id should be unique within the phone app.
-    private static final String NOTIFICATION_TAG = "InboundSmsHandler";
-    private static final int NOTIFICATION_ID_NEW_MESSAGE = 1;
+    @VisibleForTesting
+    public static final String NOTIFICATION_TAG = "InboundSmsHandler";
+    @VisibleForTesting
+    public static final int NOTIFICATION_ID_NEW_MESSAGE = 1;
 
     /** URI for raw table of SMS provider. */
     protected static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
@@ -372,6 +380,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 break;
             case EVENT_UPDATE_TRACKER:
                 whatString = "EVENT_UPDATE_TRACKER";
+                break;
+            case EVENT_RECEIVER_TIMEOUT:
+                whatString = "EVENT_RECEIVER_TIMEOUT";
                 break;
             default:
                 whatString = "UNKNOWN EVENT " + what;
@@ -626,6 +637,15 @@ public abstract class InboundSmsHandler extends StateMachine {
                     deferMessage(msg);
                     return HANDLED;
 
+                case EVENT_RECEIVER_TIMEOUT:
+                    logeWithLocalLog("WaitingState.processMessage: received "
+                            + "EVENT_RECEIVER_TIMEOUT");
+                    if (mLastDeliveredSmsTracker != null) {
+                        mLastDeliveredSmsTracker.getSmsBroadcastReceiver(InboundSmsHandler.this)
+                                .fakeNextAction();
+                    }
+                    return HANDLED;
+
                 case EVENT_BROADCAST_COMPLETE:
                     mLastDeliveredSmsTracker = null;
                     // return to idle after handling all deferred messages
@@ -676,7 +696,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * This method is called when a new SMS PDU is injected into application framework.
      * @param ar is the AsyncResult that has the SMS PDU to be injected.
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void handleInjectSms(AsyncResult ar, boolean isOverIms) {
         int result;
         SmsDispatchersController.SmsInjectionCallback callback = null;
@@ -806,7 +826,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param smsSource the source of the SMS message
      * @return {@link Intents#RESULT_SMS_HANDLED} if the message was accepted, or an error status
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int dispatchNormalMessage(SmsMessageBase sms, @SmsSource int smsSource) {
         SmsHeader smsHeader = sms.getUserDataHeader();
         InboundSmsTracker tracker;
@@ -987,8 +1007,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                 log("processMessagePart: all " + messageCount + " segments "
                         + " received. refNumber: " + refNumber, tracker.getMessageId());
             } catch (SQLException e) {
-                loge("processMessagePart: Can't access multipart SMS database, id: "
-                        + tracker.getMessageId(), e);
+                loge("processMessagePart: Can't access multipart SMS database, "
+                        + SmsController.formatCrossStackMessageId(tracker.getMessageId()), e);
                 return false;
             } finally {
                 if (cursor != null) {
@@ -1034,7 +1054,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
-        SmsBroadcastReceiver resultReceiver = new SmsBroadcastReceiver(tracker);
+        SmsBroadcastReceiver resultReceiver = tracker.getSmsBroadcastReceiver(this);
 
         if (!mUserManager.isUserUnlocked()) {
             log("processMessagePart: !isUserUnlocked; calling processMessagePartWithUserLocked. "
@@ -1043,7 +1063,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                     tracker,
                     (isWapPush ? new byte[][] {output.toByteArray()} : pdus),
                     destPort,
-                    resultReceiver);
+                    resultReceiver,
+                    block);
         }
 
         if (isWapPush) {
@@ -1116,7 +1137,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return true if an ordered broadcast was sent to the carrier app; false otherwise.
      */
     private boolean processMessagePartWithUserLocked(InboundSmsTracker tracker,
-            byte[][] pdus, int destPort, SmsBroadcastReceiver resultReceiver) {
+            byte[][] pdus, int destPort, SmsBroadcastReceiver resultReceiver, boolean block) {
         if (destPort == SmsHeader.PORT_WAP_PUSH && mWapPush.isWapPushForMms(pdus[0], this)) {
             showNewMessageNotification();
             return false;
@@ -1125,14 +1146,15 @@ public abstract class InboundSmsHandler extends StateMachine {
             // This is a regular SMS - hand it to the carrier or system app for filtering.
             boolean filterInvoked = filterSms(
                     pdus, destPort, tracker, resultReceiver, false /* userUnlocked */,
-                    false /* block */);
+                    block);
             if (filterInvoked) {
                 // filter invoked, wait for it to return the result.
                 return true;
-            } else {
-                // filter not invoked, show the notification and do nothing further.
+            } else if (!block) {
+                // filter not invoked and message not blocked, show the notification and do nothing
+                // further. Even if the message is blocked, we keep it in the database so it can be
+                // reprocessed by filters once credential-encrypted storage is available.
                 showNewMessageNotification();
-                return false;
             }
         }
         return false;
@@ -1281,9 +1303,21 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void dispatchIntent(Intent intent, String permission, String appOp,
-            Bundle opts, BroadcastReceiver resultReceiver, UserHandle user, int subId) {
+            Bundle opts, SmsBroadcastReceiver resultReceiver, UserHandle user, int subId) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         final String action = intent.getAction();
+        if (Intents.SMS_DELIVER_ACTION.equals(action)
+                || Intents.SMS_RECEIVED_ACTION.equals(action)
+                || Intents.WAP_PUSH_DELIVER_ACTION.equals(action)
+                || Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
+            // Some intents need to be delivered with high priority:
+            // SMS_DELIVER, SMS_RECEIVED, WAP_PUSH_DELIVER, WAP_PUSH_RECEIVED
+            // In some situations, like after boot up or system under load, normal
+            // intent delivery could take a long time.
+            // This flag should only be set for intents for visible, timely operations
+            // which is true for the intents above.
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        }
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
 
         // override the subId value in the intent with the values from tracker as they can be
@@ -1300,6 +1334,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             for (UserHandle handle : userHandles) {
                 if (mUserManager.isUserRunning(handle)) {
                     runningUserHandles.add(handle);
+                } else {
+                    if (handle.equals(UserHandle.SYSTEM)) {
+                        logeWithLocalLog("dispatchIntent: SYSTEM user is not running",
+                                resultReceiver.mInboundSmsTracker.getMessageId());
+                    }
                 }
             }
             if (runningUserHandles.isEmpty()) {
@@ -1326,6 +1365,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                 }
                 // Only pass in the resultReceiver when the user SYSTEM is processed.
                 try {
+                    if (users[i] == UserHandle.SYSTEM.getIdentifier()) {
+                        resultReceiver.setWaitingForIntent(intent);
+                    }
                     mContext.createPackageContextAsUser(mContext.getPackageName(), 0, targetUser)
                             .sendOrderedBroadcast(intent, Activity.RESULT_OK, permission, appOp,
                                     users[i] == UserHandle.SYSTEM.getIdentifier()
@@ -1336,6 +1378,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         } else {
             try {
+                resultReceiver.setWaitingForIntent(intent);
                 mContext.createPackageContextAsUser(mContext.getPackageName(), 0, user)
                         .sendOrderedBroadcast(intent, Activity.RESULT_OK, permission, appOp,
                                 resultReceiver, getHandler(), null /* initialData */,
@@ -1385,9 +1428,12 @@ public abstract class InboundSmsHandler extends StateMachine {
             bundle = bopts.toBundle();
         }
         long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                pkgName, PowerWhitelistManager.EVENT_SMS, reason);
+                pkgName, PowerWhitelistManager.EVENT_SMS, REASON_EVENT_SMS, reason);
         if (bopts == null) bopts = BroadcastOptions.makeBasic();
-        bopts.setTemporaryAppWhitelistDuration(duration);
+        bopts.setTemporaryAppAllowlist(duration,
+                TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
+                REASON_EVENT_SMS,
+                "");
         bundle = bopts.toBundle();
 
         return bundle;
@@ -1560,8 +1606,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                     return Intents.RESULT_SMS_DUPLICATED;   // reject message
                 }
             } catch (SQLException e) {
-                loge("addTrackerToRawTable: Can't access SMS database, id: "
-                        + tracker.getMessageId(), e);
+                loge("addTrackerToRawTable: Can't access SMS database, "
+                        + SmsController.formatCrossStackMessageId(tracker.getMessageId()), e);
                 return RESULT_SMS_DATABASE_ERROR;    // reject message
             }
         } else {
@@ -1592,8 +1638,8 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
             return Intents.RESULT_SMS_HANDLED;
         } catch (Exception e) {
-            loge("addTrackerToRawTable: error parsing URI for new row: " + newUri + " id: "
-                    + tracker.getMessageId(), e);
+            loge("addTrackerToRawTable: error parsing URI for new row: " + newUri
+                    + " " + SmsController.formatCrossStackMessageId(tracker.getMessageId()), e);
             return RESULT_SMS_INVALID_URI;
         }
     }
@@ -1607,27 +1653,80 @@ public abstract class InboundSmsHandler extends StateMachine {
         return (PHONE_TYPE_CDMA == activePhone);
     }
 
+    @VisibleForTesting
+    public static int sTimeoutDurationMillis = 10 * 60 * 1000; // 10 minutes
+
     /**
      * Handler for an {@link InboundSmsTracker} broadcast. Deletes PDUs from the raw table and
      * logs the broadcast duration (as an error if the other receivers were especially slow).
      */
-    @VisibleForTesting
     public final class SmsBroadcastReceiver extends BroadcastReceiver {
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         private final String mDeleteWhere;
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         private final String[] mDeleteWhereArgs;
-        private long mBroadcastTimeNano;
+        private long mBroadcastTimeMillis;
+        public Intent mWaitingForIntent;
+        private final InboundSmsTracker mInboundSmsTracker;
 
-        SmsBroadcastReceiver(InboundSmsTracker tracker) {
+        /**
+         * This method must be called anytime an ordered broadcast is sent that is expected to be
+         * received by this receiver.
+         */
+        public synchronized void setWaitingForIntent(Intent intent) {
+            mWaitingForIntent = intent;
+            mBroadcastTimeMillis = System.currentTimeMillis();
+            removeMessages(EVENT_RECEIVER_TIMEOUT);
+            sendMessageDelayed(EVENT_RECEIVER_TIMEOUT, sTimeoutDurationMillis);
+        }
+
+        public SmsBroadcastReceiver(InboundSmsTracker tracker) {
             mDeleteWhere = tracker.getDeleteWhere();
             mDeleteWhereArgs = tracker.getDeleteWhereArgs();
-            mBroadcastTimeNano = System.nanoTime();
+            mInboundSmsTracker = tracker;
+        }
+
+        /**
+         * This method is called if the expected intent (mWaitingForIntent) is not received and
+         * the timer for it expires. It fakes the receipt of the intent to unblock the state
+         * machine.
+         */
+        public void fakeNextAction() {
+            if (mWaitingForIntent != null) {
+                logeWithLocalLog("fakeNextAction: " + mWaitingForIntent.getAction(),
+                        mInboundSmsTracker.getMessageId());
+                handleAction(mWaitingForIntent, false);
+            } else {
+                logeWithLocalLog("fakeNextAction: mWaitingForIntent is null",
+                        mInboundSmsTracker.getMessageId());
+            }
         }
 
         @Override
         public void onReceive(Context context, Intent intent) {
+            handleAction(intent, true);
+        }
+
+        private synchronized void handleAction(Intent intent, boolean onReceive) {
             String action = intent.getAction();
+            if (mWaitingForIntent == null || !mWaitingForIntent.getAction().equals(action)) {
+                logeWithLocalLog("handleAction: Received " + action + " when expecting "
+                        + mWaitingForIntent == null ? "none" : mWaitingForIntent.getAction(),
+                        mInboundSmsTracker.getMessageId());
+                return;
+            }
+
+            if (onReceive) {
+                int durationMillis = (int) (System.currentTimeMillis() - mBroadcastTimeMillis);
+                if (durationMillis >= 5000) {
+                    loge("Slow ordered broadcast completion time for " + action + ": "
+                            + durationMillis + " ms");
+                } else if (DBG) {
+                    log("Ordered broadcast completed for " + action + " in: "
+                            + durationMillis + " ms");
+                }
+            }
+
             int subId = intent.getIntExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX,
                     SubscriptionManager.INVALID_SUBSCRIPTION_ID);
             if (action.equals(Intents.SMS_DELIVER_ACTION)) {
@@ -1639,6 +1738,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // All running users will be notified of the received sms.
                 Bundle options = handleSmsWhitelisting(null, false /* bgActivityStartAllowed */);
 
+                setWaitingForIntent(intent);
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
                         AppOpsManager.OPSTR_RECEIVE_SMS,
                         options, this, UserHandle.ALL, subId);
@@ -1651,12 +1751,18 @@ public abstract class InboundSmsHandler extends StateMachine {
                 long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
                         mContext.getPackageName(),
                         PowerWhitelistManager.EVENT_MMS,
+                        REASON_EVENT_MMS,
                         "mms-broadcast");
                 BroadcastOptions bopts = BroadcastOptions.makeBasic();
-                bopts.setTemporaryAppWhitelistDuration(duration);
+                bopts.setTemporaryAppAllowlist(duration,
+                        TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
+                        REASON_EVENT_MMS,
+                        "");
                 Bundle options = bopts.toBundle();
 
                 String mimeType = intent.getType();
+
+                setWaitingForIntent(intent);
                 dispatchIntent(intent, WapPushOverSms.getPermissionForType(mimeType),
                         WapPushOverSms.getAppOpsStringPermissionForIntent(mimeType), options, this,
                         UserHandle.SYSTEM, subId);
@@ -1664,28 +1770,24 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
                         && !Intents.SMS_RECEIVED_ACTION.equals(action)
-                        && !Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
                         && !Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
                     loge("unexpected BroadcastReceiver action: " + action);
                 }
 
-                int rc = getResultCode();
-                if ((rc != Activity.RESULT_OK) && (rc != Intents.RESULT_SMS_HANDLED)) {
-                    loge("a broadcast receiver set the result code to " + rc
-                            + ", deleting from raw table anyway!");
-                } else if (DBG) {
-                    log("successful broadcast, deleting from raw table.");
+                if (onReceive) {
+                    int rc = getResultCode();
+                    if ((rc != Activity.RESULT_OK) && (rc != Intents.RESULT_SMS_HANDLED)) {
+                        loge("a broadcast receiver set the result code to " + rc
+                                + ", deleting from raw table anyway!");
+                    } else if (DBG) {
+                        log("successful broadcast, deleting from raw table.");
+                    }
                 }
 
                 deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs, MARK_DELETED);
+                mWaitingForIntent = null;
+                removeMessages(EVENT_RECEIVER_TIMEOUT);
                 sendMessage(EVENT_BROADCAST_COMPLETE);
-
-                int durationMillis = (int) ((System.nanoTime() - mBroadcastTimeNano) / 1000000);
-                if (durationMillis >= 5000) {
-                    loge("Slow ordered broadcast completion time: " + durationMillis + " ms");
-                } else if (DBG) {
-                    log("ordered broadcast completed in: " + durationMillis + " ms");
-                }
             }
         }
     }
@@ -1726,7 +1828,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         @Override
         public void onFilterComplete(int result) {
-            log("onFilterComplete: result is " + result, mMessageId);
+            log("onFilterComplete: result is " + result, mTracker.getMessageId());
 
             boolean carrierRequestedDrop =
                     (result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) != 0;
@@ -1745,12 +1847,18 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
 
             // Now that all filters have been invoked, drop the message if it is blocked.
-            // TODO(b/156910035): Remove mUserUnlocked once we stop showing the new message
-            // notification for blocked numbers.
-            if (mUserUnlocked && mBlock) {
-                log("onFilterComplete: dropping message as the sender is blocked",
-                        mTracker.getMessageId());
-                dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+            if (mBlock) {
+                // Only delete the message if the user is unlocked. Otherwise, we should reprocess
+                // the message after unlock so the filter has a chance to run while credential-
+                // encrypted storage is available.
+                if (mUserUnlocked) {
+                    log("onFilterComplete: dropping message as the sender is blocked",
+                            mTracker.getMessageId());
+                    dropFilteredSms(mTracker, mSmsBroadcastReceiver, mBlock);
+                } else {
+                    // Just complete handling of the message without dropping it.
+                    sendMessage(EVENT_BROADCAST_COMPLETE);
+                }
                 return;
             }
 
@@ -1802,7 +1910,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     protected void logWithLocalLog(String logMsg, long id) {
         log(logMsg, id);
-        mLocalLog.log(logMsg + ", id: " + id);
+        mLocalLog.log(logMsg + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**
@@ -1821,7 +1929,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     protected void logeWithLocalLog(String logMsg, long id) {
         loge(logMsg, id);
-        mLocalLog.log(logMsg + ", id: " + id);
+        mLocalLog.log(logMsg + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**
@@ -1840,7 +1948,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param id unique message id
      */
     protected void log(String s, long id) {
-        log(s + ", id: " + id);
+        log(s + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**
@@ -1859,7 +1967,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param id unique message id
      */
     protected void loge(String s, long id) {
-        loge(s + ", id: " + id);
+        loge(s + ", " + SmsController.formatCrossStackMessageId(id));
     }
 
     /**

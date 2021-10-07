@@ -925,7 +925,9 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public Connection dial(String dialString, DialArgs dialArgs) throws CallStateException {
+    public Connection dial(String dialString, DialArgs dialArgs,
+            Consumer<Phone> chosenPhoneConsumer) throws CallStateException {
+        chosenPhoneConsumer.accept(this);
         return dialInternal(dialString, dialArgs, null);
     }
 
@@ -1512,6 +1514,12 @@ public class ImsPhone extends ImsPhoneBase {
                         isUssdRequest,
                         this);
                 onNetworkInitiatedUssd(mmi);
+        } else if (isUssdError) {
+            ImsPhoneMmiCode mmi;
+            mmi = ImsPhoneMmiCode.newNetworkInitiatedUssd(ussdMessage,
+                    true,
+                    this);
+            mmi.onUssdFinishedError();
         }
     }
 
@@ -1580,7 +1588,31 @@ public class ImsPhone extends ImsPhoneBase {
                                          new SilentRedialParam(mLastDialString, cause, dialArgs),
                                          null);
         if (ar != null) {
-            mSilentRedialRegistrants.notifyRegistrants(ar);
+            // There is a race condition that can happen in some cases:
+            // (Main thread) dial start
+            // (Binder Thread) onCallSessionFailed
+            // (Binder Thread) schedule a redial for CS on the main thread
+            // (Main Thread) dial finish
+            // (Main Thread) schedule to associate ImsPhoneConnection with
+            //               GsmConnection on the main thread
+            // If scheduling the CS redial occurs before the command to schedule the
+            // ImsPhoneConnection to be  associated with the GsmConnection, the CS redial will occur
+            // before GsmConnection has had callbacks to ImsPhone correctly updated. This will cause
+            // Callbacks back to GsmCdmaPhone to never be set up correctly and we will lose track of
+            // the instance.
+            // Instead, schedule this redial to happen on the main thread, so that we know dial has
+            // finished before scheduling a redial:
+            // (Main thread) dial start
+            // (Binder Thread) onCallSessionFailed -> move notify registrants to main thread
+            // (Main Thread) dial finish
+            // (Main Thread) schedule on main thread to associate ImsPhoneConnection with
+            //               GsmConnection
+            // (Main Thread) schedule a redial for CS
+            mContext.getMainExecutor().execute(() -> {
+                logd("initiateSilentRedial: notifying registrants, isEmergency=" + isEmergency
+                        + ", eccCategory=" + eccCategory);
+                mSilentRedialRegistrants.notifyRegistrants(ar);
+            });
         }
     }
 
@@ -1888,6 +1920,7 @@ public class ImsPhone extends ImsPhoneBase {
                 }
                 break;
             case EVENT_INITIATE_VOLTE_SILENT_REDIAL: {
+                // This is a CS -> IMS redial
                 if (VDBG) logd("EVENT_INITIATE_VOLTE_SILENT_REDIAL");
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null && ar.result != null) {
@@ -1900,6 +1933,10 @@ public class ImsPhone extends ImsPhoneBase {
                     try {
                         Connection cn = dial(dialString,
                                 updateDialArgsForVolteSilentRedial(dialArgs, causeCode));
+                        // The GSM/CDMA Connection that is owned by the GsmCdmaPhone is currently
+                        // the one with a callback registered to TelephonyConnection. Notify the
+                        // redial happened over that Phone so that it can be replaced with the
+                        // new ImsPhoneConnection.
                         Rlog.d(LOG_TAG, "Notify volte redial connection changed cn: " + cn);
                         if (mDefaultPhone != null) {
                             // don't care it is null or not.

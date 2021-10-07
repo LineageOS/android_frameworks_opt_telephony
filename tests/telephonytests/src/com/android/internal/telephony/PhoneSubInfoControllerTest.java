@@ -16,8 +16,6 @@
 package com.android.internal.telephony;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
-import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
-import static android.Manifest.permission.READ_SMS;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -31,6 +29,8 @@ import static org.mockito.Mockito.eq;
 import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Binder;
 import android.os.Build;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -45,6 +45,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
     private AppOpsManager mAppOsMgr;
+    private PackageManager mPm;
 
     @Mock
     GsmCdmaPhone mSecondPhone;
@@ -70,6 +71,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(mContext).when(mSecondPhone).getContext();
 
         mAppOsMgr = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mPm = mContext.getPackageManager();
 
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, mSecondPhone});
         mPhoneSubInfoControllerUT = new PhoneSubInfoController(mContext);
@@ -82,6 +84,9 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOpNoThrow(
                 eq(AppOpsManager.OPSTR_READ_DEVICE_IDENTIFIERS), anyInt(), eq(TAG), eq(FEATURE_ID),
                 nullable(String.class));
+
+        // Bypass calling package check.
+        doReturn(Binder.getCallingUid()).when(mPm).getPackageUid(eq(TAG), anyInt());
     }
 
     @After
@@ -589,16 +594,11 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         /* case 1: no READ_PRIVILEGED_PHONE_STATE & READ_PHONE_STATE &
         READ_SMS and no OP_WRITE_SMS & OP_READ_SMS from appOsMgr */
+        // All permission checks are handled by the LegacyPermissionManager, so this test only
+        // requires three case; all permissions / appops denied, READ_PHONE_STATE permission
+        // granted without the appop, and one or more of the permissions / appops granted.
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
         try {
             mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID);
             Assert.fail("expected Security Exception Thrown");
@@ -613,61 +613,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             assertTrue(ex instanceof SecurityException);
         }
 
-        /* case 2: only enable WRITE_SMS permission */
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        assertEquals("+18051234567",
-                mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
-        assertEquals("+18052345678",
-                mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID));
-
-        /* case 3: only enable READ_PRIVILEGED_PHONE_STATE */
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
-        assertEquals("+18051234567",
-                mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
-        assertEquals("+18052345678",
-                mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID));
-
-        /* case 4: only enable READ_PHONE_STATE permission */
-        mContextFixture.removeCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
-        mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
+        /* case 2: only enable READ_PHONE_STATE permission */
+        setPhoneNumberAccess(AppOpsManager.MODE_IGNORED);
         assertNull(mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
         assertNull(mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID));
 
-        /* case 5: enable appOsMgr READ_PHONE_PERMISSION & READ_PHONE_STATE */
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        assertEquals("+18051234567",
-                mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
-        assertEquals("+18052345678",
-                mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID));
-
-        /* case 6: only enable READ_SMS; without the appop should throw SecurityException */
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        mContextFixture.removeCallingOrSelfPermission(READ_PHONE_STATE);
-        mContextFixture.addCallingOrSelfPermission(READ_SMS);
-        try {
-            mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID);
-            Assert.fail("expected SecurityException thrown");
-        } catch (SecurityException expected) {
-        }
-        try {
-            mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID);
-            Assert.fail("expected SecurityException thrown");
-        } catch (SecurityException expected) {
-        }
-
-        /* case 7: enable READ_SMS and OP_READ_SMS */
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        /* case 3: enable READ_SMS and OP_READ_SMS */
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
         assertEquals("+18051234567",
                 mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
         assertEquals("+18052345678",
@@ -684,15 +636,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         /* case 1: no READ_PRIVILEGED_PHONE_STATE & READ_PHONE_STATE &
         READ_SMS and no OP_WRITE_SMS & OP_READ_SMS from appOsMgr */
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
         try {
             mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID);
             Assert.fail("expected Security Exception Thrown");
@@ -707,32 +651,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             assertTrue(ex instanceof SecurityException);
         }
 
-        /* case 2: enable READ_PHONE_STATE permission */
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        try {
-            mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID);
-            Assert.fail("expected Security Exception Thrown");
-        } catch (Exception ex) {
-            assertTrue(ex instanceof SecurityException);
-        }
-
-        try {
-            mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(1, TAG, FEATURE_ID);
-            Assert.fail("expected Security Exception Thrown");
-        } catch (Exception ex) {
-            assertTrue(ex instanceof SecurityException);
-        }
-
-        /* case 3: enable READ_SMS and OP_READ_SMS */
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        mContextFixture.addCallingOrSelfPermission(READ_SMS);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        /* case 2: enable READ_SMS and OP_READ_SMS */
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
         assertEquals("+18051234567",
                 mPhoneSubInfoControllerUT.getLine1NumberForSubscriber(0, TAG, FEATURE_ID));
         assertEquals("+18052345678",
@@ -817,16 +737,10 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         doReturn("+18052345678").when(mSecondPhone).getMsisdn();
 
         /* case 1: no READ_PRIVILEGED_PHONE_STATE & READ_PHONE_STATE from appOsMgr */
+        // The LegacyPermissionManager handles these checks, so set its return code to indicate
+        // none of these have been granted.
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
         try {
             mPhoneSubInfoControllerUT.getMsisdnForSubscriber(0, TAG, FEATURE_ID);
             Assert.fail("expected Security Exception Thrown");
@@ -842,14 +756,14 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         }
 
         /* case 2: only enable READ_PHONE_STATE permission */
-        mContextFixture.addCallingOrSelfPermission(READ_PHONE_STATE);
+        // The LegacyPermissionManager will return AppOpsManager.MODE_IGNORED if the target SDK
+        // version < R and the READ_PHONE_STATE permission has been granted without the appop.
+        setPhoneNumberAccess(AppOpsManager.MODE_IGNORED);
         assertNull(mPhoneSubInfoControllerUT.getMsisdnForSubscriber(0, TAG, FEATURE_ID));
         assertNull(mPhoneSubInfoControllerUT.getMsisdnForSubscriber(1, TAG, FEATURE_ID));
 
         /* case 3: enable appOsMgr READ_PHONE_PERMISSION & READ_PHONE_STATE */
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
         assertEquals("+18051234567",
                 mPhoneSubInfoControllerUT.getMsisdnForSubscriber(0, TAG, FEATURE_ID));
         assertEquals("+18052345678",
@@ -865,16 +779,12 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         /* case 1: no READ_PRIVILEGED_PHONE_STATE & READ_PHONE_STATE &
         READ_SMS and no OP_WRITE_SMS & OP_READ_SMS from appOsMgr */
+        // Since the LegacyPermissionManager is performing this check the service will perform
+        // the READ_PHONE_STATE checks based on target SDK version; for apps targeting R+ it
+        // will not check the READ_PHONE_STATE permission and appop and will only return
+        // permission granted / denied.
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
         try {
             mPhoneSubInfoControllerUT.getMsisdnForSubscriber(0, TAG, FEATURE_ID);
             Assert.fail("expected Security Exception Thrown");
@@ -889,32 +799,8 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             assertTrue(ex instanceof SecurityException);
         }
 
-        /* case 2: only enable READ_PHONE_STATE permission */
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        try {
-            mPhoneSubInfoControllerUT.getMsisdnForSubscriber(0, TAG, FEATURE_ID);
-            Assert.fail("expected Security Exception Thrown");
-        } catch (Exception ex) {
-            assertTrue(ex instanceof SecurityException);
-        }
-
-        try {
-            mPhoneSubInfoControllerUT.getMsisdnForSubscriber(1, TAG, FEATURE_ID);
-            Assert.fail("expected Security Exception Thrown");
-        } catch (Exception ex) {
-            assertTrue(ex instanceof SecurityException);
-        }
-
-        /* case 3: enable READ_SMS and OP_READ_SMS */
-        doReturn(AppOpsManager.MODE_ERRORED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
-        mContextFixture.addCallingOrSelfPermission(READ_SMS);
-        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
-                eq(AppOpsManager.OPSTR_READ_SMS), anyInt(), eq(TAG), eq(FEATURE_ID),
-                nullable(String.class));
+        /* case 2: enable READ_SMS and OP_READ_SMS */
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
         assertEquals("+18051234567",
                 mPhoneSubInfoControllerUT.getMsisdnForSubscriber(0, TAG, FEATURE_ID));
         assertEquals("+18052345678",

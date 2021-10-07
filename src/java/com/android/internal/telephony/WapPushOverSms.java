@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static android.os.PowerWhitelistManager.REASON_EVENT_MMS;
+import static android.os.PowerWhitelistManager.TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED;
+
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
 
 import android.annotation.NonNull;
@@ -24,7 +27,6 @@ import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
 import android.compat.annotation.UnsupportedAppUsage;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -314,8 +316,8 @@ public class WapPushOverSms implements ServiceConnection {
      *         {@link Activity#RESULT_OK} if the message has been broadcast
      *         to applications
      */
-    public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler,
-            String address, int subId, long messageId) {
+    public int dispatchWapPdu(byte[] pdu, InboundSmsHandler.SmsBroadcastReceiver receiver,
+            InboundSmsHandler handler, String address, int subId, long messageId) {
         DecodedResult result = decodeWapPdu(pdu, handler);
         if (result.statusCode != Activity.RESULT_OK) {
             return result.statusCode;
@@ -336,7 +338,8 @@ public class WapPushOverSms implements ServiceConnection {
                 } else {
                     synchronized (this) {
                         mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                                mWapPushManagerPackage, PowerWhitelistManager.EVENT_MMS, "mms-mgr");
+                                mWapPushManagerPackage, PowerWhitelistManager.EVENT_MMS,
+                                REASON_EVENT_MMS, "mms-mgr");
                     }
 
                     Intent intent = new Intent();
@@ -396,9 +399,13 @@ public class WapPushOverSms implements ServiceConnection {
             if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
                     " " + componentName.getClassName());
             long duration = mPowerWhitelistManager.whitelistAppTemporarilyForEvent(
-                    componentName.getPackageName(), PowerWhitelistManager.EVENT_MMS, "mms-app");
+                    componentName.getPackageName(), PowerWhitelistManager.EVENT_MMS,
+                    REASON_EVENT_MMS, "mms-app");
             BroadcastOptions bopts = BroadcastOptions.makeBasic();
-            bopts.setTemporaryAppWhitelistDuration(duration);
+            bopts.setTemporaryAppAllowlist(duration,
+                    TEMPORARY_ALLOWLIST_TYPE_FOREGROUND_SERVICE_ALLOWED,
+                    REASON_EVENT_MMS,
+                    "");
             options = bopts.toBundle();
         }
 

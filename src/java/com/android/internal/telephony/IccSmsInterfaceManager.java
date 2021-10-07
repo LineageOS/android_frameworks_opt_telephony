@@ -21,6 +21,7 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
 import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
 
 import android.Manifest;
+import android.annotation.RequiresPermission;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.compat.annotation.UnsupportedAppUsage;
@@ -537,7 +538,7 @@ public class IccSmsInterfaceManager {
                     + " text='" + text + "' sentIntent=" + sentIntent + " deliveryIntent="
                     + deliveryIntent + " priority=" + priority + " expectMore=" + expectMore
                     + " validityPeriod=" + validityPeriod + " isForVVM=" + isForVvm
-                    + " id= " +  messageId);
+                    + " " + SmsController.formatCrossStackMessageId(messageId));
         }
         notifyIfOutgoingEmergencySms(destAddr);
         destAddr = filterDestAddress(destAddr);
@@ -743,7 +744,7 @@ public class IccSmsInterfaceManager {
             for (String part : parts) {
                 log("sendMultipartTextWithOptions: destAddr=" + destAddr + ", srAddr=" + scAddr
                         + ", part[" + (i++) + "]=" + part
-                        + " id: " + messageId);
+                        + " " + SmsController.formatCrossStackMessageId(messageId));
             }
         }
         notifyIfOutgoingEmergencySms(destAddr);
@@ -1049,8 +1050,9 @@ public class IccSmsInterfaceManager {
     /**
      * Reset all cell broadcast ranges. Previously enabled ranges will become invalid after this.
      */
+    @RequiresPermission(android.Manifest.permission.MODIFY_CELL_BROADCASTS)
     public void resetAllCellBroadcastRanges() {
-        mContext.enforceCallingPermission(android.Manifest.permission.RECEIVE_EMERGENCY_BROADCAST,
+        mContext.enforceCallingPermission(android.Manifest.permission.MODIFY_CELL_BROADCASTS,
                 "resetAllCellBroadcastRanges");
         mCdmaBroadcastRangeManager.clearRanges();
         mCellBroadcastRangeManager.clearRanges();
@@ -1493,6 +1495,13 @@ public class IccSmsInterfaceManager {
                 }
             }
         }
+    }
+
+    /**
+     * Get InboundSmsHandler for the phone.
+     */
+    public InboundSmsHandler getInboundSmsHandler(boolean is3gpp2) {
+        return mDispatchersController.getInboundSmsHandler(is3gpp2);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

@@ -134,11 +134,10 @@ public class RetryManager {
 
     /**
      * If the network suggests a retry delay in the data call setup response, we will retry
-     * the current APN setting again. However, if the network keeps suggesting retrying the same
-     * APN setting, we'll fall into an infinite loop. Therefore adding a counter to retry up to
-     * MAX_SAME_APN_RETRY times can avoid it.
+     * the current APN setting again. The maximum retry count is to prevent that network
+     * keeps asking device to retry data setup forever and causes power consumption issue.
      */
-    private static final int MAX_SAME_APN_RETRY = 3;
+    private static final int DEFAULT_MAX_SAME_APN_RETRY = 3;
 
     /**
      * The delay (in milliseconds) between APN trying within the same round
@@ -160,9 +159,15 @@ public class RetryManager {
     private long mApnRetryAfterDisconnectDelay;
 
     /**
-     * The counter for same APN retrying. See MAX_SAME_APN_RETRY for the details.
+     * The counter for same APN retrying. See {@link #DEFAULT_MAX_SAME_APN_RETRY} for the details.
      */
     private int mSameApnRetryCount = 0;
+
+    /**
+     * The maximum times that frameworks retries data setup with the same APN. This value could be
+     * changed via carrier config. See {@link #DEFAULT_MAX_SAME_APN_RETRY} for the details.
+     */
+    private int mMaxSameApnRetry = DEFAULT_MAX_SAME_APN_RETRY;
 
     /**
      * Retry record with times in milli-seconds
@@ -364,6 +369,10 @@ public class RetryManager {
             mApnRetryAfterDisconnectDelay = b.getLong(
                     CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_RETRY_AFTER_DISCONNECT_LONG,
                     DEFAULT_APN_RETRY_AFTER_DISCONNECT_DELAY);
+            mMaxSameApnRetry = b.getInt(
+                    CarrierConfigManager
+                            .KEY_CARRIER_DATA_CALL_RETRY_NETWORK_REQUESTED_MAX_COUNT_INT,
+                    DEFAULT_MAX_SAME_APN_RETRY);
 
             // Load all retry patterns for all different APNs.
             String[] allConfigStrings = b.getStringArray(
@@ -522,11 +531,11 @@ public class RetryManager {
         }
 
         // If the network had suggested a retry delay, we should retry the current APN again
-        // (up to MAX_SAME_APN_RETRY times) instead of getting the next APN setting from
+        // (up to mMaxSameApnRetry times) instead of getting the next APN setting from
         // our own list. If the APN waiting list has been reset before a setup data responses
         // arrive (i.e. mCurrentApnIndex=-1), then ignore the network suggested retry.
         if (mCurrentApnIndex != -1 && networkSuggestedRetryDelay != NO_SUGGESTED_RETRY_DELAY
-                && mSameApnRetryCount < MAX_SAME_APN_RETRY) {
+                && mSameApnRetryCount < mMaxSameApnRetry) {
             mSameApnRetryCount++;
             return mWaitingApns.get(mCurrentApnIndex);
         }
@@ -575,7 +584,7 @@ public class RetryManager {
         }
 
         if (networkSuggestedDelay != NO_SUGGESTED_RETRY_DELAY
-                && mSameApnRetryCount < MAX_SAME_APN_RETRY) {
+                && mSameApnRetryCount < mMaxSameApnRetry) {
             // If the network explicitly suggests a retry delay, we should use it, even in fail fast
             // mode.
             log("Network suggested retry in " + networkSuggestedDelay + " ms.");

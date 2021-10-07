@@ -1149,7 +1149,8 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendSMSExpectMore (String smscPDU, String pdu, Message result) {
-        unimplemented(result);
+        SimulatedCommandsVerifier.getInstance().sendSMSExpectMore(smscPDU, pdu, result);
+        resultSuccess(result, new SmsResponse(0 /*messageRef*/, null, SmsResponse.NO_ERROR_CODE));
     }
 
     @Override
@@ -2439,6 +2440,12 @@ public class SimulatedCommands extends BaseCommands
         resultSuccess(message, null);
     }
 
+    @Override
+    public void getSlicingConfig(Message result) {
+        SimulatedCommandsVerifier.getInstance().getSlicingConfig(result);
+        resultSuccess(result, null);
+    }
+
     @VisibleForTesting
     public void setDataRegStateResult(Object regStateResult) {
         mDataRegStateResult = regStateResult;
@@ -2474,11 +2481,5 @@ public class SimulatedCommands extends BaseCommands
     @VisibleForTesting
     public void notifySimPhonebookChanged() {
         mSimPhonebookChangedRegistrants.notifyRegistrants();
-    }
-
-    @Override
-    public void getSlicingConfig(Message result) {
-        SimulatedCommandsVerifier.getInstance().getSlicingConfig(result);
-        resultSuccess(result, null);
     }
 }

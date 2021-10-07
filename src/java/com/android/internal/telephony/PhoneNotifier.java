@@ -124,7 +124,6 @@ public interface PhoneNotifier {
     void notifyPhysicalChannelConfig(Phone sender, List<PhysicalChannelConfig> configs);
 
     /** Notify DataEnabled has changed. */
-
     void notifyDataEnabled(Phone sender, boolean enabled, @DataEnabledReason int reason);
 
     /** Notify Allowed Network Type has changed. */

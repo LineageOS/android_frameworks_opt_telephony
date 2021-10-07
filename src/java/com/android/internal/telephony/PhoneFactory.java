@@ -177,7 +177,6 @@ public class PhoneFactory {
                             cdmaSubscription, i);
                 }
 
-
                 if (numPhones > 0) {
                     final RadioConfig radioConfig = RadioConfig.make(context,
                             sCommandsInterfaces[0].getHalVersion());
@@ -189,6 +188,7 @@ public class PhoneFactory {
                     sRadioHalCapabilities = RadioInterfaceCapabilityController.init(
                             radioConfig, null);
                 }
+
 
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()

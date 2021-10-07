@@ -60,6 +60,7 @@ public class UiccControllerTest extends TelephonyTest {
     private static final int ICC_CHANGED_EVENT = 0;
     private static final int EVENT_GET_ICC_STATUS_DONE = 3;
     private static final int EVENT_GET_SLOT_STATUS_DONE = 4;
+    private static final int EVENT_SIM_REFRESH = 8;
     private static final int EVENT_EID_READY = 9;
     @Mock
     private Handler mMockedHandler;
@@ -73,6 +74,8 @@ public class UiccControllerTest extends TelephonyTest {
     private UiccCard mMockCard;
     @Mock
     private EuiccCard mMockEuiccCard;
+    @Mock
+    private UiccProfile mMockProfile;
 
     private IccCardApplicationStatus composeUiccApplicationStatus(
             IccCardApplicationStatus.AppType appType,

@@ -346,8 +346,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return dialString;
     }
 
-    static ImsPhoneMmiCode
-    newNetworkInitiatedUssd(String ussdMessage, boolean isUssdRequest, ImsPhone phone) {
+    public static ImsPhoneMmiCode newNetworkInitiatedUssd(String ussdMessage,
+            boolean isUssdRequest, ImsPhone phone) {
         ImsPhoneMmiCode ret;
 
         ret = new ImsPhoneMmiCode(phone);
@@ -1194,12 +1194,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      *
      * The radio has reset, and this is still pending
      */
-
-    void
-    onUssdFinishedError() {
+    public void onUssdFinishedError() {
         if (mState == State.PENDING) {
             mState = State.FAILED;
-            mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            if (TextUtils.isEmpty(mMessage)) {
+                mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            }
             Rlog.d(LOG_TAG, "onUssdFinishedError: mmi=" + this);
             mPhone.onMMIDone(this);
         }
@@ -1418,7 +1418,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             } else if (ar.exception instanceof ImsException) {
                 sb.append(getImsErrorMessage(ar));
             }
-        } else if (ar.result != null && (int) ar.result == CommandsInterface.SS_STATUS_UNKNOWN) {
+        } else if (ar.result != null && ar.result instanceof Integer
+                && (int) ar.result == CommandsInterface.SS_STATUS_UNKNOWN) {
             mState = State.FAILED;
             sb = null;
         } else if (isActivate()) {

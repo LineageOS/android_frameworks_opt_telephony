@@ -2638,7 +2638,6 @@ public interface CommandsInterface {
      */
     default void cancelHandover(Message result, int callId) {};
 
-
     /**
      * Control the data throttling at modem.
      *
@@ -2651,6 +2650,14 @@ public interface CommandsInterface {
      */
     default void setDataThrottling(Message result, WorkSource workSource,
             int dataThrottlingAction, long completionWindowMillis) {};
+
+    /**
+     * Request to get the current slicing configuration including URSP rules and
+     * NSSAIs (configured, allowed and rejected).
+     *
+     * @param result Message that will be sent back to handler.
+     */
+    default void getSlicingConfig(Message result) {};
 
    /**
      * Request the SIM phonebook records of all activated UICC applications
@@ -2704,12 +2711,4 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
      public void unregisterForSimPhonebookRecordsReceived(Handler h);
-
-    /**
-     * Request to get the current slicing configuration including URSP rules and
-     * NSSAIs (configured, allowed and rejected).
-     *
-     * @param result Message that will be sent back to handler.
-     */
-    default void getSlicingConfig(Message result) {};
 }

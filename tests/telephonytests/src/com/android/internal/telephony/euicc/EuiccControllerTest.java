@@ -1290,7 +1290,8 @@ public class EuiccControllerTest extends TelephonyTest {
     private void callGetDownloadableSubscriptionMetadata(DownloadableSubscription subscription,
             boolean complete, GetDownloadableSubscriptionMetadataResult result) {
         prepareGetDownloadableSubscriptionMetadataCall(complete, result);
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         mController.getDownloadableSubscriptionMetadata(0, subscription, PACKAGE_NAME,
                 resultCallback);
     }
@@ -1311,14 +1312,16 @@ public class EuiccControllerTest extends TelephonyTest {
             }
         }).when(mMockConnector).getDefaultDownloadableSubscriptionList(anyInt(), anyBoolean(),
                 any());
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         mController.getDefaultDownloadableSubscriptionList(CARD_ID, PACKAGE_NAME, resultCallback);
     }
 
     private void callDownloadSubscription(DownloadableSubscription subscription,
             boolean switchAfterDownload, final boolean complete, final int result,
             final int resolvableError, String callingPackage) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1345,7 +1348,8 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void callDeleteSubscription(int subscriptionId, String iccid, final boolean complete,
             final int result, String callingPackage) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1364,7 +1368,8 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void callSwitchToSubscription(int subscriptionId, String iccid, final boolean complete,
             final int result, String callingPackage) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1383,7 +1388,8 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void callUpdateSubscriptionNickname(int subscriptionId, String iccid, String nickname,
             final boolean complete, final int result, String callingPackage) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1403,7 +1409,8 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private void callEraseSubscriptions(final boolean complete, final int result) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1421,7 +1428,8 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private void callEraseSubscriptionsWithOptions(final boolean complete, final int result) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
@@ -1440,7 +1448,8 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private void callRetainSubscriptionsForFactoryReset(final boolean complete, final int result) {
-        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(), 0);
+        PendingIntent resultCallback = PendingIntent.getBroadcast(mContext, 0, new Intent(),
+                PendingIntent.FLAG_IMMUTABLE);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {

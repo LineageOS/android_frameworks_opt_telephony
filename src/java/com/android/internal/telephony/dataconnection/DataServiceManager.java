@@ -39,7 +39,7 @@ import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.UserHandle;
-import android.permission.PermissionManager;
+import android.permission.LegacyPermissionManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.AnomalyReporter;
@@ -91,7 +91,7 @@ public class DataServiceManager extends Handler {
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final AppOpsManager mAppOps;
-    private final PermissionManager mPermissionManager;
+    private final LegacyPermissionManager mPermissionManager;
 
     private final int mTransportType;
 
@@ -222,6 +222,7 @@ public class DataServiceManager extends Handler {
             mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
             mLastBoundPackageName = getDataServicePackageName();
+            removeMessages(EVENT_WATCHDOG_TIMEOUT);
 
             try {
                 service.linkToDeath(mDeathRecipient, 0);
@@ -231,11 +232,9 @@ public class DataServiceManager extends Handler {
                 mIDataService.registerForUnthrottleApn(mPhone.getPhoneId(),
                         new CellularDataServiceCallback("unthrottleApn"));
             } catch (RemoteException e) {
-                mDeathRecipient.binderDied();
                 loge("Remote exception. " + e);
                 return;
             }
-            removeMessages(EVENT_WATCHDOG_TIMEOUT);
             mServiceBindingChangedRegistrants.notifyResult(true);
         }
         @Override
@@ -357,8 +356,8 @@ public class DataServiceManager extends Handler {
         // NOTE: Do NOT use AppGlobals to retrieve the permission manager; AppGlobals
         // caches the service instance, but we need to explicitly request a new service
         // so it can be mocked out for tests
-        mPermissionManager =
-                (PermissionManager) phone.getContext().getSystemService(Context.PERMISSION_SERVICE);
+        mPermissionManager = (LegacyPermissionManager) phone.getContext().getSystemService(
+                Context.LEGACY_PERMISSION_SERVICE);
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
 
         IntentFilter intentFilter = new IntentFilter();
@@ -502,7 +501,7 @@ public class DataServiceManager extends Handler {
      *
      * @return package name of the data service package for the the current transportType.
      */
-    private String getDataServicePackageName() {
+    public String getDataServicePackageName() {
         return getDataServicePackageName(mTransportType);
     }
 

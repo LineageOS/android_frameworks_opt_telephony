@@ -31,7 +31,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -40,13 +39,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.Manifest;
-import android.app.AppOpsManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
@@ -56,9 +56,9 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.UiccSlotInfo;
 import android.test.mock.MockContentResolver;
-import android.test.suitebuilder.annotation.SmallTest;
 
 import androidx.test.filters.FlakyTest;
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccController;
@@ -112,6 +112,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("SubscriptionControllerTest");
 
+        if (Looper.myLooper() == null) {
+            Looper.prepare();
+        }
+
         doReturn(SINGLE_SIM).when(mTelephonyManager).getSimCount();
         doReturn(SINGLE_SIM).when(mTelephonyManager).getPhoneCount();
         mMockContentResolver = (MockContentResolver) mContext.getContentResolver();
@@ -144,8 +148,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         /*clear sub info in mSubscriptionControllerUT since they will otherwise be persistent
          * between each test case. */
-        mSubscriptionControllerUT.clearSubInfo();
-        mSubscriptionControllerUT.resetStaticMembers();
+        if (mSubscriptionControllerUT != null) {
+            mSubscriptionControllerUT.clearSubInfo();
+            mSubscriptionControllerUT.resetStaticMembers();
+        }
 
         /* clear settings for default voice/data/sms sub ID */
         Settings.Global.putInt(mContext.getContentResolver(),
@@ -1321,12 +1327,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetActiveSubscriptionWithReadPhoneNumbers() throws Exception {
-        // If the calling package has the READ_PHONE_NUMBERS permission the number should be
-        // available in the SubscriptionInfo.
+    public void testGetActiveSubscriptionWithPhoneNumberAccess() throws Exception {
+        // If the calling package meets any of the requirements for the
+        // LegacyPermissionManager#checkPhoneNumberAccess test then the number should be available
+        // in the SubscriptionInfo.
         testInsertSim();
         setupReadPhoneNumbersTest();
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_NUMBERS);
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
@@ -1404,13 +1411,14 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetActiveSubscriptionInfoForSimSlotIndexWithReadPhoneNumbers()
+    public void testGetActiveSubscriptionInfoForSimSlotIndexWithPhoneNumberAccess()
             throws Exception {
-        // If the calling package has the READ_PHONE_NUMBERS permission the number should be
-        // available in the SubscriptionInfo.
+        // If the calling package meets any of the requirements for the
+        // LegacyPermissionManager#checkPhoneNumberAccess test then the number should be available
+        // in the SubscriptionInfo.
         testInsertSim();
         setupReadPhoneNumbersTest();
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_NUMBERS);
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
 
         SubscriptionInfo subscriptionInfo =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoForSimSlotIndex(0,
@@ -1490,12 +1498,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetActiveSubscriptionInfoListWithReadPhoneNumbers() throws Exception {
-        // If the calling package has the READ_PHONE_NUMBERS permission the number should be
-        // available in the SubscriptionInfo.
+    public void testGetActiveSubscriptionInfoListWithPhoneNumberAccess() throws Exception {
+        // If the calling package meets any of the requirements for the
+        // LegacyPermissionManager#checkPhoneNumberAccess test then the number should be available
+        // in the SubscriptionInfo.
         testInsertSim();
         setupReadPhoneNumbersTest();
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_NUMBERS);
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
 
         List<SubscriptionInfo> subInfoList =
                 mSubscriptionControllerUT.getActiveSubscriptionInfoList(mCallingPackage,
@@ -1649,12 +1658,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetSubscriptionInGroupWithReadPhoneNumbers() throws Exception {
-        // If the calling package has the READ_PHONE_NUMBERS permission the number should be
-        // available in the SubscriptionInfo.
+    public void testGetSubscriptionInGroupWithPhoneNumberAccess() throws Exception {
+        // If the calling package meets any of the requirements for the
+        // LegacyPermissionManager#checkPhoneNumberAccess test then the number should be available
+        // in the SubscriptionInfo.
         ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
         setupReadPhoneNumbersTest();
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_NUMBERS);
+        setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
 
         List<SubscriptionInfo> subInfoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
                 groupUuid, mCallingPackage, mCallingFeature);
@@ -1711,9 +1721,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
         setupMocksForTelephonyPermissions(Build.VERSION_CODES.R);
-        doReturn(AppOpsManager.MODE_DEFAULT).when(mAppOpsManager).noteOp(
-                eq(AppOpsManager.OPSTR_WRITE_SMS), anyInt(), anyString(),
-                nullable(String.class), nullable(String.class));
+        setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
     }
 
     private void setupIdentifierCarrierPrivilegesTest() throws Exception {
@@ -1931,5 +1939,22 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 1,
                 mSubscriptionControllerUT
                         .getAllSubInfoList(mCallingPackage, mCallingFeature).size());
+    }
+
+    @Test
+    @SmallTest
+    public void testCheckPhoneIdAndIccIdMatch() {
+        try {
+            testSetSubscriptionGroupWithModifyPermission();
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e);
+        }
+
+        mSubscriptionControllerUT.addSubInfoRecord("test3",
+                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+
+        assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test"));
+        assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test2"));
+        assertFalse(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test3"));
     }
 }

@@ -67,7 +67,7 @@ public class RtpTransportTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        mRtpTransport = new RtpTransport(mRtpAdapter, mTimeoutsAdapter, mHandler);
+        mRtpTransport = new RtpTransport(mRtpAdapter, mTimeoutsAdapter, mHandler, true /* sdp */);
         mRtpTransport.setCallback(mCallback);
     }
 

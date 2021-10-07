@@ -31,6 +31,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_S
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
+import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.NUM_SIGNAL_LEVEL;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IP;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV6;
@@ -70,6 +71,7 @@ import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsSmsImplBase;
 import android.text.TextUtils;
+import android.util.ArrayMap;
 import android.util.Base64;
 import android.util.SparseArray;
 
@@ -80,12 +82,15 @@ import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.SmsController;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.nano.TelephonyProto;
 import com.android.internal.telephony.nano.TelephonyProto.ActiveSubscriptionInfo;
+import com.android.internal.telephony.nano.TelephonyProto.BandwidthEstimatorStats;
 import com.android.internal.telephony.nano.TelephonyProto.EmergencyNumberInfo;
 import com.android.internal.telephony.nano.TelephonyProto.ImsCapabilities;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
@@ -128,6 +133,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -220,6 +226,10 @@ public class TelephonyMetrics {
     /** Last RilDataCall Events (indexed by cid), indexed by phone id */
     private final SparseArray<SparseArray<RilDataCall>> mLastRilDataCallEvents =
             new SparseArray<>();
+
+    /** List of Tx and Rx Bandwidth estimation stats maps */
+    private final List<Map<String, BwEstimationStats>> mBwEstStatsMapList = new ArrayList<>(
+            Arrays.asList(new ArrayMap<>(), new ArrayMap<>()));
 
     /** The start system time of the TelephonyLog in milliseconds*/
     private long mStartSystemTimeMs;
@@ -620,6 +630,20 @@ public class TelephonyMetrics {
                 + new DecimalFormat("#.##").format(s.monitoredRailEnergyConsumedMah));
         pw.decreaseIndent();
         pw.println("Hardware Version: " + SystemProperties.get("ro.boot.revision", ""));
+
+        pw.decreaseIndent();
+        pw.println("LinkBandwidthEstimator stats:");
+        pw.increaseIndent();
+
+        pw.println("Tx");
+        for (BwEstimationStats stats : mBwEstStatsMapList.get(0).values()) {
+            pw.println(stats.toString());
+        }
+
+        pw.println("Rx");
+        for (BwEstimationStats stats : mBwEstStatsMapList.get(1).values()) {
+            pw.println(stats.toString());
+        }
     }
 
     /**
@@ -640,6 +664,8 @@ public class TelephonyMetrics {
         mTelephonyEvents.clear();
         mCompletedCallSessions.clear();
         mCompletedSmsSessions.clear();
+        mBwEstStatsMapList.get(0).clear();
+        mBwEstStatsMapList.get(1).clear();
 
         mTelephonyEventsDropped = false;
 
@@ -792,7 +818,7 @@ public class TelephonyMetrics {
             }
         }
         log.lastActiveSubscriptionInfo = activeSubscriptionInfo;
-
+        log.bandwidthEstimatorStats = buildBandwidthEstimatorStats();
         return log;
     }
 
@@ -1887,7 +1913,7 @@ public class TelephonyMetrics {
                     SmsSession.Event.Type.SMS_SEND_RESULT)
                     .setImsServiceErrno(resultCode)
                     .setErrorCode(errorReason)
-                    .setMessageId((messageId))
+                    .setMessageId(messageId)
             );
 
             smsSession.decreaseExpectedResponse();
@@ -2456,7 +2482,7 @@ public class TelephonyMetrics {
                 + " parts, source = " + smsSource
                 + " blocked = " + blocked
                 + " type = " + type
-                + " messageId = " + messageId);
+                + " " + SmsController.formatCrossStackMessageId(messageId));
 
         int smsFormat = convertSmsFormat(format);
         int smsError =
@@ -2920,4 +2946,121 @@ public class TelephonyMetrics {
                 return SimState.SIM_STATE_UNKNOWN;
         }
     }
+
+    /**
+     * Write bandwidth estimator stats
+     */
+    public synchronized void writeBandwidthStats(int link, int rat, int nrMode,
+            int signalLevel, int bwEstExtErrPercent, int coldStartErrPercent, int bwKbps) {
+        BwEstimationStats stats = lookupEstimationStats(link, rat, nrMode);
+        stats.mBwEstErrorAcc[signalLevel] += Math.abs(bwEstExtErrPercent);
+        stats.mStaticBwErrorAcc[signalLevel] += Math.abs(coldStartErrPercent);
+        stats.mBwAccKbps[signalLevel] += bwKbps;
+        stats.mCount[signalLevel]++;
+    }
+
+    private BwEstimationStats lookupEstimationStats(int linkIndex, int dataRat, int nrMode) {
+        String dataRatName = LinkBandwidthEstimator.getDataRatName(dataRat, nrMode);
+        BwEstimationStats ans = mBwEstStatsMapList.get(linkIndex).get(dataRatName);
+        if (ans == null) {
+            ans = new BwEstimationStats(dataRat, nrMode);
+            mBwEstStatsMapList.get(linkIndex).put(dataRatName, ans);
+        }
+        return ans;
+    }
+
+    private BandwidthEstimatorStats buildBandwidthEstimatorStats() {
+        BandwidthEstimatorStats stats = new BandwidthEstimatorStats();
+        List<BandwidthEstimatorStats.PerRat> ratList;
+        ratList = writeBandwidthEstimatorStatsRatList(mBwEstStatsMapList.get(0));
+        stats.perRatTx = ratList.toArray(new BandwidthEstimatorStats.PerRat[0]);
+        ratList = writeBandwidthEstimatorStatsRatList(mBwEstStatsMapList.get(1));
+        stats.perRatRx = ratList.toArray(new BandwidthEstimatorStats.PerRat[0]);
+        return stats;
+    }
+
+    private List<BandwidthEstimatorStats.PerRat> writeBandwidthEstimatorStatsRatList(
+            Map<String, BwEstimationStats> bwEstStatsMap) {
+        List<BandwidthEstimatorStats.PerRat> ratList = new ArrayList<>();
+        for (BwEstimationStats perRat : bwEstStatsMap.values()) {
+            ratList.add(perRat.writeBandwidthStats());
+        }
+        return ratList;
+    }
+
+    private static class BwEstimationStats {
+        final int mRadioTechnology;
+        final int mNrMode;
+        final long[] mBwEstErrorAcc = new long[NUM_SIGNAL_LEVEL];
+        final long[] mStaticBwErrorAcc = new long[NUM_SIGNAL_LEVEL];
+        final long[] mBwAccKbps = new long[NUM_SIGNAL_LEVEL];
+        final int[] mCount = new int[NUM_SIGNAL_LEVEL];
+
+        BwEstimationStats(int radioTechnology, int nrMode) {
+            mRadioTechnology = radioTechnology;
+            mNrMode = nrMode;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            return sb.append(LinkBandwidthEstimator.getDataRatName(mRadioTechnology, mNrMode))
+                    .append("\n Count\n").append(printValues(mCount))
+                    .append("\n AvgKbps\n").append(printAvgValues(mBwAccKbps, mCount))
+                    .append("\n BwEst Error\n").append(printAvgValues(mBwEstErrorAcc, mCount))
+                    .append("\n StaticBw Error\n").append(printAvgValues(mStaticBwErrorAcc, mCount))
+                    .toString();
+        }
+
+        private String printValues(int[] values) {
+            StringBuilder sb = new StringBuilder();
+            for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
+                sb.append(" " + values[k]);
+            }
+            return sb.toString();
+        }
+
+        private String printAvgValues(long[] stats, int[] count) {
+            StringBuilder sb = new StringBuilder();
+            for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
+                int avgStat = calculateAvg(stats[k], count[k]);
+                sb.append(" " + avgStat);
+            }
+            return sb.toString();
+        }
+
+        private BandwidthEstimatorStats.PerRat writeBandwidthStats() {
+            BandwidthEstimatorStats.PerRat stats = new BandwidthEstimatorStats.PerRat();
+            List<BandwidthEstimatorStats.PerLevel> levelList = new ArrayList<>();
+            for (int level = 0; level < NUM_SIGNAL_LEVEL; level++) {
+                BandwidthEstimatorStats.PerLevel currStats = writeBandwidthStatsPerLevel(level);
+                if (currStats != null) {
+                    levelList.add(currStats);
+                }
+            }
+            stats.rat = mRadioTechnology;
+            stats.perLevel = levelList.toArray(new BandwidthEstimatorStats.PerLevel[0]);
+            stats.nrMode = mNrMode;
+            return stats;
+        }
+
+        private BandwidthEstimatorStats.PerLevel writeBandwidthStatsPerLevel(int level) {
+            int count = mCount[level];
+            if (count > 0) {
+                BandwidthEstimatorStats.PerLevel stats = new BandwidthEstimatorStats.PerLevel();
+                stats.signalLevel = level;
+                stats.count = count;
+                stats.avgBwKbps = calculateAvg(mBwAccKbps[level], count);
+                stats.staticBwErrorPercent = calculateAvg(mStaticBwErrorAcc[level], count);
+                stats.bwEstErrorPercent = calculateAvg(mBwEstErrorAcc[level], count);
+                return stats;
+            }
+            return null;
+        }
+
+        private int calculateAvg(long acc, int count) {
+            return (count > 0) ? (int) (acc / count) : 0;
+        }
+    }
+
 }

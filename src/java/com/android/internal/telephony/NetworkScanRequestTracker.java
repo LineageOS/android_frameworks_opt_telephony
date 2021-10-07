@@ -445,6 +445,7 @@ public final class NetworkScanRequestTracker {
                     .setCallingPackage(nsri.mCallingPackage)
                     .setCallingPid(nsri.mPid)
                     .setCallingUid(nsri.mUid)
+                    .setCallingFeatureId(nsri.mPhone.getContext().getAttributionTag())
                     .setMinSdkVersionForFine(Build.VERSION_CODES.Q)
                     .setMinSdkVersionForCoarse(Build.VERSION_CODES.Q)
                     .setMinSdkVersionForEnforcement(Build.VERSION_CODES.Q)

@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.net.Uri;
 import android.os.Handler;
 import android.telecom.Log;
+import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.RtpHeaderExtensionType;
 import android.util.ArraySet;
@@ -283,6 +284,15 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
     private final Handler mHandler;
 
     /**
+     * {@code true} if the carrier supports negotiating the RTP header extensions using SDP.
+     * If {@code true}, we can expected the
+     * {@link ImsCallProfile#getAcceptedRtpHeaderExtensionTypes()} to contain the SDP negotiated RTP
+     * header extensions.  If {@code false} we will assume the protocol is negotiated only after
+     * receiving an RTP header extension of the expected type.
+     */
+    private final boolean mIsSdpNegotiationSupported;
+
+    /**
      * Protocol status.
      */
     private int mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_REQUIRED;
@@ -297,11 +307,14 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
      * @param rtpAdapter Adapter for abstract send/receive of RTP header extension data.
      * @param timeoutsAdapter Timeouts adapter for dealing with time based configurations.
      * @param handler Handler for posting future events.
+     * @param isSdpNegotiationSupported Indicates whether SDP negotiation
      */
-    public RtpTransport(RtpAdapter rtpAdapter, Timeouts.Adapter timeoutsAdapter, Handler handler) {
+    public RtpTransport(RtpAdapter rtpAdapter, Timeouts.Adapter timeoutsAdapter, Handler handler,
+            boolean isSdpNegotiationSupported) {
         mRtpAdapter = rtpAdapter;
         mTimeoutsAdapter = timeoutsAdapter;
         mHandler = handler;
+        mIsSdpNegotiationSupported = isSdpNegotiationSupported;
     }
 
     /**
@@ -329,23 +342,36 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
                 mRtpAdapter.getAcceptedRtpHeaderExtensions();
         mSupportedRtpHeaderExtensionTypes.addAll(acceptedExtensions);
 
-        boolean areExtensionsAvailable = acceptedExtensions.stream().anyMatch(
-                e -> e.getUri().equals(DEVICE_STATE_RTP_HEADER_EXTENSION))
-                && acceptedExtensions.stream().anyMatch(
+        Log.i(this, "startNegotiation: supportedExtensions=%s", mSupportedRtpHeaderExtensionTypes
+                .stream()
+                .map(e -> e.toString())
+                .collect(Collectors.joining(",")));
+
+        if (mIsSdpNegotiationSupported) {
+            boolean areExtensionsAvailable = acceptedExtensions.stream().anyMatch(
+                    e -> e.getUri().equals(DEVICE_STATE_RTP_HEADER_EXTENSION))
+                    && acceptedExtensions.stream().anyMatch(
                     e -> e.getUri().equals(CALL_STATE_RTP_HEADER_EXTENSION));
 
-        if (areExtensionsAvailable) {
-            // Headers were negotiated during SDP, so we can assume negotiation is complete and
-            // signal to the communicator that we can use this transport.
-            mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_COMPLETE;
-            Log.i(this, "startNegotiation: header extensions available, negotiation success");
-            notifyProtocolReady();
+            if (areExtensionsAvailable) {
+                // Headers were negotiated during SDP, so we can assume negotiation is complete and
+                // signal to the communicator that we can use this transport.
+                mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_COMPLETE;
+                Log.i(this, "startNegotiation: header extensions available, negotiation success");
+                notifyProtocolReady();
+            } else {
+                // Headers failed to be negotiated during SDP.   Assume protocol is not available.
+                // TODO: Implement fallback logic where we still try an SDP probe/response.
+                mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_FAILED;
+                Log.i(this,
+                        "startNegotiation: header extensions not available; negotiation failed");
+                notifyProtocolUnavailable();
+            }
         } else {
-            // Headers failed to be negotiated during SDP.   Assume protocol is not available.
-            // TODO: Implement fallback logic where we still try an SDP probe/response.
-            mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_FAILED;
-            Log.i(this, "startNegotiation: header extensions not available; negotiation failed");
-            notifyProtocolUnavailable();
+            Log.i(this, "startNegotiation: SDP negotiation not supported; negotiation complete");
+            // TODO: This is temporary; we will need to implement a probe/response in this scenario
+            // if SDP is not supported.  For now we will just assume the protocol is ready.
+            notifyProtocolReady();
         }
     }
 
@@ -358,7 +384,30 @@ public class RtpTransport implements TransportProtocol, RtpAdapter.Callback {
     public void sendMessages(Set<Communicator.Message> messages) {
         Set<RtpHeaderExtension> toSend = messages.stream().map(m -> generateRtpHeaderExtension(m))
                 .collect(Collectors.toSet());
+        Log.i(this, "sendMessages: sending=%s", messages);
         mRtpAdapter.sendRtpHeaderExtensions(toSend);
+    }
+
+    /**
+     * Forces the protocol status to negotiated; for test purposes.
+     */
+    @Override
+    public void forceNegotiated() {
+        // If there is no supported RTP header extensions we need to fake it.
+        if (mSupportedRtpHeaderExtensionTypes == null
+                || mSupportedRtpHeaderExtensionTypes.isEmpty()) {
+            mSupportedRtpHeaderExtensionTypes.add(DEVICE_STATE_RTP_HEADER_EXTENSION_TYPE);
+            mSupportedRtpHeaderExtensionTypes.add(CALL_STATE_RTP_HEADER_EXTENSION_TYPE);
+        }
+        mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_COMPLETE;
+    }
+
+    /**
+     * Forces the protocol status to un-negotiated; for test purposes.
+     */
+    @Override
+    public void forceNotNegotiated() {
+        mProtocolStatus = PROTOCOL_STATUS_NEGOTIATION_REQUIRED;
     }
 
     /**

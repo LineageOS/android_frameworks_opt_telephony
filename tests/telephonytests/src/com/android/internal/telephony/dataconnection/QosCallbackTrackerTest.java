@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import android.annotation.NonNull;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
+import android.net.Network;
 import android.telephony.data.EpsBearerQosSessionAttributes;
 import android.telephony.data.EpsQos;
 import android.telephony.data.Qos;
@@ -85,12 +87,16 @@ public class QosCallbackTrackerTest extends TelephonyTest {
 
     @Mock
     private DcNetworkAgent mDcNetworkAgent;
+    @Mock
+    private Network mNetwork;
 
     private QosCallbackTracker mQosCallbackTracker;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        doReturn(mNetwork).when(mDcNetworkAgent).getNetwork();
+        doReturn(100).when(mNetwork).getNetId();
         mQosCallbackTracker = new QosCallbackTracker(mDcNetworkAgent);
         processAllMessages();
     }
@@ -443,6 +449,35 @@ public class QosCallbackTrackerTest extends TelephonyTest {
 
         verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234), eq(1));
         verify(mDcNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235), eq(1));
+    }
+
+    @Test
+    @SmallTest
+    public void testQosSessionWithInvalidPortRange() throws Exception {
+        // Non-matching QosBearerFilter
+        ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
+        qosFilters1.add(createIpv4QosFilter("155.55.55.55",
+                new QosBearerFilter.PortRange(0,0), 45));
+
+        ArrayList<QosBearerSession> qosSessions = new ArrayList<>();
+        qosSessions.add(new QosBearerSession(1234, createEpsQos(5, 6, 7, 8), qosFilters1));
+
+        // Matching QosBearerFilter
+        ArrayList<QosBearerFilter> qosFilters2 = new ArrayList<>();
+        qosFilters2.add(createIpv4QosFilter("122.22.22.22",
+                new QosBearerFilter.PortRange(-1, 1), 45));
+        qosSessions.add(new QosBearerSession(1235, createEpsQos(5, 6, 7, 8), qosFilters2));
+
+        mQosCallbackTracker.updateSessions(qosSessions);
+
+        // Add filter after updateSessions
+        Filter filter = new Filter(new InetSocketAddress(
+                InetAddresses.parseNumericAddress("122.22.22.22"), 2222));
+        mQosCallbackTracker.addFilter(1, filter);
+
+        verify(mDcNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
+
     }
 }
 
