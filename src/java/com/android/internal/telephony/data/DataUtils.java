@@ -19,6 +19,10 @@ package com.android.internal.telephony.data;
 import android.annotation.NonNull;
 import android.net.NetworkCapabilities;
 
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
 /**
  * This class contains all the utility methods used by telephony data stack.
  */
@@ -30,7 +34,7 @@ public class DataUtils {
      * @return The network capability.
      */
     public static int getNetworkCapabilityFromString(@NonNull String capabilityString) {
-        switch (capabilityString) {
+        switch (capabilityString.toUpperCase(Locale.ROOT)) {
             case "MMS": return NetworkCapabilities.NET_CAPABILITY_MMS;
             case "SUPL": return NetworkCapabilities.NET_CAPABILITY_SUPL;
             case "DUN": return NetworkCapabilities.NET_CAPABILITY_DUN;
@@ -50,12 +54,12 @@ public class DataUtils {
     }
 
     /**
-     * Convert capabilities to string.
+     * Convert a network capability to string.
      *
      * This is for debugging and logging purposes only.
      *
-     * @param netCap Network capability
-     * @return Network capability in string format
+     * @param netCap Network capability.
+     * @return Network capability in string format.
      */
     public static String networkCapabilityToString(int netCap) {
         switch (netCap) {
@@ -97,5 +101,19 @@ public class DataUtils {
             default:
                 return "Unknown(" + Integer.toString(netCap) + ")";
         }
+    }
+
+    /**
+     * Convert network capabilities to string.
+     *
+     * This is for debugging and logging purposes only.
+     *
+     * @param netCaps Network capabilities.
+     * @return Network capabilities in string format.
+     */
+    public static String networkCapabilitiesToString(int[] netCaps) {
+        return Arrays.stream(netCaps)
+                .mapToObj(DataUtils::networkCapabilityToString)
+                .collect(Collectors.joining("|"));
     }
 }
