@@ -25,11 +25,13 @@ import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPAB
 import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NR;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -76,6 +78,7 @@ public class ImsStatsTest extends TelephonyTest {
     @Mock private UiccSlot mPhysicalSlot1;
     @Mock private Phone mSecondPhone;
     @Mock private ImsPhone mSecondImsPhone;
+    @Mock private ServiceStateStats mServiceStateStats;
 
     private TestableImsStats mImsStats;
 
@@ -109,6 +112,7 @@ public class ImsStatsTest extends TelephonyTest {
         doReturn(CARRIER1_ID).when(mPhone).getCarrierId();
         doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(mSST).when(mImsPhone).getServiceStateTracker();
+        doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
 
         // WWAN PS RAT is LTE
         doReturn(
@@ -338,6 +342,86 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(0L, stats.smsCapableMillis);
         assertEquals(0L, stats.smsAvailableMillis);
         verifyNoMoreInteractions(mPersistAtomsStorage);
+        // ServiceStateStats should be notified
+        verify(mServiceStateStats).onImsVoiceRegistrationChanged();
+    }
+
+    @Test
+    @SmallTest
+    public void onImsCapabilitiesChanged_differentTech() throws Exception {
+        mImsStats.onSetFeatureResponse(
+                CAPABILITY_TYPE_VOICE,
+                REGISTRATION_TECH_LTE,
+                ProvisioningManager.PROVISIONING_VALUE_ENABLED);
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+
+        verify(mServiceStateStats).onImsVoiceRegistrationChanged();
+
+        mImsStats.incTimeMillis(2000L);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_NR, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+
+        // Atom with previous feature availability should be generated
+        ArgumentCaptor<ImsRegistrationStats> captor =
+                ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(captor.capture());
+        ImsRegistrationStats stats = captor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
+        assertEquals(2000L, stats.registeredMillis);
+        assertEquals(2000L, stats.voiceCapableMillis);
+        assertEquals(2000L, stats.voiceAvailableMillis);
+        assertEquals(0L, stats.videoCapableMillis);
+        assertEquals(0L, stats.videoAvailableMillis);
+        assertEquals(0L, stats.utCapableMillis);
+        assertEquals(0L, stats.utAvailableMillis);
+        assertEquals(0L, stats.smsCapableMillis);
+        assertEquals(0L, stats.smsAvailableMillis);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+        // ServiceStateStats should be notified
+        verify(mServiceStateStats, times(2)).onImsVoiceRegistrationChanged();
+    }
+
+    @Test
+    @SmallTest
+    public void onImsCapabilitiesChanged_differentTechNoVoice() throws Exception {
+        mImsStats.onSetFeatureResponse(
+                CAPABILITY_TYPE_SMS,
+                REGISTRATION_TECH_LTE,
+                ProvisioningManager.PROVISIONING_VALUE_ENABLED);
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_SMS));
+
+        verify(mServiceStateStats, never()).onImsVoiceRegistrationChanged();
+
+        mImsStats.incTimeMillis(2000L);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_NR, new MmTelCapabilities(CAPABILITY_TYPE_SMS));
+
+        // Atom with previous feature availability should be generated
+        ArgumentCaptor<ImsRegistrationStats> captor =
+                ArgumentCaptor.forClass(ImsRegistrationStats.class);
+        verify(mPersistAtomsStorage).addImsRegistrationStats(captor.capture());
+        ImsRegistrationStats stats = captor.getValue();
+        assertEquals(CARRIER1_ID, stats.carrierId);
+        assertEquals(0, stats.simSlotIndex);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, stats.rat);
+        assertEquals(2000L, stats.registeredMillis);
+        assertEquals(0L, stats.voiceCapableMillis);
+        assertEquals(0L, stats.voiceAvailableMillis);
+        assertEquals(0L, stats.videoCapableMillis);
+        assertEquals(0L, stats.videoAvailableMillis);
+        assertEquals(0L, stats.utCapableMillis);
+        assertEquals(0L, stats.utAvailableMillis);
+        assertEquals(2000L, stats.smsCapableMillis);
+        assertEquals(2000L, stats.smsAvailableMillis);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+        // ServiceStateStats should not be notified
+        verify(mServiceStateStats, never()).onImsVoiceRegistrationChanged();
     }
 
     @Test
@@ -721,5 +805,62 @@ public class ImsStatsTest extends TelephonyTest {
         assertEquals(999, termination.extraCode);
         assertEquals("Timeout", termination.extraMessage);
         verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_noRegistration() throws Exception {
+        // Do nothing
+
+        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, mImsStats.getImsVoiceRadioTech());
+    }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_noVoiceRegistration() throws Exception {
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_SMS));
+
+        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, mImsStats.getImsVoiceRadioTech());
+    }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_cellularRegistration() throws Exception {
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mImsStats.getImsVoiceRadioTech());
+    }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_wifiRegistration() throws Exception {
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WLAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_IWLAN, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+
+        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, mImsStats.getImsVoiceRadioTech());
+    }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_unregistered() throws Exception {
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+        mImsStats.onImsUnregistered(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 999, "Timeout"));
+        doReturn(
+                        new NetworkRegistrationInfo.Builder()
+                                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                                .build())
+                .when(mServiceState)
+                .getNetworkRegistrationInfo(DOMAIN_PS, TRANSPORT_TYPE_WWAN);
+
+
+        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, mImsStats.getImsVoiceRadioTech());
     }
 }
