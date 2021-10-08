@@ -192,7 +192,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getVoiceNetworkType();
         doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mServiceState).getDataNetworkType();
         mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
-        doReturn(true).when(mImsPhone).isWifiCallingEnabled();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
         mServiceStateStats.onServiceStateChanged(mServiceState);
 
         mServiceStateStats.incTimeMillis(100L);
@@ -395,7 +395,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         mServiceStateStats.incTimeMillis(100L);
         // Voice RAT changes to IWLAN and data RAT stays in LTE according to WWAN PS RAT
         doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mServiceState).getDataNetworkType();
-        doReturn(true).when(mImsPhone).isWifiCallingEnabled();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mImsStats).getImsVoiceRadioTech();
         mServiceStateStats.onServiceStateChanged(mServiceState);
         mServiceStateStats.incTimeMillis(100L);
 
@@ -433,7 +433,6 @@ public class ServiceStateStatsTest extends TelephonyTest {
     public void update_iwlanButNotWifiCalling() throws Exception {
         // Using default service state for LTE as WWAN PS RAT
         doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mServiceState).getDataNetworkType();
-        doReturn(false).when(mImsPhone).isWifiCallingEnabled();
 
         mServiceStateStats.onServiceStateChanged(mServiceState);
 
