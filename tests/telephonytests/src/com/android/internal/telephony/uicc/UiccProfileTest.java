@@ -193,7 +193,7 @@ public class UiccProfileTest extends TelephonyTest {
         mUiccProfile.update(mContext, mSimulatedCommands, mIccCardStatus);
         processAllMessages();
 
-        assertTrue(mUiccProfile.areCarrierPriviligeRulesLoaded());
+        assertTrue(mUiccProfile.areCarrierPrivilegeRulesLoaded());
         verify(mSimulatedCommandsVerifier, times(2)).iccOpenLogicalChannel(isA(String.class),
                 anyInt(), isA(Message.class));
         verify(mSimulatedCommandsVerifier, times(2)).iccTransmitApduLogicalChannel(

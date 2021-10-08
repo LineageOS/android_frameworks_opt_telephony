@@ -68,6 +68,7 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.E
 import com.android.internal.telephony.protobuf.nano.MessageNano;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -95,6 +96,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @Mock private UiccSlot mEmptySlot;
     @Mock private UiccCard mInactiveCard;
     @Mock private UiccCard mActiveCard;
+    @Mock private UiccPort mInactivePort;
+    @Mock private UiccPort mActivePort;
 
     @Mock private ImsPhoneConnection mImsConnection0;
     @Mock private ImsPhoneConnection mImsConnection1;
@@ -155,8 +158,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(true).when(mEsimSlot).isActive();
         doReturn(CardState.CARDSTATE_PRESENT).when(mEsimSlot).getCardState();
         doReturn(true).when(mEsimSlot).isEuicc();
-        doReturn(0).when(mInactiveCard).getNumApplications();
-        doReturn(4).when(mActiveCard).getNumApplications();
+        doReturn(0).when(mInactivePort).getNumApplications();
+        doReturn(4).when(mActivePort).getNumApplications();
 
         doReturn(new UiccSlot[] {mPhysicalSlot}).when(mUiccController).getUiccSlots();
         doReturn(mPhysicalSlot).when(mUiccController).getUiccSlot(eq(0));
@@ -437,6 +440,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_dsdsModeSingleSim() {
         doReturn(mInactiveCard).when(mEsimSlot).getUiccCard();
+        doReturn(new UiccPort[]{mInactivePort}).when(mInactiveCard).getUiccPortList();
         doReturn(new UiccSlot[] {mPhysicalSlot, mEsimSlot}).when(mUiccController).getUiccSlots();
         doReturn(mEsimSlot).when(mUiccController).getUiccSlot(eq(1));
         doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
@@ -481,6 +485,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_dsdsMode() {
         doReturn(mActiveCard).when(mEsimSlot).getUiccCard();
+        doReturn(new UiccPort[]{mActivePort}).when(mActiveCard).getUiccPortList();
         doReturn(new UiccSlot[] {mPhysicalSlot, mEsimSlot}).when(mUiccController).getUiccSlots();
         doReturn(mEsimSlot).when(mUiccController).getUiccSlot(eq(1));
         doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
@@ -525,6 +530,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_esim() {
         doReturn(mActiveCard).when(mEsimSlot).getUiccCard();
+        doReturn(new UiccPort[]{mActivePort}).when(mActiveCard).getUiccPortList();
         doReturn(new UiccSlot[] {mPhysicalSlot, mEsimSlot}).when(mUiccController).getUiccSlots();
         doReturn(mEsimSlot).when(mUiccController).getUiccSlot(eq(1));
         doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
