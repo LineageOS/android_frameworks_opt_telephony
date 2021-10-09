@@ -82,6 +82,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDataNetworkControllerTestHandler.quit();
         super.tearDown();
     }
 

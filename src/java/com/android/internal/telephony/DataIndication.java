@@ -35,18 +35,18 @@ import java.util.ArrayList;
  * Interface declaring unsolicited radio indications for data APIs.
  */
 public class DataIndication extends IRadioDataIndication.Stub {
-    RIL mRil;
+    private final RIL mRil;
 
-    DataIndication(RIL ril) {
+    public DataIndication(RIL ril) {
         mRil = ril;
     }
 
     /**
      * Indicates data call contexts have changed.
-     * @param indicationType RadioIndicationType
+     * @param indicationType Type of radio indication
      * @param dcList List of SetupDataCallResult identical to that returned by getDataCallList.
-     *               It is the complete list of current data contexts including new contexts that
-     *               have been activated.
+     *        It is the complete list of current data contexts including new contexts that have
+     *        been activated.
      */
     public void dataCallListChanged(int indicationType,
             android.hardware.radio.data.SetupDataCallResult[] dcList) {
@@ -60,7 +60,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
 
     /**
      * Indicates a status update for an ongoing Keepalive session.
-     * @param indicationType RadioIndicationType
+     * @param indicationType Type of radio indication
      * @param halStatus Status of the ongoing Keepalive session
      */
     public void keepaliveStatus(int indicationType,
@@ -68,8 +68,8 @@ public class DataIndication extends IRadioDataIndication.Stub {
         mRil.processIndication(indicationType);
 
         if (RIL.RILJ_LOGD) {
-            mRil.unsljLogRet(RIL_UNSOL_KEEPALIVE_STATUS,
-                    "handle=" + halStatus.sessionHandle + " code=" +  halStatus.code);
+            mRil.unsljLogRet(RIL_UNSOL_KEEPALIVE_STATUS, "handle=" + halStatus.sessionHandle
+                    + " code=" +  halStatus.code);
         }
 
         KeepaliveStatus ks = new KeepaliveStatus(halStatus.sessionHandle, halStatus.code);
@@ -78,7 +78,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
 
     /**
      * Indicates when there is new Carrier PCO data received for a data call.
-     * @param indicationType RadioIndicationType
+     * @param indicationType Type of radio indication
      * @param pco New PcoData
      */
     public void pcoData(int indicationType, android.hardware.radio.data.PcoDataInfo pco) {
@@ -93,7 +93,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
 
     /**
      * Stop throttling calls to setupDataCall for the given APN.
-     * @param indicationType RadioIndicationType
+     * @param indicationType Type of radio indication
      * @param apn APN to unthrottle
      * @throws RemoteException
      */
@@ -102,7 +102,6 @@ public class DataIndication extends IRadioDataIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
 
-        mRil.mApnUnthrottledRegistrants.notifyRegistrants(
-                new AsyncResult(null, apn, null));
+        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, apn, null));
     }
 }
