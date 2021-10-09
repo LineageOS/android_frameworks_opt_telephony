@@ -61,7 +61,7 @@ public class DataUtils {
      * @param netCap Network capability.
      * @return Network capability in string format.
      */
-    public static String networkCapabilityToString(int netCap) {
+    public static @NonNull String networkCapabilityToString(int netCap) {
         switch (netCap) {
             case NetworkCapabilities.NET_CAPABILITY_MMS:                  return "MMS";
             case NetworkCapabilities.NET_CAPABILITY_SUPL:                 return "SUPL";
@@ -111,7 +111,8 @@ public class DataUtils {
      * @param netCaps Network capabilities.
      * @return Network capabilities in string format.
      */
-    public static String networkCapabilitiesToString(int[] netCaps) {
+    public static @NonNull String networkCapabilitiesToString(int[] netCaps) {
+        if (netCaps == null) return "";
         return Arrays.stream(netCaps)
                 .mapToObj(DataUtils::networkCapabilityToString)
                 .collect(Collectors.joining("|"));
