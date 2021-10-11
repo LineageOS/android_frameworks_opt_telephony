@@ -66,6 +66,7 @@ import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.LocalLog;
+import android.util.Log;
 import android.util.SparseArray;
 import android.util.Xml;
 
@@ -342,6 +343,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected DataEnabledSettings mDataEnabledSettings;
     // Used for identify the carrier of current subscription
     protected CarrierResolver mCarrierResolver;
+    protected SignalStrengthController mSignalStrengthController;
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int mPhoneId;
@@ -1895,6 +1897,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Retrieves the DisplayInfoController of the phone instance.
      */
     public DisplayInfoController getDisplayInfoController() {
+        return null;
+    }
+
+    /**
+     * Retrieves the SignalStrengthController of the phone instance.
+     */
+    public SignalStrengthController getSignalStrengthController() {
+        Log.wtf(LOG_TAG, "getSignalStrengthController return null.");
         return null;
     }
 
@@ -4777,12 +4787,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param isIdle true if the new state is idle
      */
     public void notifyDeviceIdleStateChanged(boolean isIdle) {
-        ServiceStateTracker sst = getServiceStateTracker();
-        if (sst == null) {
-            Rlog.e(LOG_TAG, "notifyDeviceIdleStateChanged: SST is null");
+        SignalStrengthController ssc = getSignalStrengthController();
+        if (ssc == null) {
+            Rlog.e(LOG_TAG, "notifyDeviceIdleStateChanged: SignalStrengthController is null");
             return;
         }
-        sst.onDeviceIdleStateChanged(isIdle);
+        ssc.onDeviceIdleStateChanged(isIdle);
     }
 
     /**
@@ -4977,6 +4987,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (mDeviceStateMonitor != null) {
             pw.println("DeviceStateMonitor:");
             mDeviceStateMonitor.dump(fd, pw, args);
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (mSignalStrengthController != null) {
+            pw.println("SignalStrengthController:");
+            mSignalStrengthController.dump(fd, pw, args);
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
