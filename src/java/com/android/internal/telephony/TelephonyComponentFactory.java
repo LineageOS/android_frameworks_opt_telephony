@@ -445,6 +445,13 @@ public class TelephonyComponentFactory {
         return MultiSimSettingController.init(c, sc);
     }
 
+    /**
+     * Create a new SignalStrengthController instance.
+     */
+    public SignalStrengthController makeSignalStrengthController(GsmCdmaPhone phone) {
+        return new SignalStrengthController(phone);
+    }
+
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Looper looper, Context context,
             SubscriptionController sc) {
         return new SubscriptionInfoUpdater(looper, context, sc);
