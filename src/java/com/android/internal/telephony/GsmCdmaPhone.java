@@ -308,6 +308,9 @@ public class GsmCdmaPhone extends Phone {
                 .makeCarrierSignalAgent(this);
         mTransportManager = mTelephonyComponentFactory.inject(TransportManager.class.getName())
                 .makeTransportManager(this);
+        // SST/DSM depends on SSC, so SSC is instanced before SST/DSM
+        mSignalStrengthController = mTelephonyComponentFactory.inject(
+                SignalStrengthController.class.getName()).makeSignalStrengthController(this);
         mSST = mTelephonyComponentFactory.inject(ServiceStateTracker.class.getName())
                 .makeServiceStateTracker(this, this.mCi);
         mEmergencyNumberTracker = mTelephonyComponentFactory
@@ -654,6 +657,11 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public DisplayInfoController getDisplayInfoController() {
         return mDisplayInfoController;
+    }
+
+    @Override
+    public SignalStrengthController getSignalStrengthController() {
+        return mSignalStrengthController;
     }
 
     @Override
@@ -4109,17 +4117,19 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void setSignalStrengthReportingCriteria(int signalStrengthMeasure,
             int[] systemThresholds, int ran, boolean isEnabledForSystem) {
-        int[] consolidatedThresholds = mSST.getConsolidatedSignalThresholds(
+        int[] consolidatedThresholds = mSignalStrengthController.getConsolidatedSignalThresholds(
                 ran,
                 signalStrengthMeasure,
-                isEnabledForSystem && mSST.shouldHonorSystemThresholds() ? systemThresholds
+                isEnabledForSystem && mSignalStrengthController.shouldHonorSystemThresholds()
+                        ? systemThresholds
                         : new int[]{},
                 REPORTING_HYSTERESIS_DB);
-        boolean isEnabledForAppRequest = mSST.shouldEnableSignalThresholdForAppRequest(
-                ran,
-                signalStrengthMeasure,
-                getSubId(),
-                isDeviceIdle());
+        boolean isEnabledForAppRequest =
+                mSignalStrengthController.shouldEnableSignalThresholdForAppRequest(
+                        ran,
+                        signalStrengthMeasure,
+                        getSubId(),
+                        isDeviceIdle());
         mCi.setSignalStrengthReportingCriteria(
                 new SignalThresholdInfo.Builder()
                         .setRadioAccessNetworkType(ran)
