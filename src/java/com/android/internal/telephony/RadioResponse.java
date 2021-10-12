@@ -68,19 +68,6 @@ import java.util.List;
 import java.util.UUID;
 
 public class RadioResponse extends IRadioResponse.Stub {
-    // The number of the required config values for broadcast SMS stored in the C struct
-    // RIL_CDMA_BroadcastServiceInfo
-    private static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
-
-    private static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
-
-    private static final String RADIO_POWER_FAILURE_BUGREPORT_UUID =
-            "316f3801-fa21-4954-a42f-0041eada3b31";
-    private static final String RADIO_POWER_FAILURE_RF_HARDWARE_ISSUE_UUID =
-            "316f3801-fa21-4954-a42f-0041eada3b32";
-    private static final String RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID =
-            "316f3801-fa21-4954-a42f-0041eada3b33";
-
     RIL mRil;
 
     public RadioResponse(RIL ril) {
@@ -556,8 +543,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param sms Response to sms sent as defined by SendSmsResult in types.hal
      */
-    public void sendSmsResponse(RadioResponseInfo responseInfo,
-            SendSmsResult sms) {
+    public void sendSmsResponse(RadioResponseInfo responseInfo, SendSmsResult sms) {
         responseSms(responseInfo, sms);
     }
 
@@ -757,7 +743,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param response 0 is the TS 27.007 service class bit vector of
      *        services for which the specified barring facility
@@ -768,7 +753,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param retry 0 is the number of retries remaining, or -1 if unknown
      */
@@ -784,7 +768,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param selection false for automatic selection, true for manual selection
      */
@@ -814,7 +797,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param networkInfos List of network operator information as OperatorInfos defined in
      *                     types.hal
@@ -852,7 +834,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void stopNetworkScanResponse(RadioResponseInfo responseInfo) {
@@ -874,7 +855,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param version string containing version string for log reporting
      */
@@ -897,7 +877,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param enable true for "mute enabled" and false for "mute disabled"
      */
@@ -906,7 +885,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param status indicates CLIP status
      */
@@ -977,7 +955,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param bandModes List of RadioBandMode listing supported modes
      */
@@ -987,7 +964,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param commandResponse SAT/USAT response in hexadecimal format
      *        string starting with first byte of response
@@ -1033,7 +1009,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param nwType RadioPreferredNetworkType defined in types.hal
      */
@@ -1057,7 +1032,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param cells Vector of neighboring radio cell information
      */
@@ -1088,7 +1062,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param type CdmaRoamingType defined in types.hal
      */
@@ -1104,7 +1077,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param mode TTY mode
      */
@@ -1120,13 +1092,11 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param enable false for Standard Privacy Mode (Public Long Code Mask)
      *        true for Enhanced Privacy Mode (Private Long Code Mask)
      */
-    public void getPreferredVoicePrivacyResponse(RadioResponseInfo responseInfo,
-            boolean enable) {
+    public void getPreferredVoicePrivacyResponse(RadioResponseInfo responseInfo, boolean enable) {
         responseInts(responseInfo, enable ? 1 : 0);
     }
 
@@ -1145,7 +1115,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param sms Sms result struct as defined by SendSmsResult in types.hal
      */
@@ -1154,7 +1123,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error which
      *                     is defined in 1.6/types.hal
      * @param sms Sms result struct as defined by SendSmsResult in types.hal
@@ -1174,7 +1142,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error which
      *                     is defined in 1.6/types.hal
      * @param sms Sms result struct as defined by SendSmsResult in types.hal
@@ -1200,7 +1167,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param configs Vector of GSM/WCDMA Cell broadcast configs
      */
@@ -1224,7 +1190,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param configs Vector of CDMA Broadcast SMS configs.
      */
@@ -1248,7 +1213,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param mdn MDN if CDMA subscription is available
      * @param hSid is a comma separated list of H_SID (Home SID) if
@@ -1264,7 +1228,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param index record index where the cmda sms message is stored
      */
@@ -1328,7 +1291,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param source CDMA subscription source
      */
@@ -1354,7 +1316,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param iccIo IccIoResult as defined in types.hal corresponding to ICC IO response
      */
@@ -1364,7 +1325,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param rat Current voice RAT
      */
@@ -1381,8 +1341,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param cellInfo List of current cell information known to radio
      */
-    public void getCellInfoListResponse_1_2(
-            RadioResponseInfo responseInfo,
+    public void getCellInfoListResponse_1_2(RadioResponseInfo responseInfo,
             ArrayList<android.hardware.radio.V1_2.CellInfo> cellInfo) {
         responseCellInfoList(responseInfo, cellInfo);
     }
@@ -1391,8 +1350,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error.
      * @param cellInfo List of current cell information known to radio.
      */
-    public void getCellInfoListResponse_1_4(
-            RadioResponseInfo responseInfo,
+    public void getCellInfoListResponse_1_4(RadioResponseInfo responseInfo,
             ArrayList<android.hardware.radio.V1_4.CellInfo> cellInfo) {
         responseCellInfoList(responseInfo, cellInfo);
     }
@@ -1401,8 +1359,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error.
      * @param cellInfo List of current cell information known to radio.
      */
-    public void getCellInfoListResponse_1_5(
-            RadioResponseInfo responseInfo,
+    public void getCellInfoListResponse_1_5(RadioResponseInfo responseInfo,
             ArrayList<android.hardware.radio.V1_5.CellInfo> cellInfo) {
         responseCellInfoList(responseInfo, cellInfo);
     }
@@ -1439,7 +1396,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param isRegistered false = not registered, true = registered
      * @param ratFamily RadioTechnologyFamily as defined in types.hal. This value is valid only if
@@ -1447,16 +1403,12 @@ public class RadioResponse extends IRadioResponse.Stub {
      */
     public void getImsRegistrationStateResponse(RadioResponseInfo responseInfo,
             boolean isRegistered, int ratFamily) {
-        responseInts(
-                responseInfo,
-                isRegistered ? 1 : 0,
-                ratFamily == RadioTechnologyFamily.THREE_GPP
-                        ? PhoneConstants.PHONE_TYPE_GSM
+        responseInts(responseInfo, isRegistered ? 1 : 0,
+                ratFamily == RadioTechnologyFamily.THREE_GPP ? PhoneConstants.PHONE_TYPE_GSM
                         : PhoneConstants.PHONE_TYPE_CDMA);
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param sms Response to sms sent as defined by SendSmsResult in types.hal
      */
@@ -1465,18 +1417,15 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param result IccIoResult as defined in types.hal
      */
     public void iccTransmitApduBasicChannelResponse(RadioResponseInfo responseInfo,
-            android.hardware.radio.V1_0.IccIoResult
-                    result) {
+            android.hardware.radio.V1_0.IccIoResult result) {
         responseIccIo(responseInfo, result);
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param channelId session id of the logical channel.
      * @param selectResponse Contains the select response for the open channel command with one
@@ -1500,7 +1449,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param result IccIoResult as defined in types.hal
      */
@@ -1511,7 +1459,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param result string containing the contents of the NV item
      */
@@ -1561,21 +1508,16 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param result IccIoResult as defined in types.hal
      */
     public void requestIccSimAuthenticationResponse(RadioResponseInfo responseInfo,
-            android.hardware.radio.V1_0.IccIoResult
-                    result) {
+            android.hardware.radio.V1_0.IccIoResult result) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            IccIoResult ret = new IccIoResult(
-                    result.sw1,
-                    result.sw2,
-                    TextUtils.isEmpty(result.simResponse)
-                            ? null : result.simResponse.getBytes());
+            IccIoResult ret = new IccIoResult(result.sw1, result.sw2,
+                    TextUtils.isEmpty(result.simResponse) ? null : result.simResponse.getBytes());
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
@@ -1630,7 +1572,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param statusInfo LceStatusInfo indicating LCE status
      */
@@ -1639,7 +1580,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param statusInfo LceStatusInfo indicating LCE status
      */
@@ -1652,7 +1592,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param activityInfo modem activity information
      */
@@ -1662,7 +1601,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param isEnabled Indicates whether NR dual connectivity is enabled or not, True if enabled
      *               else false.
@@ -1681,7 +1619,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param info Response info struct containing response type, serial no. and error
      */
     public void setNrDualConnectivityStateResponse(
@@ -1690,7 +1627,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param numAllowed number of allowed carriers which have been set correctly.
      *        On success, it must match the length of list Carriers->allowedCarriers.
@@ -1720,7 +1656,6 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setAllowedCarriersResponse_1_4(RadioResponseInfo responseInfo) {
@@ -1911,7 +1846,7 @@ public class RadioResponse extends IRadioResponse.Stub {
     public void getSimPhonebookCapacityResponse(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo,
             android.hardware.radio.V1_6.PhonebookCapacity pbCapacity) {
-        AdnCapacity capacity = new AdnCapacity(pbCapacity);
+        AdnCapacity capacity = RILUtils.convertHalPhonebookCapacity(pbCapacity);
         responseAdnCapacity(responseInfo, capacity);
     }
 
@@ -2023,6 +1958,21 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseIntArrayList_1_6(responseInfo, ints);
     }
 
+    /**
+     * Send int array response
+     * @param ril RIL to send response
+     * @param responseInfo responseInfo
+     * @param var response int array
+     */
+    public static void responseInts(RIL ril, android.hardware.radio.RadioResponseInfo responseInfo,
+            int ...var) {
+        final ArrayList<Integer> ints = new ArrayList<>();
+        for (int i = 0; i < var.length; i++) {
+            ints.add(var[i]);
+        }
+        responseIntArrayList(ril, responseInfo, ints);
+    }
+
     private void responseIntArrayList(RadioResponseInfo responseInfo, ArrayList<Integer> var) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
@@ -2051,6 +2001,28 @@ public class RadioResponse extends IRadioResponse.Stub {
                 sendMessageResponse(rr.mResult, ret);
             }
             mRil.processResponseDone_1_6(rr, responseInfo, ret);
+        }
+    }
+
+    /**
+     * Send int array list response
+     * @param ril RIL to send response
+     * @param responseInfo responseInfo
+     * @param var response int array list
+     */
+    public static void responseIntArrayList(RIL ril,
+            android.hardware.radio.RadioResponseInfo responseInfo, ArrayList<Integer> var) {
+        RILRequest rr = ril.processResponse(responseInfo);
+
+        if (rr != null) {
+            int[] ret = new int[var.size()];
+            for (int i = 0; i < var.size(); i++) {
+                ret[i] = var.get(i);
+            }
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            ril.processResponseDone(rr, responseInfo, ret);
         }
     }
 
@@ -2199,6 +2171,24 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
+    /**
+     * Send void response
+     * @param ril RIL to send response
+     * @param responseInfo response void
+     */
+    public static void responseVoid(RIL ril,
+            android.hardware.radio.RadioResponseInfo responseInfo) {
+        RILRequest rr = ril.processResponse(responseInfo);
+
+        if (rr != null) {
+            Object ret = null;
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            ril.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
     private void responseString(RadioResponseInfo responseInfo, String str) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
@@ -2210,6 +2200,24 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
+    /**
+     * Send string response
+     * @param ril RIL to send response
+     * @param responseInfo responseInfo
+     * @param str response string
+     */
+    public static void responseString(RIL ril,
+            android.hardware.radio.RadioResponseInfo responseInfo, String str) {
+        RILRequest rr = ril.processResponse(responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, str);
+            }
+            ril.processResponseDone(rr, responseInfo, str);
+        }
+    }
+
     private void responseStrings(RadioResponseInfo responseInfo, String ...str) {
         ArrayList<String> strings = new ArrayList<>();
         for (int i = 0; i < str.length; i++) {
@@ -2218,8 +2226,39 @@ public class RadioResponse extends IRadioResponse.Stub {
         responseStringArrayList(mRil, responseInfo, strings);
     }
 
+    /**
+     * Send String array response
+     * @param ril RIL to send response
+     * @param responseInfo responseInfo
+     * @param str String array
+     */
+    public static void responseStrings(RIL ril,
+            android.hardware.radio.RadioResponseInfo responseInfo, String ...str) {
+        ArrayList<String> strings = new ArrayList<>();
+        for (int i = 0; i < str.length; i++) {
+            strings.add(str[i]);
+        }
+        responseStringArrayList(ril, responseInfo, strings);
+    }
+
     static void responseStringArrayList(RIL ril, RadioResponseInfo responseInfo,
             ArrayList<String> strings) {
+        RILRequest rr = ril.processResponse(responseInfo);
+
+        if (rr != null) {
+            String[] ret = new String[strings.size()];
+            for (int i = 0; i < strings.size(); i++) {
+                ret[i] = strings.get(i);
+            }
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, ret);
+            }
+            ril.processResponseDone(rr, responseInfo, ret);
+        }
+    }
+
+    private static void responseStringArrayList(RIL ril,
+            android.hardware.radio.RadioResponseInfo responseInfo, ArrayList<String> strings) {
         RILRequest rr = ril.processResponse(responseInfo);
 
         if (rr != null) {
@@ -2255,7 +2294,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = new SignalStrength(signalStrength);
+            SignalStrength ret = RILUtils.convertHalSignalStrength(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
@@ -2269,7 +2308,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = new SignalStrength(signalStrength);
+            SignalStrength ret = RILUtils.convertHalSignalStrength(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
@@ -2283,7 +2322,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = new SignalStrength(signalStrength);
+            SignalStrength ret = RILUtils.convertHalSignalStrength(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
@@ -2297,7 +2336,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse_1_6(responseInfo);
 
         if (rr != null) {
-            SignalStrength ret = new SignalStrength(signalStrength);
+            SignalStrength ret = RILUtils.convertHalSignalStrength(signalStrength);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, ret);
             }
@@ -2373,8 +2412,7 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     private void responseCallForwardInfo(RadioResponseInfo responseInfo,
-            ArrayList<android.hardware.radio.V1_0.CallForwardInfo>
-                    callForwardInfos) {
+            ArrayList<android.hardware.radio.V1_0.CallForwardInfo> callForwardInfos) {
         RILRequest rr = mRil.processResponse(responseInfo);
         if (rr != null) {
             CallForwardInfo[] ret = new CallForwardInfo[callForwardInfos.size()];
@@ -2395,8 +2433,7 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     private void responseOperatorInfos(RadioResponseInfo responseInfo,
-            ArrayList<android.hardware.radio.V1_0.OperatorInfo>
-                    networkInfos) {
+            ArrayList<android.hardware.radio.V1_0.OperatorInfo> networkInfos) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
@@ -2509,7 +2546,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            ArrayList<SmsBroadcastConfigInfo> ret = new ArrayList<SmsBroadcastConfigInfo>();
+            ArrayList<SmsBroadcastConfigInfo> ret = new ArrayList<>();
             for (int i = 0; i < configs.size(); i++) {
                 ret.add(new SmsBroadcastConfigInfo(configs.get(i).fromServiceId,
                         configs.get(i).toServiceId, configs.get(i).fromCodeScheme,
@@ -2536,28 +2573,28 @@ public class RadioResponse extends IRadioResponse.Stub {
                 // not be done by this transport layer. And needs to
                 // be done by the vendor ril or application logic.
                 int numInts;
-                numInts = CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES
-                        * CDMA_BSI_NO_OF_INTS_STRUCT + 1;
+                numInts = RILUtils.CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES
+                        * RILUtils.CDMA_BSI_NO_OF_INTS_STRUCT + 1;
                 ret = new int[numInts];
 
                 // Faking a default record for all possible records.
-                ret[0] = CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES;
+                ret[0] = RILUtils.CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES;
 
                 // Loop over CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES set 'english' as
                 // default language and selection status to false for all.
-                for (int i = 1; i < numInts; i += CDMA_BSI_NO_OF_INTS_STRUCT) {
-                    ret[i + 0] = i / CDMA_BSI_NO_OF_INTS_STRUCT;
+                for (int i = 1; i < numInts; i += RILUtils.CDMA_BSI_NO_OF_INTS_STRUCT) {
+                    ret[i + 0] = i / RILUtils.CDMA_BSI_NO_OF_INTS_STRUCT;
                     ret[i + 1] = 1;
                     ret[i + 2] = 0;
                 }
             } else {
                 int numInts;
-                numInts = (numServiceCategories * CDMA_BSI_NO_OF_INTS_STRUCT) + 1;
+                numInts = (numServiceCategories * RILUtils.CDMA_BSI_NO_OF_INTS_STRUCT) + 1;
                 ret = new int[numInts];
 
                 ret[0] = numServiceCategories;
                 for (int i = 1, j = 0; j < configs.size();
-                        j++, i = i + CDMA_BSI_NO_OF_INTS_STRUCT) {
+                        j++, i = i + RILUtils.CDMA_BSI_NO_OF_INTS_STRUCT) {
                     ret[i] = configs.get(j).serviceCategory;
                     ret[i + 1] = configs.get(j).language;
                     ret[i + 2] = configs.get(j).selected ? 1 : 0;
@@ -2623,8 +2660,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         }
     }
 
-    private void responseHardwareConfig(
-            RadioResponseInfo responseInfo,
+    private void responseHardwareConfig(RadioResponseInfo responseInfo,
             ArrayList<android.hardware.radio.V1_0.HardwareConfig> config) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
@@ -2677,8 +2713,7 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
     private void responseCarrierRestrictions(RadioResponseInfo responseInfo, boolean allAllowed,
-            CarrierRestrictionsWithPriority carriers,
-            int multiSimPolicy) {
+            CarrierRestrictionsWithPriority carriers, int multiSimPolicy) {
         RILRequest rr = mRil.processResponse(responseInfo);
         if (rr == null) {
             return;
@@ -2774,7 +2809,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         mRil.mLastRadioPowerResult = info.error;
         if (info.error != RadioError.RADIO_NOT_AVAILABLE && info.error != RadioError.NONE) {
             AnomalyReporter.reportAnomaly(
-                    UUID.fromString(RADIO_POWER_FAILURE_BUGREPORT_UUID), "Radio power failure");
+                    UUID.fromString(RILUtils.RADIO_POWER_FAILURE_BUGREPORT_UUID),
+                    "Radio power failure");
         }
     }
 
@@ -2786,15 +2822,17 @@ public class RadioResponse extends IRadioResponse.Stub {
         mRil.mLastRadioPowerResult = info.error;
         if (info.error == android.hardware.radio.V1_6.RadioError.RF_HARDWARE_ISSUE) {
             AnomalyReporter.reportAnomaly(
-                    UUID.fromString(RADIO_POWER_FAILURE_RF_HARDWARE_ISSUE_UUID), "RF HW damaged");
+                    UUID.fromString(RILUtils.RADIO_POWER_FAILURE_RF_HARDWARE_ISSUE_UUID),
+                    "RF HW damaged");
         } else if (info.error == android.hardware.radio.V1_6.RadioError.NO_RF_CALIBRATION_INFO) {
             AnomalyReporter.reportAnomaly(
-                    UUID.fromString(RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID),
+                    UUID.fromString(RILUtils.RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID),
                     "No RF calibration data");
         } else if (info.error != android.hardware.radio.V1_6.RadioError.RADIO_NOT_AVAILABLE
                 && info.error != android.hardware.radio.V1_6.RadioError.NONE) {
             AnomalyReporter.reportAnomaly(
-                    UUID.fromString(RADIO_POWER_FAILURE_BUGREPORT_UUID), "Radio power failure");
+                    UUID.fromString(RILUtils.RADIO_POWER_FAILURE_BUGREPORT_UUID),
+                    "Radio power failure");
         }
     }
 
@@ -2818,7 +2856,7 @@ public class RadioResponse extends IRadioResponse.Stub {
         if (rr != null) {
             ArrayList<RadioAccessSpecifier> specifiers = new ArrayList<>();
             for (android.hardware.radio.V1_5.RadioAccessSpecifier specifier : halSpecifiers) {
-                specifiers.add(convertRadioAccessSpecifier(specifier));
+                specifiers.add(RILUtils.convertHalRadioAccessSpecifier(specifier));
             }
             mRil.riljLog("getSystemSelectionChannelsResponse: from HIDL: " + specifiers);
             if (info.error == RadioError.NONE) {
@@ -2826,34 +2864,6 @@ public class RadioResponse extends IRadioResponse.Stub {
             }
             mRil.processResponseDone_1_6(rr, info, specifiers);
         }
-    }
-
-    private static RadioAccessSpecifier convertRadioAccessSpecifier(
-            android.hardware.radio.V1_5.RadioAccessSpecifier specifier) {
-        if (specifier == null) return null;
-        ArrayList<Integer> halBands = new ArrayList<>();
-        switch (specifier.bands.getDiscriminator()) {
-            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
-                    .geranBands:
-                halBands = specifier.bands.geranBands();
-                break;
-            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
-                    .utranBands:
-                halBands = specifier.bands.utranBands();
-                break;
-            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
-                    .eutranBands:
-                halBands = specifier.bands.eutranBands();
-                break;
-            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
-                    .ngranBands:
-                halBands = specifier.bands.ngranBands();
-                break;
-        }
-        return new RadioAccessSpecifier(
-                RILUtils.convertHalRadioAccessNetworks(specifier.radioAccessNetwork),
-                halBands.stream().mapToInt(Integer::intValue).toArray(),
-                specifier.channels.stream().mapToInt(Integer::intValue).toArray());
     }
 
     /**
@@ -2867,7 +2877,8 @@ public class RadioResponse extends IRadioResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
-            BarringInfo bi = BarringInfo.create(cellIdentity, barringInfos);
+            BarringInfo bi = new BarringInfo(RILUtils.convertHalCellIdentity(cellIdentity),
+                    RILUtils.convertHalBarringInfoList(barringInfos));
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, bi);
                 // notify all registrants for the possible barring info change

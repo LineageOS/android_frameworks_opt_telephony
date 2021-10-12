@@ -261,12 +261,36 @@ import android.os.SystemClock;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
+import android.telephony.BarringInfo;
+import android.telephony.CellConfigLte;
+import android.telephony.CellIdentity;
+import android.telephony.CellIdentityCdma;
+import android.telephony.CellIdentityGsm;
+import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
+import android.telephony.CellIdentityTdscdma;
+import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
+import android.telephony.CellInfoCdma;
+import android.telephony.CellInfoGsm;
+import android.telephony.CellInfoLte;
+import android.telephony.CellInfoNr;
+import android.telephony.CellInfoTdscdma;
+import android.telephony.CellInfoWcdma;
+import android.telephony.CellSignalStrength;
+import android.telephony.CellSignalStrengthCdma;
+import android.telephony.CellSignalStrengthGsm;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
+import android.telephony.CellSignalStrengthTdscdma;
+import android.telephony.CellSignalStrengthWcdma;
+import android.telephony.ClosedSubscriberGroupInfo;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
@@ -284,14 +308,22 @@ import android.telephony.data.RouteSelectionDescriptor;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.UrspRule;
 import android.text.TextUtils;
+import android.util.ArraySet;
+import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cat.ComprehensionTlv;
 import com.android.internal.telephony.cat.ComprehensionTlvTag;
+import com.android.internal.telephony.cdma.SmsMessage;
+import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
+import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
+import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
+import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.telephony.Rlog;
 
 import java.io.ByteArrayInputStream;
@@ -301,6 +333,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -309,6 +342,20 @@ import java.util.stream.Collectors;
  */
 public class RILUtils {
     private static final String LOG_TAG = "RILUtils";
+
+    // The number of required config values for broadcast SMS stored in RIL_CdmaBroadcastServiceInfo
+    public static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
+    // The number of service categories for broadcast SMS
+    public static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
+
+    // Radio power failure UUIDs
+    public static final String RADIO_POWER_FAILURE_BUGREPORT_UUID =
+            "316f3801-fa21-4954-a42f-0041eada3b31";
+    public static final String RADIO_POWER_FAILURE_RF_HARDWARE_ISSUE_UUID =
+            "316f3801-fa21-4954-a42f-0041eada3b32";
+    public static final String RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID =
+            "316f3801-fa21-4954-a42f-0041eada3b33";
+
 
     /**
      * Convert to PersoSubstate defined in radio/1.5/types.hal
@@ -447,6 +494,166 @@ public class RILUtils {
         } catch (IOException ex) {
         }
         return msg;
+    }
+
+    /**
+     * Convert CdmaSmsMessage defined in radio/1.0/types.hal to SmsMessage
+     * Note only primitive fields are set
+     * @param cdmaSmsMessage CdmaSmsMessage defined in radio/1.0/types.hal
+     * @return A converted SmsMessage
+     */
+    public static SmsMessage convertHalCdmaSmsMessage(
+            android.hardware.radio.V1_0.CdmaSmsMessage cdmaSmsMessage) {
+        // Note: Parcel.readByte actually reads one Int and masks to byte
+        SmsEnvelope env = new SmsEnvelope();
+        CdmaSmsAddress addr = new CdmaSmsAddress();
+        CdmaSmsSubaddress subaddr = new CdmaSmsSubaddress();
+        byte[] data;
+        byte count;
+        int countInt;
+        int addressDigitMode;
+
+        //currently not supported by the modem-lib: env.mMessageType
+        env.teleService = cdmaSmsMessage.teleserviceId;
+
+        if (cdmaSmsMessage.isServicePresent) {
+            env.messageType = SmsEnvelope.MESSAGE_TYPE_BROADCAST;
+        } else {
+            if (SmsEnvelope.TELESERVICE_NOT_SET == env.teleService) {
+                // assume type ACK
+                env.messageType = SmsEnvelope.MESSAGE_TYPE_ACKNOWLEDGE;
+            } else {
+                env.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
+            }
+        }
+        env.serviceCategory = cdmaSmsMessage.serviceCategory;
+
+        // address
+        addressDigitMode = cdmaSmsMessage.address.digitMode;
+        addr.digitMode = (byte) (0xFF & addressDigitMode);
+        addr.numberMode = (byte) (0xFF & cdmaSmsMessage.address.numberMode);
+        addr.ton = cdmaSmsMessage.address.numberType;
+        addr.numberPlan = (byte) (0xFF & cdmaSmsMessage.address.numberPlan);
+        count = (byte) cdmaSmsMessage.address.digits.size();
+        addr.numberOfDigits = count;
+        data = new byte[count];
+        for (int index = 0; index < count; index++) {
+            data[index] = cdmaSmsMessage.address.digits.get(index);
+
+            // convert the value if it is 4-bit DTMF to 8 bit
+            if (addressDigitMode == CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF) {
+                data[index] = SmsMessage.convertDtmfToAscii(data[index]);
+            }
+        }
+
+        addr.origBytes = data;
+
+        subaddr.type = cdmaSmsMessage.subAddress.subaddressType;
+        subaddr.odd = (byte) (cdmaSmsMessage.subAddress.odd ? 1 : 0);
+        count = (byte) cdmaSmsMessage.subAddress.digits.size();
+
+        if (count < 0) {
+            count = 0;
+        }
+
+        // p_cur->sSubAddress.digits[digitCount] :
+
+        data = new byte[count];
+
+        for (int index = 0; index < count; ++index) {
+            data[index] = cdmaSmsMessage.subAddress.digits.get(index);
+        }
+
+        subaddr.origBytes = data;
+
+        /* currently not supported by the modem-lib:
+            env.bearerReply
+            env.replySeqNo
+            env.errorClass
+            env.causeCode
+        */
+
+        // bearer data
+        countInt = cdmaSmsMessage.bearerData.size();
+        if (countInt < 0) {
+            countInt = 0;
+        }
+
+        data = new byte[countInt];
+        for (int index = 0; index < countInt; index++) {
+            data[index] = cdmaSmsMessage.bearerData.get(index);
+        }
+        // BD gets further decoded when accessed in SMSDispatcher
+        env.bearerData = data;
+
+        // link the filled objects to the SMS
+        env.origAddress = addr;
+        env.origSubaddress = subaddr;
+
+        SmsMessage msg = new SmsMessage(addr, env);
+
+        return msg;
+    }
+
+    /**
+     * Convert CdmaSmsMessage defined in CdmaSmsMessage.aidl to SmsMessage
+     * Note only primitive fields are set
+     * @param msg CdmaSmsMessage defined in CdmaSmsMessage.aidl
+     * @return A converted SmsMessage
+     */
+    public static SmsMessage convertHalCdmaSmsMessage(
+            android.hardware.radio.messaging.CdmaSmsMessage msg) {
+        // Note: Parcel.readByte actually reads one Int and masks to byte
+        SmsEnvelope env = new SmsEnvelope();
+        CdmaSmsAddress addr = new CdmaSmsAddress();
+        CdmaSmsSubaddress subaddr = new CdmaSmsSubaddress();
+
+        // address
+        int addressDigitMode = msg.address.digitMode;
+        addr.digitMode = (byte) (0xFF & addressDigitMode);
+        addr.numberMode = (byte) (0xFF & (msg.address.isNumberModeDataNetwork ? 1 : 0));
+        addr.ton = msg.address.numberType;
+        addr.numberPlan = (byte) (0xFF & msg.address.numberPlan);
+        addr.numberOfDigits = msg.address.digits.length;
+        byte[] data = new byte[msg.address.digits.length];
+        for (int index = 0; index < data.length; index++) {
+            data[index] = msg.address.digits[index];
+            // convert the value if it is 4-bit DTMF to 8 bit
+            if (addressDigitMode == CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF) {
+                data[index] = SmsMessage.convertDtmfToAscii(data[index]);
+            }
+        }
+        addr.origBytes = data;
+
+        // subaddress
+        subaddr.type = msg.subAddress.subaddressType;
+        subaddr.odd = (byte) (msg.subAddress.odd ? 1 : 0);
+        subaddr.origBytes = msg.subAddress.digits;
+
+        // envelope
+        // currently not supported by the modem-lib: env.bearerReply, env.replySeqNo,
+        // env.errorClass, env.causeCode, env.mMessageType
+        env.teleService = msg.teleserviceId;
+        if (msg.isServicePresent) {
+            env.messageType = SmsEnvelope.MESSAGE_TYPE_BROADCAST;
+        } else {
+            if (SmsEnvelope.TELESERVICE_NOT_SET == env.teleService) {
+                // assume type ACK
+                env.messageType = SmsEnvelope.MESSAGE_TYPE_ACKNOWLEDGE;
+            } else {
+                env.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
+            }
+        }
+        env.serviceCategory = msg.serviceCategory;
+
+        // bearer data is further decoded when accessed in SmsDispatcher
+        env.bearerData = msg.bearerData;
+
+        // link the filled objects to the SMS
+        env.origAddress = addr;
+        env.origSubaddress = subaddr;
+
+        return new SmsMessage(addr, env);
     }
 
     /**
@@ -659,6 +866,64 @@ public class RILUtils {
             }
         }
         return addresses15;
+    }
+
+    /**
+     * Convert RadioAccessSpecifier defined in radio/1.5/types.hal to RadioAccessSpecifier
+     * @param specifier RadioAccessSpecifier defined in radio/1.5/types.hal
+     * @return The converted RadioAccessSpecifier
+     */
+    public static RadioAccessSpecifier convertHalRadioAccessSpecifier(
+            android.hardware.radio.V1_5.RadioAccessSpecifier specifier) {
+        if (specifier == null) return null;
+        ArrayList<Integer> halBands = new ArrayList<>();
+        switch (specifier.bands.getDiscriminator()) {
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .geranBands:
+                halBands = specifier.bands.geranBands();
+                break;
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .utranBands:
+                halBands = specifier.bands.utranBands();
+                break;
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .eutranBands:
+                halBands = specifier.bands.eutranBands();
+                break;
+            case android.hardware.radio.V1_5.RadioAccessSpecifier.Bands.hidl_discriminator
+                    .ngranBands:
+                halBands = specifier.bands.ngranBands();
+                break;
+        }
+        return new RadioAccessSpecifier(convertHalRadioAccessNetworks(specifier.radioAccessNetwork),
+                halBands.stream().mapToInt(Integer::intValue).toArray(),
+                specifier.channels.stream().mapToInt(Integer::intValue).toArray());
+    }
+
+    /**
+     * Convert RadioAccessSpecifier defined in RadioAccessSpecifier.aidl to RadioAccessSpecifier
+     * @param specifier RadioAccessSpecifier defined in RadioAccessSpecifier.aidl
+     * @return The converted RadioAccessSpecifier
+     */
+    public static RadioAccessSpecifier convertHalRadioAccessSpecifier(
+            android.hardware.radio.network.RadioAccessSpecifier specifier) {
+        if (specifier == null) return null;
+        int[] halBands = null;
+        switch (specifier.bands.getTag()) {
+            case android.hardware.radio.network.RadioAccessSpecifierBands.geranBands:
+                halBands = specifier.bands.getGeranBands();
+                break;
+            case android.hardware.radio.network.RadioAccessSpecifierBands.utranBands:
+                halBands = specifier.bands.getUtranBands();
+                break;
+            case android.hardware.radio.network.RadioAccessSpecifierBands.eutranBands:
+                halBands = specifier.bands.getEutranBands();
+                break;
+            case android.hardware.radio.network.RadioAccessSpecifierBands.ngranBands:
+                halBands = specifier.bands.getNgranBands();
+                break;
+        }
+        return new RadioAccessSpecifier(specifier.accessNetwork, halBands, specifier.channels);
     }
 
     /**
@@ -1094,7 +1359,6 @@ public class RILUtils {
      * @param hwListRil List of HardwareConfig defined in radio/1.0/types.hal
      * @return The converted list of HardwareConfig
      */
-    @TelephonyManager.NetworkTypeBitMask
     public static ArrayList<HardwareConfig> convertHalHardwareConfigList(
             ArrayList<android.hardware.radio.V1_0.HardwareConfig> hwListRil) {
         int num;
@@ -1130,6 +1394,41 @@ public class RILUtils {
     }
 
     /**
+     * Convert a list of HardwareConfig defined in HardwareConfig.aidl to a list of HardwareConfig
+     * @param hwListRil List of HardwareConfig defined in HardwareConfig.aidl
+     * @return The converted list of HardwareConfig
+     */
+    public static ArrayList<HardwareConfig> convertHalHardwareConfigList(
+            android.hardware.radio.modem.HardwareConfig[] hwListRil) {
+        ArrayList<HardwareConfig> response = new ArrayList<>(hwListRil.length);
+        HardwareConfig hw;
+
+        for (android.hardware.radio.modem.HardwareConfig hwRil : hwListRil) {
+            int type = hwRil.type;
+            switch (type) {
+                case HardwareConfig.DEV_HARDWARE_TYPE_MODEM: {
+                    hw = new HardwareConfig(type);
+                    android.hardware.radio.modem.HardwareConfigModem hwModem = hwRil.modem[0];
+                    hw.assignModem(hwRil.uuid, hwRil.state, hwModem.rilModel, hwModem.rat,
+                            hwModem.maxVoiceCalls, hwModem.maxDataCalls, hwModem.maxStandby);
+                    break;
+                }
+                case HardwareConfig.DEV_HARDWARE_TYPE_SIM: {
+                    hw = new HardwareConfig(type);
+                    hw.assignSim(hwRil.uuid, hwRil.state, hwRil.sim[0].modemUuid);
+                    break;
+                }
+                default: {
+                    throw new RuntimeException(
+                            "RIL_REQUEST_GET_HARDWARE_CONFIG invalid hardware type:" + type);
+                }
+            }
+            response.add(hw);
+        }
+        return response;
+    }
+
+    /**
      * Convert RadioCapability defined in radio/1.0/types.hal to RadioCapability
      * @param rc RadioCapability defined in radio/1.0/types.hal
      * @param ril RIL
@@ -1150,12 +1449,75 @@ public class RILUtils {
     }
 
     /**
-     * Convert LceDataInfo defined in radio/1.0/types.hal to a list of LinkCapacityEstimates
-     * @param lce LceDataInfo defined in radio/1.0/types.hal
+     * Convert RadioCapability defined in RadioCapability.aidl to RadioCapability
+     * @param rc RadioCapability defined in RadioCapability.aidl
+     * @param ril RIL
+     * @return The converted RadioCapability
+     */
+    public static RadioCapability convertHalRadioCapability(
+            android.hardware.radio.modem.RadioCapability rc, RIL ril) {
+        int session = rc.session;
+        int phase = rc.phase;
+        int rat = convertHalNetworkTypeBitMask(rc.raf);
+        String logicModemUuid = rc.logicalModemUuid;
+        int status = rc.status;
+
+        ril.riljLog("convertHalRadioCapability: session=" + session + ", phase=" + phase + ", rat="
+                + rat + ", logicModemUuid=" + logicModemUuid + ", status=" + status + ", rcRil.raf="
+                + rc.raf);
+        return new RadioCapability(ril.mPhoneId, session, phase, rat, logicModemUuid, status);
+    }
+
+    /**
+     * Convert LceDataInfo defined in radio/1.0/types.hal and LinkCapacityEstimate defined in
+     * radio/1.2, 1.6/types.hal to a list of LinkCapacityEstimates
+     * @param lceObj LceDataInfo defined in radio/1.0/types.hal or LinkCapacityEstimate defined in
+     *        radio/1.2, 1.6/types.hal
+     * @return The converted list of LinkCapacityEstimates
+     */
+    public static List<LinkCapacityEstimate> convertHalLceData(Object lceObj) {
+        final List<LinkCapacityEstimate> lceList = new ArrayList<>();
+        if (lceObj == null) return lceList;
+        if (lceObj instanceof android.hardware.radio.V1_0.LceDataInfo) {
+            android.hardware.radio.V1_0.LceDataInfo lce =
+                    (android.hardware.radio.V1_0.LceDataInfo) lceObj;
+            lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED,
+                    lce.lastHopCapacityKbps, LinkCapacityEstimate.INVALID));
+        } else if (lceObj instanceof android.hardware.radio.V1_2.LinkCapacityEstimate) {
+            android.hardware.radio.V1_2.LinkCapacityEstimate lce =
+                    (android.hardware.radio.V1_2.LinkCapacityEstimate) lceObj;
+            lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED,
+                    lce.downlinkCapacityKbps, lce.uplinkCapacityKbps));
+        } else if (lceObj instanceof android.hardware.radio.V1_6.LinkCapacityEstimate) {
+            android.hardware.radio.V1_6.LinkCapacityEstimate lce =
+                    (android.hardware.radio.V1_6.LinkCapacityEstimate) lceObj;
+            int primaryDownlinkCapacityKbps = lce.downlinkCapacityKbps;
+            int primaryUplinkCapacityKbps = lce.uplinkCapacityKbps;
+            if (primaryDownlinkCapacityKbps != LinkCapacityEstimate.INVALID
+                    && lce.secondaryDownlinkCapacityKbps != LinkCapacityEstimate.INVALID) {
+                primaryDownlinkCapacityKbps =
+                        lce.downlinkCapacityKbps - lce.secondaryDownlinkCapacityKbps;
+            }
+            if (primaryUplinkCapacityKbps != LinkCapacityEstimate.INVALID
+                    && lce.secondaryUplinkCapacityKbps != LinkCapacityEstimate.INVALID) {
+                primaryUplinkCapacityKbps =
+                        lce.uplinkCapacityKbps - lce.secondaryUplinkCapacityKbps;
+            }
+            lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_PRIMARY,
+                    primaryDownlinkCapacityKbps, primaryUplinkCapacityKbps));
+            lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_SECONDARY,
+                    lce.secondaryDownlinkCapacityKbps, lce.secondaryUplinkCapacityKbps));
+        }
+        return lceList;
+    }
+
+    /**
+     * Convert LceDataInfo defined in LceDataInfo.aidl to a list of LinkCapacityEstimates
+     * @param lce LceDataInfo defined in LceDataInfo.aidl
      * @return The converted list of LinkCapacityEstimates
      */
     public static List<LinkCapacityEstimate> convertHalLceData(
-            android.hardware.radio.V1_0.LceDataInfo lce) {
+            android.hardware.radio.network.LceDataInfo lce) {
         final List<LinkCapacityEstimate> lceList = new ArrayList<>();
         lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED,
                 lce.lastHopCapacityKbps, LinkCapacityEstimate.INVALID));
@@ -1163,27 +1525,13 @@ public class RILUtils {
     }
 
     /**
-     * Convert LinkCapacityEstimate defined in radio/1.2/types.hal to a list of
+     * Convert LinkCapacityEstimate defined in LinkCapacityEstimate.aidl to a list of
      * LinkCapacityEstimates
-     * @param lce LinkCapacityEstimate defined in radio/1.2/types.hal
+     * @param lce LinkCapacityEstimate defined in LinkCapacityEstimate.aidl
      * @return The converted list of LinkCapacityEstimates
      */
     public static List<LinkCapacityEstimate> convertHalLceData(
-            android.hardware.radio.V1_2.LinkCapacityEstimate lce) {
-        final List<LinkCapacityEstimate> lceList = new ArrayList<>();
-        lceList.add(new LinkCapacityEstimate(LinkCapacityEstimate.LCE_TYPE_COMBINED,
-                lce.downlinkCapacityKbps, lce.uplinkCapacityKbps));
-        return lceList;
-    }
-
-    /**
-     * Convert LinkCapacityEstimate defined in radio/1.6/types.hal to a list of
-     * LinkCapacityEstimates
-     * @param lce LinkCapacityEstimate defined in radio/1.6/types.hal
-     * @return The converted list of LinkCapacityEstimates
-     */
-    public static List<LinkCapacityEstimate> convertHalLceData(
-            android.hardware.radio.V1_6.LinkCapacityEstimate lce) {
+            android.hardware.radio.network.LinkCapacityEstimate lce) {
         final List<LinkCapacityEstimate> lceList = new ArrayList<>();
         int primaryDownlinkCapacityKbps = lce.downlinkCapacityKbps;
         int primaryUplinkCapacityKbps = lce.uplinkCapacityKbps;
@@ -1204,6 +1552,7 @@ public class RILUtils {
         return lceList;
     }
 
+
     /**
      * Convert a list of CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal to a list of
      * CellInfos
@@ -1220,33 +1569,1109 @@ public class RILUtils {
         return response;
     }
 
+    /**
+     * Convert a list of CellInfo defined in CellInfo.aidl to a list of CellInfos
+     * @param records List of CellInfo defined in CellInfo.aidl
+     * @return The converted list of CellInfos
+     */
+    public static ArrayList<CellInfo> convertHalCellInfoList(
+            android.hardware.radio.network.CellInfo[] records) {
+        ArrayList<CellInfo> response = new ArrayList<>(records.length);
+        if (records.length == 0) return response;
+        final long nanotime = SystemClock.elapsedRealtimeNanos();
+        for (android.hardware.radio.network.CellInfo ci : records) {
+            response.add(convertHalCellInfo(ci, nanotime));
+        }
+        return response;
+    }
+
+    /**
+     * Convert a CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal to CellInfo
+     * @param cellInfo CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal
+     * @param nanotime time the CellInfo was created
+     * @return The converted CellInfo
+     */
     private static CellInfo convertHalCellInfo(Object cellInfo, long nanotime) {
         if (cellInfo == null) return null;
+        int type;
+        int connectionStatus;
+        boolean registered;
+        CellIdentityGsm gsmCi = null;
+        CellSignalStrengthGsm gsmSs = null;
+        CellIdentityCdma cdmaCi = null;
+        CellSignalStrengthCdma cdmaSs = null;
+        CellIdentityLte lteCi = null;
+        CellSignalStrengthLte lteSs = null;
+        CellConfigLte lteCc = null;
+        CellIdentityWcdma wcdmaCi = null;
+        CellSignalStrengthWcdma wcdmaSs = null;
+        CellIdentityTdscdma tdscdmaCi = null;
+        CellSignalStrengthTdscdma tdscdmaSs = null;
+        CellIdentityNr nrCi = null;
+        CellSignalStrengthNr nrSs = null;
         if (cellInfo instanceof android.hardware.radio.V1_0.CellInfo) {
             final android.hardware.radio.V1_0.CellInfo record =
                     (android.hardware.radio.V1_0.CellInfo) cellInfo;
-            record.timeStamp = nanotime;
-            return CellInfo.create(record);
+            connectionStatus = CellInfo.CONNECTION_UNKNOWN;
+            registered = record.registered;
+            switch (record.cellInfoType) {
+                case android.hardware.radio.V1_0.CellInfoType.GSM:
+                    type = CellInfo.TYPE_GSM;
+                    android.hardware.radio.V1_0.CellInfoGsm gsm = record.gsm.get(0);
+                    gsmCi = convertHalCellIdentityGsm(gsm.cellIdentityGsm);
+                    gsmSs = convertHalGsmSignalStrength(gsm.signalStrengthGsm);
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.CDMA:
+                    type = CellInfo.TYPE_CDMA;
+                    android.hardware.radio.V1_0.CellInfoCdma cdma = record.cdma.get(0);
+                    cdmaCi = convertHalCellIdentityCdma(cdma.cellIdentityCdma);
+                    cdmaSs = convertHalCdmaSignalStrength(
+                            cdma.signalStrengthCdma, cdma.signalStrengthEvdo);
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.LTE:
+                    type = CellInfo.TYPE_LTE;
+                    android.hardware.radio.V1_0.CellInfoLte lte = record.lte.get(0);
+                    lteCi = convertHalCellIdentityLte(lte.cellIdentityLte);
+                    lteSs = convertHalLteSignalStrength(lte.signalStrengthLte);
+                    lteCc = new CellConfigLte();
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.WCDMA:
+                    type = CellInfo.TYPE_WCDMA;
+                    android.hardware.radio.V1_0.CellInfoWcdma wcdma = record.wcdma.get(0);
+                    wcdmaCi = convertHalCellIdentityWcdma(wcdma.cellIdentityWcdma);
+                    wcdmaSs = convertHalWcdmaSignalStrength(wcdma.signalStrengthWcdma);
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.TD_SCDMA:
+                    type = CellInfo.TYPE_TDSCDMA;
+                    android.hardware.radio.V1_0.CellInfoTdscdma tdscdma = record.tdscdma.get(0);
+                    tdscdmaCi = convertHalCellIdentityTdscdma(tdscdma.cellIdentityTdscdma);
+                    tdscdmaSs = convertHalTdscdmaSignalStrength(tdscdma.signalStrengthTdscdma);
+                    break;
+                default: return null;
+            }
         } else if (cellInfo instanceof android.hardware.radio.V1_2.CellInfo) {
             final android.hardware.radio.V1_2.CellInfo record =
                     (android.hardware.radio.V1_2.CellInfo) cellInfo;
-            record.timeStamp = nanotime;
-            return CellInfo.create(record);
+            connectionStatus = record.connectionStatus;
+            registered = record.registered;
+            switch(record.cellInfoType) {
+                case android.hardware.radio.V1_0.CellInfoType.GSM:
+                    type = CellInfo.TYPE_GSM;
+                    android.hardware.radio.V1_2.CellInfoGsm gsm = record.gsm.get(0);
+                    gsmCi = convertHalCellIdentityGsm(gsm.cellIdentityGsm);
+                    gsmSs = convertHalGsmSignalStrength(gsm.signalStrengthGsm);
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.CDMA:
+                    type = CellInfo.TYPE_CDMA;
+                    android.hardware.radio.V1_2.CellInfoCdma cdma = record.cdma.get(0);
+                    cdmaCi = convertHalCellIdentityCdma(cdma.cellIdentityCdma);
+                    cdmaSs = convertHalCdmaSignalStrength(
+                            cdma.signalStrengthCdma, cdma.signalStrengthEvdo);
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.LTE:
+                    type = CellInfo.TYPE_LTE;
+                    android.hardware.radio.V1_2.CellInfoLte lte = record.lte.get(0);
+                    lteCi = convertHalCellIdentityLte(lte.cellIdentityLte);
+                    lteSs = convertHalLteSignalStrength(lte.signalStrengthLte);
+                    lteCc = new CellConfigLte();
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.WCDMA:
+                    type = CellInfo.TYPE_WCDMA;
+                    android.hardware.radio.V1_2.CellInfoWcdma wcdma = record.wcdma.get(0);
+                    wcdmaCi = convertHalCellIdentityWcdma(wcdma.cellIdentityWcdma);
+                    wcdmaSs = convertHalWcdmaSignalStrength(wcdma.signalStrengthWcdma);
+                    break;
+                case android.hardware.radio.V1_0.CellInfoType.TD_SCDMA:
+                    type = CellInfo.TYPE_TDSCDMA;
+                    android.hardware.radio.V1_2.CellInfoTdscdma tdscdma = record.tdscdma.get(0);
+                    tdscdmaCi = convertHalCellIdentityTdscdma(tdscdma.cellIdentityTdscdma);
+                    tdscdmaSs = convertHalTdscdmaSignalStrength(tdscdma.signalStrengthTdscdma);
+                    break;
+                default: return null;
+            }
         } else if (cellInfo instanceof android.hardware.radio.V1_4.CellInfo) {
             final android.hardware.radio.V1_4.CellInfo record =
                     (android.hardware.radio.V1_4.CellInfo) cellInfo;
-            return CellInfo.create(record, nanotime);
+            connectionStatus = record.connectionStatus;
+            registered = record.isRegistered;
+            switch (record.info.getDiscriminator()) {
+                case android.hardware.radio.V1_4.CellInfo.Info.hidl_discriminator.gsm:
+                    type = CellInfo.TYPE_GSM;
+                    android.hardware.radio.V1_2.CellInfoGsm gsm = record.info.gsm();
+                    gsmCi = convertHalCellIdentityGsm(gsm.cellIdentityGsm);
+                    gsmSs = convertHalGsmSignalStrength(gsm.signalStrengthGsm);
+                    break;
+                case android.hardware.radio.V1_4.CellInfo.Info.hidl_discriminator.cdma:
+                    type = CellInfo.TYPE_CDMA;
+                    android.hardware.radio.V1_2.CellInfoCdma cdma = record.info.cdma();
+                    cdmaCi = convertHalCellIdentityCdma(cdma.cellIdentityCdma);
+                    cdmaSs = convertHalCdmaSignalStrength(
+                            cdma.signalStrengthCdma, cdma.signalStrengthEvdo);
+                    break;
+                case android.hardware.radio.V1_4.CellInfo.Info.hidl_discriminator.lte:
+                    type = CellInfo.TYPE_LTE;
+                    android.hardware.radio.V1_4.CellInfoLte lte = record.info.lte();
+                    lteCi = convertHalCellIdentityLte(lte.base.cellIdentityLte);
+                    lteSs = convertHalLteSignalStrength(lte.base.signalStrengthLte);
+                    lteCc = new CellConfigLte(lte.cellConfig.isEndcAvailable);
+                    break;
+                case android.hardware.radio.V1_4.CellInfo.Info.hidl_discriminator.wcdma:
+                    type = CellInfo.TYPE_WCDMA;
+                    android.hardware.radio.V1_2.CellInfoWcdma wcdma = record.info.wcdma();
+                    wcdmaCi = convertHalCellIdentityWcdma(wcdma.cellIdentityWcdma);
+                    wcdmaSs = convertHalWcdmaSignalStrength(wcdma.signalStrengthWcdma);
+                    break;
+                case android.hardware.radio.V1_4.CellInfo.Info.hidl_discriminator.tdscdma:
+                    type = CellInfo.TYPE_TDSCDMA;
+                    android.hardware.radio.V1_2.CellInfoTdscdma tdscdma = record.info.tdscdma();
+                    tdscdmaCi = convertHalCellIdentityTdscdma(tdscdma.cellIdentityTdscdma);
+                    tdscdmaSs = convertHalTdscdmaSignalStrength(tdscdma.signalStrengthTdscdma);
+                    break;
+                case android.hardware.radio.V1_4.CellInfo.Info.hidl_discriminator.nr:
+                    type = CellInfo.TYPE_NR;
+                    android.hardware.radio.V1_4.CellInfoNr nr = record.info.nr();
+                    nrCi = convertHalCellIdentityNr(nr.cellidentity);
+                    nrSs = convertHalNrSignalStrength(nr.signalStrength);
+                    break;
+                default: return null;
+            }
         } else if (cellInfo instanceof android.hardware.radio.V1_5.CellInfo) {
             final android.hardware.radio.V1_5.CellInfo record =
                     (android.hardware.radio.V1_5.CellInfo) cellInfo;
-            return CellInfo.create(record, nanotime);
+            connectionStatus = record.connectionStatus;
+            registered = record.registered;
+            switch (record.ratSpecificInfo.getDiscriminator()) {
+                case android.hardware.radio.V1_5.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.gsm:
+                    type = CellInfo.TYPE_GSM;
+                    android.hardware.radio.V1_5.CellInfoGsm gsm = record.ratSpecificInfo.gsm();
+                    gsmCi = convertHalCellIdentityGsm(gsm.cellIdentityGsm);
+                    gsmSs = convertHalGsmSignalStrength(gsm.signalStrengthGsm);
+                    break;
+                case android.hardware.radio.V1_5.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.cdma:
+                    type = CellInfo.TYPE_CDMA;
+                    android.hardware.radio.V1_2.CellInfoCdma cdma = record.ratSpecificInfo.cdma();
+                    cdmaCi = convertHalCellIdentityCdma(cdma.cellIdentityCdma);
+                    cdmaSs = convertHalCdmaSignalStrength(
+                            cdma.signalStrengthCdma, cdma.signalStrengthEvdo);
+                    break;
+                case android.hardware.radio.V1_5.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.lte:
+                    type = CellInfo.TYPE_LTE;
+                    android.hardware.radio.V1_5.CellInfoLte lte = record.ratSpecificInfo.lte();
+                    lteCi = convertHalCellIdentityLte(lte.cellIdentityLte);
+                    lteSs = convertHalLteSignalStrength(lte.signalStrengthLte);
+                    lteCc = new CellConfigLte();
+                    break;
+                case android.hardware.radio.V1_5.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.wcdma:
+                    type = CellInfo.TYPE_WCDMA;
+                    android.hardware.radio.V1_5.CellInfoWcdma wcdma =
+                            record.ratSpecificInfo.wcdma();
+                    wcdmaCi = convertHalCellIdentityWcdma(wcdma.cellIdentityWcdma);
+                    wcdmaSs = convertHalWcdmaSignalStrength(wcdma.signalStrengthWcdma);
+                    break;
+                case android.hardware.radio.V1_5.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.tdscdma:
+                    type = CellInfo.TYPE_TDSCDMA;
+                    android.hardware.radio.V1_5.CellInfoTdscdma tdscdma =
+                            record.ratSpecificInfo.tdscdma();
+                    tdscdmaCi = convertHalCellIdentityTdscdma(tdscdma.cellIdentityTdscdma);
+                    tdscdmaSs = convertHalTdscdmaSignalStrength(tdscdma.signalStrengthTdscdma);
+                    break;
+                case android.hardware.radio.V1_5.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.nr:
+                    type = CellInfo.TYPE_NR;
+                    android.hardware.radio.V1_5.CellInfoNr nr = record.ratSpecificInfo.nr();
+                    nrCi = convertHalCellIdentityNr(nr.cellIdentityNr);
+                    nrSs = convertHalNrSignalStrength(nr.signalStrengthNr);
+                    break;
+                default: return null;
+            }
         } else if (cellInfo instanceof android.hardware.radio.V1_6.CellInfo) {
             final android.hardware.radio.V1_6.CellInfo record =
                     (android.hardware.radio.V1_6.CellInfo) cellInfo;
-            return CellInfo.create(record, nanotime);
+            connectionStatus = record.connectionStatus;
+            registered = record.registered;
+            switch (record.ratSpecificInfo.getDiscriminator()) {
+                case android.hardware.radio.V1_6.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.gsm:
+                    type = CellInfo.TYPE_GSM;
+                    android.hardware.radio.V1_5.CellInfoGsm gsm = record.ratSpecificInfo.gsm();
+                    gsmCi = convertHalCellIdentityGsm(gsm.cellIdentityGsm);
+                    gsmSs = convertHalGsmSignalStrength(gsm.signalStrengthGsm);
+                    break;
+                case android.hardware.radio.V1_6.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.cdma:
+                    type = CellInfo.TYPE_CDMA;
+                    android.hardware.radio.V1_2.CellInfoCdma cdma = record.ratSpecificInfo.cdma();
+                    cdmaCi = convertHalCellIdentityCdma(cdma.cellIdentityCdma);
+                    cdmaSs = convertHalCdmaSignalStrength(
+                            cdma.signalStrengthCdma, cdma.signalStrengthEvdo);
+                    break;
+                case android.hardware.radio.V1_6.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.lte:
+                    type = CellInfo.TYPE_LTE;
+                    android.hardware.radio.V1_6.CellInfoLte lte = record.ratSpecificInfo.lte();
+                    lteCi = convertHalCellIdentityLte(lte.cellIdentityLte);
+                    lteSs = convertHalLteSignalStrength(lte.signalStrengthLte);
+                    lteCc = new CellConfigLte();
+                    break;
+                case android.hardware.radio.V1_6.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.wcdma:
+                    type = CellInfo.TYPE_WCDMA;
+                    android.hardware.radio.V1_5.CellInfoWcdma wcdma =
+                            record.ratSpecificInfo.wcdma();
+                    wcdmaCi = convertHalCellIdentityWcdma(wcdma.cellIdentityWcdma);
+                    wcdmaSs = convertHalWcdmaSignalStrength(wcdma.signalStrengthWcdma);
+                    break;
+                case android.hardware.radio.V1_6.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.tdscdma:
+                    type = CellInfo.TYPE_TDSCDMA;
+                    android.hardware.radio.V1_5.CellInfoTdscdma tdscdma =
+                            record.ratSpecificInfo.tdscdma();
+                    tdscdmaCi = convertHalCellIdentityTdscdma(tdscdma.cellIdentityTdscdma);
+                    tdscdmaSs = convertHalTdscdmaSignalStrength(tdscdma.signalStrengthTdscdma);
+                    break;
+                case android.hardware.radio.V1_6.CellInfo
+                        .CellInfoRatSpecificInfo.hidl_discriminator.nr:
+                    type = CellInfo.TYPE_NR;
+                    android.hardware.radio.V1_6.CellInfoNr nr = record.ratSpecificInfo.nr();
+                    nrCi = convertHalCellIdentityNr(nr.cellIdentityNr);
+                    nrSs = convertHalNrSignalStrength(nr.signalStrengthNr);
+                    break;
+                default: return null;
+            }
         } else {
             return null;
         }
+
+        switch (type) {
+            case CellInfo.TYPE_GSM:
+                return new CellInfoGsm(connectionStatus, registered, nanotime, gsmCi, gsmSs);
+            case CellInfo.TYPE_CDMA:
+                return new CellInfoCdma(connectionStatus, registered, nanotime, cdmaCi, cdmaSs);
+            case CellInfo.TYPE_LTE:
+                return new CellInfoLte(connectionStatus, registered, nanotime, lteCi, lteSs, lteCc);
+            case CellInfo.TYPE_WCDMA:
+                return new CellInfoWcdma(connectionStatus, registered, nanotime, wcdmaCi, wcdmaSs);
+            case CellInfo.TYPE_TDSCDMA:
+                return new CellInfoTdscdma(connectionStatus, registered, nanotime, tdscdmaCi,
+                        tdscdmaSs);
+            case CellInfo.TYPE_NR:
+                return new CellInfoNr(connectionStatus, registered, nanotime, nrCi, nrSs);
+            case CellInfo.TYPE_UNKNOWN:
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Convert a CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal to CellInfo
+     * @param cellInfo CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal
+     * @param nanotime time the CellInfo was created
+     * @return The converted CellInfo
+     */
+    private static CellInfo convertHalCellInfo(android.hardware.radio.network.CellInfo cellInfo,
+            long nanotime) {
+        if (cellInfo == null) return null;
+        int connectionStatus = cellInfo.connectionStatus;
+        boolean registered = cellInfo.registered;
+        switch (cellInfo.ratSpecificInfo.getTag()) {
+            case android.hardware.radio.network.CellInfoRatSpecificInfo.gsm:
+                android.hardware.radio.network.CellInfoGsm gsm = cellInfo.ratSpecificInfo.getGsm();
+                return new CellInfoGsm(connectionStatus, registered, nanotime,
+                        convertHalCellIdentityGsm(gsm.cellIdentityGsm),
+                        convertHalGsmSignalStrength(gsm.signalStrengthGsm));
+            case android.hardware.radio.network.CellInfoRatSpecificInfo.cdma:
+                android.hardware.radio.network.CellInfoCdma cdma =
+                        cellInfo.ratSpecificInfo.getCdma();
+                return new CellInfoCdma(connectionStatus, registered, nanotime,
+                        convertHalCellIdentityCdma(cdma.cellIdentityCdma),
+                        convertHalCdmaSignalStrength(cdma.signalStrengthCdma,
+                                cdma.signalStrengthEvdo));
+            case android.hardware.radio.network.CellInfoRatSpecificInfo.lte:
+                android.hardware.radio.network.CellInfoLte lte = cellInfo.ratSpecificInfo.getLte();
+                return new CellInfoLte(connectionStatus, registered, nanotime,
+                        convertHalCellIdentityLte(lte.cellIdentityLte),
+                        convertHalLteSignalStrength(lte.signalStrengthLte), new CellConfigLte());
+            case android.hardware.radio.network.CellInfoRatSpecificInfo.wcdma:
+                android.hardware.radio.network.CellInfoWcdma wcdma =
+                        cellInfo.ratSpecificInfo.getWcdma();
+                return new CellInfoWcdma(connectionStatus, registered, nanotime,
+                        convertHalCellIdentityWcdma(wcdma.cellIdentityWcdma),
+                        convertHalWcdmaSignalStrength(wcdma.signalStrengthWcdma));
+            case android.hardware.radio.network.CellInfoRatSpecificInfo.tdscdma:
+                android.hardware.radio.network.CellInfoTdscdma tdscdma =
+                        cellInfo.ratSpecificInfo.getTdscdma();
+                return new CellInfoTdscdma(connectionStatus, registered, nanotime,
+                        convertHalCellIdentityTdscdma(tdscdma.cellIdentityTdscdma),
+                        convertHalTdscdmaSignalStrength(tdscdma.signalStrengthTdscdma));
+            case android.hardware.radio.network.CellInfoRatSpecificInfo.nr:
+                android.hardware.radio.network.CellInfoNr nr = cellInfo.ratSpecificInfo.getNr();
+                return new CellInfoNr(connectionStatus, registered, nanotime,
+                        convertHalCellIdentityNr(nr.cellIdentityNr),
+                        convertHalNrSignalStrength(nr.signalStrengthNr));
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentity defined in radio/1.0, 1.2, 1.5/types.hal to CellIdentity
+     * @param halCi CellIdentity defined in radio/1.0, 1.2, 1.5/types.hal
+     * @return The converted CellIdentity
+     */
+    public static CellIdentity convertHalCellIdentity(Object halCi) {
+        if (halCi == null) return null;
+        if (halCi instanceof android.hardware.radio.V1_0.CellIdentity) {
+            android.hardware.radio.V1_0.CellIdentity ci =
+                    (android.hardware.radio.V1_0.CellIdentity) halCi;
+            switch (ci.cellInfoType) {
+                case CellInfo.TYPE_GSM:
+                    if (ci.cellIdentityGsm.size() == 1) {
+                        return convertHalCellIdentityGsm(ci.cellIdentityGsm.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_CDMA:
+                    if (ci.cellIdentityCdma.size() == 1) {
+                        return convertHalCellIdentityCdma(ci.cellIdentityCdma.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_LTE:
+                    if (ci.cellIdentityLte.size() == 1) {
+                        return convertHalCellIdentityLte(ci.cellIdentityLte.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_WCDMA:
+                    if (ci.cellIdentityWcdma.size() == 1) {
+                        return convertHalCellIdentityWcdma(ci.cellIdentityWcdma.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_TDSCDMA:
+                    if (ci.cellIdentityTdscdma.size() == 1) {
+                        return convertHalCellIdentityTdscdma(ci.cellIdentityTdscdma.get(0));
+                    }
+                    break;
+            }
+        } else if (halCi instanceof android.hardware.radio.V1_2.CellIdentity) {
+            android.hardware.radio.V1_2.CellIdentity ci =
+                    (android.hardware.radio.V1_2.CellIdentity) halCi;
+            switch (ci.cellInfoType) {
+                case CellInfo.TYPE_GSM:
+                    if (ci.cellIdentityGsm.size() == 1) {
+                        return convertHalCellIdentityGsm(ci.cellIdentityGsm.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_CDMA:
+                    if (ci.cellIdentityCdma.size() == 1) {
+                        return convertHalCellIdentityCdma(ci.cellIdentityCdma.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_LTE:
+                    if (ci.cellIdentityLte.size() == 1) {
+                        return convertHalCellIdentityLte(ci.cellIdentityLte.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_WCDMA:
+                    if (ci.cellIdentityWcdma.size() == 1) {
+                        return convertHalCellIdentityWcdma(ci.cellIdentityWcdma.get(0));
+                    }
+                    break;
+                case CellInfo.TYPE_TDSCDMA:
+                    if (ci.cellIdentityTdscdma.size() == 1) {
+                        return convertHalCellIdentityTdscdma(ci.cellIdentityTdscdma.get(0));
+                    }
+                    break;
+            }
+        } else if (halCi instanceof android.hardware.radio.V1_5.CellIdentity) {
+            android.hardware.radio.V1_5.CellIdentity ci =
+                    (android.hardware.radio.V1_5.CellIdentity) halCi;
+            switch (ci.getDiscriminator()) {
+                case android.hardware.radio.V1_5.CellIdentity.hidl_discriminator.gsm:
+                    return convertHalCellIdentityGsm(ci.gsm());
+                case android.hardware.radio.V1_5.CellIdentity.hidl_discriminator.cdma:
+                    return convertHalCellIdentityCdma(ci.cdma());
+                case android.hardware.radio.V1_5.CellIdentity.hidl_discriminator.lte:
+                    return convertHalCellIdentityLte(ci.lte());
+                case android.hardware.radio.V1_5.CellIdentity.hidl_discriminator.wcdma:
+                    return convertHalCellIdentityWcdma(ci.wcdma());
+                case android.hardware.radio.V1_5.CellIdentity.hidl_discriminator.tdscdma:
+                    return convertHalCellIdentityTdscdma(ci.tdscdma());
+                case android.hardware.radio.V1_5.CellIdentity.hidl_discriminator.nr:
+                    return convertHalCellIdentityNr(ci.nr());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Convert a CellIdentity defined in CellIdentity.aidl to CellInfo
+     * @param ci CellIdentity defined in CellIdentity.aidl
+     * @return The converted CellIdentity
+     */
+    public static CellIdentity convertHalCellIdentity(
+            android.hardware.radio.network.CellIdentity ci) {
+        if (ci == null) return null;
+        switch (ci.getTag()) {
+            case android.hardware.radio.network.CellIdentity.gsm:
+                return convertHalCellIdentityGsm(ci.getGsm());
+            case android.hardware.radio.network.CellIdentity.cdma:
+                return convertHalCellIdentityCdma(ci.getCdma());
+            case android.hardware.radio.network.CellIdentity.lte:
+                return convertHalCellIdentityLte(ci.getLte());
+            case android.hardware.radio.network.CellIdentity.wcdma:
+                return convertHalCellIdentityWcdma(ci.getWcdma());
+            case android.hardware.radio.network.CellIdentity.tdscdma:
+                return convertHalCellIdentityTdscdma(ci.getTdscdma());
+            case android.hardware.radio.network.CellIdentity.nr:
+                return convertHalCellIdentityNr(ci.getNr());
+            default: return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityGsm defined in radio/1.0, 1.2, 1.5/types.hal to CellIdentityGsm
+     * @param gsm CellIdentityGsm defined in radio/1.0, 1.2, 1.5/types.hal
+     * @return The converted CellIdentityGsm
+     */
+    public static CellIdentityGsm convertHalCellIdentityGsm(Object gsm) {
+        if (gsm == null) return null;
+        if (gsm instanceof android.hardware.radio.V1_0.CellIdentityGsm) {
+            android.hardware.radio.V1_0.CellIdentityGsm ci =
+                    (android.hardware.radio.V1_0.CellIdentityGsm) gsm;
+            return new CellIdentityGsm(ci.lac, ci.cid, ci.arfcn,
+                    ci.bsic == (byte) 0xFF ? CellInfo.UNAVAILABLE : ci.bsic, ci.mcc, ci.mnc, "", "",
+                    new ArraySet<>());
+        } else if (gsm instanceof android.hardware.radio.V1_2.CellIdentityGsm) {
+            android.hardware.radio.V1_2.CellIdentityGsm ci =
+                    (android.hardware.radio.V1_2.CellIdentityGsm) gsm;
+            return new CellIdentityGsm(ci.base.lac, ci.base.cid, ci.base.arfcn,
+                    ci.base.bsic == (byte) 0xFF ? CellInfo.UNAVAILABLE : ci.base.bsic, ci.base.mcc,
+                    ci.base.mnc, ci.operatorNames.alphaLong, ci.operatorNames.alphaShort,
+                    new ArraySet<>());
+        } else if (gsm instanceof android.hardware.radio.V1_5.CellIdentityGsm) {
+            android.hardware.radio.V1_5.CellIdentityGsm ci =
+                    (android.hardware.radio.V1_5.CellIdentityGsm) gsm;
+            return new CellIdentityGsm(ci.base.base.lac, ci.base.base.cid, ci.base.base.arfcn,
+                    ci.base.base.bsic == (byte) 0xFF ? CellInfo.UNAVAILABLE
+                            : ci.base.base.bsic, ci.base.base.mcc, ci.base.base.mnc,
+                    ci.base.operatorNames.alphaLong, ci.base.operatorNames.alphaShort,
+                    ci.additionalPlmns);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityGsm defined in CellIdentityGsm.aidl to CellIdentityGsm
+     * @param cid CellIdentityGsm defined in CellIdentityGsm.aidl
+     * @return The converted CellIdentityGsm
+     */
+    public static CellIdentityGsm convertHalCellIdentityGsm(
+            android.hardware.radio.network.CellIdentityGsm cid) {
+        return new CellIdentityGsm(cid.lac, cid.cid, cid.arfcn,
+                cid.bsic == (byte) 0xFF ? CellInfo.UNAVAILABLE : cid.bsic, cid.mcc, cid.mnc,
+                "", "", new ArraySet<>());
+    }
+
+    /**
+     * Convert a CellIdentityCdma defined in radio/1.0, 1.2/types.hal to CellIdentityCdma
+     * @param cdma CellIdentityCdma defined in radio/1.0, 1.2/types.hal
+     * @return The converted CellIdentityCdma
+     */
+    public static CellIdentityCdma convertHalCellIdentityCdma(Object cdma) {
+        if (cdma == null) return null;
+        if (cdma instanceof android.hardware.radio.V1_0.CellIdentityCdma) {
+            android.hardware.radio.V1_0.CellIdentityCdma ci =
+                    (android.hardware.radio.V1_0.CellIdentityCdma) cdma;
+            return new CellIdentityCdma(ci.networkId, ci.systemId, ci.baseStationId, ci.longitude,
+                    ci.latitude, "", "");
+        } else if (cdma instanceof android.hardware.radio.V1_2.CellIdentityCdma) {
+            android.hardware.radio.V1_2.CellIdentityCdma ci =
+                    (android.hardware.radio.V1_2.CellIdentityCdma) cdma;
+            return new CellIdentityCdma(ci.base.networkId, ci.base.systemId, ci.base.baseStationId,
+                    ci.base.longitude, ci.base.latitude, ci.operatorNames.alphaLong,
+                    ci.operatorNames.alphaShort);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityCdma defined in CellIdentityCdma.aidl to CellIdentityCdma
+     * @param cid CellIdentityCdma defined in CelIdentityCdma.aidl
+     * @return The converted CellIdentityCdma
+     */
+    public static CellIdentityCdma convertHalCellIdentityCdma(
+            android.hardware.radio.network.CellIdentityCdma cid) {
+        return new CellIdentityCdma(cid.networkId, cid.systemId, cid.baseStationId, cid.longitude,
+                cid.latitude, cid.operatorNames.alphaLong, cid.operatorNames.alphaShort);
+    }
+
+    /**
+     * Convert a CellIdentityLte defined in radio/1.0, 1.2, 1.5/types.hal to CellIdentityLte
+     * @param lte CellIdentityLte defined in radio/1.0, 1.2, 1.5/types.hal
+     * @return The converted CellIdentityLte
+     */
+    public static CellIdentityLte convertHalCellIdentityLte(Object lte) {
+        if (lte == null) return null;
+        if (lte instanceof android.hardware.radio.V1_0.CellIdentityLte) {
+            android.hardware.radio.V1_0.CellIdentityLte ci =
+                    (android.hardware.radio.V1_0.CellIdentityLte) lte;
+            return new CellIdentityLte(ci.ci, ci.pci, ci.tac, ci.earfcn, new int[] {},
+                    CellInfo.UNAVAILABLE, ci.mcc, ci.mnc, "", "", new ArraySet<>(), null);
+        } else if (lte instanceof android.hardware.radio.V1_2.CellIdentityLte) {
+            android.hardware.radio.V1_2.CellIdentityLte ci =
+                    (android.hardware.radio.V1_2.CellIdentityLte) lte;
+            return new CellIdentityLte(ci.base.ci, ci.base.pci, ci.base.tac, ci.base.earfcn,
+                    new int[] {}, ci.bandwidth, ci.base.mcc, ci.base.mnc,
+                    ci.operatorNames.alphaLong, ci.operatorNames.alphaShort, new ArraySet<>(),
+                    null);
+        } else if (lte instanceof android.hardware.radio.V1_5.CellIdentityLte) {
+            android.hardware.radio.V1_5.CellIdentityLte ci =
+                    (android.hardware.radio.V1_5.CellIdentityLte) lte;
+            return new CellIdentityLte(ci.base.base.ci, ci.base.base.pci, ci.base.base.tac,
+                    ci.base.base.earfcn, ci.bands.stream().mapToInt(Integer::intValue).toArray(),
+                    ci.base.bandwidth, ci.base.base.mcc, ci.base.base.mnc,
+                    ci.base.operatorNames.alphaLong, ci.base.operatorNames.alphaShort,
+                    ci.additionalPlmns, convertHalClosedSubscriberGroupInfo(ci.optionalCsgInfo));
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityLte defined in CellIdentityLte.aidl to CellIdentityLte
+     * @param cid CellIdentityLte defined in CellIdentityLte.aidl
+     * @return The converted CellIdentityLte
+     */
+    public static CellIdentityLte convertHalCellIdentityLte(
+            android.hardware.radio.network.CellIdentityLte cid) {
+        return new CellIdentityLte(cid.ci, cid.pci, cid.tac, cid.earfcn, cid.bands, cid.bandwidth,
+                cid.mcc, cid.mnc, cid.operatorNames.alphaLong, cid.operatorNames.alphaShort,
+                primitiveArrayToArrayList(cid.additionalPlmns),
+                convertHalClosedSubscriberGroupInfo(cid.csgInfo));
+    }
+
+    /**
+     * Convert a CellIdentityWcdma defined in radio/1.0, 1.2, 1.5/types.hal to CellIdentityWcdma
+     * @param wcdma CellIdentityWcdma defined in radio/1.0, 1.2, 1.5/types.hal
+     * @return The converted CellIdentityWcdma
+     */
+    public static CellIdentityWcdma convertHalCellIdentityWcdma(Object wcdma) {
+        if (wcdma == null) return null;
+        if (wcdma instanceof android.hardware.radio.V1_0.CellIdentityWcdma) {
+            android.hardware.radio.V1_0.CellIdentityWcdma ci =
+                    (android.hardware.radio.V1_0.CellIdentityWcdma) wcdma;
+            return new CellIdentityWcdma(ci.lac, ci.cid, ci.psc, ci.uarfcn, ci.mcc, ci.mnc, "", "",
+                    new ArraySet<>(), null);
+        } else if (wcdma instanceof android.hardware.radio.V1_2.CellIdentityWcdma) {
+            android.hardware.radio.V1_2.CellIdentityWcdma ci =
+                    (android.hardware.radio.V1_2.CellIdentityWcdma) wcdma;
+            return new CellIdentityWcdma(ci.base.lac, ci.base.cid, ci.base.psc, ci.base.uarfcn,
+                    ci.base.mcc, ci.base.mnc, ci.operatorNames.alphaLong,
+                    ci.operatorNames.alphaShort, new ArraySet<>(), null);
+        } else if (wcdma instanceof android.hardware.radio.V1_5.CellIdentityWcdma) {
+            android.hardware.radio.V1_5.CellIdentityWcdma ci =
+                    (android.hardware.radio.V1_5.CellIdentityWcdma) wcdma;
+            return new CellIdentityWcdma(ci.base.base.lac, ci.base.base.cid, ci.base.base.psc,
+                    ci.base.base.uarfcn, ci.base.base.mcc, ci.base.base.mnc,
+                    ci.base.operatorNames.alphaLong, ci.base.operatorNames.alphaShort,
+                    ci.additionalPlmns, convertHalClosedSubscriberGroupInfo(ci.optionalCsgInfo));
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityWcdma defined in CellIdentityWcdma.aidl to CellIdentityWcdma
+     * @param cid CellIdentityWcdma defined in CellIdentityWcdma.aidl
+     * @return The converted CellIdentityWcdma
+     */
+    public static CellIdentityWcdma convertHalCellIdentityWcdma(
+            android.hardware.radio.network.CellIdentityWcdma cid) {
+        return new CellIdentityWcdma(cid.lac, cid.cid, cid.psc, cid.uarfcn, cid.mcc, cid.mnc,
+                cid.operatorNames.alphaLong, cid.operatorNames.alphaShort,
+                primitiveArrayToArrayList(cid.additionalPlmns),
+                convertHalClosedSubscriberGroupInfo(cid.csgInfo));
+    }
+
+    /**
+     * Convert a CellIdentityTdscdma defined in radio/1.0, 1.2, 1.5/types.hal to CellIdentityTdscdma
+     * @param tdscdma CellIdentityTdscdma defined in radio/1.0, 1.2, 1.5/types.hal
+     * @return The converted CellIdentityTdscdma
+     */
+    public static CellIdentityTdscdma convertHalCellIdentityTdscdma(Object tdscdma) {
+        if (tdscdma == null) return null;
+        if (tdscdma instanceof android.hardware.radio.V1_0.CellIdentityTdscdma) {
+            android.hardware.radio.V1_0.CellIdentityTdscdma ci =
+                    (android.hardware.radio.V1_0.CellIdentityTdscdma) tdscdma;
+            return new CellIdentityTdscdma(ci.mcc, ci.mnc, ci.lac, ci.cid, ci.cpid,
+                    CellInfo.UNAVAILABLE, "", "", Collections.emptyList(), null);
+        } else if (tdscdma instanceof android.hardware.radio.V1_2.CellIdentityTdscdma) {
+            android.hardware.radio.V1_2.CellIdentityTdscdma ci =
+                    (android.hardware.radio.V1_2.CellIdentityTdscdma) tdscdma;
+            return new CellIdentityTdscdma(ci.base.mcc, ci.base.mnc, ci.base.lac, ci.base.cid,
+                    ci.base.cpid, ci.uarfcn, ci.operatorNames.alphaLong,
+                    ci.operatorNames.alphaShort, Collections.emptyList(), null);
+        } else if (tdscdma instanceof android.hardware.radio.V1_5.CellIdentityTdscdma) {
+            android.hardware.radio.V1_5.CellIdentityTdscdma ci =
+                    (android.hardware.radio.V1_5.CellIdentityTdscdma) tdscdma;
+            return new CellIdentityTdscdma(ci.base.base.mcc, ci.base.base.mnc, ci.base.base.lac,
+                    ci.base.base.cid, ci.base.base.cpid, ci.base.uarfcn,
+                    ci.base.operatorNames.alphaLong, ci.base.operatorNames.alphaShort,
+                    ci.additionalPlmns, convertHalClosedSubscriberGroupInfo(ci.optionalCsgInfo));
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityTdscdma defined in CellIdentityTdscdma.aidl to CellIdentityTdscdma
+     * @param cid CellIdentityTdscdma defined in radio/1.0, 1.2, 1.5/types.hal
+     * @return The converted CellIdentityTdscdma
+     */
+    public static CellIdentityTdscdma convertHalCellIdentityTdscdma(
+            android.hardware.radio.network.CellIdentityTdscdma cid) {
+        return new CellIdentityTdscdma(cid.mcc, cid.mnc, cid.lac, cid.cid, cid.cpid, cid.uarfcn,
+                cid.operatorNames.alphaLong, cid.operatorNames.alphaShort,
+                primitiveArrayToArrayList(cid.additionalPlmns),
+                convertHalClosedSubscriberGroupInfo(cid.csgInfo));
+    }
+
+    /**
+     * Convert a CellIdentityNr defined in radio/1.4, 1.5/types.hal to CellIdentityNr
+     * @param nr CellIdentityNr defined in radio/1.4 1.5/types.hal
+     * @return The converted CellIdentityNr
+     */
+    public static CellIdentityNr convertHalCellIdentityNr(Object nr) {
+        if (nr == null) return null;
+        if (nr instanceof android.hardware.radio.V1_4.CellIdentityNr) {
+            android.hardware.radio.V1_4.CellIdentityNr ci =
+                    (android.hardware.radio.V1_4.CellIdentityNr) nr;
+            return new CellIdentityNr(ci.pci, ci.tac, ci.nrarfcn, new int[] {}, ci.mcc, ci.mnc,
+                    ci.nci, ci.operatorNames.alphaLong, ci.operatorNames.alphaShort,
+                    new ArraySet<>());
+        } else if (nr instanceof android.hardware.radio.V1_5.CellIdentityNr) {
+            android.hardware.radio.V1_5.CellIdentityNr ci =
+                    (android.hardware.radio.V1_5.CellIdentityNr) nr;
+            return new CellIdentityNr(ci.base.pci, ci.base.tac, ci.base.nrarfcn,
+                    ci.bands.stream().mapToInt(Integer::intValue).toArray(), ci.base.mcc,
+                    ci.base.mnc, ci.base.nci, ci.base.operatorNames.alphaLong,
+                    ci.base.operatorNames.alphaShort, ci.additionalPlmns);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a CellIdentityNr defined in CellIdentityNr.aidl to CellIdentityNr
+     * @param cid CellIdentityNr defined in CellIdentityNr.aidl
+     * @return The converted CellIdentityNr
+     */
+    public static CellIdentityNr convertHalCellIdentityNr(
+            android.hardware.radio.network.CellIdentityNr cid) {
+        return new CellIdentityNr(cid.pci, cid.tac, cid.nrarfcn, cid.bands, cid.mcc, cid.mnc,
+                cid.nci, cid.operatorNames.alphaLong, cid.operatorNames.alphaShort,
+                primitiveArrayToArrayList(cid.additionalPlmns));
+    }
+
+    /**
+     * Convert a SignalStrength defined in radio/1.0, 1.2, 1.4, 1.6/types.hal to SignalStrength
+     * @param ss SignalStrength defined in radio/1.0, 1.2, 1.4, 1.6/types.hal
+     * @return The converted SignalStrength
+     */
+    public static SignalStrength convertHalSignalStrength(Object ss) {
+        if (ss == null) return null;
+        if (ss instanceof android.hardware.radio.V1_0.SignalStrength) {
+            android.hardware.radio.V1_0.SignalStrength signalStrength =
+                    (android.hardware.radio.V1_0.SignalStrength) ss;
+            return new SignalStrength(
+                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    RILUtils.convertHalGsmSignalStrength(signalStrength.gw),
+                    new CellSignalStrengthWcdma(),
+                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdScdma),
+                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
+                    new CellSignalStrengthNr());
+        } else if (ss instanceof android.hardware.radio.V1_2.SignalStrength) {
+            android.hardware.radio.V1_2.SignalStrength signalStrength =
+                    (android.hardware.radio.V1_2.SignalStrength) ss;
+            return new SignalStrength(
+                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
+                    RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdScdma),
+                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
+                    new CellSignalStrengthNr());
+        } else if (ss instanceof android.hardware.radio.V1_4.SignalStrength) {
+            android.hardware.radio.V1_4.SignalStrength signalStrength =
+                    (android.hardware.radio.V1_4.SignalStrength) ss;
+            return new SignalStrength(
+                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
+                    RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
+                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
+                    RILUtils.convertHalNrSignalStrength(signalStrength.nr));
+        } else if (ss instanceof android.hardware.radio.V1_6.SignalStrength) {
+            android.hardware.radio.V1_6.SignalStrength signalStrength =
+                    (android.hardware.radio.V1_6.SignalStrength) ss;
+            return new SignalStrength(
+                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
+                    RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
+                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
+                    RILUtils.convertHalNrSignalStrength(signalStrength.nr));
+        }
+        return null;
+    }
+
+    /**
+     * Convert a SignalStrength defined in SignalStrength.aidl to SignalStrength
+     * @param signalStrength SignalStrength defined in SignalStrength.aidl
+     * @return The converted SignalStrength
+     */
+    public static SignalStrength convertHalSignalStrength(
+            android.hardware.radio.network.SignalStrength signalStrength) {
+        return new SignalStrength(
+                RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
+                RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
+                RILUtils.convertHalLteSignalStrength(signalStrength.lte),
+                RILUtils.convertHalNrSignalStrength(signalStrength.nr));
+    }
+
+    /**
+     * Convert a GsmSignalStrength defined in radio/1.0/types.hal to CellSignalStrengthGsm
+     * @param ss GsmSignalStrength defined in radio/1.0/types.hal
+     * @return The converted CellSignalStrengthGsm
+     */
+    public static CellSignalStrengthGsm convertHalGsmSignalStrength(
+            android.hardware.radio.V1_0.GsmSignalStrength ss) {
+        CellSignalStrengthGsm ret = new CellSignalStrengthGsm(
+                CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength), ss.bitErrorRate,
+                ss.timingAdvance);
+        if (ret.getRssi() == CellInfo.UNAVAILABLE) {
+            ret.setDefaultValues();
+            ret.updateLevel(null, null);
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a GsmSignalStrength defined in GsmSignalStrength.aidl to CellSignalStrengthGsm
+     * @param ss GsmSignalStrength defined in GsmSignalStrength.aidl
+     * @return The converted CellSignalStrengthGsm
+     */
+    public static CellSignalStrengthGsm convertHalGsmSignalStrength(
+            android.hardware.radio.network.GsmSignalStrength ss) {
+        CellSignalStrengthGsm ret = new CellSignalStrengthGsm(
+                CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength), ss.bitErrorRate,
+                ss.timingAdvance);
+        if (ret.getRssi() == CellInfo.UNAVAILABLE) {
+            ret.setDefaultValues();
+            ret.updateLevel(null, null);
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a CdmaSignalStrength and EvdoSignalStrength defined in radio/1.0/types.hal to
+     * CellSignalStrengthCdma
+     * @param cdma CdmaSignalStrength defined in radio/1.0/types.hal
+     * @param evdo EvdoSignalStrength defined in radio/1.0/types.hal
+     * @return The converted CellSignalStrengthCdma
+     */
+    public static CellSignalStrengthCdma convertHalCdmaSignalStrength(
+            android.hardware.radio.V1_0.CdmaSignalStrength cdma,
+            android.hardware.radio.V1_0.EvdoSignalStrength evdo) {
+        return new CellSignalStrengthCdma(-cdma.dbm, -cdma.ecio, -evdo.dbm, -evdo.ecio,
+                evdo.signalNoiseRatio);
+    }
+
+    /**
+     * Convert a CdmaSignalStrength and EvdoSignalStrength defined in radio/network to
+     * CellSignalStrengthCdma
+     * @param cdma CdmaSignalStrength defined in CdmaSignalStrength.aidl
+     * @param evdo EvdoSignalStrength defined in EvdoSignalStrength.aidl
+     * @return The converted CellSignalStrengthCdma
+     */
+    public static CellSignalStrengthCdma convertHalCdmaSignalStrength(
+            android.hardware.radio.network.CdmaSignalStrength cdma,
+            android.hardware.radio.network.EvdoSignalStrength evdo) {
+        return new CellSignalStrengthCdma(-cdma.dbm, -cdma.ecio, -evdo.dbm, -evdo.ecio,
+                evdo.signalNoiseRatio);
+    }
+
+    /**
+     * Convert a LteSignalStrength defined in radio/1.0, 1.6/types.hal to CellSignalStrengthLte
+     * @param lte LteSignalStrength defined in radio/1.0, 1.6/types.hal
+     * @return The converted CellSignalStrengthLte
+     */
+    public static CellSignalStrengthLte convertHalLteSignalStrength(Object lte) {
+        if (lte == null) return null;
+        if (lte instanceof android.hardware.radio.V1_0.LteSignalStrength) {
+            android.hardware.radio.V1_0.LteSignalStrength ss =
+                    (android.hardware.radio.V1_0.LteSignalStrength) lte;
+            return new CellSignalStrengthLte(
+                    CellSignalStrengthLte.convertRssiAsuToDBm(ss.signalStrength),
+                    ss.rsrp != CellInfo.UNAVAILABLE ? -ss.rsrp : ss.rsrp,
+                    ss.rsrq != CellInfo.UNAVAILABLE ? -ss.rsrq : ss.rsrq,
+                    CellSignalStrengthLte.convertRssnrUnitFromTenDbToDB(ss.rssnr), ss.cqi,
+                    ss.timingAdvance);
+        } else if (lte instanceof android.hardware.radio.V1_6.LteSignalStrength) {
+            android.hardware.radio.V1_6.LteSignalStrength ss =
+                    (android.hardware.radio.V1_6.LteSignalStrength) lte;
+            return new CellSignalStrengthLte(
+                    CellSignalStrengthLte.convertRssiAsuToDBm(ss.base.signalStrength),
+                    ss.base.rsrp != CellInfo.UNAVAILABLE ? -ss.base.rsrp : ss.base.rsrp,
+                    ss.base.rsrq != CellInfo.UNAVAILABLE ? -ss.base.rsrq : ss.base.rsrq,
+                    CellSignalStrengthLte.convertRssnrUnitFromTenDbToDB(ss.base.rssnr),
+                    ss.cqiTableIndex, ss.base.cqi, ss.base.timingAdvance);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Convert a LteSignalStrength defined in LteSignalStrength.aidl to CellSignalStrengthLte
+     * @param ss LteSignalStrength defined in LteSignalStrength.aidl
+     * @return The converted CellSignalStrengthLte
+     */
+    public static CellSignalStrengthLte convertHalLteSignalStrength(
+            android.hardware.radio.network.LteSignalStrength ss) {
+        return new CellSignalStrengthLte(
+                CellSignalStrengthLte.convertRssiAsuToDBm(ss.signalStrength),
+                ss.rsrp != CellInfo.UNAVAILABLE ? -ss.rsrp : ss.rsrp,
+                ss.rsrq != CellInfo.UNAVAILABLE ? -ss.rsrq : ss.rsrq,
+                CellSignalStrengthLte.convertRssnrUnitFromTenDbToDB(ss.rssnr), ss.cqiTableIndex,
+                ss.cqi, ss.timingAdvance);
+    }
+
+    /**
+     * Convert a WcdmaSignalStrength defined in radio/1.0, 1.2/types.hal to CellSignalStrengthWcdma
+     * @param wcdma WcdmaSignalStrength defined in radio/1.0, 1.2/types.hal
+     * @return The converted CellSignalStrengthWcdma
+     */
+    public static CellSignalStrengthWcdma convertHalWcdmaSignalStrength(Object wcdma) {
+        if (wcdma == null) return null;
+        CellSignalStrengthWcdma ret = null;
+        if (wcdma instanceof android.hardware.radio.V1_0.WcdmaSignalStrength) {
+            android.hardware.radio.V1_0.WcdmaSignalStrength ss =
+                    (android.hardware.radio.V1_0.WcdmaSignalStrength) wcdma;
+            ret = new CellSignalStrengthWcdma(
+                    CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength), ss.bitErrorRate,
+                    CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE);
+        } else if (wcdma instanceof android.hardware.radio.V1_2.WcdmaSignalStrength) {
+            android.hardware.radio.V1_2.WcdmaSignalStrength ss =
+                    (android.hardware.radio.V1_2.WcdmaSignalStrength) wcdma;
+            ret = new CellSignalStrengthWcdma(
+                    CellSignalStrength.getRssiDbmFromAsu(ss.base.signalStrength),
+                    ss.base.bitErrorRate, CellSignalStrength.getRscpDbmFromAsu(ss.rscp),
+                    CellSignalStrength.getEcNoDbFromAsu(ss.ecno));
+        }
+        if (ret != null && ret.getRssi() == CellInfo.UNAVAILABLE
+                && ret.getRscp() == CellInfo.UNAVAILABLE) {
+            ret.setDefaultValues();
+            ret.updateLevel(null, null);
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a WcdmaSignalStrength defined in WcdmaSignalStrength.aidl to CellSignalStrengthWcdma
+     * @param ss WcdmaSignalStrength defined in WcdmaSignalStrength.aidl
+     * @return The converted CellSignalStrengthWcdma
+     */
+    public static CellSignalStrengthWcdma convertHalWcdmaSignalStrength(
+            android.hardware.radio.network.WcdmaSignalStrength ss) {
+        CellSignalStrengthWcdma ret = new CellSignalStrengthWcdma(
+                CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength),
+                ss.bitErrorRate, CellSignalStrength.getRscpDbmFromAsu(ss.rscp),
+                CellSignalStrength.getEcNoDbFromAsu(ss.ecno));
+        if (ret.getRssi() == CellInfo.UNAVAILABLE && ret.getRscp() == CellInfo.UNAVAILABLE) {
+            ret.setDefaultValues();
+            ret.updateLevel(null, null);
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a TdScdmaSignalStrength defined in radio/1.0/types.hal or TdscdmaSignalStrength
+     * defined in radio/1.2/types.hal to CellSignalStrengthTdscdma
+     * @param tdscdma TdScdmaSignalStrength defined in radio/1.0/types.hal or TdscdmaSignalStrength
+     *        defined in radio/1.2/types.hal
+     * @return The converted CellSignalStrengthTdscdma
+     */
+    public static CellSignalStrengthTdscdma convertHalTdscdmaSignalStrength(Object tdscdma) {
+        if (tdscdma == null) return null;
+        CellSignalStrengthTdscdma ret = null;
+        if (tdscdma instanceof android.hardware.radio.V1_0.TdScdmaSignalStrength) {
+            android.hardware.radio.V1_0.TdScdmaSignalStrength ss =
+                    (android.hardware.radio.V1_0.TdScdmaSignalStrength) tdscdma;
+            ret = new CellSignalStrengthTdscdma(CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE,
+                    ss.rscp != CellInfo.UNAVAILABLE ? -ss.rscp : ss.rscp);
+        } else if (tdscdma instanceof android.hardware.radio.V1_2.TdscdmaSignalStrength) {
+            android.hardware.radio.V1_2.TdscdmaSignalStrength ss =
+                    (android.hardware.radio.V1_2.TdscdmaSignalStrength) tdscdma;
+            ret = new CellSignalStrengthTdscdma(
+                    CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength), ss.bitErrorRate,
+                    CellSignalStrength.getRscpDbmFromAsu(ss.rscp));
+        }
+        if (ret != null && ret.getRssi() == CellInfo.UNAVAILABLE
+                && ret.getRscp() == CellInfo.UNAVAILABLE) {
+            ret.setDefaultValues();
+            ret.updateLevel(null, null);
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a TdscdmaSignalStrength defined in TdscdmaSignalStrength.aidl to
+     * CellSignalStrengthTdscdma
+     * @param ss TdscdmaSignalStrength defined in TdscdmaSignalStrength.aidl
+     * @return The converted CellSignalStrengthTdscdma
+     */
+    public static CellSignalStrengthTdscdma convertHalTdscdmaSignalStrength(
+            android.hardware.radio.network.TdscdmaSignalStrength ss) {
+        CellSignalStrengthTdscdma ret = new CellSignalStrengthTdscdma(
+                CellSignalStrength.getRssiDbmFromAsu(ss.signalStrength),
+                ss.bitErrorRate, CellSignalStrength.getRscpDbmFromAsu(ss.rscp));
+        if (ret.getRssi() == CellInfo.UNAVAILABLE && ret.getRscp() == CellInfo.UNAVAILABLE) {
+            ret.setDefaultValues();
+            ret.updateLevel(null, null);
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a NrSignalStrength defined in radio/1.4, 1.6/types.hal to CellSignalStrengthNr
+     * @param nr NrSignalStrength defined in radio/1.4, 1.6/types.hal
+     * @return The converted CellSignalStrengthNr
+     */
+    public static CellSignalStrengthNr convertHalNrSignalStrength(Object nr) {
+        if (nr == null) return null;
+        if (nr instanceof android.hardware.radio.V1_4.NrSignalStrength) {
+            android.hardware.radio.V1_4.NrSignalStrength ss =
+                    (android.hardware.radio.V1_4.NrSignalStrength) nr;
+            return new CellSignalStrengthNr(CellSignalStrengthNr.flip(ss.csiRsrp),
+                    CellSignalStrengthNr.flip(ss.csiRsrq), ss.csiSinr,
+                    CellSignalStrengthNr.flip(ss.ssRsrp), CellSignalStrengthNr.flip(ss.ssRsrq),
+                    ss.ssSinr);
+        } else if (nr instanceof android.hardware.radio.V1_6.NrSignalStrength) {
+            android.hardware.radio.V1_6.NrSignalStrength ss =
+                    (android.hardware.radio.V1_6.NrSignalStrength) nr;
+            return new CellSignalStrengthNr(CellSignalStrengthNr.flip(ss.base.csiRsrp),
+                    CellSignalStrengthNr.flip(ss.base.csiRsrq), ss.base.csiSinr,
+                    ss.csiCqiTableIndex, ss.csiCqiReport, CellSignalStrengthNr.flip(ss.base.ssRsrp),
+                    CellSignalStrengthNr.flip(ss.base.ssRsrq), ss.base.ssSinr);
+        }
+        return null;
+    }
+
+    /**
+     * Convert a NrSignalStrength defined in NrSignalStrength.aidl to CellSignalStrengthNr
+     * @param ss NrSignalStrength defined in NrSignalStrength.aidl
+     * @return The converted CellSignalStrengthNr
+     */
+    public static CellSignalStrengthNr convertHalNrSignalStrength(
+            android.hardware.radio.network.NrSignalStrength ss) {
+        return new CellSignalStrengthNr(CellSignalStrengthNr.flip(ss.csiRsrp),
+                CellSignalStrengthNr.flip(ss.csiRsrq), ss.csiSinr, ss.csiCqiTableIndex,
+                primitiveArrayToArrayList(ss.csiCqiReport), CellSignalStrengthNr.flip(ss.ssRsrp),
+                CellSignalStrengthNr.flip(ss.ssRsrq), ss.ssSinr);
+    }
+
+    private static ClosedSubscriberGroupInfo convertHalClosedSubscriberGroupInfo(
+            android.hardware.radio.V1_5.OptionalCsgInfo optionalCsgInfo) {
+        android.hardware.radio.V1_5.ClosedSubscriberGroupInfo csgInfo =
+                optionalCsgInfo.getDiscriminator()
+                        == android.hardware.radio.V1_5.OptionalCsgInfo.hidl_discriminator.csgInfo
+                        ? optionalCsgInfo.csgInfo() : null;
+        if (csgInfo == null) return null;
+        return new ClosedSubscriberGroupInfo(csgInfo.csgIndication, csgInfo.homeNodebName,
+                csgInfo.csgIdentity);
+    }
+
+    private static ClosedSubscriberGroupInfo convertHalClosedSubscriberGroupInfo(
+            android.hardware.radio.network.ClosedSubscriberGroupInfo csgInfo) {
+        if (csgInfo == null) return null;
+        return new ClosedSubscriberGroupInfo(csgInfo.csgIndication, csgInfo.homeNodebName,
+                csgInfo.csgIdentity);
+    }
+
+    /**
+     * Convert a list of BarringInfo defined in radio/1.5/types.hal to a sparse array of
+     * BarringServiceInfos
+     * @param halBarringInfos List of BarringInfos defined in radio/1.5/types.hal
+     * @return The converted sparse array of BarringServiceInfos
+     */
+    public static SparseArray<BarringInfo.BarringServiceInfo> convertHalBarringInfoList(
+            List<android.hardware.radio.V1_5.BarringInfo> halBarringInfos) {
+        SparseArray<BarringInfo.BarringServiceInfo> serviceInfos = new SparseArray<>();
+        for (android.hardware.radio.V1_5.BarringInfo halBarringInfo : halBarringInfos) {
+            if (halBarringInfo.barringType
+                    == android.hardware.radio.V1_5.BarringInfo.BarringType.CONDITIONAL) {
+                if (halBarringInfo.barringTypeSpecificInfo.getDiscriminator()
+                        != android.hardware.radio.V1_5.BarringInfo.BarringTypeSpecificInfo
+                        .hidl_discriminator.conditional) {
+                    // this is an error case where the barring info is conditional but the
+                    // conditional barring fields weren't included
+                    continue;
+                }
+                android.hardware.radio.V1_5.BarringInfo.BarringTypeSpecificInfo
+                        .Conditional conditionalInfo =
+                        halBarringInfo.barringTypeSpecificInfo.conditional();
+                serviceInfos.put(
+                        halBarringInfo.serviceType, new BarringInfo.BarringServiceInfo(
+                                halBarringInfo.barringType, // will always be CONDITIONAL here
+                                conditionalInfo.isBarred,
+                                conditionalInfo.factor,
+                                conditionalInfo.timeSeconds));
+            } else {
+                // Barring type is either NONE or UNCONDITIONAL
+                serviceInfos.put(
+                        halBarringInfo.serviceType, new BarringInfo.BarringServiceInfo(
+                                halBarringInfo.barringType, false, 0, 0));
+            }
+        }
+        return serviceInfos;
+    }
+
+    /**
+     * Convert a list of BarringInfo defined in BarringInfo.aidl to a sparse array of
+     * BarringServiceInfos
+     * @param halBarringInfos List of BarringInfos defined in BarringInfo.aidl
+     * @return The converted sparse array of BarringServiceInfos
+     */
+    public static SparseArray<BarringInfo.BarringServiceInfo> convertHalBarringInfoList(
+            android.hardware.radio.network.BarringInfo[] halBarringInfos) {
+        SparseArray<BarringInfo.BarringServiceInfo> serviceInfos = new SparseArray<>();
+        for (android.hardware.radio.network.BarringInfo halBarringInfo : halBarringInfos) {
+            if (halBarringInfo.barringType
+                    == android.hardware.radio.network.BarringInfo.BARRING_TYPE_CONDITIONAL) {
+                if (halBarringInfo.barringTypeSpecificInfo == null) {
+                    // this is an error case where the barring info is conditional but the
+                    // conditional barring fields weren't included
+                    continue;
+                }
+                serviceInfos.put(
+                        halBarringInfo.serviceType, new BarringInfo.BarringServiceInfo(
+                                halBarringInfo.barringType, // will always be CONDITIONAL here
+                                halBarringInfo.barringTypeSpecificInfo.isBarred,
+                                halBarringInfo.barringTypeSpecificInfo.factor,
+                                halBarringInfo.barringTypeSpecificInfo.timeSeconds));
+            } else {
+                // Barring type is either NONE or UNCONDITIONAL
+                serviceInfos.put(halBarringInfo.serviceType, new BarringInfo.BarringServiceInfo(
+                        halBarringInfo.barringType, false, 0, 0));
+            }
+        }
+        return serviceInfos;
     }
 
     private static LinkAddress convertToLinkAddress(String addressString) {
@@ -1893,8 +3318,8 @@ public class RILUtils {
     }
 
     /**
-     * Convert RadioState defined in radio/1.0/types.hal to RadioPowerState
-     * @param stateInt Radio state defined in radio/1.0/types.hal
+     * Convert RadioState defined in radio/1.0/types.hal and RadioState.aidl to RadioPowerState
+     * @param stateInt Radio state defined in radio/1.0/types.hal or RadioState.aidl
      * @return The converted {@link Annotation.RadioPowerState RadioPowerState}
      */
     public static @Annotation.RadioPowerState int convertHalRadioState(int stateInt) {
@@ -1994,6 +3419,40 @@ public class RILUtils {
     }
 
     /**
+     * Convert Call defined in Call.aidl to DriverCall
+     * @param halCall Call defined in Call.aidl
+     * @return The converted DriverCall
+     */
+    public static DriverCall convertToDriverCall(android.hardware.radio.voice.Call halCall) {
+        DriverCall dc = new DriverCall();
+        dc.state = DriverCall.stateFromCLCC((int) halCall.state);
+        dc.index = halCall.index;
+        dc.TOA = halCall.toa;
+        dc.isMpty = halCall.isMpty;
+        dc.isMT = halCall.isMT;
+        dc.als = halCall.als;
+        dc.isVoice = halCall.isVoice;
+        dc.isVoicePrivacy = halCall.isVoicePrivacy;
+        dc.number = halCall.number;
+        dc.numberPresentation = DriverCall.presentationFromCLIP((int) halCall.numberPresentation);
+        dc.name = halCall.name;
+        dc.namePresentation = DriverCall.presentationFromCLIP((int) halCall.namePresentation);
+        if (halCall.uusInfo.length == 1) {
+            dc.uusInfo = new UUSInfo();
+            dc.uusInfo.setType(halCall.uusInfo[0].uusType);
+            dc.uusInfo.setDcs(halCall.uusInfo[0].uusDcs);
+            if (!TextUtils.isEmpty(halCall.uusInfo[0].uusData)) {
+                dc.uusInfo.setUserData(halCall.uusInfo[0].uusData.getBytes());
+            }
+        }
+        // Make sure there's a leading + on addresses with a TOA of 145
+        dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
+        dc.audioQuality = (int) halCall.audioQuality;
+        dc.forwardedNumber = halCall.forwardedNumber;
+        return dc;
+    }
+
+    /**
      * Convert OperatorStatus defined in radio/1.0/types.hal to OperatorInfo.State
      * @param status Operator status defined in radio/1.0/types.hal
      * @return The converted OperatorStatus as a String
@@ -2026,6 +3485,34 @@ public class RILUtils {
             String spn = null, imsi = null, gid1 = null, gid2 = null;
             int matchType = carrierList.get(i).matchType;
             String matchData = carrierList.get(i).matchData;
+            if (matchType == CarrierIdentifier.MatchType.SPN) {
+                spn = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
+                imsi = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.GID1) {
+                gid1 = matchData;
+            } else if (matchType == CarrierIdentifier.MatchType.GID2) {
+                gid2 = matchData;
+            }
+            ret.add(new CarrierIdentifier(mcc, mnc, spn, imsi, gid1, gid2));
+        }
+        return ret;
+    }
+
+    /**
+     * Convert a list of Carriers defined in radio/1.0/types.hal to a list of CarrierIdentifiers
+     * @param carrierList List of Carriers defined in radio/1.0/types.hal
+     * @return The converted list of CarrierIdentifiers
+     */
+    public static List<CarrierIdentifier> convertHalCarrierList(
+            android.hardware.radio.sim.Carrier[] carrierList) {
+        List<CarrierIdentifier> ret = new ArrayList<>();
+        for (int i = 0; i < carrierList.length; i++) {
+            String mcc = carrierList[i].mcc;
+            String mnc = carrierList[i].mnc;
+            String spn = null, imsi = null, gid1 = null, gid2 = null;
+            int matchType = carrierList[i].matchType;
+            String matchData = carrierList[i].matchData;
             if (matchType == CarrierIdentifier.MatchType.SPN) {
                 spn = matchData;
             } else if (matchType == CarrierIdentifier.MatchType.IMSI_PREFIX) {
@@ -2083,7 +3570,7 @@ public class RILUtils {
                         rilAppStatus.persoSubstate);
                 appStatus.aid = rilAppStatus.aidPtr;
                 appStatus.app_label = rilAppStatus.appLabelPtr;
-                appStatus.pin1_replaced = rilAppStatus.pin1Replaced;
+                appStatus.pin1_replaced = rilAppStatus.pin1Replaced != 0;
                 appStatus.pin1 = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
                 appStatus.pin2 = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
                 iccCardStatus.mApplications[i] = appStatus;
@@ -2111,13 +3598,147 @@ public class RILUtils {
                         rilAppStatus.persoSubstate);
                 appStatus.aid = rilAppStatus.base.aidPtr;
                 appStatus.app_label = rilAppStatus.base.appLabelPtr;
-                appStatus.pin1_replaced = rilAppStatus.base.pin1Replaced;
+                appStatus.pin1_replaced = rilAppStatus.base.pin1Replaced != 0;
                 appStatus.pin1 = appStatus.PinStateFromRILInt(rilAppStatus.base.pin1);
                 appStatus.pin2 = appStatus.PinStateFromRILInt(rilAppStatus.base.pin2);
                 iccCardStatus.mApplications[i] = appStatus;
             }
         }
         return iccCardStatus;
+    }
+
+    /**
+     * Convert CardStatus defined in CardStatus.aidl to IccCardStatus
+     * @param cardStatus CardStatus defined in CardStatus.aidl
+     * @return The converted IccCardStatus
+     */
+    public static IccCardStatus convertHalCardStatus(
+            android.hardware.radio.sim.CardStatus cardStatus) {
+        IccCardStatus iccCardStatus = new IccCardStatus();
+        iccCardStatus.setCardState(cardStatus.cardState);
+        iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
+        iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
+        iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
+        iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
+        iccCardStatus.physicalSlotIndex = cardStatus.slotMap.physicalSlotId;
+        iccCardStatus.atr = cardStatus.atr;
+        iccCardStatus.iccid = cardStatus.iccid;
+        iccCardStatus.eid = cardStatus.eid;
+
+        int numApplications = Math.min(cardStatus.applications.length,
+                com.android.internal.telephony.uicc.IccCardStatus.CARD_MAX_APPS);
+        iccCardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+        for (int i = 0; i < numApplications; i++) {
+            android.hardware.radio.sim.AppStatus rilAppStatus = cardStatus.applications[i];
+            IccCardApplicationStatus appStatus = new IccCardApplicationStatus();
+            appStatus.app_type = appStatus.AppTypeFromRILInt(rilAppStatus.appType);
+            appStatus.app_state = appStatus.AppStateFromRILInt(rilAppStatus.appState);
+            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(
+                    rilAppStatus.persoSubstate);
+            appStatus.aid = rilAppStatus.aidPtr;
+            appStatus.app_label = rilAppStatus.appLabelPtr;
+            appStatus.pin1_replaced = rilAppStatus.pin1Replaced;
+            appStatus.pin1 = appStatus.PinStateFromRILInt(rilAppStatus.pin1);
+            appStatus.pin2 = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
+            iccCardStatus.mApplications[i] = appStatus;
+        }
+        return iccCardStatus;
+    }
+
+    /**
+     * Convert PhonebookCapacity defined in radio/1.6/types.hal to AdnCapacity
+     * @param pbCap PhonebookCapacity defined in radio/1.6/types.hal
+     * @return The converted AdnCapacity
+     */
+    public static AdnCapacity convertHalPhonebookCapacity(
+            android.hardware.radio.V1_6.PhonebookCapacity pbCap) {
+        if (pbCap != null) {
+            return new AdnCapacity(pbCap.maxAdnRecords, pbCap.usedAdnRecords, pbCap.maxEmailRecords,
+                    pbCap.usedEmailRecords, pbCap.maxAdditionalNumberRecords,
+                    pbCap.usedAdditionalNumberRecords, pbCap.maxNameLen, pbCap.maxNumberLen,
+                    pbCap.maxEmailLen, pbCap.maxAdditionalNumberLen);
+        }
+        return null;
+    }
+
+    /**
+     * Convert PhonebookCapacity defined in PhonebookCapacity.aidl to AdnCapacity
+     * @param pbCap PhonebookCapacity defined in PhonebookCapacity.aidl
+     * @return The converted AdnCapacity
+     */
+    public static AdnCapacity convertHalPhonebookCapacity(
+            android.hardware.radio.sim.PhonebookCapacity pbCap) {
+        if (pbCap != null) {
+            return new AdnCapacity(pbCap.maxAdnRecords, pbCap.usedAdnRecords, pbCap.maxEmailRecords,
+                    pbCap.usedEmailRecords, pbCap.maxAdditionalNumberRecords,
+                    pbCap.usedAdditionalNumberRecords, pbCap.maxNameLen, pbCap.maxNumberLen,
+                    pbCap.maxEmailLen, pbCap.maxAdditionalNumberLen);
+        }
+        return null;
+    }
+
+    /**
+     * Convert PhonebookRecordInfo defined in radio/1.6/types.hal to SimPhonebookRecord
+     * @param recInfo PhonebookRecordInfo defined in radio/1.6/types.hal
+     * @return The converted SimPhonebookRecord
+     */
+    public static SimPhonebookRecord convertHalPhonebookRecordInfo(
+            android.hardware.radio.V1_6.PhonebookRecordInfo recInfo) {
+        String[] emails = recInfo.emails == null ? null
+                : recInfo.emails.toArray(new String[recInfo.emails.size()]);
+        String[] numbers = recInfo.additionalNumbers == null ? null
+                : recInfo.additionalNumbers.toArray(new String[recInfo.additionalNumbers.size()]);
+        return new SimPhonebookRecord(recInfo.recordId, recInfo.name, recInfo.number, emails,
+                numbers);
+    }
+
+    /**
+     * Convert PhonebookRecordInfo defined in PhonebookRecordInfo.aidl to SimPhonebookRecord
+     * @param recInfo PhonebookRecordInfo defined in PhonebookRecordInfo.aidl
+     * @return The converted SimPhonebookRecord
+     */
+    public static SimPhonebookRecord convertHalPhonebookRecordInfo(
+            android.hardware.radio.sim.PhonebookRecordInfo recInfo) {
+        return new SimPhonebookRecord(recInfo.recordId, recInfo.name, recInfo.number,
+                recInfo.emails, recInfo.additionalNumbers);
+    }
+
+    /**
+     * Convert SimPhonebookRecord to PhonebookRecordInfo defined in radio/1.6/types.hal
+     * @param record SimPhonebookRecord to convert
+     * @return The converted PhonebookRecordInfo defined in radio/1.6/types.hal
+     */
+    public static android.hardware.radio.V1_6.PhonebookRecordInfo convertToHalPhonebookRecordInfo(
+            SimPhonebookRecord record) {
+        android.hardware.radio.V1_6.PhonebookRecordInfo pbRecordInfo =
+                new android.hardware.radio.V1_6.PhonebookRecordInfo();
+        pbRecordInfo.recordId = record.getRecordIndex();
+        pbRecordInfo.name = convertNullToEmptyString(record.getAlphaTag());
+        pbRecordInfo.number = convertNullToEmptyString(
+                convertToHalPhonebookRecordInfoNumber(record.getNumber()));
+        if (record.getEmails() != null) {
+            for (String email : record.getEmails()) {
+                pbRecordInfo.emails.add(email);
+            }
+        }
+        if (record.getAdditionalNumbers() != null) {
+            for (String addNum : record.getAdditionalNumbers()) {
+                pbRecordInfo.additionalNumbers.add(convertToHalPhonebookRecordInfoNumber(addNum));
+            }
+        }
+        return pbRecordInfo;
+    }
+
+    /**
+     * Convert the GSM pause/wild/wait character to the phone number in the SIM PhonebookRecordInfo
+     * number format
+     * @param input GSM pause/wild/wait character
+     * @return The converted PhonebookRecordInfo number
+     */
+    private static String convertToHalPhonebookRecordInfoNumber(String input) {
+        return input == null ? null : input.replace(PhoneNumberUtils.WAIT, 'e')
+                .replace(PhoneNumberUtils.PAUSE, 'T')
+                .replace(PhoneNumberUtils.WILD, '?');
     }
 
     /** Append the data to the end of an ArrayList */
