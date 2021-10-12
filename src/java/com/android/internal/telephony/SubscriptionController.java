@@ -299,7 +299,8 @@ public class SubscriptionController extends ISub.Stub {
             SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES,
             SubscriptionManager.UICC_APPLICATIONS_ENABLED,
             SubscriptionManager.IMS_RCS_UCE_ENABLED,
-            SubscriptionManager.CROSS_SIM_CALLING_ENABLED
+            SubscriptionManager.CROSS_SIM_CALLING_ENABLED,
+            SubscriptionManager.NR_ADVANCED_CALLING_ENABLED
     ));
 
     public static SubscriptionController init(Context c) {
@@ -2249,6 +2250,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.DATA_ROAMING:
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
+            case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                 values.put(propKey, cursor.getInt(columnIndex));
                 break;
             case SubscriptionManager.DISPLAY_NAME:
@@ -3187,6 +3189,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
             case SubscriptionManager.VOIMS_OPT_IN_STATUS:
+            case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3267,6 +3270,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                         case SubscriptionManager.D2D_STATUS_SHARING:
                         case SubscriptionManager.D2D_STATUS_SHARING_SELECTED_CONTACTS:
+                        case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                             resultValue = cursor.getString(0);
                             break;
                         default:
