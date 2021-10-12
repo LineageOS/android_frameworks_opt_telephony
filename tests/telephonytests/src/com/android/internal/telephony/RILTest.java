@@ -2002,7 +2002,7 @@ public class RILTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.CellIdentityLte();
         initializeCellIdentityLte_1_5(halCellIdentity, false, true);
 
-        CellIdentityLte cellIdentity = new CellIdentityLte(halCellIdentity);
+        CellIdentityLte cellIdentity = RILUtils.convertHalCellIdentityLte(halCellIdentity);
 
         assertEquals(CSG_INDICATION,
                 cellIdentity.getClosedSubscriberGroupInfo().getCsgIndicator());
@@ -2018,7 +2018,7 @@ public class RILTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.CellIdentityLte();
         initializeCellIdentityLte_1_5(halCellIdentity, true, false);
 
-        CellIdentityLte cellIdentity = new CellIdentityLte(halCellIdentity);
+        CellIdentityLte cellIdentity = RILUtils.convertHalCellIdentityLte(halCellIdentity);
 
         Set<String> additionalPlmns = new HashSet<>();
         Collections.addAll(additionalPlmns, ADDITIONAL_PLMNS);
@@ -2047,7 +2047,7 @@ public class RILTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.CellIdentityWcdma();
         initializeCellIdentityWcdma_1_5(halCellIdentity, false, true);
 
-        CellIdentityWcdma cellIdentity = new CellIdentityWcdma(halCellIdentity);
+        CellIdentityWcdma cellIdentity = RILUtils.convertHalCellIdentityWcdma(halCellIdentity);
 
         assertEquals(CSG_INDICATION,
                 cellIdentity.getClosedSubscriberGroupInfo().getCsgIndicator());
@@ -2063,7 +2063,7 @@ public class RILTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.CellIdentityWcdma();
         initializeCellIdentityWcdma_1_5(halCellIdentity, true, false);
 
-        CellIdentityWcdma cellIdentity = new CellIdentityWcdma(halCellIdentity);
+        CellIdentityWcdma cellIdentity = RILUtils.convertHalCellIdentityWcdma(halCellIdentity);
 
         Set<String> additionalPlmns = new HashSet<>();
         Collections.addAll(additionalPlmns, ADDITIONAL_PLMNS);
@@ -2092,7 +2092,7 @@ public class RILTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.CellIdentityTdscdma();
         initializeCellIdentityTdscdma_1_5(halCellIdentity, false, true);
 
-        CellIdentityTdscdma cellIdentity = new CellIdentityTdscdma(halCellIdentity);
+        CellIdentityTdscdma cellIdentity = RILUtils.convertHalCellIdentityTdscdma(halCellIdentity);
 
         assertEquals(CSG_INDICATION,
                 cellIdentity.getClosedSubscriberGroupInfo().getCsgIndicator());
@@ -2108,7 +2108,7 @@ public class RILTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.CellIdentityTdscdma();
         initializeCellIdentityTdscdma_1_5(halCellIdentity, true, false);
 
-        CellIdentityTdscdma cellIdentity = new CellIdentityTdscdma(halCellIdentity);
+        CellIdentityTdscdma cellIdentity = RILUtils.convertHalCellIdentityTdscdma(halCellIdentity);
 
         Set<String> additionalPlmns = new HashSet<>();
         Collections.addAll(additionalPlmns, ADDITIONAL_PLMNS);
