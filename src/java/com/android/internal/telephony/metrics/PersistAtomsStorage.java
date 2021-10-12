@@ -233,8 +233,17 @@ public class PersistAtomsStorage {
 
     /** Adds a data call session to the storage. */
     public synchronized void addDataCallSession(DataCallSession dataCall) {
-        mAtoms.dataCallSession =
-                insertAtRandomPlace(mAtoms.dataCallSession, dataCall, mMaxNumDataCallSessions);
+        int index = findIndex(dataCall);
+        if (index >= 0) {
+            DataCallSession existingCall = mAtoms.dataCallSession[index];
+            dataCall.ratSwitchCount += existingCall.ratSwitchCount;
+            dataCall.durationMinutes += existingCall.durationMinutes;
+            mAtoms.dataCallSession[index] = dataCall;
+        } else {
+            mAtoms.dataCallSession =
+                    insertAtRandomPlace(mAtoms.dataCallSession, dataCall, mMaxNumDataCallSessions);
+        }
+
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
@@ -727,6 +736,19 @@ public class PersistAtomsStorage {
             }
         }
         return null;
+    }
+
+    /**
+     * Returns the index of data call session that has the same random dimension as the given one,
+     * or -1 if it does not exist.
+     */
+    private int findIndex(DataCallSession key) {
+        for (int i = 0; i < mAtoms.dataCallSession.length; i++) {
+            if (mAtoms.dataCallSession[i].dimension == key.dimension) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
