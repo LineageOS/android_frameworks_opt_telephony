@@ -108,7 +108,7 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
         nrSignalStrength.base.ssSinr = SSSINR;
 
         // THEN the get method should return the correct value
-        CellSignalStrengthNr css = new CellSignalStrengthNr(nrSignalStrength);
+        CellSignalStrengthNr css = RILUtils.convertHalNrSignalStrength(nrSignalStrength);
         assertThat(css.getCsiRsrp()).isEqualTo(CSIRSRP);
         assertThat(css.getCsiRsrq()).isEqualTo(CSIRSRQ);
         assertThat(css.getCsiSinr()).isEqualTo(CSISINR);
@@ -134,7 +134,7 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
         nrSignalStrength.base.ssSinr = CellInfo.UNAVAILABLE;
 
         // THEN the get method should return unavailable value
-        CellSignalStrengthNr css = new CellSignalStrengthNr(nrSignalStrength);
+        CellSignalStrengthNr css = RILUtils.convertHalNrSignalStrength(nrSignalStrength);
         assertThat(css.getCsiRsrp()).isEqualTo(CellInfo.UNAVAILABLE);
         assertThat(css.getCsiRsrq()).isEqualTo(CellInfo.UNAVAILABLE);
         assertThat(css.getCsiSinr()).isEqualTo(CellInfo.UNAVAILABLE);
