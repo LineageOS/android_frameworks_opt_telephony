@@ -47,6 +47,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
+import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
@@ -129,6 +130,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private ImsRegistrationStats[] mImsRegistrationStats;
     private ImsRegistrationTermination[] mImsRegistrationTerminations;
+
+    // Data call sessions
+    private DataCallSession mDataCallSession0;
+    private DataCallSession mDataCallSession1;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -432,6 +437,24 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 new ImsRegistrationTermination[] {
                     mImsRegistrationTerminationLte, mImsRegistrationTerminationWifi
                 };
+
+        mDataCallSession0 = new DataCallSession();
+        mDataCallSession0.dimension = 111;
+        mDataCallSession0.carrierId = CARRIER1_ID;
+        mDataCallSession0.oosAtEnd = false;
+        mDataCallSession0.ratSwitchCount = 3L;
+        mDataCallSession0.setupFailed = false;
+        mDataCallSession0.durationMinutes = 20;
+        mDataCallSession0.ongoing = true;
+
+        mDataCallSession1 = new DataCallSession();
+        mDataCallSession1.dimension = 222;
+        mDataCallSession1.carrierId = CARRIER2_ID;
+        mDataCallSession1.oosAtEnd = true;
+        mDataCallSession1.ratSwitchCount = 1L;
+        mDataCallSession1.setupFailed = false;
+        mDataCallSession1.durationMinutes = 5;
+        mDataCallSession1.ongoing = false;
     }
 
     private static class TestablePersistAtomsStorage extends PersistAtomsStorage {
@@ -1273,6 +1296,53 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         inOrder.verifyNoMoreInteractions();
     }
 
+    @Test
+    @SmallTest
+    public void addDataCallSession_newEntry()
+            throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addDataCallSession(mDataCallSession0);
+        mPersistAtomsStorage.addDataCallSession(mDataCallSession1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // there should be 2 data calls
+        verifyCurrentStateSavedToFileOnce();
+        DataCallSession[] dataCalls = mPersistAtomsStorage.getDataCallSessions(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new DataCallSession[] {mDataCallSession0, mDataCallSession1},
+                dataCalls);
+    }
+
+    @Test
+    @SmallTest
+    public void addDataCallSession_existingEntry()
+            throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        DataCallSession newDataCallSession0 = copyOf(mDataCallSession0);
+        newDataCallSession0.ongoing = false;
+        newDataCallSession0.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
+        newDataCallSession0.durationMinutes = 10;
+        newDataCallSession0.ratSwitchCount = 5;
+        DataCallSession totalDataCallSession0 = copyOf(newDataCallSession0);
+        totalDataCallSession0.durationMinutes =
+                mDataCallSession0.durationMinutes + newDataCallSession0.durationMinutes;
+        totalDataCallSession0.ratSwitchCount =
+                mDataCallSession0.ratSwitchCount + newDataCallSession0.ratSwitchCount;
+
+        mPersistAtomsStorage.addDataCallSession(mDataCallSession0);
+        mPersistAtomsStorage.addDataCallSession(newDataCallSession0);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // there should be 1 data call
+        verifyCurrentStateSavedToFileOnce();
+        DataCallSession[] dataCalls = mPersistAtomsStorage.getDataCallSessions(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new DataCallSession[] {totalDataCallSession0}, dataCalls);
+    }
+
     /* Utilities */
 
     private void createEmptyTestFile() throws Exception {
@@ -1349,6 +1419,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static ImsRegistrationTermination copyOf(ImsRegistrationTermination source)
             throws Exception {
         return ImsRegistrationTermination.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static DataCallSession copyOf(DataCallSession source)
+            throws Exception {
+        return DataCallSession.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {
