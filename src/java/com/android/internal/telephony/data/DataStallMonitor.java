@@ -17,6 +17,7 @@
 package com.android.internal.telephony.data;
 
 import android.annotation.NonNull;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -34,25 +35,75 @@ import java.io.PrintWriter;
  * actions to recover
  */
 public class DataStallMonitor extends Handler {
-    private final Phone mPhone;
-    private final String mLogTag;
-    private final LocalLog mLocalLog = new LocalLog(128);
+    /** Event for data config updated. */
+    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
+
+    /** Event for internet validation status changed. */
+    private static final int EVENT_INTERNET_VALIDATION_STATUS_CHANGED = 2;
+
+
+    private final @NonNull Phone mPhone;
+    private final @NonNull String mLogTag;
+    private final @NonNull LocalLog mLocalLog = new LocalLog(128);
+
+    /** Data network controller */
+    private final @NonNull DataNetworkController mDataNetworkController;
+
+    /** Data config manager */
+    private final @NonNull DataConfigManager mDataConfigManager;
+
+    /** Cellular data service */
+    private final @NonNull DataServiceManager mWwanDataServiceManager;
 
     /**
      * Constructor
      *
      * @param phone The phone instance.
+     * @param dataServiceManager The WWAN data service manager.
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
      */
-    public DataStallMonitor(Phone phone, Looper looper) {
+    public DataStallMonitor(@NonNull Phone phone,
+            @NonNull DataNetworkController dataNetworkController,
+            @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper) {
         super(looper);
         mPhone = phone;
         mLogTag = "DSTMTR-" + mPhone.getPhoneId();
+        mDataNetworkController = dataNetworkController;
+        mWwanDataServiceManager = dataServiceManager;
+        mDataConfigManager = mDataNetworkController.getDataConfigManager();
+
+        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mDataNetworkController.registerForInternetValidationStatusChanged(this,
+                EVENT_INTERNET_VALIDATION_STATUS_CHANGED);
     }
 
     @Override
     public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_DATA_CONFIG_UPDATED:
+                onDataConfigUpdated();
+                break;
+            case EVENT_INTERNET_VALIDATION_STATUS_CHANGED:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                Boolean isValid = (Boolean) ar.result;
+                onInternetValidationStatusChanged(isValid);
+                break;
+        }
+    }
+
+    /**
+     * Called when data config was updated.
+     */
+    private void onDataConfigUpdated() {
+    }
+
+    /**
+     * Called when internet validation status changed.
+     *
+     * @param isValid {@code true} if internet validation succeeded.
+     */
+    private void onInternetValidationStatusChanged(boolean isValid) {
 
     }
 
