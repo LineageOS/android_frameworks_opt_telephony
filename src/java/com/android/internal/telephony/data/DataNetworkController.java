@@ -23,6 +23,7 @@ import android.net.NetworkRequest;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.data.DataProfile;
@@ -145,6 +146,8 @@ public class DataNetworkController extends Handler {
     private final @NonNull NetworkRequestList mActivelyProcessedNetworkRequestList =
             new NetworkRequestList();
 
+    private final RegistrantList mInternetValidationStatusRegistrants = new RegistrantList();
+
     /**
      * The sorted network request list by priority. The highest priority network request stays at
      * the head of the list. The highest priority is 100, the lowest is 0.
@@ -215,7 +218,8 @@ public class DataNetworkController extends Handler {
         mDataConfigManager = new DataConfigManager(mPhone, looper);
         mDataSettingsManager = new DataSettingsManager(mPhone, looper);
         mDataProfileManager = new DataProfileManager(mPhone, looper);
-        mDataStallMonitor = new DataStallMonitor(mPhone, looper);
+        mDataStallMonitor = new DataStallMonitor(mPhone, this, mDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
         mDataTaskManager = new DataTaskManager(mPhone, looper);
 
         registerAllEvents();
@@ -404,6 +408,16 @@ public class DataNetworkController extends Handler {
         }
 
         return mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
+    }
+
+    /**
+     * Register for internet data network validation status changed event.
+     *
+     * @param handler The handler to handle the event.
+     * @param what The event.
+     */
+    public void registerForInternetValidationStatusChanged(@NonNull Handler handler, int what) {
+        mInternetValidationStatusRegistrants.addUnique(handler, what, null);
     }
 
     /**
