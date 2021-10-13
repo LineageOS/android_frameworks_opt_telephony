@@ -221,16 +221,12 @@ public class CellularNetworkService extends NetworkService {
             final int domain = NetworkRegistrationInfo.DOMAIN_CS;
 
             if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
-                return getNetworkRegistrationInfo1_6(
-                        domain,
-                        transportType,
+                return getNetworkRegistrationInfo1_6(domain, transportType,
                         (android.hardware.radio.V1_6.RegStateResult) result);
             }
             // 1.5 at the top so that we can do an "early exit" from the method
             else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
-                return getNetworkRegistrationInfo(
-                        domain,
-                        transportType,
+                return getNetworkRegistrationInfo(domain, transportType,
                         (android.hardware.radio.V1_5.RegStateResult) result);
             } else if (result instanceof android.hardware.radio.V1_0.VoiceRegStateResult) {
                 android.hardware.radio.V1_0.VoiceRegStateResult voiceRegState =
@@ -245,7 +241,8 @@ public class CellularNetworkService extends NetworkService {
                 int defaultRoamingIndicator = voiceRegState.defaultRoamingIndicator;
                 List<Integer> availableServices = getAvailableServices(
                         regState, domain, emergencyOnly);
-                CellIdentity cellIdentity = CellIdentity.create(voiceRegState.cellIdentity);
+                CellIdentity cellIdentity =
+                        RILUtils.convertHalCellIdentity(voiceRegState.cellIdentity);
                 final String rplmn = getPlmnFromCellIdentity(cellIdentity);
 
                 return new NetworkRegistrationInfo(domain, transportType, regState,
@@ -265,7 +262,8 @@ public class CellularNetworkService extends NetworkService {
                 int defaultRoamingIndicator = voiceRegState.defaultRoamingIndicator;
                 List<Integer> availableServices = getAvailableServices(
                         regState, domain, emergencyOnly);
-                CellIdentity cellIdentity = CellIdentity.create(voiceRegState.cellIdentity);
+                CellIdentity cellIdentity =
+                        RILUtils.convertHalCellIdentity(voiceRegState.cellIdentity);
                 final String rplmn = getPlmnFromCellIdentity(cellIdentity);
 
                 return new NetworkRegistrationInfo(domain, transportType, regState,
@@ -296,16 +294,12 @@ public class CellularNetworkService extends NetworkService {
                             LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
 
             if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
-                return getNetworkRegistrationInfo1_6(
-                        domain,
-                        transportType,
+                return getNetworkRegistrationInfo1_6(domain, transportType,
                         (android.hardware.radio.V1_6.RegStateResult) result);
             }
             // 1.5 at the top so that we can do an "early exit" from the method
             else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
-                return getNetworkRegistrationInfo(
-                        domain,
-                        transportType,
+                return getNetworkRegistrationInfo(domain, transportType,
                         (android.hardware.radio.V1_5.RegStateResult) result);
             } else if (result instanceof android.hardware.radio.V1_0.DataRegStateResult) {
                 android.hardware.radio.V1_0.DataRegStateResult dataRegState =
@@ -315,7 +309,7 @@ public class CellularNetworkService extends NetworkService {
                 reasonForDenial = dataRegState.reasonDataDenied;
                 emergencyOnly = isEmergencyOnly(dataRegState.regState);
                 maxDataCalls = dataRegState.maxDataCalls;
-                cellIdentity = CellIdentity.create(dataRegState.cellIdentity);
+                cellIdentity = RILUtils.convertHalCellIdentity(dataRegState.cellIdentity);
             } else if (result instanceof android.hardware.radio.V1_2.DataRegStateResult) {
                 android.hardware.radio.V1_2.DataRegStateResult dataRegState =
                         (android.hardware.radio.V1_2.DataRegStateResult) result;
@@ -324,7 +318,7 @@ public class CellularNetworkService extends NetworkService {
                 reasonForDenial = dataRegState.reasonDataDenied;
                 emergencyOnly = isEmergencyOnly(dataRegState.regState);
                 maxDataCalls = dataRegState.maxDataCalls;
-                cellIdentity = CellIdentity.create(dataRegState.cellIdentity);
+                cellIdentity = RILUtils.convertHalCellIdentity(dataRegState.cellIdentity);
             } else if (result instanceof android.hardware.radio.V1_4.DataRegStateResult) {
                 android.hardware.radio.V1_4.DataRegStateResult dataRegState =
                         (android.hardware.radio.V1_4.DataRegStateResult) result;
@@ -334,7 +328,7 @@ public class CellularNetworkService extends NetworkService {
                 reasonForDenial = dataRegState.base.reasonDataDenied;
                 emergencyOnly = isEmergencyOnly(dataRegState.base.regState);
                 maxDataCalls = dataRegState.base.maxDataCalls;
-                cellIdentity = CellIdentity.create(dataRegState.base.cellIdentity);
+                cellIdentity = RILUtils.convertHalCellIdentity(dataRegState.base.cellIdentity);
                 android.hardware.radio.V1_4.NrIndicators nrIndicators = dataRegState.nrIndicators;
 
                 // Check for lteVopsInfo only if its initialized and RAT is EUTRAN
@@ -379,7 +373,8 @@ public class CellularNetworkService extends NetworkService {
             final List<Integer> availableServices = getAvailableServices(
                     regState, domain, isEmergencyOnly);
             final int rejectCause = regResult.reasonForDenial;
-            final CellIdentity cellIdentity = CellIdentity.create(regResult.cellIdentity);
+            final CellIdentity cellIdentity =
+                    RILUtils.convertHalCellIdentity(regResult.cellIdentity);
             final String rplmn = regResult.registeredPlmn;
             final int reasonForDenial = regResult.reasonForDenial;
 
@@ -459,7 +454,8 @@ public class CellularNetworkService extends NetworkService {
             final List<Integer> availableServices = getAvailableServices(
                     regState, domain, isEmergencyOnly);
             final int rejectCause = regResult.reasonForDenial;
-            final CellIdentity cellIdentity = CellIdentity.create(regResult.cellIdentity);
+            final CellIdentity cellIdentity =
+                    RILUtils.convertHalCellIdentity(regResult.cellIdentity);
             final String rplmn = regResult.registeredPlmn;
             final int reasonForDenial = regResult.reasonForDenial;
 

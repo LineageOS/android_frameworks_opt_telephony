@@ -256,20 +256,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
     DataResponse mDataResponse;
     DataIndication mDataIndication;
     volatile IRadioData mDataProxy = null;
-    //MessagingResponse mMessagingResponse;
-    //MessagingIndication mMessagingIndication;
+    MessagingResponse mMessagingResponse;
+    MessagingIndication mMessagingIndication;
     volatile IRadioMessaging mMessagingProxy = null;
-    //ModemResponse mModemResponse;
-    //ModemIndication mModemIndication;
+    ModemResponse mModemResponse;
+    ModemIndication mModemIndication;
     volatile IRadioModem mModemProxy = null;
-    //NetworkResponse mNetworkResponse;
-    //NetworkIndication mNetworkIndication;
+    NetworkResponse mNetworkResponse;
+    NetworkIndication mNetworkIndication;
     volatile IRadioNetwork mNetworkProxy = null;
-    //SimResponse mSimResponse;
-    //SimIndication mSimIndication;
+    SimResponse mSimResponse;
+    SimIndication mSimIndication;
     volatile IRadioSim mSimProxy = null;
-    //VoiceResponse mVoiceResponse;
-    //VoiceIndication mVoiceIndication;
+    VoiceResponse mVoiceResponse;
+    VoiceIndication mVoiceIndication;
     volatile IRadioVoice mVoiceProxy = null;
     final AtomicLong mRadioProxyCookie = new AtomicLong(0);
     final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
@@ -620,6 +620,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mRadioIndication = new RadioIndication(this);
         mDataResponse = new DataResponse(this);
         mDataIndication = new DataIndication(this);
+        mMessagingResponse = new MessagingResponse(this);
+        mMessagingIndication = new MessagingIndication(this);
+        mModemResponse = new ModemResponse(this);
+        mModemIndication = new ModemIndication(this);
+        mNetworkResponse = new NetworkResponse(this);
+        mNetworkIndication = new NetworkIndication(this);
+        mSimResponse = new SimResponse(this);
+        mSimIndication = new SimIndication(this);
+        mVoiceResponse = new VoiceResponse(this);
+        mVoiceIndication = new VoiceIndication(this);
         mRilHandler = new RilHandler();
         mRadioProxyDeathRecipient = new RadioProxyDeathRecipient();
 
@@ -5372,7 +5382,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         android.hardware.radio.V1_6.IRadio.castFrom(radioProxy);
 
                 android.hardware.radio.V1_6.PhonebookRecordInfo pbRecordInfo =
-                        phonebookRecord.toPhonebookRecordInfo();
+                        RILUtils.convertToHalPhonebookRecordInfo(phonebookRecord);
                 try {
                      radioProxy16.updateSimPhonebookRecords(rr.mSerial, pbRecordInfo);
                 } catch (RemoteException | RuntimeException e) {

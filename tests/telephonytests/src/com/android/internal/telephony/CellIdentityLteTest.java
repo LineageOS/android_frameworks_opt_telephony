@@ -263,7 +263,7 @@ public class CellIdentityLteTest extends AndroidTestCase {
                 new android.hardware.radio.V1_5.CellIdentityLte();
         cid.bands = Arrays.stream(BANDS).boxed().collect(Collectors.toCollection(ArrayList::new));
 
-        CellIdentityLte cellIdentityLte = new CellIdentityLte(cid);
+        CellIdentityLte cellIdentityLte = RILUtils.convertHalCellIdentityLte(cid);
         assertTrue(Arrays.equals(cellIdentityLte.getBands(), BANDS));
 
     }
