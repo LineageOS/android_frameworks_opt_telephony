@@ -214,8 +214,10 @@ public class PinStorage extends Handler {
     }
 
     /** Store the {@code pin} for the {@code slotId}. */
-    public synchronized void storePin(String pin, int slotId, String iccId) {
-        if (!validatePin(pin) || !validateIccid(iccId) || !validateSlotId(slotId)) {
+    public synchronized void storePin(String pin, int slotId) {
+        String iccid = getIccid(slotId);
+
+        if (!validatePin(pin) || !validateIccid(iccid) || !validateSlotId(slotId)) {
             // We are unable to store the PIN. At least clear the old one, if present.
             loge("storePin[%d] - Invalid PIN, slotId or ICCID", slotId);
             clearPin(slotId);
@@ -229,7 +231,7 @@ public class PinStorage extends Handler {
         logd("storePin[%d]", slotId);
 
         StoredPin storedPin = new StoredPin();
-        storedPin.iccid = iccId;
+        storedPin.iccid = iccid;
         storedPin.pin = pin;
         storedPin.slotId = slotId;
         storedPin.status = PinStatus.AVAILABLE;
@@ -929,7 +931,7 @@ public class PinStorage extends Handler {
     }
 
     /** Returns the ICCID of the SIM card for the given {@code slotId}. */
-    public String getIccid(int slotId) {
+    private String getIccid(int slotId) {
         Phone phone = PhoneFactory.getPhone(slotId);
         return phone != null ? phone.getFullIccSerialNumber() : "";
     }
