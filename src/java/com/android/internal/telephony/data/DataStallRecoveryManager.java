@@ -32,16 +32,15 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
 /**
- * DataStallMonitor monitors the data network activities, detects potential data stall, and takes
- * actions to recover
+ * DataStallRecoveryManager monitors the network validation result from connectivity service and
+ * takes actions to recovery data network.
  */
-public class DataStallMonitor extends Handler {
+public class DataStallRecoveryManager extends Handler {
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for internet validation status changed. */
     private static final int EVENT_INTERNET_VALIDATION_STATUS_CHANGED = 2;
-
 
     private final @NonNull Phone mPhone;
     private final @NonNull String mLogTag;
@@ -67,7 +66,7 @@ public class DataStallMonitor extends Handler {
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
      */
-    public DataStallMonitor(@NonNull Phone phone,
+    public DataStallRecoveryManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper) {
         super(looper);
@@ -154,7 +153,7 @@ public class DataStallMonitor extends Handler {
     }
 
     /**
-     * Dump the state of DataStallMonitor
+     * Dump the state of DataStallRecoveryManager
      *
      * @param fd File descriptor
      * @param printWriter Print writer
@@ -162,7 +161,8 @@ public class DataStallMonitor extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
-        pw.println(DataStallMonitor.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
+        pw.println(DataStallRecoveryManager.class.getSimpleName() + "-" + mPhone.getPhoneId()
+                + ":");
         pw.increaseIndent();
         pw.println("Local logs:");
         pw.increaseIndent();

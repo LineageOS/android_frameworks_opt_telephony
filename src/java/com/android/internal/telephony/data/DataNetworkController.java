@@ -107,7 +107,7 @@ public class DataNetworkController extends Handler {
     private final @NonNull DataConfigManager mDataConfigManager;
     private final @NonNull DataSettingsManager mDataSettingsManager;
     private final @NonNull DataProfileManager mDataProfileManager;
-    private final @NonNull DataStallMonitor mDataStallMonitor;
+    private final @NonNull DataStallRecoveryManager mDataStallRecoveryManager;
     private final @NonNull DataTaskManager mDataTaskManager;
     private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers =
             new SparseArray<>();
@@ -219,7 +219,7 @@ public class DataNetworkController extends Handler {
         mDataConfigManager = new DataConfigManager(mPhone, looper);
         mDataSettingsManager = new DataSettingsManager(mPhone, looper);
         mDataProfileManager = new DataProfileManager(mPhone, looper);
-        mDataStallMonitor = new DataStallMonitor(mPhone, this, mDataServiceManagers
+        mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
         mDataTaskManager = new DataTaskManager(mPhone, looper);
 
@@ -231,7 +231,7 @@ public class DataNetworkController extends Handler {
      */
     private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
-        mDataStallMonitor.registerForDataStallReestablishEvent(this,
+        mDataStallRecoveryManager.registerForDataStallReestablishEvent(this,
                 EVENT_DATA_STALL_ACTION_REESTABLISH);
     }
 
@@ -511,7 +511,7 @@ public class DataNetworkController extends Handler {
         pw.println("-------------------------------------");
         mDataSettingsManager.dump(fd, pw, args);
         pw.println("-------------------------------------");
-        mDataStallMonitor.dump(fd, pw, args);
+        mDataStallRecoveryManager.dump(fd, pw, args);
         pw.println("-------------------------------------");
         mDataConfigManager.dump(fd, pw, args);
 
