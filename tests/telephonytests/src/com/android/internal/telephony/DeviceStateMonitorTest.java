@@ -62,7 +62,7 @@ import java.util.Map;
 public class DeviceStateMonitorTest extends TelephonyTest {
     private static final int INDICATION_FILTERS_MINIMUM = IndicationFilter.REGISTRATION_FAILURE;
 
-    // All implemented indiation filters set so far
+    // All implemented indication filters set so far
     // which is a subset of IndicationFilter.ALL
     private static final int INDICATION_FILTERS_ALL =
             IndicationFilter.SIGNAL_STRENGTH
@@ -93,7 +93,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @Retention(RetentionPolicy.SOURCE)
     private @interface StateType {}
 
-    // Keep the same value as correspoinding event
+    // Keep the same value as corresponding event
     // See state2Event() for detail
     private static final int STATE_TYPE_RIL_CONNECTED = 0;
     private static final int STATE_TYPE_SCREEN = 2;
@@ -136,6 +136,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @Mock
     UiModeManager mUiModeManager;
     private DeviceStateMonitor mDSM;
+
     // Given a stateType, return the event type that can change the state
     private int state2Event(@StateType int stateType) {
         // As long as we keep the same value, we can directly return the stateType
@@ -170,7 +171,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         // Initialize with ALL states off
         updateAllStatesToOff();
 
-        // eliminate the accumuted impact on Mockito.verify()
+        // eliminate the accumulated impact on Mockito.verify()
         reset(mSimulatedCommandsVerifier);
     }
 
