@@ -16,25 +16,55 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CurrentTimeMillisLong;
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
-import android.telephony.data.DataProfile;
+import android.telephony.Annotation.NetCapability;
 
 import com.android.internal.telephony.Phone;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * TelephonyNetworkRequest is a wrapper class on top of {@link NetworkRequest}, which is originated
- * from the apps to request network. In addition to to {@link NetworkRequest}, this class is used
- * to track more telephony specific items such as priority, attached data network, etc...
+ * from the apps to request network. This class is intended to track supplemental information
+ * related to this request, for example priority, evaluation result, whether this request is
+ * actively being satisfied, timestamp, etc...
  *
- * TelephonyNetworkRequest is not a pure container class.
  */
 public class TelephonyNetworkRequest {
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"REQUEST_STATE_"},
+            value = {
+                    REQUEST_STATE_UNSATISFIED,
+                    REQUEST_STATE_SATISFIED})
+    public @interface RequestState {}
+
+    /**
+     * Indicating currently no data networks can satisfy this network request.
+     */
+    public static final int REQUEST_STATE_UNSATISFIED = 0;
+
+    /**
+     * Indicating this request is already satisfied. It must have an attached network (which could
+     * be in any state, including disconnecting). Also note this does not mean the network request
+     * is satisfied in telephony layer. Whether the network request is finally satisfied or not is
+     * determined at the connectivity service layer.
+     */
+    public static final int REQUEST_STATE_SATISFIED = 1;
+
+    /** For time stamp formatting in debug message use only. */
+    private static final SimpleDateFormat TIME_FORMAT =
+            new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US);
+
     /**
      * Native network request from the clients. See {@link NetworkRequest};
      */
@@ -49,13 +79,28 @@ public class TelephonyNetworkRequest {
     /**
      * Data config manager for retrieving data config.
      */
-    private final DataConfigManager mDataConfigManager;
+    private final @NonNull DataConfigManager mDataConfigManager;
 
     /**
      * The attached data network. Note that the data network could be in any state. {@code null}
      * indicates this network request is not satisfied.
      */
     private @Nullable DataNetwork mAttachedDataNetwork;
+
+    /**
+     * The state of the network request.
+     *
+     * @see #REQUEST_STATE_UNSATISFIED
+     * @see #REQUEST_STATE_SATISFIED
+     */
+    // This is not a boolean because there might be more states in the future.
+    private @RequestState int mState;
+
+    /** The timestamp when this network request enters telephony. */
+    private final @CurrentTimeMillisLong long mCreatedTimeMillis;
+
+    /** The data evaluation result. */
+    private @Nullable DataEvaluation mEvaluation;
 
     /**
      * Constructor
@@ -69,6 +114,10 @@ public class TelephonyNetworkRequest {
 
         mPriority = 0;
         mAttachedDataNetwork = null;
+        // When the request was first created, it is in active state so we can actively attempt
+        // to satisfy it.
+        mState = REQUEST_STATE_UNSATISFIED;
+        mCreatedTimeMillis = System.currentTimeMillis();
 
         updatePriority();
     }
@@ -83,14 +132,14 @@ public class TelephonyNetworkRequest {
     /**
      * @see NetworkRequest#getCapabilities()
      */
-    public @NonNull int[] getCapabilities() {
+    public @NonNull @NetCapability int[] getCapabilities() {
         return mNativeNetworkRequest.getCapabilities();
     }
 
     /**
      * @see NetworkRequest#hasCapability(int)
      */
-    public boolean hasCapability(int capability) {
+    public boolean hasCapability(@NetCapability int capability) {
         return mNativeNetworkRequest.hasCapability(capability);
     }
 
@@ -99,17 +148,6 @@ public class TelephonyNetworkRequest {
      */
     public boolean canBeSatisfiedBy(@Nullable NetworkCapabilities nc) {
         return mNativeNetworkRequest.canBeSatisfiedBy(nc);
-    }
-
-    /**
-     * Check if a data profile can satisfy the network request.
-     *
-     * @param dataProfile The data profile
-     * @return {@code true} if this network request can be satisfied by the data profile, meaning
-     * the network brought up with this data profile can satisfy the network request.
-     */
-    public boolean canBeSatisfiedBy(@NonNull DataProfile dataProfile) {
-        return true;
     }
 
     /**
@@ -155,11 +193,54 @@ public class TelephonyNetworkRequest {
         return mAttachedDataNetwork;
     }
 
+    /**
+     * Set the state of the network request.
+     *
+     * @param state The state.
+     */
+    public void setState(@RequestState int state) {
+        mState = state;
+    }
+
+    /**
+     * @return The state of the network request.
+     */
+    public @RequestState int getState() {
+        return mState;
+    }
+
+    /**
+     * Set the data evaluation result.
+     *
+     * @param evaluation The data evaluation result.
+     */
+    public void setEvaluation(@NonNull DataEvaluation evaluation) {
+        mEvaluation = evaluation;
+    }
+
+    /**
+     * Convert the telephony request state to string.
+     *
+     * @param state The request state.
+     * @return The request state in string format.
+     */
+    private static @NonNull String requestStateToString(
+            @TelephonyNetworkRequest.RequestState int state) {
+        switch (state) {
+            case TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED: return "UNSATISFIED";
+            case TelephonyNetworkRequest.REQUEST_STATE_SATISFIED: return "SATISFIED";
+            default: return "UNKNOWN(" + Integer.toString(state) + ")";
+        }
+    }
+
     @Override
     public String toString() {
         return "[" + mNativeNetworkRequest.toString() + ", mPriority=" + mPriority
+                + ", state=" + requestStateToString(mState)
                 + ", mAttachedDataNetwork=" + (mAttachedDataNetwork != null
-                ? mAttachedDataNetwork.getLogTag() : null) + "]";
+                ? mAttachedDataNetwork.name() : null) + ", created time="
+                + TIME_FORMAT.format(mCreatedTimeMillis)
+                + ", evaluation result=" + mEvaluation + "]";
     }
 
     @Override

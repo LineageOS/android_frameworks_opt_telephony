@@ -18,24 +18,45 @@ package com.android.internal.telephony.data;
 
 import android.annotation.CurrentTimeMillisLong;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
+import android.telephony.data.DataProfile;
 
-import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 /**
- * The class to describe the result of environment evaluation for whether allowing or disallowing
+ * The class to describe a data evaluation for whether allowing or disallowing
  * establishing a data network.
  */
-public class DataEvaluationResult {
+public class DataEvaluation {
+    /** For time stamp formatting in debug message use only. */
+    private static final SimpleDateFormat TIME_FORMAT =
+            new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US);
+
+    /** The reason for this evaluation */
+    private final DataEvaluationReason mDataEvaluationReason;
+
     /** Data disallowed reasons. There could be multiple reasons for not allowing data. */
-    private @NonNull Set<DataDisallowedReason> mDataDisallowedReasons = new HashSet<>();
+    private final @NonNull Set<DataDisallowedReason> mDataDisallowedReasons = new HashSet<>();
 
     /** Data allowed reason. It is intended to only have one allowed reason. */
     private DataAllowedReason mDataAllowedReason = DataAllowedReason.NONE;
 
+    private @Nullable DataProfile mCandidateDataProfile = null;
+
     /** The timestamp of evaluation time */
     private @CurrentTimeMillisLong long mEvaluatedTime = 0;
+
+    /**
+     * Constructor
+     *
+     * @param reason The reason for this evaluation.
+     */
+    public DataEvaluation(DataEvaluationReason reason) {
+        mDataEvaluationReason = reason;
+    }
 
     /**
      * Add a data disallowed reason. Note that adding a disallowed reason will clean up the
@@ -43,7 +64,7 @@ public class DataEvaluationResult {
      *
      * @param reason Disallowed reason.
      */
-    public void add(DataDisallowedReason reason) {
+    public void addDataDisallowedReason(DataDisallowedReason reason) {
         mDataAllowedReason = DataAllowedReason.NONE;
         mDataDisallowedReasons.add(reason);
         mEvaluatedTime = System.currentTimeMillis();
@@ -55,7 +76,7 @@ public class DataEvaluationResult {
      *
      * @param reason Allowed reason.
      */
-    public void add(DataAllowedReason reason) {
+    public void addDataAllowedReason(DataAllowedReason reason) {
         mDataDisallowedReasons.clear();
 
         // Only higher priority allowed reason can overwrite the old one. See
@@ -66,21 +87,20 @@ public class DataEvaluationResult {
         mEvaluatedTime = System.currentTimeMillis();
     }
 
-    @Override
-    public String toString() {
-        StringBuilder reasonStr = new StringBuilder();
-        reasonStr.append("EvaluationResult: ");
-        if (mDataDisallowedReasons.size() > 0) {
-            reasonStr.append("Data disallowed reasons:");
-            for (DataDisallowedReason reason : mDataDisallowedReasons) {
-                reasonStr.append(" ").append(reason);
-            }
-        } else {
-            reasonStr.append("Data allowed reason:");
-            reasonStr.append(" ").append(mDataAllowedReason);
-        }
-        reasonStr.append(", time=" + DateFormat.getDateTimeInstance().format(mEvaluatedTime));
-        return reasonStr.toString();
+    /**
+     * Set the candidate data profile for setup data network.
+     *
+     * @param dataProfile The candidate data profile.
+     */
+    public void setCandidateDataProfile(@NonNull DataProfile dataProfile) {
+        mCandidateDataProfile = dataProfile;
+    }
+
+    /**
+     * @return The candidate data profile for setup data network.
+     */
+    public @Nullable DataProfile getCandidateDataProfile() {
+        return mCandidateDataProfile;
     }
 
     /**
@@ -132,6 +152,34 @@ public class DataEvaluationResult {
         return false;
     }
 
+    /** The reason for evaluating unsatisfied network requests. */
+    enum DataEvaluationReason {
+        /** New request from the apps. */
+        NEW_REQUEST,
+        /** Data config changed. */
+        DATA_CONFIG_CHANGED,
+        /** SIM is loaded. */
+        SIM_LOADED,
+        /** Data profiles changed. */
+        DATA_PROFILES_CHANGED,
+        /** Airplane mode off. */
+        AIRPLANE_MODE_OFF,
+        /** When data RAT changes, some unsatisfied network requests might fit with the new RAT. */
+        DATA_RAT_CHANGED,
+        /** When service state changes from out of service to in service. */
+        DATA_IN_SERVICE,
+        /** When data is enabled (by user, carrier, thermal, etc...) */
+        DATA_ENABLED,
+        /** When data roaming is enabled. */
+        ROAMING_ENABLED,
+        /** When voice call ended (for concurrent voice/data not supported RAT). */
+        VOICE_CALL_ENDED,
+        /** When network no longer restricts mobile data. */
+        DATA_RESTRICTED_LIFTED,
+        /** Network capabilities changed. The unsatisfied requests might have chances to attach. */
+        DATA_NETWORK_CAPABILITIES_CHANGED,
+    }
+
     /** Disallowed reasons. There could be multiple reasons if data connection is not allowed. */
     public enum DataDisallowedReason {
         // Soft failure reasons. A soft reason means that in certain conditions, data is still
@@ -148,6 +196,8 @@ public class DataEvaluationResult {
         // not be allowed.
         /** Data registration state is not in service. */
         NOT_IN_SERVICE(true),
+        /** Data config is not ready. */
+        DATA_CONFIG_NOT_READY(true),
         /** SIM is not ready. */
         SIM_NOT_READY(true),
         /** Concurrent voice and data is not allowed. */
@@ -160,10 +210,6 @@ public class DataEvaluationResult {
         INTERNAL_DATA_DISABLED(true),
         /** Airplane mode is forcibly turned on by the carrier. */
         RADIO_DISABLED_BY_CARRIER(true),
-        /** certain APNs are only allowed when the device is camped on NR. */
-        NOT_ON_NR(true),
-        /** Data is not allowed while device is in emergency callback mode. */
-        IN_ECBM(true),
         /** Underlying data service is not bound. */
         DATA_SERVICE_NOT_READY(true);
 
@@ -191,7 +237,7 @@ public class DataEvaluationResult {
     /**
      * Data allowed reasons. There will be only one reason if data is allowed.
      */
-    enum DataAllowedReason {
+    public enum DataAllowedReason {
         // Note that unlike disallowed reasons, we only have one allowed reason every time
         // when we check data is allowed or not. The order of these allowed reasons is very
         // important. The lower ones take precedence over the upper ones.
@@ -218,4 +264,23 @@ public class DataEvaluationResult {
          */
         EMERGENCY_REQUEST,
     }
+
+    @Override
+    public String toString() {
+        StringBuilder evaluationStr = new StringBuilder();
+        evaluationStr.append("Data evaluation: evaluation reason:" + mDataEvaluationReason + ", ");
+        if (mDataDisallowedReasons.size() > 0) {
+            evaluationStr.append("Data disallowed reasons:");
+            for (DataDisallowedReason reason : mDataDisallowedReasons) {
+                evaluationStr.append(" ").append(reason);
+            }
+        } else {
+            evaluationStr.append("Data allowed reason:");
+            evaluationStr.append(" ").append(mDataAllowedReason);
+        }
+        evaluationStr.append(", candidate profile=" + mCandidateDataProfile);
+        evaluationStr.append(", time=" + TIME_FORMAT.format(mEvaluatedTime));
+        return evaluationStr.toString();
+    }
+
 }
