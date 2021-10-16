@@ -39,7 +39,6 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
-import android.provider.DeviceConfig;
 import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
@@ -5128,8 +5127,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // TODO: Temp code. Use cl/399526916 for future canary process. After rolling out to 100%
     //  dogfooders, the code below should be completely removed.
     public boolean isUsingNewDataStack() {
-        String configValue = DeviceConfig.getProperty(DeviceConfig.NAMESPACE_TELEPHONY,
+        return false;
+        /*String configValue = DeviceConfig.getProperty(DeviceConfig.NAMESPACE_TELEPHONY,
                 "new_telephony_data_enabled");
-        return configValue != null && Boolean.parseBoolean(configValue);
+        return Boolean.parseBoolean(configValue);*/
     }
 }
