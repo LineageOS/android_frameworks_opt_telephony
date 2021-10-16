@@ -34,21 +34,33 @@ import java.io.PrintWriter;
  * data roaming settings, etc...
  */
 public class DataSettingsManager extends Handler {
+    /** Event for data config updated. */
+    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
+
     private final Phone mPhone;
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
+
+    /** Data config manager */
+    private final @NonNull DataConfigManager mDataConfigManager;
 
     /**
      * Constructor
      *
      * @param phone The phone instance.
+     * @param dataNetworkController Data network controller.
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
      */
-    public DataSettingsManager(Phone phone, Looper looper) {
+    public DataSettingsManager(@NonNull Phone phone,
+            @NonNull DataNetworkController dataNetworkController, @NonNull Looper looper) {
         super(looper);
         mPhone = phone;
         mLogTag = "DSMGR-" + mPhone.getPhoneId();
+
+        mDataConfigManager = dataNetworkController.getDataConfigManager();
+
+        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
     }
 
     @Override
