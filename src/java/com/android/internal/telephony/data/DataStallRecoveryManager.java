@@ -16,12 +16,27 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.content.Context;
+import android.content.ContentResolver;
+import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.ConnectivityManager.NetworkCallback;
+import android.net.Network;
 import android.os.AsyncResult;
+import android.os.AsyncTask;
+import android.os.HandlerExecutor;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
+import android.provider.Settings;
+import android.telephony.PreciseDataConnectionState;
+import android.telephony.SignalStrength;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyCallback;
+import android.telephony.TelephonyManager;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -30,12 +45,30 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
  * DataStallRecoveryManager monitors the network validation result from connectivity service and
  * takes actions to recovery data network.
  */
 public class DataStallRecoveryManager extends Handler {
+
+    /** Recovery actions taken in case of data stall */
+    @IntDef(
+        value = {
+            RECOVERY_ACTION_GET_DATA_CALL_LIST,
+            RECOVERY_ACTION_CLEANUP,
+            RECOVERY_ACTION_RADIO_RESTART,
+            RECOVERY_ACTION_RESET_MODEM
+        })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface RecoveryAction {};
+    private static final int RECOVERY_ACTION_GET_DATA_CALL_LIST      = 0;
+    private static final int RECOVERY_ACTION_CLEANUP                 = 1;
+    private static final int RECOVERY_ACTION_RADIO_RESTART           = 2;
+    private static final int RECOVERY_ACTION_RESET_MODEM             = 3;
+
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
@@ -55,8 +88,23 @@ public class DataStallRecoveryManager extends Handler {
     /** Cellular data service */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
-    /** The RegistrantList for recovery action reestablish */
+    /** Resolver */
+    private ContentResolver mResolver;
+
+    private Network mNetwork;
+    private NetworkCallback mNetworkCallback;
+
+    /** Connectivity Manager */
+    private ConnectivityManager mConnectivityManager;
+
+    /** Telephony Manager */
+    private TelephonyManager mTelephonyManager;
+
+    /** The RegistrantList for recovery action reestablish. */
     private final RegistrantList mDataStallReestablishRegistrants = new RegistrantList();
+
+    /** Listening the callback from TelephonyCallback. */
+    private TelephonyStateListener mTelephonyStateListener;
 
     /**
      * Constructor
@@ -75,17 +123,44 @@ public class DataStallRecoveryManager extends Handler {
         mDataNetworkController = dataNetworkController;
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
+        mResolver = mPhone.getContext().getContentResolver();
+        mTelephonyManager = mPhone.getContext().getSystemService(TelephonyManager.class);
+        mConnectivityManager = mPhone.getContext().getSystemService(ConnectivityManager.class);
+        mTelephonyStateListener = new TelephonyStateListener();
 
         registerAllEvents();
     }
 
-    /**
-     * Register for all events that data stall monitor is interested.
-     */
+    /** Register for all events that data stall monitor is interested. */
     private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mDataNetworkController.registerForInternetValidationStatusChanged(this,
                 EVENT_INTERNET_VALIDATION_STATUS_CHANGED);
+        mTelephonyManager.registerTelephonyCallback(
+                    new HandlerExecutor(this), mTelephonyStateListener);
+    }
+
+    /** Telephony State Listener. */
+    private class TelephonyStateListener extends TelephonyCallback implements
+                TelephonyCallback.RadioPowerStateListener,
+                TelephonyCallback.PreciseDataConnectionStateListener,
+                TelephonyCallback.SignalStrengthsListener {
+
+        @Override
+        public void onPreciseDataConnectionStateChanged(
+            PreciseDataConnectionState connectionState) {
+            // TODO: (b/178670629): Add the logic for PreciseDataConnectionStateChanged.
+        }
+
+        @Override
+        public void onSignalStrengthsChanged(SignalStrength signalStrength) {
+            // TODO: (b/178670629): Add the logic for Signal Strength Changed.
+        }
+
+        @Override
+        public void onRadioPowerStateChanged(int state) {
+            // TODO: (b/178670629): Listen the Radio Power State Changed.
+        }
     }
 
     @Override
@@ -102,10 +177,9 @@ public class DataStallRecoveryManager extends Handler {
         }
     }
 
-    /**
-     * Called when data config was updated.
-     */
+    /** Called when data config was updated. */
     private void onDataConfigUpdated() {
+        // TODO: (b/178670629): Get the new config from DataConfigManager.
     }
 
     /**
@@ -114,6 +188,7 @@ public class DataStallRecoveryManager extends Handler {
      * @param isValid {@code true} if internet validation succeeded.
      */
     private void onInternetValidationStatusChanged(boolean isValid) {
+        // TODO: (b/178670629): Add the logic when Validation Status Changed.
 
     }
 
@@ -125,6 +200,99 @@ public class DataStallRecoveryManager extends Handler {
      */
     public void registerForDataStallReestablishEvent(@NonNull Handler handler, int what) {
         mDataStallReestablishRegistrants.addUnique(handler, what, null);
+    }
+
+    /** Get recovery action from settings. */
+    @RecoveryAction
+    private int getRecoveryAction() {
+        @RecoveryAction int action = Settings.System.getInt(mResolver,
+                "radio.data.stall.recovery.action", RECOVERY_ACTION_GET_DATA_CALL_LIST);
+        log("getRecoveryAction: " + action);
+        return action;
+    }
+
+    /**
+     * Put recovery action into settings.
+     *
+     * @param action The next recovery action.
+     */
+    private void putRecoveryAction(@RecoveryAction int action) {
+        Settings.System.putInt(mResolver, "radio.data.stall.recovery.action", action);
+        log("putRecoveryAction: " + action);
+    }
+
+    /** Check if recovery already started. */
+    private boolean isRecoveryAlreadyStarted() {
+        return getRecoveryAction() != RECOVERY_ACTION_GET_DATA_CALL_LIST;
+    }
+
+    /** Get duration between recovery from DataStallRecoveryRule. */
+    private long getMinDurationBetweenRecovery() {
+        // TODO: (b/178670629): Get the duration from DataConfigManager
+        return 0;
+    }
+
+    /**
+     * Broadcast intent when data stall occurred.
+     *
+     * @param recoveryAction Send the data stall detected intent with RecoveryAction info.
+     */
+    private void broadcastDataStallDetected(@RecoveryAction int recoveryAction) {
+        log("broadcastDataStallDetected recoveryAction: " + recoveryAction);
+        Intent intent = new Intent(TelephonyManager.ACTION_DATA_STALL_DETECTED);
+        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
+        intent.putExtra(TelephonyManager.EXTRA_RECOVERY_ACTION, recoveryAction);
+        mPhone.getContext().sendBroadcast(intent);
+    }
+
+    /** Recovery Action: RECOVERY_ACTION_GET_DATA_CALL_LIST */
+    private void getDataCallList(){
+        if (mPhone == null) {
+            loge("getDataCallList: mPhone is null");
+            return;
+        }
+        log("getDataCallList: request data call list");
+        mWwanDataServiceManager.requestDataCallList(null);
+    }
+
+    /** Recovery Action: RECOVERY_ACTION_CLEANUP */
+    private void cleanUpDataCall(){
+        if (mPhone == null) {
+            loge("cleanUpDataCall: getDataCallList: mPhone is null");
+            return;
+        }
+        log("cleanUpDataCall: notify clean up data call");
+        mDataStallReestablishRegistrants.notifyRegistrants();
+    }
+
+    /** Recovery Action: RECOVERY_ACTION_RADIO_RESTART */
+    private void restartRadio(){
+        if(mPhone == null) {
+            loge("restartRadio: No mPhone found!");
+            return;
+        }
+        log("restartRadio: Restart radio" );
+        mPhone.getServiceStateTracker().powerOffRadioSafely();
+    }
+
+    /** Recovery Action: RECOVERY_ACTION_RESET_MODEM */
+    private void modemReset(){
+        AsyncTask.execute(() -> {
+            try{
+                log("modemReset: NV reload");
+                mTelephonyManager.rebootRadio();
+            }
+            catch(Exception e){
+                loge("modemReset: Exception: " + e.toString());
+            }
+        });
+    }
+
+    /** The data stall recovery config. */
+    public static final class DataStallRecoveryConfig {
+        DataStallRecoveryConfig(String stringConfig){
+            // TODO: (b/178670629): Parsing the config string.
+        }
     }
 
     /**
