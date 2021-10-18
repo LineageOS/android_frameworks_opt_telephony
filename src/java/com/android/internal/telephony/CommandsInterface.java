@@ -2679,6 +2679,25 @@ public interface CommandsInterface {
      */
     default void getSlicingConfig(Message result) {};
 
+    /**
+     * Request to enable/disable the mock modem service.
+     * This is used in shell commands during CTS testing only.
+     *
+     * @param serviceName the service name which telephony wants to bind to
+     */
+    default boolean setModemService(String serviceName) {
+        return true;
+    };
+
+   /**
+     * Return the class name of the currently bound modem service.
+     *
+     * @return the class name of the modem service.
+     */
+    default String getModemService() {
+        return "default";
+    };
+
    /**
      * Request the SIM phonebook records of all activated UICC applications
      *
