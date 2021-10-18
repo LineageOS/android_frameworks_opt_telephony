@@ -456,6 +456,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Request to enable/disable the mock modem service.
+     * This is invoked from shell commands during CTS testing only.
+     *
+     * @param serviceName the service name we want to bind to
+     */
+    public boolean setModemService(String serviceName) {
+
+        if (serviceName != null) {
+            riljLoge("Overriding connected service to MockModemService");
+            // TODO: binding to mockmodem service for testing only
+
+            for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                resetProxyAndRequestList(service);
+            }
+        } else {
+            // TODO: unbinding mockmodem service
+        }
+        return true;
+    }
+
+    /**
+     * Get current bound service in Radio Module
+     */
+    public String getModemService() {
+        //TODO: return the bound service based on connected proxy
+        return "default";
+    }
+
     /** Set a radio HAL fallback compatibility override. */
     @VisibleForTesting
     public void setCompatVersion(int rilRequest, @NonNull HalVersion halVersion) {
