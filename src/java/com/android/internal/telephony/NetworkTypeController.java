@@ -926,8 +926,10 @@ public class NetworkTypeController extends StateMachine {
                     && mNrAdvancedCapablePcoId > 0
                     && pcodata.pcoId == mNrAdvancedCapablePcoId
             ) {
-                log("EVENT_PCO_DATA_CHANGED: Nr Advanced is allowed by PCO.");
-                mIsNrAdvancedAllowedByPco = pcodata.contents[0] == 1;
+                log("EVENT_PCO_DATA_CHANGED: Nr Advanced is allowed by PCO. length:"
+                        + pcodata.contents.length + ",value: " + Arrays.toString(pcodata.contents));
+                mIsNrAdvancedAllowedByPco = (pcodata.contents.length > 0)
+                        ? pcodata.contents[pcodata.contents.length - 1] == 1 : false;
                 updateNrAdvancedState();
             }
         }
