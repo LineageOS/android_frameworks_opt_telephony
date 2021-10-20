@@ -114,6 +114,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 mPhone).getCachedAllowedNetworkTypesBitmask();
         doReturn(false).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
                 TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
+        doReturn(new int[] {0}).when(mServiceState).getCellBandwidths();
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
         processAllMessages();
     }
@@ -1185,5 +1186,50 @@ public class NetworkTypeControllerTest extends TelephonyTest {
             lastPhysicalChannelConfigList.add(physicalChannelConfig);
         }
         doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+    }
+
+    @Test
+    public void testTransitionToCurrentStateNrConnectedWithLowBandwidth() throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        doReturn(new int[] {19999}).when(mServiceState).getCellBandwidths();
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
+        broadcastCarrierConfigs();
+
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateNrConnectedWithHighBandwidth() throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        doReturn(new int[] {20001}).when(mServiceState).getCellBandwidths();
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
+        broadcastCarrierConfigs();
+
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+    }
+
+    @Test
+    public void testNrAdvancedDisabledWhileRoaming() throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(true).when(mServiceState).getDataRoaming();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        mBundle.putBoolean(CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL, false);
+        broadcastCarrierConfigs();
+
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
     }
 }
