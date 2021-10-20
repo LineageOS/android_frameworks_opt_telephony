@@ -415,6 +415,12 @@ public class VoiceCallSessionStats {
             // internal fields for tracking
             proto.setupBeginMillis = getTimeMillis();
 
+            // audio codec might have already been set
+            int codec = audioQualityToCodec(bearer, conn.getAudioCodec());
+            if (codec != AudioCodec.AUDIO_CODEC_UNKNOWN) {
+                proto.codecBitmask = (1L << codec);
+            }
+
             proto.concurrentCallCountAtStart = mCallProtos.size();
             mCallProtos.put(id, proto);
 
