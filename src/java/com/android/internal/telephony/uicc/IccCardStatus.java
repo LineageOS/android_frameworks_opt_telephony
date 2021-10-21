@@ -78,13 +78,14 @@ public class IccCardStatus {
     public int        mCdmaSubscriptionAppIndex;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int        mImsSubscriptionAppIndex;
-    public int        physicalSlotIndex = UiccController.INVALID_SLOT_ID;
     public String     atr;
     public String     iccid;
     public String     eid;
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public IccCardApplicationStatus[] mApplications;
+
+    public IccSlotPortMapping mSlotPortMapping;
 
     public void setCardState(int state) {
         switch(state) {
@@ -167,9 +168,10 @@ public class IccCardStatus {
             sb.append(app == null ? "null" : app);
         }
 
-        sb.append(",physical_slot_id=").append(physicalSlotIndex).append(",atr=").append(atr);
+        sb.append(",atr=").append(atr);
         sb.append(",iccid=").append(SubscriptionInfo.givePrintableIccid(iccid));
         sb.append(",eid=").append(eid);
+        sb.append(",SlotPortMapping=").append(mSlotPortMapping);
 
         sb.append("}");
         return sb.toString();

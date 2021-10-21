@@ -112,7 +112,8 @@ public class UiccControllerTest extends TelephonyTest {
         mSimulatedCommands.setIccCardStatus(mIccCardStatus);
         // for testing we pretend slotIndex is set. In reality it would be invalid on older versions
         // (before 1.2) of hal
-        mIccCardStatus.physicalSlotIndex = 0;
+        mIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
+        mIccCardStatus.mSlotPortMapping.mPhysicalSlotIndex = 0;
         mUiccControllerUT = UiccController.make(mContext);
         // reset sLastSlotStatus so that onGetSlotStatusDone always sees a change in the slot status
         mUiccControllerUT.sLastSlotStatus = null;
@@ -252,7 +253,8 @@ public class UiccControllerTest extends TelephonyTest {
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
         ics.eid = "A1B2C3D4";
-        ics.physicalSlotIndex = 0;
+        ics.mSlotPortMapping = new IccSlotPortMapping();
+        ics.mSlotPortMapping.mPhysicalSlotIndex = 0;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
@@ -343,7 +345,8 @@ public class UiccControllerTest extends TelephonyTest {
         ics.setUniversalPinState(3 /* disabled */);
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
-        ics.physicalSlotIndex = 0;
+        ics.mSlotPortMapping = new IccSlotPortMapping();
+        ics.mSlotPortMapping.mPhysicalSlotIndex = 0;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
@@ -380,7 +383,8 @@ public class UiccControllerTest extends TelephonyTest {
         ics.setUniversalPinState(3 /* disabled */);
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890F";
-        ics.physicalSlotIndex = 0;
+        ics.mSlotPortMapping = new IccSlotPortMapping();
+        ics.mSlotPortMapping.mPhysicalSlotIndex = 0;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
@@ -415,6 +419,8 @@ public class UiccControllerTest extends TelephonyTest {
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
         ics.eid = "A1B2C3D4";
+        ics.mSlotPortMapping = new IccSlotPortMapping();
+
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
@@ -447,11 +453,12 @@ public class UiccControllerTest extends TelephonyTest {
         ics.setUniversalPinState(3 /* disabled */);
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
+        ics.mSlotPortMapping = new IccSlotPortMapping();
+        ics.mSlotPortMapping.mPhysicalSlotIndex = UiccController.INVALID_SLOT_ID;
         // make it seem like EID is not supported by setting physical slot = -1 like on HAL < 1.2
 
         mSimulatedCommands.setSupportsEid(false);
 
-        ics.physicalSlotIndex = UiccController.INVALID_SLOT_ID;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
@@ -632,6 +639,8 @@ public class UiccControllerTest extends TelephonyTest {
         ics.iccid = "123451234567890";
         // the IccCardStatus does not contain EID, but it is known from previous APDU
         ics.eid = null;
+        ics.mSlotPortMapping = new IccSlotPortMapping();
+
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
         mUiccControllerUT.handleMessage(msg);
