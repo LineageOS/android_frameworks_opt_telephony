@@ -1317,9 +1317,9 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.ratSwitchCount = 1L;
         expectedCall.setupFailed = true;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
+        expectedCall.codecBitmask = 0L;
         expectedCall.mainCodecQuality =
-                VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_NARROWBAND;
+                VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_UNKNOWN;
         VoiceCallRatUsage expectedRatUsageLte =
                 makeRatUsageProto(
                         CARRIER_ID_SLOT_0, TelephonyManager.NETWORK_TYPE_LTE, 2000L, 3000L, 1L);
@@ -1337,8 +1337,6 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         mVoiceCallSessionStats0.setTimeMillis(3000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
-        mVoiceCallSessionStats0.setTimeMillis(3100L);
-        mVoiceCallSessionStats0.onAudioCodecChanged(mGsmConnection0, DriverCall.AUDIO_QUALITY_AMR);
         mVoiceCallSessionStats0.setTimeMillis(15000L);
         doReturn(DisconnectCause.LOST_SIGNAL).when(mGsmConnection0).getDisconnectCause();
         mVoiceCallSessionStats0.onRilCallListChanged(List.of(mGsmConnection0));
@@ -1441,7 +1439,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.setupFailed = true;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.bandAtEnd = 0;
-        expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
+        expectedCall.codecBitmask =
+                (1L << AudioCodec.AUDIO_CODEC_AMR) | (1L << AudioCodec.AUDIO_CODEC_AMR_WB);
         expectedCall.mainCodecQuality =
                 VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_NARROWBAND;
         VoiceCallRatUsage expectedRatUsage =
@@ -1454,10 +1453,12 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         mVoiceCallSessionStats0.setTimeMillis(2500L);
         doReturn(Call.State.INCOMING).when(mCsCall0).getState();
         doReturn(Call.State.INCOMING).when(mGsmConnection0).getState();
+        doReturn(DriverCall.AUDIO_QUALITY_AMR_WB).when(mGsmConnection0).getAudioCodec();
         doReturn(DisconnectCause.NOT_DISCONNECTED).when(mGsmConnection0).getDisconnectCause();
         mVoiceCallSessionStats0.onRilCallListChanged(List.of(mGsmConnection0));
         mVoiceCallSessionStats0.setTimeMillis(3000L);
         mVoiceCallSessionStats0.onAudioCodecChanged(mGsmConnection0, DriverCall.AUDIO_QUALITY_AMR);
+        doReturn(DriverCall.AUDIO_QUALITY_AMR).when(mGsmConnection0).getAudioCodec();
         mVoiceCallSessionStats0.setTimeMillis(15000L);
         doReturn(DisconnectCause.NORMAL).when(mGsmConnection0).getDisconnectCause();
         doReturn(PreciseDisconnectCause.CALL_REJECTED)
