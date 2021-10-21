@@ -693,6 +693,45 @@ public class LinkBandwidthEstimator extends Handler {
             return -1;
         }
 
+        private int getAvgUsedBandwidthAdjacentThreeLevelKbps() {
+            String dataRatName = getDataRatName(mDataRat);
+            NetworkBandwidth network = lookupNetwork(mPlmn, dataRatName);
+
+            int bandwidthAtLow = getAvgUsedBandwidthAtLevel(network, mSignalLevel - 1);
+            int bandwidthAtHigh = getAvgUsedBandwidthAtLevel(network, mSignalLevel + 1);
+            if (bandwidthAtLow > 0 && bandwidthAtHigh > 0) {
+                return (bandwidthAtLow + bandwidthAtHigh) / 2;
+            }
+
+            int count = 0;
+            long value = 0;
+            for (int i = -1; i <= 1; i++) {
+                int currLevel = mSignalLevel + i;
+                if (currLevel < 0 || currLevel >= NUM_SIGNAL_LEVEL) {
+                    continue;
+                }
+                count += network.getCount(mLink, currLevel);
+                value += network.getValue(mLink, currLevel);
+            }
+
+            if (count >= BW_STATS_COUNT_THRESHOLD) {
+                return (int) (value / count);
+            }
+            return -1;
+        }
+
+        private int getAvgUsedBandwidthAtLevel(NetworkBandwidth network,
+                int signalLevel) {
+            if (signalLevel < 0 || signalLevel >= NUM_SIGNAL_LEVEL) {
+                return -1;
+            }
+            int count = network.getCount(mLink, signalLevel);
+            if (count >= BW_STATS_COUNT_THRESHOLD) {
+                return (int) (network.getValue(mLink, signalLevel) / count);
+            }
+            return -1;
+        }
+
         private int getCurrentCount() {
             String dataRatName = getDataRatName(mDataRat);
             NetworkBandwidth network = lookupNetwork(mPlmn, dataRatName);
@@ -702,6 +741,10 @@ public class LinkBandwidthEstimator extends Handler {
         /** get a long term avg value (PLMN/RAT/TAC/level dependent) or static value */
         private int getAvgLinkBandwidthKbps() {
             mAvgUsedKbps = getAvgUsedLinkBandwidthKbps();
+            if (mAvgUsedKbps > 0) {
+                return mAvgUsedKbps;
+            }
+            mAvgUsedKbps = getAvgUsedBandwidthAdjacentThreeLevelKbps();
             if (mAvgUsedKbps > 0) {
                 return mAvgUsedKbps;
             }
