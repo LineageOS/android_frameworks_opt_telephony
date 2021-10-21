@@ -336,9 +336,11 @@ public class GsmCdmaPhone extends Phone {
             mTransportManager.registerDataThrottler(dcTracker.getDataThrottler());
         }
 
-        mDataNetworkController = mTelephonyComponentFactory.inject(
-                DataNetworkController.class.getName())
-                .makeDataNetworkController(this, getLooper());
+        if (false/*isUsingNewDataStack()*/) {
+            mDataNetworkController = mTelephonyComponentFactory.inject(
+                    DataNetworkController.class.getName())
+                    .makeDataNetworkController(this, getLooper());
+        }
 
         mCarrierResolver = mTelephonyComponentFactory.inject(CarrierResolver.class.getName())
                 .makeCarrierResolver(this);
