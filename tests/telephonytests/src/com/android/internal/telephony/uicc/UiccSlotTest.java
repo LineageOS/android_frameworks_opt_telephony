@@ -89,7 +89,7 @@ public class UiccSlotTest extends TelephonyTest {
         mIccCardStatus.mCdmaSubscriptionAppIndex =
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
-
+        mIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
         /* starting the Handler Thread */
         mTestHandlerThread = new UiccSlotTestHandlerThread(getClass().getSimpleName());
         mTestHandlerThread.start();
