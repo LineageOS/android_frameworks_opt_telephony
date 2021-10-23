@@ -322,6 +322,7 @@ import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSlotPortMapping;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.telephony.Rlog;
@@ -3577,7 +3578,9 @@ public class RILUtils {
             }
         }
         if (cardStatus15 != null) {
-            iccCardStatus.physicalSlotIndex = cardStatus15.base.base.physicalSlotId;
+            IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
+            slotPortMapping.mPhysicalSlotIndex = cardStatus15.base.base.physicalSlotId;
+            iccCardStatus.mSlotPortMapping = slotPortMapping;
             iccCardStatus.atr = cardStatus15.base.base.atr;
             iccCardStatus.iccid = cardStatus15.base.base.iccid;
             iccCardStatus.eid = cardStatus15.base.eid;
@@ -3620,7 +3623,6 @@ public class RILUtils {
         iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
         iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
         iccCardStatus.mImsSubscriptionAppIndex = cardStatus.imsSubscriptionAppIndex;
-        iccCardStatus.physicalSlotIndex = cardStatus.slotMap.physicalSlotId;
         iccCardStatus.atr = cardStatus.atr;
         iccCardStatus.iccid = cardStatus.iccid;
         iccCardStatus.eid = cardStatus.eid;
@@ -3642,6 +3644,10 @@ public class RILUtils {
             appStatus.pin2 = appStatus.PinStateFromRILInt(rilAppStatus.pin2);
             iccCardStatus.mApplications[i] = appStatus;
         }
+        IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
+        slotPortMapping.mPhysicalSlotIndex = cardStatus.slotMap.physicalSlotId;
+        slotPortMapping.mPortIndex = cardStatus.slotMap.portId;
+        iccCardStatus.mSlotPortMapping = slotPortMapping;
         return iccCardStatus;
     }
 
