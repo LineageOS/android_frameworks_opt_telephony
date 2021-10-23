@@ -78,6 +78,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -345,6 +346,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected DeviceStateMonitor mDeviceStateMonitor;
     protected DisplayInfoController mDisplayInfoController;
     protected TransportManager mTransportManager;
+    protected AccessNetworksManager mAccessNetworksManager;
     protected DataEnabledSettings mDataEnabledSettings;
     // Used for identify the carrier of current subscription
     protected CarrierResolver mCarrierResolver;
@@ -1885,9 +1887,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * @return The instance of transport manager
+     * @return The instance of transport manager.
      */
     public TransportManager getTransportManager() {
+        return null;
+    }
+
+    /**
+     * @return The instance of access networks manager.
+     */
+    public AccessNetworksManager getAccessNetworksManager() {
         return null;
     }
 
