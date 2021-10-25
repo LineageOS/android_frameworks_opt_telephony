@@ -25,6 +25,7 @@ import android.os.TimestampedValue;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.NitzData;
+import com.android.internal.telephony.NitzSignal;
 import com.android.internal.telephony.NitzStateMachine;
 import com.android.internal.telephony.Phone;
 import com.android.internal.util.IndentingPrintWriter;
@@ -68,8 +69,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
          * See {@link NitzSignalInputFilterPredicate}.
          */
         boolean mustProcessNitzSignal(
-                @Nullable TimestampedValue<NitzData> oldSignal,
-                @NonNull TimestampedValue<NitzData> newSignal);
+                @Nullable NitzSignal oldSignal,
+                @NonNull NitzSignal newSignal);
     }
 
     /**
@@ -89,7 +90,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         @NonNull
         TelephonyTimeZoneSuggestion getTimeZoneSuggestion(
                 int slotIndex, @Nullable String countryIsoCode,
-                @Nullable TimestampedValue<NitzData> nitzSignal);
+                @Nullable NitzSignal nitzSignal);
     }
 
     static final String LOG_TAG = "NewNitzStateMachineImpl";
@@ -114,7 +115,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
      * needs to be recalculated when something else has changed.
      */
     @Nullable
-    private TimestampedValue<NitzData> mLatestNitzSignal;
+    private NitzSignal mLatestNitzSignal;
 
     // Time Zone detection state.
 
@@ -227,14 +228,14 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     }
 
     @Override
-    public void handleNitzReceived(@NonNull TimestampedValue<NitzData> nitzSignal) {
+    public void handleNitzReceived(@NonNull NitzSignal nitzSignal) {
         if (DBG) {
             Rlog.d(LOG_TAG, "handleNitzReceived: nitzSignal=" + nitzSignal);
         }
         Objects.requireNonNull(nitzSignal);
 
         // Perform input filtering to filter bad data and avoid processing signals too often.
-        TimestampedValue<NitzData> previousNitzSignal = mLatestNitzSignal;
+        NitzSignal previousNitzSignal = mLatestNitzSignal;
         if (!mNitzSignalInputFilter.mustProcessNitzSignal(previousNitzSignal, nitzSignal)) {
             return;
         }
@@ -278,7 +279,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
      * Perform a round of time zone detection and notify the time zone detection service as needed.
      */
     private void doTimeZoneDetection(
-            @Nullable String countryIsoCode, @Nullable TimestampedValue<NitzData> nitzSignal,
+            @Nullable String countryIsoCode, @Nullable NitzSignal
+            nitzSignal,
             @NonNull String reason) {
         try {
             Objects.requireNonNull(reason);
@@ -306,7 +308,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     /**
      * Perform a round of time detection and notify the time detection service as needed.
      */
-    private void doTimeDetection(@Nullable TimestampedValue<NitzData> nitzSignal,
+    private void doTimeDetection(@Nullable NitzSignal nitzSignal,
             @NonNull String reason) {
         try {
             Objects.requireNonNull(reason);
@@ -318,8 +320,8 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                         + " reason=" + reason);
             } else {
                 TimestampedValue<Long> newNitzTime = new TimestampedValue<>(
-                        nitzSignal.getReferenceTimeMillis(),
-                        nitzSignal.getValue().getCurrentTimeInMillis());
+                        nitzSignal.getReceiptElapsedRealtimeMillis(),
+                        nitzSignal.getNitzData().getCurrentTimeInMillis());
                 builder.setUtcTime(newNitzTime);
                 builder.addDebugInfo("Sending new time suggestion"
                         + " nitzSignal=" + nitzSignal
@@ -350,6 +352,6 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
 
     @Nullable
     public NitzData getCachedNitzData() {
-        return mLatestNitzSignal != null ? mLatestNitzSignal.getValue() : null;
+        return mLatestNitzSignal != null ? mLatestNitzSignal.getNitzData() : null;
     }
 }
