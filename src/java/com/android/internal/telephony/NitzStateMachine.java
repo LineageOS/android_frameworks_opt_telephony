@@ -21,7 +21,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.os.SystemClock;
 import android.os.SystemProperties;
-import android.os.TimestampedValue;
 import android.provider.Settings;
 
 import com.android.internal.util.IndentingPrintWriter;
@@ -65,7 +64,7 @@ public interface NitzStateMachine {
     /**
      * Handle a new NITZ signal being received.
      */
-    void handleNitzReceived(@NonNull TimestampedValue<NitzData> nitzSignal);
+    void handleNitzReceived(@NonNull NitzSignal nitzSignal);
 
     /**
      * Handle the user putting the device into or out of airplane mode

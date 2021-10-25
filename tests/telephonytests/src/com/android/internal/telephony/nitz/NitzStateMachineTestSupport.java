@@ -26,6 +26,7 @@ import android.icu.util.TimeZone;
 import android.os.TimestampedValue;
 
 import com.android.internal.telephony.NitzData;
+import com.android.internal.telephony.NitzSignal;
 import com.android.internal.telephony.NitzStateMachine;
 import com.android.internal.telephony.NitzStateMachine.DeviceState;
 
@@ -121,8 +122,8 @@ final class NitzStateMachineTestSupport {
         }
 
         /** Creates an NITZ signal to match the scenario. */
-        TimestampedValue<NitzData> createNitzSignal(long elapsedRealtimeClock) {
-            return new TimestampedValue<>(elapsedRealtimeClock, createNitzData());
+        NitzSignal createNitzSignal(long elapsedRealtimeMillis) {
+            return new NitzSignal(elapsedRealtimeMillis, createNitzData(), 0);
         }
 
         /** Creates an NITZ signal to match the scenario. */
@@ -275,7 +276,7 @@ final class NitzStateMachineTestSupport {
     }
 
     static TelephonyTimeSuggestion createTimeSuggestionFromNitzSignal(
-            int slotIndex, TimestampedValue<NitzData> nitzSignal) {
+            int slotIndex, NitzSignal nitzSignal) {
         return new TelephonyTimeSuggestion.Builder(slotIndex)
                 .setUtcTime(createTimeSignalFromNitzSignal(nitzSignal))
                 .addDebugInfo("Test")
@@ -283,10 +284,10 @@ final class NitzStateMachineTestSupport {
     }
 
     private static TimestampedValue<Long> createTimeSignalFromNitzSignal(
-            TimestampedValue<NitzData> nitzSignal) {
+            NitzSignal nitzSignal) {
         return new TimestampedValue<>(
-                nitzSignal.getReferenceTimeMillis(),
-                nitzSignal.getValue().getCurrentTimeInMillis());
+                nitzSignal.getReceiptElapsedRealtimeMillis(),
+                nitzSignal.getNitzData().getCurrentTimeInMillis());
     }
 
     private static TimeZone zone(String zoneId) {
