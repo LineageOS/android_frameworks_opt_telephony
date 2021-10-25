@@ -49,7 +49,6 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
-import android.os.TimestampedValue;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
@@ -4431,8 +4430,8 @@ public class ServiceStateTracker extends Handler {
         mLastNitzData = newNitzData;
         if (newNitzData != null) {
             try {
-                TimestampedValue<NitzData> nitzSignal =
-                        new TimestampedValue<>(nitzReceiveTime, newNitzData);
+                long ageMillis = 0;
+                NitzSignal nitzSignal = new NitzSignal(nitzReceiveTime, newNitzData, ageMillis);
                 mNitzState.handleNitzReceived(nitzSignal);
             } finally {
                 if (DBG) {

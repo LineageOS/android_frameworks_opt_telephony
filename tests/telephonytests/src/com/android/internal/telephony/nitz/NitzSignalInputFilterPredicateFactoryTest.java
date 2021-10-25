@@ -26,9 +26,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import android.os.TimestampedValue;
-
 import com.android.internal.telephony.NitzData;
+import com.android.internal.telephony.NitzSignal;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.NitzSignalInputFilterPredicateImpl;
 import com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.TrivalentPredicate;
@@ -57,8 +56,7 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_nullSecondArgumentRejected() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        TimestampedValue<NitzData> nitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         TrivalentPredicate[] triPredicates = {};
         NitzSignalInputFilterPredicateImpl impl =
                 new NitzSignalInputFilterPredicateImpl(triPredicates);
@@ -72,8 +70,7 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_defaultIsTrue() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        TimestampedValue<NitzData> nitzSignal = scenario
-                .createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         NitzSignalInputFilterPredicateImpl impl =
                 new NitzSignalInputFilterPredicateImpl(new TrivalentPredicate[0]);
         assertTrue(impl.mustProcessNitzSignal(null, nitzSignal));
@@ -82,8 +79,7 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_nullIsIgnored() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        TimestampedValue<NitzData> nitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         TrivalentPredicate nullPredicate = (x, y) -> null;
         TrivalentPredicate[] triPredicates = { nullPredicate };
         NitzSignalInputFilterPredicateImpl impl =
@@ -94,8 +90,7 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_trueIsHonored() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        TimestampedValue<NitzData> nitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         TrivalentPredicate nullPredicate = (x, y) -> null;
         TrivalentPredicate truePredicate = (x, y) -> true;
         TrivalentPredicate exceptionPredicate = (x, y) -> {
@@ -114,8 +109,7 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_falseIsHonored() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        TimestampedValue<NitzData> nitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
         TrivalentPredicate nullPredicate = (x, y) -> null;
         TrivalentPredicate falsePredicate = (x, y) -> false;
         TrivalentPredicate exceptionPredicate = (x, y) -> {
@@ -146,23 +140,22 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     public void testTrivalentPredicate_bogusElapsedRealtimeCheck() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
         long elapsedRealtimeClock = mFakeDeviceState.elapsedRealtime();
-        TimestampedValue<NitzData> nitzSignal = scenario.createNitzSignal(elapsedRealtimeClock);
+        NitzSignal nitzSignal = scenario.createNitzSignal(elapsedRealtimeClock);
 
         TrivalentPredicate triPredicate =
                 createBogusElapsedRealtimeCheck(mContext, mFakeDeviceState);
         assertNull(triPredicate.mustProcessNitzSignal(null, nitzSignal));
 
         // Any signal that claims to be from the future must be rejected.
-        TimestampedValue<NitzData> bogusNitzSignal = new TimestampedValue<>(
-                elapsedRealtimeClock + 1, nitzSignal.getValue());
+        NitzSignal bogusNitzSignal =
+                new NitzSignal(elapsedRealtimeClock + 1, nitzSignal.getNitzData(), 0);
         assertFalse(triPredicate.mustProcessNitzSignal(null, bogusNitzSignal));
     }
 
     @Test
     public void testTrivalentPredicate_noOldSignalCheck() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        TimestampedValue<NitzData> nitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
 
         TrivalentPredicate triPredicate =
                 NitzSignalInputFilterPredicateFactory.createNoOldSignalCheck();
@@ -179,8 +172,7 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
         TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
 
         long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtime();
-        TimestampedValue<NitzData> baseSignal =
-                new TimestampedValue<>(baseElapsedRealtimeMillis, baseNitzData);
+        NitzSignal baseSignal = new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, 0);
 
         // Two identical signals: no spacing so the new signal should not be processed.
         {
@@ -190,16 +182,14 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
         // Two signals not spaced apart enough: the new signal should not processed.
         {
             int elapsedTimeIncrement = nitzSpacingThreshold - 1;
-            TimestampedValue<NitzData> newSignal =
-                    createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
+            NitzSignal newSignal = createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
             assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, newSignal));
         }
 
         // Two signals spaced apart: the new signal should be processed.
         {
             int elapsedTimeIncrement = nitzSpacingThreshold + 1;
-            TimestampedValue<NitzData> newSignal =
-                    createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
+            NitzSignal newSignal = createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
             assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, newSignal));
         }
     }
@@ -213,14 +203,13 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
         TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
 
         long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtime();
-        TimestampedValue<NitzData> baseSignal =
-                new TimestampedValue<>(baseElapsedRealtimeMillis, baseNitzData);
+        NitzSignal baseSignal = new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, 0);
 
         // Create a new NitzSignal that should be filtered.
         int elapsedTimeIncrement = nitzSpacingThreshold - 1;
-        TimestampedValue<NitzData> intermediateNitzSignal =
+        NitzSignal intermediateNitzSignal =
                 createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
-        NitzData intermediateNitzData = intermediateNitzSignal.getValue();
+        NitzData intermediateNitzData = intermediateNitzSignal.getNitzData();
         assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, intermediateNitzSignal));
 
         // Two signals spaced apart so that the second would be filtered, but they contain different
@@ -232,9 +221,9 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
                     intermediateNitzData.getDstAdjustmentMillis(),
                     intermediateNitzData.getCurrentTimeInMillis(),
                     intermediateNitzData.getEmulatorHostTimeZone());
-            TimestampedValue<NitzData> differentOffsetSignal = new TimestampedValue<>(
-                    baseSignal.getReferenceTimeMillis() + elapsedTimeIncrement,
-                    differentOffsetNitzData);
+            NitzSignal differentOffsetSignal = new NitzSignal(
+                    baseSignal.getReceiptElapsedRealtimeMillis() + elapsedTimeIncrement,
+                    differentOffsetNitzData, 0);
             assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, differentOffsetSignal));
         }
     }
@@ -249,14 +238,13 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
         TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
 
         long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtime();
-        TimestampedValue<NitzData> baseSignal =
-                new TimestampedValue<>(baseElapsedRealtimeMillis, baseNitzData);
+        NitzSignal baseSignal = new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, 0);
 
         // Create a new NitzSignal that should be filtered.
         int elapsedTimeIncrement = nitzSpacingThreshold - 1;
-        TimestampedValue<NitzData> intermediateSignal =
+        NitzSignal intermediateSignal =
                 createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
-        NitzData intermediateNitzData = intermediateSignal.getValue();
+        NitzData intermediateNitzData = intermediateSignal.getNitzData();
         assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, intermediateSignal));
 
         // Two signals spaced apart so that the second would normally be filtered and it contains
@@ -268,8 +256,9 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
                     intermediateNitzData.getCurrentTimeInMillis() + nitzUtcDiffThreshold - 1,
                     intermediateNitzData.getEmulatorHostTimeZone());
 
-            TimestampedValue<NitzData> incrementedNitzSignal = new TimestampedValue<>(
-                    intermediateSignal.getReferenceTimeMillis(), incrementedUtcTimeNitzData);
+            NitzSignal incrementedNitzSignal = new NitzSignal(
+                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
+                    incrementedUtcTimeNitzData, 0);
             assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, incrementedNitzSignal));
         }
 
@@ -282,8 +271,9 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
                     intermediateNitzData.getCurrentTimeInMillis() + nitzUtcDiffThreshold + 1,
                     intermediateNitzData.getEmulatorHostTimeZone());
 
-            TimestampedValue<NitzData> incrementedNitzSignal = new TimestampedValue<>(
-                    intermediateSignal.getReferenceTimeMillis(), incrementedUtcTimeNitzData);
+            NitzSignal incrementedNitzSignal = new NitzSignal(
+                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
+                    incrementedUtcTimeNitzData, 0);
             assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, incrementedNitzSignal));
         }
 
@@ -296,8 +286,9 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
                     intermediateNitzData.getCurrentTimeInMillis() - nitzUtcDiffThreshold + 1,
                     intermediateNitzData.getEmulatorHostTimeZone());
 
-            TimestampedValue<NitzData> decrementedNitzSignal = new TimestampedValue<>(
-                    intermediateSignal.getReferenceTimeMillis(), decrementedUtcTimeNitzData);
+            NitzSignal decrementedNitzSignal = new NitzSignal(
+                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
+                    decrementedUtcTimeNitzData, 0);
             assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, decrementedNitzSignal));
         }
 
@@ -310,8 +301,9 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
                     intermediateNitzData.getCurrentTimeInMillis() + nitzUtcDiffThreshold + 1,
                     intermediateNitzData.getEmulatorHostTimeZone());
 
-            TimestampedValue<NitzData> decrementedNitzSignal = new TimestampedValue<>(
-                    intermediateSignal.getReferenceTimeMillis(), decrementedUtcTimeNitzData);
+            NitzSignal decrementedNitzSignal = new NitzSignal(
+                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
+                    decrementedUtcTimeNitzData, 0);
             assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, decrementedNitzSignal));
         }
     }
@@ -320,14 +312,15 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
      * Creates an NITZ signal based on the the supplied signal but with all the fields related to
      * elapsed time incremented by the specified number of milliseconds.
      */
-    private static TimestampedValue<NitzData> createIncrementedNitzSignal(
-            TimestampedValue<NitzData> baseSignal, int incrementMillis) {
-        NitzData baseData = baseSignal.getValue();
-        return new TimestampedValue<>(baseSignal.getReferenceTimeMillis() + incrementMillis,
+    private static NitzSignal createIncrementedNitzSignal(
+            NitzSignal baseSignal, int incrementMillis) {
+        NitzData baseData = baseSignal.getNitzData();
+        return new NitzSignal(baseSignal.getReceiptElapsedRealtimeMillis() + incrementMillis,
                 NitzData.createForTests(
                         baseData.getLocalOffsetMillis(),
                         baseData.getDstAdjustmentMillis(),
                         baseData.getCurrentTimeInMillis() + incrementMillis,
-                        baseData.getEmulatorHostTimeZone()));
+                        baseData.getEmulatorHostTimeZone()),
+                baseSignal.getAgeMillis());
     }
 }
