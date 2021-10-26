@@ -239,6 +239,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
     private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
+    private final RegistrantList mBandwidthChangedRegistrants = new RegistrantList();
     private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
     private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
@@ -3650,6 +3651,8 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
 
+        boolean hasBandwidthChanged = mSS.getCellBandwidths() != mNewSS.getCellBandwidths();
+
         boolean has4gHandoff = false;
         boolean hasMultiApnSupport = false;
         boolean hasLostMultiApnSupport = false;
@@ -3693,6 +3696,7 @@ public class ServiceStateTracker extends Handler {
                     + " hasCssIndicatorChanged = " + hasCssIndicatorChanged
                     + " hasNrFrequencyRangeChanged = " + hasNrFrequencyRangeChanged
                     + " hasNrStateChanged = " + hasNrStateChanged
+                    + " hasBandwidthChanged = " + hasBandwidthChanged
                     + " hasAirplaneModeOnlChanged = " + hasAirplaneModeOnChanged);
         }
 
@@ -3772,6 +3776,10 @@ public class ServiceStateTracker extends Handler {
 
         if (hasCssIndicatorChanged) {
             mCssIndicatorChangedRegistrants.notifyRegistrants();
+        }
+
+        if (hasBandwidthChanged) {
+            mBandwidthChangedRegistrants.notifyRegistrants();
         }
 
         if (hasRejectCauseChanged) {
@@ -6219,6 +6227,25 @@ public class ServiceStateTracker extends Handler {
      */
     public void unregisterForCssIndicatorChanged(Handler h) {
         mCssIndicatorChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for cell bandwidth changed.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForBandwidthChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mBandwidthChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for cell bandwidth changed.
+     * @param h handler to notify
+     */
+    public void unregisterForBandwidthChanged(Handler h) {
+        mBandwidthChangedRegistrants.remove(h);
     }
 
     /**
