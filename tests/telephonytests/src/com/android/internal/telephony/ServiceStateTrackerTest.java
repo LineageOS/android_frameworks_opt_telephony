@@ -56,7 +56,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.SystemClock;
-import android.os.TimestampedValue;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.telephony.AccessNetworkConstants;
@@ -2061,15 +2060,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             mSimulatedCommands.triggerNITZupdate(nitzStr);
             waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
-            ArgumentCaptor<TimestampedValue<NitzData>> argumentsCaptor =
-                    ArgumentCaptor.forClass(TimestampedValue.class);
+            ArgumentCaptor<NitzSignal> argumentsCaptor =
+                    ArgumentCaptor.forClass(NitzSignal.class);
             verify(mNitzStateMachine, times(1))
                     .handleNitzReceived(argumentsCaptor.capture());
 
             // Confirm the argument was what we expected.
-            TimestampedValue<NitzData> actualNitzSignal = argumentsCaptor.getValue();
-            assertEquals(expectedNitzData, actualNitzSignal.getValue());
-            assertTrue(actualNitzSignal.getReferenceTimeMillis() <= SystemClock.elapsedRealtime());
+            NitzSignal actualNitzSignal = argumentsCaptor.getValue();
+            assertEquals(expectedNitzData, actualNitzSignal.getNitzData());
+            assertTrue(actualNitzSignal.getReceiptElapsedRealtimeMillis()
+                    <= SystemClock.elapsedRealtime());
         }
     }
 
