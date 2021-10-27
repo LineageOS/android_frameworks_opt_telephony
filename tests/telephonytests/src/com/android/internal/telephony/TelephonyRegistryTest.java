@@ -724,4 +724,67 @@ public class TelephonyRegistryTest extends TelephonyTest {
         processAllMessages();
         assertEquals(lceList, mLinkCapacityEstimateList);
     }
+
+    @Test
+    public void testPreciseDataConnectionStateChangedForInvalidSubId() {
+        //set dual sim
+        doReturn(2).when(mTelephonyManager).getActiveModemCount();
+        mContext.sendBroadcast(new Intent(ACTION_MULTI_SIM_CONFIG_CHANGED));
+        // set default slot
+        mContext.sendBroadcast(new Intent(ACTION_DEFAULT_SUBSCRIPTION_CHANGED)
+                .putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, 2)
+                .putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, 0));
+        processAllMessages();
+
+        final int subId = 1;
+        int[] events = {TelephonyCallback.EVENT_PRECISE_DATA_CONNECTION_STATE_CHANGED};
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(1).when(mMockSubInfo).getSimSlotIndex();
+
+        mTelephonyRegistry.listenWithEventList(subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+        processAllMessages();
+
+        // notify data connection with invalid sub id and default phone id
+        mTelephonyRegistry.notifyDataConnectionForSubscriber(
+                /*default phoneId*/ 0, /*invalid subId*/ -1,
+                new PreciseDataConnectionState.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .setId(1)
+                        .setState(TelephonyManager.DATA_CONNECTED)
+                        .setNetworkType(TelephonyManager.NETWORK_TYPE_LTE)
+                        .setApnSetting(new ApnSetting.Builder()
+                                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                                .setApnName("ims")
+                                .setEntryName("ims")
+                                .build())
+                        .setLinkProperties(new LinkProperties())
+                        .setFailCause(0)
+                        .build());
+
+        processAllMessages();
+
+        assertEquals(0, mTelephonyCallback.invocationCount.get());
+
+        // notify data connection with invalid sub id and default phone id
+        mTelephonyRegistry.notifyDataConnectionForSubscriber(
+                /*target phoneId*/ 1, /*invalid subId*/ -1,
+                new PreciseDataConnectionState.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                        .setId(2)
+                        .setState(TelephonyManager.DATA_SUSPENDED)
+                        .setNetworkType(TelephonyManager.NETWORK_TYPE_LTE)
+                        .setApnSetting(new ApnSetting.Builder()
+                                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                                .setApnName("ims")
+                                .setEntryName("ims")
+                                .build())
+                        .setLinkProperties(new LinkProperties())
+                        .setFailCause(0)
+                        .build());
+
+        processAllMessages();
+
+        assertEquals(1, mTelephonyCallback.invocationCount.get());
+    }
 }
