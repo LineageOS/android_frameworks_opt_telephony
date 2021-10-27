@@ -34,6 +34,7 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
@@ -52,6 +53,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
@@ -73,6 +75,7 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -99,6 +102,7 @@ import java.util.List;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class GsmCdmaPhoneTest extends TelephonyTest {
+    private static final String TEST_EMERGENCY_NUMBER = "555";
     @Mock
     private Handler mTestHandler;
     @Mock
@@ -1650,5 +1654,90 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.loadAllowedNetworksFromSubscriptionDatabase();
 
         assertEquals(false, mPhoneUT.isAllowedNetworkTypesLoadedFromDb());
+    }
+
+    /**
+     * Verifies that an emergency call placed on a SIM which does NOT explicitly define a number as
+     * an emergency call will still be placed as an emergency call.
+     * @throws CallStateException
+     */
+    @Test
+    public void testEmergencyCallAnySim() throws CallStateException {
+        setupEmergencyCallScenario(false /* USE_ONLY_DIALED_SIM_ECC_LIST */,
+                false /* isEmergencyOnDialedSim */);
+
+        ArgumentCaptor<PhoneInternalInterface.DialArgs> dialArgsArgumentCaptor =
+                ArgumentCaptor.forClass(PhoneInternalInterface.DialArgs.class);
+        mPhoneUT.dial(TEST_EMERGENCY_NUMBER, new ImsPhone.ImsDialArgs.Builder().build());
+
+        // Should have dialed out over IMS and should have specified that it is an emergency call
+        verify(mImsPhone).dial(anyString(), dialArgsArgumentCaptor.capture());
+        PhoneInternalInterface.DialArgs args = dialArgsArgumentCaptor.getValue();
+        assertTrue(args.isEmergency);
+    }
+
+    /**
+     * Tests the scenario where a number is dialed on a sim where it is NOT an emergency number,
+     * but it IS an emergency number based on {@link TelephonyManager#isEmergencyNumber(String)},
+     * and the carrier wants to ONLY use the dialed SIM's ECC list.
+     * @throws CallStateException
+     */
+    @Test
+    public void testNotEmergencyNumberOnDialedSim1() throws CallStateException {
+        setupEmergencyCallScenario(true /* USE_ONLY_DIALED_SIM_ECC_LIST */,
+                false /* isEmergencyOnDialedSim */);
+
+        ArgumentCaptor<PhoneInternalInterface.DialArgs> dialArgsArgumentCaptor =
+                ArgumentCaptor.forClass(PhoneInternalInterface.DialArgs.class);
+        mPhoneUT.dial(TEST_EMERGENCY_NUMBER, new ImsPhone.ImsDialArgs.Builder().build());
+
+        // Should have dialed out over IMS and should have specified that it is NOT an emergency
+        // call
+        verify(mImsPhone).dial(anyString(), dialArgsArgumentCaptor.capture());
+        PhoneInternalInterface.DialArgs args = dialArgsArgumentCaptor.getValue();
+        assertFalse(args.isEmergency);
+    }
+
+    /**
+     * Tests the scenario where a number is dialed on a sim where it is NOT an emergency number,
+     * but it IS an emergency number based on {@link TelephonyManager#isEmergencyNumber(String)},
+     * and the carrier wants to use the global ECC list.
+     * @throws CallStateException
+     */
+    @Test
+    public void testNotEmergencyNumberOnDialedSim2() throws CallStateException {
+        setupEmergencyCallScenario(false /* USE_ONLY_DIALED_SIM_ECC_LIST */,
+                false /* isEmergencyOnDialedSim */);
+
+        ArgumentCaptor<PhoneInternalInterface.DialArgs> dialArgsArgumentCaptor =
+                ArgumentCaptor.forClass(PhoneInternalInterface.DialArgs.class);
+        mPhoneUT.dial(TEST_EMERGENCY_NUMBER, new ImsPhone.ImsDialArgs.Builder().build());
+
+        // Should have dialed out over IMS and should have specified that it is an emergency call
+        verify(mImsPhone).dial(anyString(), dialArgsArgumentCaptor.capture());
+        PhoneInternalInterface.DialArgs args = dialArgsArgumentCaptor.getValue();
+        assertTrue(args.isEmergency);
+    }
+
+    private void setupEmergencyCallScenario(boolean isUsingOnlyDialedSim,
+            boolean isEmergencyPerDialedSim) {
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putBoolean(CarrierConfigManager.KEY_USE_ONLY_DIALED_SIM_ECC_LIST_BOOL,
+                isUsingOnlyDialedSim);
+        bundle.putBoolean(CarrierConfigManager.KEY_CARRIER_USE_IMS_FIRST_FOR_EMERGENCY_BOOL, true);
+        doReturn(true).when(mImsPhone).isImsAvailable();
+        doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
+        doReturn(true).when(mImsManager).isEnhanced4gLteModeSettingEnabledByUser();
+        doReturn(true).when(mImsManager).isNonTtyOrTtyOnVolteEnabled();
+        doReturn(true).when(mImsPhone).isVoiceOverCellularImsEnabled();
+        ServiceState ss = mock(ServiceState.class);
+        doReturn(ServiceState.STATE_IN_SERVICE).when(ss).getState();
+        doReturn(ss).when(mImsPhone).getServiceState();
+
+        doReturn(true).when(mTelephonyManager).isEmergencyNumber(anyString());
+        doReturn(isEmergencyPerDialedSim).when(mEmergencyNumberTracker).isEmergencyNumber(
+                anyString(), anyBoolean());
+
+        mPhoneUT.setImsPhone(mImsPhone);
     }
 }
