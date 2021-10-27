@@ -59,6 +59,8 @@ import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -1318,7 +1320,11 @@ public class ImsPhoneConnection extends Connection implements
             return;
         }
         if (extras.containsKey(ImsCallProfile.EXTRA_FORWARDED_NUMBER)) {
-            mForwardedNumber = extras.getStringArrayList(ImsCallProfile.EXTRA_FORWARDED_NUMBER);
+            String[] forwardedNumberArray =
+                    extras.getStringArray(ImsCallProfile.EXTRA_FORWARDED_NUMBER);
+            if (forwardedNumberArray != null) {
+                mForwardedNumber = new ArrayList<String>(Arrays.asList(forwardedNumberArray));
+            }
         }
     }
 
