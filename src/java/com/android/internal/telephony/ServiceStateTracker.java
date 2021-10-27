@@ -1426,14 +1426,20 @@ public class ServiceStateTracker extends Handler {
                 mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
                 break;
 
-            case EVENT_NITZ_TIME:
+            case EVENT_NITZ_TIME: {
                 ar = (AsyncResult) msg.obj;
 
-                String nitzString = (String)((Object[])ar.result)[0];
-                long nitzReceiveTime = ((Long)((Object[])ar.result)[1]).longValue();
+                Object[] nitzArgs = (Object[])ar.result;
+                String nitzString = (String)nitzArgs[0];
+                long nitzReceiveTimeMs = ((Long)nitzArgs[1]).longValue();
+                long ageMs = 0;
+                if (nitzArgs.length >= 3) {
+                    ageMs = ((Long)nitzArgs[2]).longValue();
+                }
 
-                setTimeFromNITZString(nitzString, nitzReceiveTime);
+                setTimeFromNITZString(nitzString, nitzReceiveTimeMs, ageMs);
                 break;
+            }
 
             case EVENT_SIGNAL_STRENGTH_UPDATE:
                 // This is a notification from CommandsInterface.setOnSignalStrengthUpdate
@@ -4412,20 +4418,24 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * nitzReceiveTime is time_t that the NITZ time was posted
+     * Handle the NITZ string from the modem
+     *
+     * @param nitzString NITZ time string in the form "yy/mm/dd,hh:mm:ss(+/-)tz,dt"
+     * @param nitzReceiveTimeMs time according to {@link android.os.SystemClock#elapsedRealtime()}
+     *        when the RIL sent the NITZ time to the framework
+     * @param ageMs time in milliseconds indicating how long NITZ was cached in RIL and modem
      */
-    private void setTimeFromNITZString(String nitzString, long nitzReceiveTime) {
+    private void setTimeFromNITZString(String nitzString, long nitzReceiveTimeMs, long ageMs) {
         long start = SystemClock.elapsedRealtime();
         if (DBG) {
-            Rlog.d(LOG_TAG, "NITZ: " + nitzString + "," + nitzReceiveTime
-                    + " start=" + start + " delay=" + (start - nitzReceiveTime));
+            Rlog.d(LOG_TAG, "NITZ: " + nitzString + "," + nitzReceiveTimeMs + ", ageMs=" + ageMs
+                    + " start=" + start + " delay=" + (start - nitzReceiveTimeMs));
         }
         NitzData newNitzData = NitzData.parse(nitzString);
         mLastNitzData = newNitzData;
         if (newNitzData != null) {
             try {
-                long ageMillis = 0;
-                NitzSignal nitzSignal = new NitzSignal(nitzReceiveTime, newNitzData, ageMillis);
+                NitzSignal nitzSignal = new NitzSignal(nitzReceiveTimeMs, newNitzData, ageMs);
                 mNitzState.handleNitzReceived(nitzSignal);
             } finally {
                 if (DBG) {
