@@ -2046,7 +2046,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testSetTimeFromNITZStr() throws Exception {
+    public void testSetTimeFromNITZStr_withoutAge() throws Exception {
         {
             // Mock sending incorrect nitz str from RIL
             mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
@@ -2054,7 +2054,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             verify(mNitzStateMachine, times(0)).handleNitzReceived(any());
         }
         {
-            // Mock sending correct nitz str from RIL
+            // Mock sending correct nitz str from RIL with a zero ageMs
             String nitzStr = "15/06/20,00:00:00+0";
             NitzData expectedNitzData = NitzData.parse(nitzStr);
             mSimulatedCommands.triggerNITZupdate(nitzStr);
@@ -2070,6 +2070,39 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             assertEquals(expectedNitzData, actualNitzSignal.getNitzData());
             assertTrue(actualNitzSignal.getReceiptElapsedRealtimeMillis()
                     <= SystemClock.elapsedRealtime());
+            assertEquals(actualNitzSignal.getAgeMillis(), 0);
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testSetTimeFromNITZStr_withAge() throws Exception {
+        {
+            // Mock sending incorrect nitz str from RIL with a non-zero ageMs
+            long ageMs = 60 * 1000;
+            mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0", ageMs);
+            waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+            verify(mNitzStateMachine, times(0)).handleNitzReceived(any());
+        }
+        {
+            // Mock sending correct nitz str from RIL with a non-zero ageMs
+            String nitzStr = "21/08/15,00:00:00+0";
+            long ageMs = 60 * 1000;
+            NitzData expectedNitzData = NitzData.parse(nitzStr);
+            mSimulatedCommands.triggerNITZupdate(nitzStr, ageMs);
+            waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+            ArgumentCaptor<NitzSignal> argumentsCaptor =
+                    ArgumentCaptor.forClass(NitzSignal.class);
+            verify(mNitzStateMachine, times(1))
+                    .handleNitzReceived(argumentsCaptor.capture());
+
+            // Confirm the argument was what we expected.
+            NitzSignal actualNitzSignal = argumentsCaptor.getValue();
+            assertEquals(expectedNitzData, actualNitzSignal.getNitzData());
+            assertTrue(actualNitzSignal.getReceiptElapsedRealtimeMillis()
+                    <= SystemClock.elapsedRealtime());
+            assertEquals(actualNitzSignal.getAgeMillis(), ageMs);
         }
     }
 
