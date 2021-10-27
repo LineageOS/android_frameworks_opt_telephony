@@ -3054,26 +3054,33 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int[] getActiveSubIdList(boolean visibleOnly) {
-        List<Integer> allSubs = getActiveSubIdArrayList();
+        enforceReadPrivilegedPhoneState("getActiveSubIdList");
 
-        if (visibleOnly) {
-            // Grouped opportunistic subscriptions should be hidden.
-            allSubs = allSubs.stream().filter(subId -> isSubscriptionVisible(subId))
-                    .collect(Collectors.toList());
-        }
+        final long token = Binder.clearCallingIdentity();
+        try {
+            List<Integer> allSubs = getActiveSubIdArrayList();
 
-        int[] subIdArr = new int[allSubs.size()];
-        int i = 0;
-        for (int sub : allSubs) {
-            subIdArr[i] = sub;
-            i++;
-        }
+            if (visibleOnly) {
+                // Grouped opportunistic subscriptions should be hidden.
+                allSubs = allSubs.stream().filter(subId -> isSubscriptionVisible(subId))
+                        .collect(Collectors.toList());
+            }
 
-        if (VDBG) {
-            logdl("[getActiveSubIdList] allSubs=" + allSubs + " subIdArr.length="
-                    + subIdArr.length);
+            int[] subIdArr = new int[allSubs.size()];
+            int i = 0;
+            for (int sub : allSubs) {
+                subIdArr[i] = sub;
+                i++;
+            }
+
+            if (VDBG) {
+                logdl("[getActiveSubIdList] allSubs=" + allSubs + " subIdArr.length="
+                        + subIdArr.length);
+            }
+            return subIdArr;
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
-        return subIdArr;
     }
 
     @Override
