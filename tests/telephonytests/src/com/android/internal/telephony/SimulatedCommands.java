@@ -1189,6 +1189,13 @@ public class SimulatedCommands extends BaseCommands
         }
     }
 
+    public void triggerNITZupdate(String NITZStr, long ageMs) {
+        if (NITZStr != null) {
+            mNITZTimeRegistrant.notifyRegistrant(new AsyncResult (null, new Object[]{NITZStr,
+                    SystemClock.elapsedRealtime(), ageMs}, null));
+        }
+    }
+
     @Override
     public void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
             boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
