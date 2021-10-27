@@ -88,6 +88,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.data.DataConfigManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DataEnabledOverride;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataThrottler;
@@ -281,6 +282,8 @@ public abstract class TelephonyTest {
     protected DeviceStateMonitor mDeviceStateMonitor;
     @Mock
     protected TransportManager mTransportManager;
+    @Mock
+    protected AccessNetworksManager mAccessNetworksManager;
     @Mock
     protected IntentBroadcaster mIntentBroadcaster;
     @Mock
@@ -544,6 +547,8 @@ public abstract class TelephonyTest {
                 .makeDeviceStateMonitor(nullable(Phone.class));
         doReturn(mTransportManager).when(mTelephonyComponentFactory)
                 .makeTransportManager(nullable(Phone.class));
+        doReturn(mAccessNetworksManager).when(mTelephonyComponentFactory)
+                .makeAccessNetworksManager(nullable(Phone.class));
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
                 .makeNitzStateMachine(nullable(GsmCdmaPhone.class));
         doReturn(mLocaleTracker).when(mTelephonyComponentFactory)
@@ -576,6 +581,7 @@ public abstract class TelephonyTest {
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
         doReturn(mIccSmsInterfaceManager).when(mPhone).getIccSmsInterfaceManager();
         doReturn(mTransportManager).when(mPhone).getTransportManager();
+        doReturn(mAccessNetworksManager).when(mPhone).getAccessNetworksManager();
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
