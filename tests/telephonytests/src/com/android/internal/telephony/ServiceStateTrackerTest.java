@@ -69,13 +69,7 @@ import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
-import android.telephony.CellSignalStrength;
-import android.telephony.CellSignalStrengthCdma;
 import android.telephony.CellSignalStrengthGsm;
-import android.telephony.CellSignalStrengthLte;
-import android.telephony.CellSignalStrengthNr;
-import android.telephony.CellSignalStrengthTdscdma;
-import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.INetworkService;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -83,7 +77,6 @@ import android.telephony.NetworkService;
 import android.telephony.NrVopsSupportInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
-import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -703,58 +696,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mPhone, times(1)).notifyServiceStateChanged(any(ServiceState.class));
     }
 
-    private void sendSignalStrength(SignalStrength ss) {
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-    }
-
-    @Test
-    @MediumTest
-    public void testSignalStrength() {
-        // Send in GSM Signal Strength Info and expect isGsm == true
-        SignalStrength ss = new SignalStrength(
-                new CellSignalStrengthCdma(),
-                new CellSignalStrengthGsm(-53, 0, SignalStrength.INVALID),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(),
-                new CellSignalStrengthNr());
-
-        sendSignalStrength(ss);
-        assertEquals(mSsc.getSignalStrength(), ss);
-        assertEquals(mSsc.getSignalStrength().isGsm(), true);
-
-        // Send in CDMA+LTE Signal Strength Info and expect isGsm == true
-        ss = new SignalStrength(
-                new CellSignalStrengthCdma(-90, -12,
-                        SignalStrength.INVALID, SignalStrength.INVALID, SignalStrength.INVALID),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(
-                        -110, -114, -5, 0, SignalStrength.INVALID, SignalStrength.INVALID),
-                new CellSignalStrengthNr());
-
-        sendSignalStrength(ss);
-        assertEquals(mSsc.getSignalStrength(), ss);
-        assertEquals(mSsc.getSignalStrength().isGsm(), true);
-
-        // Send in CDMA-only Signal Strength Info and expect isGsm == false
-        ss = new SignalStrength(
-                new CellSignalStrengthCdma(-90, -12,
-                        SignalStrength.INVALID, SignalStrength.INVALID, SignalStrength.INVALID),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(),
-                new CellSignalStrengthNr());
-
-        sendSignalStrength(ss);
-        assertEquals(mSsc.getSignalStrength(), ss);
-        assertEquals(mSsc.getSignalStrength().isGsm(), false);
-    }
-
     private void sendCarrierConfigUpdate() {
         CarrierConfigManager mockConfigManager = Mockito.mock(CarrierConfigManager.class);
         when(mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE))
@@ -765,182 +706,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, PHONE_ID);
         mContext.sendBroadcast(intent);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-    }
-
-    @Test
-    public void testLteSignalStrengthReportingCriteria() {
-        SignalStrength ss = new SignalStrength(
-                new CellSignalStrengthCdma(),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(
-                        -110, /* rssi */
-                        -114, /* rsrp */
-                        -5, /* rsrq */
-                        0, /* rssnr */
-                        SignalStrength.INVALID, /* cqi */
-                        SignalStrength.INVALID /* ta */),
-                new CellSignalStrengthNr());
-
-        mBundle.putBoolean(CarrierConfigManager.KEY_USE_ONLY_RSRP_FOR_LTE_SIGNAL_BAR_BOOL,
-                true);
-
-        sendCarrierConfigUpdate();
-
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        // Default thresholds are POOR=-115 MODERATE=-105 GOOD=-95 GREAT=-85
-        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_POOR, mSsc.getSignalStrength().getLevel());
-
-        int[] lteThresholds = {
-                -130, // SIGNAL_STRENGTH_POOR
-                -120, // SIGNAL_STRENGTH_MODERATE
-                -110, // SIGNAL_STRENGTH_GOOD
-                -100,  // SIGNAL_STRENGTH_GREAT
-        };
-        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
-                lteThresholds);
-        sendCarrierConfigUpdate();
-
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(mSsc.getSignalStrength().getLevel(),
-                CellSignalStrength.SIGNAL_STRENGTH_MODERATE);
-    }
-
-    @Test
-    public void test5gNrSignalStrengthReportingCriteria_UseSsRsrp() {
-        SignalStrength ss = new SignalStrength(
-                new CellSignalStrengthCdma(),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(),
-                new CellSignalStrengthNr(
-                    -139, /** csiRsrp NONE */
-                    -20, /** csiRsrq NONE */
-                    -23, /** CsiSinr NONE */
-                    -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
-                    -20, /** SsRsrq NONE */
-                    -23) /** SsSinr NONE */
-         );
-
-        // SSRSRP = 1 << 0
-        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
-                CellSignalStrengthNr.USE_SSRSRP);
-        sendCarrierConfigUpdate();
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_GREAT, mSsc.getSignalStrength().getLevel());
-    }
-
-    @Test
-    public void test5gNrSignalStrengthReportingCriteria_UseSsRsrpAndSsRsrq() {
-        SignalStrength ss = new SignalStrength(
-                new CellSignalStrengthCdma(),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(),
-                new CellSignalStrengthNr(
-                    -139, /** csiRsrp NONE */
-                    -20, /** csiRsrq NONE */
-                    -23, /** CsiSinr NONE */
-                    -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
-                    -32, /** SsRsrq NONE */
-                    -23) /** SsSinr NONE */
-        );
-
-        // SSRSRP = 1 << 0 | SSSINR = 1 << 2
-        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
-                CellSignalStrengthNr.USE_SSRSRP | CellSignalStrengthNr.USE_SSRSRQ);
-        sendCarrierConfigUpdate();
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
-                mSsc.getSignalStrength().getLevel());
-    }
-
-    @Test
-    public void test5gNrSignalStrengthReportingCriteria_ConfiguredThresholds() {
-        SignalStrength ss = new SignalStrength(
-                new CellSignalStrengthCdma(),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(),
-                new CellSignalStrengthNr(
-                    -139, /** csiRsrp NONE */
-                    -20, /** csiRsrq NONE */
-                    -23, /** CsiSinr NONE */
-                    -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
-                    -20, /** SsRsrq NONE */
-                    -23) /** SsSinr NONE */
-        );
-
-        // SSRSRP = 1 << 0
-        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
-                CellSignalStrengthNr.USE_SSRSRP);
-        sendCarrierConfigUpdate();
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_GREAT, mSsc.getSignalStrength().getLevel());
-
-        int[] nrSsRsrpThresholds = {
-                -45, // SIGNAL_STRENGTH_POOR
-                -40, // SIGNAL_STRENGTH_MODERATE
-                -37, // SIGNAL_STRENGTH_GOOD
-                -34,  // SIGNAL_STRENGTH_GREAT
-        };
-        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
-                nrSsRsrpThresholds);
-        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
-                CellSignalStrengthNr.USE_SSRSRP);
-        sendCarrierConfigUpdate();
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_POOR,
-                mSsc.getSignalStrength().getLevel());
-    }
-
-    @Test
-    public void testWcdmaSignalStrengthReportingCriteria() {
-        SignalStrength ss = new SignalStrength(
-                new CellSignalStrengthCdma(),
-                new CellSignalStrengthGsm(),
-                new CellSignalStrengthWcdma(-79, 0, -85, -5),
-                new CellSignalStrengthTdscdma(),
-                new CellSignalStrengthLte(),
-                new CellSignalStrengthNr());
-
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(mSsc.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GOOD);
-
-        int[] wcdmaThresholds = {
-                -110, // SIGNAL_STRENGTH_POOR
-                -100, // SIGNAL_STRENGTH_MODERATE
-                -90, // SIGNAL_STRENGTH_GOOD
-                -80  // SIGNAL_STRENGTH_GREAT
-        };
-        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
-                wcdmaThresholds);
-        mBundle.putString(
-                CarrierConfigManager.KEY_WCDMA_DEFAULT_SIGNAL_STRENGTH_MEASUREMENT_STRING,
-                "rscp");
-        sendCarrierConfigUpdate();
-        mSimulatedCommands.setSignalStrength(ss);
-        mSimulatedCommands.notifySignalStrength();
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(mSsc.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GOOD);
     }
 
     @Test
