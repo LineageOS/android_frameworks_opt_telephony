@@ -105,6 +105,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         when(mTelephonyFacade.getMobileTxBytes()).thenReturn(0L);
         when(mTelephonyFacade.getMobileTxBytes()).thenReturn(0L);
         when(mPhone.getCurrentCellIdentity()).thenReturn(mCellIdentity);
+        // Note that signal level is 0 before 1st MSG_SIGNAL_STRENGTH_CHANGED
         when(mPhone.getSubId()).thenReturn(1);
         when(mSignalStrength.getDbm()).thenReturn(-100);
         when(mSignalStrength.getLevel()).thenReturn(1);
@@ -330,16 +331,42 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
 
         verifyUpdateBandwidth(-1, 19_597);
 
-        addTxBytes(20_000L);
-        addRxBytes(50_000L);
+        when(mSignalStrength.getLevel()).thenReturn(1);
         when(mSignalStrength.getDbm()).thenReturn(-110);
         mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
         addElapsedTime(6000);
         moveTimeForward(6000);
         processAllMessages();
+        verifyUpdateBandwidth(-1, 19_535);
 
+        when(mSignalStrength.getLevel()).thenReturn(2);
+        when(mSignalStrength.getDbm()).thenReturn(-90);
+        mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
+        addElapsedTime(6000);
+        moveTimeForward(6000);
+        processAllMessages();
         verifyUpdateBandwidth(-1, -1);
+
+        for (int i = 0; i < BW_STATS_COUNT_THRESHOLD + 2; i++) {
+            addTxBytes(10_000L);
+            addRxBytes(1000_000L);
+            addElapsedTime(5_100);
+            moveTimeForward(5_100);
+            processAllMessages();
+            mLBE.obtainMessage(MSG_MODEM_ACTIVITY_RETURNED, new ModemActivityInfo(
+                    i * 5_100L, 0, 0, TX_TIME_2_MS, i * RX_TIME_2_MS)).sendToTarget();
+            processAllMessages();
+        }
+
+        when(mSignalStrength.getLevel()).thenReturn(1);
+        when(mSignalStrength.getDbm()).thenReturn(-110);
+        mLBE.obtainMessage(MSG_SIGNAL_STRENGTH_CHANGED, mSignalStrength).sendToTarget();
+        addElapsedTime(6000);
+        moveTimeForward(6000);
+        processAllMessages();
+        verifyUpdateBandwidth(-1, 30_821);
     }
+
 
     @Test
     public void testAvgBwForAllPossibleRat() throws Exception {
@@ -401,7 +428,6 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         addRxBytes(19_000L);
         when(mServiceState.getNrState()).thenReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED);
         when(mServiceState.getNrFrequencyRange()).thenReturn(ServiceState.FREQUENCY_RANGE_MMWAVE);
-        when(mSignalStrength.getLevel()).thenReturn(2);
         mLBE.obtainMessage(MSG_NR_FREQUENCY_CHANGED).sendToTarget();
         addElapsedTime(6000);
         moveTimeForward(6000);
