@@ -2199,11 +2199,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return Current signal strength as SignalStrength
      */
     public SignalStrength getSignalStrength() {
-        ServiceStateTracker sst = getServiceStateTracker();
-        if (sst == null) {
+        SignalStrengthController ssc = getSignalStrengthController();
+        if (ssc == null) {
             return new SignalStrength();
         } else {
-            return sst.getSignalStrength();
+            return ssc.getSignalStrength();
         }
     }
 
