@@ -72,7 +72,6 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
-import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
@@ -117,7 +116,6 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -125,10 +123,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 /**
@@ -140,9 +136,6 @@ public class ServiceStateTracker extends Handler {
     private static final boolean VDBG = false;  // STOPSHIP if true
 
     private static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
-
-    private static final long SIGNAL_STRENGTH_REFRESH_THRESHOLD_IN_MS =
-            TimeUnit.SECONDS.toMillis(10);
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CommandsInterface mCi;
@@ -185,10 +178,6 @@ public class ServiceStateTracker extends Handler {
 
     private final Set<Integer> mRadioPowerOffReasons = new HashSet();
 
-    @UnsupportedAppUsage
-    private SignalStrength mSignalStrength;
-    private long mSignalStrengthUpdatedTime;
-
     // TODO - this should not be public, right now used externally GsmConnetion.
     public RestrictedState mRestrictedState;
 
@@ -201,13 +190,6 @@ public class ServiceStateTracker extends Handler {
     public int[] mPollingContext;
     @UnsupportedAppUsage
     private boolean mDesiredPowerState;
-
-    /**
-     * By default, strength polling is enabled.  However, if we're
-     * getting unsolicited signal strength updates from the radio, set
-     * value to true and don't bother polling any more.
-     */
-    private boolean mDontPollSignalStrength = false;
 
     @UnsupportedAppUsage
     private RegistrantList mVoiceRoamingOnRegistrants = new RegistrantList();
@@ -237,23 +219,17 @@ public class ServiceStateTracker extends Handler {
     private boolean mPendingRadioPowerOffAfterDataOff = false;
     private int mPendingRadioPowerOffAfterDataOffTag = 0;
 
-    /** Signal strength poll rate. */
-    private static final int POLL_PERIOD_MILLIS = 20 * 1000;
-
     /** Waiting period before recheck gprs and voice registration. */
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
 
     /** GSM events */
     protected static final int EVENT_RADIO_STATE_CHANGED                    = 1;
     protected static final int EVENT_NETWORK_STATE_CHANGED                  = 2;
-    protected static final int EVENT_GET_SIGNAL_STRENGTH                    = 3;
     protected static final int EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION    = 4;
     protected static final int EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION    = 5;
     protected static final int EVENT_POLL_STATE_PS_IWLAN_REGISTRATION       = 6;
     protected static final int EVENT_POLL_STATE_OPERATOR                    = 7;
-    protected static final int EVENT_POLL_SIGNAL_STRENGTH                   = 10;
     protected static final int EVENT_NITZ_TIME                              = 11;
-    protected static final int EVENT_SIGNAL_STRENGTH_UPDATE                 = 12;
     protected static final int EVENT_POLL_STATE_NETWORK_SELECTION_MODE      = 14;
     protected static final int EVENT_GET_LOC_DONE                           = 15;
     protected static final int EVENT_SIM_RECORDS_LOADED                     = 16;
@@ -622,22 +598,6 @@ public class ServiceStateTracker extends Handler {
     private final TransportManager mTransportManager;
     private final SparseArray<NetworkRegistrationManager> mRegStateManagers = new SparseArray<>();
 
-    /* list of LTE EARFCNs (E-UTRA Absolute Radio Frequency Channel Number,
-     * Reference: 3GPP TS 36.104 5.4.3)
-     * inclusive ranges for which the lte rsrp boost is applied */
-    private ArrayList<Pair<Integer, Integer>> mEarfcnPairListForRsrpBoost = null;
-    private int mLteRsrpBoost = 0; // offset which is reduced from the rsrp threshold
-                                   // while calculating signal strength level.
-
-    /* Ranges of NR ARFCNs (5G Absolute Radio Frequency Channel Number,
-     * Reference: 3GPP TS 38.104)
-     * inclusive ranges for which the corresponding nr rsrp boost is applied */
-    private ArrayList<Pair<Integer, Integer>> mNrarfcnRangeListForRsrpBoost = null;
-    private int[] mNrRsrpBoost;
-
-    private final Object mRsrpBoostLock = new Object();
-    private static final int INVALID_ARFCN = -1;
-
     /* Last known TAC/LAC */
     private int mLastKnownAreaCode = CellInfo.UNAVAILABLE;
 
@@ -670,7 +630,6 @@ public class ServiceStateTracker extends Handler {
         mOutOfServiceSS.setStateOutOfService();
 
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
-        mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
         mCi.registerForPhysicalChannelConfiguration(this, EVENT_PHYSICAL_CHANNEL_CONFIG, null);
 
@@ -709,7 +668,6 @@ public class ServiceStateTracker extends Handler {
                 enableCellularOnBoot);
 
 
-        setSignalStrengthDefaultValues();
         mPhone.getCarrierActionAgent().registerForCarrierAction(CARRIER_ACTION_SET_RADIO_ENABLED,
                 this, EVENT_RADIO_POWER_FROM_CARRIER, null, false);
 
@@ -778,7 +736,6 @@ public class ServiceStateTracker extends Handler {
         mNewSS.setStateOutOfService();
         mLastCellInfoReqTime = 0;
         mLastCellInfoList = null;
-        mSignalStrength = new SignalStrength();
         mStartedGprsRegCheck = false;
         mReportedGprsNoReg = false;
         mMdn = null;
@@ -788,7 +745,7 @@ public class ServiceStateTracker extends Handler {
         mLastNitzData = null;
         mNitzState.handleNetworkUnavailable();
         mCellIdentity = null;
-        mSignalStrengthUpdatedTime = System.currentTimeMillis();
+        mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
 
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
@@ -827,7 +784,7 @@ public class ServiceStateTracker extends Handler {
         // switching between GSM and CDMA phone), because the unsolicited signal strength
         // information might come late or even never come. This will get the accurate signal
         // strength information displayed on the UI.
-        mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+        mPhone.getSignalStrengthController().getSignalStrengthFromCi();
         sendMessage(obtainMessage(EVENT_PHONE_TYPE_SWITCHED));
 
         logPhoneTypeChange();
@@ -858,7 +815,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     public void dispose() {
-        mCi.unSetOnSignalStrengthUpdate(this);
+        mPhone.getSignalStrengthController().dispose();
         mUiccController.unregisterForIccChanged(this);
         mCi.unregisterForCellInfoList(this);
         mCi.unregisterForPhysicalChannelConfiguration(this);
@@ -882,23 +839,6 @@ public class ServiceStateTracker extends Handler {
 
     public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
         return mLastPhysicalChannelConfigList;
-    }
-
-    private SignalStrength mLastSignalStrength = null;
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    protected boolean notifySignalStrength() {
-        boolean notified = false;
-        if (!mSignalStrength.equals(mLastSignalStrength)) {
-            try {
-                mPhone.notifySignalStrength();
-                notified = true;
-                mLastSignalStrength = mSignalStrength;
-            } catch (NullPointerException ex) {
-                loge("updateSignalStrength() Phone already destroyed: " + ex
-                        + "SignalStrength not notified");
-            }
-        }
-        return notified;
     }
 
     /**
@@ -1366,20 +1306,6 @@ public class ServiceStateTracker extends Handler {
                 pollStateInternal(true);
                 break;
 
-            case EVENT_GET_SIGNAL_STRENGTH:
-                // This callback is called when signal strength is polled
-                // all by itself
-
-                if (!(mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)) {
-                    // Polling will continue when radio turns back on
-                    return;
-                }
-                ar = (AsyncResult) msg.obj;
-                onSignalStrengthResult(ar);
-                queueNextSignalStrengthPoll();
-
-                break;
-
             case EVENT_GET_LOC_DONE:
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
@@ -1420,12 +1346,6 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            case EVENT_POLL_SIGNAL_STRENGTH:
-                // Just poll signal strength...not part of pollState()
-
-                mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
-                break;
-
             case EVENT_NITZ_TIME: {
                 ar = (AsyncResult) msg.obj;
 
@@ -1440,18 +1360,6 @@ public class ServiceStateTracker extends Handler {
                 setTimeFromNITZString(nitzString, nitzReceiveTimeMs, ageMs);
                 break;
             }
-
-            case EVENT_SIGNAL_STRENGTH_UPDATE:
-                // This is a notification from CommandsInterface.setOnSignalStrengthUpdate
-
-                ar = (AsyncResult) msg.obj;
-
-                // The radio is telling us about signal strength changes
-                // we don't have to ask it
-                mDontPollSignalStrength = true;
-
-                onSignalStrengthResult(ar);
-                break;
 
             case EVENT_SIM_RECORDS_LOADED:
                 log("EVENT_SIM_RECORDS_LOADED: what=" + msg.what);
@@ -2348,7 +2256,7 @@ public class ServiceStateTracker extends Handler {
                             && ServiceState.isPsOnlyTech(newDataRat))
                             || (ServiceState.isPsOnlyTech(oldDataRAT)
                             && ServiceState.isCdma(newDataRat))) {
-                        mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+                        mPhone.getSignalStrengthController().getSignalStrengthFromCi();
                     }
 
                     // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
@@ -2359,7 +2267,8 @@ public class ServiceStateTracker extends Handler {
                     mNewSS.setDataRoamingFromRegistration(isDataRoaming);
                 }
 
-                updateServiceStateArfcnRsrpBoost(mNewSS, networkRegState.getCellIdentity());
+                mPhone.getSignalStrengthController().updateServiceStateArfcnRsrpBoost(mNewSS,
+                        networkRegState.getCellIdentity());
                 break;
             }
 
@@ -3334,7 +3243,7 @@ public class ServiceStateTracker extends Handler {
         switch (mCi.getRadioState()) {
             case TelephonyManager.RADIO_POWER_UNAVAILABLE:
                 mNewSS.setStateOutOfService();
-                setSignalStrengthDefaultValues();
+                mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
                 pollStateDone();
@@ -3342,7 +3251,7 @@ public class ServiceStateTracker extends Handler {
 
             case TelephonyManager.RADIO_POWER_OFF:
                 mNewSS.setStateOff();
-                setSignalStrengthDefaultValues();
+                mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
                 // don't poll when device is shutting down or the poll was not modemTrigged
@@ -3786,13 +3695,15 @@ public class ServiceStateTracker extends Handler {
 
         if (hasRilVoiceRadioTechnologyChanged) {
             shouldLogRatChange = true;
-            notifySignalStrength();
+            // TODO(b/178429976): Remove the dependency on SSC. Double check if the SS broadcast
+            // is really needed when CS/PS RAT change.
+            mPhone.getSignalStrengthController().notifySignalStrength();
         }
 
         for (int transport : mTransportManager.getAvailableTransports()) {
             if (hasRilDataRadioTechnologyChanged.get(transport)) {
                 shouldLogRatChange = true;
-                notifySignalStrength();
+                mPhone.getSignalStrengthController().notifySignalStrength();
             }
 
             if (hasDataRegStateChanged.get(transport)
@@ -3823,7 +3734,8 @@ public class ServiceStateTracker extends Handler {
         // because the signal strength might come earlier RAT and radio state
         // changed.
         if (hasAirplaneModeOffChanged) {
-            mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+            // TODO(b/178429976): Remove the dependency on SSC. This should be done in SSC.
+            mPhone.getSignalStrengthController().getSignalStrengthFromCi();
         }
 
         if (shouldLogAttachedChange) {
@@ -4682,28 +4594,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     private void queueNextSignalStrengthPoll() {
-        if (mDontPollSignalStrength) {
-            // The radio is telling us about signal strength changes
-            // we don't have to ask it
-            return;
-        }
-
-        // if there is no SIM present, do not poll signal strength
-        UiccCard uiccCard = UiccController.getInstance().getUiccCard(getPhoneId());
-        if (uiccCard == null || uiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
-            log("Not polling signal strength due to absence of SIM");
-            return;
-        }
-
-        Message msg;
-
-        msg = obtainMessage();
-        msg.what = EVENT_POLL_SIGNAL_STRENGTH;
-
-        long nextTime;
-
-        // TODO Don't poll signal strength if screen is off
-        sendMessageDelayed(msg, POLL_PERIOD_MILLIS);
+        mPhone.getSignalStrengthController().queueNextSignalStrengthPoll();
     }
 
     private void notifyCdmaSubscriptionInfoReady() {
@@ -5045,76 +4936,6 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    /**
-     * Checks if the provided earfcn falls withing the range of earfcns.
-     *
-     * return int index in earfcnPairList if earfcn falls within the provided range; -1 otherwise.
-     */
-    private int containsEarfcnInEarfcnRange(ArrayList<Pair<Integer, Integer>> earfcnPairList,
-            int earfcn) {
-        int index = 0;
-        if (earfcnPairList != null) {
-            for (Pair<Integer, Integer> earfcnPair : earfcnPairList) {
-                if ((earfcn >= earfcnPair.first) && (earfcn <= earfcnPair.second)) {
-                    return index;
-                }
-                index++;
-            }
-        }
-
-        return -1;
-    }
-
-    /**
-     * Convert the earfcnStringArray to list of pairs.
-     *
-     * Format of the earfcnsList is expected to be {"erafcn1_start-earfcn1_end",
-     * "earfcn2_start-earfcn2_end" ... }
-     */
-    ArrayList<Pair<Integer, Integer>> convertEarfcnStringArrayToPairList(String[] earfcnsList) {
-        ArrayList<Pair<Integer, Integer>> earfcnPairList = new ArrayList<Pair<Integer, Integer>>();
-
-        if (earfcnsList != null) {
-            int earfcnStart;
-            int earfcnEnd;
-            for (int i = 0; i < earfcnsList.length; i++) {
-                try {
-                    String[] earfcns = earfcnsList[i].split("-");
-                    if (earfcns.length != 2) {
-                        if (VDBG) {
-                            log("Invalid earfcn range format");
-                        }
-                        return null;
-                    }
-
-                    earfcnStart = Integer.parseInt(earfcns[0]);
-                    earfcnEnd = Integer.parseInt(earfcns[1]);
-
-                    if (earfcnStart > earfcnEnd) {
-                        if (VDBG) {
-                            log("Invalid earfcn range format");
-                        }
-                        return null;
-                    }
-
-                    earfcnPairList.add(new Pair<Integer, Integer>(earfcnStart, earfcnEnd));
-                } catch (PatternSyntaxException pse) {
-                    if (VDBG) {
-                        log("Invalid earfcn range format");
-                    }
-                    return null;
-                } catch (NumberFormatException nfe) {
-                    if (VDBG) {
-                        log("Invalid earfcn number format");
-                    }
-                    return null;
-                }
-            }
-        }
-
-        return earfcnPairList;
-    }
-
     private void onCarrierConfigChanged() {
         PersistableBundle config = getCarrierConfig();
         log("CarrierConfigChange " + config);
@@ -5125,8 +4946,10 @@ public class ServiceStateTracker extends Handler {
             mCdnr.updateEfForEri(getOperatorNameFromEri());
         }
 
-        updateArfcnLists(config);
+        // TODO(b/178429976): Listen config change in SSC and remove logic here
+        mPhone.getSignalStrengthController().updateArfcnLists(config);
         mPhone.getSignalStrengthController().updateReportingCriteria(config);
+
         updateOperatorNamePattern(config);
         mCdnr.updateEfFromCarrierConfig(config);
         mPhone.notifyCallForwardingIndicator();
@@ -5135,93 +4958,6 @@ public class ServiceStateTracker extends Handler {
         // For some cases like roaming/non-roaming overriding, we need carrier config. So it's
         // important to poll state again when carrier config is ready.
         pollStateInternal(false);
-    }
-
-    private void updateArfcnLists(PersistableBundle config) {
-        synchronized (mRsrpBoostLock) {
-            mLteRsrpBoost = config.getInt(CarrierConfigManager.KEY_LTE_EARFCNS_RSRP_BOOST_INT, 0);
-            String[] earfcnsStringArrayForRsrpBoost = config.getStringArray(
-                    CarrierConfigManager.KEY_BOOSTED_LTE_EARFCNS_STRING_ARRAY);
-            mEarfcnPairListForRsrpBoost = convertEarfcnStringArrayToPairList(
-                    earfcnsStringArrayForRsrpBoost);
-
-            mNrRsrpBoost = config.getIntArray(
-                    CarrierConfigManager.KEY_NRARFCNS_RSRP_BOOST_INT_ARRAY);
-            String[] nrarfcnsStringArrayForRsrpBoost = config.getStringArray(
-                    CarrierConfigManager.KEY_BOOSTED_NRARFCNS_STRING_ARRAY);
-            mNrarfcnRangeListForRsrpBoost = convertEarfcnStringArrayToPairList(
-                    nrarfcnsStringArrayForRsrpBoost);
-
-            if ((mNrRsrpBoost == null && mNrarfcnRangeListForRsrpBoost != null)
-                    || (mNrRsrpBoost != null && mNrarfcnRangeListForRsrpBoost == null)
-                    || (mNrRsrpBoost != null && mNrarfcnRangeListForRsrpBoost != null
-                    && mNrRsrpBoost.length != mNrarfcnRangeListForRsrpBoost.size())) {
-                loge("Invalid parameters for NR RSRP boost");
-                mNrRsrpBoost = null;
-                mNrarfcnRangeListForRsrpBoost = null;
-            }
-        }
-    }
-
-    private void updateServiceStateArfcnRsrpBoost(ServiceState serviceState,
-            CellIdentity cellIdentity) {
-        int rsrpBoost = 0;
-        int arfcn;
-
-        synchronized (mRsrpBoostLock) {
-            switch (cellIdentity.getType()) {
-                case CellInfo.TYPE_LTE:
-                    arfcn = ((CellIdentityLte) cellIdentity).getEarfcn();
-                    if (arfcn != INVALID_ARFCN
-                            && containsEarfcnInEarfcnRange(mEarfcnPairListForRsrpBoost,
-                            arfcn) != -1) {
-                        rsrpBoost = mLteRsrpBoost;
-                    }
-                    break;
-                case CellInfo.TYPE_NR:
-                    arfcn = ((CellIdentityNr) cellIdentity).getNrarfcn();
-                    if (arfcn != INVALID_ARFCN) {
-                        int index = containsEarfcnInEarfcnRange(mNrarfcnRangeListForRsrpBoost,
-                                arfcn);
-                        if (index != -1) {
-                            rsrpBoost = mNrRsrpBoost[index];
-                        }
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-        serviceState.setArfcnRsrpBoost(rsrpBoost);
-    }
-
-    /**
-     * send signal-strength-changed notification if changed Called both for
-     * solicited and unsolicited signal strength updates
-     *
-     * @return true if the signal strength changed and a notification was sent.
-     */
-    protected boolean onSignalStrengthResult(AsyncResult ar) {
-
-        // This signal is used for both voice and data radio signal so parse
-        // all fields
-        // Under power off, let's suppress valid signal strength report, which is
-        // beneficial to avoid icon flickering.
-        if ((ar.exception == null) && (ar.result != null)
-                && mSS.getState() != ServiceState.STATE_POWER_OFF) {
-            mSignalStrength = (SignalStrength) ar.result;
-
-            PersistableBundle config = getCarrierConfig();
-            mSignalStrength.updateLevel(config, mSS);
-        } else {
-            log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
-            mSignalStrength = new SignalStrength();
-        }
-        mSignalStrengthUpdatedTime = System.currentTimeMillis();
-
-        boolean ssChanged = notifySignalStrength();
-
-        return ssChanged;
     }
 
     /**
@@ -5347,50 +5083,6 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * @return signal strength
-     */
-    public SignalStrength getSignalStrength() {
-        if (shouldRefreshSignalStrength()) {
-            log("SST.getSignalStrength() refreshing signal strength.");
-            obtainMessage(EVENT_POLL_SIGNAL_STRENGTH).sendToTarget();
-        }
-        return mSignalStrength;
-    }
-
-    private boolean shouldRefreshSignalStrength() {
-        long curTime = System.currentTimeMillis();
-
-        // If last signal strength is older than 10 seconds, or somehow if curTime is smaller
-        // than mSignalStrengthUpdatedTime (system time update), it's considered stale.
-        boolean isStale = (mSignalStrengthUpdatedTime > curTime)
-                || (curTime - mSignalStrengthUpdatedTime > SIGNAL_STRENGTH_REFRESH_THRESHOLD_IN_MS);
-        if (!isStale) return false;
-
-        List<SubscriptionInfo> subInfoList = SubscriptionController.getInstance()
-                .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName(),
-                        mPhone.getContext().getAttributionTag());
-
-        if (!ArrayUtils.isEmpty(subInfoList)) {
-            for (SubscriptionInfo info : subInfoList) {
-                // If we have an active opportunistic subscription whose data is IN_SERVICE,
-                // we need to get signal strength to decide data switching threshold. In this case,
-                // we poll latest signal strength from modem.
-                if (info.isOpportunistic()) {
-                    TelephonyManager tm = TelephonyManager.from(mPhone.getContext())
-                            .createForSubscriptionId(info.getSubscriptionId());
-                    ServiceState ss = tm.getServiceState();
-                    if (ss != null
-                            && ss.getDataRegistrationState() == ServiceState.STATE_IN_SERVICE) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Registration point for subscription info ready
      * @param h handler to notify
      * @param what what code of message when delivered
@@ -5441,25 +5133,6 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    private void dumpEarfcnPairList(PrintWriter pw, ArrayList<Pair<Integer, Integer>> pairList,
-            String name) {
-        pw.print(" " + name + "={");
-        if (pairList != null) {
-            int i = pairList.size();
-            for (Pair<Integer, Integer> earfcnPair : pairList) {
-                pw.print("(");
-                pw.print(earfcnPair.first);
-                pw.print(",");
-                pw.print(earfcnPair.second);
-                pw.print(")");
-                if ((--i) != 0) {
-                    pw.print(",");
-                }
-            }
-        }
-        pw.println("}");
-    }
-
     private void dumpCellInfoList(PrintWriter pw) {
         pw.print(" mLastCellInfoList={");
         if(mLastCellInfoList != null) {
@@ -5485,9 +5158,6 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mPollingContext=" + mPollingContext + " - " +
                 (mPollingContext != null ? mPollingContext[0] : ""));
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);
-        pw.println(" mDontPollSignalStrength=" + mDontPollSignalStrength);
-        pw.println(" mSignalStrength=" + mSignalStrength);
-        pw.println(" mLastSignalStrength=" + mLastSignalStrength);
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
@@ -5542,12 +5212,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mRadioDisabledByCarrier" + mRadioDisabledByCarrier);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
-        pw.println(" mLteRsrpBoost=" + mLteRsrpBoost);
-        pw.println(" mNrRsrpBoost=" + Arrays.toString(mNrRsrpBoost));
         pw.println(" mCellInfoMinIntervalMs=" + mCellInfoMinIntervalMs);
         pw.println(" mEriManager=" + mEriManager);
-        dumpEarfcnPairList(pw, mEarfcnPairListForRsrpBoost, "mEarfcnPairListForRsrpBoost");
-        dumpEarfcnPairList(pw, mNrarfcnRangeListForRsrpBoost, "mNrarfcnRangeListForRsrpBoost");
 
         mLocaleTracker.dump(fd, pw, args);
         IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "    ");
@@ -5743,12 +5409,6 @@ public class ServiceStateTracker extends Handler {
                 }
             }
         }
-    }
-
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private void setSignalStrengthDefaultValues() {
-        mSignalStrength = new SignalStrength();
-        mSignalStrengthUpdatedTime = System.currentTimeMillis();
     }
 
     protected String getHomeOperatorNumeric() {
