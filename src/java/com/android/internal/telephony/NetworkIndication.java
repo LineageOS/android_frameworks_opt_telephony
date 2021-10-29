@@ -29,6 +29,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STREN
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 
+import android.annotation.ElapsedRealtimeLong;
 import android.hardware.radio.network.IRadioNetworkIndication;
 import android.os.AsyncResult;
 import android.sysprop.TelephonyProperties;
@@ -237,17 +238,35 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
      * Indicates when radio has received a NITZ time message.
      * @param indicationType Type of radio indication
      * @param nitzTime NITZ time string in the form "yy/mm/dd,hh:mm:ss(+/-)tz,dt"
-     * @param receivedTime milliseconds since boot that the NITZ time was received
+     * @param receivedTimeMs time according to {@link android.os.SystemClock#elapsedRealtime()} when
+     *        the RIL sent the NITZ time to the framework
+     * @param ageMs time in milliseconds indicating how long NITZ was cached in RIL and modem.
+     *        This must track true age and therefore must be calculated using clocks that
+     *        include the time spend in sleep / low power states. If it can not be guaranteed,
+     *        there must not be any caching done at the modem and should fill in 0 for ageMs
      */
-    public void nitzTimeReceived(int indicationType, String nitzTime, long receivedTime) {
+    public void nitzTimeReceived(int indicationType, String nitzTime,
+        @ElapsedRealtimeLong long receivedTimeMs, long ageMs) {
         mRil.processIndication(indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitzTime);
 
+        // Ignore the NITZ if ageMs is not a valid time, e.g. negative or greater than
+        // receivedTimeMs.
+        if ((ageMs < 0) || (ageMs >= receivedTimeMs)) {
+            AnomalyReporter.reportAnomaly(UUID.fromString("fc7c56d4-485d-475a-aaff-394203c6cdfc"),
+                    "NITZ indication with invalid age");
+
+            mRil.riljLoge("age time is invalid, ignoring nitzTimeReceived indication. "
+                + "receivedTimeMs = " + receivedTimeMs + ", ageMs = " + ageMs);
+            return;
+        }
+
         // TODO: Clean this up with a parcelable class for better self-documentation
-        Object[] result = new Object[2];
+        Object[] result = new Object[3];
         result[0] = nitzTime;
-        result[1] = receivedTime;
+        result[1] = receivedTimeMs;
+        result[2] = ageMs;
 
         boolean ignoreNitz = TelephonyProperties.ignore_nitz().orElse(false);
 

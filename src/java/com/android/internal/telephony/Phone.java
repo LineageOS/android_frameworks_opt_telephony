@@ -235,8 +235,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_BARRING_INFO_CHANGED = 58;
     protected static final int EVENT_LINK_CAPACITY_CHANGED = 59;
     protected static final int EVENT_RESET_CARRIER_KEY_IMSI_ENCRYPTION = 60;
+    protected static final int EVENT_SET_VONR_ENABLED_DONE = 61;
 
-    protected static final int EVENT_LAST = EVENT_RESET_CARRIER_KEY_IMSI_ENCRYPTION;
+    protected static final int EVENT_LAST = EVENT_SET_VONR_ENABLED_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -2209,11 +2210,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return Current signal strength as SignalStrength
      */
     public SignalStrength getSignalStrength() {
-        ServiceStateTracker sst = getServiceStateTracker();
-        if (sst == null) {
+        SignalStrengthController ssc = getSignalStrengthController();
+        if (ssc == null) {
             return new SignalStrength();
         } else {
-            return sst.getSignalStrength();
+            return ssc.getSignalStrength();
         }
     }
 
