@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.annotation.DurationMillisLong;
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
+import android.os.TimestampedValue;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -76,6 +77,28 @@ public final class NitzSignal {
         return mAgeMillis;
     }
 
+    /**
+     * Returns a derived property of {@code receiptElapsedMillis - ageMillis}, i.e. the time
+     * according to the elapsed realtime clock when the NITZ signal was actually received by this
+     * device taking into time it was cached by layers before the RIL.
+     */
+    @ElapsedRealtimeLong
+    public long getAgeAdjustedElapsedRealtimeMillis() {
+        return mReceiptElapsedMillis - mAgeMillis;
+    }
+
+    /**
+     * Creates a {@link android.os.TimestampedValue} containing the UTC time as the number of
+     * milliseconds since the start of the Unix epoch. The reference time is the time according to
+     * the elapsed realtime clock when that would have been the time, accounting for receipt time
+     * and age.
+     */
+    public TimestampedValue<Long> createTimeSignal() {
+        return new TimestampedValue<>(
+                getAgeAdjustedElapsedRealtimeMillis(),
+                getNitzData().getCurrentTimeInMillis());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -85,7 +108,8 @@ public final class NitzSignal {
             return false;
         }
         NitzSignal that = (NitzSignal) o;
-        return mReceiptElapsedMillis == that.mReceiptElapsedMillis && mAgeMillis == that.mAgeMillis
+        return mReceiptElapsedMillis == that.mReceiptElapsedMillis
+                && mAgeMillis == that.mAgeMillis
                 && mNitzData.equals(that.mNitzData);
     }
 
