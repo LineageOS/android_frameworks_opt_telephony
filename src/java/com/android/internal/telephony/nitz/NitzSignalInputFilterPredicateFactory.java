@@ -132,7 +132,7 @@ public final class NitzSignalInputFilterPredicateFactory {
                 // Acquire the wake lock as we are reading the elapsed realtime clock below.
                 wakeLock.acquire();
 
-                long elapsedRealtime = deviceState.elapsedRealtime();
+                long elapsedRealtime = deviceState.elapsedRealtimeMillis();
                 long millisSinceNitzReceived =
                         elapsedRealtime - newSignal.getReceiptElapsedRealtimeMillis();
                 if (millisSinceNitzReceived < 0 || millisSinceNitzReceived > Integer.MAX_VALUE) {
@@ -196,26 +196,36 @@ public final class NitzSignalInputFilterPredicateFactory {
                     return true;
                 }
 
-                // Now check the continuous NitzData field (time) to see if it is sufficiently
-                // different.
-                int nitzUpdateSpacing = deviceState.getNitzUpdateSpacingMillis();
-                int nitzUpdateDiff = deviceState.getNitzUpdateDiffMillis();
+                // Check the time-related NitzData fields to see if they are sufficiently different.
 
-                // Calculate the elapsed time between the new signal and the last signal.
+                // See if the NITZ signals have been received sufficiently far apart. If yes, we
+                // want to process the new one.
+                int nitzUpdateSpacing = deviceState.getNitzUpdateSpacingMillis();
                 long elapsedRealtimeSinceLastSaved = newSignal.getReceiptElapsedRealtimeMillis()
                         - previousSignal.getReceiptElapsedRealtimeMillis();
+                if (elapsedRealtimeSinceLastSaved > nitzUpdateSpacing) {
+                    return true;
+                }
 
-                // Calculate the UTC difference between the time the two signals hold.
+                // See if the NITZ signals have sufficiently different encoded UTC times. If yes,
+                // then we want to process the new one.
+                int nitzUpdateDiff = deviceState.getNitzUpdateDiffMillis();
+
+                // Calculate the UTC difference between the time the two signals hold, accounting
+                // for any difference in receipt time and age.
                 long utcTimeDifferenceMillis = newNitzData.getCurrentTimeInMillis()
                         - previousNitzData.getCurrentTimeInMillis();
+                long ageAdjustedElapsedRealtimeDifferenceMillis =
+                        newSignal.getAgeAdjustedElapsedRealtimeMillis()
+                                - previousSignal.getAgeAdjustedElapsedRealtimeMillis();
 
-                // Ideally the difference between elapsedRealtimeSinceLastSaved and
-                // utcTimeDifferenceMillis would be zero.
-                long millisGainedOrLost = Math
-                        .abs(utcTimeDifferenceMillis - elapsedRealtimeSinceLastSaved);
-
-                if (elapsedRealtimeSinceLastSaved > nitzUpdateSpacing
-                        || millisGainedOrLost > nitzUpdateDiff) {
+                // In ideal conditions, the difference between
+                // ageAdjustedElapsedRealtimeSinceLastSaved and utcTimeDifferenceMillis will be zero
+                // if two NITZ signals are consistent and if the elapsed realtime clock is ticking
+                // at the correct rate.
+                long millisGainedOrLost = Math.abs(
+                        utcTimeDifferenceMillis - ageAdjustedElapsedRealtimeDifferenceMillis);
+                if (millisGainedOrLost > nitzUpdateDiff) {
                     return true;
                 }
 

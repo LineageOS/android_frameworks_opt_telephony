@@ -19,8 +19,10 @@ package com.android.internal.telephony.nitz;
 import static com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.createBogusElapsedRealtimeCheck;
 import static com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.createIgnoreNitzPropertyCheck;
 import static com.android.internal.telephony.nitz.NitzSignalInputFilterPredicateFactory.createRateLimitCheck;
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_AGE;
 import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -56,7 +58,8 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_nullSecondArgumentRejected() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         TrivalentPredicate[] triPredicates = {};
         NitzSignalInputFilterPredicateImpl impl =
                 new NitzSignalInputFilterPredicateImpl(triPredicates);
@@ -70,7 +73,8 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_defaultIsTrue() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         NitzSignalInputFilterPredicateImpl impl =
                 new NitzSignalInputFilterPredicateImpl(new TrivalentPredicate[0]);
         assertTrue(impl.mustProcessNitzSignal(null, nitzSignal));
@@ -79,7 +83,8 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_nullIsIgnored() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         TrivalentPredicate nullPredicate = (x, y) -> null;
         TrivalentPredicate[] triPredicates = { nullPredicate };
         NitzSignalInputFilterPredicateImpl impl =
@@ -90,7 +95,8 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_trueIsHonored() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         TrivalentPredicate nullPredicate = (x, y) -> null;
         TrivalentPredicate truePredicate = (x, y) -> true;
         TrivalentPredicate exceptionPredicate = (x, y) -> {
@@ -109,7 +115,8 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testNitzSignalInputFilterPredicateImpl_falseIsHonored() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         TrivalentPredicate nullPredicate = (x, y) -> null;
         TrivalentPredicate falsePredicate = (x, y) -> false;
         TrivalentPredicate exceptionPredicate = (x, y) -> {
@@ -139,23 +146,42 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     @Test
     public void testTrivalentPredicate_bogusElapsedRealtimeCheck() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        long elapsedRealtimeClock = mFakeDeviceState.elapsedRealtime();
-        NitzSignal nitzSignal = scenario.createNitzSignal(elapsedRealtimeClock);
+        long elapsedRealtimeMillis = mFakeDeviceState.elapsedRealtimeMillis();
+        NitzSignal baseNitzSignal =
+                scenario.createNitzSignal(elapsedRealtimeMillis, ARBITRARY_AGE);
 
         TrivalentPredicate triPredicate =
                 createBogusElapsedRealtimeCheck(mContext, mFakeDeviceState);
-        assertNull(triPredicate.mustProcessNitzSignal(null, nitzSignal));
+        assertNull(triPredicate.mustProcessNitzSignal(null, baseNitzSignal));
 
         // Any signal that claims to be from the future must be rejected.
-        NitzSignal bogusNitzSignal =
-                new NitzSignal(elapsedRealtimeClock + 1, nitzSignal.getNitzData(), 0);
-        assertFalse(triPredicate.mustProcessNitzSignal(null, bogusNitzSignal));
+        {
+            long receiptElapsedMillis = elapsedRealtimeMillis + 1;
+            long ageMillis = 0;
+            NitzSignal bogusNitzSignal = new NitzSignal(
+                    receiptElapsedMillis, baseNitzSignal.getNitzData(), ageMillis);
+            assertFalse(triPredicate.mustProcessNitzSignal(null, bogusNitzSignal));
+        }
+
+        // Age should be ignored: the predicate is intended to check receipt time isn't obviously
+        // corrupt / fabricated to be in the future. Larger ages could imply that the NITZ was
+        // received by the modem before the elapsed realtime clock started ticking, but we don't
+        // currently check for that.
+        {
+            long receiptElapsedMillis = elapsedRealtimeMillis + 1;
+            long ageMillis = 10000;
+            NitzSignal bogusNitzSignal = new NitzSignal(
+                    receiptElapsedMillis, baseNitzSignal.getNitzData(), ageMillis);
+
+            assertFalse(triPredicate.mustProcessNitzSignal(null, bogusNitzSignal));
+        }
     }
 
     @Test
     public void testTrivalentPredicate_noOldSignalCheck() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
 
         TrivalentPredicate triPredicate =
                 NitzSignalInputFilterPredicateFactory.createNoOldSignalCheck();
@@ -164,33 +190,108 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     }
 
     @Test
-    public void testTrivalentPredicate_rateLimitCheck_elapsedRealtime() {
+    public void testTrivalentPredicate_rateLimitCheck_elapsedRealtime_zeroAge() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
         int nitzSpacingThreshold = mFakeDeviceState.getNitzUpdateSpacingMillis();
-        NitzData baseNitzData = scenario.createNitzData();
+        // Change the other setting that can affect the predicate behavior so it is not a factor in
+        // the test.
+        mFakeDeviceState.setNitzUpdateDiffMillis(Integer.MAX_VALUE);
 
         TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
 
-        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtime();
-        NitzSignal baseSignal = new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, 0);
+        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtimeMillis();
+        NitzData baseNitzData = scenario.createNitzData();
+        int baseAgeMillis = 0;
+        NitzSignal baseNitzSignal =
+                new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, baseAgeMillis);
 
         // Two identical signals: no spacing so the new signal should not be processed.
-        {
-            assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, baseSignal));
-        }
+        assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, baseNitzSignal));
 
-        // Two signals not spaced apart enough: the new signal should not processed.
+        // Two signals not spaced apart enough in receipt time: the new signal should not be
+        // processed.
         {
-            int elapsedTimeIncrement = nitzSpacingThreshold - 1;
-            NitzSignal newSignal = createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
-            assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, newSignal));
+            int timeAdjustment = nitzSpacingThreshold - 1;
+            int utcAdjustment = 0;
+            long ageAdjustment = 0;
+            NitzSignal newSignal = createAdjustedNitzSignal(
+                    baseNitzSignal, timeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, newSignal));
         }
 
         // Two signals spaced apart: the new signal should be processed.
         {
-            int elapsedTimeIncrement = nitzSpacingThreshold + 1;
-            NitzSignal newSignal = createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
-            assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, newSignal));
+            int timeAdjustment = nitzSpacingThreshold + 1;
+            int utcAdjustment = 0;
+            long ageAdjustment = 0;
+            NitzSignal newSignal = createAdjustedNitzSignal(
+                    baseNitzSignal, timeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, newSignal));
+        }
+    }
+
+    @Test
+    public void testTrivalentPredicate_rateLimitCheck_elapsedRealtime_withAge() {
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        int nitzSpacingThreshold = 60000;
+        mFakeDeviceState.setNitzUpdateSpacingMillis(nitzSpacingThreshold);
+
+        // Change the other setting that can affect the predicate behavior so it is not a factor in
+        // the test.
+        mFakeDeviceState.setNitzUpdateDiffMillis(Integer.MAX_VALUE);
+
+        TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
+
+        // Create a NITZ signal to be the first of two NITZ signals received.
+        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtimeMillis();
+        NitzData baseNitzData = scenario.createNitzData();
+        int baseAgeMillis = 20000;
+        NitzSignal baseNitzSignal =
+                new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, baseAgeMillis);
+
+        // Two identical signals: no spacing so the new signal should not be processed.
+        assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, baseNitzSignal));
+
+        // Two signals not spaced apart enough: the new signal should not be processed.
+        // The age is changed to prove it doesn't affect this check.
+        {
+            int elapsedRealtimeAdjustment = nitzSpacingThreshold - 1;
+            int utcAdjustment = 0;
+            long ageAdjustment = 10000;
+            NitzSignal newSignal = createAdjustedNitzSignal(
+                    baseNitzSignal, elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, newSignal));
+        }
+
+        // Two signals not spaced apart enough: the new signal should not be processed.
+        // The age is changed to prove it doesn't affect this check.
+        {
+            int elapsedRealtimeAdjustment = nitzSpacingThreshold - 1;
+            int utcAdjustment = 0;
+            long ageAdjustment = -10000;
+            NitzSignal newSignal = createAdjustedNitzSignal(
+                    baseNitzSignal, elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, newSignal));
+        }
+
+        // Two signals spaced far enough apart: the new signal should be processed.
+        {
+            int elapsedRealtimeAdjustment = nitzSpacingThreshold + 1;
+            int utcAdjustment = 0;
+            long ageAdjustment = 10000;
+            NitzSignal newSignal = createAdjustedNitzSignal(
+                    baseNitzSignal, elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, newSignal));
+        }
+
+        // Two signals spaced far enough apart: the new signal should be processed.
+        {
+            int elapsedRealtimeAdjustment = nitzSpacingThreshold + 1;
+            int utcAdjustment = 0;
+            long ageAdjustment = -10000;
+            NitzSignal newSignal = createAdjustedNitzSignal(
+                    baseNitzSignal, elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, newSignal));
         }
     }
 
@@ -198,19 +299,23 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
     public void testTrivalentPredicate_rateLimitCheck_offsetDifference() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
         int nitzSpacingThreshold = mFakeDeviceState.getNitzUpdateSpacingMillis();
-        NitzData baseNitzData = scenario.createNitzData();
 
         TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
 
-        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtime();
-        NitzSignal baseSignal = new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, 0);
+        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtimeMillis();
+        NitzData baseNitzData = scenario.createNitzData();
+        long baseAgeMillis = 0;
+        NitzSignal baseNitzSignal = new NitzSignal(
+                baseElapsedRealtimeMillis, baseNitzData, baseAgeMillis);
 
-        // Create a new NitzSignal that should be filtered.
-        int elapsedTimeIncrement = nitzSpacingThreshold - 1;
-        NitzSignal intermediateNitzSignal =
-                createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
+        // Create a new NitzSignal that would normally be filtered.
+        int timeAdjustment = nitzSpacingThreshold - 1;
+        long ageAdjustment = 0;
+        NitzSignal intermediateNitzSignal = createAdjustedNitzSignal(
+                baseNitzSignal, timeAdjustment, timeAdjustment, ageAdjustment);
         NitzData intermediateNitzData = intermediateNitzSignal.getNitzData();
-        assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, intermediateNitzSignal));
+        assertAgeAdjustedUtcTimeIsIdentical(baseNitzSignal, intermediateNitzSignal);
+        assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, intermediateNitzSignal));
 
         // Two signals spaced apart so that the second would be filtered, but they contain different
         // offset information so should be detected as "different" and processed.
@@ -222,105 +327,180 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
                     intermediateNitzData.getCurrentTimeInMillis(),
                     intermediateNitzData.getEmulatorHostTimeZone());
             NitzSignal differentOffsetSignal = new NitzSignal(
-                    baseSignal.getReceiptElapsedRealtimeMillis() + elapsedTimeIncrement,
-                    differentOffsetNitzData, 0);
-            assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, differentOffsetSignal));
+                    baseNitzSignal.getReceiptElapsedRealtimeMillis() + timeAdjustment,
+                    differentOffsetNitzData,
+                    baseNitzSignal.getAgeMillis());
+            assertAgeAdjustedUtcTimeIsIdentical(baseNitzSignal, differentOffsetSignal);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, differentOffsetSignal));
         }
     }
 
     @Test
-    public void testTrivalentPredicate_rateLimitCheck_utcTimeDifferences() {
+    public void testTrivalentPredicate_rateLimitCheck_utcTimeDifferences_withZeroAge() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        int nitzSpacingThreshold = mFakeDeviceState.getNitzUpdateSpacingMillis();
+        // Change the other setting that can affect the predicate behavior so it is not a factor in
+        // the test.
+        mFakeDeviceState.setNitzUpdateSpacingMillis(Integer.MAX_VALUE);
         int nitzUtcDiffThreshold = mFakeDeviceState.getNitzUpdateDiffMillis();
-        NitzData baseNitzData = scenario.createNitzData();
 
         TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
 
-        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtime();
-        NitzSignal baseSignal = new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, 0);
+        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtimeMillis();
+        NitzData baseNitzData = scenario.createNitzData();
+        int baseAgeMillis = 0;
+        NitzSignal baseNitzSignal =
+                new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, baseAgeMillis);
 
-        // Create a new NitzSignal that should be filtered.
-        int elapsedTimeIncrement = nitzSpacingThreshold - 1;
-        NitzSignal intermediateSignal =
-                createIncrementedNitzSignal(baseSignal, elapsedTimeIncrement);
-        NitzData intermediateNitzData = intermediateSignal.getNitzData();
-        assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, intermediateSignal));
-
-        // Two signals spaced apart so that the second would normally be filtered and it contains
-        // a UTC time that is not sufficiently different.
+        // Two signals spaced contain UTC times that are not sufficiently different and so should be
+        // filtered.
         {
-            NitzData incrementedUtcTimeNitzData = NitzData.createForTests(
-                    intermediateNitzData.getLocalOffsetMillis(),
-                    intermediateNitzData.getDstAdjustmentMillis(),
-                    intermediateNitzData.getCurrentTimeInMillis() + nitzUtcDiffThreshold - 1,
-                    intermediateNitzData.getEmulatorHostTimeZone());
-
-            NitzSignal incrementedNitzSignal = new NitzSignal(
-                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
-                    incrementedUtcTimeNitzData, 0);
-            assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, incrementedNitzSignal));
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = nitzUtcDiffThreshold - 1;
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(baseNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
         }
 
-        // Two signals spaced apart so that the second would normally be filtered but it contains
-        // a UTC time that is sufficiently different.
+        // Two signals spaced contain UTC times that are not sufficiently different and so should be
+        // filtered.
         {
-            NitzData incrementedUtcTimeNitzData = NitzData.createForTests(
-                    intermediateNitzData.getLocalOffsetMillis(),
-                    intermediateNitzData.getDstAdjustmentMillis(),
-                    intermediateNitzData.getCurrentTimeInMillis() + nitzUtcDiffThreshold + 1,
-                    intermediateNitzData.getEmulatorHostTimeZone());
-
-            NitzSignal incrementedNitzSignal = new NitzSignal(
-                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
-                    incrementedUtcTimeNitzData, 0);
-            assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, incrementedNitzSignal));
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = -(nitzUtcDiffThreshold - 1);
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(baseNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
         }
 
-        // Two signals spaced apart so that the second would normally be filtered and it contains
-        // a UTC time that is not sufficiently different.
+        // Two signals spaced contain UTC times that are sufficiently different and so should not be
+        // filtered.
         {
-            NitzData decrementedUtcTimeNitzData = NitzData.createForTests(
-                    intermediateNitzData.getLocalOffsetMillis(),
-                    intermediateNitzData.getDstAdjustmentMillis(),
-                    intermediateNitzData.getCurrentTimeInMillis() - nitzUtcDiffThreshold + 1,
-                    intermediateNitzData.getEmulatorHostTimeZone());
-
-            NitzSignal decrementedNitzSignal = new NitzSignal(
-                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
-                    decrementedUtcTimeNitzData, 0);
-            assertFalse(triPredicate.mustProcessNitzSignal(baseSignal, decrementedNitzSignal));
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = nitzUtcDiffThreshold + 1;
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(baseNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
         }
 
-        // Two signals spaced apart so that the second would normally be filtered but it contains
-        // a UTC time that is sufficiently different.
+        // Two signals spaced contain UTC times that are sufficiently different and so should not be
+        // filtered.
         {
-            NitzData decrementedUtcTimeNitzData = NitzData.createForTests(
-                    intermediateNitzData.getLocalOffsetMillis(),
-                    intermediateNitzData.getDstAdjustmentMillis(),
-                    intermediateNitzData.getCurrentTimeInMillis() + nitzUtcDiffThreshold + 1,
-                    intermediateNitzData.getEmulatorHostTimeZone());
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = -(nitzUtcDiffThreshold + 1);
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(baseNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
+        }
+    }
 
-            NitzSignal decrementedNitzSignal = new NitzSignal(
-                    intermediateSignal.getReceiptElapsedRealtimeMillis(),
-                    decrementedUtcTimeNitzData, 0);
-            assertTrue(triPredicate.mustProcessNitzSignal(baseSignal, decrementedNitzSignal));
+    @Test
+    public void testTrivalentPredicate_rateLimitCheck_utcTimeDifferences_withAge() {
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
+        // Change the other setting that can affect the predicate behavior so it is not a factor in
+        // the test.
+        mFakeDeviceState.setNitzUpdateSpacingMillis(Integer.MAX_VALUE);
+        int nitzUtcDiffThreshold = mFakeDeviceState.getNitzUpdateDiffMillis();
+
+        TrivalentPredicate triPredicate = createRateLimitCheck(mFakeDeviceState);
+
+        long baseElapsedRealtimeMillis = mFakeDeviceState.elapsedRealtimeMillis();
+        NitzData baseNitzData = scenario.createNitzData();
+        int baseAgeMillis = 20000;
+        NitzSignal baseNitzSignal =
+                new NitzSignal(baseElapsedRealtimeMillis, baseNitzData, baseAgeMillis);
+
+        // This is another NitzSignal that represents the same time as baseNitzSignal, but it has
+        // been cached by the modem for a different amount of time, so has different values even
+        // though it encodes for the same UTC time. Used to construct test signals below.
+        int intermediateSignalAgeAdjustment = -10000;
+        int intermediateUtcAdjustment = 0;
+        NitzSignal intermediateNitzSignal = createAdjustedNitzSignal(baseNitzSignal,
+                intermediateSignalAgeAdjustment, intermediateUtcAdjustment,
+                intermediateSignalAgeAdjustment);
+        assertAgeAdjustedUtcTimeIsIdentical(baseNitzSignal, intermediateNitzSignal);
+
+        // Two signals spaced contain UTC times that are not sufficiently different and so should be
+        // filtered.
+        {
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = nitzUtcDiffThreshold - 1;
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(intermediateNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
+        }
+
+        // Two signals spaced contain UTC times that are not sufficiently different and so should be
+        // filtered.
+        {
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = -(nitzUtcDiffThreshold - 1);
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(intermediateNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertFalse(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
+        }
+
+        // Two signals spaced contain UTC times that are sufficiently different and so should not be
+        // filtered.
+        {
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = nitzUtcDiffThreshold + 1;
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(intermediateNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
+        }
+
+        // Two signals spaced contain UTC times that are sufficiently different and so should not be
+        // filtered.
+        {
+            int elapsedRealtimeAdjustment = 0;
+            int utcAdjustment = -(nitzUtcDiffThreshold + 1);
+            long ageAdjustment = 0;
+            NitzSignal nitzSignal = createAdjustedNitzSignal(intermediateNitzSignal,
+                    elapsedRealtimeAdjustment, utcAdjustment, ageAdjustment);
+            assertTrue(triPredicate.mustProcessNitzSignal(baseNitzSignal, nitzSignal));
         }
     }
 
     /**
-     * Creates an NITZ signal based on the the supplied signal but with all the fields related to
-     * elapsed time incremented by the specified number of milliseconds.
+     * Creates an NITZ signal based on the supplied signal but with all the fields associated with
+     * the time (receipt time, UTC and age) adjusted by the specified amounts.
      */
-    private static NitzSignal createIncrementedNitzSignal(
-            NitzSignal baseSignal, int incrementMillis) {
-        NitzData baseData = baseSignal.getNitzData();
-        return new NitzSignal(baseSignal.getReceiptElapsedRealtimeMillis() + incrementMillis,
-                NitzData.createForTests(
-                        baseData.getLocalOffsetMillis(),
-                        baseData.getDstAdjustmentMillis(),
-                        baseData.getCurrentTimeInMillis() + incrementMillis,
-                        baseData.getEmulatorHostTimeZone()),
-                baseSignal.getAgeMillis());
+    private static NitzSignal createAdjustedNitzSignal(
+            NitzSignal baseNitzSignal, int elapsedRealtimeMillisAdjustment, int utcMillisAdjustment,
+            long ageMillisAdjustment) {
+        long adjustedReceiptElapsedMillis =
+                baseNitzSignal.getReceiptElapsedRealtimeMillis() + elapsedRealtimeMillisAdjustment;
+        NitzData adjustedNitzData =
+                createAdjustedNitzData(baseNitzSignal.getNitzData(), utcMillisAdjustment);
+        long adjustedAgeMillis = baseNitzSignal.getAgeMillis() + ageMillisAdjustment;
+        return new NitzSignal(adjustedReceiptElapsedMillis, adjustedNitzData, adjustedAgeMillis);
+    }
+
+    /** Creates a new NitzData by adjusting the UTC time in the supplied NitzData */
+    private static NitzData createAdjustedNitzData(NitzData baseData, int utcMillisAdjustment) {
+        return NitzData.createForTests(
+                baseData.getLocalOffsetMillis(),
+                baseData.getDstAdjustmentMillis(),
+                baseData.getCurrentTimeInMillis() + utcMillisAdjustment,
+                baseData.getEmulatorHostTimeZone());
+    }
+
+    /**
+     * Used during tests to confirm that two NitzSignal test objects represent the same UTC time,
+     * even though their receipt times and ages may differ.
+     */
+    private static void assertAgeAdjustedUtcTimeIsIdentical(
+            NitzSignal signal1, NitzSignal signal2) {
+        long referenceTimeDifference = signal2.getAgeAdjustedElapsedRealtimeMillis()
+                - signal1.getAgeAdjustedElapsedRealtimeMillis();
+        long utcTimeDifference = signal2.getNitzData().getCurrentTimeInMillis()
+                - signal1.getNitzData().getCurrentTimeInMillis();
+        assertEquals(referenceTimeDifference, utcTimeDifference);
     }
 }
