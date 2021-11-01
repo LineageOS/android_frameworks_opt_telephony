@@ -98,6 +98,7 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_INITIALIZE = 12;
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED = 13;
     private static final int EVENT_PCO_DATA_CHANGED = 14;
+    private static final int EVENT_BANDWIDTH_CHANGED = 15;
 
     private static final String[] sEvents = new String[EVENT_PCO_DATA_CHANGED + 1];
     static {
@@ -142,6 +143,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsSecondaryTimerActive;
     private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
     private int mLtePlusThresholdBandwidth;
+    private int mNrAdvancedThresholdBandwidth;
     private int[] mAdditionalNrAdvancedBandsList;
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
@@ -151,6 +153,7 @@ public class NetworkTypeController extends StateMachine {
     private Boolean mIsNrAdvancedAllowedByPco = false;
     private int mNrAdvancedCapablePcoId = 0;
     private boolean mIsUsingUserDataForRrcDetection = false;
+    private boolean mEnableNrAdvancedWhileRoaming = true;
 
     /**
      * NetworkTypeController constructor.
@@ -200,6 +203,8 @@ public class NetworkTypeController extends StateMachine {
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
                 EVENT_DATA_RAT_CHANGED, null);
+        mPhone.getServiceStateTracker().registerForBandwidthChanged(
+                getHandler(), EVENT_BANDWIDTH_CHANGED, null);
         mIsPhysicalChannelConfig16Supported = mPhone.getContext().getSystemService(
                 TelephonyManager.class).isRadioInterfaceCapabilitySupported(
                 TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
@@ -246,6 +251,10 @@ public class NetworkTypeController extends StateMachine {
                         CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
         mLtePlusThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
+                CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mEnableNrAdvancedWhileRoaming = CarrierConfigManager.getDefaultConfig().getBoolean(
+                CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
 
         CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
                 .getSystemService(Context.CARRIER_CONFIG_SERVICE);
@@ -276,10 +285,15 @@ public class NetworkTypeController extends StateMachine {
                 mLtePlusThresholdBandwidth = b.getInt(
                         CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT,
                         mLtePlusThresholdBandwidth);
+                mNrAdvancedThresholdBandwidth = b.getInt(
+                        CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT,
+                        mNrAdvancedThresholdBandwidth);
                 mAdditionalNrAdvancedBandsList = b.getIntArray(
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+                mEnableNrAdvancedWhileRoaming = b.getBoolean(
+                        CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
                 mIsUsingUserDataForRrcDetection = b.getBoolean(
                         CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
                 if (mIsPhysicalChannelConfig16Supported && mIsUsingUserDataForRrcDetection) {
@@ -508,6 +522,7 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_NR_STATE_CHANGED:
                 case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_PCO_DATA_CHANGED:
+                case EVENT_BANDWIDTH_CHANGED:
                     // ignored
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
@@ -877,6 +892,9 @@ public class NetworkTypeController extends StateMachine {
                         sendMessage(EVENT_NR_STATE_CHANGED);
                     }
                     break;
+                case EVENT_BANDWIDTH_CHANGED:
+                    updateNrAdvancedState();
+                    break;
                 default:
                     return NOT_HANDLED;
             }
@@ -1133,8 +1151,32 @@ public class NetworkTypeController extends StateMachine {
                 == NetworkRegistrationInfo.NR_STATE_RESTRICTED;
     }
 
+    /**
+     * @return {@code true} if the device is in NR advanced mode (i.e. 5G+).
+     */
     private boolean isNrAdvanced() {
-        return isNrAdvancedCapable() && (isNrMmwave() || isAdditionalNrAdvancedBand());
+        // Check PCO requirement. For carriers using PCO to indicate whether the data connection is
+        // NR advanced capable, mNrAdvancedCapablePcoId should be configured to non-zero.
+        if (mNrAdvancedCapablePcoId > 0 && !mIsNrAdvancedAllowedByPco) {
+            return false;
+        }
+
+        // Check if NR advanced is enabled when the device is roaming. Some carriers disable it
+        // while the device is roaming.
+        if (mPhone.getServiceState().getDataRoaming() && !mEnableNrAdvancedWhileRoaming) {
+            return false;
+        }
+
+        // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
+        // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
+        if (IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
+                < mNrAdvancedThresholdBandwidth) {
+            return false;
+        }
+
+        // If all above tests passed, then check if the device is using millimeter wave bands or
+        // carrier designated bands.
+        return isNrMmwave() || isAdditionalNrAdvancedBand();
     }
 
     private boolean isNrMmwave() {
@@ -1156,13 +1198,6 @@ public class NetworkTypeController extends StateMachine {
             }
         }
         return false;
-    }
-
-    private boolean isNrAdvancedCapable() {
-        if (mNrAdvancedCapablePcoId > 0) {
-            return mIsNrAdvancedAllowedByPco;
-        }
-        return true;
     }
 
     private boolean isLte(int rat) {
