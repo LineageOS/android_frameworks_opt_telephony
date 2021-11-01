@@ -19,6 +19,7 @@ package com.android.internal.telephony.nitz;
 import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.MATCH_TYPE_TEST_NETWORK_OFFSET_ONLY;
 import static android.app.timezonedetector.TelephonyTimeZoneSuggestion.QUALITY_MULTIPLE_ZONES_WITH_SAME_OFFSET;
 
+import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_AGE;
 import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.ARBITRARY_SYSTEM_CLOCK_TIME;
 import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNIQUE_US_ZONE_SCENARIO1;
 import static com.android.internal.telephony.nitz.NitzStateMachineTestSupport.UNITED_KINGDOM_SCENARIO;
@@ -104,7 +105,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     public void test_countryThenNitz() throws Exception {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
         String networkCountryIsoCode = scenario.getNetworkCountryIsoCode();
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
 
         // Capture expected results from the real suggester and confirm we can tell the difference
         // between them.
@@ -144,7 +146,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     @Test
     public void test_nitzThenCountry() throws Exception {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
 
         String networkCountryIsoCode = scenario.getNetworkCountryIsoCode();
 
@@ -185,7 +188,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     @Test
     public void test_emptyCountryString_countryReceivedFirst() throws Exception {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
 
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
@@ -226,7 +230,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     @Test
     public void test_emptyCountryStringUsTime_nitzReceivedFirst() throws Exception {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
 
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
@@ -277,7 +282,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Pre-flight: Simulate a device receiving signals that allow it to detect time and time
         // zone.
         NitzSignal preFlightNitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         TelephonyTimeSuggestion expectedPreFlightTimeSuggestion =
                 createTimeSuggestionFromNitzSignal(SLOT_INDEX, preFlightNitzSignal);
         String preFlightCountryIsoCode = scenario.getNetworkCountryIsoCode();
@@ -343,7 +348,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Simulate the device receiving NITZ signal and country again after the flight. Now the
         // NitzStateMachine should be opinionated again.
         NitzSignal postFlightNitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         String postFlightCountryCode = scenario.getNetworkCountryIsoCode();
         script.countryReceived(postFlightCountryCode)
                 .nitzReceived(postFlightNitzSignal);
@@ -376,7 +381,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
         // Simulate a device receiving signals that allow it to detect time and time zone.
         NitzSignal initialNitzSignal =
-                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         TelephonyTimeSuggestion expectedInitialTimeSuggestion =
                 createTimeSuggestionFromNitzSignal(SLOT_INDEX, initialNitzSignal);
 
@@ -428,7 +433,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
 
         // Simulate the device receiving NITZ signal again. Now the NitzStateMachine should be
         // opinionated again.
-        NitzSignal finalNitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal finalNitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
         script.nitzReceived(finalNitzSignal);
 
         // Verify the state machine did the right thing.
@@ -447,7 +453,8 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     @Test
     public void test_countryUnavailableClearsTimeZoneSuggestion() throws Exception {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
-        NitzSignal nitzSignal = scenario.createNitzSignal(mFakeDeviceState.elapsedRealtime());
+        NitzSignal nitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
 
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
