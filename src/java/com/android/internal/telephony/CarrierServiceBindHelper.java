@@ -71,9 +71,6 @@ public class CarrierServiceBindHelper {
     private final PackageChangeReceiver mPackageMonitor = new CarrierServicePackageMonitor();
     private final LocalLog mLocalLog = new LocalLog(100);
 
-    // whether we have successfully bound to the service
-    private boolean mServiceBound = false;
-
     private BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -291,7 +288,6 @@ public class CarrierServiceBindHelper {
                         (r) -> mHandler.post(r),
                         connection)) {
                     logdWithLocalLog("service bound");
-                    mServiceBound = true;
                     return;
                 }
 
@@ -346,16 +342,13 @@ public class CarrierServiceBindHelper {
             carrierPackage = null;
             carrierServiceClass = null;
 
-            // Actually unbind
-            if (mServiceBound) {
-                logdWithLocalLog("Unbinding from carrier app");
-                mServiceBound = false;
+            // Always call unbindService, no matter if bindService succeed.
+            if (connection != null) {
                 mContext.unbindService(connection);
-            } else {
-                logdWithLocalLog("Not bound, skipping unbindService call");
+                logdWithLocalLog("Unbinding from carrier app");
+                connection = null;
+                mUnbindScheduledUptimeMillis = -1;
             }
-            connection = null;
-            mUnbindScheduledUptimeMillis = -1;
         }
 
         private void cancelScheduledUnbind() {
