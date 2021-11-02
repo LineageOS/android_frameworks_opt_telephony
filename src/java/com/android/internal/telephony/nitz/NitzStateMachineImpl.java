@@ -319,9 +319,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 builder.addDebugInfo("Clearing time suggestion"
                         + " reason=" + reason);
             } else {
-                TimestampedValue<Long> newNitzTime = new TimestampedValue<>(
-                        nitzSignal.getReceiptElapsedRealtimeMillis(),
-                        nitzSignal.getNitzData().getCurrentTimeInMillis());
+                TimestampedValue<Long> newNitzTime = nitzSignal.createTimeSignal();
                 builder.setUtcTime(newNitzTime);
                 builder.addDebugInfo("Sending new time suggestion"
                         + " nitzSignal=" + nitzSignal
