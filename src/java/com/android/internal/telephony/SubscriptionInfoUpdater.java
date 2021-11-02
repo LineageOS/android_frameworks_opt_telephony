@@ -624,6 +624,10 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     private void updateCarrierServices(int phoneId, String simState) {
+        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
+            logd("Ignore updateCarrierServices request with invalid phoneId " + phoneId);
+            return;
+        }
         CarrierConfigManager configManager =
                 (CarrierConfigManager) sContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         configManager.updateConfigForPhoneId(phoneId, simState);
