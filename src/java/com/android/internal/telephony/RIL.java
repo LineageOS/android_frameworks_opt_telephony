@@ -183,6 +183,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** @hide */
     public static final HalVersion RADIO_HAL_VERSION_1_6 = new HalVersion(1, 6);
 
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_2_0 = new HalVersion(2, 0);
+
     // IRadio version
     private HalVersion mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
 
