@@ -140,7 +140,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
         // Try switching to dual SIM. Shouldn't work as we haven't indicated DSDS is supported.
         mPcm.switchMultiSimConfig(2);
-        verify(mMockRadioConfig, never()).setModemsConfig(anyInt(), any());
+        verify(mMockRadioConfig, never()).setNumOfLiveModems(anyInt(), any());
     }
 
     @Test
@@ -155,7 +155,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
         // Try switching to dual SIM. Shouldn't work as we haven't indicated DSDS is supported.
         mPcm.switchMultiSimConfig(2);
-        verify(mMockRadioConfig, never()).setModemsConfig(anyInt(), any());
+        verify(mMockRadioConfig, never()).setNumOfLiveModems(anyInt(), any());
 
         // Send static capability back to indicate DSDS is supported.
         clearInvocations(mMockRadioConfig);
@@ -169,7 +169,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         mPcm.switchMultiSimConfig(2);
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-        verify(mMockRadioConfig).setModemsConfig(eq(2), captor.capture());
+        verify(mMockRadioConfig).setNumOfLiveModems(eq(2), captor.capture());
 
         // Send message back to indicate switch success.
         Message message = captor.getValue();
@@ -221,7 +221,7 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         setRebootRequiredForConfigSwitch(false);
         mPcm.switchMultiSimConfig(1);
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-        verify(mMockRadioConfig).setModemsConfig(eq(1), captor.capture());
+        verify(mMockRadioConfig).setNumOfLiveModems(eq(1), captor.capture());
 
         // Send message back to indicate switch success.
         Message message = captor.getValue();
