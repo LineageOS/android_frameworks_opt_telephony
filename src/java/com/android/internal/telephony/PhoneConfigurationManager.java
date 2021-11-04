@@ -336,7 +336,7 @@ public class PhoneConfigurationManager {
             log("switchMultiSimConfig: sending the request for switching");
             Message callback = Message.obtain(
                     mHandler, EVENT_SWITCH_DSDS_CONFIG_DONE, numOfSims, 0 /**dummy arg*/);
-            mRadioConfig.setModemsConfig(numOfSims, callback);
+            mRadioConfig.setNumOfLiveModems(numOfSims, callback);
         } else {
             log("switchMultiSimConfig: No need to switch. getNumOfActiveSims is already "
                     + numOfSims);
