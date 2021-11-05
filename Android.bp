@@ -136,4 +136,11 @@ java_library {
             enabled: false,
         },
     },
+
+    optimize: {
+        enabled: true,
+        shrink: true,
+        obfuscate: false,
+        proguard_flags_files: ["proguard.flags"],
+    },
 }
