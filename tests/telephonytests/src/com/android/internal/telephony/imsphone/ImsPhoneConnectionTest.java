@@ -70,7 +70,6 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
@@ -276,13 +275,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         // process post dial string during update
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         assertEquals(Connection.PostDialState.STARTED, mConnectionUT.getPostDialState());
-        try {
-            Field field = ImsPhoneConnection.class.getDeclaredField("PAUSE_DELAY_MILLIS");
-            field.setAccessible(true);
-            moveTimeForward((Integer) field.get(null));
-        } catch (Exception ex) {
-            Assert.fail("unexpected exception thrown" + ex.getMessage());
-        }
+        moveTimeForward(ImsPhoneConnection.PAUSE_DELAY_MILLIS);
         processAllMessages();
         assertEquals(Connection.PostDialState.COMPLETE, mConnectionUT.getPostDialState());
     }
