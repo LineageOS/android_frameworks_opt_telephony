@@ -454,7 +454,7 @@ public class RILUtils {
 
     /**
      * Convert to GsmSmsMessage defined in radio/1.0/types.hal
-     * @param smscPdu SMSD address
+     * @param smscPdu SMSC address
      * @param pdu SMS in PDU format
      * @return A converted GsmSmsMessage
      */
@@ -464,6 +464,21 @@ public class RILUtils {
                 new android.hardware.radio.V1_0.GsmSmsMessage();
         msg.smscPdu = smscPdu == null ? "" : smscPdu;
         msg.pdu = pdu == null ? "" : pdu;
+        return msg;
+    }
+
+    /**
+     * Convert to GsmSmsMessage defined in GsmSmsMessage.aidl
+     * @param smscPdu SMSC address
+     * @param pdu SMS in PDU format
+     * @return A converted GsmSmsMessage
+     */
+    public static android.hardware.radio.messaging.GsmSmsMessage convertToHalGsmSmsMessageAidl(
+            String smscPdu, String pdu) {
+        android.hardware.radio.messaging.GsmSmsMessage msg =
+                new android.hardware.radio.messaging.GsmSmsMessage();
+        msg.smscPdu = RILUtils.convertNullToEmptyString(smscPdu);
+        msg.pdu = RILUtils.convertNullToEmptyString(pdu);
         return msg;
     }
 
@@ -505,6 +520,67 @@ public class RILUtils {
             for (int i = 0; i < bearerDataLength; i++) {
                 msg.bearerData.add(dis.readByte()); //bearerData[i]
             }
+        } catch (IOException ex) {
+        }
+        return msg;
+    }
+
+    /**
+     * Convert to CdmaSmsMessage defined in CdmaSmsMessage.aidl
+     * @param pdu SMS in PDU format
+     * @return A converted CdmaSmsMessage
+     */
+    public static android.hardware.radio.messaging.CdmaSmsMessage convertToHalCdmaSmsMessageAidl(
+            byte[] pdu) {
+        android.hardware.radio.messaging.CdmaSmsMessage msg =
+                new android.hardware.radio.messaging.CdmaSmsMessage();
+        int addrNbrOfDigits;
+        int subaddrNbrOfDigits;
+        int bearerDataLength;
+        ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
+        DataInputStream dis = new DataInputStream(bais);
+
+        try {
+            msg.teleserviceId = dis.readInt(); // teleServiceId
+            msg.isServicePresent = (byte) dis.readInt() == 1; // servicePresent
+            msg.serviceCategory = dis.readInt(); // serviceCategory
+            msg.address.digitMode = dis.read();  // address digit mode
+            msg.address.isNumberModeDataNetwork =
+                    dis.read() == CdmaSmsAddress.NUMBER_MODE_DATA_NETWORK; // address number mode
+            msg.address.numberType = dis.read(); // address number type
+            msg.address.numberPlan = dis.read(); // address number plan
+            addrNbrOfDigits = (byte) dis.read();
+            byte[] digits = new byte[msg.address.digits.length + addrNbrOfDigits];
+            for (int i = 0; i < msg.address.digits.length; i++) {
+                digits[i] = msg.address.digits[i];
+            }
+            for (int i = msg.address.digits.length; i < msg.address.digits.length + addrNbrOfDigits;
+                    i++) {
+                digits[i] = dis.readByte(); // address_orig_bytes[i]
+            }
+            msg.address.digits = digits;
+            msg.subAddress.subaddressType = dis.read(); //subaddressType
+            msg.subAddress.odd = (byte) dis.read() == 1; //subaddr odd
+            subaddrNbrOfDigits = (byte) dis.read();
+            digits = new byte[msg.subAddress.digits.length + subaddrNbrOfDigits];
+            for (int i = 0; i < msg.subAddress.digits.length; i++) {
+                digits[i] = msg.subAddress.digits[i];
+            }
+            for (int i = msg.subAddress.digits.length;
+                    i < msg.subAddress.digits.length + subaddrNbrOfDigits; i++) {
+                digits[i] = dis.readByte(); //subaddr_orig_bytes[i]
+            }
+            msg.subAddress.digits = digits;
+
+            bearerDataLength = dis.read();
+            byte[] bearerData = new byte[msg.bearerData.length + bearerDataLength];
+            for (int i = 0; i < msg.bearerData.length; i++) {
+                bearerData[i] = msg.bearerData[i];
+            }
+            for (int i = msg.bearerData.length; i < msg.bearerData.length + bearerDataLength; i++) {
+                bearerData[i] = dis.readByte(); //bearerData[i]
+            }
+            msg.bearerData = bearerData;
         } catch (IOException ex) {
         }
         return msg;
@@ -1457,7 +1533,7 @@ public class RILUtils {
      * @return The converted SmsWriteArgsStatus defined in radio/1.0/types.hal
      */
     public static int convertToHalSmsWriteArgsStatus(int status) {
-        switch(status & 0x7) {
+        switch (status & 0x7) {
             case SmsManager.STATUS_ON_ICC_READ:
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.REC_READ;
             case SmsManager.STATUS_ON_ICC_UNREAD:
@@ -1468,6 +1544,26 @@ public class RILUtils {
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.STO_UNSENT;
             default:
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.REC_READ;
+        }
+    }
+
+    /**
+     * Convert StatusOnIcc to statuses defined in SmsWriteArgs.aidl
+     * @param status StatusOnIcc
+     * @return The converted statuses defined in SmsWriteArgs.aidl
+     */
+    public static int convertToHalSmsWriteArgsStatusAidl(int status) {
+        switch (status & 0x7) {
+            case SmsManager.STATUS_ON_ICC_READ:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_READ;
+            case SmsManager.STATUS_ON_ICC_UNREAD:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_UNREAD;
+            case SmsManager.STATUS_ON_ICC_SENT:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_STO_SENT;
+            case SmsManager.STATUS_ON_ICC_UNSENT:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_STO_UNSENT;
+            default:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_READ;
         }
     }
 
@@ -4376,7 +4472,7 @@ public class RILUtils {
      * @return The converted String response
      */
     public static String responseToString(int response) {
-        switch(response) {
+        switch (response) {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
                 return "UNSOL_RESPONSE_RADIO_STATE_CHANGED";
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED:

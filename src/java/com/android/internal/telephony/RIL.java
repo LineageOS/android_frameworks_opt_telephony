@@ -24,13 +24,7 @@ import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.hardware.radio.V1_0.CarrierRestrictions;
-import android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo;
-import android.hardware.radio.V1_0.CdmaSmsAck;
-import android.hardware.radio.V1_0.CdmaSmsMessage;
-import android.hardware.radio.V1_0.CdmaSmsWriteArgs;
 import android.hardware.radio.V1_0.Dial;
-import android.hardware.radio.V1_0.GsmBroadcastSmsConfigInfo;
-import android.hardware.radio.V1_0.GsmSmsMessage;
 import android.hardware.radio.V1_0.IRadio;
 import android.hardware.radio.V1_0.IccIo;
 import android.hardware.radio.V1_0.ImsSmsMessage;
@@ -42,7 +36,6 @@ import android.hardware.radio.V1_0.RadioResponseType;
 import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.hardware.radio.V1_0.SelectUiccSub;
 import android.hardware.radio.V1_0.SimApdu;
-import android.hardware.radio.V1_0.SmsWriteArgs;
 import android.hardware.radio.V1_0.UusInfo;
 import android.hardware.radio.V1_4.CarrierRestrictionsWithPriority;
 import android.hardware.radio.V1_4.SimLockMultiSimPolicy;
@@ -238,7 +231,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int VOICE_SERVICE = 6;
     static final int MIN_SERVICE_IDX = RADIO_SERVICE;
     // TODO: update as new services are implemented
-    static final int MAX_SERVICE_IDX = DATA_SERVICE;
+    static final int MAX_SERVICE_IDX = MESSAGING_SERVICE;
 
     /**
      * An array of sets that records if services are disabled in the HAL for a specific phone ID
@@ -628,13 +621,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
-     * Returns a {@link RadioDataProxy} or null if the service is not available.
+     * Returns a {@link RadioDataProxy}, {@link RadioMessagingProxy} or null if the service is not
+     * available.
      */
     public <T extends RadioServiceProxy> T getRadioServiceProxy(Class<T> serviceClass,
             Message result) {
         // TODO: update (and add to javadoc)
         if (serviceClass == RadioDataProxy.class) {
             return (T) getRadioServiceProxy(DATA_SERVICE, result);
+        }
+        if (serviceClass == RadioMessagingProxy.class) {
+            return (T) getRadioServiceProxy(MESSAGING_SERVICE, result);
         }
         return null;
     }
@@ -684,7 +681,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR + "/"
                                         + HIDL_SERVICE_NAME[mPhoneId]);
                         mRadioVersion = RADIO_HAL_VERSION_2_0;
-                        // TODO: implement
+                        if (binder != null) {
+                            mRadioVersion = RADIO_HAL_VERSION_2_0;
+                            ((RadioMessagingProxy) serviceProxy).setAidl(mRadioVersion,
+                                    android.hardware.radio.messaging.IRadioMessaging.Stub
+                                            .asInterface(binder));
+                        }
                         break;
                     case MODEM_SERVICE:
                         binder = ServiceManager.waitForDeclaredService(
@@ -796,6 +798,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                         mDataResponse, mDataIndication);
                                 break;
                             case MESSAGING_SERVICE:
+                                mDeathRecipients.get(service).linkToDeath(
+                                        ((RadioMessagingProxy) serviceProxy).getAidl().asBinder());
+                                ((RadioMessagingProxy) serviceProxy).getAidl().setResponseFunctions(
+                                        mMessagingResponse, mMessagingIndication);
+                                break;
                             case MODEM_SERVICE:
                             case NETWORK_SERVICE:
                             case SIM_SERVICE:
@@ -908,7 +915,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (proxies == null) {
             mServiceProxies.put(DATA_SERVICE, new RadioDataProxy());
             // TODO: implement
-            mServiceProxies.put(MESSAGING_SERVICE, null);
+            mServiceProxies.put(MESSAGING_SERVICE, new RadioMessagingProxy());
             mServiceProxies.put(MODEM_SERVICE, null);
             mServiceProxies.put(NETWORK_SERVICE, null);
             mServiceProxies.put(SIM_SERVICE, null);
@@ -1923,8 +1930,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendSMS(String smscPdu, String pdu, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_SMS, result,
                     mRILDefaultWorkSource);
 
@@ -1933,27 +1941,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
             }
 
-            GsmSmsMessage msg = RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu);
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
-                try {
-                    android.hardware.radio.V1_6.IRadio radioProxy16 =
-                            (android.hardware.radio.V1_6.IRadio) radioProxy;
-                    radioProxy16.sendSms_1_6(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendSMS", e);
-                }
-            } else {
-                try {
-                    radioProxy.sendSms(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendSMS", e);
-                }
+            try {
+                messagingProxy.sendSms(rr.mSerial, smscPdu, pdu);
+                mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendSMS", e);
             }
         }
     }
@@ -1978,8 +1971,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendSMSExpectMore(String smscPdu, String pdu, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_SMS_EXPECT_MORE, result,
                     mRILDefaultWorkSource);
 
@@ -1988,27 +1982,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
             }
 
-            GsmSmsMessage msg = RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu);
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
-                try {
-                    android.hardware.radio.V1_6.IRadio radioProxy16 =
-                            (android.hardware.radio.V1_6.IRadio) radioProxy;
-                    radioProxy16.sendSmsExpectMore_1_6(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendSMSExpectMore", e);
-                }
-            } else {
-                try {
-                    radioProxy.sendSMSExpectMore(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendSMSExpectMore", e);
-                }
+            try {
+                messagingProxy.sendSmsExpectMore(rr.mSerial, smscPdu, pdu);
+                mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_GSM,
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendSMSExpectMore", e);
             }
         }
     }
@@ -2090,8 +2069,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendUSSD(String ussd, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_USSD, result,
                     mRILDefaultWorkSource);
 
@@ -2103,17 +2083,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.sendUssd(rr.mSerial, RILUtils.convertNullToEmptyString(ussd));
+                messagingProxy.sendUssd(rr.mSerial, RILUtils.convertNullToEmptyString(ussd));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendUSSD", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendUSSD", e);
             }
         }
     }
 
     @Override
     public void cancelPendingUssd(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CANCEL_USSD, result,
                     mRILDefaultWorkSource);
 
@@ -2122,9 +2103,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.cancelPendingUssd(rr.mSerial);
+                messagingProxy.cancelPendingUssd(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "cancelPendingUssd", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "cancelPendingUssd", e);
             }
         }
     }
@@ -2270,8 +2251,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void acknowledgeLastIncomingGsmSms(boolean success, int cause, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SMS_ACKNOWLEDGE, result,
                     mRILDefaultWorkSource);
 
@@ -2281,9 +2263,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.acknowledgeLastIncomingGsmSms(rr.mSerial, success, cause);
+                messagingProxy.acknowledgeLastIncomingGsmSms(rr.mSerial, success, cause);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "acknowledgeLastIncomingGsmSms", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE,
+                        "acknowledgeLastIncomingGsmSms", e);
             }
         }
     }
@@ -2871,47 +2854,42 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void writeSmsToSim(int status, String smsc, String pdu, Message result) {
-        status = RILUtils.convertToHalSmsWriteArgsStatus(status);
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_WRITE_SMS_TO_SIM, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGV) {
-                riljLog(rr.serialString() + "> "
-                        + RILUtils.requestToString(rr.mRequest)
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
                         + " " + status);
             }
 
-            SmsWriteArgs args = new SmsWriteArgs();
-            args.status = status;
-            args.smsc = RILUtils.convertNullToEmptyString(smsc);
-            args.pdu = RILUtils.convertNullToEmptyString(pdu);
-
             try {
-                radioProxy.writeSmsToSim(rr.mSerial, args);
+                messagingProxy.writeSmsToSim(rr.mSerial, status, smsc, pdu);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "writeSmsToSim", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "writeSmsToSim", e);
             }
         }
     }
 
     @Override
     public void deleteSmsOnSim(int index, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_DELETE_SMS_ON_SIM, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGV) {
-                riljLog(rr.serialString() + "> "
-                        + RILUtils.requestToString(rr.mRequest) + " index = " + index);
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " index = " + index);
             }
 
             try {
-                radioProxy.deleteSmsOnSim(rr.mSerial, index);
+                messagingProxy.deleteSmsOnSim(rr.mSerial, index);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "deleteSmsOnSim", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "deleteSmsOnSim", e);
             }
         }
     }
@@ -3473,8 +3451,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendCdmaSMSExpectMore(byte[] pdu, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SEND_SMS_EXPECT_MORE, result,
                     mRILDefaultWorkSource);
 
@@ -3483,39 +3462,24 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
             }
 
-            CdmaSmsMessage msg = RILUtils.convertToHalCdmaSmsMessage(pdu);
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
-                android.hardware.radio.V1_6.IRadio radioProxy16 =
-                        (android.hardware.radio.V1_6.IRadio) radioProxy;
-                try {
-                    radioProxy16.sendCdmaSmsExpectMore_1_6(rr.mSerial, msg);
+            try {
+                messagingProxy.sendCdmaSmsExpectMore(rr.mSerial, pdu);
+                if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
                     mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
                             SmsSession.Event.Format.SMS_FORMAT_3GPP2,
                             getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
                 }
-            } else if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5)) {
-                android.hardware.radio.V1_5.IRadio radioProxy15 =
-                        (android.hardware.radio.V1_5.IRadio) radioProxy;
-                try {
-                    radioProxy15.sendCdmaSmsExpectMore(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendCdmaSMSExpectMore", e);
-                }
-            } else {
-                sendCdmaSms(pdu, result);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendCdmaSMSExpectMore", e);
             }
         }
     }
 
     @Override
     public void sendCdmaSms(byte[] pdu, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SEND_SMS, result,
                     mRILDefaultWorkSource);
 
@@ -3524,35 +3488,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
             }
 
-            CdmaSmsMessage msg = RILUtils.convertToHalCdmaSmsMessage(pdu);
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_6)) {
-                try {
-                    android.hardware.radio.V1_6.IRadio radioProxy16 =
-                            (android.hardware.radio.V1_6.IRadio) radioProxy;
-                    radioProxy16.sendCdmaSms_1_6(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendCdmaSms", e);
-                }
-            } else {
-                try {
-                    radioProxy.sendCdmaSms(rr.mSerial, msg);
-                    mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
-                            SmsSession.Event.Format.SMS_FORMAT_3GPP2,
-                            getOutgoingSmsMessageId(result));
-                } catch (RemoteException | RuntimeException e) {
-                    handleRadioProxyExceptionForRR(rr, "sendCdmaSms", e);
-                }
+            try {
+                messagingProxy.sendCdmaSms(rr.mSerial, pdu);
+                mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_CDMA,
+                        SmsSession.Event.Format.SMS_FORMAT_3GPP2, getOutgoingSmsMessageId(result));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendCdmaSms", e);
             }
         }
     }
 
     @Override
     public void acknowledgeLastIncomingCdmaSms(boolean success, int cause, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SMS_ACKNOWLEDGE, result,
                     mRILDefaultWorkSource);
 
@@ -3561,22 +3511,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         + " success = " + success + " cause = " + cause);
             }
 
-            CdmaSmsAck msg = new CdmaSmsAck();
-            msg.errorClass = success ? 0 : 1;
-            msg.smsCauseCode = cause;
-
             try {
-                radioProxy.acknowledgeLastIncomingCdmaSms(rr.mSerial, msg);
+                messagingProxy.acknowledgeLastIncomingCdmaSms(rr.mSerial, success, cause);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "acknowledgeLastIncomingCdmaSms", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE,
+                        "acknowledgeLastIncomingCdmaSms", e);
             }
         }
     }
 
     @Override
     public void getGsmBroadcastConfig(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_GSM_GET_BROADCAST_CONFIG, result,
                     mRILDefaultWorkSource);
 
@@ -3585,17 +3533,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.getGsmBroadcastConfig(rr.mSerial);
+                messagingProxy.getGsmBroadcastConfig(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getGsmBroadcastConfig", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "getGsmBroadcastConfig", e);
             }
         }
     }
 
     @Override
     public void setGsmBroadcastConfig(SmsBroadcastConfigInfo[] config, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_GSM_SET_BROADCAST_CONFIG, result,
                     mRILDefaultWorkSource);
 
@@ -3607,33 +3556,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 }
             }
 
-            ArrayList<GsmBroadcastSmsConfigInfo> configs = new ArrayList<>();
-
-            int numOfConfig = config.length;
-            GsmBroadcastSmsConfigInfo info;
-
-            for (int i = 0; i < numOfConfig; i++) {
-                info = new GsmBroadcastSmsConfigInfo();
-                info.fromServiceId = config[i].getFromServiceId();
-                info.toServiceId = config[i].getToServiceId();
-                info.fromCodeScheme = config[i].getFromCodeScheme();
-                info.toCodeScheme = config[i].getToCodeScheme();
-                info.selected = config[i].isSelected();
-                configs.add(info);
-            }
-
             try {
-                radioProxy.setGsmBroadcastConfig(rr.mSerial, configs);
+                messagingProxy.setGsmBroadcastConfig(rr.mSerial, config);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setGsmBroadcastConfig", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "setGsmBroadcastConfig", e);
             }
         }
     }
 
     @Override
     public void setGsmBroadcastActivation(boolean activate, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_GSM_BROADCAST_ACTIVATION, result,
                     mRILDefaultWorkSource);
 
@@ -3643,17 +3578,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.setGsmBroadcastActivation(rr.mSerial, activate);
+                messagingProxy.setGsmBroadcastActivation(rr.mSerial, activate);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setGsmBroadcastActivation", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "setGsmBroadcastActivation", e);
             }
         }
     }
 
     @Override
     public void getCdmaBroadcastConfig(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_GET_BROADCAST_CONFIG, result,
                     mRILDefaultWorkSource);
 
@@ -3662,54 +3598,42 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.getCdmaBroadcastConfig(rr.mSerial);
+                messagingProxy.getCdmaBroadcastConfig(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getCdmaBroadcastConfig", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "getCdmaBroadcastConfig", e);
             }
         }
     }
 
     @Override
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_SET_BROADCAST_CONFIG, result,
                     mRILDefaultWorkSource);
 
-            ArrayList<CdmaBroadcastSmsConfigInfo> halConfigs = new ArrayList<>();
-
-            for (CdmaSmsBroadcastConfigInfo config: configs) {
-                for (int i = config.getFromServiceCategory();
-                        i <= config.getToServiceCategory();
-                        i++) {
-                    CdmaBroadcastSmsConfigInfo info = new CdmaBroadcastSmsConfigInfo();
-                    info.serviceCategory = i;
-                    info.language = config.getLanguage();
-                    info.selected = config.isSelected();
-                    halConfigs.add(info);
-                }
-            }
-
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " with " + halConfigs.size() + " configs : ");
-                for (CdmaBroadcastSmsConfigInfo config : halConfigs) {
+                        + " with " + configs.length + " configs : ");
+                for (CdmaSmsBroadcastConfigInfo config : configs) {
                     riljLog(config.toString());
                 }
             }
 
             try {
-                radioProxy.setCdmaBroadcastConfig(rr.mSerial, halConfigs);
+                messagingProxy.setCdmaBroadcastConfig(rr.mSerial, configs);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setCdmaBroadcastConfig", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "setCdmaBroadcastConfig", e);
             }
         }
     }
 
     @Override
     public void setCdmaBroadcastActivation(boolean activate, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_BROADCAST_ACTIVATION, result,
                     mRILDefaultWorkSource);
 
@@ -3719,9 +3643,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.setCdmaBroadcastActivation(rr.mSerial, activate);
+                messagingProxy.setCdmaBroadcastActivation(rr.mSerial, activate);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setCdmaBroadcastActivation", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "setCdmaBroadcastActivation", e);
             }
         }
     }
@@ -3747,47 +3671,42 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void writeSmsToRuim(int status, byte[] pdu, Message result) {
-        status = RILUtils.convertToHalSmsWriteArgsStatus(status);
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGV) {
-                riljLog(rr.serialString() + "> "
-                        + RILUtils.requestToString(rr.mRequest)
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
                         + " status = " + status);
             }
 
-            CdmaSmsWriteArgs args = new CdmaSmsWriteArgs();
-            args.status = status;
-            args.message = RILUtils.convertToHalCdmaSmsMessage(pdu);
-
             try {
-                radioProxy.writeSmsToRuim(rr.mSerial, args);
+                messagingProxy.writeSmsToRuim(rr.mSerial, status, pdu);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "writeSmsToRuim", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "writeSmsToRuim", e);
             }
         }
     }
 
     @Override
     public void deleteSmsOnRuim(int index, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CDMA_DELETE_SMS_ON_RUIM, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGV) {
-                riljLog(rr.serialString() + "> "
-                        + RILUtils.requestToString(rr.mRequest)
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
                         + " index = " + index);
             }
 
             try {
-                radioProxy.deleteSmsOnRuim(rr.mSerial, index);
+                messagingProxy.deleteSmsOnRuim(rr.mSerial, index);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "deleteSmsOnRuim", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "deleteSmsOnRuim", e);
             }
         }
     }
@@ -3832,8 +3751,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getSmscAddress(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_GET_SMSC_ADDRESS, result,
                     mRILDefaultWorkSource);
 
@@ -3842,17 +3762,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.getSmscAddress(rr.mSerial);
+                messagingProxy.getSmscAddress(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "getSmscAddress", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "getSmscAddress", e);
             }
         }
     }
 
     @Override
     public void setSmscAddress(String address, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_SMSC_ADDRESS, result,
                     mRILDefaultWorkSource);
 
@@ -3862,29 +3783,31 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.setSmscAddress(rr.mSerial, RILUtils.convertNullToEmptyString(address));
+                messagingProxy.setSmscAddress(rr.mSerial,
+                        RILUtils.convertNullToEmptyString(address));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "setSmscAddress", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "setSmscAddress", e);
             }
         }
     }
 
     @Override
     public void reportSmsMemoryStatus(boolean available, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_REPORT_SMS_MEMORY_STATUS, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> "
-                        + RILUtils.requestToString(rr.mRequest) + " available = " + available);
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " available = " + available);
             }
 
             try {
-                radioProxy.reportSmsMemoryStatus(rr.mSerial, available);
+                messagingProxy.reportSmsMemoryStatus(rr.mSerial, available);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "reportSmsMemoryStatus", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "reportSmsMemoryStatus", e);
             }
         }
     }
@@ -3929,8 +3852,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void acknowledgeIncomingGsmSmsWithPdu(boolean success, String ackPdu, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU, result,
                     mRILDefaultWorkSource);
 
@@ -3940,10 +3864,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                radioProxy.acknowledgeIncomingGsmSmsWithPdu(rr.mSerial, success,
+                messagingProxy.acknowledgeIncomingGsmSmsWithPdu(rr.mSerial, success,
                         RILUtils.convertNullToEmptyString(ackPdu));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "acknowledgeIncomingGsmSmsWithPdu", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE,
+                        "acknowledgeIncomingGsmSmsWithPdu", e);
             }
         }
     }
@@ -4056,9 +3981,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendImsGsmSms(String smscPdu, String pdu, int retry, int messageRef,
-                   Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+            Message result) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_IMS_SEND_SMS, result,
                     mRILDefaultWorkSource);
 
@@ -4067,19 +3993,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
             }
 
-            ImsSmsMessage msg = new ImsSmsMessage();
-            msg.tech = RadioTechnologyFamily.THREE_GPP;
-            msg.retry = (byte) retry >= 1 ? true : false;
-            msg.messageRef = messageRef;
-
-            GsmSmsMessage gsmMsg = RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu);
-            msg.gsmMessage.add(gsmMsg);
             try {
-                radioProxy.sendImsSms(rr.mSerial, msg);
+                messagingProxy.sendImsSms(rr.mSerial, smscPdu, pdu, retry, messageRef);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_IMS,
                         SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendImsGsmSms", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendImsGsmSms", e);
             }
         }
     }
