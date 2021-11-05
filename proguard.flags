@@ -5,10 +5,10 @@
 -printusage
 
 # Keep deprecated GSM SMS API
--keepclasseswithmembers class android.telephony.gsm.SmsManager {
+-keepclasseswithmembers class android.telephony.gsm.SmsManager,android.telephony.gsm.SmsManager$* {
 public *;
 }
--keepclasseswithmembers class android.telephony.gsm.SmsMessage {
+-keepclasseswithmembers class android.telephony.gsm.SmsMessage,android.telephony.gsm.SmsMessage$* {
 public *;
 }
 
