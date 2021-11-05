@@ -38,14 +38,10 @@ import android.telephony.SignalStrength;
 import android.telephony.SignalStrengthUpdateRequest;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.uicc.IccCardStatus;
-import com.android.internal.telephony.uicc.UiccCard;
-import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
@@ -86,12 +82,6 @@ public class SignalStrengthController extends Handler {
     private final Phone mPhone;
     private final CommandsInterface mCi;
 
-    /**
-     * By default, strength polling is enabled.  However, if we're
-     * getting unsolicited signal strength updates from the radio, set
-     * value to true and don't bother polling any more.
-     */
-    private boolean mDontPollSignalStrength = false;
     @NonNull
     private SignalStrength mSignalStrength;
     private long mSignalStrengthUpdatedTime;
@@ -215,8 +205,6 @@ public class SignalStrengthController extends Handler {
                 }
                 ar = (AsyncResult) msg.obj;
                 onSignalStrengthResult(ar);
-                queueNextSignalStrengthPoll();
-
                 break;
             }
 
@@ -231,11 +219,6 @@ public class SignalStrengthController extends Handler {
                 // This is a notification from CommandsInterface.setOnSignalStrengthUpdate
 
                 ar = (AsyncResult) msg.obj;
-
-                // The radio is telling us about signal strength changes
-                // we don't have to ask it
-                mDontPollSignalStrength = true;
-
                 onSignalStrengthResult(ar);
                 break;
             }
@@ -333,26 +316,6 @@ public class SignalStrengthController extends Handler {
         }
 
         return false;
-    }
-
-    void queueNextSignalStrengthPoll() {
-        if (mDontPollSignalStrength) {
-            // The radio is telling us about signal strength changes
-            // we don't have to ask it
-            return;
-        }
-
-        // if there is no SIM present, do not poll signal strength
-        UiccCard uiccCard = UiccController.getInstance().getUiccCard(
-                mPhone != null ? mPhone.getPhoneId() : SubscriptionManager.DEFAULT_PHONE_INDEX);
-        if (uiccCard == null
-                || uiccCard.getCardState() == IccCardStatus.CardState.CARDSTATE_ABSENT) {
-            log("Not polling signal strength due to absence of SIM");
-            return;
-        }
-
-        // TODO Don't poll signal strength if screen is off
-        sendMessageDelayed(obtainMessage(EVENT_POLL_SIGNAL_STRENGTH), POLL_PERIOD_MILLIS);
     }
 
     /**
@@ -477,7 +440,6 @@ public class SignalStrengthController extends Handler {
         pw.println("mSignalRequestRecords=" + mSignalRequestRecords);
         pw.println(" mLastSignalStrength=" + mLastSignalStrength);
         pw.println(" mSignalStrength=" + mSignalStrength);
-        pw.println(" mDontPollSignalStrength=" + mDontPollSignalStrength);
         pw.println(" mLteRsrpBoost=" + mLteRsrpBoost);
         pw.println(" mNrRsrpBoost=" + Arrays.toString(mNrRsrpBoost));
         dumpEarfcnPairList(pw, mEarfcnPairListForRsrpBoost, "mEarfcnPairListForRsrpBoost");
