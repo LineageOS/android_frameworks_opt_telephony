@@ -44,7 +44,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
      */
     public void hardwareConfigChanged(int indicationType,
             android.hardware.radio.modem.HardwareConfig[] configs) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
         ArrayList<HardwareConfig> response = RILUtils.convertHalHardwareConfigList(configs);
 
@@ -62,7 +62,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
      *        restart" that explains the cause of the modem restart
      */
     public void modemReset(int indicationType, String reason) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
 
@@ -78,7 +78,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
      */
     public void radioCapabilityIndication(int indicationType,
             android.hardware.radio.modem.RadioCapability radioCapability) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
         RadioCapability response = RILUtils.convertHalRadioCapability(radioCapability, mRil);
 
@@ -94,7 +94,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
      * @param radioState Current radio state
      */
     public void radioStateChanged(int indicationType, int radioState) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
         int state = RILUtils.convertHalRadioState(radioState);
         if (RIL.RILJ_LOGD) {
@@ -110,7 +110,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void rilConnected(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RIL_CONNECTED);
 

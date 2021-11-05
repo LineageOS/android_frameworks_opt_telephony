@@ -53,7 +53,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void carrierInfoForImsiEncryption(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION, null);
 
@@ -67,7 +67,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param cdmaSource New CdmaSubscriptionSource
      */
     public void cdmaSubscriptionSourceChanged(int indicationType, int cdmaSource) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         int[] response = new int[]{cdmaSource};
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED, response);
@@ -81,7 +81,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void simPhonebookChanged(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) {
             mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED);
@@ -98,7 +98,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      */
     public void simPhonebookRecordsReceived(int indicationType, byte status,
             android.hardware.radio.sim.PhonebookRecordInfo[] records) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         List<SimPhonebookRecord> simPhonebookRecords = new ArrayList<>();
 
@@ -122,7 +122,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      */
     public void simRefresh(int indicationType,
             android.hardware.radio.sim.SimRefreshResult refreshResult) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         IccRefreshResponse response = new IccRefreshResponse();
         response.refreshResult = refreshResult.type;
@@ -139,7 +139,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void simStatusChanged(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
 
@@ -154,7 +154,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      *        Refer to TS 102.223 section 9.4 for command types
      */
     public void stkEventNotify(int indicationType, String cmd) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_EVENT_NOTIFY);
 
@@ -170,7 +170,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      *        Refer to TS 102.223 section 9.4 for command types
      */
     public void stkProactiveCommand(int indicationType, String cmd) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_PROACTIVE_COMMAND);
 
@@ -184,7 +184,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void stkSessionEnd(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_SESSION_END);
 
@@ -199,7 +199,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param activate false for subscription deactivated, true for subscription activated
      */
     public void subscriptionStatusChanged(int indicationType, boolean activate) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         int[] response = new int[]{activate ? 1 : 0};
 
@@ -215,7 +215,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
      * @param enabled Whether uiccApplications are enabled or disabled
      */
     public void uiccApplicationsEnablementChanged(int indicationType, boolean enabled) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) {
             mRil.unsljLogRet(RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED, enabled);

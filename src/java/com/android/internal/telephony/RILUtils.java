@@ -782,6 +782,44 @@ public class RILUtils {
     }
 
     /**
+     * Convert to DataProfileInfo defined in DataprofileInfo.aidl
+     * @param dp Data profile
+     * @return The converted DataProfileInfo
+     */
+    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(
+            DataProfile dp) {
+        android.hardware.radio.data.DataProfileInfo dpi =
+                new android.hardware.radio.data.DataProfileInfo();
+
+        dpi.apn = dp.getApn();
+        dpi.protocol = dp.getProtocolType();
+        dpi.roamingProtocol = dp.getRoamingProtocolType();
+        dpi.authType = dp.getAuthType();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
+        dpi.type = dp.getType();
+        dpi.maxConnsTime = dp.getMaxConnectionsTime();
+        dpi.maxConns = dp.getMaxConnections();
+        dpi.waitTime = dp.getWaitTime();
+        dpi.enabled = dp.isEnabled();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmask();
+        // Shift by 1 bit due to the discrepancy between RadioAccessFamily.aidl and the bitmask
+        // version of ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
+        dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+                dp.getBearerBitmask()) << 1;
+        dpi.mtuV4 = dp.getMtuV4();
+        dpi.mtuV6 = dp.getMtuV6();
+        dpi.persistent = dp.isPersistent();
+        dpi.preferred = dp.isPreferred();
+
+        // profile id is only meaningful when it's persistent on the modem.
+        dpi.profileId = (dpi.persistent) ? dp.getProfileId()
+                : android.hardware.radio.data.DataProfileInfo.ID_INVALID;
+
+        return dpi;
+    }
+
+    /**
      * Convert to OptionalSliceInfo defined in radio/1.6/types.hal
      * @param sliceInfo Slice info
      * @return The converted OptionalSliceInfo
@@ -801,6 +839,25 @@ public class RILUtils {
         si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
         optionalSliceInfo.value(si);
         return optionalSliceInfo;
+    }
+
+    /**
+     * Convert to SliceInfo defined in SliceInfo.aidl
+     * @param sliceInfo Slice info
+     * @return The converted SliceInfo
+     */
+    public static android.hardware.radio.data.SliceInfo convertToHalSliceInfoAidl(
+            @Nullable NetworkSliceInfo sliceInfo) {
+        if (sliceInfo == null) {
+            return null;
+        }
+
+        android.hardware.radio.data.SliceInfo si = new android.hardware.radio.data.SliceInfo();
+        si.sliceServiceType = (byte) sliceInfo.getSliceServiceType();
+        si.mappedHplmnSst = (byte) sliceInfo.getMappedHplmnSliceServiceType();
+        si.sliceDifferentiator = sliceInfo.getSliceDifferentiator();
+        si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
+        return si;
     }
 
     /**
@@ -837,6 +894,26 @@ public class RILUtils {
 
         optionalTrafficDescriptor.value(td);
         return optionalTrafficDescriptor;
+    }
+
+    /**
+     * Convert to TrafficDescriptor defined in TrafficDescriptor.aidl
+     * @param trafficDescriptor Traffic descriptor
+     * @return The converted TrafficDescriptor
+     */
+    public static android.hardware.radio.data.TrafficDescriptor
+            convertToHalTrafficDescriptorAidl(@Nullable TrafficDescriptor trafficDescriptor) {
+        if (trafficDescriptor == null) {
+            return null;
+        }
+
+        android.hardware.radio.data.TrafficDescriptor td =
+                new android.hardware.radio.data.TrafficDescriptor();
+        td.dnn = trafficDescriptor.getDataNetworkName();
+        android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
+        osAppId.osAppId = trafficDescriptor.getOsAppId();
+        td.osAppId = osAppId;
+        return td;
     }
 
     /**
@@ -879,6 +956,32 @@ public class RILUtils {
             }
         }
         return addresses15;
+    }
+
+    /**
+     * Convert to a list of LinkAddress defined in LinkAddress.aidl
+     * @param linkProperties Link properties
+     * @return The converted list of LinkAddresses
+     */
+    public static android.hardware.radio.data.LinkAddress[] convertToHalLinkProperties(
+            LinkProperties linkProperties) {
+        if (linkProperties == null) {
+            return null;
+        }
+        android.hardware.radio.data.LinkAddress[] addresses =
+                new android.hardware.radio.data.LinkAddress[
+                        linkProperties.getAllLinkAddresses().size()];
+        for (int i = 0; i < linkProperties.getAllLinkAddresses().size(); i++) {
+            LinkAddress la = linkProperties.getAllLinkAddresses().get(i);
+            android.hardware.radio.data.LinkAddress linkAddress =
+                    new android.hardware.radio.data.LinkAddress();
+            linkAddress.address = la.getAddress().getHostAddress();
+            linkAddress.addressProperties = la.getFlags();
+            linkAddress.deprecationTime = la.getDeprecationTime();
+            linkAddress.expirationTime = la.getExpirationTime();
+            addresses[i] = linkAddress;
+        }
+        return addresses;
     }
 
     /**
