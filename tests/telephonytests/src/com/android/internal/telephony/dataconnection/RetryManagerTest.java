@@ -44,86 +44,38 @@ import java.util.ArrayList;
 public class RetryManagerTest extends TelephonyTest {
 
     // This is the real APN data for the Japanese carrier NTT Docomo.
-    private ApnSetting mApn1 = ApnSetting.makeApnSetting(
-            2163,                   // id
-            "44010",                // numeric
-            "sp-mode",              // name
-            "spmode.ne.jp",         // apn
-            null,                     // proxy
-            -1,                     // port
-            null,                     // mmsc
-            null,                     // mmsproxy
-            -1,                     // mmsport
-            "",                     // user
-            "",                     // password
-            -1,                     // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL, // types
-            ApnSetting.PROTOCOL_IP, // protocol
-            ApnSetting.PROTOCOL_IP, // roaming_protocol
-            true,                   // carrier_enabled
-            0,                      // networktype_bitmask
-            0,                      // profile_id
-            false,                  // modem_cognitive
-            0,                      // max_conns
-            0,                      // wait_time
-            0,                      // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn1 = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("44010")
+            .setEntryName("sp-mode")
+            .setApnName("spmode.ne.jp")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IP)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .build();
 
-    private ApnSetting mApn2 = ApnSetting.makeApnSetting(
-            2164,                   // id
-            "44010",                // numeric
-            "mopera U",             // name
-            "mopera.net",           // apn
-            null,                     // proxy
-            -1,                     // port
-            null,                     // mmsc
-            null,                     // mmsproxy
-            -1,                     // mmsport
-            "",                     // user
-            "",                     // password
-            -1,                     // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
-            ApnSetting.PROTOCOL_IP,                   // protocol
-            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
-            true,                   // carrier_enabled
-            0,                      // networktype_bitmask
-            0,                      // profile_id
-            false,                  // modem_cognitive
-            0,                      // max_conns
-            0,                      // wait_time
-            0,                      // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn2 = new ApnSetting.Builder()
+            .setId(2164)
+            .setOperatorNumeric("44010")
+            .setEntryName("mopera U")
+            .setApnName("mopera.net")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IP)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .build();
 
-    private ApnSetting mApn3 = ApnSetting.makeApnSetting(
-            2165,                   // id
-            "44010",                // numeric
-            "b-mobile for Nexus",   // name
-            "bmobile.ne.jp",        // apn
-            null,                     // proxy
-            -1,                     // port
-            null,                     // mmsc
-            null,                     // mmsproxy
-            -1,                     // mmsport
-            "",                     // user
-            "",                     // password
-            3,                      // authtype
-            ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL,     // types
-            ApnSetting.PROTOCOL_IP,                   // protocol
-            ApnSetting.PROTOCOL_IP,                   // roaming_protocol
-            true,                   // carrier_enabled
-            0,                      // networktype_bitmask
-            0,                      // profile_id
-            false,                  // modem_cognitive
-            0,                      // max_conns
-            0,                      // wait_time
-            0,                      // max_conns_time
-            0,                      // mtu
-            -1,                     // mvno_type
-            "");                    // mnvo_match_data
+    private ApnSetting mApn3 = new ApnSetting.Builder()
+            .setId(2165)
+            .setOperatorNumeric("44010")
+            .setEntryName("b-mobile for Nexus")
+            .setApnName("bmobile.ne.jp")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IP)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .build();
 
     private PersistableBundle mBundle;
 
