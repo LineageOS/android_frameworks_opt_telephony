@@ -167,8 +167,6 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.internal.telephony.dataconnection.DcTracker;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -272,14 +270,14 @@ public class RILTest extends TelephonyTest {
     private static final int AUTH_TYPE = 0;
     private static final String USER_NAME = "username";
     private static final String PASSWORD = "password";
-    private static final int TYPE = 0;
-    private static final int MAX_CONNS_TIME = 1;
-    private static final int MAX_CONNS = 3;
-    private static final int WAIT_TIME = 10;
+    private static final int TYPE = DataProfile.TYPE_3GPP;
     private static final boolean APN_ENABLED = true;
-    private static final int SUPPORTED_APN_TYPES_BITMASK = 123456;
+    private static final int SUPPORTED_APN_TYPES_BITMASK = ApnSetting.TYPE_CBS
+            | ApnSetting.TYPE_IMS;
+    private static final int SUPPORTED_NETWORK_TYPES_BITMASK =
+            (int) (TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_LTE);
     private static final int ROAMING_PROTOCOL = ApnSetting.PROTOCOL_IPV6;
-    private static final int BEARER_BITMASK = 123123;
     private static final int MTU = 1234;
     private static final boolean PERSISTENT = true;
 
@@ -1024,12 +1022,21 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testSetInitialAttachApn() throws Exception {
-        ApnSetting apnSetting = ApnSetting.makeApnSetting(
-                -1, "22210", "Vodafone IT", "web.omnitel.it", null, -1,
-                null, null, -1, "", "", 0, ApnSetting.TYPE_DUN, ApnSetting.PROTOCOL_IP,
-                ApnSetting.PROTOCOL_IP, true, 0, 0, false, 0, 0, 0, 0, -1, "");
-        DataProfile dataProfile = DcTracker.createDataProfile(
-                apnSetting, apnSetting.getProfileId(), false);
+        ApnSetting apnSetting = new ApnSetting.Builder()
+                .setId(-1)
+                .setOperatorNumeric("22210")
+                .setEntryName("Vodafone IT")
+                .setApnName("web.omnitel.it")
+                .setApnTypeBitmask(ApnSetting.TYPE_DUN)
+                .setProtocol(ApnSetting.PROTOCOL_IP)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+                .setCarrierEnabled(true)
+                .build();
+
+        DataProfile dataProfile = new DataProfile.Builder()
+                .setApnSetting(apnSetting)
+                .setPreferred(false)
+                .build();
         boolean isRoaming = false;
 
         mRILUnderTest.setInitialAttachApn(dataProfile, isRoaming, obtainMessage());
@@ -2588,23 +2595,25 @@ public class RILTest extends TelephonyTest {
 
     @Test
     public void testSetupDataCall() throws Exception {
-        DataProfile dp = new DataProfile.Builder()
+        ApnSetting apn = new ApnSetting.Builder()
+                .setId(1234)
+                .setEntryName(APN)
+                .setApnName(APN)
+                .setApnTypeBitmask(SUPPORTED_APN_TYPES_BITMASK)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setCarrierEnabled(true)
                 .setProfileId(PROFILE_ID)
-                .setApn(APN)
-                .setProtocolType(PROTOCOL)
                 .setAuthType(AUTH_TYPE)
-                .setUserName(USER_NAME)
+                .setUser(USER_NAME)
                 .setPassword(PASSWORD)
-                .setType(TYPE)
-                .setMaxConnectionsTime(MAX_CONNS_TIME)
-                .setMaxConnections(MAX_CONNS)
-                .setWaitTime(WAIT_TIME)
-                .enable(APN_ENABLED)
-                .setSupportedApnTypesBitmask(SUPPORTED_APN_TYPES_BITMASK)
-                .setRoamingProtocolType(ROAMING_PROTOCOL)
-                .setBearerBitmask(BEARER_BITMASK)
-                .setMtu(MTU)
-                .setPersistent(PERSISTENT)
+                .setNetworkTypeBitmask(SUPPORTED_NETWORK_TYPES_BITMASK)
+                .setMtuV4(MTU)
+                .setModemCognitive(true)
+                .build();
+
+        DataProfile dp = new DataProfile.Builder()
+                .setApnSetting(apn)
                 .setPreferred(false)
                 .build();
 
@@ -2625,14 +2634,11 @@ public class RILTest extends TelephonyTest {
         assertEquals(USER_NAME, dpi.user);
         assertEquals(PASSWORD, dpi.password);
         assertEquals(TYPE, dpi.type);
-        assertEquals(MAX_CONNS_TIME, dpi.maxConnsTime);
-        assertEquals(MAX_CONNS, dpi.maxConns);
-        assertEquals(WAIT_TIME, dpi.waitTime);
         assertEquals(APN_ENABLED, dpi.enabled);
         assertEquals(SUPPORTED_APN_TYPES_BITMASK, dpi.supportedApnTypesBitmap);
         assertEquals(ROAMING_PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
         assertEquals(
-                BEARER_BITMASK,
+                SUPPORTED_NETWORK_TYPES_BITMASK,
                 ServiceState.convertBearerBitmaskToNetworkTypeBitmask(dpi.bearerBitmap >> 1));
         assertEquals(MTU, dpi.mtu);
     }
