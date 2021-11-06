@@ -28,6 +28,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.telephony.Rlog;
@@ -61,14 +62,14 @@ public class CallManager {
     private static final boolean VDBG = false;
 
     private static final int EVENT_DISCONNECT = 100;
-    private static final int EVENT_PRECISE_CALL_STATE_CHANGED = 101;
+    @VisibleForTesting static final int EVENT_PRECISE_CALL_STATE_CHANGED = 101;
     private static final int EVENT_NEW_RINGING_CONNECTION = 102;
     private static final int EVENT_UNKNOWN_CONNECTION = 103;
     private static final int EVENT_INCOMING_RING = 104;
-    private static final int EVENT_RINGBACK_TONE = 105;
+    @VisibleForTesting static final int EVENT_RINGBACK_TONE = 105;
     private static final int EVENT_IN_CALL_VOICE_PRIVACY_ON = 106;
     private static final int EVENT_IN_CALL_VOICE_PRIVACY_OFF = 107;
-    private static final int EVENT_CALL_WAITING = 108;
+    @VisibleForTesting static final int EVENT_CALL_WAITING = 108;
     private static final int EVENT_DISPLAY_INFO = 109;
     private static final int EVENT_SIGNAL_INFO = 110;
     private static final int EVENT_CDMA_OTA_STATUS_CHANGE = 111;

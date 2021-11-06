@@ -78,6 +78,7 @@ public class SignalStrengthController extends Handler {
     private static final int EVENT_GET_SIGNAL_STRENGTH                      = 6;
     private static final int EVENT_POLL_SIGNAL_STRENGTH                     = 7;
     private static final int EVENT_SIGNAL_STRENGTH_UPDATE                   = 8;
+    private static final int EVENT_POLL_SIGNAL_STRENGTH_DONE                = 9;
 
     private final Phone mPhone;
     private final CommandsInterface mCi;
@@ -195,6 +196,7 @@ public class SignalStrengthController extends Handler {
                 break;
             }
 
+            case EVENT_POLL_SIGNAL_STRENGTH_DONE: // fall through
             case EVENT_GET_SIGNAL_STRENGTH: {
                 // This callback is called when signal strength is polled
                 // all by itself
@@ -211,7 +213,7 @@ public class SignalStrengthController extends Handler {
             case EVENT_POLL_SIGNAL_STRENGTH: {
                 // Just poll signal strength...not part of pollState()
 
-                mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+                mCi.getSignalStrength(obtainMessage(EVENT_POLL_SIGNAL_STRENGTH_DONE));
                 break;
             }
 

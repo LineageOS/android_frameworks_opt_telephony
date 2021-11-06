@@ -160,7 +160,7 @@ public class ImsPhoneConnection extends Connection implements
     private static final int EVENT_DTMF_DELAY_DONE = 5;
 
     //***** Constants
-    private static final int PAUSE_DELAY_MILLIS = 3 * 1000;
+    @VisibleForTesting static final int PAUSE_DELAY_MILLIS = 3 * 1000;
     private static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
 
     //***** Inner Classes
