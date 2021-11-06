@@ -707,6 +707,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private void handleRadioProxyExceptionForRR(RILRequest rr, String caller, Exception e) {
         riljLoge(caller + ": " + e);
+        e.printStackTrace();
         resetProxyAndRequestList();
     }
 
