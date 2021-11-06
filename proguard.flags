@@ -1,0 +1,29 @@
+# Uncomment the following to show all included rules during build
+#-printconfiguration
+
+# Generate usage file (for shrinking)
+-printusage
+
+# Keep deprecated GSM SMS API
+-keepclasseswithmembers class android.telephony.gsm.SmsManager,android.telephony.gsm.SmsManager$* {
+public *;
+}
+-keepclasseswithmembers class android.telephony.gsm.SmsMessage,android.telephony.gsm.SmsMessage$* {
+public *;
+}
+
+# Keep telephony sysprop
+-keepclasseswithmembers class android.internal.telephony.sysprop.TelephonyProperties {
+public *;
+}
+
+# Keep public classes and members
+-keepclasseswithmembers class com.android.internal.telephony.** {
+public *;
+}
+
+# Keep classes and members that have the @UnsupportedAppUsage annotation
+-keep @**.UnsupportedAppUsage class *
+-keepclassmembers class * {
+@**.UnsupportedAppUsage *;
+}

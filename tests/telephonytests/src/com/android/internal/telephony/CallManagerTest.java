@@ -46,8 +46,6 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import java.lang.reflect.Field;
-
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class CallManagerTest extends TelephonyTest {
@@ -212,23 +210,12 @@ public class CallManagerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testRegisterEvent() throws Exception {
-        Field field = CallManager.class.getDeclaredField("EVENT_CALL_WAITING");
-        field.setAccessible(true);
-        int mEvent = (Integer) field.get(CallManager.getInstance());
         verify(mPhone, times(1)).registerForCallWaiting(isA(Handler.class),
-                eq(mEvent), isNull());
-
-        field = CallManager.class.getDeclaredField("EVENT_PRECISE_CALL_STATE_CHANGED");
-        field.setAccessible(true);
-        mEvent = (Integer) field.get(CallManager.getInstance());
+                eq(CallManager.EVENT_CALL_WAITING), isNull());
         verify(mPhone, times(1)).registerForPreciseCallStateChanged(isA(Handler.class),
-                eq(mEvent), isA(Object.class));
-
-        field = CallManager.class.getDeclaredField("EVENT_RINGBACK_TONE");
-        field.setAccessible(true);
-        mEvent = (Integer) field.get(CallManager.getInstance());
+                eq(CallManager.EVENT_PRECISE_CALL_STATE_CHANGED), isA(Object.class));
         verify(mPhone, times(1)).registerForRingbackTone(isA(Handler.class),
-                eq(mEvent), isA(Object.class));
+                eq(CallManager.EVENT_RINGBACK_TONE), isA(Object.class));
     }
 
     @Test @SmallTest
