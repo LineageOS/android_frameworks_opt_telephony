@@ -1014,6 +1014,26 @@ public class RILUtils {
     }
 
     /**
+     * Convert to ResetNvType defined in ResetNvType.aidl
+     * @param resetType NV reset type
+     * @return The converted reset type in integer or -1 if param is invalid
+     */
+    public static int convertToHalResetNvTypeAidl(int resetType) {
+        /**
+         * resetType values
+         * 1 - reload all NV items
+         * 2 - erase NV reset (SCRTN)
+         * 3 - factory reset (RTN)
+         */
+        switch (resetType) {
+            case 1: return android.hardware.radio.modem.ResetNvType.RELOAD;
+            case 2: return android.hardware.radio.modem.ResetNvType.ERASE;
+            case 3: return android.hardware.radio.modem.ResetNvType.FACTORY_RESET;
+        }
+        return -1;
+    }
+
+    /**
      * Convert to a list of LinkAddress defined in radio/1.5/types.hal
      * @param linkProperties Link properties
      * @return The converted list of LinkAddresses
