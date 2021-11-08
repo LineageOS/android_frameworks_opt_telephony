@@ -279,7 +279,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         String iccId = "123456";
         doReturn(mIccCard).when(mPhone).getIccCard();
         doReturn(false).when(mIccCard).isEmptyProfile();
-        doReturn(iccId).when(mUiccSlot).getIccId();
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
+        doReturn(iccId).when(mUiccPort).getIccId();
         doReturn(mSubInfo).when(mSubscriptionController).getSubInfoForIccId(iccId);
         doReturn(false).when(mSubInfo).areUiccApplicationsEnabled();
 
@@ -905,8 +906,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     @SmallTest
     public void testSimReady() throws Exception {
         replaceInstance(SubscriptionInfoUpdater.class, "sIccId", null,new String[]{""});
-
-        doReturn(FAKE_ICCID_1).when(mUiccSlot).getIccId();
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
+        doReturn(FAKE_ICCID_1).when(mUiccPort).getIccId();
 
         mUpdater.updateInternalIccState(
             IccCardConstants.INTENT_VALUE_ICC_READY, "TESTING", FAKE_SUB_ID_1);
@@ -924,7 +925,8 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     public void testSimReadyAndLoaded() throws Exception {
         replaceInstance(SubscriptionInfoUpdater.class, "sIccId", null,new String[]{""});
 
-        doReturn(null).when(mUiccSlot).getIccId();
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
+        doReturn(null).when(mUiccPort).getIccId();
 
         mUpdater.updateInternalIccState(
             IccCardConstants.INTENT_VALUE_ICC_READY, "TESTING", FAKE_SUB_ID_1);

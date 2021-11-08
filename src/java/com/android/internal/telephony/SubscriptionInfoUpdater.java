@@ -416,9 +416,10 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         // ICCID is not available in IccRecords by the time SIM Ready event received
-        // hence get ICCID from UiccSlot.
-        UiccSlot uiccSlot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
-        String iccId = (uiccSlot != null) ? IccUtils.stripTrailingFs(uiccSlot.getIccId()) : null;
+        // hence get ICCID from UiccPort.
+        UiccPort port = UiccController.getInstance().getUiccPort(phoneId);
+        String iccId = (port == null) ? null : IccUtils.stripTrailingFs(port.getIccId());
+
         if (!TextUtils.isEmpty(iccId)) {
             sIccId[phoneId] = iccId;
             updateSubscriptionInfoByIccId(phoneId, true /* updateEmbeddedSubs */);
@@ -443,8 +444,9 @@ public class SubscriptionInfoUpdater extends Handler {
         boolean uiccAppsDisabled = areUiccAppsDisabledOnCard(phoneId);
         if (iccCard.isEmptyProfile() || uiccAppsDisabled) {
             if (uiccAppsDisabled) {
-                UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
-                sInactiveIccIds[phoneId] = IccUtils.stripTrailingFs(slot.getIccId());
+                UiccPort port = UiccController.getInstance().getUiccPort(phoneId);
+                String iccId = (port == null) ? null : port.getIccId();
+                sInactiveIccIds[phoneId] = IccUtils.stripTrailingFs(iccId);
             }
             isFinalState = true;
             // ICC_NOT_READY is a terminal state for
@@ -472,10 +474,15 @@ public class SubscriptionInfoUpdater extends Handler {
         // cardStatus (since IRadio 1.2). Amd upon cardStatus change we'll receive another
         // handleSimNotReady so this will be evaluated again.
         UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
-        if (slot == null || slot.getIccId() == null) return false;
+        if (slot == null) return false;
+        UiccPort port = UiccController.getInstance().getUiccPort(phoneId);
+        String iccId = (port == null) ? null : port.getIccId();
+        if (iccId == null) {
+            return false;
+        }
         SubscriptionInfo info =
                 mSubscriptionController.getSubInfoForIccId(
-                        IccUtils.stripTrailingFs(slot.getIccId()));
+                        IccUtils.stripTrailingFs(iccId));
         return info != null && !info.areUiccApplicationsEnabled();
     }
 
