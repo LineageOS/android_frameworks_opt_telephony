@@ -48,7 +48,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      */
     public void cdmaNewSms(int indicationType,
             android.hardware.radio.messaging.CdmaSmsMessage msg) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
 
@@ -64,7 +64,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void cdmaRuimSmsStorageFull(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL);
 
@@ -83,7 +83,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      *        BTS as coded in 3GPP 23.041 Section 9.4.2.2
      */
     public void newBroadcastSms(int indicationType, byte[] data) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) {
             mRil.unsljLogvRet(RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS,
@@ -102,7 +102,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      *        The PDU starts with the SMSC address per TS 27.005 (+CMT:)
      */
     public void newSms(int indicationType, byte[] pdu) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
 
         SmsMessageBase smsb = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
@@ -118,7 +118,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      * @param recordNumber Record number on the SIM
      */
     public void newSmsOnSim(int indicationType, int recordNumber) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM);
 
@@ -134,7 +134,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      *        The PDU starts with the SMSC address per TS 27.005 (+CMT:)
      */
     public void newSmsStatusReport(int indicationType, byte[] pdu) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT);
 
@@ -151,7 +151,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      * @param msg Message string in UTF-8, if applicable
      */
     public void onUssd(int indicationType, int ussdModeType, String msg) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
 
@@ -169,7 +169,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void simSmsStorageFull(int indicationType) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_SIM_SMS_STORAGE_FULL);
 

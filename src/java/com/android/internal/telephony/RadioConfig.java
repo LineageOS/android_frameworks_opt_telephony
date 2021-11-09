@@ -67,7 +67,7 @@ public class RadioConfig extends Handler {
 
     private final boolean mIsMobileNetworkSupported;
     private final HwServiceDeathRecipient mHwServiceDeathRecipient;
-    private final BinderServiceDeathRecipient mBinderServiceDeathRecipient;
+    private final RadioConfigBinderServiceDeathRecipient mBinderServiceDeathRecipient;
     private final RadioConfigResponse mRadioConfigResponse;
     private final RadioConfigIndication mRadioConfigIndication;
     private final SparseArray<RILRequest> mRequestList = new SparseArray<>();
@@ -91,7 +91,7 @@ public class RadioConfig extends Handler {
         }
     }
 
-    final class BinderServiceDeathRecipient implements IBinder.DeathRecipient {
+    final class RadioConfigBinderServiceDeathRecipient implements IBinder.DeathRecipient {
         private IBinder mBinder;
 
         public void linkToDeath(IBinder service) throws RemoteException {
@@ -283,7 +283,7 @@ public class RadioConfig extends Handler {
         mRadioConfigResponse = new RadioConfigResponse(this, radioHalVersion);
         mRadioConfigIndication = new RadioConfigIndication(this, radioHalVersion);
         mHwServiceDeathRecipient = new HwServiceDeathRecipient();
-        mBinderServiceDeathRecipient = new BinderServiceDeathRecipient();
+        mBinderServiceDeathRecipient = new RadioConfigBinderServiceDeathRecipient();
         mDefaultWorkSource = new WorkSource(
                 context.getApplicationInfo().uid, context.getPackageName());
 
