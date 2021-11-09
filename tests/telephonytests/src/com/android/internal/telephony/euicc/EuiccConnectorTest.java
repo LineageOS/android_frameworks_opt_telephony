@@ -68,6 +68,7 @@ public class EuiccConnectorTest extends TelephonyTest {
     @Mock private IEuiccService.Stub mEuiccService;
 
     private static final int CARD_ID = 15;
+    private static final int PORT_INDEX = 0;
 
     @Before
     public void setUp() throws Exception {
@@ -137,7 +138,7 @@ public class EuiccConnectorTest extends TelephonyTest {
                 false /* hasPriority */);
         mConnector = new EuiccConnector(mContext, mLooper.getLooper());
         final AtomicBoolean called = new AtomicBoolean(false);
-        mConnector.switchToSubscription(CARD_ID, "12345", true, new
+        mConnector.switchToSubscription(CARD_ID, PORT_INDEX, "12345", true, new
                 EuiccConnector.SwitchCommandCallback() {
             @Override
             public void onSwitchComplete(int result) {
