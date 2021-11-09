@@ -116,6 +116,7 @@ import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.util.NotificationChannelController;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -123,6 +124,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 /**
@@ -1965,17 +1967,22 @@ public class ImsPhone extends ImsPhoneBase {
      * Listen to the IMS ECBM state change
      */
     private ImsEcbmStateListener mImsEcbmStateListener =
-            new ImsEcbmStateListener() {
+            new ImsEcbmStateListener(mContext.getMainExecutor()) {
                 @Override
-                public void onECBMEntered() {
+                public void onECBMEntered(Executor executor) {
                     if (DBG) logd("onECBMEntered");
-                    handleEnterEmergencyCallbackMode();
+
+                    TelephonyUtils.runWithCleanCallingIdentity(()->
+                            handleEnterEmergencyCallbackMode(), executor);
                 }
 
+
+
                 @Override
-                public void onECBMExited() {
+                public void onECBMExited(Executor executor) {
                     if (DBG) logd("onECBMExited");
-                    handleExitEmergencyCallbackMode();
+                    TelephonyUtils.runWithCleanCallingIdentity(()->
+                            handleExitEmergencyCallbackMode(), executor);
                 }
             };
 

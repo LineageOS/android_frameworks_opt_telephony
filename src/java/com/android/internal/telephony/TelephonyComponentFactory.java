@@ -386,7 +386,7 @@ public class TelephonyComponentFactory {
 
     public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {
 
-        return new ImsExternalCallTracker(imsPhone);
+        return new ImsExternalCallTracker(imsPhone, imsPhone.getContext().getMainExecutor());
     }
 
     /**
