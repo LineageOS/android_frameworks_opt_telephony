@@ -549,34 +549,23 @@ public class RILUtils {
             msg.address.numberType = dis.read(); // address number type
             msg.address.numberPlan = dis.read(); // address number plan
             addrNbrOfDigits = (byte) dis.read();
-            byte[] digits = new byte[msg.address.digits.length + addrNbrOfDigits];
-            for (int i = 0; i < msg.address.digits.length; i++) {
-                digits[i] = msg.address.digits[i];
-            }
-            for (int i = msg.address.digits.length; i < msg.address.digits.length + addrNbrOfDigits;
-                    i++) {
+            byte[] digits = new byte[addrNbrOfDigits];
+            for (int i = 0; i < addrNbrOfDigits; i++) {
                 digits[i] = dis.readByte(); // address_orig_bytes[i]
             }
             msg.address.digits = digits;
             msg.subAddress.subaddressType = dis.read(); //subaddressType
             msg.subAddress.odd = (byte) dis.read() == 1; //subaddr odd
             subaddrNbrOfDigits = (byte) dis.read();
-            digits = new byte[msg.subAddress.digits.length + subaddrNbrOfDigits];
-            for (int i = 0; i < msg.subAddress.digits.length; i++) {
-                digits[i] = msg.subAddress.digits[i];
-            }
-            for (int i = msg.subAddress.digits.length;
-                    i < msg.subAddress.digits.length + subaddrNbrOfDigits; i++) {
+            digits = new byte[subaddrNbrOfDigits];
+            for (int i = 0; i < subaddrNbrOfDigits; i++) {
                 digits[i] = dis.readByte(); //subaddr_orig_bytes[i]
             }
             msg.subAddress.digits = digits;
 
             bearerDataLength = dis.read();
-            byte[] bearerData = new byte[msg.bearerData.length + bearerDataLength];
-            for (int i = 0; i < msg.bearerData.length; i++) {
-                bearerData[i] = msg.bearerData[i];
-            }
-            for (int i = msg.bearerData.length; i < msg.bearerData.length + bearerDataLength; i++) {
+            byte[] bearerData = new byte[bearerDataLength];
+            for (int i = 0; i < bearerDataLength; i++) {
                 bearerData[i] = dis.readByte(); //bearerData[i]
             }
             msg.bearerData = bearerData;
@@ -871,8 +860,8 @@ public class RILUtils {
         dpi.protocol = dp.getProtocolType();
         dpi.roamingProtocol = dp.getRoamingProtocolType();
         dpi.authType = dp.getAuthType();
-        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
-        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
+        dpi.user = convertNullToEmptyString(dp.getUserName());
+        dpi.password = convertNullToEmptyString(dp.getPassword());
         dpi.type = dp.getType();
         dpi.maxConnsTime = dp.getMaxConnectionsTime();
         dpi.maxConns = dp.getMaxConnections();
@@ -1224,6 +1213,54 @@ public class RILUtils {
     }
 
     /**
+     * Convert to RadioAccessSpecifier defined in RadioAccessSpecifier.aidl
+     * @param ras Radio access specifier
+     * @return The converted RadioAccessSpecifier
+     */
+    public static android.hardware.radio.network.RadioAccessSpecifier
+            convertToHalRadioAccessSpecifierAidl(RadioAccessSpecifier ras) {
+        android.hardware.radio.network.RadioAccessSpecifier rasInHalFormat =
+                new android.hardware.radio.network.RadioAccessSpecifier();
+        android.hardware.radio.network.RadioAccessSpecifierBands bandsInHalFormat =
+                new android.hardware.radio.network.RadioAccessSpecifierBands();
+        rasInHalFormat.accessNetwork = convertToHalAccessNetworkAidl(ras.getRadioAccessNetwork());
+        int[] bands = null;
+        if (ras.getBands() != null) {
+            bands = new int[ras.getBands().length];
+            for (int i = 0; i < ras.getBands().length; i++) {
+                bands[i] = ras.getBands()[i];
+            }
+        }
+        switch (ras.getRadioAccessNetwork()) {
+            case AccessNetworkConstants.AccessNetworkType.GERAN:
+                bandsInHalFormat.geranBands(bands);
+                break;
+            case AccessNetworkConstants.AccessNetworkType.UTRAN:
+                bandsInHalFormat.utranBands(bands);
+                break;
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN:
+                bandsInHalFormat.eutranBands(bands);
+                break;
+            case AccessNetworkConstants.AccessNetworkType.NGRAN:
+                bandsInHalFormat.ngranBands(bands);
+                break;
+            default:
+                return null;
+        }
+        rasInHalFormat.bands = bandsInHalFormat;
+
+        if (ras.getChannels() != null) {
+            int[] channels = new int[ras.getChannels().length];
+            for (int i = 0; i < ras.getChannels().length; i++) {
+                channels[i] = ras.getChannels()[i];
+            }
+            rasInHalFormat.channels = channels;
+        }
+
+        return rasInHalFormat;
+    }
+
+    /**
      * Convert to censored terminal response
      * @param terminalResponse Terminal response
      * @return The converted censored terminal response
@@ -1400,8 +1437,77 @@ public class RILUtils {
     }
 
     /**
+     * Convert to RadioAccessFamily defined in RadioAccessFamily.aidl
+     * @param networkTypeBitmask {@link TelephonyManager.NetworkTypeBitMask}, the bitmask
+     *        represented by {@link android.telephony.Annotation.NetworkType}
+     * @return The converted RadioAccessFamily
+     */
+    public static int convertToHalRadioAccessFamilyAidl(
+            @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask) {
+        int raf = 0;
+
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_GSM) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.GSM;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_GPRS) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.GPRS;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EDGE) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EDGE;
+        }
+        // convert CDMA to IS95A, consistent with ServiceState.networkTypeToRilRadioTechnology
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_CDMA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.IS95A;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.ONE_X_RTT;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_0) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EVDO_0;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_A) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EVDO_A;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_B) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EVDO_B;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EHRPD) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EHRPD;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSUPA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSUPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSDPA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSDPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSPA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSPAP) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSPAP;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_UMTS) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.UMTS;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.TD_SCDMA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.LTE;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE_CA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.LTE_CA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.NR;
+        }
+        // TODO: need hal definition for IWLAN
+        return (raf == 0) ? android.hardware.radio.RadioAccessFamily.UNKNOWN : raf;
+    }
+
+    /**
      * Convert AccessNetworkType to AccessNetwork defined in radio/1.5/types.hal
-     * @param accessNetworkType Access networkt ype
+     * @param accessNetworkType Access network type
      * @return The converted AccessNetwork
      */
     public static int convertToHalAccessNetwork(int accessNetworkType) {
@@ -1421,6 +1527,31 @@ public class RILUtils {
             case AccessNetworkConstants.AccessNetworkType.UNKNOWN:
             default:
                 return android.hardware.radio.V1_5.AccessNetwork.UNKNOWN;
+        }
+    }
+
+    /**
+     * Convert AccessNetworkType to AccessNetwork.aidl
+     * @param accessNetworkType Access network type
+     * @return The converted AccessNetwork
+     */
+    public static int convertToHalAccessNetworkAidl(int accessNetworkType) {
+        switch (accessNetworkType) {
+            case AccessNetworkConstants.AccessNetworkType.GERAN:
+                return android.hardware.radio.AccessNetwork.GERAN;
+            case AccessNetworkConstants.AccessNetworkType.UTRAN:
+                return android.hardware.radio.AccessNetwork.UTRAN;
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN:
+                return android.hardware.radio.AccessNetwork.EUTRAN;
+            case AccessNetworkConstants.AccessNetworkType.CDMA2000:
+                return android.hardware.radio.AccessNetwork.CDMA2000;
+            case AccessNetworkConstants.AccessNetworkType.IWLAN:
+                return android.hardware.radio.AccessNetwork.IWLAN;
+            case AccessNetworkConstants.AccessNetworkType.NGRAN:
+                return android.hardware.radio.AccessNetwork.NGRAN;
+            case AccessNetworkConstants.AccessNetworkType.UNKNOWN:
+            default:
+                return android.hardware.radio.AccessNetwork.UNKNOWN;
         }
     }
 
@@ -1542,6 +1673,23 @@ public class RILUtils {
         signalThresholdInfoHal.hysteresisDb = signalThresholdInfo.getHysteresisDb();
         signalThresholdInfoHal.thresholds = primitiveArrayToArrayList(
                 signalThresholdInfo.getThresholds());
+        signalThresholdInfoHal.isEnabled = signalThresholdInfo.isEnabled();
+        return signalThresholdInfoHal;
+    }
+
+    /**
+     * Convert to SignalThresholdInfo defined in SignalThresholdInfo.aidl
+     * @param signalThresholdInfo Signal threshold info
+     * @return The converted SignalThresholdInfo
+     */
+    public static android.hardware.radio.network.SignalThresholdInfo
+            convertToHalSignalThresholdInfoAidl(SignalThresholdInfo signalThresholdInfo) {
+        android.hardware.radio.network.SignalThresholdInfo signalThresholdInfoHal =
+                new android.hardware.radio.network.SignalThresholdInfo();
+        signalThresholdInfoHal.signalMeasurement = signalThresholdInfo.getSignalMeasurementType();
+        signalThresholdInfoHal.hysteresisMs = signalThresholdInfo.getHysteresisMs();
+        signalThresholdInfoHal.hysteresisDb = signalThresholdInfo.getHysteresisDb();
+        signalThresholdInfoHal.thresholds = signalThresholdInfo.getThresholds();
         signalThresholdInfoHal.isEnabled = signalThresholdInfo.isEnabled();
         return signalThresholdInfoHal;
     }

@@ -204,6 +204,8 @@ public class RILTest extends TelephonyTest {
     private IRadio mRadioProxy;
     @Mock
     private RadioDataProxy mDataProxy;
+    @Mock
+    private RadioNetworkProxy mNetworkProxy;
 
     private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
     private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
@@ -311,6 +313,7 @@ public class RILTest extends TelephonyTest {
         SparseArray<RadioServiceProxy> proxies = new SparseArray<>();
         proxies.put(RIL.RADIO_SERVICE, null);
         proxies.put(RIL.DATA_SERVICE, mDataProxy);
+        proxies.put(RIL.NETWORK_SERVICE, mNetworkProxy);
         mRILInstance = new RIL(context,
                 RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
                 Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
@@ -318,7 +321,10 @@ public class RILTest extends TelephonyTest {
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
         doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class),
                 any());
+        doReturn(mNetworkProxy).when(mRILUnderTest).getRadioServiceProxy(
+                eq(RadioNetworkProxy.class), any());
         doReturn(false).when(mDataProxy).isEmpty();
+        doReturn(false).when(mNetworkProxy).isEmpty();
         try {
             replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
         } catch (Exception e) {
@@ -1380,7 +1386,7 @@ public class RILTest extends TelephonyTest {
     public void testGetBarringInfo() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.getBarringInfo(obtainMessage());
-        verify(mRadioProxy, never()).getBarringInfo(anyInt());
+        verify(mNetworkProxy, never()).getBarringInfo(anyInt());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -1388,7 +1394,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.getBarringInfo(obtainMessage());
-        verify(mRadioProxy).getBarringInfo(mSerialNumberCaptor.capture());
+        verify(mNetworkProxy).getBarringInfo(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_BARRING_INFO);
     }

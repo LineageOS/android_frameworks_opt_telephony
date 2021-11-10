@@ -415,23 +415,15 @@ public class RadioDataProxy extends RadioServiceProxy {
 
             final InetAddress srcAddress = packetData.getSrcAddress();
             final InetAddress dstAddress = packetData.getDstAddress();
-            byte[] sourceAddress =
-                    new byte[srcAddress.getAddress().length + req.sourceAddress.length];
-            for (int i = 0; i < req.sourceAddress.length; i++) {
-                sourceAddress[i] = req.sourceAddress[i];
-            }
-            for (int i = req.sourceAddress.length; i < sourceAddress.length; i++) {
-                sourceAddress[i] = srcAddress.getAddress()[i - req.sourceAddress.length];
+            byte[] sourceAddress = new byte[srcAddress.getAddress().length];
+            for (int i = 0; i < sourceAddress.length; i++) {
+                sourceAddress[i] = srcAddress.getAddress()[i];
             }
             req.sourceAddress = sourceAddress;
             req.sourcePort = packetData.getSrcPort();
-            byte[] destinationAddress =
-                    new byte[dstAddress.getAddress().length + req.destinationAddress.length];
-            for (int i = 0; i < req.destinationAddress.length; i++) {
-                destinationAddress[i] = req.destinationAddress[i];
-            }
-            for (int i = req.destinationAddress.length; i < destinationAddress.length; i++) {
-                destinationAddress[i] = dstAddress.getAddress()[i - req.destinationAddress.length];
+            byte[] destinationAddress = new byte[dstAddress.getAddress().length];
+            for (int i = 0; i < destinationAddress.length; i++) {
+                destinationAddress[i] = dstAddress.getAddress()[i];
             }
             req.destinationAddress = destinationAddress;
             req.destinationPort = packetData.getDstPort();
