@@ -454,7 +454,7 @@ public class RILUtils {
 
     /**
      * Convert to GsmSmsMessage defined in radio/1.0/types.hal
-     * @param smscPdu SMSD address
+     * @param smscPdu SMSC address
      * @param pdu SMS in PDU format
      * @return A converted GsmSmsMessage
      */
@@ -464,6 +464,21 @@ public class RILUtils {
                 new android.hardware.radio.V1_0.GsmSmsMessage();
         msg.smscPdu = smscPdu == null ? "" : smscPdu;
         msg.pdu = pdu == null ? "" : pdu;
+        return msg;
+    }
+
+    /**
+     * Convert to GsmSmsMessage defined in GsmSmsMessage.aidl
+     * @param smscPdu SMSC address
+     * @param pdu SMS in PDU format
+     * @return A converted GsmSmsMessage
+     */
+    public static android.hardware.radio.messaging.GsmSmsMessage convertToHalGsmSmsMessageAidl(
+            String smscPdu, String pdu) {
+        android.hardware.radio.messaging.GsmSmsMessage msg =
+                new android.hardware.radio.messaging.GsmSmsMessage();
+        msg.smscPdu = RILUtils.convertNullToEmptyString(smscPdu);
+        msg.pdu = RILUtils.convertNullToEmptyString(pdu);
         return msg;
     }
 
@@ -505,6 +520,67 @@ public class RILUtils {
             for (int i = 0; i < bearerDataLength; i++) {
                 msg.bearerData.add(dis.readByte()); //bearerData[i]
             }
+        } catch (IOException ex) {
+        }
+        return msg;
+    }
+
+    /**
+     * Convert to CdmaSmsMessage defined in CdmaSmsMessage.aidl
+     * @param pdu SMS in PDU format
+     * @return A converted CdmaSmsMessage
+     */
+    public static android.hardware.radio.messaging.CdmaSmsMessage convertToHalCdmaSmsMessageAidl(
+            byte[] pdu) {
+        android.hardware.radio.messaging.CdmaSmsMessage msg =
+                new android.hardware.radio.messaging.CdmaSmsMessage();
+        int addrNbrOfDigits;
+        int subaddrNbrOfDigits;
+        int bearerDataLength;
+        ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
+        DataInputStream dis = new DataInputStream(bais);
+
+        try {
+            msg.teleserviceId = dis.readInt(); // teleServiceId
+            msg.isServicePresent = (byte) dis.readInt() == 1; // servicePresent
+            msg.serviceCategory = dis.readInt(); // serviceCategory
+            msg.address.digitMode = dis.read();  // address digit mode
+            msg.address.isNumberModeDataNetwork =
+                    dis.read() == CdmaSmsAddress.NUMBER_MODE_DATA_NETWORK; // address number mode
+            msg.address.numberType = dis.read(); // address number type
+            msg.address.numberPlan = dis.read(); // address number plan
+            addrNbrOfDigits = (byte) dis.read();
+            byte[] digits = new byte[msg.address.digits.length + addrNbrOfDigits];
+            for (int i = 0; i < msg.address.digits.length; i++) {
+                digits[i] = msg.address.digits[i];
+            }
+            for (int i = msg.address.digits.length; i < msg.address.digits.length + addrNbrOfDigits;
+                    i++) {
+                digits[i] = dis.readByte(); // address_orig_bytes[i]
+            }
+            msg.address.digits = digits;
+            msg.subAddress.subaddressType = dis.read(); //subaddressType
+            msg.subAddress.odd = (byte) dis.read() == 1; //subaddr odd
+            subaddrNbrOfDigits = (byte) dis.read();
+            digits = new byte[msg.subAddress.digits.length + subaddrNbrOfDigits];
+            for (int i = 0; i < msg.subAddress.digits.length; i++) {
+                digits[i] = msg.subAddress.digits[i];
+            }
+            for (int i = msg.subAddress.digits.length;
+                    i < msg.subAddress.digits.length + subaddrNbrOfDigits; i++) {
+                digits[i] = dis.readByte(); //subaddr_orig_bytes[i]
+            }
+            msg.subAddress.digits = digits;
+
+            bearerDataLength = dis.read();
+            byte[] bearerData = new byte[msg.bearerData.length + bearerDataLength];
+            for (int i = 0; i < msg.bearerData.length; i++) {
+                bearerData[i] = msg.bearerData[i];
+            }
+            for (int i = msg.bearerData.length; i < msg.bearerData.length + bearerDataLength; i++) {
+                bearerData[i] = dis.readByte(); //bearerData[i]
+            }
+            msg.bearerData = bearerData;
         } catch (IOException ex) {
         }
         return msg;
@@ -783,6 +859,44 @@ public class RILUtils {
     }
 
     /**
+     * Convert to DataProfileInfo defined in DataprofileInfo.aidl
+     * @param dp Data profile
+     * @return The converted DataProfileInfo
+     */
+    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(
+            DataProfile dp) {
+        android.hardware.radio.data.DataProfileInfo dpi =
+                new android.hardware.radio.data.DataProfileInfo();
+
+        dpi.apn = dp.getApn();
+        dpi.protocol = dp.getProtocolType();
+        dpi.roamingProtocol = dp.getRoamingProtocolType();
+        dpi.authType = dp.getAuthType();
+        dpi.user = TextUtils.emptyIfNull(dp.getUserName());
+        dpi.password = TextUtils.emptyIfNull(dp.getPassword());
+        dpi.type = dp.getType();
+        dpi.maxConnsTime = dp.getMaxConnectionsTime();
+        dpi.maxConns = dp.getMaxConnections();
+        dpi.waitTime = dp.getWaitTime();
+        dpi.enabled = dp.isEnabled();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmask();
+        // Shift by 1 bit due to the discrepancy between RadioAccessFamily.aidl and the bitmask
+        // version of ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
+        dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+                dp.getBearerBitmask()) << 1;
+        dpi.mtuV4 = dp.getMtuV4();
+        dpi.mtuV6 = dp.getMtuV6();
+        dpi.persistent = dp.isPersistent();
+        dpi.preferred = dp.isPreferred();
+
+        // profile id is only meaningful when it's persistent on the modem.
+        dpi.profileId = (dpi.persistent) ? dp.getProfileId()
+                : android.hardware.radio.data.DataProfileInfo.ID_INVALID;
+
+        return dpi;
+    }
+
+    /**
      * Convert to OptionalSliceInfo defined in radio/1.6/types.hal
      * @param sliceInfo Slice info
      * @return The converted OptionalSliceInfo
@@ -802,6 +916,25 @@ public class RILUtils {
         si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
         optionalSliceInfo.value(si);
         return optionalSliceInfo;
+    }
+
+    /**
+     * Convert to SliceInfo defined in SliceInfo.aidl
+     * @param sliceInfo Slice info
+     * @return The converted SliceInfo
+     */
+    public static android.hardware.radio.data.SliceInfo convertToHalSliceInfoAidl(
+            @Nullable NetworkSliceInfo sliceInfo) {
+        if (sliceInfo == null) {
+            return null;
+        }
+
+        android.hardware.radio.data.SliceInfo si = new android.hardware.radio.data.SliceInfo();
+        si.sliceServiceType = (byte) sliceInfo.getSliceServiceType();
+        si.mappedHplmnSst = (byte) sliceInfo.getMappedHplmnSliceServiceType();
+        si.sliceDifferentiator = sliceInfo.getSliceDifferentiator();
+        si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
+        return si;
     }
 
     /**
@@ -841,6 +974,26 @@ public class RILUtils {
     }
 
     /**
+     * Convert to TrafficDescriptor defined in TrafficDescriptor.aidl
+     * @param trafficDescriptor Traffic descriptor
+     * @return The converted TrafficDescriptor
+     */
+    public static android.hardware.radio.data.TrafficDescriptor
+            convertToHalTrafficDescriptorAidl(@Nullable TrafficDescriptor trafficDescriptor) {
+        if (trafficDescriptor == null) {
+            return null;
+        }
+
+        android.hardware.radio.data.TrafficDescriptor td =
+                new android.hardware.radio.data.TrafficDescriptor();
+        td.dnn = trafficDescriptor.getDataNetworkName();
+        android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
+        osAppId.osAppId = trafficDescriptor.getOsAppId();
+        td.osAppId = osAppId;
+        return td;
+    }
+
+    /**
      * Convert to ResetNvType defined in radio/1.0/types.hal
      * @param resetType NV reset type
      * @return The converted reset type in integer or -1 if param is invalid
@@ -856,6 +1009,26 @@ public class RILUtils {
             case 1: return android.hardware.radio.V1_0.ResetNvType.RELOAD;
             case 2: return android.hardware.radio.V1_0.ResetNvType.ERASE;
             case 3: return android.hardware.radio.V1_0.ResetNvType.FACTORY_RESET;
+        }
+        return -1;
+    }
+
+    /**
+     * Convert to ResetNvType defined in ResetNvType.aidl
+     * @param resetType NV reset type
+     * @return The converted reset type in integer or -1 if param is invalid
+     */
+    public static int convertToHalResetNvTypeAidl(int resetType) {
+        /**
+         * resetType values
+         * 1 - reload all NV items
+         * 2 - erase NV reset (SCRTN)
+         * 3 - factory reset (RTN)
+         */
+        switch (resetType) {
+            case 1: return android.hardware.radio.modem.ResetNvType.RELOAD;
+            case 2: return android.hardware.radio.modem.ResetNvType.ERASE;
+            case 3: return android.hardware.radio.modem.ResetNvType.FACTORY_RESET;
         }
         return -1;
     }
@@ -880,6 +1053,32 @@ public class RILUtils {
             }
         }
         return addresses15;
+    }
+
+    /**
+     * Convert to a list of LinkAddress defined in LinkAddress.aidl
+     * @param linkProperties Link properties
+     * @return The converted list of LinkAddresses
+     */
+    public static android.hardware.radio.data.LinkAddress[] convertToHalLinkProperties(
+            LinkProperties linkProperties) {
+        if (linkProperties == null) {
+            return null;
+        }
+        android.hardware.radio.data.LinkAddress[] addresses =
+                new android.hardware.radio.data.LinkAddress[
+                        linkProperties.getAllLinkAddresses().size()];
+        for (int i = 0; i < linkProperties.getAllLinkAddresses().size(); i++) {
+            LinkAddress la = linkProperties.getAllLinkAddresses().get(i);
+            android.hardware.radio.data.LinkAddress linkAddress =
+                    new android.hardware.radio.data.LinkAddress();
+            linkAddress.address = la.getAddress().getHostAddress();
+            linkAddress.addressProperties = la.getFlags();
+            linkAddress.deprecationTime = la.getDeprecationTime();
+            linkAddress.expirationTime = la.getExpirationTime();
+            addresses[i] = linkAddress;
+        }
+        return addresses;
     }
 
     /**
@@ -1354,7 +1553,7 @@ public class RILUtils {
      * @return The converted SmsWriteArgsStatus defined in radio/1.0/types.hal
      */
     public static int convertToHalSmsWriteArgsStatus(int status) {
-        switch(status & 0x7) {
+        switch (status & 0x7) {
             case SmsManager.STATUS_ON_ICC_READ:
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.REC_READ;
             case SmsManager.STATUS_ON_ICC_UNREAD:
@@ -1365,6 +1564,26 @@ public class RILUtils {
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.STO_UNSENT;
             default:
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.REC_READ;
+        }
+    }
+
+    /**
+     * Convert StatusOnIcc to statuses defined in SmsWriteArgs.aidl
+     * @param status StatusOnIcc
+     * @return The converted statuses defined in SmsWriteArgs.aidl
+     */
+    public static int convertToHalSmsWriteArgsStatusAidl(int status) {
+        switch (status & 0x7) {
+            case SmsManager.STATUS_ON_ICC_READ:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_READ;
+            case SmsManager.STATUS_ON_ICC_UNREAD:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_UNREAD;
+            case SmsManager.STATUS_ON_ICC_SENT:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_STO_SENT;
+            case SmsManager.STATUS_ON_ICC_UNSENT:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_STO_UNSENT;
+            default:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_READ;
         }
     }
 
@@ -4273,7 +4492,7 @@ public class RILUtils {
      * @return The converted String response
      */
     public static String responseToString(int response) {
-        switch(response) {
+        switch (response) {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
                 return "UNSOL_RESPONSE_RADIO_STATE_CHANGED";
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED:
