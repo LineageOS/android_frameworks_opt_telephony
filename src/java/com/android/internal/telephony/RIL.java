@@ -24,12 +24,10 @@ import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.hardware.radio.V1_0.IRadio;
-import android.hardware.radio.V1_0.ImsSmsMessage;
 import android.hardware.radio.V1_0.RadioError;
 import android.hardware.radio.V1_0.RadioIndicationType;
 import android.hardware.radio.V1_0.RadioResponseInfo;
 import android.hardware.radio.V1_0.RadioResponseType;
-import android.hardware.radio.V1_0.RadioTechnologyFamily;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
@@ -264,11 +262,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     //***** Constants
 
     static final String[] HIDL_SERVICE_NAME = {"slot1", "slot2", "slot3"};
-
-    static final int IRADIO_GET_SERVICE_DELAY_MILLIS = 4 * 1000;
-
-    static final String EMPTY_ALPHA_LONG = "";
-    static final String EMPTY_ALPHA_SHORT = "";
 
     public static List<TelephonyHistogram> getTelephonyRILTimingHistograms() {
         List<TelephonyHistogram> list;
@@ -1023,11 +1016,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    private void handleRadioProxyExceptionForRR(RILRequest rr, String caller, Exception e) {
-        // TODO: remove
-        handleRadioProxyExceptionForRR(RADIO_SERVICE, caller, e);
-    }
-
     private void handleRadioProxyExceptionForRR(int service, String caller, Exception e) {
         riljLoge(caller + ": " + e);
         e.printStackTrace();
@@ -1311,7 +1299,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void dial(String address, boolean isEmergencyCall, EmergencyNumber emergencyNumberInfo,
-                     boolean hasKnownUserIntentEmergency, int clirMode, Message result) {
+            boolean hasKnownUserIntentEmergency, int clirMode, Message result) {
         dial(address, isEmergencyCall, emergencyNumberInfo, hasKnownUserIntentEmergency,
                 clirMode, null, result);
     }
@@ -3625,7 +3613,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                messagingProxy.sendImsSms(rr.mSerial, smscPdu, pdu, retry, messageRef);
+                messagingProxy.sendImsSms(rr.mSerial, smscPdu, pdu, null, retry, messageRef);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_IMS,
                         SmsSession.Event.Format.SMS_FORMAT_3GPP, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
@@ -3636,8 +3624,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
+        RadioMessagingProxy messagingProxy =
+                getRadioServiceProxy(RadioMessagingProxy.class, result);
+        if (!messagingProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_IMS_SEND_SMS, result, mRILDefaultWorkSource);
 
             // Do not log function args for privacy
@@ -3645,18 +3634,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
             }
 
-            ImsSmsMessage msg = new ImsSmsMessage();
-            msg.tech = RadioTechnologyFamily.THREE_GPP2;
-            msg.retry = (byte) retry >= 1 ? true : false;
-            msg.messageRef = messageRef;
-            msg.cdmaMessage.add(RILUtils.convertToHalCdmaSmsMessage(pdu));
-
             try {
-                radioProxy.sendImsSms(rr.mSerial, msg);
+                messagingProxy.sendImsSms(rr.mSerial, null, null, pdu, retry, messageRef);
                 mMetrics.writeRilSendSms(mPhoneId, rr.mSerial, SmsSession.Event.Tech.SMS_IMS,
                         SmsSession.Event.Format.SMS_FORMAT_3GPP2, getOutgoingSmsMessageId(result));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "sendImsCdmaSms", e);
+                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendImsCdmaSms", e);
             }
         }
     }
@@ -4021,6 +4004,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
             // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
             // Instead the LCE functionality is always-on and provides unsolicited indications.
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "startLceService: REQUEST_NOT_SUPPORTED");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
             return;
         }
 
@@ -4035,7 +4024,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.startLceService(rr.mSerial, reportIntervalMs, pullMode);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "startLceService", e);
+                handleRadioProxyExceptionForRR(RADIO_SERVICE, "startLceService", e);
             }
         }
     }
@@ -4046,6 +4035,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
             // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
             // Instead the LCE functionality is always-on and provides unsolicited indications.
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "stopLceService: REQUEST_NOT_SUPPORTED");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
             return;
         }
 
@@ -4059,7 +4054,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             try {
                 radioProxy.stopLceService(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(rr, "stopLceService", e);
+                handleRadioProxyExceptionForRR(RADIO_SERVICE, "stopLceService", e);
             }
         }
     }
@@ -4118,8 +4113,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Deprecated
     @Override
     public void pullLceData(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
-        if (!networkProxy.isEmpty()) {
+        IRadio radioProxy = getRadioProxy(result);
+
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
+            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
+            // Instead the LCE functionality is always-on and provides unsolicited indications.
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "pullLceData: REQUEST_NOT_SUPPORTED");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+            return;
+        }
+
+        if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_PULL_LCEDATA, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -4127,9 +4135,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                networkProxy.pullLceData(rr.mSerial);
+                radioProxy.pullLceData(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "pullLceData", e);
+                handleRadioProxyExceptionForRR(RADIO_SERVICE, "pullLceData", e);
             }
         }
     }

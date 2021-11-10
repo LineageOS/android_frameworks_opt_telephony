@@ -132,12 +132,11 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param records New CDMA information
      */
     public void cdmaInfoRec(int indicationType,
-            android.hardware.radio.voice.CdmaInformationRecords records) {
+            android.hardware.radio.voice.CdmaInformationRecord[] records) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        int numberOfInfoRecs = records.infoRec.length;
-        for (int i = 0; i < numberOfInfoRecs; i++) {
-            android.hardware.radio.voice.CdmaInformationRecord record = records.infoRec[i];
+        for (int i = 0; i < records.length; i++) {
+            android.hardware.radio.voice.CdmaInformationRecord record = records[i];
             int id = record.name;
             CdmaInformationRecords cdmaInformationRecords;
             switch (id) {
