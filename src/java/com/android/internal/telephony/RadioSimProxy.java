@@ -463,7 +463,7 @@ public class RadioSimProxy extends RadioServiceProxy {
      * Call IRadioSim#sendTerminalResponseToSim
      * @param serial Serial number of request
      * @param contents String containing SAT/USAT response in hexadecimal format starting with
-     *                 command tag
+     *                 first byte of response data
      * @throws RemoteException
      */
     public void sendTerminalResponseToSim(int serial, String contents) throws RemoteException {
