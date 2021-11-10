@@ -3767,7 +3767,7 @@ public class RILUtils {
             for (android.hardware.radio.config.SimSlotStatus slotStatus : halSlotStatusArray) {
                 IccSlotStatus iccSlotStatus = new IccSlotStatus();
                 iccSlotStatus.setCardState(slotStatus.cardState);
-                iccSlotStatus.setSlotState(slotStatus.portInfo[0].portState);
+                iccSlotStatus.setSlotState(slotStatus.portInfo[0].portActive ? 1 : 0);
                 iccSlotStatus.logicalSlotIndex = slotStatus.portInfo[0].logicalSlotId;
                 iccSlotStatus.atr = slotStatus.atr;
                 iccSlotStatus.iccid = slotStatus.portInfo[0].iccId;
