@@ -50,7 +50,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
      */
     public void dataCallListChanged(int indicationType,
             android.hardware.radio.data.SetupDataCallResult[] dcList) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.DATA_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
         ArrayList<DataCallResponse> response = RILUtils.convertHalDataCallResultList(dcList);
@@ -65,7 +65,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
      */
     public void keepaliveStatus(int indicationType,
             android.hardware.radio.data.KeepaliveStatus halStatus) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.DATA_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) {
             mRil.unsljLogRet(RIL_UNSOL_KEEPALIVE_STATUS, "handle=" + halStatus.sessionHandle
@@ -82,7 +82,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
      * @param pco New PcoData
      */
     public void pcoData(int indicationType, android.hardware.radio.data.PcoDataInfo pco) {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.DATA_SERVICE, indicationType);
 
         PcoData response = new PcoData(pco.cid, pco.bearerProto, pco.pcoId, pco.contents);
 
@@ -98,7 +98,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
      * @throws RemoteException
      */
     public void unthrottleApn(int indicationType, String apn) throws RemoteException {
-        mRil.processIndication(indicationType);
+        mRil.processIndication(RIL.DATA_SERVICE, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
 
