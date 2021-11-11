@@ -245,6 +245,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final SparseArray<AtomicLong> mServiceCookies = new SparseArray<>();
     private final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
+    private MockModem mMockModem;
 
     // Thread-safe HashMap to map from RIL_REQUEST_XXX constant to HalVersion.
     // This is for Radio HAL Fallback Compatibility feature. When a RIL request
@@ -463,26 +464,86 @@ public class RIL extends BaseCommands implements CommandsInterface {
      * @param serviceName the service name we want to bind to
      */
     public boolean setModemService(String serviceName) {
+        boolean serviceBound = true;
 
         if (serviceName != null) {
-            riljLoge("Overriding connected service to MockModemService");
-            // TODO: binding to mockmodem service for testing only
+            riljLog("Binding to MockModemService");
+            mMockModem = null;
+
+            mMockModem = new MockModem(mContext, serviceName, mPhoneId);
+            if (mMockModem == null) {
+                riljLoge("MockModem create fail.");
+                return false;
+            }
+
+            // Disable HIDL service
+            if (mRadioProxy != null) {
+                riljLog("Disable HIDL service");
+                mDisabledRadioServices.get(RADIO_SERVICE).add(mPhoneId);
+            }
+
+            mMockModem.bindAllMockModemService();
 
             for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
-                resetProxyAndRequestList(service);
+                if (service == RADIO_SERVICE) continue;
+
+                int retryCount = 0;
+                IBinder binder;
+                do {
+                    binder = mMockModem.getServiceBinder(service);
+
+                    retryCount++;
+                    if (binder == null) {
+                        riljLog("Retry(" + retryCount + ") Service " + serviceToString(service));
+                        try {
+                            Thread.sleep(MockModem.BINDER_RETRY_MILLIS);
+                        } catch (InterruptedException e) {
+                        }
+                    }
+                } while ((binder == null) && (retryCount < MockModem.BINDER_MAX_RETRY));
+
+                if (binder == null) {
+                    riljLoge("Service " + serviceToString(service) + " bind fail");
+                    serviceBound = false;
+                    break;
+                }
             }
-        } else {
-            // TODO: unbinding mockmodem service
+
+            if (serviceBound) {
+                for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                    resetProxyAndRequestList(service);
+                }
+            }
         }
-        return true;
+
+        if ((serviceName == null) || (!serviceBound)) {
+            if (serviceBound) riljLog("Unbinding to MockModemService");
+
+            if (mDisabledRadioServices.get(RADIO_SERVICE).contains(mPhoneId)) {
+                mDisabledRadioServices.get(RADIO_SERVICE).clear();
+            }
+
+            if (mMockModem != null) {
+                for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                    mMockModem.unbindMockModemService(service);
+                    resetProxyAndRequestList(service);
+                }
+                mMockModem = null;
+            }
+        }
+
+        return serviceBound;
     }
 
     /**
      * Get current bound service in Radio Module
      */
     public String getModemService() {
-        //TODO: return the bound service based on connected proxy
-        return "default";
+        if (mMockModem != null) {
+            return mMockModem.getServiceName();
+        } else {
+            return "default";
+        }
     }
 
     /** Set a radio HAL fallback compatibility override. */
@@ -674,9 +735,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 IBinder binder;
                 switch (service) {
                     case DATA_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.data.IRadioData.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.data.IRadioData.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(DATA_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioDataProxy) serviceProxy).setAidl(mRadioVersion,
@@ -685,10 +750,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case MESSAGING_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR
+                                            + "/" + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(MESSAGING_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioMessagingProxy) serviceProxy).setAidl(mRadioVersion,
@@ -697,10 +765,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case MODEM_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.modem.IRadioModem.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.modem.IRadioModem.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(MODEM_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioModemProxy) serviceProxy).setAidl(mRadioVersion,
@@ -709,10 +780,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case NETWORK_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.network.IRadioNetwork.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.network.IRadioNetwork.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(NETWORK_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioNetworkProxy) serviceProxy).setAidl(mRadioVersion,
@@ -721,10 +795,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case SIM_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.sim.IRadioSim.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.sim.IRadioSim.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(SIM_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioSimProxy) serviceProxy).setAidl(mRadioVersion,
@@ -733,10 +810,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case VOICE_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.voice.IRadioVoice.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.voice.IRadioVoice.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(VOICE_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioVoiceProxy) serviceProxy).setAidl(mRadioVersion,
