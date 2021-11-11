@@ -204,6 +204,10 @@ public class RILTest extends TelephonyTest {
     private IRadio mRadioProxy;
     @Mock
     private RadioDataProxy mDataProxy;
+    @Mock
+    private RadioNetworkProxy mNetworkProxy;
+    @Mock
+    private RadioSimProxy mSimProxy;
 
     private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
     private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
@@ -311,6 +315,8 @@ public class RILTest extends TelephonyTest {
         SparseArray<RadioServiceProxy> proxies = new SparseArray<>();
         proxies.put(RIL.RADIO_SERVICE, null);
         proxies.put(RIL.DATA_SERVICE, mDataProxy);
+        proxies.put(RIL.NETWORK_SERVICE, mNetworkProxy);
+        proxies.put(RIL.SIM_SERVICE, mSimProxy);
         mRILInstance = new RIL(context,
                 RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
                 Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
@@ -318,7 +324,13 @@ public class RILTest extends TelephonyTest {
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
         doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class),
                 any());
+        doReturn(mNetworkProxy).when(mRILUnderTest).getRadioServiceProxy(
+                eq(RadioNetworkProxy.class), any());
+        doReturn(mSimProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioSimProxy.class),
+                any());
         doReturn(false).when(mDataProxy).isEmpty();
+        doReturn(false).when(mNetworkProxy).isEmpty();
+        doReturn(false).when(mSimProxy).isEmpty();
         try {
             replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
         } catch (Exception e) {
@@ -1380,7 +1392,7 @@ public class RILTest extends TelephonyTest {
     public void testGetBarringInfo() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.getBarringInfo(obtainMessage());
-        verify(mRadioProxy, never()).getBarringInfo(anyInt());
+        verify(mNetworkProxy, never()).getBarringInfo(anyInt());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -1388,7 +1400,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.getBarringInfo(obtainMessage());
-        verify(mRadioProxy).getBarringInfo(mSerialNumberCaptor.capture());
+        verify(mNetworkProxy).getBarringInfo(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_BARRING_INFO);
     }
@@ -2739,7 +2751,7 @@ public class RILTest extends TelephonyTest {
     public void testEnableUiccApplications() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.enableUiccApplications(false, obtainMessage());
-        verify(mRadioProxy, never()).enableUiccApplications(anyInt(), anyBoolean());
+        verify(mSimProxy, never()).enableUiccApplications(anyInt(), anyBoolean());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -2747,7 +2759,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.enableUiccApplications(false, obtainMessage());
-        verify(mRadioProxy).enableUiccApplications(mSerialNumberCaptor.capture(), anyBoolean());
+        verify(mSimProxy).enableUiccApplications(mSerialNumberCaptor.capture(), anyBoolean());
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_ENABLE_UICC_APPLICATIONS);
     }
@@ -2756,7 +2768,7 @@ public class RILTest extends TelephonyTest {
     public void testAreUiccApplicationsEnabled() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
-        verify(mRadioProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verify(mSimProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -2764,7 +2776,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
-        verify(mRadioProxy).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verify(mSimProxy).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT);
     }
@@ -2776,7 +2788,7 @@ public class RILTest extends TelephonyTest {
         Message message = obtainMessage();
         mRILUnderTest.areUiccApplicationsEnabled(message);
         processAllMessages();
-        verify(mRadioProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verify(mSimProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
         // Sending message is handled by getRadioProxy when proxy is null.
         // areUiccApplicationsEnabled shouldn't explicitly send another callback.
         assertEquals(null, message.obj);
