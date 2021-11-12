@@ -288,14 +288,15 @@ public class RadioMessagingProxy extends RadioServiceProxy {
      * @param serial Serial number of request
      * @param smscPdu SMSC address in PDU form GSM BCD format prefixed by a length byte
      *                or NULL for default SMSC
-     * @param pdu SMS in PDU format as an ASCII hex string less the SMSC address
+     * @param gsmPdu SMS in PDU format as an ASCII hex string less the SMSC address
+     * @param cdmaPdu CDMA-SMS in internal pseudo-PDU format
      * @param retry Whether this is a retry; 0 == not retry, nonzero = retry
      * @param messageRef MessageRef from RIL_SMS_RESPONSE corresponding to failed MO SMS
      *                   if retry is nonzero
      * @throws RemoteException
      */
-    public void sendImsSms(int serial, String smscPdu, String pdu, int retry, int messageRef)
-            throws RemoteException {
+    public void sendImsSms(int serial, String smscPdu, String gsmPdu, byte[] cdmaPdu, int retry,
+            int messageRef) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
             android.hardware.radio.messaging.ImsSmsMessage msg =
@@ -303,15 +304,14 @@ public class RadioMessagingProxy extends RadioServiceProxy {
             msg.tech = android.hardware.radio.RadioTechnologyFamily.THREE_GPP;
             msg.retry = (byte) retry >= 1;
             msg.messageRef = messageRef;
-
-            android.hardware.radio.messaging.GsmSmsMessage[] gsmMessages =
-                    new android.hardware.radio.messaging.GsmSmsMessage[msg.gsmMessage.length + 1];
-            for (int i = 0; i < msg.gsmMessage.length; i++) {
-                gsmMessages[i] = msg.gsmMessage[i];
+            if (gsmPdu != null) {
+                msg.gsmMessage = new android.hardware.radio.messaging.GsmSmsMessage[]{
+                        RILUtils.convertToHalGsmSmsMessageAidl(smscPdu, gsmPdu)};
             }
-            gsmMessages[msg.gsmMessage.length] =
-                    RILUtils.convertToHalGsmSmsMessageAidl(smscPdu, pdu);
-            msg.gsmMessage = gsmMessages;
+            if (cdmaPdu != null) {
+                msg.cdmaMessage = new android.hardware.radio.messaging.CdmaSmsMessage[]{
+                        RILUtils.convertToHalCdmaSmsMessageAidl(cdmaPdu)};
+            }
             mMessagingProxy.sendImsSms(serial, msg);
         } else {
             android.hardware.radio.V1_0.ImsSmsMessage msg =
@@ -319,10 +319,12 @@ public class RadioMessagingProxy extends RadioServiceProxy {
             msg.tech = android.hardware.radio.V1_0.RadioTechnologyFamily.THREE_GPP;
             msg.retry = (byte) retry >= 1;
             msg.messageRef = messageRef;
-
-            android.hardware.radio.V1_0.GsmSmsMessage gsmMsg =
-                    RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu);
-            msg.gsmMessage.add(gsmMsg);
+            if (gsmPdu != null) {
+                msg.gsmMessage.add(RILUtils.convertToHalGsmSmsMessage(smscPdu, gsmPdu));
+            }
+            if (cdmaPdu != null) {
+                msg.cdmaMessage.add(RILUtils.convertToHalCdmaSmsMessage(cdmaPdu));
+            }
             mRadioProxy.sendImsSms(serial, msg);
         }
     }
@@ -422,13 +424,8 @@ public class RadioMessagingProxy extends RadioServiceProxy {
                     halConfigs.add(info);
                 }
             }
-            android.hardware.radio.messaging.CdmaBroadcastSmsConfigInfo[] halConfigsArr =
-                    new android.hardware.radio.messaging.CdmaBroadcastSmsConfigInfo[
-                            halConfigs.size()];
-            for (int i = 0; i < halConfigs.size(); i++) {
-                halConfigsArr[i] = halConfigs.get(i);
-            }
-            mMessagingProxy.setCdmaBroadcastConfig(serial, halConfigsArr);
+            mMessagingProxy.setCdmaBroadcastConfig(serial, halConfigs.stream().toArray(
+                    android.hardware.radio.messaging.CdmaBroadcastSmsConfigInfo[]::new));
         } else {
             ArrayList<android.hardware.radio.V1_0.CdmaBroadcastSmsConfigInfo> halConfigs =
                     new ArrayList<>();
@@ -566,15 +563,15 @@ public class RadioMessagingProxy extends RadioServiceProxy {
             android.hardware.radio.messaging.SmsWriteArgs args =
                     new android.hardware.radio.messaging.SmsWriteArgs();
             args.status = RILUtils.convertToHalSmsWriteArgsStatusAidl(status);
-            args.smsc = RILUtils.convertNullToEmptyString(smsc);
-            args.pdu = RILUtils.convertNullToEmptyString(pdu);
+            args.smsc = smsc;
+            args.pdu = pdu;
             mMessagingProxy.writeSmsToSim(serial, args);
         } else {
             android.hardware.radio.V1_0.SmsWriteArgs args =
                     new android.hardware.radio.V1_0.SmsWriteArgs();
             args.status = RILUtils.convertToHalSmsWriteArgsStatus(status);
-            args.smsc = RILUtils.convertNullToEmptyString(smsc);
-            args.pdu = RILUtils.convertNullToEmptyString(pdu);
+            args.smsc = smsc;
+            args.pdu = pdu;
             mRadioProxy.writeSmsToSim(serial, args);
         }
     }
