@@ -270,6 +270,7 @@ import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.BarringInfo;
+import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellConfigLte;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
@@ -369,7 +370,6 @@ public class RILUtils {
     public static final String RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID =
             "316f3801-fa21-4954-a42f-0041eada3b33";
 
-
     /**
      * Convert to PersoSubstate defined in radio/1.5/types.hal
      * @param persoType PersoSubState type
@@ -452,8 +452,89 @@ public class RILUtils {
     }
 
     /**
+     * Convert to PersoSubstate.aidl
+     * @param persoType PersoSubState type
+     * @return The converted PersoSubstate
+     */
+    public static int convertToHalPersoTypeAidl(
+            IccCardApplicationStatus.PersoSubState persoType) {
+        switch (persoType) {
+            case PERSOSUBSTATE_IN_PROGRESS:
+                return android.hardware.radio.sim.PersoSubstate.IN_PROGRESS;
+            case  PERSOSUBSTATE_READY:
+                return android.hardware.radio.sim.PersoSubstate.READY;
+            case PERSOSUBSTATE_SIM_NETWORK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_NETWORK;
+            case PERSOSUBSTATE_SIM_NETWORK_SUBSET:
+                return android.hardware.radio.sim.PersoSubstate.SIM_NETWORK_SUBSET;
+            case PERSOSUBSTATE_SIM_CORPORATE:
+                return android.hardware.radio.sim.PersoSubstate.SIM_CORPORATE;
+            case PERSOSUBSTATE_SIM_SERVICE_PROVIDER:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SERVICE_PROVIDER;
+            case PERSOSUBSTATE_SIM_SIM:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SIM;
+            case PERSOSUBSTATE_SIM_NETWORK_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_NETWORK_PUK;
+            case PERSOSUBSTATE_SIM_NETWORK_SUBSET_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_NETWORK_SUBSET_PUK;
+            case PERSOSUBSTATE_SIM_CORPORATE_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_CORPORATE_PUK;
+            case PERSOSUBSTATE_SIM_SERVICE_PROVIDER_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SERVICE_PROVIDER_PUK;
+            case PERSOSUBSTATE_SIM_SIM_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SIM_PUK;
+            case PERSOSUBSTATE_RUIM_NETWORK1:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_NETWORK1;
+            case PERSOSUBSTATE_RUIM_NETWORK2:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_NETWORK2;
+            case PERSOSUBSTATE_RUIM_HRPD:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_HRPD;
+            case PERSOSUBSTATE_RUIM_CORPORATE:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_CORPORATE;
+            case PERSOSUBSTATE_RUIM_SERVICE_PROVIDER:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_SERVICE_PROVIDER;
+            case PERSOSUBSTATE_RUIM_RUIM:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_RUIM;
+            case PERSOSUBSTATE_RUIM_NETWORK1_PUK:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_NETWORK1_PUK;
+            case PERSOSUBSTATE_RUIM_NETWORK2_PUK:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_NETWORK2_PUK;
+            case PERSOSUBSTATE_RUIM_HRPD_PUK:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_HRPD_PUK;
+            case PERSOSUBSTATE_RUIM_CORPORATE_PUK:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_CORPORATE_PUK;
+            case PERSOSUBSTATE_RUIM_SERVICE_PROVIDER_PUK:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_SERVICE_PROVIDER_PUK;
+            case PERSOSUBSTATE_RUIM_RUIM_PUK:
+                return android.hardware.radio.sim.PersoSubstate.RUIM_RUIM_PUK;
+            case PERSOSUBSTATE_SIM_SPN:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SPN;
+            case PERSOSUBSTATE_SIM_SPN_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SPN_PUK;
+            case PERSOSUBSTATE_SIM_SP_EHPLMN:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SP_EHPLMN;
+            case PERSOSUBSTATE_SIM_SP_EHPLMN_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_SP_EHPLMN_PUK;
+            case PERSOSUBSTATE_SIM_ICCID:
+                return android.hardware.radio.sim.PersoSubstate.SIM_ICCID;
+            case PERSOSUBSTATE_SIM_ICCID_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_ICCID_PUK;
+            case PERSOSUBSTATE_SIM_IMPI:
+                return android.hardware.radio.sim.PersoSubstate.SIM_IMPI;
+            case PERSOSUBSTATE_SIM_IMPI_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_IMPI_PUK;
+            case PERSOSUBSTATE_SIM_NS_SP:
+                return android.hardware.radio.sim.PersoSubstate.SIM_NS_SP;
+            case PERSOSUBSTATE_SIM_NS_SP_PUK:
+                return android.hardware.radio.sim.PersoSubstate.SIM_NS_SP_PUK;
+            default:
+                return android.hardware.radio.sim.PersoSubstate.UNKNOWN;
+        }
+    }
+
+    /**
      * Convert to GsmSmsMessage defined in radio/1.0/types.hal
-     * @param smscPdu SMSD address
+     * @param smscPdu SMSC address
      * @param pdu SMS in PDU format
      * @return A converted GsmSmsMessage
      */
@@ -463,6 +544,21 @@ public class RILUtils {
                 new android.hardware.radio.V1_0.GsmSmsMessage();
         msg.smscPdu = smscPdu == null ? "" : smscPdu;
         msg.pdu = pdu == null ? "" : pdu;
+        return msg;
+    }
+
+    /**
+     * Convert to GsmSmsMessage.aidl
+     * @param smscPdu SMSC address
+     * @param pdu SMS in PDU format
+     * @return A converted GsmSmsMessage
+     */
+    public static android.hardware.radio.messaging.GsmSmsMessage convertToHalGsmSmsMessageAidl(
+            String smscPdu, String pdu) {
+        android.hardware.radio.messaging.GsmSmsMessage msg =
+                new android.hardware.radio.messaging.GsmSmsMessage();
+        msg.smscPdu = RILUtils.convertNullToEmptyString(smscPdu);
+        msg.pdu = RILUtils.convertNullToEmptyString(pdu);
         return msg;
     }
 
@@ -504,6 +600,56 @@ public class RILUtils {
             for (int i = 0; i < bearerDataLength; i++) {
                 msg.bearerData.add(dis.readByte()); //bearerData[i]
             }
+        } catch (IOException ex) {
+        }
+        return msg;
+    }
+
+    /**
+     * Convert to CdmaSmsMessage.aidl
+     * @param pdu SMS in PDU format
+     * @return The converted CdmaSmsMessage
+     */
+    public static android.hardware.radio.messaging.CdmaSmsMessage convertToHalCdmaSmsMessageAidl(
+            byte[] pdu) {
+        android.hardware.radio.messaging.CdmaSmsMessage msg =
+                new android.hardware.radio.messaging.CdmaSmsMessage();
+        int addrNbrOfDigits;
+        int subaddrNbrOfDigits;
+        int bearerDataLength;
+        ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
+        DataInputStream dis = new DataInputStream(bais);
+
+        try {
+            msg.teleserviceId = dis.readInt(); // teleServiceId
+            msg.isServicePresent = (byte) dis.readInt() == 1; // servicePresent
+            msg.serviceCategory = dis.readInt(); // serviceCategory
+            msg.address.digitMode = dis.read();  // address digit mode
+            msg.address.isNumberModeDataNetwork =
+                    dis.read() == CdmaSmsAddress.NUMBER_MODE_DATA_NETWORK; // address number mode
+            msg.address.numberType = dis.read(); // address number type
+            msg.address.numberPlan = dis.read(); // address number plan
+            addrNbrOfDigits = (byte) dis.read();
+            byte[] digits = new byte[addrNbrOfDigits];
+            for (int i = 0; i < addrNbrOfDigits; i++) {
+                digits[i] = dis.readByte(); // address_orig_bytes[i]
+            }
+            msg.address.digits = digits;
+            msg.subAddress.subaddressType = dis.read(); //subaddressType
+            msg.subAddress.odd = (byte) dis.read() == 1; //subaddr odd
+            subaddrNbrOfDigits = (byte) dis.read();
+            digits = new byte[subaddrNbrOfDigits];
+            for (int i = 0; i < subaddrNbrOfDigits; i++) {
+                digits[i] = dis.readByte(); //subaddr_orig_bytes[i]
+            }
+            msg.subAddress.digits = digits;
+
+            bearerDataLength = dis.read();
+            byte[] bearerData = new byte[bearerDataLength];
+            for (int i = 0; i < bearerDataLength; i++) {
+                bearerData[i] = dis.readByte(); //bearerData[i]
+            }
+            msg.bearerData = bearerData;
         } catch (IOException ex) {
         }
         return msg;
@@ -782,6 +928,44 @@ public class RILUtils {
     }
 
     /**
+     * Convert to DataProfileInfo.aidl
+     * @param dp Data profile
+     * @return The converted DataProfileInfo
+     */
+    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(
+            DataProfile dp) {
+        android.hardware.radio.data.DataProfileInfo dpi =
+                new android.hardware.radio.data.DataProfileInfo();
+
+        dpi.apn = dp.getApn();
+        dpi.protocol = dp.getProtocolType();
+        dpi.roamingProtocol = dp.getRoamingProtocolType();
+        dpi.authType = dp.getAuthType();
+        dpi.user = convertNullToEmptyString(dp.getUserName());
+        dpi.password = convertNullToEmptyString(dp.getPassword());
+        dpi.type = dp.getType();
+        dpi.maxConnsTime = dp.getMaxConnectionsTime();
+        dpi.maxConns = dp.getMaxConnections();
+        dpi.waitTime = dp.getWaitTime();
+        dpi.enabled = dp.isEnabled();
+        dpi.supportedApnTypesBitmap = dp.getSupportedApnTypesBitmask();
+        // Shift by 1 bit due to the discrepancy between RadioAccessFamily.aidl and the bitmask
+        // version of ServiceState.RIL_RADIO_TECHNOLOGY_XXXX.
+        dpi.bearerBitmap = ServiceState.convertNetworkTypeBitmaskToBearerBitmask(
+                dp.getBearerBitmask()) << 1;
+        dpi.mtuV4 = dp.getMtuV4();
+        dpi.mtuV6 = dp.getMtuV6();
+        dpi.persistent = dp.isPersistent();
+        dpi.preferred = dp.isPreferred();
+
+        // profile id is only meaningful when it's persistent on the modem.
+        dpi.profileId = (dpi.persistent) ? dp.getProfileId()
+                : android.hardware.radio.data.DataProfileInfo.ID_INVALID;
+
+        return dpi;
+    }
+
+    /**
      * Convert to OptionalSliceInfo defined in radio/1.6/types.hal
      * @param sliceInfo Slice info
      * @return The converted OptionalSliceInfo
@@ -801,6 +985,25 @@ public class RILUtils {
         si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
         optionalSliceInfo.value(si);
         return optionalSliceInfo;
+    }
+
+    /**
+     * Convert to SliceInfo.aidl
+     * @param sliceInfo Slice info
+     * @return The converted SliceInfo
+     */
+    public static android.hardware.radio.data.SliceInfo convertToHalSliceInfoAidl(
+            @Nullable NetworkSliceInfo sliceInfo) {
+        if (sliceInfo == null) {
+            return null;
+        }
+
+        android.hardware.radio.data.SliceInfo si = new android.hardware.radio.data.SliceInfo();
+        si.sliceServiceType = (byte) sliceInfo.getSliceServiceType();
+        si.mappedHplmnSst = (byte) sliceInfo.getMappedHplmnSliceServiceType();
+        si.sliceDifferentiator = sliceInfo.getSliceDifferentiator();
+        si.mappedHplmnSd = sliceInfo.getMappedHplmnSliceDifferentiator();
+        return si;
     }
 
     /**
@@ -840,6 +1043,26 @@ public class RILUtils {
     }
 
     /**
+     * Convert to TrafficDescriptor.aidl
+     * @param trafficDescriptor Traffic descriptor
+     * @return The converted TrafficDescriptor
+     */
+    public static android.hardware.radio.data.TrafficDescriptor
+            convertToHalTrafficDescriptorAidl(@Nullable TrafficDescriptor trafficDescriptor) {
+        if (trafficDescriptor == null) {
+            return null;
+        }
+
+        android.hardware.radio.data.TrafficDescriptor td =
+                new android.hardware.radio.data.TrafficDescriptor();
+        td.dnn = trafficDescriptor.getDataNetworkName();
+        android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
+        osAppId.osAppId = trafficDescriptor.getOsAppId();
+        td.osAppId = osAppId;
+        return td;
+    }
+
+    /**
      * Convert to ResetNvType defined in radio/1.0/types.hal
      * @param resetType NV reset type
      * @return The converted reset type in integer or -1 if param is invalid
@@ -855,6 +1078,26 @@ public class RILUtils {
             case 1: return android.hardware.radio.V1_0.ResetNvType.RELOAD;
             case 2: return android.hardware.radio.V1_0.ResetNvType.ERASE;
             case 3: return android.hardware.radio.V1_0.ResetNvType.FACTORY_RESET;
+        }
+        return -1;
+    }
+
+    /**
+     * Convert to ResetNvType.aidl
+     * @param resetType NV reset type
+     * @return The converted reset type in integer or -1 if param is invalid
+     */
+    public static int convertToHalResetNvTypeAidl(int resetType) {
+        /**
+         * resetType values
+         * 1 - reload all NV items
+         * 2 - erase NV reset (SCRTN)
+         * 3 - factory reset (RTN)
+         */
+        switch (resetType) {
+            case 1: return android.hardware.radio.modem.ResetNvType.RELOAD;
+            case 2: return android.hardware.radio.modem.ResetNvType.ERASE;
+            case 3: return android.hardware.radio.modem.ResetNvType.FACTORY_RESET;
         }
         return -1;
     }
@@ -879,6 +1122,32 @@ public class RILUtils {
             }
         }
         return addresses15;
+    }
+
+    /**
+     * Convert to a list of LinkAddress.aidl
+     * @param linkProperties Link properties
+     * @return The converted list of LinkAddresses
+     */
+    public static android.hardware.radio.data.LinkAddress[] convertToHalLinkProperties(
+            LinkProperties linkProperties) {
+        if (linkProperties == null) {
+            return null;
+        }
+        android.hardware.radio.data.LinkAddress[] addresses =
+                new android.hardware.radio.data.LinkAddress[
+                        linkProperties.getAllLinkAddresses().size()];
+        for (int i = 0; i < linkProperties.getAllLinkAddresses().size(); i++) {
+            LinkAddress la = linkProperties.getAllLinkAddresses().get(i);
+            android.hardware.radio.data.LinkAddress linkAddress =
+                    new android.hardware.radio.data.LinkAddress();
+            linkAddress.address = la.getAddress().getHostAddress();
+            linkAddress.addressProperties = la.getFlags();
+            linkAddress.deprecationTime = la.getDeprecationTime();
+            linkAddress.expirationTime = la.getExpirationTime();
+            addresses[i] = linkAddress;
+        }
+        return addresses;
     }
 
     /**
@@ -1025,6 +1294,54 @@ public class RILUtils {
     }
 
     /**
+     * Convert to RadioAccessSpecifier.aidl
+     * @param ras Radio access specifier
+     * @return The converted RadioAccessSpecifier
+     */
+    public static android.hardware.radio.network.RadioAccessSpecifier
+            convertToHalRadioAccessSpecifierAidl(RadioAccessSpecifier ras) {
+        android.hardware.radio.network.RadioAccessSpecifier rasInHalFormat =
+                new android.hardware.radio.network.RadioAccessSpecifier();
+        android.hardware.radio.network.RadioAccessSpecifierBands bandsInHalFormat =
+                new android.hardware.radio.network.RadioAccessSpecifierBands();
+        rasInHalFormat.accessNetwork = convertToHalAccessNetworkAidl(ras.getRadioAccessNetwork());
+        int[] bands = null;
+        if (ras.getBands() != null) {
+            bands = new int[ras.getBands().length];
+            for (int i = 0; i < ras.getBands().length; i++) {
+                bands[i] = ras.getBands()[i];
+            }
+        }
+        switch (ras.getRadioAccessNetwork()) {
+            case AccessNetworkConstants.AccessNetworkType.GERAN:
+                bandsInHalFormat.geranBands(bands);
+                break;
+            case AccessNetworkConstants.AccessNetworkType.UTRAN:
+                bandsInHalFormat.utranBands(bands);
+                break;
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN:
+                bandsInHalFormat.eutranBands(bands);
+                break;
+            case AccessNetworkConstants.AccessNetworkType.NGRAN:
+                bandsInHalFormat.ngranBands(bands);
+                break;
+            default:
+                return null;
+        }
+        rasInHalFormat.bands = bandsInHalFormat;
+
+        if (ras.getChannels() != null) {
+            int[] channels = new int[ras.getChannels().length];
+            for (int i = 0; i < ras.getChannels().length; i++) {
+                channels[i] = ras.getChannels()[i];
+            }
+            rasInHalFormat.channels = channels;
+        }
+
+        return rasInHalFormat;
+    }
+
+    /**
      * Convert to censored terminal response
      * @param terminalResponse Terminal response
      * @return The converted censored terminal response
@@ -1124,7 +1441,6 @@ public class RILUtils {
         if ((raf & android.hardware.radio.V1_4.RadioAccessFamily.NR) != 0) {
             networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_NR;
         }
-        // TODO: need hal definition
         if ((raf & (1 << ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)) != 0) {
             networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN;
         }
@@ -1187,6 +1503,9 @@ public class RILUtils {
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA) != 0) {
             raf |= android.hardware.radio.V1_0.RadioAccessFamily.TD_SCDMA;
         }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN) != 0) {
+            raf |= (1 << android.hardware.radio.V1_4.RadioTechnology.IWLAN);
+        }
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0) {
             raf |= android.hardware.radio.V1_0.RadioAccessFamily.LTE;
         }
@@ -1196,13 +1515,83 @@ public class RILUtils {
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
             raf |= android.hardware.radio.V1_4.RadioAccessFamily.NR;
         }
-        // TODO: need hal definition for IWLAN
         return (raf == 0) ? android.hardware.radio.V1_4.RadioAccessFamily.UNKNOWN : raf;
     }
 
     /**
+     * Convert to RadioAccessFamily.aidl
+     * @param networkTypeBitmask {@link TelephonyManager.NetworkTypeBitMask}, the bitmask
+     *        represented by {@link android.telephony.Annotation.NetworkType}
+     * @return The converted RadioAccessFamily
+     */
+    public static int convertToHalRadioAccessFamilyAidl(
+            @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask) {
+        int raf = 0;
+
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_GSM) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.GSM;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_GPRS) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.GPRS;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EDGE) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EDGE;
+        }
+        // convert CDMA to IS95A, consistent with ServiceState.networkTypeToRilRadioTechnology
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_CDMA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.IS95A;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.ONE_X_RTT;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_0) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EVDO_0;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_A) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EVDO_A;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EVDO_B) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EVDO_B;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_EHRPD) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.EHRPD;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSUPA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSUPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSDPA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSDPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSPA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSPA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_HSPAP) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.HSPAP;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_UMTS) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.UMTS;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.TD_SCDMA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.IWLAN;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.LTE;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE_CA) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.LTE_CA;
+        }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.NR;
+        }
+        return (raf == 0) ? android.hardware.radio.RadioAccessFamily.UNKNOWN : raf;
+    }
+
+    /**
      * Convert AccessNetworkType to AccessNetwork defined in radio/1.5/types.hal
-     * @param accessNetworkType Access networkt ype
+     * @param accessNetworkType Access network type
      * @return The converted AccessNetwork
      */
     public static int convertToHalAccessNetwork(int accessNetworkType) {
@@ -1226,7 +1615,32 @@ public class RILUtils {
     }
 
     /**
-     * Convert AccessNetworkType to RadioAccessNetwork defined in radio/1.1/types.hal
+     * Convert to AccessNetwork.aidl
+     * @param accessNetworkType Access network type
+     * @return The converted AccessNetwork
+     */
+    public static int convertToHalAccessNetworkAidl(int accessNetworkType) {
+        switch (accessNetworkType) {
+            case AccessNetworkConstants.AccessNetworkType.GERAN:
+                return android.hardware.radio.AccessNetwork.GERAN;
+            case AccessNetworkConstants.AccessNetworkType.UTRAN:
+                return android.hardware.radio.AccessNetwork.UTRAN;
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN:
+                return android.hardware.radio.AccessNetwork.EUTRAN;
+            case AccessNetworkConstants.AccessNetworkType.CDMA2000:
+                return android.hardware.radio.AccessNetwork.CDMA2000;
+            case AccessNetworkConstants.AccessNetworkType.IWLAN:
+                return android.hardware.radio.AccessNetwork.IWLAN;
+            case AccessNetworkConstants.AccessNetworkType.NGRAN:
+                return android.hardware.radio.AccessNetwork.NGRAN;
+            case AccessNetworkConstants.AccessNetworkType.UNKNOWN:
+            default:
+                return android.hardware.radio.AccessNetwork.UNKNOWN;
+        }
+    }
+
+    /**
+     * Convert to RadioAccessNetwork defined in radio/1.1/types.hal
      * @param accessNetworkType Access network type
      * @return The converted RadioAccessNetwork
      */
@@ -1296,7 +1710,67 @@ public class RILUtils {
     }
 
     /**
-     * Convert a list of CarrierIdentifiers into a list of Carrier defined in radio/1.0/types.hal
+     * Convert to SimApdu.aidl
+     * @param channel channel
+     * @param cla cla
+     * @param instruction instruction
+     * @param p1 p1
+     * @param p2 p2
+     * @param p3 p3
+     * @param data data
+     * @return The converted SimApdu
+     */
+    public static android.hardware.radio.sim.SimApdu convertToHalSimApduAidl(int channel, int cla,
+            int instruction, int p1, int p2, int p3, String data) {
+        android.hardware.radio.sim.SimApdu msg = new android.hardware.radio.sim.SimApdu();
+        msg.sessionId = channel;
+        msg.cla = cla;
+        msg.instruction = instruction;
+        msg.p1 = p1;
+        msg.p2 = p2;
+        msg.p3 = p3;
+        msg.data = convertNullToEmptyString(data);
+        return msg;
+    }
+
+    /**
+     * Convert to SimLockMultiSimPolicy defined in radio/1.4/types.hal
+     * @param policy Multi SIM policy
+     * @return The converted SimLockMultiSimPolicy
+     */
+    public static int convertToHalSimLockMultiSimPolicy(int policy) {
+        switch (policy) {
+            case CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT:
+                return android.hardware.radio.V1_4.SimLockMultiSimPolicy
+                        .ONE_VALID_SIM_MUST_BE_PRESENT;
+            case CarrierRestrictionRules.MULTISIM_POLICY_NONE:
+                // fallthrough
+            default:
+                return android.hardware.radio.V1_4.SimLockMultiSimPolicy.NO_MULTISIM_POLICY;
+
+        }
+    }
+
+    /**
+     * Convert to SimLockMultiSimPolicy.aidl
+     * @param policy Multi SIM policy
+     * @return The converted SimLockMultiSimPolicy
+     */
+    public static int convertToHalSimLockMultiSimPolicyAidl(int policy) {
+        switch (policy) {
+            case CarrierRestrictionRules.MULTISIM_POLICY_ONE_VALID_SIM_MUST_BE_PRESENT:
+                return android.hardware.radio.sim.SimLockMultiSimPolicy
+                        .ONE_VALID_SIM_MUST_BE_PRESENT;
+            case CarrierRestrictionRules.MULTISIM_POLICY_NONE:
+                // fallthrough
+            default:
+                return android.hardware.radio.sim.SimLockMultiSimPolicy.NO_MULTISIM_POLICY;
+
+        }
+    }
+
+    /**
+     * Convert a list of CarrierIdentifiers into a list of Carriers defined in radio/1.0/types.hal
      * @param carriers List of CarrierIdentifiers
      * @return The converted list of Carriers
      */
@@ -1330,6 +1804,86 @@ public class RILUtils {
     }
 
     /**
+     * Convert a list of CarrierIdentifiers into an array of Carrier.aidl
+     * @param carriers List of CarrierIdentifiers
+     * @return The converted array of Carriers
+     */
+    public static android.hardware.radio.sim.Carrier[] convertToHalCarrierRestrictionListAidl(
+            List<CarrierIdentifier> carriers) {
+        android.hardware.radio.sim.Carrier[] result =
+                new android.hardware.radio.sim.Carrier[carriers.size()];
+        for (int i = 0; i < carriers.size(); i++) {
+            CarrierIdentifier ci = carriers.get(i);
+            android.hardware.radio.sim.Carrier carrier = new android.hardware.radio.sim.Carrier();
+            carrier.mcc = convertNullToEmptyString(ci.getMcc());
+            carrier.mnc = convertNullToEmptyString(ci.getMnc());
+            int matchType = CarrierIdentifier.MatchType.ALL;
+            String matchData = null;
+            if (!TextUtils.isEmpty(ci.getSpn())) {
+                matchType = CarrierIdentifier.MatchType.SPN;
+                matchData = ci.getSpn();
+            } else if (!TextUtils.isEmpty(ci.getImsi())) {
+                matchType = CarrierIdentifier.MatchType.IMSI_PREFIX;
+                matchData = ci.getImsi();
+            } else if (!TextUtils.isEmpty(ci.getGid1())) {
+                matchType = CarrierIdentifier.MatchType.GID1;
+                matchData = ci.getGid1();
+            } else if (!TextUtils.isEmpty(ci.getGid2())) {
+                matchType = CarrierIdentifier.MatchType.GID2;
+                matchData = ci.getGid2();
+            }
+            carrier.matchType = matchType;
+            carrier.matchData = convertNullToEmptyString(matchData);
+            result[i] = carrier;
+        }
+        return result;
+    }
+
+    /**
+     * Convert to Dial defined in radio/1.0/types.hal
+     * @param address Address
+     * @param clirMode CLIR mode
+     * @param uusInfo UUS info
+     * @return The converted Dial
+     */
+    public static android.hardware.radio.V1_0.Dial convertToHalDial(String address, int clirMode,
+            UUSInfo uusInfo) {
+        android.hardware.radio.V1_0.Dial dial = new android.hardware.radio.V1_0.Dial();
+        dial.address = RILUtils.convertNullToEmptyString(address);
+        dial.clir = clirMode;
+        if (uusInfo != null) {
+            android.hardware.radio.V1_0.UusInfo info = new android.hardware.radio.V1_0.UusInfo();
+            info.uusType = uusInfo.getType();
+            info.uusDcs = uusInfo.getDcs();
+            info.uusData = new String(uusInfo.getUserData());
+            dial.uusInfo.add(info);
+        }
+        return dial;
+    }
+
+    /**
+     * Convert to Dial.aidl
+     * @param address Address
+     * @param clirMode CLIR mode
+     * @param uusInfo UUS info
+     * @return The converted Dial.aidl
+     */
+    public static android.hardware.radio.voice.Dial convertToHalDialAidl(String address,
+            int clirMode, UUSInfo uusInfo) {
+        android.hardware.radio.voice.Dial dial = new android.hardware.radio.voice.Dial();
+        dial.address = RILUtils.convertNullToEmptyString(address);
+        dial.clir = clirMode;
+        if (uusInfo != null) {
+            android.hardware.radio.voice.UusInfo info = new android.hardware.radio.voice.UusInfo();
+            info.uusType = uusInfo.getType();
+            info.uusDcs = uusInfo.getDcs();
+            info.uusData = new String(uusInfo.getUserData());
+            dial.uusInfo = new android.hardware.radio.voice.UusInfo[] {info};
+        }
+        return dial;
+    }
+
+    /**
      * Convert to SignalThresholdInfo defined in radio/1.5/types.hal
      * @param signalThresholdInfo Signal threshold info
      * @return The converted SignalThresholdInfo
@@ -1348,12 +1902,29 @@ public class RILUtils {
     }
 
     /**
-     * Convert StatusOnIcc to SmsWriteArgsStatus defined in radio/1.0/types.hal
+     * Convert to SignalThresholdInfo.aidl
+     * @param signalThresholdInfo Signal threshold info
+     * @return The converted SignalThresholdInfo
+     */
+    public static android.hardware.radio.network.SignalThresholdInfo
+            convertToHalSignalThresholdInfoAidl(SignalThresholdInfo signalThresholdInfo) {
+        android.hardware.radio.network.SignalThresholdInfo signalThresholdInfoHal =
+                new android.hardware.radio.network.SignalThresholdInfo();
+        signalThresholdInfoHal.signalMeasurement = signalThresholdInfo.getSignalMeasurementType();
+        signalThresholdInfoHal.hysteresisMs = signalThresholdInfo.getHysteresisMs();
+        signalThresholdInfoHal.hysteresisDb = signalThresholdInfo.getHysteresisDb();
+        signalThresholdInfoHal.thresholds = signalThresholdInfo.getThresholds();
+        signalThresholdInfoHal.isEnabled = signalThresholdInfo.isEnabled();
+        return signalThresholdInfoHal;
+    }
+
+    /**
+     * Convert to SmsWriteArgsStatus defined in radio/1.0/types.hal
      * @param status StatusOnIcc
      * @return The converted SmsWriteArgsStatus defined in radio/1.0/types.hal
      */
     public static int convertToHalSmsWriteArgsStatus(int status) {
-        switch(status & 0x7) {
+        switch (status & 0x7) {
             case SmsManager.STATUS_ON_ICC_READ:
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.REC_READ;
             case SmsManager.STATUS_ON_ICC_UNREAD:
@@ -1364,6 +1935,26 @@ public class RILUtils {
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.STO_UNSENT;
             default:
                 return android.hardware.radio.V1_0.SmsWriteArgsStatus.REC_READ;
+        }
+    }
+
+    /**
+     * Convert to statuses defined in SmsWriteArgs.aidl
+     * @param status StatusOnIcc
+     * @return The converted statuses defined in SmsWriteArgs.aidl
+     */
+    public static int convertToHalSmsWriteArgsStatusAidl(int status) {
+        switch (status & 0x7) {
+            case SmsManager.STATUS_ON_ICC_READ:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_READ;
+            case SmsManager.STATUS_ON_ICC_UNREAD:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_UNREAD;
+            case SmsManager.STATUS_ON_ICC_SENT:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_STO_SENT;
+            case SmsManager.STATUS_ON_ICC_UNSENT:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_STO_UNSENT;
+            default:
+                return android.hardware.radio.messaging.SmsWriteArgs.STATUS_REC_READ;
         }
     }
 
@@ -3013,7 +3604,7 @@ public class RILUtils {
                 .setMappedHplmnSliceServiceType(si.mappedHplmnSst);
         if (si.sliceDifferentiator != NetworkSliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
             builder.setSliceDifferentiator(si.sliceDifferentiator)
-                    .setMappedHplmnSliceDifferentiator(si.mappedHplmnSD);
+                    .setMappedHplmnSliceDifferentiator(si.mappedHplmnSd);
         }
         return builder.build();
     }
@@ -3717,7 +4308,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert SimPhonebookRecord to PhonebookRecordInfo defined in radio/1.6/types.hal
+     * Convert to PhonebookRecordInfo defined in radio/1.6/types.hal
      * @param record SimPhonebookRecord to convert
      * @return The converted PhonebookRecordInfo defined in radio/1.6/types.hal
      */
@@ -3730,14 +4321,37 @@ public class RILUtils {
         pbRecordInfo.number = convertNullToEmptyString(
                 convertToHalPhonebookRecordInfoNumber(record.getNumber()));
         if (record.getEmails() != null) {
-            for (String email : record.getEmails()) {
-                pbRecordInfo.emails.add(email);
-            }
+            pbRecordInfo.emails = primitiveArrayToArrayList(record.getEmails());
         }
         if (record.getAdditionalNumbers() != null) {
             for (String addNum : record.getAdditionalNumbers()) {
                 pbRecordInfo.additionalNumbers.add(convertToHalPhonebookRecordInfoNumber(addNum));
             }
+        }
+        return pbRecordInfo;
+    }
+
+    /**
+     * Convert to PhonebookRecordInfo.aidl
+     * @param record SimPhonebookRecord to convert
+     * @return The converted PhonebookRecordInfo
+     */
+    public static android.hardware.radio.sim.PhonebookRecordInfo
+            convertToHalPhonebookRecordInfoAidl(SimPhonebookRecord record) {
+        android.hardware.radio.sim.PhonebookRecordInfo pbRecordInfo =
+                new android.hardware.radio.sim.PhonebookRecordInfo();
+        pbRecordInfo.recordId = record.getRecordIndex();
+        pbRecordInfo.name = convertNullToEmptyString(record.getAlphaTag());
+        pbRecordInfo.number = convertNullToEmptyString(
+                convertToHalPhonebookRecordInfoNumber(record.getNumber()));
+        pbRecordInfo.emails = record.getEmails();
+        if (record.getAdditionalNumbers() != null) {
+            String[] additionalNumbers = new String[record.getAdditionalNumbers().length];
+            for (int i = 0; i < additionalNumbers.length; i++) {
+                additionalNumbers[i] =
+                        convertToHalPhonebookRecordInfoNumber(record.getAdditionalNumbers()[i]);
+            }
+            pbRecordInfo.additionalNumbers = additionalNumbers;
         }
         return pbRecordInfo;
     }
@@ -4267,7 +4881,7 @@ public class RILUtils {
      * @return The converted String response
      */
     public static String responseToString(int response) {
-        switch(response) {
+        switch (response) {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
                 return "UNSOL_RESPONSE_RADIO_STATE_CHANGED";
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED:

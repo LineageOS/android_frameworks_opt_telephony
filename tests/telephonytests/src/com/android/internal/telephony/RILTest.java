@@ -164,6 +164,7 @@ import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.SparseArray;
 
 import androidx.test.filters.FlakyTest;
 
@@ -201,6 +202,12 @@ public class RILTest extends TelephonyTest {
     private TelephonyManager mTelephonyManager;
     @Mock
     private IRadio mRadioProxy;
+    @Mock
+    private RadioDataProxy mDataProxy;
+    @Mock
+    private RadioNetworkProxy mNetworkProxy;
+    @Mock
+    private RadioSimProxy mSimProxy;
 
     private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
     private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
@@ -305,12 +312,25 @@ public class RILTest extends TelephonyTest {
                 mock(IThermalService.class), new Handler(Looper.myLooper()));
         doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
         doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
-
-        mRILInstance = new RIL(context, RadioAccessFamily.getRafFromNetworkType(
-                RILConstants.PREFERRED_NETWORK_MODE), Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
+        SparseArray<RadioServiceProxy> proxies = new SparseArray<>();
+        proxies.put(RIL.RADIO_SERVICE, null);
+        proxies.put(RIL.DATA_SERVICE, mDataProxy);
+        proxies.put(RIL.NETWORK_SERVICE, mNetworkProxy);
+        proxies.put(RIL.SIM_SERVICE, mSimProxy);
+        mRILInstance = new RIL(context,
+                RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
+                Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
         mRILUnderTest = spy(mRILInstance);
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
-
+        doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class),
+                any());
+        doReturn(mNetworkProxy).when(mRILUnderTest).getRadioServiceProxy(
+                eq(RadioNetworkProxy.class), any());
+        doReturn(mSimProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioSimProxy.class),
+                any());
+        doReturn(false).when(mDataProxy).isEmpty();
+        doReturn(false).when(mNetworkProxy).isEmpty();
+        doReturn(false).when(mSimProxy).isEmpty();
         try {
             replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
         } catch (Exception e) {
@@ -1372,7 +1392,7 @@ public class RILTest extends TelephonyTest {
     public void testGetBarringInfo() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.getBarringInfo(obtainMessage());
-        verify(mRadioProxy, never()).getBarringInfo(anyInt());
+        verify(mNetworkProxy, never()).getBarringInfo(anyInt());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -1380,7 +1400,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.getBarringInfo(obtainMessage());
-        verify(mRadioProxy).getBarringInfo(mSerialNumberCaptor.capture());
+        verify(mNetworkProxy).getBarringInfo(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_BARRING_INFO);
     }
@@ -2618,29 +2638,27 @@ public class RILTest extends TelephonyTest {
                 .build();
 
         mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
-                false, 0, null,
-                DataCallResponse.PDU_SESSION_ID_NOT_SET, null, null, true, obtainMessage());
-        ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
-        verify(mRadioProxy).setupDataCall(
-                mSerialNumberCaptor.capture(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
-                dpiCaptor.capture(), eq(true), eq(false), eq(false));
+                false, 0, null, DataCallResponse.PDU_SESSION_ID_NOT_SET, null, null, true,
+                obtainMessage());
+        ArgumentCaptor<DataProfile> dpiCaptor = ArgumentCaptor.forClass(DataProfile.class);
+        verify(mDataProxy).setupDataCall(mSerialNumberCaptor.capture(),
+                anyInt(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN), dpiCaptor.capture(),
+                eq(false), eq(false), anyInt(), any(), anyInt(), any(), any(), eq(true));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SETUP_DATA_CALL);
-        DataProfileInfo dpi = dpiCaptor.getValue();
-        assertEquals(PROFILE_ID, dpi.profileId);
-        assertEquals(APN, dpi.apn);
-        assertEquals(PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
-        assertEquals(AUTH_TYPE, dpi.authType);
-        assertEquals(USER_NAME, dpi.user);
-        assertEquals(PASSWORD, dpi.password);
-        assertEquals(TYPE, dpi.type);
-        assertEquals(APN_ENABLED, dpi.enabled);
-        assertEquals(SUPPORTED_APN_TYPES_BITMASK, dpi.supportedApnTypesBitmap);
-        assertEquals(ROAMING_PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
-        assertEquals(
-                SUPPORTED_NETWORK_TYPES_BITMASK,
-                ServiceState.convertBearerBitmaskToNetworkTypeBitmask(dpi.bearerBitmap >> 1));
-        assertEquals(MTU, dpi.mtu);
+        DataProfile dpi = dpiCaptor.getValue();
+        assertEquals(PROFILE_ID, dpi.getProfileId());
+        assertEquals(APN, dpi.getApn());
+        assertEquals(PROTOCOL, dpi.getProtocolType());
+        assertEquals(AUTH_TYPE, dpi.getAuthType());
+        assertEquals(USER_NAME, dpi.getUserName());
+        assertEquals(PASSWORD, dpi.getPassword());
+        assertEquals(TYPE, dpi.getType());
+        assertEquals(APN_ENABLED, dpi.isEnabled());
+        assertEquals(SUPPORTED_APN_TYPES_BITMASK, dpi.getSupportedApnTypesBitmask());
+        assertEquals(ROAMING_PROTOCOL, dpi.getRoamingProtocolType());
+        assertEquals(SUPPORTED_NETWORK_TYPES_BITMASK, dpi.getBearerBitmask());
+        assertEquals(MTU, dpi.getMtu());
     }
 
     @Test
@@ -2733,7 +2751,7 @@ public class RILTest extends TelephonyTest {
     public void testEnableUiccApplications() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.enableUiccApplications(false, obtainMessage());
-        verify(mRadioProxy, never()).enableUiccApplications(anyInt(), anyBoolean());
+        verify(mSimProxy, never()).enableUiccApplications(anyInt(), anyBoolean());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -2741,7 +2759,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.enableUiccApplications(false, obtainMessage());
-        verify(mRadioProxy).enableUiccApplications(mSerialNumberCaptor.capture(), anyBoolean());
+        verify(mSimProxy).enableUiccApplications(mSerialNumberCaptor.capture(), anyBoolean());
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_ENABLE_UICC_APPLICATIONS);
     }
@@ -2750,7 +2768,7 @@ public class RILTest extends TelephonyTest {
     public void testAreUiccApplicationsEnabled() throws Exception {
         // Not supported on Radio 1.0.
         mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
-        verify(mRadioProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verify(mSimProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
 
         // Make radio version 1.5 to support the operation.
         try {
@@ -2758,7 +2776,7 @@ public class RILTest extends TelephonyTest {
         } catch (Exception e) {
         }
         mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
-        verify(mRadioProxy).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verify(mSimProxy).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
         verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT);
     }
@@ -2770,7 +2788,7 @@ public class RILTest extends TelephonyTest {
         Message message = obtainMessage();
         mRILUnderTest.areUiccApplicationsEnabled(message);
         processAllMessages();
-        verify(mRadioProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
+        verify(mSimProxy, never()).areUiccApplicationsEnabled(mSerialNumberCaptor.capture());
         // Sending message is handled by getRadioProxy when proxy is null.
         // areUiccApplicationsEnabled shouldn't explicitly send another callback.
         assertEquals(null, message.obj);
