@@ -221,13 +221,13 @@ public class RadioModemProxy extends RadioServiceProxy {
             android.hardware.radio.modem.NvWriteItem item =
                     new android.hardware.radio.modem.NvWriteItem();
             item.itemId = itemId;
-            item.value = RILUtils.convertNullToEmptyString(itemValue);
+            item.value = itemValue;
             mModemProxy.nvWriteItem(serial, item);
         } else {
             android.hardware.radio.V1_0.NvWriteItem item =
                     new android.hardware.radio.V1_0.NvWriteItem();
             item.itemId = itemId;
-            item.value = RILUtils.convertNullToEmptyString(itemValue);
+            item.value = itemValue;
             mRadioProxy.nvWriteItem(serial, item);
         }
     }
