@@ -4951,10 +4951,6 @@ public class ServiceStateTracker extends Handler {
             mCdnr.updateEfForEri(getOperatorNameFromEri());
         }
 
-        // TODO(b/178429976): Listen config change in SSC and remove logic here
-        mPhone.getSignalStrengthController().updateArfcnLists(config);
-        mPhone.getSignalStrengthController().updateReportingCriteria(config);
-
         updateOperatorNamePattern(config);
         mCdnr.updateEfFromCarrierConfig(config);
         mPhone.notifyCallForwardingIndicator();
