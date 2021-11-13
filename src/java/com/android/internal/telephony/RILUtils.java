@@ -452,7 +452,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to PersoSubstate defined in PersoSubstate.aidl
+     * Convert to PersoSubstate.aidl
      * @param persoType PersoSubState type
      * @return The converted PersoSubstate
      */
@@ -548,7 +548,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to GsmSmsMessage defined in GsmSmsMessage.aidl
+     * Convert to GsmSmsMessage.aidl
      * @param smscPdu SMSC address
      * @param pdu SMS in PDU format
      * @return A converted GsmSmsMessage
@@ -606,9 +606,9 @@ public class RILUtils {
     }
 
     /**
-     * Convert to CdmaSmsMessage defined in CdmaSmsMessage.aidl
+     * Convert to CdmaSmsMessage.aidl
      * @param pdu SMS in PDU format
-     * @return A converted CdmaSmsMessage
+     * @return The converted CdmaSmsMessage
      */
     public static android.hardware.radio.messaging.CdmaSmsMessage convertToHalCdmaSmsMessageAidl(
             byte[] pdu) {
@@ -928,7 +928,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to DataProfileInfo defined in DataprofileInfo.aidl
+     * Convert to DataProfileInfo.aidl
      * @param dp Data profile
      * @return The converted DataProfileInfo
      */
@@ -988,7 +988,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to SliceInfo defined in SliceInfo.aidl
+     * Convert to SliceInfo.aidl
      * @param sliceInfo Slice info
      * @return The converted SliceInfo
      */
@@ -1043,7 +1043,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to TrafficDescriptor defined in TrafficDescriptor.aidl
+     * Convert to TrafficDescriptor.aidl
      * @param trafficDescriptor Traffic descriptor
      * @return The converted TrafficDescriptor
      */
@@ -1083,7 +1083,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to ResetNvType defined in ResetNvType.aidl
+     * Convert to ResetNvType.aidl
      * @param resetType NV reset type
      * @return The converted reset type in integer or -1 if param is invalid
      */
@@ -1125,7 +1125,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to a list of LinkAddress defined in LinkAddress.aidl
+     * Convert to a list of LinkAddress.aidl
      * @param linkProperties Link properties
      * @return The converted list of LinkAddresses
      */
@@ -1294,7 +1294,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to RadioAccessSpecifier defined in RadioAccessSpecifier.aidl
+     * Convert to RadioAccessSpecifier.aidl
      * @param ras Radio access specifier
      * @return The converted RadioAccessSpecifier
      */
@@ -1518,7 +1518,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to RadioAccessFamily defined in RadioAccessFamily.aidl
+     * Convert to RadioAccessFamily.aidl
      * @param networkTypeBitmask {@link TelephonyManager.NetworkTypeBitMask}, the bitmask
      *        represented by {@link android.telephony.Annotation.NetworkType}
      * @return The converted RadioAccessFamily
@@ -1612,7 +1612,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert AccessNetworkType to AccessNetwork.aidl
+     * Convert to AccessNetwork.aidl
      * @param accessNetworkType Access network type
      * @return The converted AccessNetwork
      */
@@ -1637,7 +1637,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert AccessNetworkType to RadioAccessNetwork defined in radio/1.1/types.hal
+     * Convert to RadioAccessNetwork defined in radio/1.1/types.hal
      * @param accessNetworkType Access network type
      * @return The converted RadioAccessNetwork
      */
@@ -1707,7 +1707,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to SimApdu defined in SimApdu.aidl
+     * Convert to SimApdu.aidl
      * @param channel channel
      * @param cla cla
      * @param instruction instruction
@@ -1749,7 +1749,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to SimLockMultiSimPolicy defined in SimLockMultiSimPolicy.aidl
+     * Convert to SimLockMultiSimPolicy.aidl
      * @param policy Multi SIM policy
      * @return The converted SimLockMultiSimPolicy
      */
@@ -1801,7 +1801,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert a list of CarrierIdentifiers into an array of Carriers defined in Carrier.aidl
+     * Convert a list of CarrierIdentifiers into an array of Carrier.aidl
      * @param carriers List of CarrierIdentifiers
      * @return The converted array of Carriers
      */
@@ -1837,6 +1837,50 @@ public class RILUtils {
     }
 
     /**
+     * Convert to Dial defined in radio/1.0/types.hal
+     * @param address Address
+     * @param clirMode CLIR mode
+     * @param uusInfo UUS info
+     * @return The converted Dial
+     */
+    public static android.hardware.radio.V1_0.Dial convertToHalDial(String address, int clirMode,
+            UUSInfo uusInfo) {
+        android.hardware.radio.V1_0.Dial dial = new android.hardware.radio.V1_0.Dial();
+        dial.address = RILUtils.convertNullToEmptyString(address);
+        dial.clir = clirMode;
+        if (uusInfo != null) {
+            android.hardware.radio.V1_0.UusInfo info = new android.hardware.radio.V1_0.UusInfo();
+            info.uusType = uusInfo.getType();
+            info.uusDcs = uusInfo.getDcs();
+            info.uusData = new String(uusInfo.getUserData());
+            dial.uusInfo.add(info);
+        }
+        return dial;
+    }
+
+    /**
+     * Convert to Dial.aidl
+     * @param address Address
+     * @param clirMode CLIR mode
+     * @param uusInfo UUS info
+     * @return The converted Dial.aidl
+     */
+    public static android.hardware.radio.voice.Dial convertToHalDialAidl(String address,
+            int clirMode, UUSInfo uusInfo) {
+        android.hardware.radio.voice.Dial dial = new android.hardware.radio.voice.Dial();
+        dial.address = RILUtils.convertNullToEmptyString(address);
+        dial.clir = clirMode;
+        if (uusInfo != null) {
+            android.hardware.radio.voice.UusInfo info = new android.hardware.radio.voice.UusInfo();
+            info.uusType = uusInfo.getType();
+            info.uusDcs = uusInfo.getDcs();
+            info.uusData = new String(uusInfo.getUserData());
+            dial.uusInfo = new android.hardware.radio.voice.UusInfo[] {info};
+        }
+        return dial;
+    }
+
+    /**
      * Convert to SignalThresholdInfo defined in radio/1.5/types.hal
      * @param signalThresholdInfo Signal threshold info
      * @return The converted SignalThresholdInfo
@@ -1855,7 +1899,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert to SignalThresholdInfo defined in SignalThresholdInfo.aidl
+     * Convert to SignalThresholdInfo.aidl
      * @param signalThresholdInfo Signal threshold info
      * @return The converted SignalThresholdInfo
      */
@@ -1872,7 +1916,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert StatusOnIcc to SmsWriteArgsStatus defined in radio/1.0/types.hal
+     * Convert to SmsWriteArgsStatus defined in radio/1.0/types.hal
      * @param status StatusOnIcc
      * @return The converted SmsWriteArgsStatus defined in radio/1.0/types.hal
      */
@@ -1892,7 +1936,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert StatusOnIcc to statuses defined in SmsWriteArgs.aidl
+     * Convert to statuses defined in SmsWriteArgs.aidl
      * @param status StatusOnIcc
      * @return The converted statuses defined in SmsWriteArgs.aidl
      */
@@ -4261,7 +4305,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert SimPhonebookRecord to PhonebookRecordInfo defined in radio/1.6/types.hal
+     * Convert to PhonebookRecordInfo defined in radio/1.6/types.hal
      * @param record SimPhonebookRecord to convert
      * @return The converted PhonebookRecordInfo defined in radio/1.6/types.hal
      */
@@ -4285,7 +4329,7 @@ public class RILUtils {
     }
 
     /**
-     * Convert SimPhonebookRecord to PhonebookRecordInfo.aidl
+     * Convert to PhonebookRecordInfo.aidl
      * @param record SimPhonebookRecord to convert
      * @return The converted PhonebookRecordInfo
      */
