@@ -164,6 +164,7 @@ import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.SparseArray;
 
 import androidx.test.filters.FlakyTest;
 
@@ -201,6 +202,8 @@ public class RILTest extends TelephonyTest {
     private TelephonyManager mTelephonyManager;
     @Mock
     private IRadio mRadioProxy;
+    @Mock
+    private RadioDataProxy mDataProxy;
 
     private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
     private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
@@ -305,12 +308,17 @@ public class RILTest extends TelephonyTest {
                 mock(IThermalService.class), new Handler(Looper.myLooper()));
         doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
         doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
-
-        mRILInstance = new RIL(context, RadioAccessFamily.getRafFromNetworkType(
-                RILConstants.PREFERRED_NETWORK_MODE), Phone.PREFERRED_CDMA_SUBSCRIPTION, 0);
+        SparseArray<RadioServiceProxy> proxies = new SparseArray<>();
+        proxies.put(RIL.RADIO_SERVICE, null);
+        proxies.put(RIL.DATA_SERVICE, mDataProxy);
+        mRILInstance = new RIL(context,
+                RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
+                Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
         mRILUnderTest = spy(mRILInstance);
         doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
-
+        doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class),
+                any());
+        doReturn(false).when(mDataProxy).isEmpty();
         try {
             replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
         } catch (Exception e) {
@@ -2618,29 +2626,27 @@ public class RILTest extends TelephonyTest {
                 .build();
 
         mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
-                false, 0, null,
-                DataCallResponse.PDU_SESSION_ID_NOT_SET, null, null, true, obtainMessage());
-        ArgumentCaptor<DataProfileInfo> dpiCaptor = ArgumentCaptor.forClass(DataProfileInfo.class);
-        verify(mRadioProxy).setupDataCall(
-                mSerialNumberCaptor.capture(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
-                dpiCaptor.capture(), eq(true), eq(false), eq(false));
+                false, 0, null, DataCallResponse.PDU_SESSION_ID_NOT_SET, null, null, true,
+                obtainMessage());
+        ArgumentCaptor<DataProfile> dpiCaptor = ArgumentCaptor.forClass(DataProfile.class);
+        verify(mDataProxy).setupDataCall(mSerialNumberCaptor.capture(),
+                anyInt(), eq(AccessNetworkConstants.AccessNetworkType.EUTRAN), dpiCaptor.capture(),
+                eq(false), eq(false), anyInt(), any(), anyInt(), any(), any(), eq(true));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SETUP_DATA_CALL);
-        DataProfileInfo dpi = dpiCaptor.getValue();
-        assertEquals(PROFILE_ID, dpi.profileId);
-        assertEquals(APN, dpi.apn);
-        assertEquals(PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
-        assertEquals(AUTH_TYPE, dpi.authType);
-        assertEquals(USER_NAME, dpi.user);
-        assertEquals(PASSWORD, dpi.password);
-        assertEquals(TYPE, dpi.type);
-        assertEquals(APN_ENABLED, dpi.enabled);
-        assertEquals(SUPPORTED_APN_TYPES_BITMASK, dpi.supportedApnTypesBitmap);
-        assertEquals(ROAMING_PROTOCOL, ApnSetting.getProtocolIntFromString(dpi.protocol));
-        assertEquals(
-                SUPPORTED_NETWORK_TYPES_BITMASK,
-                ServiceState.convertBearerBitmaskToNetworkTypeBitmask(dpi.bearerBitmap >> 1));
-        assertEquals(MTU, dpi.mtu);
+        DataProfile dpi = dpiCaptor.getValue();
+        assertEquals(PROFILE_ID, dpi.getProfileId());
+        assertEquals(APN, dpi.getApn());
+        assertEquals(PROTOCOL, dpi.getProtocolType());
+        assertEquals(AUTH_TYPE, dpi.getAuthType());
+        assertEquals(USER_NAME, dpi.getUserName());
+        assertEquals(PASSWORD, dpi.getPassword());
+        assertEquals(TYPE, dpi.getType());
+        assertEquals(APN_ENABLED, dpi.isEnabled());
+        assertEquals(SUPPORTED_APN_TYPES_BITMASK, dpi.getSupportedApnTypesBitmask());
+        assertEquals(ROAMING_PROTOCOL, dpi.getRoamingProtocolType());
+        assertEquals(SUPPORTED_NETWORK_TYPES_BITMASK, dpi.getBearerBitmask());
+        assertEquals(MTU, dpi.getMtu());
     }
 
     @Test
