@@ -342,20 +342,6 @@ public class RadioNetworkProxy extends RadioServiceProxy {
     }
 
     /**
-     * Call IRadioNetwork#pullLceData
-     * @param serial Serial number of request
-     * @throws RemoteException
-     */
-    public void pullLceData(int serial) throws RemoteException {
-        if (isEmpty()) return;
-        if (isAidl()) {
-            mNetworkProxy.pullLceData(serial);
-        } else {
-            mRadioProxy.pullLceData(serial);
-        }
-    }
-
-    /**
      * Call IRadioNetwork#responseAcknowledgement
      * @throws RemoteException
      */

@@ -1002,7 +1002,7 @@ public class RILUtils {
         si.sliceServiceType = (byte) sliceInfo.getSliceServiceType();
         si.mappedHplmnSst = (byte) sliceInfo.getMappedHplmnSliceServiceType();
         si.sliceDifferentiator = sliceInfo.getSliceDifferentiator();
-        si.mappedHplmnSD = sliceInfo.getMappedHplmnSliceDifferentiator();
+        si.mappedHplmnSd = sliceInfo.getMappedHplmnSliceDifferentiator();
         return si;
     }
 
@@ -1441,7 +1441,6 @@ public class RILUtils {
         if ((raf & android.hardware.radio.V1_4.RadioAccessFamily.NR) != 0) {
             networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_NR;
         }
-        // TODO: need hal definition
         if ((raf & (1 << ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)) != 0) {
             networkTypeRaf |= TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN;
         }
@@ -1504,6 +1503,9 @@ public class RILUtils {
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA) != 0) {
             raf |= android.hardware.radio.V1_0.RadioAccessFamily.TD_SCDMA;
         }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN) != 0) {
+            raf |= (1 << android.hardware.radio.V1_4.RadioTechnology.IWLAN);
+        }
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0) {
             raf |= android.hardware.radio.V1_0.RadioAccessFamily.LTE;
         }
@@ -1513,7 +1515,6 @@ public class RILUtils {
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
             raf |= android.hardware.radio.V1_4.RadioAccessFamily.NR;
         }
-        // TODO: need hal definition for IWLAN
         return (raf == 0) ? android.hardware.radio.V1_4.RadioAccessFamily.UNKNOWN : raf;
     }
 
@@ -1573,6 +1574,9 @@ public class RILUtils {
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_TD_SCDMA) != 0) {
             raf |= android.hardware.radio.RadioAccessFamily.TD_SCDMA;
         }
+        if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN) != 0) {
+            raf |= android.hardware.radio.RadioAccessFamily.IWLAN;
+        }
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0) {
             raf |= android.hardware.radio.RadioAccessFamily.LTE;
         }
@@ -1582,7 +1586,6 @@ public class RILUtils {
         if ((networkTypeBitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0) {
             raf |= android.hardware.radio.RadioAccessFamily.NR;
         }
-        // TODO: need hal definition for IWLAN
         return (raf == 0) ? android.hardware.radio.RadioAccessFamily.UNKNOWN : raf;
     }
 
@@ -3601,7 +3604,7 @@ public class RILUtils {
                 .setMappedHplmnSliceServiceType(si.mappedHplmnSst);
         if (si.sliceDifferentiator != NetworkSliceInfo.SLICE_DIFFERENTIATOR_NO_SLICE) {
             builder.setSliceDifferentiator(si.sliceDifferentiator)
-                    .setMappedHplmnSliceDifferentiator(si.mappedHplmnSD);
+                    .setMappedHplmnSliceDifferentiator(si.mappedHplmnSd);
         }
         return builder.build();
     }
