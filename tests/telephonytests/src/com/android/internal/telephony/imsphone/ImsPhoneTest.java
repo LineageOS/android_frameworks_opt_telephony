@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.Manifest.permission.MODIFY_PHONE_STATE;
+import static android.provider.Telephony.SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_ONLY;
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -49,6 +52,7 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -57,6 +61,7 @@ import android.os.PersistableBundle;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
@@ -974,6 +979,97 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testHandleMessageCallRingContinue() throws Exception {
         Message m = Message.obtain(mImsPhoneUT.getHandler(), EVENT_CALL_RING_CONTINUE);
         mImsPhoneUT.handleMessage(m);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetPhoneNumberForSourceIms() {
+        // In reality the method under test runs in phone process so has MODIFY_PHONE_STATE
+        mContextFixture.addCallingOrSelfPermission(MODIFY_PHONE_STATE);
+        int subId = 1;
+        doReturn(subId).when(mPhone).getSubId();
+        SubscriptionInfo subInfo = mock(SubscriptionInfo.class);
+        doReturn("gb").when(subInfo).getCountryIso();
+        doReturn(subInfo).when(mSubscriptionController).getSubscriptionInfo(subId);
+
+        // 1. Two valid phone number; 1st is set.
+        Uri[] associatedUris = new Uri[] {
+            Uri.parse("sip:+447539447777@ims.x.com"),
+            Uri.parse("tel:+447539446666")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionController).setSubscriptionProperty(
+                subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539447777");
+
+        // 2. 1st invalid and 2nd valid: 2nd is set.
+        associatedUris = new Uri[] {
+            Uri.parse("sip:447539447777@ims.x.com"),
+            Uri.parse("tel:+447539446666")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionController).setSubscriptionProperty(
+                subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446666");
+
+        // 3. 1st sip-uri is not phone number and 2nd valid: 2nd is set.
+        associatedUris = new Uri[] {
+            Uri.parse("sip:john.doe@ims.x.com"),
+            Uri.parse("tel:+447539446677"),
+            Uri.parse("sip:+447539447766@ims.x.com")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionController).setSubscriptionProperty(
+                subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446677");
+
+        // Clean up
+        mContextFixture.addCallingOrSelfPermission("");
+    }
+
+    @Test
+    @SmallTest
+    public void testSetPhoneNumberForSourceImsNegativeCases() {
+        // In reality the method under test runs in phone process so has MODIFY_PHONE_STATE
+        mContextFixture.addCallingOrSelfPermission(MODIFY_PHONE_STATE);
+        int subId = 1;
+        doReturn(subId).when(mPhone).getSubId();
+        SubscriptionInfo subInfo = mock(SubscriptionInfo.class);
+        doReturn("gb").when(subInfo).getCountryIso();
+        doReturn(subInfo).when(mSubscriptionController).getSubscriptionInfo(subId);
+
+        // 1. No valid phone number; do not set
+        Uri[] associatedUris = new Uri[] {
+            Uri.parse("sip:447539447777@ims.x.com"),
+            Uri.parse("tel:447539446666")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionController, never()).setSubscriptionProperty(
+                anyInt(), any(), any());
+
+        // 2. no URI; do not set
+        associatedUris = new Uri[] {};
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionController, never()).setSubscriptionProperty(
+                anyInt(), any(), any());
+
+        // 3. null URI; do not set
+        associatedUris = new Uri[] { null };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionController, never()).setSubscriptionProperty(
+                anyInt(), any(), any());
+
+        // 4. null pointer; do not set
+        mImsPhoneUT.setPhoneNumberForSourceIms(null);
+
+        verify(mSubscriptionController, never()).setSubscriptionProperty(
+                anyInt(), any(), any());
+
+        // Clean up
+        mContextFixture.addCallingOrSelfPermission("");
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {
