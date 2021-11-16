@@ -56,6 +56,7 @@ import android.telephony.ims.FeatureTagState;
 import android.telephony.ims.RcsContactPresenceTuple;
 import android.telephony.ims.RcsContactUceCapability;
 import android.telephony.ims.aidl.IRcsConfigCallback;
+import android.util.IndentingPrintWriter;
 
 import com.android.ims.rcs.uce.UceStatsWriter;
 import com.android.ims.rcs.uce.UceStatsWriter.UceStatsCallback;
@@ -63,6 +64,7 @@ import com.android.ims.rcs.uce.util.FeatureTags;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.nano.PersistAtomsProto;
 import com.android.internal.telephony.nano.PersistAtomsProto.GbaEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerListenerEvent;
@@ -78,6 +80,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportSession
 import com.android.internal.telephony.nano.PersistAtomsProto.UceEventStats;
 import com.android.telephony.Rlog;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1464,5 +1467,181 @@ public class RcsStats {
     public int convertPresenceNotifyReason(@NonNull String reason) {
         return NOTIFY_REASONS.getOrDefault(reason.trim().toLowerCase(),
                 PRESENCE_NOTIFY_EVENT__REASON__REASON_CUSTOM);
+    }
+
+    /**
+     * Print all metrics data for debugging purposes
+     *
+     * @param rawWriter Print writer
+     */
+    public synchronized void printAllMetrics(PrintWriter rawWriter) {
+        if (mAtomsStorage == null || mAtomsStorage.mAtoms == null) {
+            return;
+        }
+
+        final IndentingPrintWriter pw = new IndentingPrintWriter(rawWriter, "  ");
+        PersistAtomsProto.PersistAtoms metricAtoms = mAtomsStorage.mAtoms;
+
+        pw.println("RcsStats Metrics Proto: ");
+        pw.println("------------------------------------------");
+        pw.println("ImsRegistrationFeatureTagStats:");
+        pw.increaseIndent();
+        for (ImsRegistrationFeatureTagStats stat : metricAtoms.imsRegistrationFeatureTagStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Feature Tag Name = " + stat.featureTagName
+                    + ", Registration Tech = " + stat.registrationTech
+                    + ", Registered Duration (ms) = " + stat.registeredMillis);
+        }
+        pw.decreaseIndent();
+
+        pw.println("RcsClientProvisioningStats:");
+        pw.increaseIndent();
+        for (RcsClientProvisioningStats stat : metricAtoms.rcsClientProvisioningStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Event = " + stat.event
+                    + ", Count = " + stat.count);
+        }
+        pw.decreaseIndent();
+
+        pw.println("RcsAcsProvisioningStats:");
+        pw.increaseIndent();
+        for (RcsAcsProvisioningStats stat : metricAtoms.rcsAcsProvisioningStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Response Code = " + stat.responseCode
+                    + ", Response Type = " + stat.responseType
+                    + ", Single Registration Enabled = " + stat.isSingleRegistrationEnabled
+                    + ", Count = " + stat.count
+                    + ", State Timer (ms) = " + stat.stateTimerMillis);
+        }
+        pw.decreaseIndent();
+
+        pw.println("SipDelegateStats:");
+        pw.increaseIndent();
+        for (SipDelegateStats stat : metricAtoms.sipDelegateStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " [" + stat.dimension + "]"
+                    + " Destroy Reason = " + stat.destroyReason
+                    + ", Uptime (ms) = " + stat.uptimeMillis);
+        }
+        pw.decreaseIndent();
+
+        pw.println("SipTransportFeatureTagStats:");
+        pw.increaseIndent();
+        for (SipTransportFeatureTagStats stat : metricAtoms.sipTransportFeatureTagStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Feature Tag Name = " + stat.featureTagName
+                    + ", Denied Reason = " + stat.sipTransportDeniedReason
+                    + ", Deregistered Reason = " + stat.sipTransportDeregisteredReason
+                    + ", Associated Time (ms) = " + stat.associatedMillis);
+        }
+        pw.decreaseIndent();
+
+        pw.println("SipMessageResponse:");
+        pw.increaseIndent();
+        for (SipMessageResponse stat : metricAtoms.sipMessageResponse) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Message Method = " + stat.sipMessageMethod
+                    + ", Response = " + stat.sipMessageResponse
+                    + ", Direction = " + stat.sipMessageDirection
+                    + ", Error = " + stat.messageError
+                    + ", Count = " + stat.count);
+        }
+        pw.decreaseIndent();
+
+        pw.println("SipTransportSession:");
+        pw.increaseIndent();
+        for (SipTransportSession stat : metricAtoms.sipTransportSession) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Session Method = " + stat.sessionMethod
+                    + ", Direction = " + stat.sipMessageDirection
+                    + ", Response = " + stat.sipResponse
+                    + ", Count = " + stat.sessionCount
+                    + ", GraceFully Count = " + stat.endedGracefullyCount);
+        }
+        pw.decreaseIndent();
+
+        pw.println("ImsDedicatedBearerListenerEvent:");
+        pw.increaseIndent();
+        for (ImsDedicatedBearerListenerEvent stat : metricAtoms.imsDedicatedBearerListenerEvent) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " RAT = " + stat.ratAtEnd
+                    + ", QCI = " + stat.qci
+                    + ", Dedicated Bearer Established = " + stat.dedicatedBearerEstablished
+                    + ", Count = " + stat.eventCount);
+        }
+        pw.decreaseIndent();
+
+        pw.println("ImsDedicatedBearerEvent:");
+        pw.increaseIndent();
+        for (ImsDedicatedBearerEvent stat : metricAtoms.imsDedicatedBearerEvent) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " RAT = " + stat.ratAtEnd
+                    + ", QCI = " + stat.qci
+                    + ", Bearer State = " + stat.bearerState
+                    + ", Local Connection Info = " + stat.localConnectionInfoReceived
+                    + ", Remote Connection Info = " + stat.remoteConnectionInfoReceived
+                    + ", Listener Existence = " + stat.hasListeners
+                    + ", Count = " + stat.count);
+        }
+        pw.decreaseIndent();
+
+        pw.println("ImsRegistrationServiceDescStats:");
+        pw.increaseIndent();
+        for (ImsRegistrationServiceDescStats stat : metricAtoms.imsRegistrationServiceDescStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Name = " + stat.serviceIdName
+                    + ", Version = " + stat.serviceIdVersion
+                    + ", Registration Tech = " + stat.registrationTech
+                    + ", Published Time (ms) = " + stat.publishedMillis);
+        }
+        pw.decreaseIndent();
+
+        pw.println("UceEventStats:");
+        pw.increaseIndent();
+        for (UceEventStats stat : metricAtoms.uceEventStats) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Type = " + stat.type
+                    + ", Successful = " + stat.successful
+                    + ", Code = " + stat.commandCode
+                    + ", Response = " + stat.networkResponse
+                    + ", Count = " + stat.count);
+        }
+        pw.decreaseIndent();
+
+        pw.println("PresenceNotifyEvent:");
+        pw.increaseIndent();
+        for (PresenceNotifyEvent stat : metricAtoms.presenceNotifyEvent) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Reason = " + stat.reason
+                    + ", Body = " + stat.contentBodyReceived
+                    + ", RCS Count = " + stat.rcsCapsCount
+                    + ", MMTEL Count = " + stat.mmtelCapsCount
+                    + ", NoCaps Count = " + stat.noCapsCount
+                    + ", Count = " + stat.count);
+        }
+        pw.decreaseIndent();
+
+        pw.println("GbaEvent:");
+        pw.increaseIndent();
+        for (GbaEvent stat : metricAtoms.gbaEvent) {
+            pw.println("[" + stat.carrierId + "]"
+                    + " [" + stat.slotId + "]"
+                    + " Successful = "  + stat.successful
+                    + ", Fail Reason = " + stat.failedReason
+                    + ", Count = " + stat.count);
+        }
+        pw.decreaseIndent();
     }
 }
