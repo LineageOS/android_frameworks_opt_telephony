@@ -112,6 +112,7 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.server.pm.PackageManagerService;
@@ -297,6 +298,8 @@ public abstract class TelephonyTest {
     @Mock
     protected UiccCard mUiccCard;
     @Mock
+    protected UiccPort mUiccPort;
+    @Mock
     protected MultiSimSettingController mMultiSimSettingController;
     @Mock
     protected IccCard mIccCard;
@@ -472,7 +475,8 @@ public abstract class TelephonyTest {
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
         doReturn(mUiccCard).when(mPhone).getUiccCard();
-        doReturn(mUiccProfile).when(mUiccCard).getUiccProfile();
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
 
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mActivityManager = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
@@ -587,6 +591,7 @@ public abstract class TelephonyTest {
         doReturn(mUiccCardApplicationIms).when(mUiccController).getUiccCardApplication(anyInt(),
                 eq(UiccController.APP_FAM_IMS));
         doReturn(mUiccCard).when(mUiccController).getUiccCard(anyInt());
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
 
         doAnswer(new Answer<IccRecords>() {
             public IccRecords answer(InvocationOnMock invocation) {
