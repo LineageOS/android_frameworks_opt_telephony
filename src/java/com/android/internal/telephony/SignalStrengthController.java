@@ -480,29 +480,10 @@ public class SignalStrengthController extends Handler {
         pw.println(" mSignalStrength=" + mSignalStrength);
         pw.println(" mLteRsrpBoost=" + mLteRsrpBoost);
         pw.println(" mNrRsrpBoost=" + Arrays.toString(mNrRsrpBoost));
-        dumpEarfcnPairList(pw, mEarfcnPairListForRsrpBoost, "mEarfcnPairListForRsrpBoost");
-        dumpEarfcnPairList(pw, mNrarfcnRangeListForRsrpBoost, "mNrarfcnRangeListForRsrpBoost");
+        pw.println(" mEarfcnPairListForRsrpBoost=" + mEarfcnPairListForRsrpBoost);
+        pw.println(" mNrarfcnRangeListForRsrpBoost=" + mNrarfcnRangeListForRsrpBoost);
         ipw.decreaseIndent();
         ipw.flush();
-    }
-
-    private void dumpEarfcnPairList(PrintWriter pw, ArrayList<Pair<Integer, Integer>> pairList,
-            String name) {
-        pw.print(" " + name + "={");
-        if (pairList != null) {
-            int i = pairList.size();
-            for (Pair<Integer, Integer> earfcnPair : pairList) {
-                pw.print("(");
-                pw.print(earfcnPair.first);
-                pw.print(",");
-                pw.print(earfcnPair.second);
-                pw.print(")");
-                if ((--i) != 0) {
-                    pw.print(",");
-                }
-            }
-        }
-        pw.println("}");
     }
 
     /**

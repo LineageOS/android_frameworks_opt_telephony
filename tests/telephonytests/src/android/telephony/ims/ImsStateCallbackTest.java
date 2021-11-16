@@ -100,7 +100,7 @@ public class ImsStateCallbackTest extends TelephonyTest {
         mmTelManager.registerImsStateCallback(Runnable::run, cb);
         verify(mBinderCache).listenOnBinder(any(), any(Runnable.class));
         verify(mMockTelephonyInterface).registerImsStateCallback(
-                eq(SUB_ID_ONE), eq(FEATURE_MMTEL), any(IImsStateCallback.class));
+                eq(SUB_ID_ONE), eq(FEATURE_MMTEL), any(IImsStateCallback.class), any());
 
         mmTelManager.unregisterImsStateCallback(cb);
         verify(mMockTelephonyInterface).unregisterImsStateCallback(any(IImsStateCallback.class));
@@ -123,7 +123,7 @@ public class ImsStateCallbackTest extends TelephonyTest {
         rcsManager.registerImsStateCallback(Runnable::run, cb);
         verify(mBinderCache).listenOnBinder(any(), any(Runnable.class));
         verify(mMockTelephonyInterface).registerImsStateCallback(
-                eq(SUB_ID_ONE), eq(FEATURE_RCS), any(IImsStateCallback.class));
+                eq(SUB_ID_ONE), eq(FEATURE_RCS), any(IImsStateCallback.class), any());
 
         rcsManager.unregisterImsStateCallback(cb);
         verify(mMockTelephonyInterface).unregisterImsStateCallback(any(IImsStateCallback.class));
@@ -147,7 +147,7 @@ public class ImsStateCallbackTest extends TelephonyTest {
         sipManager.registerImsStateCallback(Runnable::run, cb);
         verify(mBinderCache).listenOnBinder(any(), any(Runnable.class));
         verify(mMockTelephonyInterface).registerImsStateCallback(
-                eq(SUB_ID_ONE), eq(FEATURE_RCS), any(IImsStateCallback.class));
+                eq(SUB_ID_ONE), eq(FEATURE_RCS), any(IImsStateCallback.class), any());
 
         sipManager.unregisterImsStateCallback(cb);
         verify(mMockTelephonyInterface).unregisterImsStateCallback(any(IImsStateCallback.class));
@@ -177,7 +177,7 @@ public class ImsStateCallbackTest extends TelephonyTest {
         verify(mBinderCache).listenOnBinder(any(), runnableCaptor.capture());
 
         verify(mMockTelephonyInterface).registerImsStateCallback(
-                eq(SUB_ID_ONE), eq(FEATURE_MMTEL), callbackCaptor.capture());
+                eq(SUB_ID_ONE), eq(FEATURE_MMTEL), callbackCaptor.capture(), any());
 
         IImsStateCallback cbBinder = callbackCaptor.getValue();
 
