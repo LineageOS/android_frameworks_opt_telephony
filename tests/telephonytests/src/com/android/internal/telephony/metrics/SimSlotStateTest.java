@@ -27,6 +27,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -42,6 +43,9 @@ public class SimSlotStateTest extends TelephonyTest {
 
     @Mock private UiccCard mInactiveCard;
     @Mock private UiccCard mActiveCard;
+
+    @Mock private UiccPort mInactivePort;
+    @Mock private UiccPort mActivePort;
 
     @Before
     public void setUp() throws Exception {
@@ -60,8 +64,11 @@ public class SimSlotStateTest extends TelephonyTest {
         doReturn(CardState.CARDSTATE_PRESENT).when(mEsimSlot).getCardState();
         doReturn(true).when(mEsimSlot).isEuicc();
 
-        doReturn(0).when(mInactiveCard).getNumApplications();
-        doReturn(4).when(mActiveCard).getNumApplications();
+        doReturn(0).when(mInactivePort).getNumApplications();
+        doReturn(4).when(mActivePort).getNumApplications();
+
+        doReturn(new UiccPort[]{mInactivePort}).when(mInactiveCard).getUiccPortList();
+        doReturn(new UiccPort[]{mActivePort}).when(mActiveCard).getUiccPortList();
     }
 
     @After
@@ -346,6 +353,29 @@ public class SimSlotStateTest extends TelephonyTest {
         assertEquals(2, state.numActiveSims);
         assertEquals(0, state.numActiveEsims);
         assertTrue(isMultiSim);
+    }
+
+    @Test
+    public void testDsds_dualSimMEPFeature() {
+        doReturn(mActiveCard).when(mEsimSlot).getUiccCard();
+        doReturn(new UiccPort[]{mInactivePort, mActivePort}).when(mActiveCard).getUiccPortList();
+        setupDualSim(mEmptySlot, mEsimSlot);
+        doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(0));
+        doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
+
+        boolean isEsim0 = SimSlotState.isEsim(0);
+        boolean isEsim1 = SimSlotState.isEsim(1);
+
+        assertTrue(isEsim0);
+        assertTrue(isEsim1);
+
+        SimSlotState state = SimSlotState.getCurrentState();
+        boolean isMultiSim = SimSlotState.isMultiSim();
+
+        assertEquals(2, state.numActiveSlots);
+        assertEquals(1, state.numActiveSims);
+        assertEquals(1, state.numActiveEsims);
+        assertFalse(isMultiSim); // one Uicc Port does not have active sim profile
     }
 
     @Test
