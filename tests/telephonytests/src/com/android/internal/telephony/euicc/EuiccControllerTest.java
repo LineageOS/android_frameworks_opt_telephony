@@ -56,6 +56,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccCardInfo;
+import android.telephony.UiccPortInfo;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccInfo;
 import android.telephony.euicc.EuiccManager;
@@ -1163,10 +1164,18 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void setCanManageSubscriptionOnTargetSim(boolean isTargetEuicc, boolean hasPrivileges)
             throws Exception {
-        UiccCardInfo cardInfo1 = new UiccCardInfo(isTargetEuicc, CARD_ID, "", "", 0,
-                false /* isRemovable */);
+        UiccCardInfo cardInfo1 = new UiccCardInfo(isTargetEuicc, CARD_ID, "", 0,
+                false /* isRemovable */,
+                false /* isMultipleEnabledProfileSupported */,
+                Collections.singletonList(
+                        new UiccPortInfo("" /* iccId */, 0 /* portIdx */,
+                                -1 /* logicalSlotIdx */, false /* isActive */)));
         UiccCardInfo cardInfo2 = new UiccCardInfo(true /* isEuicc */, 1 /* cardId */,
-                "", "", 0, false /* isRemovable */);
+                "", 0, false /* isRemovable */,
+                false /* isMultipleEnabledProfileSupported */,
+                Collections.singletonList(
+                        new UiccPortInfo("" /* iccId */, 0 /* portIdx */,
+                                -1 /* logicalSlotIdx */, false /* isActive */)));
         ArrayList<UiccCardInfo> cardInfos = new ArrayList<>();
         cardInfos.add(cardInfo1);
         cardInfos.add(cardInfo2);
