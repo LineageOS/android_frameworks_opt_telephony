@@ -258,6 +258,14 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param enable true for "vonr enabled" and false for "vonr disabled"
+     */
+    public void isVoNrEnabledResponse(RadioResponseInfo responseInfo, boolean enable) {
+        RadioResponse.responseInts(mRil, responseInfo, enable ? 1 : 0);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void rejectCallResponse(RadioResponseInfo responseInfo) {
         RadioResponse.responseVoid(mRil, responseInfo);
@@ -330,6 +338,13 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setTtyModeResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setVoNrEnabledResponse(RadioResponseInfo responseInfo) {
         RadioResponse.responseVoid(mRil, responseInfo);
     }
 
