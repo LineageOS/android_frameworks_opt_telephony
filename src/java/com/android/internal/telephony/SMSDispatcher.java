@@ -79,8 +79,8 @@ import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.cdma.sms.UserData;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -2541,12 +2541,12 @@ public abstract class SMSDispatcher extends Handler {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected String getCarrierAppPackageName() {
-        UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
-        if (card == null) {
+        UiccPort port = UiccController.getInstance().getUiccPort(mPhone.getPhoneId());
+        if (port == null) {
             return null;
         }
 
-        List<String> carrierPackages = card.getCarrierPackageNamesForIntent(
+        List<String> carrierPackages = port.getCarrierPackageNamesForIntent(
             mContext.getPackageManager(), new Intent(CarrierMessagingService.SERVICE_INTERFACE));
         if (carrierPackages != null && carrierPackages.size() == 1) {
             return carrierPackages.get(0);

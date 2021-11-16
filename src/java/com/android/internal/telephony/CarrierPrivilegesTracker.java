@@ -58,7 +58,7 @@ import android.util.IntArray;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.telephony.Rlog;
 
@@ -351,14 +351,16 @@ public class CarrierPrivilegesTracker extends Handler {
         if (!mTelephonyManager.hasIccCard(mPhone.getPhoneId())) {
             return Collections.EMPTY_LIST;
         }
-        UiccCard uiccCard = mPhone.getUiccCard();
-        if (uiccCard == null) {
+
+        UiccPort uiccPort = mPhone.getUiccPort();
+        if (uiccPort == null) {
             Rlog.w(
                     TAG,
-                    "Null UiccCard, but hasIccCard was true for phoneId " + mPhone.getPhoneId());
+                    "Null UiccPort, but hasIccCard was present for phoneId " + mPhone.getPhoneId());
             return Collections.EMPTY_LIST;
         }
-        UiccProfile uiccProfile = uiccCard.getUiccProfile();
+
+        UiccProfile uiccProfile = uiccPort.getUiccProfile();
         if (uiccProfile == null) {
             Rlog.w(
                     TAG,

@@ -105,6 +105,7 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.NotificationChannelController;
@@ -2648,8 +2649,8 @@ public class ServiceStateTracker extends Handler {
         // override the operator name in home network. Also do this only for CDMA. This is temporary
         // and should be fixed in a proper way in a later release.
         if (!mPhone.isPhoneTypeGsm() && !mSS.getRoaming()) {
-            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null
-                    && mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null;
+            boolean hasBrandOverride = mUiccController.getUiccPort(getPhoneId()) != null
+                    && mUiccController.getUiccPort(getPhoneId()).getOperatorBrandOverride() != null;
             if (!hasBrandOverride) {
                 PersistableBundle config = getCarrierConfig();
                 if (config.getBoolean(
@@ -3818,8 +3819,8 @@ public class ServiceStateTracker extends Handler {
                 }
             }
         } else if (mPhone.isPhoneTypeCdmaLte()) {
-            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) != null &&
-                    mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null;
+            boolean hasBrandOverride = mUiccController.getUiccPort(getPhoneId()) != null
+                    && mUiccController.getUiccPort(getPhoneId()).getOperatorBrandOverride() != null;
             if (!hasBrandOverride && (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON)
                     && (mEriManager != null && mEriManager.isEriFileLoaded())
                     && (!ServiceState.isPsOnlyTech(mSS.getRilVoiceRadioTechnology())
@@ -3948,9 +3949,9 @@ public class ServiceStateTracker extends Handler {
     }
 
     private String getOperatorBrandOverride() {
-        UiccCard card = mPhone.getUiccCard();
-        if (card == null) return null;
-        UiccProfile profile = card.getUiccProfile();
+        UiccPort uiccPort = mPhone.getUiccPort();
+        if (uiccPort == null) return null;
+        UiccProfile profile = uiccPort.getUiccProfile();
         if (profile == null) return null;
         return profile.getOperatorBrandOverride();
     }
