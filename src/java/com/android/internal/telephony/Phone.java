@@ -93,6 +93,7 @@ import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.XmlUtils;
@@ -3928,6 +3929,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public UiccCard getUiccCard() {
         return mUiccController.getUiccCard(mPhoneId);
+    }
+
+    /**
+     * Gets the Uicc port corresponding to this phone.
+     * @return the UiccPort object corresponding to the phone ID.
+     */
+    public UiccPort getUiccPort() {
+        return mUiccController.getUiccPort(mPhoneId);
     }
 
     /**

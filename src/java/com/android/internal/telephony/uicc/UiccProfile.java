@@ -111,7 +111,7 @@ public class UiccProfile extends IccCard {
             new UiccCardApplication[IccCardStatus.CARD_MAX_APPS];
     private Context mContext;
     private CommandsInterface mCi;
-    private final UiccCard mUiccCard; //parent
+    private final UiccCard mUiccCard;
     private CatService mCatService;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
     private UiccCarrierPrivilegeRules mTestOverrideCarrierPrivilegeRules;
@@ -681,14 +681,14 @@ public class UiccProfile extends IccCard {
             case APPSTATE_READY:
                 checkAndUpdateIfAnyAppToBeIgnored();
                 if (areAllApplicationsReady()) {
-                    if (areAllRecordsLoaded() && areCarrierPriviligeRulesLoaded()) {
+                    if (areAllRecordsLoaded() && areCarrierPrivilegeRulesLoaded()) {
                         if (VDBG) log("updateExternalState: setting state to LOADED");
                         setExternalState(IccCardConstants.State.LOADED);
                     } else {
                         if (VDBG) {
                             log("updateExternalState: setting state to READY; records loaded "
                                     + areAllRecordsLoaded() + ", carrier privilige rules loaded "
-                                    + areCarrierPriviligeRulesLoaded());
+                                    + areCarrierPrivilegeRulesLoaded());
                         }
                         setExternalState(IccCardConstants.State.READY);
                     }
@@ -1284,7 +1284,7 @@ public class UiccProfile extends IccCard {
 
             mCarrierPrivilegeRegistrants.add(r);
 
-            if (areCarrierPriviligeRulesLoaded()) {
+            if (areCarrierPrivilegeRulesLoaded()) {
                 r.notifyRegistrant();
             }
         }
@@ -1660,7 +1660,7 @@ public class UiccProfile extends IccCard {
     /**
      * Returns true iff carrier privileges rules are null (dont need to be loaded) or loaded.
      */
-    public boolean areCarrierPriviligeRulesLoaded() {
+    public boolean areCarrierPrivilegeRulesLoaded() {
         UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
         return carrierPrivilegeRules == null
                 || carrierPrivilegeRules.areCarrierPriviligeRulesLoaded();
