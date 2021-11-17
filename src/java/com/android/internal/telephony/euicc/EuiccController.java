@@ -41,6 +41,7 @@ import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccCardInfo;
+import android.telephony.UiccPortInfo;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccCardManager.ResetOption;
 import android.telephony.euicc.EuiccInfo;
@@ -54,6 +55,9 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1566,5 +1570,35 @@ public class EuiccController extends IEuiccController.Stub {
         return mContext.checkCallingOrSelfPermission(
                 Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS)
                 == PackageManager.PERMISSION_GRANTED;
+    }
+    @Override
+    public boolean isSimPortAvailable(int cardId, int portIndex, String callingPackage) {
+        List<UiccCardInfo> cardInfos = mTelephonyManager.getUiccCardsInfo();
+        if (ArrayUtils.isEmpty(cardInfos)) {
+            return false;
+        }
+        int result = TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
+        for (UiccCardInfo info : cardInfos) {
+            //return false if physical card
+            if (info != null && info.getCardId() == cardId && (!info.isEuicc()
+                    || info.isRemovable())) {
+                return false;
+            }
+            for (UiccPortInfo portInfo : info.getPorts()) {
+                UiccPort port = UiccController.getInstance().getUiccPort(portIndex);
+                if (port == null) {
+                    return false;
+                }
+                // port is available if port is inactive and ICCID  or calling app has carrier
+                // privilege over the profile installed on the selected port.
+                result = port.getUiccProfile().getCarrierPrivilegeStatus(
+                        mContext.getPackageManager(), callingPackage);
+                if ((result == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS)
+                        || (portInfo.getIccId() == null && portInfo.isActive())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
