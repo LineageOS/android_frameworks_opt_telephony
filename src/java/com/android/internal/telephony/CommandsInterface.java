@@ -2206,6 +2206,15 @@ public interface CommandsInterface {
             Message result);
 
     /**
+     * Whether the device modem supports reporting the EID in either the slot or card status or
+     * through ATR.
+     * @return true if the modem supports EID.
+     */
+    default boolean supportsEid() {
+        return false;
+    }
+
+    /**
      * Tells the modem if data is allowed or not.
      *
      * @param allowed

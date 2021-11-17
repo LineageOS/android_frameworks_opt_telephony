@@ -85,6 +85,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
     private static final String LOG_TAG = "SimulatedCommands";
+    private boolean mSupportsEid = true;
 
     private enum SimLockState {
         NONE,
@@ -2472,6 +2473,15 @@ public class SimulatedCommands extends BaseCommands
         mSimPhonebookRecordsReceivedRegistrants.notifyRegistrants(
                 new AsyncResult(null,
                 new ReceivedPhonebookRecords(4, phonebookRecordInfoGroup), null));
+    }
+
+    public void setSupportsEid(boolean supportsEid) {
+        mSupportsEid = supportsEid;
+    }
+
+    @Override
+    public boolean supportsEid() {
+        return mSupportsEid;
     }
 
     @Override

@@ -193,8 +193,8 @@ public class DataThrottler extends Handler {
         List<ThrottleStatus> changedStatuses = new ArrayList<>();
         while (apnTypes != 0) {
             int apnType;
-            // Due to an APN error of ApnSetting.TYPE_DEFAULT (which combines default and hipri bit)
-            // , we need to do special handling here.
+            // Due to an API mistake of ApnSetting.TYPE_DEFAULT (which combines default and hipri 
+            // bit), we need to do special handling here.
             if ((apnTypes & ApnSetting.TYPE_DEFAULT) == ApnSetting.TYPE_DEFAULT) {
                 apnType = ApnSetting.TYPE_DEFAULT;
                 apnTypes &= ~ApnSetting.TYPE_DEFAULT;
