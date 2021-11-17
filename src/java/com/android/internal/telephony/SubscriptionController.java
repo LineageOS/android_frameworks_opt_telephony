@@ -57,6 +57,7 @@ import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.UiccAccessRule;
+import android.telephony.UiccPortInfo;
 import android.telephony.UiccSlotInfo;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
@@ -4073,7 +4074,8 @@ public class SubscriptionController extends ISub.Stub {
         // Can't find the existing SIM.
         if (slotInfo == null) return false;
 
-        if (enable && !slotInfo.getIsActive()) {
+        // this for physical slot which has only one port
+        if (enable && !slotInfo.getPorts().stream().findFirst().get().isActive()) {
             // We need to send intents to Euicc if we are turning on an inactive slot.
             // Euicc will decide whether to ask user to switch to DSDS, or change SIM
             // slot mapping.
@@ -4128,34 +4130,15 @@ public class SubscriptionController extends ISub.Stub {
                         + physicalSlotIndex, enabled ? 1 : 0);
     }
 
-    private int getPhysicalSlotIndex(boolean isEmbedded, int subId) {
-        UiccSlotInfo[] slotInfos = mTelephonyManager.getUiccSlotsInfo();
-        int logicalSlotIndex = getSlotIndex(subId);
-        int physicalSlotIndex = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-        boolean isLogicalSlotIndexValid = SubscriptionManager.isValidSlotIndex(logicalSlotIndex);
-
-        for (int i = 0; i < slotInfos.length; i++) {
-            // If we can know the logicalSlotIndex from subId, we should find the exact matching
-            // physicalSlotIndex. However for some cases like inactive eSIM, the logicalSlotIndex
-            // will be -1. In this case, we assume there's only one eSIM, and return the
-            // physicalSlotIndex of that eSIM.
-            if ((isLogicalSlotIndexValid && slotInfos[i].getLogicalSlotIdx() == logicalSlotIndex)
-                    || (!isLogicalSlotIndexValid && slotInfos[i].getIsEuicc() && isEmbedded)) {
-                physicalSlotIndex = i;
-                break;
-            }
-        }
-
-        return physicalSlotIndex;
-    }
-
     private int getPhysicalSlotIndexFromLogicalSlotIndex(int logicalSlotIndex) {
         int physicalSlotIndex = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         UiccSlotInfo[] slotInfos = mTelephonyManager.getUiccSlotsInfo();
         for (int i = 0; i < slotInfos.length; i++) {
-            if (slotInfos[i].getLogicalSlotIdx() == logicalSlotIndex) {
-                physicalSlotIndex = i;
-                break;
+            for (UiccPortInfo portInfo : slotInfos[i].getPorts()) {
+                if (portInfo.getLogicalSlotIndex() == logicalSlotIndex) {
+                    physicalSlotIndex = i;
+                    break;
+                }
             }
         }
 
