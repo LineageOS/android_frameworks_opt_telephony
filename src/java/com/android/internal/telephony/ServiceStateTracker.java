@@ -2097,7 +2097,7 @@ public class ServiceStateTracker extends Handler {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
 
         // Check if any APN is preferred on IWLAN.
-        boolean isIwlanPreferred = mTransportManager.isAnyApnPreferredOnIwlan();
+        boolean isIwlanPreferred = mTransportManager.isAnyApnOnIwlan();
         serviceState.setIwlanPreferred(isIwlanPreferred);
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
@@ -3018,6 +3018,12 @@ public class ServiceStateTracker extends Handler {
                     ", pending radio off=" + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
             log(tmpLog);
             mRadioPowerLog.log(tmpLog);
+        }
+
+        if (mDesiredPowerState && mDeviceShuttingDown) {
+            log("setPowerStateToDesired powering on of radio failed because the device is " +
+                    "powering off");
+            return;
         }
 
         // If we want it on and it's off, turn it on
