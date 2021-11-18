@@ -66,6 +66,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_EMERGENCY_
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_NR_DUAL_CONNECTIVITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_UICC_APPLICATIONS;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_VONR;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PIN;
@@ -111,6 +112,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_REGIST
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ISIM_AUTHENTICATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_READ_ITEM;
@@ -4876,6 +4878,10 @@ public class RILUtils {
                 return "GET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_SLICING_CONFIG:
                 return "GET_SLICING_CONFIG";
+            case RIL_REQUEST_ENABLE_VONR:
+                return "ENABLE_VONR";
+            case RIL_REQUEST_IS_VONR_ENABLED:
+                return "IS_VONR_ENABLED";
             default:
                 return "<unknown request " + request + ">";
         }
