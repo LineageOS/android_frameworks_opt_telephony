@@ -346,10 +346,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                 case EVENT_RADIO_PROXY_DEAD:
                     int service = msg.arg1;
+                    AtomicLong obj = (AtomicLong) msg.obj;
                     riljLog("handleMessage: EVENT_RADIO_PROXY_DEAD cookie = " + msg.obj
                             + ", service = " + serviceToString(service) + ", service cookie = "
                             + mServiceCookies.get(service));
-                    if ((long) msg.obj == mServiceCookies.get(service).get()) {
+                    if (obj.get() == mServiceCookies.get(service).get()) {
                         resetProxyAndRequestList(service);
                     }
                     break;
