@@ -1917,6 +1917,7 @@ public class RILUtils {
         signalThresholdInfoHal.hysteresisDb = signalThresholdInfo.getHysteresisDb();
         signalThresholdInfoHal.thresholds = signalThresholdInfo.getThresholds();
         signalThresholdInfoHal.isEnabled = signalThresholdInfo.isEnabled();
+        signalThresholdInfoHal.ran = signalThresholdInfo.getRadioAccessNetworkType();
         return signalThresholdInfoHal;
     }
 
