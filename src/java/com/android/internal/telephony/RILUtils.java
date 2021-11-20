@@ -4384,7 +4384,7 @@ public class RILUtils {
      */
     public static ArrayList<IccSlotStatus> convertHalSlotStatus(Object o) {
         ArrayList<IccSlotStatus> response = new ArrayList<>();
-        if (o instanceof android.hardware.radio.config.SimSlotStatus[]) {
+        try {
             final android.hardware.radio.config.SimSlotStatus[] halSlotStatusArray =
                     (android.hardware.radio.config.SimSlotStatus[]) o;
             for (android.hardware.radio.config.SimSlotStatus slotStatus : halSlotStatusArray) {
@@ -4397,22 +4397,14 @@ public class RILUtils {
                 iccSlotStatus.eid = slotStatus.eid;
                 response.add(iccSlotStatus);
             }
-        } else if (o instanceof ArrayList) {
-            final ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus> halSlotStatusArray =
-                    (ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus>) o;
-            for (android.hardware.radio.config.V1_0.SimSlotStatus slotStatus : halSlotStatusArray) {
-                IccSlotStatus iccSlotStatus = new IccSlotStatus();
-                iccSlotStatus.setCardState(slotStatus.cardState);
-                iccSlotStatus.setSlotState(slotStatus.slotState);
-                iccSlotStatus.logicalSlotIndex = slotStatus.logicalSlotId;
-                iccSlotStatus.atr = slotStatus.atr;
-                iccSlotStatus.iccid = slotStatus.iccid;
-                response.add(iccSlotStatus);
-            }
-        } else if (o instanceof ArrayList) {
-            final ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus> halSlotStatusArray =
+            return response;
+        } catch (ClassCastException ignore) { }
+        try {
+            final ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus>
+                    halSlotStatusArray =
                     (ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus>) o;
-            for (android.hardware.radio.config.V1_2.SimSlotStatus slotStatus : halSlotStatusArray) {
+            for (android.hardware.radio.config.V1_2.SimSlotStatus slotStatus :
+                    halSlotStatusArray) {
                 IccSlotStatus iccSlotStatus = new IccSlotStatus();
                 iccSlotStatus.setCardState(slotStatus.base.cardState);
                 iccSlotStatus.setSlotState(slotStatus.base.slotState);
@@ -4422,7 +4414,24 @@ public class RILUtils {
                 iccSlotStatus.eid = slotStatus.eid;
                 response.add(iccSlotStatus);
             }
-        }
+            return response;
+        } catch (ClassCastException ignore) { }
+        try {
+            final ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus>
+                    halSlotStatusArray =
+                    (ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus>) o;
+            for (android.hardware.radio.config.V1_0.SimSlotStatus slotStatus :
+                    halSlotStatusArray) {
+                IccSlotStatus iccSlotStatus = new IccSlotStatus();
+                iccSlotStatus.setCardState(slotStatus.cardState);
+                iccSlotStatus.setSlotState(slotStatus.slotState);
+                iccSlotStatus.logicalSlotIndex = slotStatus.logicalSlotId;
+                iccSlotStatus.atr = slotStatus.atr;
+                iccSlotStatus.iccid = slotStatus.iccid;
+                response.add(iccSlotStatus);
+            }
+            return response;
+        } catch (ClassCastException ignore) { }
         return response;
     }
 

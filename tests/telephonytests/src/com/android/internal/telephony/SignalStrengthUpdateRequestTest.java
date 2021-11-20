@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertThrows;
+
 import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.SignalStrengthUpdateRequest;
@@ -30,6 +32,7 @@ import junit.framework.TestCase;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public class SignalStrengthUpdateRequestTest extends TestCase {
@@ -160,6 +163,27 @@ public class SignalStrengthUpdateRequestTest extends TestCase {
         assertFalse(request.isReportingRequestedWhileIdle());
         assertFalse(request.isSystemThresholdReportingRequestedWhileIdle());
         assertEquals(infos, request.getSignalThresholdInfos());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetSystemThresholdReportingRequestedWhileIdleToTrue_withNullThresholds() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new SignalStrengthUpdateRequest.Builder()
+                        .setSystemThresholdReportingRequestedWhileIdle(true).build());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetSystemThresholdReportingRequestedWhileIdleToTrue_withEmptyThresholds() {
+        SignalStrengthUpdateRequest request = new SignalStrengthUpdateRequest.Builder()
+                .setSignalThresholdInfos(Collections.EMPTY_LIST)
+                .setSystemThresholdReportingRequestedWhileIdle(true)
+                .build();
+
+        assertThat(request.getSignalThresholdInfos()).isEmpty();
+        assertThat(request.isReportingRequestedWhileIdle()).isFalse();
+        assertThat(request.isSystemThresholdReportingRequestedWhileIdle()).isTrue();
     }
 
     private void validateBuilderWithInvalidParam(Collection<SignalThresholdInfo> infos) {
