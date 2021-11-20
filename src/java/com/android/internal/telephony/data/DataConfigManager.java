@@ -28,6 +28,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
+import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -185,7 +186,7 @@ public class DataConfigManager extends Handler {
      * @param capability The network capability
      * @return The priority range from 0 ~ 100. 100 is the highest priority.
      */
-    public int getNetworkCapabilityPriority(int capability) {
+    public int getNetworkCapabilityPriority(@NetCapability int capability) {
         if (mNetworkCapabilityPriorityMap.containsKey(capability)) {
             return mNetworkCapabilityPriorityMap.get(capability);
         }

@@ -35,6 +35,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
+import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -162,7 +163,6 @@ public class DataNetwork extends StateMachine {
     private static final int DEFAULT_INTERNET_NETWORK_SCORE = 50;
     private static final int OTHER_NETWORK_SCORE = 45;
 
-    /** @hide */
     @IntDef(prefix = {"DEACTIVATION_REASON_"},
             value = {
                     TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED,
@@ -297,6 +297,7 @@ public class DataNetwork extends StateMachine {
          * Called when data setup failed.
          *
          * @param dataNetwork The data network.
+         * @param requestList The network requests attached to this data network.
          * @param cause The fail cause of setup data network.
          * @param retryDurationMillis The network suggested data retry duration in milliseconds as
          * specified in 3GPP TS 24.302 section 8.2.9.1. The {@link DataProfile} associated to this
@@ -305,7 +306,8 @@ public class DataNetwork extends StateMachine {
          * data retry should not occur. {@link DataCallResponse#RETRY_DURATION_UNDEFINED} indicates
          * network did not suggest any retry duration.
          */
-        void onSetupDataFailed(@NonNull DataNetwork dataNetwork, @DataFailureCause int cause,
+        void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
+                @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
                 long retryDurationMillis);
 
         /**
@@ -429,6 +431,7 @@ public class DataNetwork extends StateMachine {
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
+        dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
@@ -907,8 +910,8 @@ public class DataNetwork extends StateMachine {
         // Get the highest priority network request.
         TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
 
-        mPreferredTransport = mDataNetworkController
-                .getPreferredTransportTypeForNetworkRequest(networkRequest);
+        mPreferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                networkRequest.getHighestPriorityNetworkCapability());
         if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
             mTransport = mPreferredTransport;
         }
@@ -1232,8 +1235,10 @@ public class DataNetwork extends StateMachine {
             // Setup data failed.
             long retry = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
+            NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
             detachAllNetworkRequests();
-            mDataNetworkCallback.onSetupDataFailed(DataNetwork.this, failCause, retry);
+            mDataNetworkCallback.onSetupDataFailed(DataNetwork.this, requestList,
+                    failCause, retry);
             transitionTo(mDisconnectedState);
         }
     }
