@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CurrentTimeMillisLong;
+import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
+import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.Annotation.NetCapability;
@@ -28,6 +31,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -36,6 +40,10 @@ import java.util.stream.Collectors;
  * This class contains all the utility methods used by telephony data stack.
  */
 public class DataUtils {
+    /** The time format for converting time to readable string. */
+    private static final SimpleDateFormat TIME_FORMAT =
+            new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
+
     /**
      * Get the network capability from the string.
      *
@@ -123,9 +131,9 @@ public class DataUtils {
      */
     public static @NonNull String networkCapabilitiesToString(@NetCapability int[] netCaps) {
         if (netCaps == null) return "";
-        return Arrays.stream(netCaps)
+        return "[" + Arrays.stream(netCaps)
                 .mapToObj(DataUtils::networkCapabilityToString)
-                .collect(Collectors.joining("|"));
+                .collect(Collectors.joining("|")) + "]";
     }
 
     /**
@@ -251,5 +259,26 @@ public class DataUtils {
             default:
                 return AccessNetworkConstants.AccessNetworkType.UNKNOWN;
         }
+    }
+
+    /**
+     * Convert the elapsed time to the current time with readable time format.
+     *
+     * @param elapsedTime The elapsed time retrieved from {@link SystemClock#elapsedRealtime()}.
+     * @return The string format time.
+     */
+    public static @NonNull String elapsedTimeToString(@ElapsedRealtimeLong long elapsedTime) {
+        return (elapsedTime != 0) ? getReadableSystemTime(System.currentTimeMillis()
+                - SystemClock.elapsedRealtime() + elapsedTime) : "never";
+    }
+
+    /**
+     * Convert the system time to the human readable format.
+     *
+     * @param systemTime The system time retrieved from {@link System#currentTimeMillis()}.
+     * @return The string format time.
+     */
+    public static @NonNull String getReadableSystemTime(@CurrentTimeMillisLong long systemTime) {
+        return (systemTime != 0) ? TIME_FORMAT.format(systemTime) : "never";
     }
 }

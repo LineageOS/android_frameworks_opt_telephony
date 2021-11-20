@@ -21,9 +21,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.telephony.data.DataProfile;
 
-import java.text.SimpleDateFormat;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -31,10 +29,6 @@ import java.util.Set;
  * establishing a data network.
  */
 public class DataEvaluation {
-    /** For time stamp formatting in debug message use only. */
-    private static final SimpleDateFormat TIME_FORMAT =
-            new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US);
-
     /** The reason for this evaluation */
     private final DataEvaluationReason mDataEvaluationReason;
 
@@ -279,7 +273,7 @@ public class DataEvaluation {
             evaluationStr.append(" ").append(mDataAllowedReason);
         }
         evaluationStr.append(", candidate profile=" + mCandidateDataProfile);
-        evaluationStr.append(", time=" + TIME_FORMAT.format(mEvaluatedTime));
+        evaluationStr.append(", time=" + DataUtils.getReadableSystemTime(mEvaluatedTime));
         return evaluationStr.toString();
     }
 
