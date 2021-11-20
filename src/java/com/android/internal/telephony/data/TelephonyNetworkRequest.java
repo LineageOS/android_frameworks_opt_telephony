@@ -24,14 +24,13 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.telephony.Annotation.NetCapability;
+import android.telephony.data.ApnSetting;
 
 import com.android.internal.telephony.Phone;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Locale;
 
 /**
  * TelephonyNetworkRequest is a wrapper class on top of {@link NetworkRequest}, which is originated
@@ -60,10 +59,6 @@ public class TelephonyNetworkRequest {
      * determined at the connectivity service layer.
      */
     public static final int REQUEST_STATE_SATISFIED = 1;
-
-    /** For time stamp formatting in debug message use only. */
-    private static final SimpleDateFormat TIME_FORMAT =
-            new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US);
 
     /**
      * Native network request from the clients. See {@link NetworkRequest};
@@ -170,6 +165,43 @@ public class TelephonyNetworkRequest {
     }
 
     /**
+     * Get the highest priority network capability from the network request. Note that only APN-type
+     * capabilities are supported here because this is currently used for transport selection and
+     * data retry.
+     *
+     * @return The highest priority network capability from this network request.
+     */
+    public @NetCapability int getHighestPriorityNetworkCapability() {
+        int highestPriority = 0;
+        int highestPriorityCapability = -1;
+        for (int capability : getCapabilities()) {
+            // Convert the capability to APN type. For non-APN-type capabilities, TYPE_NONE is
+            // returned.
+            int apnType = DataUtils.networkCapabilityToApnType(capability);
+            if (apnType != ApnSetting.TYPE_NONE) {
+                int priority = mDataConfigManager.getNetworkCapabilityPriority(capability);
+                if (priority > highestPriority) {
+                    highestPriority = priority;
+                    highestPriorityCapability = capability;
+                }
+            }
+        }
+        return highestPriorityCapability;
+    }
+
+    /**
+     * Get the capabilities that can be translated to APN types.
+     *
+     * @return The capabilities that can be translated to APN types.
+     */
+    public @NonNull @NetCapability int[] getApnTypesCapabilities() {
+        return Arrays.stream(getCapabilities()).boxed()
+                .filter(cap -> DataUtils.networkCapabilityToApnType(cap) != ApnSetting.TYPE_NONE)
+                .mapToInt(Number::intValue)
+                .toArray();
+    }
+
+    /**
      * @return The native network request.
      */
     public @NonNull NetworkRequest getNativeNetworkRequest() {
@@ -239,7 +271,7 @@ public class TelephonyNetworkRequest {
                 + ", state=" + requestStateToString(mState)
                 + ", mAttachedDataNetwork=" + (mAttachedDataNetwork != null
                 ? mAttachedDataNetwork.name() : null) + ", created time="
-                + TIME_FORMAT.format(mCreatedTimeMillis)
+                + DataUtils.getReadableSystemTime(mCreatedTimeMillis)
                 + ", evaluation result=" + mEvaluation + "]";
     }
 

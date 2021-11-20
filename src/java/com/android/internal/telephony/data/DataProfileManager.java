@@ -27,6 +27,7 @@ import android.os.Message;
 import android.os.RegistrantList;
 import android.provider.Telephony;
 import android.telephony.Annotation;
+import android.telephony.Annotation.NetCapability;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -36,6 +37,7 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -57,9 +59,17 @@ public class DataProfileManager extends Handler {
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
 
+    /** Data network controller. */
     private final @NonNull DataNetworkController mDataNetworkController;
+
+    /** Data config manager. */
     private final @NonNull DataConfigManager mDataConfigManager;
+
+    /** Cellular data service. */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
+
+    /** Access networks manager. */
+    private final @NonNull AccessNetworksManager mAccessNetworksManager;
 
     /** All data profiles for the current carrier. */
     private final @NonNull List<DataProfile> mAllDataProfiles = new ArrayList<>();
@@ -94,7 +104,7 @@ public class DataProfileManager extends Handler {
         mDataNetworkController = dataNetworkController;
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
-
+        mAccessNetworksManager = phone.getAccessNetworksManager();
 
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
     }
@@ -335,8 +345,8 @@ public class DataProfileManager extends Handler {
         }
 
         // Step 3: Check if the remaining data profiles can used in current data RAT.
-        int transport = mDataNetworkController
-                .getPreferredTransportTypeForNetworkRequest(networkRequest);
+        int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                networkRequest.getHighestPriorityNetworkCapability());
         NetworkRegistrationInfo nri = mPhone.getServiceState().getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, transport);
         int dataRat = nri.getAccessNetworkTechnology();
@@ -370,6 +380,21 @@ public class DataProfileManager extends Handler {
         //   2. Should consider data throttling.
 
         return dataProfiles.get(0);
+    }
+
+    /**
+     * Get data profiles that can satisfy given network capabilities.
+     *
+     * @param networkCapabilities The network capabilities.
+     * @return data profiles that can satisfy given network capabilities.
+     */
+    public @NonNull List<DataProfile> getDataProfilesForNetworkCapabilities(
+            @NonNull @NetCapability int[] networkCapabilities) {
+        return mAllDataProfiles.stream()
+                .filter(dp -> dp.canSatisfy(networkCapabilities))
+                .sorted((dp1, dp2) ->
+                        Long.compare(dp1.getLastSetupTimestamp(), dp2.getLastSetupTimestamp()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -422,7 +447,9 @@ public class DataProfileManager extends Handler {
         pw.println("Data profiles for the current carrier:");
         pw.increaseIndent();
         for (DataProfile dp : mAllDataProfiles) {
-            pw.println(dp);
+            pw.print(dp);
+            pw.print(", last setup time: " + DataUtils.elapsedTimeToString(
+                    dp.getLastSetupTimestamp()));
         }
         pw.decreaseIndent();
         pw.println("Preferred data profile:");

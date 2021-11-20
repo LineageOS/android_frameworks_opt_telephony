@@ -16,17 +16,12 @@
 
 package com.android.internal.telephony.data;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static com.google.common.truth.Truth.assertThat;
 
 import android.net.NetworkCapabilities;
 import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
-
-import com.android.internal.telephony.RILConstants;
 
 import org.junit.Test;
 
@@ -110,17 +105,17 @@ public class DataProfileTest {
                 .setApnSetting(mApn1)
                 .setPreferred(false)
                 .build();
-        assertEquals(mApn1.getProfileId(), dp.getProfileId());
-        assertEquals(mApn1.getApnName(), dp.getApn());
-        assertEquals(mApn1.getProtocol(), dp.getProtocolType());
-        assertEquals(RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dp.getAuthType());
-        assertEquals(mApn1.getUser(), dp.getUserName());
-        assertEquals(mApn1.getPassword(), dp.getPassword());
-        assertEquals(0, dp.getType());  // TYPE_COMMON
-        assertEquals(mApn1.getWaitTime(), dp.getWaitTime());
-        assertEquals(mApn1.isEnabled(), dp.isEnabled());
-        assertFalse(dp.isPersistent());
-        assertFalse(dp.isPreferred());
+        assertThat(dp.getProfileId()).isEqualTo(mApn1.getProfileId());
+        assertThat(dp.getApn()).isEqualTo(mApn1.getApnName());
+        assertThat(dp.getProtocolType()).isEqualTo(mApn1.getProtocol());
+        assertThat(dp.getAuthType()).isEqualTo(ApnSetting.AUTH_TYPE_PAP_OR_CHAP);
+        assertThat(dp.getUserName()).isEqualTo(mApn1.getUser());
+        assertThat(dp.getPassword()).isEqualTo(mApn1.getPassword());
+        assertThat(dp.getType()).isEqualTo(DataProfile.TYPE_COMMON);
+        assertThat(dp.getWaitTime()).isEqualTo(mApn1.getWaitTime());
+        assertThat(dp.isEnabled()).isEqualTo(mApn1.isEnabled());
+        assertThat(dp.isPersistent()).isFalse();
+        assertThat(dp.isPreferred()).isFalse();
     }
 
     @Test
@@ -129,22 +124,22 @@ public class DataProfileTest {
                 .setApnSetting(mApn3)
                 .setPreferred(false)
                 .build();
-        assertEquals(mApn3.getProfileId(), dp.getProfileId());
-        assertEquals(mApn3.getApnName(), dp.getApn());
-        assertEquals(mApn3.getProtocol(), dp.getProtocolType());
-        assertEquals(RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dp.getAuthType());
-        assertEquals(mApn3.getUser(), dp.getUserName());
-        assertEquals(mApn3.getPassword(), dp.getPassword());
-        assertEquals(0, dp.getType());  // TYPE_COMMON
-        assertEquals(mApn3.getWaitTime(), dp.getWaitTime());
-        assertEquals(mApn3.isEnabled(), dp.isEnabled());
+        assertThat(dp.getProfileId()).isEqualTo(mApn3.getProfileId());
+        assertThat(dp.getApn()).isEqualTo(mApn3.getApnName());
+        assertThat(dp.getProtocolType()).isEqualTo(mApn3.getProtocol());
+        assertThat(dp.getAuthType()).isEqualTo(ApnSetting.AUTH_TYPE_PAP_OR_CHAP);
+        assertThat(dp.getUserName()).isEqualTo(mApn3.getUser());
+        assertThat(dp.getPassword()).isEqualTo(mApn3.getPassword());
+        assertThat(dp.getType()).isEqualTo(DataProfile.TYPE_COMMON);
+        assertThat(dp.getWaitTime()).isEqualTo(mApn3.getWaitTime());
+        assertThat(dp.isEnabled()).isEqualTo(mApn3.isEnabled());
         int expectedBearerBitmap = mApn3.getNetworkTypeBitmask();
-        assertEquals(expectedBearerBitmap, dp.getBearerBitmask());
+        assertThat(dp.getBearerBitmask()).isEqualTo(expectedBearerBitmap);
         dp = new DataProfile.Builder()
                 .setApnSetting(mApn4)
                 .setPreferred(false)
                 .build();
-        assertEquals(2, dp.getType());  // TYPE_3GPP2
+        assertThat(dp.getType()).isEqualTo(2);  // TYPE_3GPP2
     }
 
     @Test
@@ -154,15 +149,15 @@ public class DataProfileTest {
                 .setPreferred(false)
                 .build();
 
-        assertTrue(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_INTERNET));
-        assertTrue(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                NetworkCapabilities.NET_CAPABILITY_SUPL}));
-        assertTrue(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
+        assertThat(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+        assertThat(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                NetworkCapabilities.NET_CAPABILITY_SUPL})).isTrue();
+        assertThat(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
                 NetworkCapabilities.NET_CAPABILITY_SUPL,
-                NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED}));
-        assertFalse(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_MMS));
-        assertFalse(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                NetworkCapabilities.NET_CAPABILITY_MMS}));
+                NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED})).isTrue();
+        assertThat(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_MMS)).isFalse();
+        assertThat(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                NetworkCapabilities.NET_CAPABILITY_MMS})).isFalse();
     }
 
     @Test
@@ -175,13 +170,13 @@ public class DataProfileTest {
                 .setApnSetting(mApn1)
                 .setPreferred(false)
                 .build();
-        assertEquals(dp1, dp2);
+        assertThat(dp1).isEqualTo(dp2);
 
         dp2 = new DataProfile.Builder()
                 .setApnSetting(mApn2)
                 .setPreferred(false)
                 .build();
-        assertNotEquals(dp1, dp2);
+        assertThat(dp1).isNotEqualTo(dp2);
     }
 
     @Test
@@ -197,7 +192,7 @@ public class DataProfileTest {
 
         DataProfile fromParcel = DataProfile.CREATOR.createFromParcel(parcel);
 
-        assertEquals(dp, fromParcel);
+        assertThat(fromParcel).isEqualTo(dp);
 
         parcel.recycle();
     }

@@ -18,9 +18,8 @@ package com.android.internal.telephony.data;
 
 import static com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.mockito.Mockito.doReturn;
 
 import android.net.NetworkCapabilities;
@@ -85,76 +84,77 @@ public class DataNetworkControllerTest extends TelephonyTest {
         }
 
         // Check if emergency has the highest priority, then mms, then internet.
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_EIMS,
-                networkRequestList.get(0).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_MMS,
-                networkRequestList.get(1).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                networkRequestList.get(2).getCapabilities()[0]);
+        assertThat(networkRequestList.get(0).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        assertThat(networkRequestList.get(1).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_MMS);
+        assertThat(networkRequestList.get(2).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
 
         // Add IMS
-        assertTrue(networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+        assertThat(networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone)));
+                .build(), mPhone))).isTrue();
 
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_EIMS,
-                networkRequestList.get(0).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_MMS,
-                networkRequestList.get(1).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_IMS,
-                networkRequestList.get(2).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                networkRequestList.get(3).getCapabilities()[0]);
+        assertThat(networkRequestList.get(0).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        assertThat(networkRequestList.get(1).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_MMS);
+        assertThat(networkRequestList.get(2).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
+        assertThat(networkRequestList.get(3).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         // Add IMS again
-        assertFalse(networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+        assertThat(networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone)));
-        assertEquals(4, networkRequestList.size());
+                .build(), mPhone))).isFalse();
+        assertThat(networkRequestList.size()).isEqualTo(4);
 
         // Remove MMS
-        assertTrue(networkRequestList.remove(new TelephonyNetworkRequest(
+        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
-                        .build(), mPhone)));
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_EIMS,
-                networkRequestList.get(0).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_IMS,
-                networkRequestList.get(1).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                networkRequestList.get(2).getCapabilities()[0]);
+                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.get(0).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        assertThat(networkRequestList.get(1).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
+        assertThat(networkRequestList.get(2).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         // Remove EIMS
-        assertTrue(networkRequestList.remove(new TelephonyNetworkRequest(
+        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
-                        .build(), mPhone)));
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_IMS,
-                networkRequestList.get(0).getCapabilities()[0]);
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                networkRequestList.get(1).getCapabilities()[0]);
+                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.get(0).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
+        assertThat(networkRequestList.get(1).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         // Remove Internet
-        assertTrue(networkRequestList.remove(new TelephonyNetworkRequest(
+        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build(), mPhone)));
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_IMS,
-                networkRequestList.get(0).getCapabilities()[0]);
+                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.get(0).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
 
         // Remove XCAP (which does not exist)
-        assertFalse(networkRequestList.remove(new TelephonyNetworkRequest(
+        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)
-                        .build(), mPhone)));
-        assertEquals(NetworkCapabilities.NET_CAPABILITY_IMS,
-                networkRequestList.get(0).getCapabilities()[0]);
+                        .build(), mPhone))).isFalse();
+        assertThat(networkRequestList.get(0).getCapabilities()[0])
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
 
         // Remove IMS
-        assertTrue(networkRequestList.remove(new TelephonyNetworkRequest(
+        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                        .build(), mPhone)));
-        assertEquals(0, networkRequestList.size());
+                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList).isEmpty();
     }
 }
