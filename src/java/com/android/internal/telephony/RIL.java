@@ -2704,7 +2704,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mMetrics.writeSetPreferredNetworkType(mPhoneId, networkType);
 
             try {
-                networkProxy.setAllowedNetworkTypesBitmap(rr.mSerial, mAllowedNetworkTypesBitmask);
+                networkProxy.setPreferredNetworkTypeBitmap(rr.mSerial, mAllowedNetworkTypesBitmask);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(NETWORK_SERVICE, "setPreferredNetworkType", e);
             }
@@ -2735,6 +2735,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
         if (!networkProxy.isEmpty()) {
+            if (mRadioVersion.less(RADIO_HAL_VERSION_1_6)) {
+                // For older HAL, redirects the call to setPreferredNetworkType.
+                setPreferredNetworkType(
+                        RadioAccessFamily.getNetworkTypeFromRaf(networkTypeBitmask), result);
+                return;
+            }
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP, result,
                     mRILDefaultWorkSource);
 
