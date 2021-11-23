@@ -25,7 +25,7 @@ import static org.mockito.Mockito.doReturn;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
-import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.testing.AndroidTestingRunner;
@@ -41,22 +41,8 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataNetworkControllerTest extends TelephonyTest {
-    private DataNetworkController mDataNetworkController;
-    private DataNetworkControllerTestHandler mDataNetworkControllerTestHandler;
+    private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
-
-    private class DataNetworkControllerTestHandler extends HandlerThread {
-
-        private DataNetworkControllerTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mDataNetworkController = new DataNetworkController(mPhone, getLooper());
-            setReady(true);
-        }
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -70,19 +56,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
                         "ims:40", "dun:30", "enterprise:20", "internet:20"
                 });
 
-        mDataNetworkControllerTestHandler = new DataNetworkControllerTestHandler(
-                getClass().getSimpleName());
-        mDataNetworkControllerTestHandler.start();
-        waitUntilReady();
-        waitForLastHandlerAction(mDataNetworkControllerTestHandler.getThreadHandler());
-        doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
+        mDataNetworkControllerUT = new DataNetworkController(mPhone, Looper.myLooper());
+        processAllMessages();
 
         logd("DataNetworkControllerTest -Setup!");
     }
 
     @After
     public void tearDown() throws Exception {
-        mDataNetworkControllerTestHandler.quit();
         super.tearDown();
     }
 
@@ -90,6 +71,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     // expected, and make sure it is always sorted.
     @Test
     public void testNetworkRequestList() {
+        doReturn(mDataNetworkControllerUT.getDataConfigManager())
+                .when(mDataNetworkController).getDataConfigManager();
         NetworkRequestList networkRequestList = new NetworkRequestList();
 
         int[] netCaps = new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,

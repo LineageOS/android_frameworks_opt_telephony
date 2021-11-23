@@ -340,7 +340,7 @@ public class GsmCdmaPhone extends Phone {
             mTransportManager.registerDataThrottler(dcTracker.getDataThrottler());
         }
 
-        if (false/*isUsingNewDataStack()*/) {
+        if (isUsingNewDataStack()) {
             mDataNetworkController = mTelephonyComponentFactory.inject(
                     DataNetworkController.class.getName())
                     .makeDataNetworkController(this, getLooper());
