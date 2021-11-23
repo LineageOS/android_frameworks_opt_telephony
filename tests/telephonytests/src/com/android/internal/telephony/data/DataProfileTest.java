@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
+import android.net.NetworkCapabilities;
 import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
@@ -32,8 +34,8 @@ public class DataProfileTest {
 
     private ApnSetting mApn1 = new ApnSetting.Builder()
             .setId(2163)
-            .setOperatorNumeric("44010")
-            .setEntryName("sp-mode")
+            .setOperatorNumeric("12345")
+            .setEntryName("fake_apn")
             .setApnName("fake_apn")
             .setUser("user")
             .setPassword("passwd")
@@ -50,8 +52,8 @@ public class DataProfileTest {
 
     private ApnSetting mApn2 = new ApnSetting.Builder()
             .setId(2163)
-            .setOperatorNumeric("44010")
-            .setEntryName("sp-mode")
+            .setOperatorNumeric("12345")
+            .setEntryName("fake_apn")
             .setApnName("fake_apn")
             .setUser("user")
             .setPassword("passwd")
@@ -68,8 +70,8 @@ public class DataProfileTest {
 
     private ApnSetting mApn3 = new ApnSetting.Builder()
             .setId(2163)
-            .setOperatorNumeric("44010")
-            .setEntryName("sp-mode")
+            .setOperatorNumeric("12345")
+            .setEntryName("fake_apn")
             .setApnName("fake_apn")
             .setUser("user")
             .setPassword("passwd")
@@ -86,8 +88,8 @@ public class DataProfileTest {
 
     private ApnSetting mApn4 = new ApnSetting.Builder()
             .setId(2163)
-            .setOperatorNumeric("44010")
-            .setEntryName("sp-mode")
+            .setOperatorNumeric("12345")
+            .setEntryName("fake_apn")
             .setApnName("fake_apn")
             .setUser("user")
             .setPassword("passwd")
@@ -143,6 +145,24 @@ public class DataProfileTest {
                 .setPreferred(false)
                 .build();
         assertEquals(2, dp.getType());  // TYPE_3GPP2
+    }
+
+    @Test
+    public void testCanSatisfy() {
+        DataProfile dp = new DataProfile.Builder()
+                .setApnSetting(mApn1)
+                .setPreferred(false)
+                .build();
+
+        assertTrue(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        assertTrue(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                NetworkCapabilities.NET_CAPABILITY_SUPL}));
+        assertTrue(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                NetworkCapabilities.NET_CAPABILITY_SUPL,
+                NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED}));
+        assertFalse(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_MMS));
+        assertFalse(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                NetworkCapabilities.NET_CAPABILITY_MMS}));
     }
 
     @Test
