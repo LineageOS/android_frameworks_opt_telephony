@@ -4166,19 +4166,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void startLceService(int reportIntervalMs, boolean pullMode, Message result) {
         IRadio radioProxy = getRadioProxy(result);
 
-        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
-            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
-            // Instead the LCE functionality is always-on and provides unsolicited indications.
-            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "startLceService: REQUEST_NOT_SUPPORTED");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                result.sendToTarget();
-            }
-            return;
-        }
-
         if (radioProxy != null) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
+                // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
+                // Instead the LCE functionality is always-on and provides unsolicited indications.
+                if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "startLceService: REQUEST_NOT_SUPPORTED");
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+
             RILRequest rr = obtainRequest(RIL_REQUEST_START_LCE, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -4197,19 +4197,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void stopLceService(Message result) {
         IRadio radioProxy = getRadioProxy(result);
-        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
-            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
-            // Instead the LCE functionality is always-on and provides unsolicited indications.
-            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "stopLceService: REQUEST_NOT_SUPPORTED");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                result.sendToTarget();
-            }
-            return;
-        }
 
         if (radioProxy != null) {
+            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
+                // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
+                // Instead the LCE functionality is always-on and provides unsolicited indications.
+                if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "stopLceService: REQUEST_NOT_SUPPORTED");
+                if (result != null) {
+                    AsyncResult.forMessage(result, null,
+                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                    result.sendToTarget();
+                }
+                return;
+            }
+
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_LCE, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
