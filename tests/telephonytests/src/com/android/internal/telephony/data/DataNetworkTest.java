@@ -16,9 +16,8 @@
 
 package com.android.internal.telephony.data;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -202,8 +201,8 @@ public class DataNetworkTest extends TelephonyTest {
         mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
                 mWlanDataServiceManager);
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mDataNetworkController)
-            .getPreferredTransportTypeForNetworkRequest(any(TelephonyNetworkRequest.class));
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(anyInt());
     }
 
     @After
@@ -252,43 +251,44 @@ public class DataNetworkTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
                 eq(DataCallResponse.PDU_SESSION_ID_NOT_SET), nullable(NetworkSliceInfo.class),
                 any(TrafficDescriptor.class), eq(true), any(Message.class));
-        assertEquals(123, mDataNetworkUT.getId());
-        assertEquals(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED,
-                networkRequestList.get(0).getState());
+        assertThat(mDataNetworkUT.getId()).isEqualTo(123);
+        assertThat(networkRequestList.get(0).getState())
+                .isEqualTo(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
         LinkProperties lp = mDataNetworkUT.getLinkProperties();
         List<InetAddress> addresses = lp.getAddresses();
-        assertEquals(InetAddresses.parseNumericAddress(IPV4_ADDRESS), addresses.get(0));
-        assertEquals(InetAddresses.parseNumericAddress(IPV6_ADDRESS), addresses.get(1));
+        assertThat(lp.getAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
         ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
                 ArgumentCaptor.forClass(PreciseDataConnectionState.class);
         verify(mPhone, times(2)).notifyDataConnection(pdcsCaptor.capture());
         List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
 
-        assertEquals(mInternetApnSetting, pdcsList.get(0).getApnSetting());
-        assertEquals(TelephonyManager.DATA_CONNECTING, pdcsList.get(0).getState());
-        assertEquals(-1, pdcsList.get(0).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, pdcsList.get(0).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                pdcsList.get(0).getTransportType());
-        assertEquals(new LinkProperties(), pdcsList.get(0).getLinkProperties());
+        assertThat(pdcsList.get(0).getApnSetting()).isEqualTo(mInternetApnSetting);
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(0).getId()).isEqualTo(-1);
+        assertThat(pdcsList.get(0).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(pdcsList.get(0).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(pdcsList.get(0).getLinkProperties()).isEqualTo(new LinkProperties());
 
-        assertEquals(mInternetApnSetting, pdcsList.get(1).getApnSetting());
-        assertEquals(TelephonyManager.DATA_CONNECTED, pdcsList.get(1).getState());
-        assertEquals(123, pdcsList.get(1).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, pdcsList.get(1).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                pdcsList.get(1).getTransportType());
-        assertEquals(InetAddresses.parseNumericAddress(IPV4_ADDRESS),
-                pdcsList.get(1).getLinkProperties().getAddresses().get(0));
-        assertEquals(InetAddresses.parseNumericAddress(IPV6_ADDRESS),
-                pdcsList.get(1).getLinkProperties().getAddresses().get(1));
-        assertTrue(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET));
-        assertTrue(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_SUPL));
-        assertTrue(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED));
+        assertThat(pdcsList.get(1).getApnSetting()).isEqualTo(mInternetApnSetting);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(1).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(1).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(pdcsList.get(1).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(pdcsList.get(1).getLinkProperties().getAddresses().get(0))
+                .isEqualTo(InetAddresses.parseNumericAddress(IPV4_ADDRESS));
+        assertThat(pdcsList.get(1).getLinkProperties().getAddresses().get(1))
+                .isEqualTo(InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_SUPL)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isTrue();
 
         verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
     }
@@ -312,19 +312,19 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mPhone, times(4)).notifyDataConnection(pdcsCaptor.capture());
         List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
 
-        assertEquals(mInternetApnSetting, pdcsList.get(2).getApnSetting());
-        assertEquals(TelephonyManager.DATA_DISCONNECTING, pdcsList.get(2).getState());
-        assertEquals(123, pdcsList.get(2).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, pdcsList.get(2).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                pdcsList.get(2).getTransportType());
+        assertThat(pdcsList.get(2).getApnSetting()).isEqualTo(mInternetApnSetting);
+        assertThat(pdcsList.get(2).getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTING);
+        assertThat(pdcsList.get(2).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(2).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(pdcsList.get(2).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
 
-        assertEquals(mInternetApnSetting, pdcsList.get(3).getApnSetting());
-        assertEquals(TelephonyManager.DATA_DISCONNECTED, pdcsList.get(3).getState());
-        assertEquals(123, pdcsList.get(3).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, pdcsList.get(3).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                pdcsList.get(3).getTransportType());
+        assertThat(pdcsList.get(3).getApnSetting()).isEqualTo(mInternetApnSetting);
+        assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTED);
+        assertThat(pdcsList.get(3).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(3).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(pdcsList.get(3).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 
     @Test
@@ -333,11 +333,8 @@ public class DataNetworkTest extends TelephonyTest {
                 eq(NetworkRegistrationInfo.DOMAIN_PS),
                 eq(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
-                .getPreferredTransport(ApnSetting.TYPE_IMS);
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
-                .getCurrentTransport(ApnSetting.TYPE_IMS);
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mDataNetworkController)
-                .getPreferredTransportTypeForNetworkRequest(any(TelephonyNetworkRequest.class));
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
@@ -357,42 +354,41 @@ public class DataNetworkTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
                 eq(1), nullable(NetworkSliceInfo.class),
                 any(TrafficDescriptor.class), eq(true), any(Message.class));
-        assertEquals(123, mDataNetworkUT.getId());
-        assertEquals(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED,
-                networkRequestList.get(0).getState());
+        assertThat(mDataNetworkUT.getId()).isEqualTo(123);
+        assertThat(networkRequestList.get(0).getState())
+                .isEqualTo(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
         LinkProperties lp = mDataNetworkUT.getLinkProperties();
-        List<InetAddress> addresses = lp.getAddresses();
-        assertEquals(InetAddresses.parseNumericAddress(IPV4_ADDRESS), addresses.get(0));
-        assertEquals(InetAddresses.parseNumericAddress(IPV6_ADDRESS), addresses.get(1));
+        assertThat(lp.getAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
         ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
                 ArgumentCaptor.forClass(PreciseDataConnectionState.class);
         verify(mPhone, times(2)).notifyDataConnection(pdcsCaptor.capture());
         List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
 
-        assertEquals(mImsApnSetting, pdcsList.get(0).getApnSetting());
-        assertEquals(TelephonyManager.DATA_CONNECTING, pdcsList.get(0).getState());
-        assertEquals(-1, pdcsList.get(0).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, pdcsList.get(0).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                pdcsList.get(0).getTransportType());
-        assertEquals(new LinkProperties(), pdcsList.get(0).getLinkProperties());
+        assertThat(pdcsList.get(0).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(0).getId()).isEqualTo(-1);
+        assertThat(pdcsList.get(0).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertThat(pdcsList.get(0).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(pdcsList.get(0).getLinkProperties()).isEqualTo(new LinkProperties());
 
-        assertEquals(mImsApnSetting, pdcsList.get(1).getApnSetting());
-        assertEquals(TelephonyManager.DATA_CONNECTED, pdcsList.get(1).getState());
-        assertEquals(123, pdcsList.get(1).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, pdcsList.get(1).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                pdcsList.get(1).getTransportType());
-        assertEquals(InetAddresses.parseNumericAddress(IPV4_ADDRESS),
-                pdcsList.get(1).getLinkProperties().getAddresses().get(0));
-        assertEquals(InetAddresses.parseNumericAddress(IPV6_ADDRESS),
-                pdcsList.get(1).getLinkProperties().getAddresses().get(1));
+        assertThat(pdcsList.get(1).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(1).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(1).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertThat(pdcsList.get(1).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(pdcsList.get(1).getLinkProperties().getAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
-        assertTrue(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_IMS));
-        assertFalse(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED));
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isFalse();
 
         verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
     }
@@ -414,18 +410,18 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mPhone, times(4)).notifyDataConnection(pdcsCaptor.capture());
         List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
 
-        assertEquals(mImsApnSetting, pdcsList.get(2).getApnSetting());
-        assertEquals(TelephonyManager.DATA_DISCONNECTING, pdcsList.get(2).getState());
-        assertEquals(123, pdcsList.get(2).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, pdcsList.get(2).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                pdcsList.get(2).getTransportType());
+        assertThat(pdcsList.get(2).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(2).getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTING);
+        assertThat(pdcsList.get(2).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(2).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertThat(pdcsList.get(2).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
 
-        assertEquals(mImsApnSetting, pdcsList.get(3).getApnSetting());
-        assertEquals(TelephonyManager.DATA_DISCONNECTED, pdcsList.get(3).getState());
-        assertEquals(123, pdcsList.get(3).getId());
-        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, pdcsList.get(3).getNetworkType());
-        assertEquals(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                pdcsList.get(3).getTransportType());
+        assertThat(pdcsList.get(3).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTED);
+        assertThat(pdcsList.get(3).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(3).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertThat(pdcsList.get(3).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
     }
 }
