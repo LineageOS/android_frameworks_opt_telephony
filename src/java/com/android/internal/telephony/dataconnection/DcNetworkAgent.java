@@ -118,7 +118,7 @@ public class DcNetworkAgent extends NetworkAgent {
         } else {
             loge("The connection does not have a valid link properties.");
         }
-        mQosCallbackTracker = new QosCallbackTracker(this);
+        mQosCallbackTracker = new QosCallbackTracker(this, mPhone.getPhoneId());
     }
 
     private @NetworkType int getNetworkType() {
