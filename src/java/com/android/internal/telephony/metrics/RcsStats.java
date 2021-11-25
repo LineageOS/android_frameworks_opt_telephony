@@ -600,7 +600,7 @@ public class RcsStats {
             for (RcsContactUceCapability capability : updatedCapList) {
                 boolean rcsCap = false;
                 boolean mmtelCap = false;
-                boolean noCap = false;
+                boolean noCap = true;
                 List<RcsContactPresenceTuple> tupleList = capability.getCapabilityTuples();
                 if (tupleList.isEmpty()) {
                     noCap = true;
@@ -612,16 +612,17 @@ public class RcsStats {
                     String serviceId = tuple.getServiceId();
                     if (RCS_SERVICE_ID_SET.contains(serviceId)) {
                         rcsCap = true;
+                        noCap = false;
                     } else if (MMTEL_SERVICE_ID_SET.contains(serviceId)) {
                         if (serviceId.equals(RcsContactPresenceTuple.SERVICE_ID_CALL_COMPOSER)) {
                             if ("1.0".equals(tuple.getServiceVersion())) {
                                 rcsCap = true;
+                                noCap = false;
                                 continue;
                             }
                         }
                         mmtelCap = true;
-                    } else {
-                        noCap = true;
+                        noCap = false;
                     }
                 }
                 mRcsStats.onPresenceNotifyEvent(subId, "", true, rcsCap,
