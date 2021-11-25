@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 22
+// Next id: 50
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -93,6 +93,84 @@ message PersistAtoms {
 
     /* Timestamp of last network_requests pull. */
     optional int64 network_requests_pull_timestamp_millis = 23;
+
+    /* RCS single registrtions feature tag information. */
+    repeated ImsRegistrationFeatureTagStats ims_registration_feature_tag_stats = 24;
+
+    /* Timestamp of last ims_registration_feature_tag_stats pull. */
+    optional int64 ims_registration_feature_tag_stats_pull_timestamp_millis = 25;
+
+    /* RCS client provisioning statistics and information. */
+    repeated RcsClientProvisioningStats rcs_client_provisioning_stats = 26;
+
+    /* Timestamp of last rcs_client_provisioning_stats pull. */
+    optional int64 rcs_client_provisioning_stats_pull_timestamp_millis = 27;
+
+    /* RCS configuration statistics and information based ACS. */
+    repeated RcsAcsProvisioningStats rcs_acs_provisioning_stats = 28;
+
+    /* Timestamp of last rcs_acs_provisioning_stats pull. */
+    optional int64 rcs_acs_provisioning_stats_pull_timestamp_millis = 29;
+
+    /* SIP delegate statistics and information. */
+    repeated SipDelegateStats sip_delegate_stats = 30;
+
+    /* Timestamp of last sip_delegate_stats pull. */
+    optional int64 sip_delegate_stats_pull_timestamp_millis = 31;
+
+    /* SIP Transport featuere tag statistics and information. */
+    repeated SipTransportFeatureTagStats sip_transport_feature_tag_stats = 32;
+
+    /* Timestamp of last sip_transport_feature_tag_stats pull. */
+    optional int64 sip_transport_feature_tag_stats_pull_timestamp_millis = 33;
+
+    /* SIP Message response statistics and information. */
+    repeated SipMessageResponse sip_message_response = 34;
+
+    /* Timestamp of last sip_message_response pull. */
+    optional int64 sip_message_response_pull_timestamp_millis = 35;
+
+    /* SIP Transport session statistics and information. */
+    repeated SipTransportSession sip_transport_session = 36;
+
+    /* Timestamp of last sip_transport_session pull. */
+    optional int64 sip_transport_session_pull_timestamp_millis = 37;
+
+    /* Dedicated bearer listener statistics and information. */
+    repeated ImsDedicatedBearerListenerEvent ims_dedicated_bearer_listener_event = 38;
+
+    /* Timestamp of last ims_dedicated_bearer_listener_event pull. */
+    optional int64 ims_dedicated_bearer_listener_event_pull_timestamp_millis = 39;
+
+    /* Dedicated bearer event statistics and information. */
+    repeated ImsDedicatedBearerEvent ims_dedicated_bearer_event = 40;
+
+    /* Timestamp of last ims_dedicated_bearer_event pull. */
+    optional int64 ims_dedicated_bearer_event_pull_timestamp_millis = 41;
+
+    /* Publish featere tag statistics and information. */
+    repeated ImsRegistrationServiceDescStats ims_registration_service_desc_stats = 42;
+
+    /* Timestamp of last ims_registration_service_desc_stats pull. */
+    optional int64 ims_registration_service_desc_stats_pull_timestamp_millis = 43;
+
+    /* UCE event stats statistics and information. */
+    repeated UceEventStats uce_event_stats = 44;
+
+    /* Timestamp of last uce_event_stats pull. */
+    optional int64 uce_event_stats_pull_timestamp_millis = 45;
+
+    /* Presence notify event statistics and information. */
+    repeated PresenceNotifyEvent presence_notify_event = 46;
+
+    /* Timestamp of last presence_notify_event pull. */
+    optional int64 presence_notify_event_pull_timestamp_millis = 47;
+
+    /* GBA event statistics and information. */
+    repeated GbaEvent gba_event = 48;
+
+    /* Timestamp of last gba_event pull. */
+    optional int64 gba_event_pull_timestamp_millis = 49;
 }
 
 // The canonical versions of the following enums live in:
@@ -272,4 +350,128 @@ message NetworkRequests {
     optional int32 carrier_id = 1;
     optional int32 enterprise_request_count = 2;
     optional int32 enterprise_release_count = 3;
+}
+
+message ImsRegistrationFeatureTagStats {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 feature_tag_name = 3;
+    optional int32 registration_tech = 4;
+    optional int64 registered_millis = 5;
+}
+
+message RcsClientProvisioningStats {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 event = 3;
+    optional int32 count = 4;
+}
+
+message RcsAcsProvisioningStats {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 response_code = 3;
+    optional int32 response_type = 4;
+    optional bool is_single_registration_enabled = 5;
+    optional int32 count = 6;
+    optional int64 state_timer_millis = 7;
+}
+
+message SipDelegateStats {
+    optional int32 dimension = 1;
+    optional int32 carrier_id = 2;
+    optional int32 slot_id = 3;
+    optional int32 destroy_reason = 4;
+    optional int64 uptime_millis = 5;
+}
+
+message SipTransportFeatureTagStats {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 feature_tag_name = 3;
+    optional int32 sip_transport_denied_reason = 4;
+    optional int32 sip_transport_deregistered_reason = 5;
+    optional int64 associated_millis = 6;
+}
+
+message SipMessageResponse {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 sip_message_method = 3;
+    optional int32 sip_message_response = 4;
+    optional int32 sip_message_direction = 5;
+    optional int32 message_error = 6;
+    optional int32 count = 7;
+}
+
+message SipTransportSession {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 session_method = 3;
+    optional int32 sip_message_direction = 4;
+    optional int32 sip_response = 5;
+    optional int32 session_count = 6;
+    optional int32 ended_gracefully_count = 7;
+
+    // Internal use only
+    optional bool is_ended_gracefully = 10001;
+}
+
+message ImsDedicatedBearerListenerEvent {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 rat_at_end = 3;
+    optional int32 qci = 4;
+    optional bool dedicated_bearer_established = 5;
+    optional int32 event_count = 6;
+}
+
+message ImsDedicatedBearerEvent {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 rat_at_end = 3;
+    optional int32 qci = 4;
+    optional int32 bearer_state = 5;
+    optional bool local_connection_info_received = 6;
+    optional bool remote_connection_info_received = 7;
+    optional bool has_listeners = 8;
+    optional int32 count = 9;
+}
+
+message ImsRegistrationServiceDescStats {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 service_id_name = 3;
+    optional float service_id_version = 4;
+    optional int32 registration_tech = 5;
+    optional int64 published_millis = 6;
+}
+
+message UceEventStats {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 type = 3;
+    optional bool successful = 4;
+    optional int32 command_code = 5;
+    optional int32 network_response = 6;
+    optional int32 count = 7;
+}
+
+message PresenceNotifyEvent {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional int32 reason = 3;
+    optional bool content_body_received = 4;
+    optional int32 rcs_caps_count = 5;
+    optional int32 mmtel_caps_count = 6;
+    optional int32 no_caps_count = 7;
+    optional int32 count = 8;
+}
+
+message GbaEvent {
+    optional int32 carrier_id = 1;
+    optional int32 slot_id = 2;
+    optional bool successful = 3;
+    optional int32 failed_reason = 4;
+    optional int32 count = 5;
 }
