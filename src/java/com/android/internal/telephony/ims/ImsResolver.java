@@ -50,6 +50,7 @@ import android.util.ArrayMap;
 import android.util.LocalLog;
 import android.util.Log;
 import android.util.SparseArray;
+import android.util.SparseIntArray;
 
 import com.android.ims.ImsFeatureBinderRepository;
 import com.android.ims.ImsFeatureContainer;
@@ -284,10 +285,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 return;
             }
 
-            Log.i(TAG, "Received Carrier Config Changed for SlotId: " + slotId
-                    + ", sim state: " + slotSimState);
+            Log.i(TAG, "Received Carrier Config Changed for SlotId: " + slotId + ", SubId: "
+                    + subId + ", sim state: " + slotSimState);
 
-            mHandler.obtainMessage(HANDLER_CONFIG_CHANGED, slotId).sendToTarget();
+            mHandler.obtainMessage(HANDLER_CONFIG_CHANGED, slotId, subId).sendToTarget();
         }
     };
 
@@ -473,7 +474,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 break;
             }
             case HANDLER_CONFIG_CHANGED: {
-                int slotId = (Integer) msg.obj;
+                int slotId = msg.arg1;
+                int subId = msg.arg2;
                 // If the msim config has changed and there is a residual event for an invalid slot,
                 // ignore.
                 if (slotId >= mNumSlots) {
@@ -481,7 +483,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     break;
                 }
                 mCarrierConfigReceived = true;
-                carrierConfigChanged(slotId);
+                carrierConfigChanged(slotId, subId);
                 break;
             }
             case HANDLER_START_DYNAMIC_FEATURE_QUERY: {
@@ -566,6 +568,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     // Active ImsServiceControllers, which are bound to ImsServices.
     private final Map<ComponentName, ImsServiceController> mActiveControllers = new HashMap<>();
     private ImsServiceFeatureQueryManager mFeatureQueryManager;
+    private final SparseIntArray mSlotIdToSubIdMap;
 
     public ImsResolver(Context context, String defaultMmTelPackageName,
             String defaultRcsPackageName, int numSlots, ImsFeatureBinderRepository repo) {
@@ -584,6 +587,10 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 Context.CARRIER_CONFIG_SERVICE);
         mOverrideServices = new SparseArray<>(0 /*initial size*/);
         mBoundImsServicesByFeature = new SparseArray<>(mNumSlots);
+        mSlotIdToSubIdMap = new SparseIntArray(mNumSlots);
+        for (int i = 0; i < mNumSlots; i++) {
+            mSlotIdToSubIdMap.put(i, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        }
     }
 
     @VisibleForTesting
@@ -676,7 +683,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     private void bindCarrierServicesIfAvailable() {
         boolean hasConfigChanged = false;
         for (int slotId = 0; slotId < mNumSlots; slotId++) {
-            Map<Integer, String> featureMap = getImsPackageOverrideConfig(slotId);
+            int subId = mSubscriptionManagerProxy.getSubId(slotId);
+            Map<Integer, String> featureMap = getImsPackageOverrideConfig(subId);
             for (int f = ImsFeature.FEATURE_EMERGENCY_MMTEL; f < ImsFeature.FEATURE_MAX; f++) {
                 String newPackageName = featureMap.getOrDefault(f, "");
                 if (!TextUtils.isEmpty(newPackageName)) {
@@ -684,6 +692,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                             + newPackageName + " on slot " + slotId);
                     // Carrier configs are already available, so mark received.
                     mCarrierConfigReceived = true;
+                    setSubId(slotId, subId);
                     setCarrierConfiguredPackageName(newPackageName, slotId, f);
                     ImsServiceInfo info = getImsServiceInfoFromCache(newPackageName);
                     // We do not want to trigger feature configuration changes unless there is
@@ -709,7 +718,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         if (controllers != null) {
             for (int i = 0; i < controllers.size(); i++) {
                 int key = controllers.keyAt(i);
-                controllers.get(key).enableIms(slotId);
+                controllers.get(key).enableIms(slotId, getSubId(slotId));
             }
         }
     }
@@ -723,7 +732,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         if (controllers != null) {
             for (int i = 0; i < controllers.size(); i++) {
                 int key = controllers.keyAt(i);
-                controllers.get(key).disableIms(slotId);
+                controllers.get(key).disableIms(slotId, getSubId(slotId));
             }
         }
     }
@@ -1182,11 +1191,12 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         if (shouldFeaturesCauseBind(features)) {
             // Check to see if an active controller already exists
             ImsServiceController controller = getControllerByServiceInfo(mActiveControllers, info);
+            SparseIntArray slotIdToSubIdMap = mSlotIdToSubIdMap.clone();
             if (controller != null) {
                 Log.i(TAG, "ImsService connection exists for " + info.name + ", updating features "
                         + features);
                 try {
-                    controller.changeImsServiceFeatures(features);
+                    controller.changeImsServiceFeatures(features, slotIdToSubIdMap);
                     // Features have been set, there was an error adding/removing. When the
                     // controller recovers, it will add/remove again.
                 } catch (RemoteException e) {
@@ -1196,7 +1206,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                 controller = info.controllerFactory.create(mContext, info.name, this, mRepo);
                 Log.i(TAG, "Binding ImsService: " + controller.getComponentName()
                         + " with features: " + features);
-                controller.bind(features);
+                controller.bind(features, slotIdToSubIdMap);
                 mEventLog.log("bindImsServiceWithFeatures - create new controller: "
                         + controller);
             }
@@ -1258,7 +1268,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     /**
      * Implementation of
      * {@link ImsServiceController.ImsServiceControllerCallbacks#imsServiceFeatureCreated}, which
-     * removes the ImsServiceController from the mBoundImsServicesByFeature structure.
+     * adds the ImsServiceController from the mBoundImsServicesByFeature structure.
      */
     @Override
     public void imsServiceFeatureCreated(int slotId, int feature, ImsServiceController controller) {
@@ -1334,7 +1344,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         Log.i(TAG, "clearing carrier ImsService overrides");
         mEventLog.log("clearing carrier ImsService overrides");
         removeOverridePackageName(slotId);
-        carrierConfigChanged(slotId);
+        carrierConfigChanged(slotId, getSubId(slotId));
     }
 
     // Possibly rebind to another ImsService for testing carrier ImsServices.
@@ -1365,16 +1375,16 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     // Called from handler ONLY.
-    private void carrierConfigChanged(int slotId) {
+    private void carrierConfigChanged(int slotId, int subId) {
+        setSubId(slotId, subId);
         updateBoundDeviceServices();
-
         if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
             // not specified, update carrier override cache and possibly rebind on all slots.
             for (int i = 0; i < mNumSlots; i++) {
-                updateBoundServices(i, getImsPackageOverrideConfig(i));
+                updateBoundServices(i, getImsPackageOverrideConfig(getSubId(i)));
             }
         }
-        updateBoundServices(slotId, getImsPackageOverrideConfig(slotId));
+        updateBoundServices(slotId, getImsPackageOverrideConfig(subId));
     }
 
     private void updateBoundDeviceServices() {
@@ -1440,8 +1450,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         }
     }
 
-    private @NonNull Map<Integer, String> getImsPackageOverrideConfig(int slotId) {
-        int subId = mSubscriptionManagerProxy.getSubId(slotId);
+    private @NonNull Map<Integer, String> getImsPackageOverrideConfig(int subId) {
         PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId);
         if (config == null) return Collections.emptyMap();
         String packageNameMmTel = config.getString(
@@ -1530,6 +1539,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
                     int feature = overrideConfigs.keyAt(i);
                     setOverridePackageName("", oldSlot, feature);
                 }
+                //clear removed slot.
+                removeSlotId(oldSlot);
             }
         }
         // Get the new config for each ImsService. For manifest queries, this will update the
@@ -1756,6 +1767,23 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
             }
         }
         return infos;
+    }
+
+    private void setSubId(int slotId, int subId) {
+        synchronized (mSlotIdToSubIdMap) {
+            mSlotIdToSubIdMap.put(slotId, subId);
+        }
+    }
+
+    private int getSubId(int slotId) {
+        synchronized (mSlotIdToSubIdMap) {
+            return mSlotIdToSubIdMap.get(slotId, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        }
+    }
+    private void removeSlotId(int slotId) {
+        synchronized (mSlotIdToSubIdMap) {
+            mSlotIdToSubIdMap.delete(slotId);
+        }
     }
 
     // Dump is called on the main thread, since ImsResolver Handler is also handled on main thread,
