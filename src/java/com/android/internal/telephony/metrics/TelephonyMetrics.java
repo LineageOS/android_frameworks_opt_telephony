@@ -644,6 +644,8 @@ public class TelephonyMetrics {
         for (BwEstimationStats stats : mBwEstStatsMapList.get(1).values()) {
             pw.println(stats.toString());
         }
+
+        RcsStats.getInstance().printAllMetrics(rawWriter);
     }
 
     /**
