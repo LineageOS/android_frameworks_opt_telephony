@@ -271,7 +271,7 @@ public class TelephonyNetworkRequest {
                 + ", state=" + requestStateToString(mState)
                 + ", mAttachedDataNetwork=" + (mAttachedDataNetwork != null
                 ? mAttachedDataNetwork.name() : null) + ", created time="
-                + DataUtils.getReadableSystemTime(mCreatedTimeMillis)
+                + DataUtils.systemTimeToString(mCreatedTimeMillis)
                 + ", evaluation result=" + mEvaluation + "]";
     }
 
