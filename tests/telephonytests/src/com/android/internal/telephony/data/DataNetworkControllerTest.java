@@ -16,11 +16,16 @@
 
 package com.android.internal.telephony.data;
 
+import static com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import static com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
@@ -31,11 +36,14 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallbackList;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -156,5 +164,37 @@ public class DataNetworkControllerTest extends TelephonyTest {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                         .build(), mPhone))).isTrue();
         assertThat(networkRequestList).isEmpty();
+    }
+
+    public static class MyDataNetworkControllerCallback extends DataNetworkControllerCallback {
+        @Override
+        public void onInternetDataNetworkConnected() {
+        }
+    }
+
+    @Test
+    public void testDataNetworkControllerCallbackList() {
+        DataNetworkControllerCallbackList callbackList =
+                mDataNetworkControllerUT.new DataNetworkControllerCallbackList();
+        DataNetworkControllerCallback callback = Mockito.spy(new MyDataNetworkControllerCallback());
+
+        callbackList.registerCallback(callback, true);
+        callbackList.notifyListeners(DataNetworkControllerCallback::onInternetDataNetworkConnected);
+        verify(callback).onInternetDataNetworkConnected();
+
+        clearInvocations(callback);
+        callbackList.notifyListeners(DataNetworkControllerCallback::onInternetDataNetworkConnected);
+        verify(callback, never()).onInternetDataNetworkConnected();
+
+        clearInvocations(callback);
+        callbackList.registerCallback(callback, false);
+        callbackList.notifyListeners(DataNetworkControllerCallback::onAllDataNetworksDisconnected);
+        callbackList.notifyListeners(DataNetworkControllerCallback::onAllDataNetworksDisconnected);
+        verify(callback, times(3)).onAllDataNetworksDisconnected();
+
+        ArgumentCaptor<Integer> integerCaptor = ArgumentCaptor.forClass(Integer.class);
+        callbackList.notifyListeners(c -> c.onInternetDataNetworkValidationStatusChanged(2));
+        verify(callback).onInternetDataNetworkValidationStatusChanged(integerCaptor.capture());
+        assertThat(integerCaptor.getValue()).isEqualTo(2);
     }
 }
