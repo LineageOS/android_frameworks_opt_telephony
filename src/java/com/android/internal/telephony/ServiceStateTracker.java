@@ -4887,6 +4887,7 @@ public class ServiceStateTracker extends Handler {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 if (mPhone.isUsingNewDataStack()) {
                     mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                            this::post,
                             new DataNetworkController.DataNetworkControllerCallback() {
                                 @Override
                                 public void onAllDataNetworksDisconnected() {
