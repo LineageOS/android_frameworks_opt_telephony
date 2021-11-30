@@ -1267,6 +1267,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 handleRadioProxyExceptionForRR(SIM_SERVICE, "supplySimDepersonalization", e);
             }
         } else {
+            if (PersoSubState.PERSOSUBSTATE_SIM_NETWORK == persoType) {
+                supplyNetworkDepersonalization(controlKey, result);
+                return;
+            }
             if (RILJ_LOGD) {
                 Rlog.d(RILJ_LOG_TAG, "supplySimDepersonalization: REQUEST_NOT_SUPPORTED");
             }
