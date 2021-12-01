@@ -919,6 +919,36 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testPrimaryTimerReset_theNetworkModeWithoutNr() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
+        broadcastCarrierConfigs();
+
+        assertEquals("connected", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // remove NR from preferred network types
+        doReturn(RadioAccessFamily.getRafFromNetworkType(
+                TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA)).when(
+                mPhone).getCachedAllowedNetworkTypesBitmask();
+
+        // trigger 10 second timer after disconnecting from NR, and then it does the timer reset
+        // since the network mode without the NR capability.
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_NR_STATE_CHANGED);
+        processAllMessages();
+
+        // timer should be reset.
+        assertEquals("legacy", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertFalse(mNetworkTypeController.is5GHysteresisActive());
+    }
+
+    @Test
     public void testPrimaryTimerExpireMmwave() throws Exception {
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
