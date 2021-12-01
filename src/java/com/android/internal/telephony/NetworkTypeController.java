@@ -1010,6 +1010,12 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private void updateTimers() {
+        if ((mPhone.getCachedAllowedNetworkTypesBitmask()
+                & TelephonyManager.NETWORK_TYPE_BITMASK_NR) == 0) {
+            resetAllTimers();
+            return;
+        }
+
         String currentState = getCurrentState().getName();
 
         if (mIsPrimaryTimerActive && getOverrideNetworkType() == getCurrentOverrideNetworkType()) {
