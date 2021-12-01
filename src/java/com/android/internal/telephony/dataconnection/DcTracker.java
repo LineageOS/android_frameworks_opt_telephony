@@ -797,7 +797,9 @@ public class DcTracker extends Handler {
         mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
 
         mDataConnectionTracker = this;
-        registerForAllEvents();
+        if (!mPhone.isUsingNewDataStack()) {
+            registerForAllEvents();
+        }
         mApnObserver = new ApnChangeObserver();
         phone.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);

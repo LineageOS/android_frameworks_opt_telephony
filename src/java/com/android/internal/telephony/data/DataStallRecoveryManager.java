@@ -172,7 +172,7 @@ public class DataStallRecoveryManager extends Handler {
                     public void onInternetDataNetworkDisconnected() {
                         sendEmptyMessage(EVENT_INTERNET_DISCONNECTED);
                     }
-                });
+                }, false);
         mTelephonyManager.registerTelephonyCallback(
                     new HandlerExecutor(this), mTelephonyStateListener);
     }
