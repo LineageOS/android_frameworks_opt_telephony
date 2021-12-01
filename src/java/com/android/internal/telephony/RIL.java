@@ -259,6 +259,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int EVENT_ACK_WAKE_LOCK_TIMEOUT = 4;
     static final int EVENT_BLOCKING_RESPONSE_TIMEOUT = 5;
     static final int EVENT_RADIO_PROXY_DEAD = 6;
+    static final int EVENT_AIDL_PROXY_DEAD = 7;
 
     //***** Constants
 
@@ -354,6 +355,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         resetProxyAndRequestList(service);
                     }
                     break;
+
+                case EVENT_AIDL_PROXY_DEAD:
+                    int aidlService = msg.arg1;
+                    AtomicLong obj = (AtomicLong) msg.obj;
+                    riljLog("handleMessage: EVENT_AIDL_PROXY_DEAD cookie = " + msg.obj
+                            + ", service = " + serviceToString(aidlService) + ", cookie = "
+                            + mServiceCookies.get(aidlService));
+                    if (obj.get() == mServiceCookies.get(aidlService).get()) {
+                        resetProxyAndRequestList(aidlService);
+                    }
+                    break;
             }
         }
     }
@@ -426,7 +438,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         @Override
         public void binderDied() {
             riljLog("Service " + serviceToString(mService) + " has died.");
-            mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, mService,
+            mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_AIDL_PROXY_DEAD, mService,
                     0 /* ignored arg2 */, mServiceCookies.get(mService)));
             unlinkToDeath();
         }
