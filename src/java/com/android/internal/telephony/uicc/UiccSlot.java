@@ -197,7 +197,9 @@ public class UiccSlot extends Handler {
             }
             mPortIdxToPhoneId.clear();
             for (int i = 0; i < simPortInfos.length; i++) {
-                mPortIdxToPhoneId.put(i, simPortInfos[i].mLogicalSlotIndex);
+                // If port is not active, update with invalid phone id(i.e. -1)
+                mPortIdxToPhoneId.put(i, simPortInfos[i].mPortActive ?
+                        simPortInfos[i].mLogicalSlotIndex : INVALID_PHONE_ID);
             }
         }
     }
@@ -228,7 +230,7 @@ public class UiccSlot extends Handler {
         }
     }
 
-    public int getPortIdx(int phoneId) {
+    public int getPortIndexFromPhoneId(int phoneId) {
         synchronized (mLock) {
             for (Map.Entry<Integer, Integer> entry : mPortIdxToPhoneId.entrySet()) {
                 if (entry.getValue() == phoneId) {
@@ -236,6 +238,12 @@ public class UiccSlot extends Handler {
                 }
             }
             return TelephonyManager.DEFAULT_PORT_INDEX;
+        }
+    }
+
+    public int getPhoneIdFromPortIndex(int portIndex) {
+        synchronized (mLock) {
+            return mPortIdxToPhoneId.getOrDefault(portIndex, INVALID_PHONE_ID);
         }
     }
 
@@ -489,7 +497,8 @@ public class UiccSlot extends Handler {
         if (phoneId != INVALID_PHONE_ID) {
             UiccController.updateInternalIccState(
                     mContext, IccCardConstants.State.UNKNOWN, null, phoneId);
-            mLastRadioState.put(getPortIdx(phoneId), TelephonyManager.RADIO_POWER_UNAVAILABLE);
+            mLastRadioState.put(getPortIndexFromPhoneId(phoneId),
+                    TelephonyManager.RADIO_POWER_UNAVAILABLE);
         }
 
         mCardState = null;
