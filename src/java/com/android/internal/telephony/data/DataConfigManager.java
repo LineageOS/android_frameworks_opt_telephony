@@ -35,6 +35,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.IndentingPrintWriter;
 
+import com.android.internal.R;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryRule;
 import com.android.telephony.Rlog;
@@ -227,6 +228,14 @@ public class DataConfigManager extends Handler {
     public @NonNull String getTcpConfigString(@NetworkType int networkType) {
         // TODO: Move all TCP_BUFFER_SIZES_XXX from DataConnection to here.
         return null;
+    }
+
+    /**
+     * @return The delay in millisecond for IMS graceful tear down. If IMS/RCS de-registration
+     * does not complete within the window, the data network will be torn down after timeout.
+     */
+    public long getImsDeregistrationDelay() {
+        return mResources.getInteger(R.integer.config_delay_for_ims_dereg_millis);
     }
 
     /**
