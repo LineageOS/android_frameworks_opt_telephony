@@ -268,25 +268,15 @@ public class UiccController extends Handler {
     }
 
     /**
-     * Given the slot index, return the phone ID, or -1 if no phone is associated with the given
-     * slot.
+     * Given the slot index and port index, return the phone ID, or -1 if no phone is associated
+     * with the given slot and port.
      * @param slotId the slot index to check
+     * @param portIndex unique index referring to a port belonging to the SIM slot
      * @return the associated phone ID or -1
      */
-    // TODO In case of MEP, pass port index as well, so that proper phoneId can be retrieved.
-    public int getPhoneIdFromSlotId(int slotId/*, int portIdx*/) {
-        for (int i = 0; i < mPhoneIdToSlotId.length; i++) {
-            if (mPhoneIdToSlotId[i] == slotId) {
-                /*// In case of MEP, slotId can be same for different phoneIds.
-                // So add condition check for portIdx as well.
-                UiccPort uiccPort = getUiccPortForPhone(mPhoneIdToSlotId[i]);
-                if (uiccPort != null && uiccPort.getPortIdx() == portIdx) {
-                    return i;
-                }*/
-                return i;
-            }
-        }
-        return -1;
+    public int getPhoneIdFromSlotPortIndex(int slotId, int portIndex) {
+        UiccSlot slot = getUiccSlot(slotId);
+        return slot == null ? UiccSlot.INVALID_PHONE_ID : slot.getPhoneIdFromPortIndex(portIndex);
     }
 
     /**
