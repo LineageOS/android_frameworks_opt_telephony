@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
@@ -40,12 +41,22 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.DataState;
 import android.telephony.TelephonyManager.SimState;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.DataProfile;
+import android.telephony.ims.ImsException;
+import android.telephony.ims.ImsManager;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
+import android.telephony.ims.ImsStateCallback;
+import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.ImsFeature;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.SparseArray;
@@ -60,8 +71,10 @@ import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataEvaluationReason;
 import com.android.internal.telephony.data.DataNetwork.DataValidationResult;
+import com.android.internal.telephony.data.DataNetwork.TearDownReason;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
+import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -76,7 +89,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -131,6 +146,10 @@ public class DataNetworkController extends Handler {
     /** Event for subscription info changed. */
     private static final int EVENT_SUBSCRIPTION_CHANGED = 15;
 
+    /** The supported IMS features. This is for IMS graceful tear down support. */
+    private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
+            List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
+
     /** The maximum number of previously connected data networks for debugging purposes. */
     private static final int MAX_HISTORICAL_CONNECTED_DATA_NETWORKS = 10;
 
@@ -144,8 +163,12 @@ public class DataNetworkController extends Handler {
     private final @NonNull DataStallRecoveryManager mDataStallRecoveryManager;
     private final @NonNull AccessNetworksManager mAccessNetworksManager;
     private final @NonNull DataRetryManager mDataRetryManager;
+    private final @NonNull ImsManager mImsManager;
     private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers =
             new SparseArray<>();
+
+    /** The subscription index associated with this data network controller. */
+    private int mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     /**
      * The list of all network requests.
@@ -186,6 +209,32 @@ public class DataNetworkController extends Handler {
 
     /** SIM state. */
     private @SimState int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
+
+    /**
+     * IMS state callbacks. Key is the IMS feature, value is the callback.
+     */
+    private final @NonNull SparseArray<ImsStateCallback> mImsStateCallbacks = new SparseArray<>();
+
+    /** IMS feature registration state. Key is the IMS feature, value is the registration state. */
+    private final @NonNull SparseArray<Boolean> mImsFeatureRegistrationState = new SparseArray<>();
+
+    /** IMS feature package names. Key is the IMS feature, value is the package name. */
+    private final @NonNull SparseArray<String> mImsFeaturePackageName = new SparseArray<>();
+
+    /**
+     * Networks that are pending IMS de-registration. Key is the data network, value is the function
+     * to tear down the network.
+     */
+    private final @NonNull Map<DataNetwork, Runnable> mPendingImsDeregDataNetworks =
+            new ArrayMap<>();
+
+    /**
+     * IMS feature registration callback. The key is the IMS feature, the value is the registration
+     * callback. When new SIM inserted, the old callbacks associated with the old subscription index
+     * will be unregistered.
+     */
+    private final @NonNull SparseArray<RegistrationManager.RegistrationCallback>
+            mImsFeatureRegistrationCallbacks = new SparseArray<>();
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -307,6 +356,22 @@ public class DataNetworkController extends Handler {
             return null;
         }
 
+        /**
+         * Check if any network request is requested by the specified package.
+         *
+         * @param packageName The package name.
+         * @return {@code true} if any request is originated from the specified package.
+         */
+        public boolean hasNetworkRequestsFromPackage(@NonNull String packageName) {
+            for (TelephonyNetworkRequest networkRequest : this) {
+                if (packageName.equals(
+                        networkRequest.getNativeNetworkRequest().getRequestorPackageName())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @Override
         public String toString() {
             return "[NetworkRequestList: size=" + size() + (size() > 0 ? ", leading by "
@@ -332,40 +397,53 @@ public class DataNetworkController extends Handler {
      * internally in the data stack, should not be used externally.
      */
     public static class DataNetworkControllerCallback {
+        /** The executor of the callback. */
+        private Executor mExecutor;
+
         /**
-         * indicates the callback is automatically unregistered after first invocation. This is
+         * Indicates the callback is automatically unregistered after first invocation. This is
          * useful for the clients which only want to get the result once.
+         */
+        private boolean mAutoUnregisterEnabled = false;
+
+        /**
+         * Indicates callback auto unregister should be skipped this time. This
+         * is internally used by {@link DataNetworkControllerCallbackList}.
          */
         private boolean mSkipAutoUnregisterThisTime = false;
 
         /**
-         * Called when internet data network validation status changed.
+         * Set the executor of the callback.
          *
-         * @param validationStatus The validation status.
+         * @param executor The executor
+         * @param enableAutoUnregister {@code true} if this callback should be unregistered
+         * automatically after invoked the overridden callback method.
          */
-        public void onInternetDataNetworkValidationStatusChanged(
-                @ValidationStatus int validationStatus) {
-            mSkipAutoUnregisterThisTime = true;
-        }
-
-        /** Called when internet data network is connected. */
-        public void onInternetDataNetworkConnected() {
-            mSkipAutoUnregisterThisTime = true;
-        }
-
-        /** Called when internet data network is disconnected. */
-        public void onInternetDataNetworkDisconnected() {
-            mSkipAutoUnregisterThisTime = true;
-        }
-
-        /** Called when all data networks are disconnected. */
-        public void onAllDataNetworksDisconnected() {
-            mSkipAutoUnregisterThisTime = true;
+        final void init(@NonNull @CallbackExecutor Executor executor,
+                boolean enableAutoUnregister) {
+            Objects.requireNonNull(executor);
+            mExecutor = executor;
+            mAutoUnregisterEnabled = enableAutoUnregister;
         }
 
         /**
-         * @return {@code true} indicates the callback is automatically unregistered after first
-         * invocation. This is useful for the clients which only want to get the result once.
+         * @return The executor of the callback.
+         */
+        final Executor getExecutor() {
+            return mExecutor;
+        }
+
+        /**
+         * @return {@code true} if this callback should be unregistered automatically after invoked
+         * the overridden callback method.
+         */
+        final boolean isAutoUnregisterEnabled() {
+            return mAutoUnregisterEnabled;
+        }
+
+        /**
+         * @return {@code true} if the callback auto unregister should be skipped this time. This
+         * is internally used by {@link DataNetworkControllerCallbackList}.
          */
         final boolean shouldSkipAutoUnregister() {
             return mSkipAutoUnregisterThisTime;
@@ -380,6 +458,34 @@ public class DataNetworkController extends Handler {
         final void setSkipAutoUnregister(boolean skip) {
             mSkipAutoUnregisterThisTime = skip;
         }
+
+        /**
+         * Called when internet data network validation status changed.
+         *
+         * @param validationStatus The validation status.
+         */
+        public void onInternetDataNetworkValidationStatusChanged(
+                @ValidationStatus int validationStatus) {
+            mSkipAutoUnregisterThisTime = true;
+        }
+
+        /** Called when internet data network is connected. */
+        public void onInternetDataNetworkConnected() {
+            // Never remove this line.
+            mSkipAutoUnregisterThisTime = true;
+        }
+
+        /** Called when internet data network is disconnected. */
+        public void onInternetDataNetworkDisconnected() {
+            // Never remove this line.
+            mSkipAutoUnregisterThisTime = true;
+        }
+
+        /** Called when all data networks are disconnected. */
+        public void onAllDataNetworksDisconnected() {
+            // Never remove this line.
+            mSkipAutoUnregisterThisTime = true;
+        }
     }
 
     /**
@@ -387,24 +493,17 @@ public class DataNetworkController extends Handler {
      */
     @VisibleForTesting
     public class DataNetworkControllerCallbackList {
-        /**
-         * Callbacks map. The key is the callback, value indicates this callback should be
-         * auto-unregistered or not.
-         */
-        private final @NonNull Map<DataNetworkControllerCallback, Boolean> mCallbacks =
-                new ArrayMap<>();
+        /** Callbacks set. */
+        private final @NonNull Set<DataNetworkControllerCallback> mCallbacks = new ArraySet<>();
 
         /**
          * Register the callback.
          *
          * @param callback The callback.
-         * @param autoUnregister {@code true} means the callback will be auto unregistered once the
-         * callback is called once.
          */
-        public void registerCallback(@NonNull DataNetworkControllerCallback callback,
-                boolean autoUnregister) {
-            Objects.requireNonNull(callback);
-            mCallbacks.put(callback, autoUnregister);
+        public void registerCallback(@NonNull DataNetworkControllerCallback callback) {
+            logv("registerCallback: " + callback);
+            mCallbacks.add(Objects.requireNonNull(callback));
 
             if (mDataNetworkList.isEmpty()) {
                 notifyListeners(DataNetworkControllerCallback::onAllDataNetworksDisconnected);
@@ -417,6 +516,7 @@ public class DataNetworkController extends Handler {
          * @param callback The callback.
          */
         public void unregisterCallback(@NonNull DataNetworkControllerCallback callback) {
+            logv("unregisterCallback: " + callback);
             mCallbacks.remove(callback);
         }
 
@@ -426,16 +526,12 @@ public class DataNetworkController extends Handler {
          * @param callbackConsumer The consumer which contains the actual callback method.
          */
         public void notifyListeners(Consumer<DataNetworkControllerCallback> callbackConsumer) {
-            Iterator<Map.Entry<DataNetworkControllerCallback, Boolean>> it =
-                    mCallbacks.entrySet().iterator();
+            Iterator<DataNetworkControllerCallback> it = mCallbacks.iterator();
             while (it.hasNext()) {
-                Map.Entry<DataNetworkControllerCallback, Boolean> callbackEntry = it.next();
-
-                DataNetworkControllerCallback callback = callbackEntry.getKey();
+                DataNetworkControllerCallback callback = it.next();
                 callback.setSkipAutoUnregister(false);
                 // Invoke the actual callback passed in consumer.
-                callbackConsumer.accept(callback);
-
+                callback.getExecutor().execute(() -> callbackConsumer.accept(callback));
                 // The client might not override this method, we should skip auto unregister in
                 // this case.
                 if (callback.shouldSkipAutoUnregister()) {
@@ -445,8 +541,7 @@ public class DataNetworkController extends Handler {
 
                 // If the callback was registered as an auto-unregistered callback, unregister now
                 // since the callback has been invoked.
-                boolean isAutoUnregisterCallback = callbackEntry.getValue();
-                if (isAutoUnregisterCallback) {
+                if (callback.isAutoUnregisterEnabled()) {
                     logv("Callback " + callback + " automatically removed.");
                     it.remove();
                 }
@@ -483,6 +578,7 @@ public class DataNetworkController extends Handler {
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
                 () -> post(this::onDataStallReestablishInternet));
         mDataRetryManager = new DataRetryManager(mPhone, this, looper);
+        mImsManager = mPhone.getContext().getSystemService(ImsManager.class);
 
         registerAllEvents();
     }
@@ -510,6 +606,14 @@ public class DataNetworkController extends Handler {
             mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
                     .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
         }
+
+        mPhone.getContext().getSystemService(TelephonyRegistryManager.class)
+                .addOnSubscriptionsChangedListener(new OnSubscriptionsChangedListener() {
+                    @Override
+                    public void onSubscriptionsChanged() {
+                        sendEmptyMessage(EVENT_SUBSCRIPTION_CHANGED);
+                    }
+                }, this::post);
     }
 
     @Override
@@ -556,6 +660,20 @@ public class DataNetworkController extends Handler {
             case EVENT_DATA_RETRY:
                 DataRetryEntry dataRetryEntry = (DataRetryEntry) msg.obj;
                 setupDataNetwork(dataRetryEntry.dataProfile, dataRetryEntry);
+                break;
+            case EVENT_TEAR_DOWN_ALL_DATA_NETWORKS:
+                onTearDownAllDataNetworks(msg.arg1);
+                break;
+            case EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
+                mDataNetworkControllerCallbacks
+                        .registerCallback((DataNetworkControllerCallback) msg.obj);
+                break;
+            case EVENT_UNREGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
+                mDataNetworkControllerCallbacks.unregisterCallback(
+                        (DataNetworkControllerCallback) msg.obj);
+                break;
+            case EVENT_SUBSCRIPTION_CHANGED:
+                onSubscriptionChanged();
                 break;
             default:
                 loge("Unexpected event " + msg.what);
@@ -882,6 +1000,164 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Register for IMS feature registration state.
+     *
+     * @param subId The subscription index.
+     * @param imsFeature The IMS feature. Only {@link ImsFeature#FEATURE_MMTEL} and
+     * {@link ImsFeature#FEATURE_RCS} are supported at this point.
+     */
+    private void registerImsFeatureRegistrationState(int subId,
+            @ImsFeature.FeatureType int imsFeature) {
+        RegistrationManager.RegistrationCallback callback =
+                new RegistrationManager.RegistrationCallback() {
+                    @Override
+                    public void onRegistered(ImsRegistrationAttributes attributes) {
+                        log("IMS " + DataUtils.imsFeatureToString(imsFeature)
+                                + " registered. Attributes=" + attributes);
+                        mImsFeatureRegistrationState.put(imsFeature, true);
+                    }
+
+                    @Override
+                    public void onUnregistered(ImsReasonInfo info) {
+                        log("IMS " + DataUtils.imsFeatureToString(imsFeature)
+                                + " deregistered. Info=" + info);
+                        mImsFeatureRegistrationState.put(imsFeature, false);
+                        evaluatePendingImsDeregDataNetworks();
+                    }
+                };
+
+        try {
+            // Use switch here as we can't make a generic callback registration logic because
+            // RcsManager does not implement RegistrationManager.
+            switch (imsFeature) {
+                case ImsFeature.FEATURE_MMTEL:
+                    mImsManager.getImsMmTelManager(subId).registerImsRegistrationCallback(
+                            DataNetworkController.this::post, callback);
+                    break;
+                case ImsFeature.FEATURE_RCS:
+                    mImsManager.getImsRcsManager(subId).registerImsRegistrationCallback(
+                            DataNetworkController.this::post, callback);
+                    break;
+            }
+
+            // Store the callback so that we can unregister in the future.
+            mImsFeatureRegistrationCallbacks.put(imsFeature, callback);
+            log("Successfully register " + DataUtils.imsFeatureToString(imsFeature)
+                    + " registration state. subId=" + subId);
+        } catch (ImsException e) {
+            loge("updateImsFeatureRegistrationStateListening: subId=" + subId
+                    + ", imsFeature=" + DataUtils.imsFeatureToString(imsFeature) + ", " + e);
+        }
+    }
+
+    /**
+     * Unregister IMS feature callback.
+     *
+     * @param subId The subscription index.
+     * @param imsFeature The IMS feature. Only {@link ImsFeature#FEATURE_MMTEL} and
+     * {@link ImsFeature#FEATURE_RCS} are supported at this point.
+     */
+    private void unregisterImsFeatureRegistrationState(int subId,
+            @ImsFeature.FeatureType int imsFeature) {
+        RegistrationManager.RegistrationCallback oldCallback =
+                mImsFeatureRegistrationCallbacks.get(imsFeature);
+        if (oldCallback != null) {
+            if (imsFeature == ImsFeature.FEATURE_MMTEL) {
+                mImsManager.getImsMmTelManager(subId)
+                        .unregisterImsRegistrationCallback(oldCallback);
+            } else if (imsFeature == ImsFeature.FEATURE_RCS) {
+                mImsManager.getImsRcsManager(subId)
+                        .unregisterImsRegistrationCallback(oldCallback);
+            }
+            log("Successfully unregistered " + DataUtils.imsFeatureToString(imsFeature)
+                    + " registration state. sudId=" + subId);
+            mImsFeatureRegistrationCallbacks.remove(imsFeature);
+        }
+    }
+
+    /**
+     * Register IMS state callback.
+     *
+     * @param subId Subscription index.
+     */
+    private void registerImsStateCallback(int subId) {
+        Function<Integer, ImsStateCallback> imsFeatureStateCallbackFactory =
+                imsFeature -> new ImsStateCallback() {
+                    @Override
+                    public void onUnavailable(int reason) {
+                        // Unregister registration state update when IMS service is unbound.
+                        unregisterImsFeatureRegistrationState(subId, imsFeature);
+                    }
+
+                    @Override
+                    public void onAvailable() {
+                        mImsFeaturePackageName.put(imsFeature, ImsResolver.getInstance()
+                                .getConfiguredImsServicePackageName(mPhone.getPhoneId(),
+                                        imsFeature));
+                        // Once IMS service is bound, register for registration state update.
+                        registerImsFeatureRegistrationState(subId, imsFeature);
+                    }
+
+                    @Override
+                    public void onError() {
+                    }
+                };
+
+        try {
+            ImsStateCallback callback = imsFeatureStateCallbackFactory
+                    .apply(ImsFeature.FEATURE_MMTEL);
+            mImsManager.getImsMmTelManager(subId).registerImsStateCallback(this::post,
+                    callback);
+            mImsStateCallbacks.put(ImsFeature.FEATURE_MMTEL, callback);
+            log("Successfully register MMTEL state on sub " + subId);
+
+            callback = imsFeatureStateCallbackFactory.apply(ImsFeature.FEATURE_RCS);
+            mImsManager.getImsRcsManager(subId).registerImsStateCallback(this::post, callback);
+            mImsStateCallbacks.put(ImsFeature.FEATURE_RCS, callback);
+            log("Successfully register RCS state on sub " + subId);
+        } catch (ImsException e) {
+            loge("Exception when registering IMS state callback. " + e);
+        }
+    }
+
+    /**
+     * Unregister IMS faeture state callbacks.
+     *
+     * @param subId Subscription index.
+     */
+    private void unregisterImsStateCallbacks(int subId) {
+        ImsStateCallback callback = mImsStateCallbacks.get(ImsFeature.FEATURE_MMTEL);
+        if (callback != null) {
+            mImsManager.getImsMmTelManager(subId).unregisterImsStateCallback(callback);
+            mImsStateCallbacks.remove(ImsFeature.FEATURE_MMTEL);
+            log("Unregister MMTEL state on sub " + subId);
+        }
+
+        callback = mImsStateCallbacks.get(ImsFeature.FEATURE_RCS);
+        if (callback != null) {
+            mImsManager.getImsRcsManager(subId).unregisterImsStateCallback(callback);
+            mImsStateCallbacks.remove(ImsFeature.FEATURE_RCS);
+            log("Unregister RCS state on sub " + subId);
+        }
+    }
+
+    /** Called when subscription info changed. */
+    private void onSubscriptionChanged() {
+        if (mSubId != mPhone.getSubId()) {
+            log("onDataConfigUpdated: mSubId changed from " + mSubId + " to "
+                    + mPhone.getSubId());
+            if (isImsGracefulTearDownSupported()) {
+                if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+                    registerImsStateCallback(mPhone.getSubId());
+                } else {
+                    unregisterImsStateCallbacks(mSubId);
+                }
+            }
+            mSubId = mPhone.getSubId();
+        }
+    }
+
+    /**
      * Called when data config was updated.
      */
     private void onDataConfigUpdated() {
@@ -889,8 +1165,8 @@ public class DataNetworkController extends Handler {
                 + (mDataConfigManager.isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific. mSimState="
                 + SubscriptionInfoUpdater.simStateString(mSimState));
-        updateNetworkRequestsPriority();
 
+        updateNetworkRequestsPriority();
         sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                 DataEvaluationReason.DATA_CONFIG_CHANGED));
     }
@@ -1111,6 +1387,7 @@ public class DataNetworkController extends Handler {
         logl("onDataNetworkDisconnected: " + dataNetwork + ", cause="
                 + DataFailCause.toString(cause) + "(" + cause + ")");
         mDataNetworkList.remove(dataNetwork);
+        mPendingImsDeregDataNetworks.remove(dataNetwork);
         updateOverallInternetDataState();
 
         if (dataNetwork.isInternetSupported()) {
@@ -1273,14 +1550,130 @@ public class DataNetworkController extends Handler {
     /**
      * Register data network controller callback.
      *
+     * @param executor The executor of the callback.
      * @param callback The callback.
-     * @oaram autoUnregister {@code true} Indicates that once the callback is called, unregister
-     * the callback automatically.
+     * @param autoUnregister {@code true} if this callback should be unregistered automatically
+     * after invoked the overridden callback method.
      */
-    public void registerDataNetworkControllerCallback(
+    public void registerDataNetworkControllerCallback(@NonNull @CallbackExecutor Executor executor,
             @NonNull DataNetworkControllerCallback callback, boolean autoUnregister) {
-        sendMessage(obtainMessage(EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK,
-                (autoUnregister ? 1 : 0), 0, callback));
+        callback.init(executor, autoUnregister);
+        sendMessage(obtainMessage(EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK, callback));
+    }
+
+    /**
+     * Unregister data network controller callback.
+     *
+     * @param callback The callback.
+     */
+    public void unregisterDataNetworkControllerCallback(
+            @NonNull DataNetworkControllerCallback callback) {
+        sendMessage(obtainMessage(EVENT_UNREGISTER_DATA_NETWORK_CONTROLLER_CALLBACK, callback));
+    }
+
+    /**
+     * Tear down all data networks.
+     *
+     * @param reason The reason to tear down.
+     */
+    public void tearDownAllDataNetworks(@TearDownReason int reason) {
+        sendMessage(obtainMessage(EVENT_TEAR_DOWN_ALL_DATA_NETWORKS, reason, 0));
+    }
+
+    /**
+     * Called when needed to tear down all data networks.
+     *
+     * @param reason The reason to tear down.
+     */
+    public void onTearDownAllDataNetworks(@TearDownReason int reason) {
+        log("onTearDownAllDataNetworks: reason=" + DataNetwork.tearDownReasonToString(reason));
+        if (mDataNetworkList.isEmpty()) {
+            log("tearDownAllDataNetworks: No pending networks. All disconnected now.");
+            return;
+        }
+
+        for (DataNetwork dataNetwork : mDataNetworkList) {
+            if (!dataNetwork.isDisconnecting()) {
+                tearDownGracefully(dataNetwork, reason);
+            }
+        }
+    }
+
+    /**
+     * Evaluate the pending IMS de-registration networks and tear it down if it is safe to do that.
+     */
+    private void evaluatePendingImsDeregDataNetworks() {
+        Iterator<Map.Entry<DataNetwork, Runnable>> it =
+                mPendingImsDeregDataNetworks.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<DataNetwork, Runnable> entry = it.next();
+            if (isSafeToTearDown(entry.getKey())) {
+                // Now tear down the network.
+                log("evaluatePendingImsDeregDataNetworks: Safe to tear down data network "
+                        + entry.getKey().name() + " now.");
+                entry.getValue().run();
+                it.remove();
+            } else {
+                log("Still not safe to tear down " + entry.getKey().name() + ".");
+            }
+        }
+    }
+
+    /**
+     * Check if the data network is safe to tear down at this moment.
+     *
+     * @param dataNetwork The data network.
+     * @return {@code true} if the data network is safe to tear down. {@code false} indicates this
+     * data network has requests originated from the IMS/RCS service and IMS/RCS is not
+     * de-registered yet.
+     */
+    private boolean isSafeToTearDown(@NonNull DataNetwork dataNetwork) {
+        for (int imsFeature : SUPPORTED_IMS_FEATURES) {
+            String imsFeaturePackage = mImsFeaturePackageName.get(imsFeature);
+            if (imsFeaturePackage != null) {
+                if (dataNetwork.getAttachedNetworkRequestList()
+                        .hasNetworkRequestsFromPackage(imsFeaturePackage)) {
+                    if (mImsFeatureRegistrationState.get(imsFeature)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        // All IMS features are de-registered (or this data network has no requests from IMS feature
+        // packages.
+        return true;
+    }
+
+    /**
+     * @return {@code true} if IMS graceful tear down is supported by frameworks.
+     */
+    private boolean isImsGracefulTearDownSupported() {
+        return mDataConfigManager.getImsDeregistrationDelay() > 0;
+    }
+
+    /**
+     * Tear down the data network gracefully.
+     *
+     * @param dataNetwork The data network.
+     */
+    private void tearDownGracefully(@NonNull DataNetwork dataNetwork, @TearDownReason int reason) {
+        long deregDelay = mDataConfigManager.getImsDeregistrationDelay();
+        if (isImsGracefulTearDownSupported() && !isSafeToTearDown(dataNetwork)) {
+            log("tearDownGracefully: Not safe to tear down " + dataNetwork.name()
+                    + " at this point. Wait for IMS de-registration or timeout. MMTEL="
+                    + (mImsFeatureRegistrationState.get(ImsFeature.FEATURE_MMTEL)
+                    ? "registered" : "deregistered")
+                    + ", RCS="
+                    + (mImsFeatureRegistrationState.get(ImsFeature.FEATURE_RCS)
+                    ? "registered" : "deregistered")
+            );
+            mPendingImsDeregDataNetworks.put(dataNetwork,
+                    dataNetwork.tearDownWithCondition(reason, deregDelay));
+        } else {
+            // Graceful tear down is not turned on. Tear down the network immediately.
+            log("tearDownGracefully: Safe to tear down " + dataNetwork.name());
+            dataNetwork.tearDown(reason);
+        }
     }
 
     /**
@@ -1357,6 +1750,13 @@ public class DataNetworkController extends Handler {
         }
         pw.decreaseIndent();
 
+        pw.println("Pending tear down data networks:");
+        pw.increaseIndent();
+        for (DataNetwork dn : mPendingImsDeregDataNetworks.keySet()) {
+            dn.dump(fd, pw, args);
+        }
+        pw.decreaseIndent();
+
         pw.println("Previously connected data networks:");
         pw.increaseIndent();
         for (DataNetwork dn: mPreviousConnectedDataNetworkList) {
@@ -1373,6 +1773,13 @@ public class DataNetworkController extends Handler {
             pw.println(networkRequest);
         }
         pw.decreaseIndent();
+
+        pw.println("IMS features registration state: MMTEL="
+                + (mImsFeatureRegistrationState.get(ImsFeature.FEATURE_MMTEL)
+                ? "registered" : "deregistered")
+                + ", RCS="
+                + (mImsFeatureRegistrationState.get(ImsFeature.FEATURE_RCS)
+                ? "registered" : "deregistered"));
 
         pw.println("Local logs:");
         pw.increaseIndent();

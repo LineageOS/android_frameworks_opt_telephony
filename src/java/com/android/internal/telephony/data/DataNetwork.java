@@ -80,6 +80,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * DataNetwork class represents a single PDN (Packet Data Network).
@@ -1303,14 +1304,45 @@ public class DataNetwork extends StateMachine {
     }
 
     private void onTearDown(@TearDownReason int reason) {
-        log("onTearDown: reason=" + tearDownReasonToString(reason));
-        if (shouldPerformGracefulTearDown()) {
-            logd("Performing graceful tear down. Wait for IMS/RCS de-registered.");
-            return;
-        }
+        logl("onTearDown: reason=" + tearDownReasonToString(reason));
         // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                 DataService.REQUEST_REASON_NORMAL, null);
+        mInvokedDataDeactivation = true;
+    }
+
+    /**
+     * Tear down the data network when condition is met or timed out. Data network will enter
+     * {@link DisconnectingState} immediately and waiting for condition met. When condition is met,
+     * {@link DataNetworkController} should invoke {@link Consumer#accept(Object)} so the actual
+     * tear down work can be performed.
+     *
+     * This is primarily used for IMS graceful tear down. {@link DataNetworkController} inform
+     * {@link DataNetwork} to enter {@link DisconnectingState}. IMS service can observe this
+     * through {@link PreciseDataConnectionState#getState()} and then perform IMS de-registration
+     * work. After IMS de-registered, {@link DataNetworkController} informs {@link DataNetwork}
+     * that it's okay to tear down the network.
+     *
+     * @param reason The tear down reason.
+     *
+     * @param timeoutMillis Timeout in milliseconds. Within the time window, clients will have to
+     * call {@link Consumer#accept(Object)}, otherwise, data network will be torn down when
+     * timed out.
+     *
+     * @return The runnable for client to execute when condition is met. When executed, tear down
+     * will be performed. {@code null} if the data network is already disconnected or being
+     * disconnected.
+     */
+    public @Nullable Runnable tearDownWithCondition(@TearDownReason int reason,
+            long timeoutMillis) {
+        if (getCurrentState() == null || isDisconnected() || isDisconnecting()) {
+            loge("tearDownGracefully: Not in the right state. State=" + getCurrentState());
+            return null;
+        }
+        logl("tearDownWithCondition: reason=" + tearDownReasonToString(reason) + ", timeout="
+                + timeoutMillis + "ms.");
+        sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, timeoutMillis);
+        return () -> this.tearDown(reason);
     }
 
     /**
