@@ -83,12 +83,16 @@ public class DataProfileManagerTest extends TelephonyTest {
                 Telephony.Carriers.WAIT_TIME_RETRY,
                 Telephony.Carriers.TIME_LIMIT_FOR_MAX_CONNECTIONS,
                 Telephony.Carriers.MTU,
+                Telephony.Carriers.MTU_V4,
+                Telephony.Carriers.MTU_V6,
                 Telephony.Carriers.MVNO_TYPE,
                 Telephony.Carriers.MVNO_MATCH_DATA,
                 Telephony.Carriers.NETWORK_TYPE_BITMASK,
+                Telephony.Carriers.LINGERING_NETWORK_TYPE_BITMASK,
                 Telephony.Carriers.APN_SET_ID,
                 Telephony.Carriers.CARRIER_ID,
-                Telephony.Carriers.SKIP_464XLAT
+                Telephony.Carriers.SKIP_464XLAT,
+                Telephony.Carriers.ALWAYS_ON,
         };
 
         private int mPreferredApnSet = 0;
@@ -119,13 +123,17 @@ public class DataProfileManagerTest extends TelephonyTest {
                     0,                      // wait_time
                     0,                      // max_conns_time
                     0,                      // mtu
+                    0,                      // mtu_v4
+                    0,                      // mtu_v6
                     "",                     // mvno_type
                     "",                     // mnvo_match_data
                     TelephonyManager.NETWORK_TYPE_BITMASK_LTE
                             | TelephonyManager.NETWORK_TYPE_BITMASK_NR, // network_type_bitmask
+                    0,                      // lingering_network_type_bitmask
                     0,                      // apn_set_id
                     -1,                     // carrier_id
-                    -1                      // skip_464xlat
+                    -1,                     // skip_464xlat
+                    0                       // always_on
             };
         }
 
@@ -153,12 +161,16 @@ public class DataProfileManagerTest extends TelephonyTest {
                     0,                      // wait_time
                     0,                      // max_conns_time
                     0,                      // mtu
+                    0,                      // mtu_v4
+                    0,                      // mtu_v6
                     "",                     // mvno_type
                     "",                     // mnvo_match_data
                     TelephonyManager.NETWORK_TYPE_BITMASK_LTE, // network_type_bitmask
+                    0,                      // lingering_network_type_bitmask
                     0,                      // apn_set_id
                     -1,                     // carrier_id
-                    -1                      // skip_464xlat
+                    -1,                     // skip_464xlat
+                    0                       // always_on
             };
         }
 
@@ -186,12 +198,16 @@ public class DataProfileManagerTest extends TelephonyTest {
                     0,                      // wait_time
                     0,                      // max_conns_time
                     0,                      // mtu
+                    0,                      // mtu_v4
+                    0,                      // mtu_v6
                     "",                     // mvno_type
                     "",                     // mnvo_match_data
                     TelephonyManager.NETWORK_TYPE_BITMASK_NR, // network_type_bitmask
+                    0,                      // lingering_network_type_bitmask
                     0,                      // apn_set_id
                     -1,                     // carrier_id
-                    -1                      // skip_464xlat
+                    -1,                     // skip_464xlat
+                    0                       // alwys_on
             };
         }
 
@@ -219,13 +235,17 @@ public class DataProfileManagerTest extends TelephonyTest {
                     0,                      // wait_time
                     0,                      // max_conns_time
                     0,                      // mtu
+                    0,                      // mtu_v4
+                    0,                      // mtu_v6
                     "",                     // mvno_type
                     "",                     // mnvo_match_data
                     TelephonyManager.NETWORK_TYPE_BITMASK_LTE
                             | TelephonyManager.NETWORK_TYPE_BITMASK_NR, // network_type_bitmask
+                    0,                      // lingering_network_type_bitmask
                     0,                      // apn_set_id
                     -1,                     // carrier_id
-                    -1                      // skip_464xlat
+                    -1,                     // skip_464xlat
+                    0                       // always_on
             };
         }
 
