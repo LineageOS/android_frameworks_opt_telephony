@@ -122,6 +122,7 @@ import com.android.internal.telephony.metrics.CallQualityMetrics;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.ImsCommand;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -191,8 +192,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private final MmTelFeatureListener mMmTelFeatureListener = new MmTelFeatureListener();
     private class MmTelFeatureListener extends MmTelFeature.Listener {
-        @Override
-        public void onIncomingCall(IImsCallSession c, Bundle extras) {
+
+        private void processIncomingCall(IImsCallSession c, Bundle extras) {
             if (DBG) log("onReceive : incoming call intent");
             mOperationLocalLog.log("onIncomingCall Received");
 
@@ -293,13 +294,21 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         @Override
+        public void onIncomingCall(IImsCallSession c, Bundle extras) {
+            TelephonyUtils.runWithCleanCallingIdentity(()-> processIncomingCall(c, extras),
+                    mExecutor);
+        }
+
+        @Override
         public void onVoiceMessageCountUpdate(int count) {
-            if (mPhone != null && mPhone.mDefaultPhone != null) {
-                if (DBG) log("onVoiceMessageCountChanged :: count=" + count);
-                mPhone.mDefaultPhone.setVoiceMessageCount(count);
-            } else {
-                loge("onVoiceMessageCountUpdate: null phone");
-            }
+            TelephonyUtils.runWithCleanCallingIdentity(()-> {
+                if (mPhone != null && mPhone.mDefaultPhone != null) {
+                    if (DBG) log("onVoiceMessageCountChanged :: count=" + count);
+                    mPhone.mDefaultPhone.setVoiceMessageCount(count);
+                } else {
+                    loge("onVoiceMessageCountUpdate: null phone");
+                }
+            }, mExecutor);
         }
     }
 
@@ -548,6 +557,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private String mLastDialString = null;
     private ImsDialArgs mLastDialArgs = null;
+    private Executor mExecutor = Runnable::run;
 
     /**
      * Listeners to changes in the phone state.  Intended for use by other interested IMS components
@@ -928,6 +938,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public ImsPhoneCallTracker(ImsPhone phone, ConnectorFactory factory, Executor executor) {
         this.mPhone = phone;
         mConnectorFactory = factory;
+        if (executor != null) {
+            mExecutor = executor;
+        }
 
         mMetrics = TelephonyMetrics.getInstance();
 
